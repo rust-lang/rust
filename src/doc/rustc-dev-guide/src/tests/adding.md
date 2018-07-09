@@ -49,8 +49,8 @@ considered an ideal setup.
 
 [`src/test/run-pass`]: https://github.com/rust-lang/rust/tree/master/src/test/run-pass/
 
-For regression tests -- basically, some random snippet of code that
-came in from the internet -- we often just name the test after the
+For regression tests – basically, some random snippet of code that
+came in from the internet – we often just name the test after the
 issue. For example, `src/test/run-pass/issue-12345.rs`. If possible,
 though, it is better if you can put the test into a directory that
 helps identify what piece of code is being tested here (e.g.,
@@ -267,9 +267,9 @@ can also make UI tests where compilation is expected to succeed, and
 you can even run the resulting program. Just add one of the following
 [header commands](#header_commands):
 
-- `// compile-pass` -- compilation should succeed but do
+- `// compile-pass` – compilation should succeed but do
   not run the resulting binary
-- `// run-pass` -- compilation should succeed and we should run the
+- `// run-pass` – compilation should succeed and we should run the
   resulting binary
 
 <a name="bless"></a>

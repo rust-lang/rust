@@ -15,8 +15,8 @@ One of the first observations is that the Rust trait system is
 basically a kind of logic. As such, we can map our struct, trait, and
 impl declarations into logical inference rules. For the most part,
 these are basically Horn clauses, though we'll see that to capture the
-full richness of Rust -- and in particular to support generic
-programming -- we have to go a bit further than standard Horn clauses.
+full richness of Rust – and in particular to support generic
+programming – we have to go a bit further than standard Horn clauses.
 
 To see how this mapping works, let's start with an example. Imagine
 we declare a trait and a few impls, like so:
@@ -38,8 +38,8 @@ Clone(Vec<?T>) :- Clone(?T).
 // Or, put another way, B implies A.
 ```
 
-In Prolog terms, we might say that `Clone(Foo)` -- where `Foo` is some
-Rust type -- is a *predicate* that represents the idea that the type
+In Prolog terms, we might say that `Clone(Foo)` – where `Foo` is some
+Rust type – is a *predicate* that represents the idea that the type
 `Foo` implements `Clone`. These rules are **program clauses**; they
 state the conditions under which that predicate can be proven (i.e.,
 considered true). So the first rule just says "Clone is implemented
@@ -162,7 +162,7 @@ notation but a bit Rustified. Anyway, the problem is that standard
 Horn clauses don't allow universal quantification (`forall`) or
 implication (`if`) in goals (though many Prolog engines do support
 them, as an extension). For this reason, we need to accept something
-called "first-order hereditary harrop" (FOHH) clauses -- this long
+called "first-order hereditary harrop" (FOHH) clauses – this long
 name basically means "standard Horn clauses with `forall` and `if` in
 the body". But it's nice to know the proper name, because there is a
 lot of work describing how to efficiently handle FOHH clauses; see for

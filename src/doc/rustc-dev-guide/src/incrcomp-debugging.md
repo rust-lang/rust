@@ -90,7 +90,7 @@ path that should not exist, but you will not be quite sure how it came
 to be. **When the compiler is built with debug assertions,** it can
 help you track that down. Simply set the `RUST_FORBID_DEP_GRAPH_EDGE`
 environment variable to a filter. Every edge created in the dep-graph
-will be tested against that filter -- if it matches, a `bug!` is
+will be tested against that filter – if it matches, a `bug!` is
 reported, so you can easily see the backtrace (`RUST_BACKTRACE=1`).
 
 The syntax for these filters is the same as described in the previous

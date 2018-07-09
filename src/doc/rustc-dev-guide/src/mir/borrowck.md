@@ -1,6 +1,6 @@
 # MIR borrow check
 
-The borrow check is Rust's "secret sauce" -- it is tasked with
+The borrow check is Rust's "secret sauce" – it is tasked with
 enforcing a number of properties:
 
 - That all variables are initialized before they are used.

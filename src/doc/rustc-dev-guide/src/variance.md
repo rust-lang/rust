@@ -167,7 +167,7 @@ one could interpret variance and trait matching.
 Just as with structs and enums, we can decide the subtyping
 relationship between two object types `&Trait<A>` and `&Trait<B>`
 based on the relationship of `A` and `B`. Note that for object
-types we ignore the `Self` type parameter -- it is unknown, and
+types we ignore the `Self` type parameter – it is unknown, and
 the nature of dynamic dispatch ensures that we will always call a
 function that is expected the appropriate `Self` type. However, we
 must be careful with the other type parameters, or else we could
@@ -274,8 +274,8 @@ These conditions are satisfied and so we are happy.
 
 ### Variance and associated types
 
-Traits with associated types -- or at minimum projection
-expressions -- must be invariant with respect to all of their
+Traits with associated types – or at minimum projection
+expressions – must be invariant with respect to all of their
 inputs. To see why this makes sense, consider what subtyping for a
 trait reference means:
 

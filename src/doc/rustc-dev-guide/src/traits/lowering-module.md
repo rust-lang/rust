@@ -8,8 +8,8 @@ created in the [`rustc_traits::lowering`][lowering] module.
 
 ## The `program_clauses_for` query
 
-The main entry point is the `program_clauses_for` [query], which --
-given a def-id -- produces a set of Chalk program clauses. These
+The main entry point is the `program_clauses_for` [query], which –
+given a def-id – produces a set of Chalk program clauses. These
 queries are tested using a
 [dedicated unit-testing mechanism, described below](#unit-tests).  The
 query is invoked on a `DefId` that identifies something like a trait,

@@ -52,11 +52,11 @@ from the Rust syntax into goals.
 In addition, in the rules below, we sometimes do some transformations
 on the lowered where clauses, as defined here:
 
-- `FromEnv(WC)` -- this indicates that:
+- `FromEnv(WC)` – this indicates that:
   - `Implemented(TraitRef)` becomes `FromEnv(TraitRef)`
   - `ProjectionEq(Projection = Ty)` becomes `FromEnv(Projection = Ty)`
   - other where-clauses are left intact
-- `WellFormed(WC)` -- this indicates that:
+- `WellFormed(WC)` – this indicates that:
   - `Implemented(TraitRef)` becomes `WellFormed(TraitRef)`
   - `ProjectionEq(Projection = Ty)` becomes `WellFormed(Projection = Ty)`
 
@@ -121,8 +121,8 @@ trait Eq: PartialEq { ... }
 
 In this case, the `PartialEq` supertrait is equivalent to a `where
 Self: PartialEq` where clause, in our simplified model. The program
-clause above therefore states that if we can prove `FromEnv(T: Eq)` --
-e.g., if we are in some function with `T: Eq` in its where clauses --
+clause above therefore states that if we can prove `FromEnv(T: Eq)` –
+e.g., if we are in some function with `T: Eq` in its where clauses –
 then we also know that `FromEnv(T: PartialEq)`. Thus the set of things
 that follow from the environment are not only the **direct where
 clauses** but also things that follow from them.
@@ -169,7 +169,7 @@ have to prove each one of those:
     - `WellFormed(T: Foo)` -- cycle, true coinductively
 
 This `WellFormed` predicate is only used when proving that impls are
-well-formed -- basically, for each impl of some trait ref `TraitRef`,
+well-formed – basically, for each impl of some trait ref `TraitRef`,
 we must show that `WellFormed(TraitRef)`. This in turn justifies the
 implied bounds rules that allow us to extend the set of `FromEnv`
 items.

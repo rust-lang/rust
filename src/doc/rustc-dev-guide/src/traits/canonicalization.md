@@ -24,7 +24,7 @@ form of `X` would be `(?0, ?1)`, where `?0` and `?1` represent these
 **canonical placeholders**. Note that the type `Y = (?U, ?T)` also
 canonicalizes to `(?0, ?1)`. But the type `Z = (?T, ?T)` would
 canonicalize to `(?0, ?0)` (as would `(?U, ?U)`). In other words, the
-exact identity of the inference variables is not important -- unless
+exact identity of the inference variables is not important – unless
 they are repeated.
 
 We use this to improve caching as well as to detect cycles and other

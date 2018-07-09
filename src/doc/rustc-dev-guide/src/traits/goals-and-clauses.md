@@ -197,7 +197,7 @@ Implemented(Foo: Send) :-
 
 As you can probably imagine, proving that `Option<Box<Foo>>: Send` is
 going to wind up circularly requiring us to prove that `Foo: Send`
-again. So this would be an example where we wind up in a cycle -- but
+again. So this would be an example where we wind up in a cycle – but
 that's ok, we *do* consider `Foo: Send` to hold, even though it
 references itself.
 
@@ -219,4 +219,4 @@ as described in the section on [implied bounds].
 Some topics yet to be written:
 
 - Elaborate on the proof procedure
-- SLG solving -- introduce negative reasoning
+- SLG solving – introduce negative reasoning

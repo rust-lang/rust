@@ -15,7 +15,7 @@ exposes the underlying control flow in a very clear way.
 
 A control-flow graph is structured as a set of **basic blocks**
 connected by edges. The key idea of a basic block is that it is a set
-of statements that execute "together" -- that is, whenever you branch
+of statements that execute "together" – that is, whenever you branch
 to a basic block, you start at the first statement and then execute
 all the remainder. Only at the end of the block is there the
 possibility of branching to more than one place (in MIR, we call that
@@ -119,7 +119,7 @@ variables, since that's the thing we're most familiar with.
 So there you have it: a variable "appears free" in some
 expression/statement/whatever if it refers to something defined
 outside of that expressions/statement/whatever. Equivalently, we can
-then refer to the "free variables" of an expression -- which is just
+then refer to the "free variables" of an expression – which is just
 the set of variables that "appear free".
 
 So what does this have to do with regions? Well, we can apply the

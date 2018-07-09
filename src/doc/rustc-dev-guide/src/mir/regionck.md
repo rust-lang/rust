@@ -12,13 +12,13 @@ The MIR-based region analysis consists of two major functions:
 - `replace_regions_in_mir`, invoked first, has two jobs:
   - First, it finds the set of regions that appear within the
     signature of the function (e.g., `'a` in `fn foo<'a>(&'a u32) {
-    ... }`). These are called the "universal" or "free" regions -- in
+    ... }`). These are called the "universal" or "free" regions – in
     particular, they are the regions that [appear free][fvb] in the
     function body.
   - Second, it replaces all the regions from the function body with
     fresh inference variables. This is because (presently) those
     regions are the results of lexical region inference and hence are
-    not of much interest. The intention is that -- eventually -- they
+    not of much interest. The intention is that – eventually – they
     will be "erased regions" (i.e., no information at all), since we
     won't be doing lexical region inference at all.
 - `compute_regions`, invoked second: this is given as argument the
@@ -40,11 +40,11 @@ The MIR-based region analysis consists of two major functions:
 
 ## Universal regions
 
-*to be written* -- explain the `UniversalRegions` type
+*to be written* – explain the `UniversalRegions` type
 
 ## Region variables and constraints
 
-*to be written* -- describe the `RegionInferenceContext` and
+*to be written* – describe the `RegionInferenceContext` and
 the role of `liveness_constraints` vs other `constraints`, plus
 
 ## Closures
@@ -79,13 +79,13 @@ The kinds of region elements are as follows:
 - Similarly, there is an element denoted `end('static)` corresponding
   to the remainder of program execution after this function returns.
 - There is an element `!1` for each skolemized region `!1`. This
-  corresponds (intuitively) to some unknown set of other elements --
+  corresponds (intuitively) to some unknown set of other elements –
   for details on skolemization, see the section
   [skolemization and universes](#skol).
 
 ## Causal tracking
 
-*to be written* -- describe how we can extend the values of a variable
+*to be written* – describe how we can extend the values of a variable
  with causal tracking etc
 
 <a name="skol"></a>
@@ -133,7 +133,7 @@ bound in the supertype and **skolemizing** them: this means that we
 replace them with
 [universally quantified](appendix/background.html#quantified)
 representatives, written like `!1`. We call these regions "skolemized
-regions" -- they represent, basically, "some unknown region".
+regions" – they represent, basically, "some unknown region".
 
 Once we've done that replacement, we have the following relation:
 
@@ -156,9 +156,9 @@ we swap the left and right here):
 ```
 
 According to the basic subtyping rules for a reference, this will be
-true if `'!1: 'static`. That is -- if "some unknown region `!1`" lives
-outlives `'static`. Now, this *might* be true -- after all, `'!1`
-could be `'static` -- but we don't *know* that it's true. So this
+true if `'!1: 'static`. That is – if "some unknown region `!1`" lives
+outlives `'static`. Now, this *might* be true – after all, `'!1`
+could be `'static` – but we don't *know* that it's true. So this
 should yield up an error (eventually).
 
 ### What is a universe
@@ -238,8 +238,8 @@ not U1.
 **Giving existential variables a universe.** Now that we have this
 notion of universes, we can use it to extend our type-checker and
 things to prevent illegal names from leaking out. The idea is that we
-give each inference (existential) variable -- whether it be a type or
-a lifetime -- a universe. That variable's value can then only
+give each inference (existential) variable – whether it be a type or
+a lifetime – a universe. That variable's value can then only
 reference names visible from that universe. So for example is a
 lifetime variable is created in U0, then it cannot be assigned a value
 of `!1` or `!2`, because those names are not visible from the universe
@@ -247,7 +247,7 @@ U0.
 
 **Representing universes with just a counter.** You might be surprised
 to see that the compiler doesn't keep track of a full tree of
-universes. Instead, it just keeps a counter -- and, to determine if
+universes. Instead, it just keeps a counter – and, to determine if
 one universe can see another one, it just checks if the index is
 greater. For example, U2 can see U0 because 2 >= 0. But U0 cannot see
 U2, because 0 >= 2 is false.
@@ -323,12 +323,12 @@ Now there are two ways that could happen. First, if `U(V1)` can see
 the universe `x` (i.e., `x <= U(V1)`), then we can just add `skol(x)`
 to `value(V1)` and be done. But if not, then we have to approximate:
 we may not know what set of elements `skol(x)` represents, but we
-should be able to compute some sort of **upper bound** B for it --
+should be able to compute some sort of **upper bound** B for it –
 some region B that outlives `skol(x)`. For now, we'll just use
-`'static` for that (since it outlives everything) -- in the future, we
+`'static` for that (since it outlives everything) – in the future, we
 can sometimes be smarter here (and in fact we have code for doing this
 already in other contexts). Moreover, since `'static` is in the root
-universe U0, we know that all variables can see it -- so basically if
+universe U0, we know that all variables can see it – so basically if
 we find that `value(V2)` contains `skol(x)` for some universe `x`
 that `V1` can't see, then we force `V1` to `'static`.
 
@@ -398,8 +398,8 @@ outlives relationships are satisfied. Then we would go to the "check
 universal regions" portion of the code, which would test that no
 universal region grew too large.
 
-In this case, `V1` *did* grow too large -- it is not known to outlive
-`end('static)`, nor any of the CFG -- so we would report an error.
+In this case, `V1` *did* grow too large – it is not known to outlive
+`end('static)`, nor any of the CFG – so we would report an error.
 
 ## Another example
 

@@ -15,7 +15,7 @@ When a trait defines an associated type (e.g.,
 [the `Item` type in the `IntoIterator` trait][intoiter-item]), that
 type can be referenced by the user using an **associated type
 projection** like `<Option<u32> as IntoIterator>::Item`. (Often,
-though, people will use the shorthand syntax `T::Item` -- presently,
+though, people will use the shorthand syntax `T::Item` – presently,
 that syntax is expanded during
 ["type collection"](./type-checking.html) into the explicit form,
 though that is something we may want to change in the future.)
@@ -24,8 +24,8 @@ though that is something we may want to change in the future.)
 
 <a name="normalize"></a>
 
-In some cases, associated type projections can be **normalized** --
-that is, simplified -- based on the types given in an impl. So, to
+In some cases, associated type projections can be **normalized** –
+that is, simplified – based on the types given in an impl. So, to
 continue with our example, the impl of `IntoIterator` for `Option<T>`
 declares (among other things) that `Item = T`:
 
@@ -39,9 +39,9 @@ impl<T> IntoIterator for Option<T> {
 This means we can normalize the projection `<Option<u32> as
 IntoIterator>::Item` to just `u32`.
 
-In this case, the projection was a "monomorphic" one -- that is, it
+In this case, the projection was a "monomorphic" one – that is, it
 did not have any type parameters.  Monomorphic projections are special
-because they can **always** be fully normalized -- but often we can
+because they can **always** be fully normalized – but often we can
 normalize other associated type projections as well. For example,
 `<Option<?T> as IntoIterator>::Item` (where `?T` is an inference
 variable) can be normalized to just `?T`.

@@ -18,8 +18,8 @@ Once it gets more complete, the plan is probably to move it into the
 If you'd like to help finish the guide, we'd love to have you! The
 main tracking issue for the guide
 [can be found here](https://github.com/rust-lang-nursery/rustc-guide/issues/6). From
-there, you can find a list of all the planned chapters and subsections
--- if you think something is missing, please open an issue about it!
+there, you can find a list of all the planned chapters and subsections.
+If you think something is missing, please open an issue about it!
 Otherwise, find a chapter that sounds interesting to you and then go
 to its associated issue. There should be a list of things to do.
 

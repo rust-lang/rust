@@ -16,7 +16,7 @@ expect, and more.  If you are unfamiliar with the compiler testing framework,
 see [this chapter](./tests/intro.html) for additional background.
 
 The tests themselves are typically (but not always) organized into
-"suites"--for example, `run-pass`, a folder representing tests that should
+"suites" – for example, `run-pass`, a folder representing tests that should
 succeed, `run-fail`, a folder holding tests that should compile successfully,
 but return a failure (non-zero status), `compile-fail`, a folder holding tests
 that should fail to compile, and many more.  The various suites are defined in

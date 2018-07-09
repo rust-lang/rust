@@ -44,8 +44,8 @@ current year if you like, but you don't have to.
 Lines should be at most 100 characters. It's even better if you can
 keep things to 80.
 
-**Ignoring the line length limit.** Sometimes -- in particular for
-tests -- it can be necessary to exempt yourself from this limit. In
+**Ignoring the line length limit.** Sometimes – in particular for
+tests – it can be necessary to exempt yourself from this limit. In
 that case, you can add a comment towards the top of the file (after
 the copyright notice) like so:
 
@@ -141,7 +141,7 @@ command like `git rebase -i rust-lang/master` (presuming you use the
 name `rust-lang` for your remote).
 
 **Individual commits do not have to build (but it's nice).** We do not
-require that every intermediate commit successfully builds -- we only
+require that every intermediate commit successfully builds – we only
 expect to be able to bisect at a PR level. However, if you *can* make
 individual commits build, that is always helpful.
 

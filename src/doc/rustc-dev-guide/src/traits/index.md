@@ -28,7 +28,7 @@ Trait solving is based around a few key ideas:
   whether types are equal.
 - [Region constraints](./traits/regions.html), which are accumulated
   during trait solving but mostly ignored. This means that trait
-  solving effectively ignores the precise regions involved, always --
+  solving effectively ignores the precise regions involved, always –
   but we still remember the constraints on them so that those
   constraints can be checked by thet type checker.
   

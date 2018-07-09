@@ -100,8 +100,8 @@ that appeared within the `main` function.)
 
 ### Implementing and registering a pass
 
-A `MirPass` is some bit of code that processes the MIR, typically --
-but not always -- transforming it along the way somehow. For example,
+A `MirPass` is some bit of code that processes the MIR, typically –
+but not always – transforming it along the way somehow. For example,
 it might perform an optimization. The `MirPass` trait itself is found
 in in [the `rustc_mir::transform` module][mirtransform], and it
 basically consists of one method, `run_pass`, that simply gets an
@@ -110,7 +110,7 @@ came from). The MIR is therefore modified in place (which helps to
 keep things efficient).
 
 A good example of a basic MIR pass is [`NoLandingPads`], which walks
-the MIR and removes all edges that are due to unwinding -- this is
+the MIR and removes all edges that are due to unwinding – this is
 used when configured with `panic=abort`, which never unwinds. As you
 can see from its source, a MIR pass is defined by first defining a
 dummy type, a struct with no fields, something like:

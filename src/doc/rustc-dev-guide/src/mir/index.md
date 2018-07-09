@@ -3,7 +3,7 @@
 MIR is Rust's _Mid-level Intermediate Representation_. It is
 constructed from [HIR](./hir.html). MIR was introduced in
 [RFC 1211]. It is a radically simplified form of Rust that is used for
-certain flow-sensitive safety checks -- notably the borrow checker! --
+certain flow-sensitive safety checks – notably the borrow checker! –
 and also for optimization and code generation.
 
 If you'd like a very high-level introduction to MIR, as well as some
@@ -122,7 +122,7 @@ StorageLive(_1);
 ```
 
 This statement indicates that the variable `_1` is "live", meaning
-that it may be used later -- this will persist until we encounter a
+that it may be used later – this will persist until we encounter a
 `StorageDead(_1)` statement, which indicates that the variable `_1` is
 done being used. These "storage statements" are used by LLVM to
 allocate stack space.
@@ -134,7 +134,7 @@ _1 = const <std::vec::Vec<T>>::new() -> bb2;
 ```
 
 Terminators are different from statements because they can have more
-than one successor -- that is, control may flow to different
+than one successor – that is, control may flow to different
 places. Function calls like the call to `Vec::new` are always
 terminators because of the possibility of unwinding, although in the
 case of `Vec::new` we are able to see that indeed unwinding is not
@@ -163,7 +163,7 @@ Assignments in general have the form:
 <Place> = <Rvalue>
 ```
 
-A place is an expression like `_3`, `_3.f` or `*_3` -- it denotes a
+A place is an expression like `_3`, `_3.f` or `*_3` – it denotes a
 location in memory.  An **Rvalue** is an expression that creates a
 value: in this case, the rvalue is a mutable borrow expression, which
 looks like `&mut <Place>`. So we can kind of define a grammar for
@@ -180,7 +180,7 @@ rvalues like so:
           | move Place
 ```
 
-As you can see from this grammar, rvalues cannot be nested -- they can
+As you can see from this grammar, rvalues cannot be nested – they can
 only reference places and constants. Moreover, when you use a place,
 we indicate whether we are **copying it** (which requires that the
 place have a type `T` where `T: Copy`) or **moving it** (which works

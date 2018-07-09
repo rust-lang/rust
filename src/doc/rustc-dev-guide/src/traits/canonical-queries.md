@@ -1,8 +1,8 @@
 # Canonical queries
 
 The "start" of the trait system is the **canonical query** (these are
-both queries in the more general sense of the word -- something you
-would like to know the answer to -- and in the
+both queries in the more general sense of the word – something you
+would like to know the answer to – and in the
 [rustc-specific sense](./query.html)).  The idea is that the type
 checker or other parts of the system, may in the course of doing their
 thing want to know whether some trait is implemented for some type
@@ -35,7 +35,7 @@ solver is finding **all possible** instantiations of your query that
 are true. In this case, if we instantiate `?U = [i32]`, then the query
 is true (note that a traditional Prolog interface does not, directly,
 tell us a value for `?U`, but we can infer one by unifying the
-response with our original query -- Rust's solver gives back a
+response with our original query – Rust's solver gives back a
 substitution instead). If we were to hit `y`, the solver might then
 give us another possible answer:
 
@@ -135,7 +135,7 @@ we did find. It consists of four parts:
   [section on handling regions in traits](./traits/regions.html) for
   more details.
 - **Value:** The query result also comes with a value of type `T`. For
-  some specialized queries -- like normalizing associated types --
+  some specialized queries – like normalizing associated types –
   this is used to carry back an extra result, but it's often just
   `()`.
 
@@ -187,8 +187,8 @@ for example:
 Therefore, the result we get back would be as follows (I'm going to
 ignore region constraints and the "value"):
 
-- Certainty: `Ambiguous` -- we're not sure yet if this holds
-- Var values: `[?T = ?T, ?U = ?U]` -- we learned nothing about the values of
+- Certainty: `Ambiguous` – we're not sure yet if this holds
+- Var values: `[?T = ?T, ?U = ?U]` – we learned nothing about the values of
   the variables
 
 In short, the query result says that it is too soon to say much about
