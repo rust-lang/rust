@@ -809,9 +809,15 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
-        let length = self.len();
-        self.swap(index, length - 1);
-        self.pop().unwrap()
+        unsafe {
+            // We replace self[index] with the last element. Note that if the
+            // bounds check on hole succeeds there must be a last element (which
+            // can be self[index] itself).
+            let hole: *mut T = &mut self[index];
+            let last = ptr::read(self.get_unchecked(self.len - 1));
+            self.len -= 1;
+            ptr::replace(hole, last)
+        }
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
