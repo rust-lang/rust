@@ -73,4 +73,5 @@ fn assert_overflow(cmd: &mut Command) {
     println!("stderr: {}", stderr);
     assert!(stdout.is_empty());
     assert!(stderr.contains("has overflowed its stack\n"));
+    assert!(stderr.contains("::"));
 }
