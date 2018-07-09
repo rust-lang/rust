@@ -119,6 +119,11 @@ impl LintLevelSets {
         // Ensure that we never exceed the `--cap-lints` argument.
         level = cmp::min(level, self.lint_cap);
 
+        if let Some(driver_level) = sess.driver_lint_caps.get(&LintId::of(lint)) {
+            // Ensure that we never exceed driver level.
+            level = cmp::min(*driver_level, level);
+        }
+
         return (level, src)
     }
 

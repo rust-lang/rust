@@ -56,7 +56,7 @@ use lint::LintId;
 use lint::FutureIncompatibleInfo;
 
 mod bad_style;
-mod builtin;
+pub mod builtin;
 mod types;
 mod unused;
 
