@@ -161,11 +161,7 @@ fn rewrite_chain_block(mut chain: Chain, context: &RewriteContext, shape: Shape)
         shape.block_indent(context.config.tab_spaces())
     }.with_max_width(context.config);
 
-    let extend = if !parent_rewrite_contains_newline && is_continuable(&chain.parent.expr) {
-        is_small_parent
-    } else {
-        parent_is_block
-    };
+    let extend = parent_is_block || (is_small_parent && !parent_rewrite_contains_newline && is_continuable(&chain.parent.expr));
 
     let first_child_shape = if extend {
         let offset = trimmed_last_line_width(&parent_rewrite) + chain.parent.tries;
@@ -351,7 +347,6 @@ fn rewrite_chain_visual(mut chain: Chain, context: &RewriteContext, shape: Shape
         .rewrite(context, parent_shape)
         .map(|parent_rw| parent_rw + &"?".repeat(chain.parent.tries))?;
     let parent_rewrite_contains_newline = parent_rewrite.contains('\n');
-    let is_small_parent = shape.offset + parent_rewrite.len() <= context.config.tab_spaces();
 
     let other_child_shape = shape.visual_indent(0).with_max_width(context.config);
 
@@ -382,16 +377,7 @@ fn rewrite_chain_visual(mut chain: Chain, context: &RewriteContext, shape: Shape
     }
 
     // Total of all items excluding the last.
-    let extend_last_subexpr = if is_small_parent {
-        rewrites.len() == 1 && last_line_extendable(&rewrites[0])
-    } else {
-        rewrites.is_empty() && last_line_extendable(&parent_rewrite)
-    };
-    let almost_total = if extend_last_subexpr {
-        last_line_width(&parent_rewrite)
-    } else {
-        rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len()
-    } + last.tries;
+    let almost_total = rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len() + last.tries;
     let one_line_budget = if rewrites.is_empty() {
         shape.width
     } else {
@@ -436,38 +422,48 @@ fn rewrite_chain_visual(mut chain: Chain, context: &RewriteContext, shape: Shape
     // })
     // ```
 
-    let (last_subexpr_str, fits_single_line) = if all_in_one_line || extend_last_subexpr {
+    let mut last_subexpr_str = None;
+    let mut fits_single_line = false;
+
+    if all_in_one_line {
         // First we try to 'overflow' the last child and see if it looks better than using
         // vertical layout.
-        parent_shape.offset_left(almost_total).map(|shape| {
+        if let Some(shape) = parent_shape.offset_left(almost_total) {
             if let Some(rw) = rewrite_chain_subexpr(&last.expr, context, shape) {
                 // We allow overflowing here only if both of the following conditions match:
                 // 1. The entire chain fits in a single line except the last child.
                 // 2. `last_child_str.lines().count() >= 5`.
                 let line_count = rw.lines().count();
-                let fits_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
-                if fits_single_line && line_count >= 5 {
-                    (Some(rw), true)
+                let could_fit_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
+                if could_fit_single_line && line_count >= 5 {
+                    last_subexpr_str = Some(rw);
+                    fits_single_line = true;
                 } else {
                     // We could not know whether overflowing is better than using vertical layout,
                     // just by looking at the overflowed rewrite. Now we rewrite the last child
                     // on its own line, and compare two rewrites to choose which is better.
                     match rewrite_chain_subexpr(&last.expr, context, last_shape) {
-                        Some(ref new_rw) if !fits_single_line => (Some(new_rw.clone()), false),
-                        Some(ref new_rw) if new_rw.lines().count() >= line_count => {
-                            (Some(rw), fits_single_line)
+                        Some(ref new_rw) if !could_fit_single_line => {
+                            last_subexpr_str = Some(new_rw.clone());
                         }
-                        new_rw @ Some(..) => (new_rw, false),
-                        _ => (Some(rw), fits_single_line),
+                        Some(ref new_rw) if new_rw.lines().count() >= line_count => {
+                            last_subexpr_str = Some(rw);
+                            fits_single_line = could_fit_single_line;
+                        }
+                        new_rw @ Some(..) => {
+                            last_subexpr_str = new_rw;
+                        }
+                        _ => {
+                            last_subexpr_str = Some(rw);
+                            fits_single_line = could_fit_single_line;
+                        }
                     }
                 }
-            } else {
-                (rewrite_chain_subexpr(&last.expr, context, last_shape), false)
             }
-        })?
-    } else {
-        (rewrite_chain_subexpr(&last.expr, context, last_shape), false)
-    };
+        }
+    } 
+
+    last_subexpr_str = last_subexpr_str.or_else(|| rewrite_chain_subexpr(&last.expr, context, last_shape));
     rewrites.push(last_subexpr_str?);
 
     let connector = if fits_single_line && !parent_rewrite_contains_newline {
@@ -481,21 +477,11 @@ fn rewrite_chain_visual(mut chain: Chain, context: &RewriteContext, shape: Shape
         other_child_shape.indent.to_string_with_newline(context.config)
     };
 
-    let result = if is_small_parent && rewrites.len() > 1 {
-        format!(
-            "{}{}{}",
-            parent_rewrite,
-            rewrites[0],
-            join_rewrites_vis(&rewrites[1..], &connector),
-        )
-    } else {
-        format!(
-            "{}{}",
-            parent_rewrite,
-            join_rewrites_vis(&rewrites, &connector),
-        )
-    };
-    let result = format!("{}{}", result, "?".repeat(last.tries));
+    let result = format!("{}{}{}",
+        parent_rewrite,
+        join_rewrites_vis(&rewrites, &connector),
+        "?".repeat(last.tries),
+    );
     wrap_str(result, context.config.max_width(), shape)
 }
 
