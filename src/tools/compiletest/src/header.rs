@@ -14,8 +14,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use common;
-use common::Config;
+use common::{self, Config, Mode};
 use util;
 
 use extract_gdb_version;
@@ -262,7 +261,7 @@ impl TestProps {
             disable_ui_testing_normalization: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
-            failure_status: 101,
+            failure_status: -1,
             run_rustfix: false,
         }
     }
@@ -393,6 +392,11 @@ impl TestProps {
 
             if let Some(code) = config.parse_failure_status(ln) {
                 self.failure_status = code;
+            } else {
+                self.failure_status = match config.mode {
+                    Mode::RunFail => 101,
+                    _ => 1,
+                };
             }
 
             if !self.run_rustfix {

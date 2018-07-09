@@ -57,6 +57,7 @@ use errors::ColorConfig;
 use std::collections::{BTreeMap, BTreeSet};
 use std::default::Default;
 use std::env;
+use std::panic;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::mpsc::channel;
@@ -115,7 +116,7 @@ pub fn main() {
         syntax::with_globals(move || {
             get_args().map(|args| main_args(&args)).unwrap_or(1)
         })
-    }).unwrap().join().unwrap_or(101);
+    }).unwrap().join().unwrap_or(rustc_driver::EXIT_FAILURE);
     process::exit(res as i32);
 }
 
@@ -667,7 +668,7 @@ where R: 'static + Send,
 
     let (tx, rx) = channel();
 
-    rustc_driver::monitor(move || syntax::with_globals(move || {
+    let result = rustc_driver::monitor(move || syntax::with_globals(move || {
         use rustc::session::config::Input;
 
         let (mut krate, renderinfo) =
@@ -771,7 +772,11 @@ where R: 'static + Send,
 
         tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
     }));
-    rx.recv().unwrap()
+
+    match result {
+        Ok(()) => rx.recv().unwrap(),
+        Err(_) => panic::resume_unwind(Box::new(errors::FatalErrorMarker)),
+    }
 }
 
 /// Prints deprecation warnings for deprecated options

@@ -1170,12 +1170,10 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_no_compiler_crash(&self, proc_res: &ProcRes) {
-        for line in proc_res.stderr.lines() {
-            if line.contains("error: internal compiler error") {
-                self.fatal_proc_rec("compiler encountered internal error", proc_res);
-            } else if line.contains(" panicked at ") {
-                self.fatal_proc_rec("compiler panicked", proc_res);
-            }
+        match proc_res.status.code() {
+            Some(101) => self.fatal_proc_rec("compiler encountered internal error", proc_res),
+            None => self.fatal_proc_rec("compiler terminated by signal", proc_res),
+            _ => (),
         }
     }
 
