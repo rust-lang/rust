@@ -143,6 +143,55 @@ in [`src/libsyntax/ext/tt/macro_parser.rs`][code_mp].
 
 ### Hygiene
 
+If you have ever used C/C++ preprocessor macros, you know that there are some
+annoying and hard-to-debug gotchas! For example, consider the following C code:
+
+```c
+#define DEFINE_FOO struct Bar {int x;}; struct Foo {Bar bar;};
+
+// Then, somewhere else
+struct Bar {
+    ...
+};
+
+DEFINE_FOO
+```
+
+Most people avoid writing C like this – and for good reason: it doesn't
+compile. The `struct Bar` defined by the macro clashes names with the `struct
+Bar` defined in the code. Consider also the following example:
+
+```c
+#define DO_FOO(x) {\
+    int y = 0;\
+    foo(x, y);\
+    }
+
+// Then elsewhere
+int y = 22;
+DO_FOO(y);
+```
+
+Do you see the problem? We wanted to generate a call `foo(22, 0)`, but instead
+we got `foo(0, 0)` because the macro defined its own `y`!
+
+These are both examples of _macro hygiene_ issues. _Hygiene_ relates to how to
+handle names defined _within a macro_. In particular, a hygienic macro system
+prevents errors due to names introduced within a macro. Rust macros are hygienic
+in that they do not allow one to write the sorts of bugs above.
+
+At a high level, hygiene within the rust compiler is accomplished by keeping
+track of the context where a name is introduced and used. We can then
+disambiguate names based on that context. Future iterations of the macro system
+will allow greater control to the macro author to use that context. For example,
+a macro author may want to introduce a new name to the context where the macro
+was called. Alternately, the macro author may be defining a variable for use
+only within the macro (i.e. it should not be visible outside the macro).
+
+In rustc, this "context" is tracked via `Span`s.
+
+TODO: what is call-site hygiene? what is def-site hygiene?
+
 TODO
 
 ### Procedural Macros
@@ -153,6 +202,7 @@ TODO
 
 TODO
 
+TODO: maybe something about macros 2.0?
 
 
 [code_dir]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/ext/tt
