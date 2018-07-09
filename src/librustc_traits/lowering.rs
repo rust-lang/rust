@@ -114,15 +114,16 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
-/// Used for lowered where clauses (see rustc guide).
+/// Used for implied bounds related rules (see rustc guide).
 trait IntoFromEnvGoal {
-    // Transforms an existing goal into a FromEnv goal.
+    /// Transforms an existing goal into a `FromEnv` goal.
     fn into_from_env_goal(self) -> Self;
 }
 
+/// Used for well-formedness related rules (see rustc guide).
 trait IntoWellFormedGoal {
-    // Transforms an existing goal into a WellFormed goal.
-    fn into_wellformed_goal(self) -> Self;
+    /// Transforms an existing goal into a `WellFormed` goal.
+    fn into_well_formed_goal(self) -> Self;
 }
 
 impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
@@ -139,7 +140,7 @@ impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
 }
 
 impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
-    fn into_wellformed_goal(self) -> DomainGoal<'tcx> {
+    fn into_well_formed_goal(self) -> DomainGoal<'tcx> {
         use self::WhereClause::*;
 
         match self {
@@ -284,34 +285,35 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     // Rule WellFormed-TraitRef
     //
-    // For each where clause WC:
+    // Here `WC` denotes the set of all where clauses:
+    // ```
     // forall<Self, P1..Pn> {
     //   WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
     // }
+    // ```
 
-    //Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
-    let mut extend_where_clauses = vec![ty::Binder::dummy(trait_pred.lower())];
-    extend_where_clauses.extend(
-        where_clauses
-            .into_iter()
-            .map(|wc| wc.lower().map_bound(|wc| wc.into_wellformed_goal())),
-    );
+    // `Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)`
+    let wf_conditions = iter::once(ty::Binder::dummy(trait_pred.lower()))
+        .chain(
+            where_clauses
+                .into_iter()
+                .map(|wc| wc.lower())
+                .map(|wc| wc.map_bound(|goal| goal.into_well_formed_goal()))
+        );
 
-    // WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
-    let clause = ProgramClause {
+    // `WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)`
+    let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Trait(trait_pred)),
         hypotheses: tcx.mk_goals(
-            extend_where_clauses
-                .into_iter()
-                .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
+            wf_conditions.map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
         ),
     };
-    let wellformed_clauses = iter::once(Clause::ForAll(ty::Binder::dummy(clause)));
+    let wf_clause = iter::once(Clause::ForAll(ty::Binder::dummy(wf_clause)));
 
     tcx.mk_clauses(
         clauses
             .chain(implied_bound_clauses)
-            .chain(wellformed_clauses),
+            .chain(wf_clause)
     )
 }
 
