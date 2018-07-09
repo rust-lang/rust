@@ -168,7 +168,18 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         );
 
         cx.tcx().for_each_free_region(&value, |live_region| {
-            cx.constraints.liveness_set.push((live_region, location));
+            if let Some(ref mut borrowck_context) = cx.borrowck_context {
+                let region_vid = borrowck_context.universal_regions.to_region_vid(live_region);
+                borrowck_context.constraints.liveness_constraints.add_element(region_vid, location);
+
+                if let Some(all_facts) = borrowck_context.all_facts {
+                    let start_index = borrowck_context.location_table.start_index(location);
+                    all_facts.region_live_at.push((region_vid, start_index));
+
+                    let mid_index = borrowck_context.location_table.mid_index(location);
+                    all_facts.region_live_at.push((region_vid, mid_index));
+                }
+            }
         });
     }
 

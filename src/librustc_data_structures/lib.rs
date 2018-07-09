@@ -30,6 +30,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(macro_vis_matcher)]
 #![feature(allow_internal_unstable)]
+#![feature(vec_resize_with)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]

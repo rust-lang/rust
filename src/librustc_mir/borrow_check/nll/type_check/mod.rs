@@ -16,6 +16,7 @@ use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
+use borrow_check::nll::region_infer::values::{RegionValues, RegionValueElements};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
 use dataflow::move_paths::MoveData;
@@ -33,8 +34,9 @@ use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
+use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants, RegionVid};
 use std::fmt;
+use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 use util::liveness::LivenessResults;
@@ -111,39 +113,55 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
+    elements: &Rc<RegionValueElements>,
 ) -> MirTypeckRegionConstraints<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
-    type_check_internal(
-        infcx,
-        mir_def_id,
-        param_env,
-        mir,
-        &universal_regions.region_bound_pairs,
-        Some(implicit_region_bound),
-        Some(BorrowCheckContext {
+    let mut constraints = MirTypeckRegionConstraints {
+        liveness_constraints: RegionValues::new(elements),
+        outlives_constraints: ConstraintSet::default(),
+        type_tests: Vec::default(),
+    };
+
+    {
+        let mut borrowck_context = BorrowCheckContext {
             universal_regions,
             location_table,
             borrow_set,
             all_facts,
-        }),
-        &mut |cx| {
-            liveness::generate(cx, mir, liveness, flow_inits, move_data);
+            constraints: &mut constraints,
+        };
 
-            cx.equate_inputs_and_outputs(mir, mir_def_id, universal_regions);
-        },
-    )
+        type_check_internal(
+            infcx,
+            mir_def_id,
+            param_env,
+            mir,
+            &universal_regions.region_bound_pairs,
+            Some(implicit_region_bound),
+            Some(&mut borrowck_context),
+            |cx| {
+                liveness::generate(cx, mir, liveness, flow_inits, move_data);
+
+                cx.equate_inputs_and_outputs(mir, mir_def_id, universal_regions);
+            },
+        );
+    }
+
+    constraints
 }
 
-fn type_check_internal<'gcx, 'tcx>(
-    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+fn type_check_internal<'a, 'gcx, 'tcx, F>(
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'gcx>,
-    mir: &Mir<'tcx>,
-    region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
+    mir: &'a Mir<'tcx>,
+    region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
-    borrowck_context: Option<BorrowCheckContext<'_, 'tcx>>,
-    extra: &mut dyn FnMut(&mut TypeChecker<'_, 'gcx, 'tcx>),
-) -> MirTypeckRegionConstraints<'tcx> {
+    borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
+    mut extra: F,
+)
+    where F: FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>)
+{
     let mut checker = TypeChecker::new(
         infcx,
         mir,
@@ -165,8 +183,6 @@ fn type_check_internal<'gcx, 'tcx>(
     }
 
     extra(&mut checker);
-
-    checker.constraints
 }
 
 fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
@@ -603,8 +619,7 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
-    constraints: MirTypeckRegionConstraints<'tcx>,
-    borrowck_context: Option<BorrowCheckContext<'a, 'tcx>>,
+    borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx: 'a> {
@@ -612,11 +627,11 @@ struct BorrowCheckContext<'a, 'tcx: 'a> {
     location_table: &'a LocationTable,
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
+    constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
-#[derive(Default)]
 crate struct MirTypeckRegionConstraints<'tcx> {
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,
@@ -625,7 +640,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    crate liveness_set: Vec<(ty::Region<'tcx>, Location)>,
+    crate liveness_constraints: RegionValues<RegionVid>,
 
     crate outlives_constraints: ConstraintSet,
 
@@ -717,7 +732,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'gcx>,
         region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
-        borrowck_context: Option<BorrowCheckContext<'a, 'tcx>>,
+        borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
     ) -> Self {
         TypeChecker {
             infcx,
@@ -729,7 +744,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             implicit_region_bound,
             borrowck_context,
             reported_errors: FxHashSet(),
-            constraints: MirTypeckRegionConstraints::default(),
         }
     }
 
@@ -767,7 +781,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             locations, data
         );
 
-        if let Some(borrowck_context) = &mut self.borrowck_context {
+        if let Some(ref mut borrowck_context) = self.borrowck_context {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx.tcx,
                 borrowck_context.universal_regions,
@@ -776,8 +790,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.implicit_region_bound,
                 self.param_env,
                 locations,
-                &mut self.constraints.outlives_constraints,
-                &mut self.constraints.type_tests,
+                &mut borrowck_context.constraints.outlives_constraints,
+                &mut borrowck_context.constraints.type_tests,
                 &mut borrowck_context.all_facts,
             ).convert_all(&data);
         }
@@ -993,9 +1007,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // output) types in the signature must be live, since
                 // all the inputs that fed into it were live.
                 for &late_bound_region in map.values() {
-                    self.constraints
-                        .liveness_set
-                        .push((late_bound_region, term_location));
+                    if let Some(ref mut borrowck_context) = self.borrowck_context {
+                        let region_vid = borrowck_context.universal_regions.to_region_vid(
+                            late_bound_region);
+                        borrowck_context.constraints
+                            .liveness_constraints
+                            .add_element(region_vid, term_location);
+                    }
                 }
 
                 self.check_call_inputs(mir, term, &sig, args, term_location);
@@ -1487,9 +1505,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             borrow_set,
             location_table,
             all_facts,
+            constraints,
             ..
-        } = match &mut self.borrowck_context {
-            Some(borrowck_context) => borrowck_context,
+        } = match self.borrowck_context {
+            Some(ref mut borrowck_context) => borrowck_context,
             None => return,
         };
 
@@ -1531,7 +1550,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
                         ty::TyRef(ref_region, _, mutbl) => {
-                            self.constraints
+                            constraints
                                 .outlives_constraints
                                 .push(OutlivesConstraint {
                                     sup: ref_region.to_region_vid(),
@@ -1792,8 +1811,7 @@ impl MirPass for TypeckMir {
 
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _ =
-                type_check_internal(&infcx, def_id, param_env, mir, &[], None, None, &mut |_| ());
+            type_check_internal(&infcx, def_id, param_env, mir, &[], None, None, |_| ());
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)

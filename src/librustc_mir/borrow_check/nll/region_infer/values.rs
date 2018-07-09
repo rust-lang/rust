@@ -10,7 +10,7 @@
 
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::RegionVid;
-use rustc_data_structures::bitvec::SparseBitMatrix;
+use rustc_data_structures::bitvec::{SparseBitMatrix, SparseBitSet};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
@@ -53,11 +53,6 @@ impl RegionValueElements {
             num_universal_regions,
             num_points,
         }
-    }
-
-    /// Total number of element indices that exist.
-    crate fn num_elements(&self) -> usize {
-        self.num_points + self.num_universal_regions
     }
 
     /// Converts an element of a region value into a `RegionElementIndex`.
@@ -188,18 +183,10 @@ impl<N: Idx> RegionValues<N> {
     /// Creates a new set of "region values" that tracks causal information.
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
-    crate fn new(elements: &Rc<RegionValueElements>, num_region_variables: usize) -> Self {
-        assert!(
-            elements.num_universal_regions <= num_region_variables,
-            "universal regions are a subset of the region variables"
-        );
-
+    crate fn new(elements: &Rc<RegionValueElements>) -> Self {
         Self {
             elements: elements.clone(),
-            matrix: SparseBitMatrix::new(
-                N::new(num_region_variables),
-                RegionElementIndex::new(elements.num_elements()),
-            ),
+            matrix: SparseBitMatrix::new(),
         }
     }
 
@@ -225,6 +212,18 @@ impl<N: Idx> RegionValues<N> {
     crate fn contains(&self, r: N, elem: impl ToElementIndex) -> bool {
         let i = self.elements.index(elem);
         self.matrix.contains(r, i)
+    }
+
+    /// Iterates through each row and the accompanying bit set.
+    pub fn iter_enumerated<'a>(
+        &'a self
+    ) -> impl Iterator<Item = (N, &'a SparseBitSet<RegionElementIndex>)> + 'a {
+        self.matrix.iter_enumerated()
+    }
+
+    /// Merge a row, `from`, originating in another `RegionValues` into the `into` row.
+    pub fn merge_into(&mut self, into: N, from: &SparseBitSet<RegionElementIndex>) -> bool {
+        self.matrix.merge_into(into, from)
     }
 
     /// True if `sup_region` contains all the CFG points that

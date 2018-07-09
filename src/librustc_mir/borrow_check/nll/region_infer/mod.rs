@@ -37,7 +37,7 @@ mod annotation;
 mod dump_mir;
 mod error_reporting;
 mod graphviz;
-mod values;
+pub mod values;
 use self::values::{RegionValueElements, RegionValues};
 
 use super::ToRegionVid;
@@ -66,8 +66,8 @@ pub struct RegionInferenceContext<'tcx> {
     /// the SCC (see `constraint_sccs`) and for error reporting.
     constraint_graph: Rc<ConstraintGraph>,
 
-    /// The SCC computed from `constraints` and
-    /// `constraint_graph`. Used to compute the values of each region.
+    /// The SCC computed from `constraints` and the constraint graph. Used to compute the values
+    /// of each region.
     constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
 
     /// The final inferred values of the region variables; we compute
@@ -207,15 +207,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn new(
         var_infos: VarInfos,
         universal_regions: UniversalRegions<'tcx>,
-        mir: &Mir<'tcx>,
+        _mir: &Mir<'tcx>,
         outlives_constraints: ConstraintSet,
         type_tests: Vec<TypeTest<'tcx>>,
+        liveness_constraints: RegionValues<RegionVid>,
+        elements: &Rc<RegionValueElements>,
     ) -> Self {
         let universal_regions = Rc::new(universal_regions);
-        let num_region_variables = var_infos.len();
-        let num_universal_regions = universal_regions.len();
-
-        let elements = &Rc::new(RegionValueElements::new(mir, num_universal_regions));
 
         // Create a RegionDefinition for each inference variable.
         let definitions: IndexVec<_, _> = var_infos
@@ -227,15 +225,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let constraint_graph = Rc::new(constraints.graph(definitions.len()));
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph));
 
-        let scc_values = RegionValues::new(elements, constraint_sccs.num_sccs());
+        let mut scc_values = RegionValues::new(elements);
+
+        for (region, location_set) in liveness_constraints.iter_enumerated() {
+            let scc = constraint_sccs.scc(region);
+            scc_values.merge_into(scc, location_set);
+        }
 
         let mut result = Self {
             definitions,
             elements: elements.clone(),
-            liveness_constraints: RegionValues::new(elements, num_region_variables),
+            liveness_constraints,
             constraints,
-            constraint_sccs,
             constraint_graph,
+            constraint_sccs,
             scc_values,
             type_tests,
             universal_regions,
@@ -414,7 +417,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraints
         });
 
-        // To propagate constriants, we walk the DAG induced by the
+        // To propagate constraints, we walk the DAG induced by the
         // SCC. For each SCC, we visit its successors and compute
         // their values, then we union all those values to get our
         // own.

@@ -281,10 +281,10 @@ where
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
-    /// Create a new `rows x columns` matrix, initially empty.
-    pub fn new(rows: R, _columns: C) -> SparseBitMatrix<R, C> {
-        SparseBitMatrix {
-            vector: IndexVec::from_elem_n(SparseBitSet::new(), rows.index()),
+    /// Create a new empty sparse bit matrix with no rows or columns.
+    pub fn new() -> Self {
+        Self {
+            vector: IndexVec::new(),
         }
     }
 
@@ -293,6 +293,14 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     ///
     /// Returns true if this changed the matrix, and false otherwise.
     pub fn add(&mut self, row: R, column: C) -> bool {
+        debug!(
+            "add(row={:?}, column={:?}, current_len={})",
+            row,
+            column,
+            self.vector.len()
+        );
+        self.vector
+            .ensure_contains_elem(row, || SparseBitSet::new());
         self.vector[row].insert(column)
     }
 
@@ -301,7 +309,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
-        self.vector[row].contains(column)
+        self.vector.get(row).map_or(false, |r| r.contains(column))
     }
 
     /// Add the bits from row `read` to the bits from row `write`,
@@ -315,14 +323,25 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         let mut changed = false;
 
         if read != write {
-            let (bit_set_read, bit_set_write) = self.vector.pick2_mut(read, write);
+            if self.vector.get(read).is_some() {
+                self.vector
+                    .ensure_contains_elem(write, || SparseBitSet::new());
+                let (bit_set_read, bit_set_write) = self.vector.pick2_mut(read, write);
 
-            for read_chunk in bit_set_read.chunks() {
-                changed = changed | bit_set_write.insert_chunk(read_chunk).any();
+                for read_chunk in bit_set_read.chunks() {
+                    changed = changed | bit_set_write.insert_chunk(read_chunk).any();
+                }
             }
         }
 
         changed
+    }
+
+    /// Merge a row, `from`, into the `into` row.
+    pub fn merge_into(&mut self, into: R, from: &SparseBitSet<C>) -> bool {
+        self.vector
+            .ensure_contains_elem(into, || SparseBitSet::new());
+        self.vector[into].insert_from(from)
     }
 
     /// True if `sub` is a subset of `sup`
@@ -336,10 +355,20 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
+    /// Number of elements in the matrix.
+    pub fn len(&self) -> usize {
+        self.vector.len()
+    }
+
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
     pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
-        self.vector[row].iter()
+        self.vector.get(row).into_iter().flat_map(|r| r.iter())
+    }
+
+    /// Iterates through each row and the accompanying bit set.
+    pub fn iter_enumerated<'a>(&'a self) -> impl Iterator<Item = (R, &'a SparseBitSet<C>)> + 'a {
+        self.vector.iter_enumerated()
     }
 }
 
@@ -443,6 +472,15 @@ impl<I: Idx> SparseBitSet<I> {
             bits: changed,
             ..chunk
         }
+    }
+
+    /// Insert into bit set from another bit set.
+    pub fn insert_from(&mut self, from: &SparseBitSet<I>) -> bool {
+        let mut changed = false;
+        for read_chunk in from.chunks() {
+            changed = changed | self.insert_chunk(read_chunk).any();
+        }
+        changed
     }
 
     pub fn remove_chunk(&mut self, chunk: SparseChunk<I>) -> SparseChunk<I> {
