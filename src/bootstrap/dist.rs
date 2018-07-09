@@ -1221,7 +1221,7 @@ impl Step for Clippy {
         let tmp = tmpdir(builder);
         let image = tmp.join("clippy-image");
         drop(fs::remove_dir_all(&image));
-        t!(fs::create_dir_all(&image));
+        builder.create_dir(&image);
 
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
@@ -1230,8 +1230,13 @@ impl Step for Clippy {
             compiler: builder.compiler(stage, builder.config.build),
             target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build clippy, skipping dist"); None })?;
+        let cargoclippy = builder.ensure(tool::CargoClippy {
+            compiler: builder.compiler(stage, builder.config.build),
+            target, extra_features: Vec::new()
+        }).or_else(|| { println!("Unable to build cargo clippy, skipping dist"); None })?;
 
         builder.install(&clippy, &image.join("bin"), 0o755);
+        builder.install(&cargoclippy, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/clippy");
         builder.install(&src.join("README.md"), &doc, 0o644);
         builder.install(&src.join("LICENSE"), &doc, 0o644);
