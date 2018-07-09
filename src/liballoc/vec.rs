@@ -810,11 +810,13 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
         unsafe {
-            // We replace self[index] with the last element. Note that this is
-            // safe even when index == self.len() - 1, as pop() only uses
-            // ptr::read and leaves the memory at self[index] untouched.
+            // We replace self[index] with the last element. Note that if the 
+            // bounds check on hole succeeds there must be a last element (which
+            // can be self[index] itself).
             let hole: *mut T = &mut self[index];
-            ptr::replace(hole, self.pop().unwrap())
+            let last = ptr::read(self.get_unchecked(self.len - 1));
+            self.len -= 1;
+            ptr::replace(hole, last)
         }
     }
 
