@@ -323,11 +323,6 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 });
                 true
             }
-            hir_map::NodeStructCtor(_) if !glob => {
-                // struct constructors always show up alongside their struct definitions, we've
-                // already processed that so just discard this
-                true
-            }
             _ => false,
         };
         self.view_item_stack.remove(&def_node_id);
@@ -374,6 +369,13 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             hir::ItemUse(_, hir::UseKind::ListStem) => {}
             hir::ItemUse(ref path, kind) => {
                 let is_glob = kind == hir::UseKind::Glob;
+
+                // struct and variant constructors always show up alongside their definitions, we've
+                // already processed them so just discard these.
+                match path.def {
+                    Def::StructCtor(..) | Def::VariantCtor(..) => return,
+                    _ => {}
+                }
 
                 // If there was a private module in the current path then don't bother inlining
                 // anything as it will probably be stripped anyway.
