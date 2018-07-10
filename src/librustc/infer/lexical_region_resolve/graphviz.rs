@@ -39,14 +39,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 fn print_help_message() {
     println!("\
 -Z print-region-graph by default prints a region constraint graph for every \n\
-function body, to the path `/tmp/constraints.nodeXXX.dot`, where the XXX is \n\
+function body, to the path `constraints.nodeXXX.dot`, where the XXX is \n\
 replaced with the node id of the function under analysis.                   \n\
                                                                             \n\
 To select one particular function body, set `RUST_REGION_GRAPH_NODE=XXX`,   \n\
 where XXX is the node id desired.                                           \n\
                                                                             \n\
 To generate output to some path other than the default                      \n\
-`/tmp/constraints.nodeXXX.dot`, set `RUST_REGION_GRAPH=/path/desired.dot`;  \n\
+`constraints.nodeXXX.dot`, set `RUST_REGION_GRAPH=/path/desired.dot`;  \n\
 occurrences of the character `%` in the requested path will be replaced with\n\
 the node id of the function under analysis.                                 \n\
                                                                             \n\
@@ -90,7 +90,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
             }
 
             Ok(other_path) => other_path,
-            Err(_) => "/tmp/constraints.node%.dot".to_string(),
+            Err(_) => "constraints.node%.dot".to_string(),
         };
 
         if output_template.is_empty() {

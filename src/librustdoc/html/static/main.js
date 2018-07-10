@@ -1938,17 +1938,19 @@
         if (collapse) {
             toggleAllDocs(pageId, true);
         }
-        onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
-            // inherent impl ids are like 'impl' or impl-<number>'.
-            // they will never be hidden by default.
-            var n = e.parentNode;
-            if (n.id.match(/^impl(?:-\d+)?$/) === null) {
-                // Automatically minimize all non-inherent impls
-                if (collapse || hasClass(n, 'impl')) {
-                    collapseDocs(e, "hide", pageId);
+        if (getCurrentValue('rustdoc-trait-implementations') !== "false") {
+            onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
+                // inherent impl ids are like 'impl' or impl-<number>'.
+                // they will never be hidden by default.
+                var n = e.parentNode;
+                if (n.id.match(/^impl(?:-\d+)?$/) === null) {
+                    // Automatically minimize all non-inherent impls
+                    if (collapse || hasClass(n, 'impl')) {
+                        collapseDocs(e, "hide", pageId);
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     var x = document.getElementById('toggle-all-docs');
