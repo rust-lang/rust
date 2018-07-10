@@ -19,7 +19,7 @@ pub struct RangeMap<T> {
 // At the same time the `end` is irrelevant for the sorting and range searching, but used for the check.
 // This kind of search breaks, if `end < start`, so don't do that!
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-struct Range {
+pub struct Range {
     start: u64,
     end: u64, // Invariant: end > start
 }
