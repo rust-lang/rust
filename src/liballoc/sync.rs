@@ -978,7 +978,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     }
 }
 
-impl Arc<Any + Send + Sync> {
+impl Arc<dyn Any + Send + Sync> {
     #[inline]
     #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Arc<Any + Send + Sync>` to a concrete type.
