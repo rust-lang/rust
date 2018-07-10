@@ -755,6 +755,7 @@ impl<'a> Builder<'a> {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
                 },
                 Mode::Rustc => {
+                    self.clear_if_dirty(&my_out, &self.rustc(compiler));
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);
                 },
