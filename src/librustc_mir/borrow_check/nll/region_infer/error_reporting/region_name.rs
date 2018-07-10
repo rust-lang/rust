@@ -10,9 +10,11 @@
 
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{Local, Mir};
-use rustc::ty::{self, RegionVid, TyCtxt};
+use rustc::ty::subst::{Substs, UnpackedKind};
+use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_errors::DiagnosticBuilder;
 use syntax::ast::Name;
@@ -60,7 +62,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         self.give_name_from_error_region(tcx, mir_def_id, fr, counter, diag)
             .or_else(|| {
-                self.give_name_if_anonymous_region_appears_in_arguments(tcx, mir, fr, counter, diag)
+                self.give_name_if_anonymous_region_appears_in_arguments(
+                    tcx, mir, mir_def_id, fr, counter, diag,
+                )
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_upvars(tcx, mir, fr, counter, diag)
@@ -129,20 +133,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
+        mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
-        let argument_index = self.universal_regions
+        let argument_index = self
+            .universal_regions
             .unnormalized_input_tys
             .iter()
             .skip(implicit_inputs)
             .position(|arg_ty| {
-                debug!("give_name_if_anonymous_region_appears_in_arguments: arg_ty = {:?}", arg_ty);
+                debug!(
+                    "give_name_if_anonymous_region_appears_in_arguments: arg_ty = {:?}",
+                    arg_ty
+                );
                 tcx.any_free_region_meets(arg_ty, |r| r.to_region_vid() == fr)
-            })?
-            + implicit_inputs;
+            })?;
 
         debug!(
             "give_name_if_anonymous_region_appears_in_arguments: \
@@ -150,9 +158,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             fr, argument_index, self.universal_regions.unnormalized_input_tys[argument_index],
         );
 
+        let arg_ty =
+            self.universal_regions.unnormalized_input_tys[implicit_inputs + argument_index];
+        if let Some(region_name) = self.give_name_if_we_can_match_hir_ty_from_argument(
+            tcx,
+            mir_def_id,
+            fr,
+            arg_ty,
+            argument_index,
+            counter,
+            diag,
+        ) {
+            return Some(region_name);
+        }
+
         let region_name = self.synthesize_region_name(counter);
 
-        let argument_local = Local::new(argument_index + 1);
+        let argument_local = Local::new(argument_index + implicit_inputs + 1);
         let argument_span = mir.local_decls[argument_local].source_info.span;
         diag.span_label(
             argument_span,
@@ -160,6 +182,240 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         Some(region_name)
+    }
+
+    fn give_name_if_we_can_match_hir_ty_from_argument(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        mir_def_id: DefId,
+        needle_fr: RegionVid,
+        argument_ty: Ty<'tcx>,
+        argument_index: usize,
+        counter: &mut usize,
+        diag: &mut DiagnosticBuilder<'_>,
+    ) -> Option<InternedString> {
+        let mir_node_id = tcx.hir.as_local_node_id(mir_def_id)?;
+        let fn_decl = tcx.hir.fn_decl(mir_node_id)?;
+        let argument_hir_ty: &hir::Ty = &fn_decl.inputs[argument_index];
+        match argument_hir_ty.node {
+            // This indicates a variable with no type annotation, like
+            // `|x|`... in that case, we can't highlight the type but
+            // must highlight the variable.
+            hir::TyInfer => None,
+
+            _ => self.give_name_if_we_can_match_hir_ty(
+                tcx,
+                needle_fr,
+                argument_ty,
+                argument_hir_ty,
+                counter,
+                diag,
+            ),
+        }
+    }
+
+    /// Attempts to highlight the specific part of a type annotation
+    /// that contains the anonymous reference we want to give a name
+    /// to. For example, we might produce an annotation like this:
+    ///
+    /// ```
+    ///  | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
+    ///  |                - let's call the lifetime of this reference `'1`
+    /// ```
+    ///
+    /// the way this works is that we match up `argument_ty`, which is
+    /// a `Ty<'tcx>` (the internal form of the type) with
+    /// `argument_hir_ty`, a `hir::Ty` (the syntax of the type
+    /// annotation). We are descending through the types stepwise,
+    /// looking in to find the region `needle_fr` in the internal
+    /// type.  Once we find that, we can use the span of the `hir::Ty`
+    /// to add the highlight.
+    ///
+    /// This is a somewhat imperfect process, so long the way we also
+    /// keep track of the **closest** type we've found. If we fail to
+    /// find the exact `&` or `'_` to highlight, then we may fall back
+    /// to highlighting that closest type instead.
+    fn give_name_if_we_can_match_hir_ty(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        needle_fr: RegionVid,
+        argument_ty: Ty<'tcx>,
+        argument_hir_ty: &hir::Ty,
+        counter: &mut usize,
+        diag: &mut DiagnosticBuilder<'_>,
+    ) -> Option<InternedString> {
+        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty)> = &mut Vec::new();
+
+        search_stack.push((argument_ty, argument_hir_ty));
+
+        let mut closest_match: &hir::Ty = argument_hir_ty;
+
+        while let Some((ty, hir_ty)) = search_stack.pop() {
+            // While we search, also track the closet match.
+            if tcx.any_free_region_meets(&ty, |r| r.to_region_vid() == needle_fr) {
+                closest_match = hir_ty;
+            }
+
+            match (&ty.sty, &hir_ty.node) {
+                // Check if the `argument_ty` is `&'X ..` where `'X`
+                // is the region we are looking for -- if so, and we have a `&T`
+                // on the RHS, then we want to highlight the `&` like so:
+                //
+                //     &
+                //     - let's call the lifetime of this reference `'1`
+                (ty::TyRef(region, referent_ty, _), hir::TyRptr(_lifetime, referent_hir_ty)) => {
+                    if region.to_region_vid() == needle_fr {
+                        let region_name = self.synthesize_region_name(counter);
+
+                        // Just grab the first character, the `&`.
+                        let codemap = tcx.sess.codemap();
+                        let ampersand_span = codemap.start_point(hir_ty.span);
+
+                        diag.span_label(
+                            ampersand_span,
+                            format!(
+                                "let's call the lifetime of this reference `{}`",
+                                region_name
+                            ),
+                        );
+
+                        return Some(region_name);
+                    }
+
+                    // Otherwise, let's descend into the referent types.
+                    search_stack.push((referent_ty, &referent_hir_ty.ty));
+                }
+
+                // Match up something like `Foo<'1>`
+                (ty::TyAdt(_adt_def, substs), hir::TyPath(hir::QPath::Resolved(None, path))) => {
+                    if let Some(last_segment) = path.segments.last() {
+                        if let Some(name) = self.match_adt_and_segment(
+                            substs,
+                            needle_fr,
+                            last_segment,
+                            counter,
+                            diag,
+                            search_stack,
+                        ) {
+                            return Some(name);
+                        }
+                    }
+                }
+
+                // The following cases don't have lifetimes, so we
+                // just worry about trying to match up the rustc type
+                // with the HIR types:
+                (ty::TyTuple(elem_tys), hir::TyTup(elem_hir_tys)) => {
+                    search_stack.extend(elem_tys.iter().cloned().zip(elem_hir_tys));
+                }
+
+                (ty::TySlice(elem_ty), hir::TySlice(elem_hir_ty))
+                | (ty::TyArray(elem_ty, _), hir::TyArray(elem_hir_ty, _)) => {
+                    search_stack.push((elem_ty, elem_hir_ty));
+                }
+
+                (ty::TyRawPtr(mut_ty), hir::TyPtr(mut_hir_ty)) => {
+                    search_stack.push((mut_ty.ty, &mut_hir_ty.ty));
+                }
+
+                _ => {
+                    // FIXME there are other cases that we could trace
+                }
+            }
+        }
+
+        let region_name = self.synthesize_region_name(counter);
+        diag.span_label(
+            closest_match.span,
+            format!("lifetime `{}` appears in this type", region_name),
+        );
+
+        return Some(region_name);
+    }
+
+    /// We've found an enum/struct/union type with the substitutions
+    /// `substs` and -- in the HIR -- a path type with the final
+    /// segment `last_segment`. Try to find a `'_` to highlight in
+    /// the generic args (or, if not, to produce new zipped pairs of
+    /// types+hir to search through).
+    fn match_adt_and_segment<'hir>(
+        &self,
+        substs: &'tcx Substs<'tcx>,
+        needle_fr: RegionVid,
+        last_segment: &'hir hir::PathSegment,
+        counter: &mut usize,
+        diag: &mut DiagnosticBuilder<'_>,
+        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty)>,
+    ) -> Option<InternedString> {
+        // Did the user give explicit arguments? (e.g., `Foo<..>`)
+        let args = last_segment.args.as_ref()?;
+        let lifetime = self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
+        match lifetime.name {
+            hir::LifetimeName::Param(_)
+            | hir::LifetimeName::Static
+            | hir::LifetimeName::Underscore => {
+                let region_name = self.synthesize_region_name(counter);
+                let ampersand_span = lifetime.span;
+                diag.span_label(ampersand_span, format!("let's call this `{}`", region_name));
+                return Some(region_name);
+            }
+
+            hir::LifetimeName::Implicit => {
+                // In this case, the user left off the lifetime; so
+                // they wrote something like:
+                //
+                // ```
+                // x: Foo<T>
+                // ```
+                //
+                // where the fully elaborated form is `Foo<'_, '1,
+                // T>`. We don't consider this a match; instead we let
+                // the "fully elaborated" type fallback above handle
+                // it.
+                return None;
+            }
+        }
+    }
+
+    /// We've found an enum/struct/union type with the substitutions
+    /// `substs` and -- in the HIR -- a path with the generic
+    /// arguments `args`. If `needle_fr` appears in the args, return
+    /// the `hir::Lifetime` that corresponds to it. If not, push onto
+    /// `search_stack` the types+hir to search through.
+    fn try_match_adt_and_generic_args<'hir>(
+        &self,
+        substs: &'tcx Substs<'tcx>,
+        needle_fr: RegionVid,
+        args: &'hir hir::GenericArgs,
+        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty)>,
+    ) -> Option<&'hir hir::Lifetime> {
+        for (kind, hir_arg) in substs.iter().zip(&args.args) {
+            match (kind.unpack(), hir_arg) {
+                (UnpackedKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
+                    if r.to_region_vid() == needle_fr {
+                        return Some(lt);
+                    }
+                }
+
+                (UnpackedKind::Type(ty), hir::GenericArg::Type(hir_ty)) => {
+                    search_stack.push((ty, hir_ty));
+                }
+
+                (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => {
+                    // I *think* that HIR lowering should ensure this
+                    // doesn't happen, even in erroneous
+                    // programs. Else we should use delay-span-bug.
+                    span_bug!(
+                        hir_arg.span(),
+                        "unmatched subst and hir arg: found {:?} vs {:?}",
+                        kind,
+                        hir_arg,
+                    );
+                }
+            }
+        }
+
+        None
     }
 
     /// Find a closure upvar that contains `fr` and label it with a
@@ -178,7 +434,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
-        let upvar_index = self.universal_regions
+        let upvar_index = self
+            .universal_regions
             .defining_ty
             .upvar_tys(tcx)
             .position(|upvar_ty| {
@@ -189,15 +446,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 tcx.any_free_region_meets(&upvar_ty, |r| r.to_region_vid() == fr)
             })?;
 
+        let upvar_ty = self
+            .universal_regions
+            .defining_ty
+            .upvar_tys(tcx)
+            .nth(upvar_index);
+
         debug!(
             "give_name_if_anonymous_region_appears_in_upvars: \
              found {:?} in upvar {} which has type {:?}",
-            fr,
-            upvar_index,
-            self.universal_regions
-                .defining_ty
-                .upvar_tys(tcx)
-                .nth(upvar_index),
+            fr, upvar_index, upvar_ty,
         );
 
         let region_name = self.synthesize_region_name(counter);
@@ -229,9 +487,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
-        let return_ty = self.universal_regions
-            .unnormalized_output_ty;
-        debug!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
+        let return_ty = self.universal_regions.unnormalized_output_ty;
+        debug!(
+            "give_name_if_anonymous_region_appears_in_output: return_ty = {:?}",
+            return_ty
+        );
         if !tcx.any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr) {
             return None;
         }

@@ -38,7 +38,7 @@ error: unsatisfied lifetime constraints
 LL |     let mut f: Option<&u32> = None;
    |         ----- lifetime `'2` appears in the type of `f`
 LL |     closure_expecting_bound(|x: &u32| {
-   |                              - lifetime `'1` appears in this argument
+   |                                 - let's call the lifetime of this reference `'1`
 LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
    |         ^^^^^^^^^^^ free region requires that `'1` must outlive `'2`
 
@@ -49,7 +49,7 @@ LL |     let mut f: Option<&u32> = None;
    |         ----- lifetime `'2` appears in the type of `f`
 ...
 LL |     closure_expecting_bound(|x: &'x u32| {
-   |                              - lifetime `'1` appears in this argument
+   |                                 - let's call the lifetime of this reference `'1`
 ...
 LL |         f = Some(x);
    |         ^^^^^^^^^^^ free region requires that `'1` must outlive `'2`

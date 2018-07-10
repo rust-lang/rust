@@ -277,7 +277,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn nswsub(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-        self.count_insn("nwsub");
+        self.count_insn("nswsub");
         unsafe {
             llvm::LLVMBuildNSWSub(self.llbuilder, lhs, rhs, noname())
         }
@@ -291,14 +291,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn fsub(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-        self.count_insn("sub");
+        self.count_insn("fsub");
         unsafe {
             llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, noname())
         }
     }
 
     pub fn fsub_fast(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-        self.count_insn("sub");
+        self.count_insn("fsub");
         unsafe {
             let instr = llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, noname());
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
@@ -1315,6 +1315,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn add_incoming_to_phi(&self, phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
+        self.count_insn("addincoming");
         unsafe {
             llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
         }
