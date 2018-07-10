@@ -4125,7 +4125,18 @@ impl<'a> Resolver<'a> {
                 if ident.name == lookup_name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
-                        let mut segms = path_segments.clone();
+                        let mut segms = if self.session.rust_2018() && !in_module_is_extern {
+                            // crate-local absolute paths start with `crate::` in edition 2018
+                            // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
+                            let mut full_segms = vec![
+                                ast::PathSegment::from_ident(keywords::Crate.ident())
+                            ];
+                            full_segms.extend(path_segments.clone());
+                            full_segms
+                        } else {
+                            path_segments.clone()
+                        };
+
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path {
                             span: name_binding.span,
