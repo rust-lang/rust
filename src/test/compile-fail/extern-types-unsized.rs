@@ -30,14 +30,14 @@ fn assert_sized<T>() { }
 
 fn main() {
     assert_sized::<A>();
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 
     assert_sized::<Foo>();
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 
     assert_sized::<Bar<A>>();
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 
     assert_sized::<Bar<Bar<A>>>();
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 }

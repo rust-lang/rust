@@ -15,7 +15,7 @@ fn main() {
   let u: &str = if true { s[..2] } else { s };
   //~^ ERROR mismatched types
   let v = s[..2];
-  //~^ ERROR the size for value values of type
+  //~^ ERROR the size for values of type
   let w: &str = s[..2];
   //~^ ERROR mismatched types
 }

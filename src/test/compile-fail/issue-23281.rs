@@ -14,7 +14,7 @@ pub struct Struct;
 
 impl Struct {
     pub fn function(funs: Vec<Fn() -> ()>) {}
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 }
 
 fn main() {}

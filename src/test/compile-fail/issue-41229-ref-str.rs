@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn example(ref s: str) {}
-//~^ ERROR the size for value values of type
+//~^ ERROR the size for values of type
 
 fn main() {}

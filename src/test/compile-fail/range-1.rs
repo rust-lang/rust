@@ -22,5 +22,5 @@ pub fn main() {
     // Unsized type.
     let arr: &[_] = &[1, 2, 3];
     let range = *arr..;
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 }

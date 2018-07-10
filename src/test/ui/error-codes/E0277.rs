@@ -21,7 +21,7 @@ fn some_func<T: Foo>(foo: T) {
 }
 
 fn f(p: Path) { }
-//~^ ERROR the size for value values of type
+//~^ ERROR the size for values of type
 
 fn main() {
     some_func(5i32);
