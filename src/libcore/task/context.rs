@@ -21,7 +21,7 @@ use super::{Executor, Waker, LocalWaker};
 /// when performing a single `poll` step on a task.
 pub struct Context<'a> {
     local_waker: &'a LocalWaker,
-    executor: &'a mut Executor,
+    executor: &'a mut dyn Executor,
 }
 
 impl<'a> fmt::Debug for Context<'a> {
@@ -34,7 +34,7 @@ impl<'a> fmt::Debug for Context<'a> {
 impl<'a> Context<'a> {
     /// Create a new task `Context` with the provided `local_waker`, `waker`, and `executor`.
     #[inline]
-    pub fn new(local_waker: &'a LocalWaker, executor: &'a mut Executor) -> Context<'a> {
+    pub fn new(local_waker: &'a LocalWaker, executor: &'a mut dyn Executor) -> Context<'a> {
         Context {
             local_waker,
             executor,
@@ -58,7 +58,7 @@ impl<'a> Context<'a> {
     /// This method is useful primarily if you want to explicitly handle
     /// spawn failures.
     #[inline]
-    pub fn executor(&mut self) -> &mut Executor {
+    pub fn executor(&mut self) -> &mut dyn Executor {
         self.executor
     }
 

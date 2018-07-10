@@ -255,7 +255,7 @@ pub struct Formatter<'a> {
     width: Option<usize>,
     precision: Option<usize>,
 
-    buf: &'a mut (Write+'a),
+    buf: &'a mut (dyn Write+'a),
     curarg: slice::Iter<'a, ArgumentV1<'a>>,
     args: &'a [ArgumentV1<'a>],
 }
@@ -272,7 +272,7 @@ struct Void {
     ///
     /// It was added after #45197 showed that one could share a `!Sync`
     /// object across threads by passing it into `format_args!`.
-    _oibit_remover: PhantomData<*mut Fn()>,
+    _oibit_remover: PhantomData<*mut dyn Fn()>,
 }
 
 /// This struct represents the generic "argument" which is taken by the Xprintf
@@ -1020,7 +1020,7 @@ pub trait UpperExp {
 ///
 /// [`write!`]: ../../std/macro.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn write(output: &mut Write, args: Arguments) -> Result {
+pub fn write(output: &mut dyn Write, args: Arguments) -> Result {
     let mut formatter = Formatter {
         flags: 0,
         width: None,
@@ -1062,7 +1062,7 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
 
 impl<'a> Formatter<'a> {
     fn wrap_buf<'b, 'c, F>(&'b mut self, wrap: F) -> Formatter<'c>
-        where 'b: 'c, F: FnOnce(&'b mut (Write+'b)) -> &'c mut (Write+'c)
+        where 'b: 'c, F: FnOnce(&'b mut (dyn Write+'b)) -> &'c mut (dyn Write+'c)
     {
         Formatter {
             // We want to change this
@@ -1342,7 +1342,7 @@ impl<'a> Formatter<'a> {
     }
 
     fn write_formatted_parts(&mut self, formatted: &flt2dec::Formatted) -> Result {
-        fn write_bytes(buf: &mut Write, s: &[u8]) -> Result {
+        fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
             buf.write_str(unsafe { str::from_utf8_unchecked(s) })
         }
 

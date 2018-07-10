@@ -18,7 +18,7 @@ use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhi
 use super::{Zip, Sum, Product};
 use super::{ChainState, FromIterator, ZipImpl};
 
-fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
+fn _assert_is_object_safe(_: &dyn Iterator<Item=()>) {}
 
 /// An interface for dealing with iterators.
 ///
