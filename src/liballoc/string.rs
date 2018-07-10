@@ -422,6 +422,7 @@ impl String {
     /// // ...but this may make the vector reallocate
     /// s.push('a');
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> String {
@@ -432,6 +433,7 @@ impl String {
     // required for this method definition, is not available. Since we don't
     // require this method for testing purposes, I'll just stub it
     // NB see the slice::hack module in slice.rs for more information
+    #[must_use]
     #[inline]
     #[cfg(test)]
     pub fn from_str(_: &str) -> String {
@@ -643,6 +645,7 @@ impl String {
     /// assert_eq!(String::from("𝄞mus\u{FFFD}ic\u{FFFD}"),
     ///            String::from_utf16_lossy(v));
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
@@ -690,6 +693,7 @@ impl String {
     ///     assert_eq!(String::from("hello"), s);
     /// }
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
@@ -724,6 +728,7 @@ impl String {
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
@@ -1420,6 +1425,7 @@ impl String {
     /// assert_eq!(world, "World!");
     /// # }
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "string_split_off", since = "1.16.0")]
     pub fn split_off(&mut self, at: usize) -> String {
