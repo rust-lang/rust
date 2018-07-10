@@ -221,6 +221,7 @@
 // Don't link to std. We are std.
 #![no_std]
 
+#![deny(bare_trait_objects)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 
