@@ -260,7 +260,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let old = io::set_panic(Some(box Sink(data.clone())));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
-    let (libdir, outdir) = driver::spawn_thread_pool(sessopts, |sessopts| {
+    let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
         let codemap = Lrc::new(CodeMap::new_doctest(
             sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
         ));
@@ -312,28 +312,28 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             Err(_) | Ok(Err(CompileIncomplete::Errored(_))) => Err(())
         };
 
-        match (compile_result, compile_fail) {
-            (Ok(()), true) => {
-                panic!("test compiled while it wasn't supposed to")
-            }
-            (Ok(()), false) => {}
-            (Err(()), true) => {
-                if error_codes.len() > 0 {
-                    let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
-                    error_codes.retain(|err| !out.contains(err));
-                }
-            }
-            (Err(()), false) => {
-                panic!("couldn't compile the test")
-            }
-        }
-
-        if error_codes.len() > 0 {
-            panic!("Some expected error codes were not found: {:?}", error_codes);
-        }
-
-        (libdir, outdir)
+        (libdir, outdir, compile_result)
     });
+
+    match (compile_result, compile_fail) {
+        (Ok(()), true) => {
+            panic!("test compiled while it wasn't supposed to")
+        }
+        (Ok(()), false) => {}
+        (Err(()), true) => {
+            if error_codes.len() > 0 {
+                let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
+                error_codes.retain(|err| !out.contains(err));
+            }
+        }
+        (Err(()), false) => {
+            panic!("couldn't compile the test")
+        }
+    }
+
+    if error_codes.len() > 0 {
+        panic!("Some expected error codes were not found: {:?}", error_codes);
+    }
 
     if no_run { return }
 
