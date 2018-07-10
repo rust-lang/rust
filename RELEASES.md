@@ -1,3 +1,146 @@
+Version 1.28.0 (2018-08-02)
+===========================
+
+Language
+--------
+- [The `#[repr(transparent)]` attribute is now stable.][51562] This attribute
+  allows a Rust newtype wrapper (`struct NewType<T>(T);`) to be represented as
+  the inner type across Foreign Function Interface (FFI) boundaries.
+- [The keywords `pure`, `sizeof`, `alignof`, and `offsetof` have been unreserved
+  and can now be used as identifiers.][51196]
+- [The `GlobalAlloc` trait and `#[global_allocator]` attribute are now
+  stable.][51241] This will allow users to specify a global allocator for
+  their program.
+- [Unit test functions marked with the `#[test]` attribute can now return
+  `Result<(), E: Debug>` in addition to `()`.][51298]
+- [The `lifetime` specifier for `macro_rules!` is now stable.][50385] This
+  allows macros to easily target lifetimes.
+
+Compiler
+--------
+- [The `s` and `z` optimisation levels are now stable.][50265] These optimisations
+  prioritise making smaller binary sizes. `z` is the same as `s` with the
+  exception that it does not vectorise loops, which typically results in an even
+  smaller binary.
+- [The short error format is now stable.][49546] Specified with
+  `--error-format=short` this option will provide a more compressed output of
+  rust error messages.
+- [Added a lint warning when you have duplicated `macro_export`s.][50143]
+- [Reduced the number of allocations in the macro parser.][50855] This can
+  improve compile times of macro heavy crates on average by 5%.
+
+Libraries
+---------
+- [Implemented `Default` for `&mut str`.][51306]
+- [Implemented `From<bool>` for all integer and unsigned number types.][50554]
+- [Implemented `Extend` for `()`.][50234]
+- [The `Debug` implementation of `time::Duration` should now be more easily
+  human readable.][50364] Previously a `Duration` of one second would printed as
+  `Duration { secs: 1, nanos: 0 }` and will now be printed as `1s`.
+- [Implemented `From<&String>` for `Cow<str>`, `From<&Vec<T>>` for `Cow<[T]>`,
+  `From<Cow<CStr>>` for `CString`, `From<CString>, From<CStr>, From<&CString>`
+  for `Cow<CStr>`, `From<OsString>, From<OsStr>, From<&OsString>` for
+  `Cow<OsStr>`, `From<&PathBuf>` for `Cow<Path>`, and `From<Cow<Path>>`
+  for `PathBuf`.][50170]
+- [Implemented `Shl` and `Shr` for `Wrapping<u128>`
+  and `Wrapping<i128>`.][50465]
+- [`DirEntry::metadata` now uses `fstatat` instead of `lstat` when
+  possible.][51050] This can provide up to a 40% speed increase.
+- [Improved error messages when using `format!`.][50610]
+
+Stabilized APIs
+---------------
+- [`Iterator::step_by`]
+- [`Path::ancestors`]
+- [`btree_map::Entry::or_default`]
+- [`fmt::Alignment`]
+- [`hash_map::Entry::or_default`]
+- [`iter::repeat_with`]
+- [`num::NonZeroUsize`]
+- [`num::NonZeroU128`]
+- [`num::NonZeroU16`]
+- [`num::NonZeroU32`]
+- [`num::NonZeroU64`]
+- [`num::NonZeroU8`]
+- [`ops::RangeBounds`]
+- [`slice::SliceIndex`]
+- [`slice::from_mut`]
+- [`slice::from_ref`]
+- [`{Any + Send + Sync}::downcast_mut`]
+- [`{Any + Send + Sync}::downcast_ref`]
+- [`{Any + Send + Sync}::is`]
+
+Cargo
+-----
+- [Cargo will now no longer allow you to publish crates with build scripts that
+  modify the `src` directory.][cargo/5584] The `src` directory in a crate should be
+  considered to be immutable.
+
+Misc
+----
+- [The `suggestion_applicability` field in `rustc`'s json output is now
+  stable.][50486] This will allow dev tools to check whether a code suggestion
+  would apply to them.
+
+Compatibility Notes
+-------------------
+- [Rust will no longer consider trait objects with duplicated constraints to
+  have implementations.][51276] For example the below code will now fail
+  to compile.
+  ```rust
+  trait Trait {}
+
+  impl Trait + Send {
+      fn test(&self) { println!("one"); } //~ ERROR duplicate definitions with name `test`
+  }
+
+  impl Trait + Send + Send {
+      fn test(&self) { println!("two"); }
+  }
+  ```
+
+[49546]: https://github.com/rust-lang/rust/pull/49546/
+[50143]: https://github.com/rust-lang/rust/pull/50143/
+[50170]: https://github.com/rust-lang/rust/pull/50170/
+[50234]: https://github.com/rust-lang/rust/pull/50234/
+[50265]: https://github.com/rust-lang/rust/pull/50265/
+[50364]: https://github.com/rust-lang/rust/pull/50364/
+[50385]: https://github.com/rust-lang/rust/pull/50385/
+[50465]: https://github.com/rust-lang/rust/pull/50465/
+[50486]: https://github.com/rust-lang/rust/pull/50486/
+[50554]: https://github.com/rust-lang/rust/pull/50554/
+[50610]: https://github.com/rust-lang/rust/pull/50610/
+[50855]: https://github.com/rust-lang/rust/pull/50855/
+[51050]: https://github.com/rust-lang/rust/pull/51050/
+[51196]: https://github.com/rust-lang/rust/pull/51196/
+[51200]: https://github.com/rust-lang/rust/pull/51200/
+[51241]: https://github.com/rust-lang/rust/pull/51241/
+[51276]: https://github.com/rust-lang/rust/pull/51276/
+[51298]: https://github.com/rust-lang/rust/pull/51298/
+[51306]: https://github.com/rust-lang/rust/pull/51306/
+[51562]: https://github.com/rust-lang/rust/pull/51562/
+[cargo/5584]: https://github.com/rust-lang/cargo/pull/5584/
+[`Iterator::step_by`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.step_by
+[`Path::ancestors`]: https://doc.rust-lang.org/std/path/struct.Path.html#method.ancestors
+[`btree_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_default
+[`fmt::Alignment`]: https://doc.rust-lang.org/std/fmt/enum.Alignment.html
+[`hash_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_default
+[`iter::repeat_with`]: https://doc.rust-lang.org/std/iter/fn.repeat_with.html
+[`num::NonZeroUsize`]: https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html
+[`num::NonZeroU128`]: https://doc.rust-lang.org/std/num/struct.NonZeroU128.html
+[`num::NonZeroU16`]: https://doc.rust-lang.org/std/num/struct.NonZeroU16.html
+[`num::NonZeroU32`]: https://doc.rust-lang.org/std/num/struct.NonZeroU32.html
+[`num::NonZeroU64`]: https://doc.rust-lang.org/std/num/struct.NonZeroU64.html
+[`num::NonZeroU8`]: https://doc.rust-lang.org/std/num/struct.NonZeroU8.html
+[`ops::RangeBounds`]: https://doc.rust-lang.org/std/ops/trait.RangeBounds.html
+[`slice::SliceIndex`]: https://doc.rust-lang.org/std/slice/trait.SliceIndex.html
+[`slice::from_mut`]: https://doc.rust-lang.org/std/slice/fn.from_mut.html
+[`slice::from_ref`]: https://doc.rust-lang.org/std/slice/fn.from_ref.html
+[`{Any + Send + Sync}::downcast_mut`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_mut-2
+[`{Any + Send + Sync}::downcast_ref`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref-2
+[`{Any + Send + Sync}::is`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.is-2
+
+
 Version 1.27.0 (2018-06-21)
 ==========================
 
@@ -188,7 +331,7 @@ Language
 - [Closures now implement `Copy` and/or `Clone` if all captured variables
   implement either or both traits.][49299]
 - [The inclusive range syntax e.g. `for x in 0..=10` is now stable.][47813]
-- [Stablise `'_`. The underscore lifetime can be used anywhere where a
+- [The `'_` lifetime is now stable. The underscore lifetime can be used anywhere where a
   lifetime can be elided.][49458]
 - [`impl Trait` is now stable allowing you to have abstract types in returns
    or in function parameters.][49255] e.g. `fn foo() -> impl Iterator<Item=u8>` or
@@ -389,7 +532,7 @@ Version 1.25.0 (2018-03-29)
 
 Language
 --------
-- [Stabilised `#[repr(align(x))]`.][47006] [RFC 1358]
+- [The `#[repr(align(x))]` attribute is now stable.][47006] [RFC 1358]
 - [You can now use nested groups of imports.][47948]
   e.g. `use std::{fs::File, io::Read, path::{Path, PathBuf}};`
 - [You can now have `|` at the start of a match arm.][47947] e.g.
