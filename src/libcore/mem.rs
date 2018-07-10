@@ -229,6 +229,8 @@ pub fn forget<T>(t: T) {
 /// 2. Round up the current size to the nearest multiple of the next field's [alignment].
 ///
 /// Finally, round the size of the struct to the nearest multiple of its [alignment].
+/// The alignment of the struct is usually the largest alignment of all its
+/// fields; this can be changed with the use of `repr(align(N))`.
 ///
 /// Unlike `C`, zero sized structs are not rounded up to one byte in size.
 ///
@@ -283,7 +285,8 @@ pub fn forget<T>(t: T) {
 /// // The size of the second field is 2, so add 2 to the size. Size is 4.
 /// // The alignment of the third field is 1, so add 0 to the size for padding. Size is 4.
 /// // The size of the third field is 1, so add 1 to the size. Size is 5.
-/// // Finally, the alignment of the struct is 2, so add 1 to the size for padding. Size is 6.
+/// // Finally, the alignment of the struct is 2 (because the largest alignment amongst its
+/// // fields is 2), so add 1 to the size for padding. Size is 6.
 /// assert_eq!(6, mem::size_of::<FieldStruct>());
 ///
 /// #[repr(C)]
