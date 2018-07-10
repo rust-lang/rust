@@ -73,7 +73,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    input: TokenStream)
-                   -> Box<MacResult+'cx> {
+                   -> Box<dyn MacResult+'cx> {
         if !self.valid {
             return DummyResult::any(sp);
         }
@@ -99,7 +99,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           arg: TokenStream,
                           lhses: &[quoted::TokenTree],
                           rhses: &[quoted::TokenTree])
-                          -> Box<MacResult+'cx> {
+                          -> Box<dyn MacResult+'cx> {
     if cx.trace_macros() {
         trace_macros_note(cx, sp, format!("expanding `{}! {{ {} }}`", name, arg));
     }

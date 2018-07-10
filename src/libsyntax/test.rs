@@ -72,7 +72,7 @@ struct TestCtxt<'a> {
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: &ParseSess,
-                          resolver: &mut Resolver,
+                          resolver: &mut dyn Resolver,
                           should_test: bool,
                           krate: ast::Crate,
                           span_diagnostic: &errors::Handler,
@@ -278,7 +278,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
 }
 
 fn generate_test_harness(sess: &ParseSess,
-                         resolver: &mut Resolver,
+                         resolver: &mut dyn Resolver,
                          reexport_test_harness_main: Option<Symbol>,
                          krate: ast::Crate,
                          sd: &errors::Handler,

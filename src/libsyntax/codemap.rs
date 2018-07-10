@@ -131,7 +131,7 @@ pub(super) struct CodeMapFiles {
 
 pub struct CodeMap {
     pub(super) files: Lock<CodeMapFiles>,
-    file_loader: Box<FileLoader + Sync + Send>,
+    file_loader: Box<dyn FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
     // --remap-path-prefix to all FileMaps allocated within this CodeMap.
     path_mapping: FilePathMapping,
@@ -162,7 +162,7 @@ impl CodeMap {
 
     }
 
-    pub fn with_file_loader(file_loader: Box<FileLoader + Sync + Send>,
+    pub fn with_file_loader(file_loader: Box<dyn FileLoader + Sync + Send>,
                             path_mapping: FilePathMapping)
                             -> CodeMap {
         CodeMap {
