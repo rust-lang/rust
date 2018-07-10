@@ -179,21 +179,16 @@ impl Attribute {
 // Memory-managed interface to object files.
 
 pub struct ObjectFile {
-    pub llof: ObjectFileRef,
+    pub llof: &'static mut ffi::ObjectFile,
 }
 
 unsafe impl Send for ObjectFile {}
 
 impl ObjectFile {
     // This will take ownership of llmb
-    pub fn new(llmb: MemoryBufferRef) -> Option<ObjectFile> {
+    pub fn new(llmb: &'static mut MemoryBuffer) -> Option<ObjectFile> {
         unsafe {
-            let llof = LLVMCreateObjectFile(llmb);
-            if llof as isize == 0 {
-                // LLVMCreateObjectFile took ownership of llmb
-                return None;
-            }
-
+            let llof = LLVMCreateObjectFile(llmb)?;
             Some(ObjectFile { llof: llof })
         }
     }
@@ -202,7 +197,7 @@ impl ObjectFile {
 impl Drop for ObjectFile {
     fn drop(&mut self) {
         unsafe {
-            LLVMDisposeObjectFile(self.llof);
+            LLVMDisposeObjectFile(&mut *(self.llof as *mut _));
         }
     }
 }
@@ -221,7 +216,7 @@ impl Drop for SectionIter {
     }
 }
 
-pub fn mk_section_iter(llof: ObjectFileRef) -> SectionIter {
+pub fn mk_section_iter(llof: &ffi::ObjectFile) -> SectionIter {
     unsafe { SectionIter { llsi: LLVMGetSections(llof) } }
 }
 

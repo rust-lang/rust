@@ -390,13 +390,11 @@ extern { pub type Metadata; }
 extern { pub type BasicBlock; }
 extern { pub type Builder; }
 extern { pub type MemoryBuffer; }
-pub type MemoryBufferRef = *mut MemoryBuffer;
 extern { pub type PassManager; }
 pub type PassManagerRef = *mut PassManager;
 extern { pub type PassManagerBuilder; }
 pub type PassManagerBuilderRef = *mut PassManagerBuilder;
 extern { pub type ObjectFile; }
-pub type ObjectFileRef = *mut ObjectFile;
 extern { pub type SectionIterator; }
 pub type SectionIteratorRef = *mut SectionIterator;
 extern { pub type Pass; }
@@ -1143,17 +1141,19 @@ extern "C" {
     // Stuff that's in rustllvm/ because it's not upstream yet.
 
     /// Opens an object file.
-    pub fn LLVMCreateObjectFile(MemBuf: MemoryBufferRef) -> ObjectFileRef;
+    pub fn LLVMCreateObjectFile(
+        MemBuf: &'static mut MemoryBuffer,
+    ) -> Option<&'static mut ObjectFile>;
     /// Closes an object file.
-    pub fn LLVMDisposeObjectFile(ObjFile: ObjectFileRef);
+    pub fn LLVMDisposeObjectFile(ObjFile: &'static mut ObjectFile);
 
     /// Enumerates the sections in an object file.
-    pub fn LLVMGetSections(ObjFile: ObjectFileRef) -> SectionIteratorRef;
+    pub fn LLVMGetSections(ObjFile: &ObjectFile) -> SectionIteratorRef;
     /// Destroys a section iterator.
     pub fn LLVMDisposeSectionIterator(SI: SectionIteratorRef);
     /// Returns true if the section iterator is at the end of the section
     /// list:
-    pub fn LLVMIsSectionIteratorAtEnd(ObjFile: ObjectFileRef, SI: SectionIteratorRef) -> Bool;
+    pub fn LLVMIsSectionIteratorAtEnd(ObjFile: &ObjectFile, SI: SectionIteratorRef) -> Bool;
     /// Moves the section iterator to point to the next section.
     pub fn LLVMMoveToNextSection(SI: SectionIteratorRef);
     /// Returns the current section size.
@@ -1163,7 +1163,9 @@ extern "C" {
 
     /// Reads the given file and returns it as a memory buffer. Use
     /// LLVMDisposeMemoryBuffer() to get rid of it.
-    pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: *const c_char) -> MemoryBufferRef;
+    pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(
+        Path: *const c_char,
+    ) -> Option<&'static mut MemoryBuffer>;
 
     pub fn LLVMStartMultithreaded() -> Bool;
 
