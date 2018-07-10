@@ -189,7 +189,7 @@ impl<T> RangeMap<T> {
         F: FnMut(&T) -> bool,
     {
         let mut remove = Vec::new();
-        for (range, data) in self.map.iter() {
+        for (range, data) in &self.map {
             if !f(data) {
                 remove.push(*range);
             }

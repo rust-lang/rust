@@ -135,10 +135,10 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
     }
 
     fn abstract_place(&self, place: &mir::Place<'tcx>) -> EvalResult<'tcx, AbsPlace<'tcx>> {
-        Ok(match place {
-            &mir::Place::Local(l) => AbsPlace::Local(l),
-            &mir::Place::Static(ref s) => AbsPlace::Static(s.def_id),
-            &mir::Place::Projection(ref p) =>
+        Ok(match *place {
+            mir::Place::Local(l) => AbsPlace::Local(l),
+            mir::Place::Static(ref s) => AbsPlace::Static(s.def_id),
+            mir::Place::Projection(ref p) =>
                 AbsPlace::Projection(Box::new(self.abstract_place_projection(&*p)?)),
         })
     }
@@ -378,11 +378,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         mut layout: ty::layout::TyLayout<'tcx>,
         i: usize,
     ) -> EvalResult<'tcx, Ty<'tcx>> {
-        match base {
-            Place::Ptr { extra: PlaceExtra::DowncastVariant(variant_index), .. } => {
-                layout = layout.for_variant(&self, variant_index);
-            }
-            _ => {}
+        if let Place::Ptr { extra: PlaceExtra::DowncastVariant(variant_index), .. } = base {
+            layout = layout.for_variant(&self, variant_index);
         }
         let tcx = self.tcx.tcx;
         Ok(match layout.ty.sty {
@@ -667,12 +664,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     // Inner lifetimes *outlive* outer ones, so only if we have no lifetime restriction yet,
                     // we record the region of this borrow to the context.
                     if query.re == None {
-                        match *region {
-                            ReScope(scope) => query.re = Some(scope),
-                            // It is possible for us to encounter erased lifetimes here because the lifetimes in
-                            // this functions' Subst will be erased.
-                            _ => {}
+                        if let ReScope(scope) = *region {
+                            query.re = Some(scope);
                         }
+                        // It is possible for us to encounter erased lifetimes here because the lifetimes in
+                        // this functions' Subst will be erased.
                     }
                     self.validate_ptr(val, query.place.0, pointee_ty, query.re, query.mutbl, mode)?;
                 }
@@ -772,7 +768,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                             let variant_idx = self.read_discriminant_as_variant_index(query.place.1, query.ty)?;
                             let variant = &adt.variants[variant_idx];
 
-                            if variant.fields.len() > 0 {
+                            if !variant.fields.is_empty() {
                                 // Downcast to this variant, if needed
                                 let place = if adt.is_enum() {
                                     (

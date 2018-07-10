@@ -69,7 +69,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     .expect("Offset called on non-ptr type")
                     .ty;
                 let ptr = self.pointer_offset(
-                    left.into(),
+                    left,
                     pointee_ty,
                     right.to_bits(self.memory.pointer_size())? as i64,
                 )?;

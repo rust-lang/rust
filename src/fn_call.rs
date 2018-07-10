@@ -268,7 +268,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 )?;
                 let mut args = self.frame().mir.args_iter();
 
-                let arg_local = args.next().ok_or(
+                let arg_local = args.next().ok_or_else(||
                     EvalErrorKind::AbiViolation(
                         "Argument to __rust_maybe_catch_panic does not take enough arguments."
                             .to_owned(),
@@ -504,7 +504,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
                 let key_type = args[0].ty.builtin_deref(true)
-                                   .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
+                                   .ok_or_else(|| EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
                 let key_size = self.layout_of(key_type)?.size;
 
                 // Create key and write it into the memory where key_ptr wants it
@@ -747,7 +747,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         // current frame.
         self.dump_local(dest);
         self.goto_block(dest_block);
-        return Ok(());
+        Ok(())
     }
 
     fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {

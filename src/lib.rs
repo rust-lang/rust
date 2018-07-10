@@ -5,6 +5,8 @@
     inclusive_range_methods,
 )]
 
+#![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
+
 #[macro_use]
 extern crate log;
 
@@ -427,14 +429,11 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 let frame = ecx.frame_mut();
                 let bb = &frame.mir.basic_blocks()[frame.block];
                 if bb.statements.len() == frame.stmt && !bb.is_cleanup {
-                    match bb.terminator().kind {
-                        ::rustc::mir::TerminatorKind::Return => {
-                            for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
-                                // Don't deallocate locals, because the return value might reference them
-                                frame.storage_dead(local);
-                            }
+                    if let ::rustc::mir::TerminatorKind::Return = bb.terminator().kind {
+                        for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
+                            // Don't deallocate locals, because the return value might reference them
+                            frame.storage_dead(local);
                         }
-                        _ => {}
                     }
                 }
             }
@@ -478,7 +477,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 value: Value::Scalar(Scalar::from_u128(match layout.size.bytes() {
                     0 => 1 as u128,
                     size => size as u128,
-                }.into())),
+                })),
                 ty: usize,
             },
             dest,
