@@ -271,7 +271,8 @@ pub fn codegen_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
         "bitreverse" | "add_with_overflow" | "sub_with_overflow" |
         "mul_with_overflow" | "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
-        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" | "exact_div" => {
+        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" | "exact_div" |
+        "nowrap_add" | "nowrap_sub" | "nowrap_mul" | "nowrap_neg" => {
             let ty = arg_tys[0];
             match int_type_width_signed(ty, cx) {
                 Some((width, signed)) =>
@@ -349,6 +350,30 @@ pub fn codegen_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                                 bx.ashr(args[0].immediate(), args[1].immediate())
                             } else {
                                 bx.lshr(args[0].immediate(), args[1].immediate())
+                            },
+                        "nowrap_add" =>
+                            if signed {
+                                bx.nswadd(args[0].immediate(), args[1].immediate())
+                            } else {
+                                bx.nuwadd(args[0].immediate(), args[1].immediate())
+                            },
+                        "nowrap_sub" =>
+                            if signed {
+                                bx.nswsub(args[0].immediate(), args[1].immediate())
+                            } else {
+                                bx.nuwsub(args[0].immediate(), args[1].immediate())
+                            },
+                        "nowrap_mul" =>
+                            if signed {
+                                bx.nswmul(args[0].immediate(), args[1].immediate())
+                            } else {
+                                bx.nuwmul(args[0].immediate(), args[1].immediate())
+                            },
+                        "nowrap_neg" =>
+                            if signed {
+                                bx.nswneg(args[0].immediate())
+                            } else {
+                                bx.nuwneg(args[0].immediate())
                             },
                         _ => bug!(),
                     },
