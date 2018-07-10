@@ -14,7 +14,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/static-return-lifetime-infered.rs:17:9
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                         ----- lifetime `'1` appears in this argument
+   |                         - let's call the lifetime of this reference `'1`
 LL |         self.x.iter().map(|a| a.0)
    |         ^^^^^^ cast requires that `'1` must outlive `'static`
 
