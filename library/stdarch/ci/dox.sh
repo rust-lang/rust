@@ -22,13 +22,13 @@ dox() {
   rm -rf target/doc/$arch
   mkdir target/doc/$arch
 
-  cargo build --target $target --manifest-path crates/stdsimd/Cargo.toml
+  cargo build --verbose --target $target --manifest-path crates/stdsimd/Cargo.toml
 
-  rustdoc --target $target \
+  rustdoc --verbose --target $target \
           -o target/doc/$arch crates/coresimd/src/lib.rs \
           --crate-name coresimd \
           --library-path target/$target/debug/deps
-  rustdoc --target $target \
+  rustdoc --verbose --target $target \
           -o target/doc/$arch crates/stdsimd/src/lib.rs \
           --crate-name stdsimd \
           --library-path target/$target/debug/deps \
