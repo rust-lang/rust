@@ -2377,6 +2377,7 @@ pub enum UnsafetyViolationKind {
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
     pub description: InternedString,
+    pub details: InternedString,
     pub kind: UnsafetyViolationKind,
 }
 

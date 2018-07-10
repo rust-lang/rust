@@ -27,12 +27,12 @@ fn __getit() -> std::option::Option<
     &'static std::cell::UnsafeCell<
         std::option::Option<Foo>>>
 {
-    __KEY.get() //~ ERROR call to unsafe function requires unsafe
+    __KEY.get() //~ ERROR call to unsafe function is unsafe
 }
 
 static FOO: std::thread::LocalKey<Foo> =
     std::thread::LocalKey::new(__getit, Default::default);
-//~^ ERROR call to unsafe function requires unsafe
+//~^ ERROR call to unsafe function is unsafe
 
 fn main() {
     FOO.with(|foo| println!("{}", foo.borrow()));

@@ -16,5 +16,5 @@ use std::intrinsics;
 // as unsafe.
 fn main() {
     intrinsics::move_val_init(1 as *mut u32, 1);
-    //~^ ERROR dereference of raw pointer requires unsafe function or block
+    //~^ ERROR dereference of raw pointer is unsafe
 }

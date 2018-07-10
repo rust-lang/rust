@@ -12,7 +12,7 @@
 
 use std::intrinsics::{init};
 
-// Test that the `forget` and `init` intrinsics are really unsafe
+// Test that the `init` intrinsic is really unsafe
 pub fn main() {
-    let stuff = init::<isize>(); //~ ERROR call to unsafe function requires unsafe
+    let stuff = init::<isize>(); //~ ERROR call to unsafe function is unsafe
 }
