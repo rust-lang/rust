@@ -159,7 +159,7 @@ pub fn opts() -> Vec<RustcOptGroup> {
             o.optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")
         }),
         stable("plugin-path", |o| {
-            o.optmulti("", "plugin-path", "directory to load plugins from", "DIR")
+            o.optmulti("", "plugin-path", "removed", "DIR")
         }),
         stable("C", |o| {
             o.optmulti("C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]")
@@ -172,7 +172,7 @@ pub fn opts() -> Vec<RustcOptGroup> {
                        "PASSES")
         }),
         stable("plugins", |o| {
-            o.optmulti("", "plugins", "space separated list of plugins to also load",
+            o.optmulti("", "plugins", "removed",
                        "PLUGINS")
         }),
         stable("no-default", |o| {
@@ -710,9 +710,16 @@ where R: 'static + Send,
             }
         }
 
+        if !plugins.is_empty() {
+            eprintln!("WARNING: --plugins no longer functions; see CVE-2018-1000622");
+        }
+
+        if !plugin_path.is_none() {
+            eprintln!("WARNING: --plugin-path no longer functions; see CVE-2018-1000622");
+        }
+
         // Load all plugins/passes into a PluginManager
-        let path = plugin_path.unwrap_or("/tmp/rustdoc/plugins".to_string());
-        let mut pm = plugins::PluginManager::new(PathBuf::from(path));
+        let mut pm = plugins::PluginManager::new();
         for pass in &passes {
             let plugin = match passes::PASSES.iter()
                                              .position(|&(p, ..)| {
@@ -725,10 +732,6 @@ where R: 'static + Send,
                 },
             };
             pm.add_plugin(plugin);
-        }
-        info!("loading plugins...");
-        for pname in plugins {
-            pm.load_plugin(pname);
         }
 
         // Run everything!
@@ -745,8 +748,6 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) 
     let deprecated_flags = [
        "input-format",
        "output-format",
-       "plugin-path",
-       "plugins",
        "no-defaults",
        "passes",
     ];
