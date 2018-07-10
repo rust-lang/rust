@@ -582,8 +582,8 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => continue,
                 PassMode::Direct(_) => arg.layout.immediate_llvm_type(cx),
                 PassMode::Pair(..) => {
-                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 0));
-                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1));
+                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 0, true));
+                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),

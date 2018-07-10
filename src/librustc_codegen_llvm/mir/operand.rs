@@ -18,7 +18,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 
 use base;
-use common::{self, CodegenCx, C_null, C_undef, C_usize};
+use common::{CodegenCx, C_null, C_undef, C_usize};
 use builder::{Builder, MemFlags};
 use value::Value;
 use type_of::LayoutLlvmExt;
@@ -128,13 +128,13 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                     bx.cx,
                     a,
                     a_scalar,
-                    layout.scalar_pair_element_llvm_type(bx.cx, 0),
+                    layout.scalar_pair_element_llvm_type(bx.cx, 0, true),
                 );
                 let b_llval = scalar_to_llvm(
                     bx.cx,
                     b,
                     b_scalar,
-                    layout.scalar_pair_element_llvm_type(bx.cx, 1),
+                    layout.scalar_pair_element_llvm_type(bx.cx, 1, true),
                 );
                 OperandValue::Pair(a_llval, b_llval)
             },
@@ -193,8 +193,8 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                    self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = C_undef(llty);
-            llpair = bx.insert_value(llpair, a, 0);
-            llpair = bx.insert_value(llpair, b, 1);
+            llpair = bx.insert_value(llpair, base::from_immediate(bx, a), 0);
+            llpair = bx.insert_value(llpair, base::from_immediate(bx, b), 1);
             llpair
         } else {
             self.immediate()
@@ -206,13 +206,14 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                                          llval: ValueRef,
                                          layout: TyLayout<'tcx>)
                                          -> OperandRef<'tcx> {
-        let val = if layout.is_llvm_scalar_pair() {
+        let val = if let layout::Abi::ScalarPair(ref a, ref b) = layout.abi {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}",
                     llval, layout);
 
             // Deconstruct the immediate aggregate.
-            OperandValue::Pair(bx.extract_value(llval, 0),
-                               bx.extract_value(llval, 1))
+            let a_llval = base::to_immediate_scalar(bx, bx.extract_value(llval, 0), a);
+            let b_llval = base::to_immediate_scalar(bx, bx.extract_value(llval, 1), b);
+            OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)
         };
@@ -264,8 +265,8 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 *llval = bx.bitcast(*llval, field.immediate_llvm_type(bx.cx));
             }
             OperandValue::Pair(ref mut a, ref mut b) => {
-                *a = bx.bitcast(*a, field.scalar_pair_element_llvm_type(bx.cx, 0));
-                *b = bx.bitcast(*b, field.scalar_pair_element_llvm_type(bx.cx, 1));
+                *a = bx.bitcast(*a, field.scalar_pair_element_llvm_type(bx.cx, 0, true));
+                *b = bx.bitcast(*b, field.scalar_pair_element_llvm_type(bx.cx, 1, true));
             }
             OperandValue::Ref(..) => bug!()
         }
@@ -308,11 +309,7 @@ impl<'a, 'tcx> OperandValue {
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
-                    let mut llptr = bx.struct_gep(dest.llval, i as u64);
-                    // Make sure to always store i1 as i8.
-                    if common::val_ty(x) == Type::i1(bx.cx) {
-                        llptr = bx.pointercast(llptr, Type::i8p(bx.cx));
-                    }
+                    let llptr = bx.struct_gep(dest.llval, i as u64);
                     let val = base::from_immediate(bx, x);
                     bx.store_with_flags(val, llptr, dest.align, flags);
                 }

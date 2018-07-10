@@ -266,8 +266,8 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bx.cx, 0)),
-             bx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bx.cx, 1)))
+            (bx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bx.cx, 0, true)),
+             bx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bx.cx, 1, true)))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -397,9 +397,14 @@ pub fn from_immediate(bx: &Builder, val: ValueRef) -> ValueRef {
 
 pub fn to_immediate(bx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
-        if scalar.is_bool() {
-            return bx.trunc(val, Type::i1(bx.cx));
-        }
+        return to_immediate_scalar(bx, val, scalar);
+    }
+    val
+}
+
+pub fn to_immediate_scalar(bx: &Builder, val: ValueRef, scalar: &layout::Scalar) -> ValueRef {
+    if scalar.is_bool() {
+        return bx.trunc(val, Type::i1(bx.cx));
     }
     val
 }

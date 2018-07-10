@@ -149,7 +149,7 @@ pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
   x
 }
 
-// CHECK: i16 @enum_id_2(i16)
+// CHECK: { i8, i8 } @enum_id_2(i1 zeroext %x.0, i8 %x.1)
 #[no_mangle]
 pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
   x
