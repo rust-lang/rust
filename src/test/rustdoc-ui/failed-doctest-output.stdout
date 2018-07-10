@@ -1,32 +1,32 @@
 
 running 2 tests
-test src/test/rustdoc-ui/failed-doctest-output.rs - OtherStruct (line 21) ... FAILED
-test src/test/rustdoc-ui/failed-doctest-output.rs - SomeStruct (line 16) ... FAILED
+test $DIR/failed-doctest-output.rs - OtherStruct (line 21) ... FAILED
+test $DIR/failed-doctest-output.rs - SomeStruct (line 16) ... FAILED
 
 failures:
 
----- src/test/rustdoc-ui/failed-doctest-output.rs - OtherStruct (line 21) stdout ----
+---- $DIR/failed-doctest-output.rs - OtherStruct (line 21) stdout ----
 error[E0425]: cannot find value `no` in this scope
- --> src/test/rustdoc-ui/failed-doctest-output.rs:22:1
+ --> $DIR/failed-doctest-output.rs:22:1
   |
 3 | no
   | ^^ not found in this scope
 
-thread 'src/test/rustdoc-ui/failed-doctest-output.rs - OtherStruct (line 21)' panicked at 'couldn't compile the test', librustdoc/test.rs:332:13
+thread '$DIR/failed-doctest-output.rs - OtherStruct (line 21)' panicked at 'couldn't compile the test', librustdoc/test.rs:332:13
 note: Run with `RUST_BACKTRACE=1` for a backtrace.
 
----- src/test/rustdoc-ui/failed-doctest-output.rs - SomeStruct (line 16) stdout ----
-thread 'src/test/rustdoc-ui/failed-doctest-output.rs - SomeStruct (line 16)' panicked at 'test executable failed:
+---- $DIR/failed-doctest-output.rs - SomeStruct (line 16) stdout ----
+thread '$DIR/failed-doctest-output.rs - SomeStruct (line 16)' panicked at 'test executable failed:
 
-thread 'main' panicked at 'oh no', src/test/rustdoc-ui/failed-doctest-output.rs:3:1
+thread 'main' panicked at 'oh no', $DIR/failed-doctest-output.rs:3:1
 note: Run with `RUST_BACKTRACE=1` for a backtrace.
 
 ', librustdoc/test.rs:367:17
 
 
 failures:
-    src/test/rustdoc-ui/failed-doctest-output.rs - OtherStruct (line 21)
-    src/test/rustdoc-ui/failed-doctest-output.rs - SomeStruct (line 16)
+    $DIR/failed-doctest-output.rs - OtherStruct (line 21)
+    $DIR/failed-doctest-output.rs - SomeStruct (line 16)
 
 test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out
 
