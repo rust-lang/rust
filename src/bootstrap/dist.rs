@@ -308,6 +308,14 @@ fn make_win_dist(
         builder.copy_to_folder(&src, &target_bin_dir);
     }
 
+    // Warn windows-gnu users that the bundled GCC cannot compile C files
+    builder.create(
+        &target_bin_dir.join("GCC-WARNING.txt"),
+        "gcc.exe contained in this folder cannot be used for compiling C files - it is only\
+         used as a linker. In order to be able to compile projects containing C code use\
+         the GCC provided by MinGW or Cygwin."
+    );
+
     //Copy platform libs to platform-specific lib directory
     let target_lib_dir = plat_root.join("lib").join("rustlib").join(target_triple).join("lib");
     fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
