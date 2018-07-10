@@ -114,6 +114,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(bare_trait_objects)]
+#![deny(warnings)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 
