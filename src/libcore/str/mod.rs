@@ -335,7 +335,7 @@ impl Utf8Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     run_utf8_validation(v)?;
-    Ok(unsafe { from_utf8_unchecked(v) })
+    Ok(unsafe { from_utf8_unchecked_without_validation(v) })
 }
 
 /// Converts a mutable slice of bytes to a mutable string slice.
@@ -373,7 +373,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     run_utf8_validation(v)?;
-    Ok(unsafe { from_utf8_unchecked_mut(v) })
+    Ok(unsafe { from_utf8_unchecked_mut_without_validation(v) })
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -410,6 +410,12 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
+    debug_assert_eq!(run_utf8_validation(v), Ok(()));
+    from_utf8_unchecked_without_validation(v)
+}
+
+#[inline]
+unsafe fn from_utf8_unchecked_without_validation(v: &[u8]) -> &str {
     &*(v as *const [u8] as *const str)
 }
 
@@ -435,6 +441,12 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
+    debug_assert_eq!(run_utf8_validation(v), Ok(()));
+    from_utf8_unchecked_mut_without_validation(v)
+}
+
+#[inline]
+unsafe fn from_utf8_unchecked_mut_without_validation(v: &mut [u8]) -> &mut str {
     &mut *(v as *mut [u8] as *mut str)
 }
 
