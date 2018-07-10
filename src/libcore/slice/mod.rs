@@ -1541,9 +1541,9 @@ impl<T> [T] {
     /// let src = [1, 2, 3, 4];
     /// let mut dst = [0, 0];
     ///
-    /// // Note: the slices must be the same length, so you can slice the source
-    /// // or the destination to be the same size. Here we slice the source, four elements,
-    /// // to two, the same size as the destination slice. It *will* panic if we don't do this.
+    /// // Because the slices have to be the same length,
+    /// // we slice the source slice from four elements
+    /// // to two. It will panic if we don't do this.
     /// dst.clone_from_slice(&src[2..]);
     ///
     /// assert_eq!(src, [1, 2, 3, 4]);
@@ -1610,9 +1610,9 @@ impl<T> [T] {
     /// let src = [1, 2, 3, 4];
     /// let mut dst = [0, 0];
     ///
-    /// // Note: the slices must be the same length, so you can slice the source
-    /// // or the destination to be the same size. Here we slice the source, four elements,
-    /// // to two, the same size as the destination slice. It *will* panic if we don't do this.
+    /// // Because the slices have to be the same length,
+    /// // we slice the source slice from four elements
+    /// // to two. It will panic if we don't do this.
     /// dst.copy_from_slice(&src[2..]);
     ///
     /// assert_eq!(src, [1, 2, 3, 4]);
