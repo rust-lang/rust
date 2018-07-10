@@ -811,6 +811,10 @@ impl ThinLTOImports {
         }
     }
 
+    pub fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
+        self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
+    }
+
     /// Load the ThinLTO import map from ThinLTOData.
     unsafe fn from_thin_lto_data(data: *const llvm::ThinLTOData) -> ThinLTOImports {
         let raw_data: *const llvm::ThinLTOModuleImports =

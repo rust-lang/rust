@@ -1658,6 +1658,9 @@ impl<'test> TestCx<'test> {
                 rustc.args(&["-C", &format!("incremental={}", incremental_dir.display())]);
                 rustc.args(&["-Z", "incremental-verify-ich"]);
                 rustc.args(&["-Z", "incremental-queries"]);
+
+                // Force thinlto off for now..
+                rustc.args(&["-Zthinlto=no"]);
             }
 
             if self.config.mode == CodegenUnits {

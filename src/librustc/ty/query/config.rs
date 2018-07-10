@@ -702,12 +702,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::codegen_unit<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::compile_codegen_unit<'tcx> {
-    fn describe(_tcx: TyCtxt, _: InternedString) -> String {
-        format!("compile_codegen_unit")
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::output_filenames<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("output_filenames")

@@ -43,7 +43,6 @@ use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::query::Providers;
-use rustc::dep_graph::{DepNode, DepConstructor};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::middle::exported_symbols;
 use rustc::util::common::{time, print_time_passes_entry};
@@ -858,51 +857,50 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut total_codegen_time = Duration::new(0, 0);
     let mut all_stats = Stats::default();
 
+    let reusable_cgus = determine_cgu_reuse(tcx, &codegen_units);
+
     for cgu in codegen_units.into_iter() {
         ongoing_codegen.wait_for_signal_to_codegen_item();
         ongoing_codegen.check_for_errors(tcx.sess);
 
-        // First, if incremental compilation is enabled, we try to re-use the
-        // codegen unit from the cache.
+        debug!("starting codegen for CGU: {}", cgu.name());
+
+        let reused = if reusable_cgus.contains(cgu.name()) {
+            debug!("CGU `{}` can be re-used", cgu.name());
+
+            let work_product_id = &cgu.work_product_id();
+            let work_product = tcx.dep_graph
+                                  .previous_work_product(work_product_id)
+                                  .expect("Could not find work-product for reuseable CGU");
+
+            let module = ModuleCodegen {
+                name: cgu.name().to_string(),
+                source: ModuleSource::Preexisting(work_product),
+                kind: ModuleKind::Regular,
+            };
+            write::submit_codegened_module_to_llvm(tcx, module, 0);
+            true
+        } else {
+            debug!("CGU `{}` can NOT be re-used", cgu.name());
+
+            let _timing_guard = time_graph.as_ref().map(|time_graph| {
+                time_graph.start(write::CODEGEN_WORKER_TIMELINE,
+                                 write::CODEGEN_WORK_PACKAGE_KIND,
+                                 &format!("codegen {}", cgu.name()))
+            });
+            let start_time = Instant::now();
+            let stats = compile_codegen_unit(tcx, *cgu.name());
+            all_stats.extend(stats);
+            total_codegen_time += start_time.elapsed();
+            false
+        };
+
         if tcx.dep_graph.is_fully_enabled() {
-            let cgu_id = cgu.work_product_id();
-
-            // Check whether there is a previous work-product we can
-            // re-use.  Not only must the file exist, and the inputs not
-            // be dirty, but the hash of the symbols we will generate must
-            // be the same.
-            if let Some(buf) = tcx.dep_graph.previous_work_product(&cgu_id) {
-                let dep_node = &DepNode::new(tcx,
-                    DepConstructor::CompileCodegenUnit(cgu.name().clone()));
-
-                // We try to mark the DepNode::CompileCodegenUnit green. If we
-                // succeed it means that none of the dependencies has changed
-                // and we can safely re-use.
-                if let Some(dep_node_index) = tcx.dep_graph.try_mark_green(tcx, dep_node) {
-                    let module = ModuleCodegen {
-                        name: cgu.name().to_string(),
-                        source: ModuleSource::Preexisting(buf),
-                        kind: ModuleKind::Regular,
-                    };
-                    tcx.dep_graph.mark_loaded_from_cache(dep_node_index, true);
-                    write::submit_codegened_module_to_llvm(tcx, module, 0);
-                    // Continue to next cgu, this one is done.
-                    continue
-                }
-            } else {
-                // This can happen if files were  deleted from the cache
-                // directory for some reason. We just re-compile then.
-            }
+            let dep_node_index =
+                    tcx.dep_graph.dep_node_index_of(&cgu.compilation_dep_node(tcx));
+            tcx.dep_graph.mark_loaded_from_cache(dep_node_index, reused);
         }
 
-        let _timing_guard = time_graph.as_ref().map(|time_graph| {
-            time_graph.start(write::CODEGEN_WORKER_TIMELINE,
-                             write::CODEGEN_WORK_PACKAGE_KIND,
-                             &format!("codegen {}", cgu.name()))
-        });
-        let start_time = Instant::now();
-        all_stats.extend(tcx.compile_codegen_unit(*cgu.name()));
-        total_codegen_time += start_time.elapsed();
         ongoing_codegen.check_for_errors(tcx.sess);
     }
 
@@ -946,6 +944,67 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     assert_and_save_dep_graph(tcx);
     ongoing_codegen
+}
+
+fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 codegen_units: &[Arc<CodegenUnit<'tcx>>])
+                                 -> FxHashSet<InternedString> {
+    if !tcx.dep_graph.is_fully_enabled() {
+        return FxHashSet()
+    }
+
+    let mut green_cgus = FxHashSet();
+
+    for cgu in codegen_units {
+        let work_product_id = &cgu.work_product_id();
+
+        if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
+            // We don't have anything cached for this CGU. This can happen
+            // if the CGU did not exist in the previous session. We are done
+            // for this CGU, skip to the next.
+            continue
+        };
+
+        // Try to mark the CGU as green
+        let dep_node = cgu.compilation_dep_node(tcx);
+
+        assert!(!tcx.dep_graph.dep_node_exists(&dep_node),
+            "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
+            cgu.name());
+
+        if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
+            green_cgus.insert(cgu.name().to_string());
+        } else {
+            // We definitely cannot re-use this CGU
+        }
+    }
+
+    let thin_lto_imports = load_thin_lto_imports(tcx.sess);
+    let mut reusable_cgus = FxHashSet();
+
+    // Now we know all CGUs that have not changed themselves. Next we need to
+    // check if anything they imported via ThinLTO has changed.
+    for cgu_name in &green_cgus {
+        let imported_cgus = thin_lto_imports.modules_imported_by(cgu_name);
+
+        let all_imports_green = imported_cgus.iter().all(|imported_cgu| {
+            green_cgus.contains(&imported_cgu[..])
+        });
+
+        if all_imports_green {
+            reusable_cgus.insert(cgu_name.clone());
+        }
+    }
+
+    codegen_units
+        .iter()
+        .filter_map(|cgu| {
+            if reusable_cgus.contains(&cgu.name().as_str()[..]) {
+                Some(cgu.name().clone())
+            } else {
+                None
+            }
+        }).collect::<FxHashSet<InternedString>>()
 }
 
 fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -1167,11 +1226,15 @@ fn is_codegened_item(tcx: TyCtxt, id: DefId) -> bool {
 }
 
 fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  cgu: InternedString) -> Stats {
-    let cgu = tcx.codegen_unit(cgu);
-
+                                  cgu_name: InternedString)
+                                  -> Stats {
     let start_time = Instant::now();
-    let (stats, module) = module_codegen(tcx, cgu);
+
+    let dep_node = tcx.codegen_unit(cgu_name).compilation_dep_node(tcx);
+    let ((stats, module), _) = tcx.dep_graph.with_forced_task(dep_node,
+                                                              tcx,
+                                                              cgu_name,
+                                                              module_codegen);
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to
@@ -1180,22 +1243,22 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                time_to_codegen.subsec_nanos() as u64;
 
     write::submit_codegened_module_to_llvm(tcx,
-                                            module,
-                                            cost);
+                                           module,
+                                           cost);
     return stats;
 
     fn module_codegen<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        cgu: Arc<CodegenUnit<'tcx>>)
+        cgu_name: InternedString)
         -> (Stats, ModuleCodegen)
     {
-        let cgu_name = cgu.name().to_string();
+        let cgu = tcx.codegen_unit(cgu_name);
 
         // Instantiate monomorphizations without filling out definitions yet...
         let cx = CodegenCx::new(tcx, cgu);
         let module = {
             let mono_items = cx.codegen_unit
-                                 .items_in_deterministic_order(cx.tcx);
+                               .items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
                 mono_item.predefine(&cx, linkage, visibility);
             }
@@ -1247,7 +1310,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
 
             ModuleCodegen {
-                name: cgu_name,
+                name: cgu_name.to_string(),
                 source: ModuleSource::Codegened(llvm_module),
                 kind: ModuleKind::Regular,
             }
@@ -1270,7 +1333,6 @@ pub fn provide(providers: &mut Providers) {
             .cloned()
             .expect(&format!("failed to find cgu with name {:?}", name))
     };
-    providers.compile_codegen_unit = compile_codegen_unit;
 
     provide_extern(providers);
 }
@@ -1352,8 +1414,11 @@ mod temp_stable_hash_impls {
     }
 }
 
-#[allow(unused)]
 fn load_thin_lto_imports(sess: &Session) -> lto::ThinLTOImports {
+    if sess.opts.incremental.is_none() {
+        return lto::ThinLTOImports::new_empty();
+    }
+
     let path = rustc_incremental::in_incr_comp_dir_sess(
         sess,
         lto::THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME

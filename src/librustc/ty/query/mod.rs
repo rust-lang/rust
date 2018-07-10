@@ -27,7 +27,7 @@ use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
 use mir::interpret::ConstEvalResult;
-use mir::mono::{CodegenUnit, Stats};
+use mir::mono::CodegenUnit;
 use mir;
 use mir::interpret::{GlobalId, Allocation};
 use session::{CompileResult, CrateDisambiguator};
@@ -436,7 +436,6 @@ define_queries! { <'tcx>
         -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),
     [] fn is_codegened_item: IsCodegenedItem(DefId) -> bool,
     [] fn codegen_unit: CodegenUnit(InternedString) -> Arc<CodegenUnit<'tcx>>,
-    [] fn compile_codegen_unit: CompileCodegenUnit(InternedString) -> Stats,
     [] fn output_filenames: output_filenames_node(CrateNum)
         -> Arc<OutputFilenames>,
 

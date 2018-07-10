@@ -583,11 +583,6 @@ impl Session {
             return config::Lto::No;
         }
 
-        // Right now ThinLTO isn't compatible with incremental compilation.
-        if self.opts.incremental.is_some() {
-            return config::Lto::No;
-        }
-
         // Now we're in "defaults" territory. By default we enable ThinLTO for
         // optimized compiles (anything greater than O0).
         match self.opts.optimize {

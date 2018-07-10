@@ -1973,7 +1973,7 @@ pub fn build_session_options_and_crate_config(
         (&None, &None) => None,
     }.map(|m| PathBuf::from(m));
 
-    if cg.lto != Lto::No && incremental.is_some() {
+    if cg.lto == Lto::Fat && incremental.is_some() {
         early_error(
             error_format,
             "can't perform LTO when compiling incrementally",
