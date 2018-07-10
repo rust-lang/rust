@@ -361,11 +361,49 @@ extern "C" {
     fn vmhraddshs(
         a: vector_signed_short, b: vector_signed_short, c: vector_signed_short,
     ) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vmsumuhs"]
+    fn vmsumuhs(
+        a: vector_unsigned_short, b: vector_unsigned_short,c: vector_unsigned_int) -> vector_unsigned_int;
+    #[link_name = "llvm.ppc.altivec.vmsumshs"]
+    fn vmsumshs(
+        a: vector_signed_short, b: vector_signed_short,c: vector_signed_int) -> vector_signed_int;
 }
 
 mod sealed {
 
     use super::*;
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmsumuhs))]
+    unsafe fn vec_vmsumuhs(
+        a: vector_unsigned_short, b: vector_unsigned_short,c: vector_unsigned_int) -> vector_unsigned_int {
+        vmsumuhs(a, b, c)
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmsumshs))]
+    unsafe fn vec_vmsumshs(
+        a: vector_signed_short, b: vector_signed_short,c: vector_signed_int) -> vector_signed_int {
+        vmsumshs(a, b, c)
+    }
+
+    pub trait VectorMsums<Other> {
+        unsafe fn vec_msums(self, b: Self, c: Other) -> Other;
+    }
+
+    impl VectorMsums<vector_unsigned_int> for vector_unsigned_short {
+        unsafe fn vec_msums(self, b: Self, c: vector_unsigned_int) -> vector_unsigned_int {
+            vmsumuhs(self, b, c)
+        }
+    }
+
+    impl VectorMsums<vector_signed_int> for vector_signed_short {
+        unsafe fn vec_msums(self, b: Self, c: vector_signed_int) -> vector_signed_int {
+            vmsumshs(self, b, c)
+        }
+    }
 
     #[inline]
     #[target_feature(enable = "altivec")]
@@ -746,6 +784,14 @@ pub unsafe fn vec_mradds(
     vmhraddshs(a, b, c)
 }
 
+/// Vector Multiply Sum Saturated
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_msums<T, U>(a: T, b: T, c: U) -> U
+    where T: sealed::VectorMsums<U> {
+    a.vec_msums(b, c)
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
@@ -902,6 +948,56 @@ mod tests {
         let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, i16::max_value());
 
         assert_eq!(d, vec_mradds(a, b, c).into_bits());
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_msums_unsigned() {
+        let a: vector_unsigned_short = u16x8::new(
+            0 * 256,
+            1 * 256,
+            2 * 256,
+            3 * 256,
+            4 * 256,
+            5 * 256,
+            6 * 256,
+            7 * 256,
+        ).into_bits();
+        let b: vector_unsigned_short =
+            u16x8::new(256, 256, 256, 256, 256, 256, 256, 256).into_bits();
+        let c: vector_unsigned_int = u32x4::new(0, 1, 2, 3).into_bits();
+        let d = u32x4::new(
+            (0 + 1) * 256 * 256 + 0,
+            (2 + 3) * 256 * 256 + 1,
+            (4 + 5) * 256 * 256 + 2,
+            (6 + 7) * 256 * 256 + 3,
+        );
+
+        assert_eq!(d, vec_msums(a, b, c).into_bits());
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_msums_signed() {
+        let a: vector_signed_short = i16x8::new(
+            0 * 256,
+           -1 * 256,
+            2 * 256,
+           -3 * 256,
+            4 * 256,
+           -5 * 256,
+            6 * 256,
+           -7 * 256,
+        ).into_bits();
+        let b: vector_signed_short =
+            i16x8::new(256, 256, 256, 256, 256, 256, 256, 256).into_bits();
+        let c: vector_signed_int = i32x4::new(0, 1, 2, 3).into_bits();
+        let d = i32x4::new(
+            (0 - 1) * 256 * 256 + 0,
+            (2 - 3) * 256 * 256 + 1,
+            (4 - 5) * 256 * 256 + 2,
+            (6 - 7) * 256 * 256 + 3,
+        );
+
+        assert_eq!(d, vec_msums(a, b, c).into_bits());
     }
 
     #[simd_test(enable = "altivec")]
