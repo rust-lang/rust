@@ -12,7 +12,7 @@
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
-use llvm::{self, BasicBlockRef};
+use llvm::{self, BasicBlock};
 use common::*;
 use type_::Type;
 use value::Value;
@@ -102,7 +102,7 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn llbb(&self) -> BasicBlockRef {
+    pub fn llbb(&self) -> &'ll BasicBlock {
         unsafe {
             llvm::LLVMGetInsertBlock(self.llbuilder)
         }
@@ -134,13 +134,13 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn position_at_end(&self, llbb: BasicBlockRef) {
+    pub fn position_at_end(&self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
         }
     }
 
-    pub fn position_at_start(&self, llbb: BasicBlockRef) {
+    pub fn position_at_start(&self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
         }
@@ -168,21 +168,21 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn br(&self, dest: BasicBlockRef) {
+    pub fn br(&self, dest: &'ll BasicBlock) {
         self.count_insn("br");
         unsafe {
             llvm::LLVMBuildBr(self.llbuilder, dest);
         }
     }
 
-    pub fn cond_br(&self, cond: &'ll Value, then_llbb: BasicBlockRef, else_llbb: BasicBlockRef) {
+    pub fn cond_br(&self, cond: &'ll Value, then_llbb: &'ll BasicBlock, else_llbb: &'ll BasicBlock) {
         self.count_insn("condbr");
         unsafe {
             llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
         }
     }
 
-    pub fn switch(&self, v: &'ll Value, else_llbb: BasicBlockRef, num_cases: usize) -> &'ll Value {
+    pub fn switch(&self, v: &'ll Value, else_llbb: &'ll BasicBlock, num_cases: usize) -> &'ll Value {
         unsafe {
             llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
         }
@@ -198,8 +198,8 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn invoke(&self,
                   llfn: &'ll Value,
                   args: &[&'ll Value],
-                  then: BasicBlockRef,
-                  catch: BasicBlockRef,
+                  then: &'ll BasicBlock,
+                  catch: &'ll BasicBlock,
                   bundle: Option<&OperandBundleDef>) -> &'ll Value {
         self.count_insn("invoke");
 
@@ -830,7 +830,7 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn phi(&self, ty: &'ll Type, vals: &[&'ll Value], bbs: &[BasicBlockRef]) -> &'ll Value {
+    pub fn phi(&self, ty: &'ll Type, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) -> &'ll Value {
         assert_eq!(vals.len(), bbs.len());
         let phi = self.empty_phi(ty);
         self.count_insn("addincoming");
@@ -1167,10 +1167,11 @@ impl Builder<'a, 'll, 'tcx> {
         ret.expect("LLVM does not have support for cleanuppad")
     }
 
-    pub fn cleanup_ret(&self, cleanup: &'ll Value,
-                       unwind: Option<BasicBlockRef>) -> &'ll Value {
+    pub fn cleanup_ret(
+        &self, cleanup: &'ll Value,
+        unwind: Option<&'ll BasicBlock>,
+    ) -> &'ll Value {
         self.count_insn("cleanupret");
-        let unwind = unwind.and_then(NonNull::new);
         let ret = unsafe {
             llvm::LLVMRustBuildCleanupRet(self.llbuilder, cleanup, unwind)
         };
@@ -1190,7 +1191,7 @@ impl Builder<'a, 'll, 'tcx> {
         ret.expect("LLVM does not have support for catchpad")
     }
 
-    pub fn catch_ret(&self, pad: &'ll Value, unwind: BasicBlockRef) -> &'ll Value {
+    pub fn catch_ret(&self, pad: &'ll Value, unwind: &'ll BasicBlock) -> &'ll Value {
         self.count_insn("catchret");
         let ret = unsafe {
             llvm::LLVMRustBuildCatchRet(self.llbuilder, pad, unwind)
@@ -1201,11 +1202,10 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn catch_switch(
         &self,
         parent: Option<&'ll Value>,
-        unwind: Option<BasicBlockRef>,
+        unwind: Option<&'ll BasicBlock>,
         num_handlers: usize,
     ) -> &'ll Value {
         self.count_insn("catchswitch");
-        let unwind = unwind.and_then(NonNull::new);
         let name = CString::new("catchswitch").unwrap();
         let ret = unsafe {
             llvm::LLVMRustBuildCatchSwitch(self.llbuilder, parent, unwind,
@@ -1215,7 +1215,7 @@ impl Builder<'a, 'll, 'tcx> {
         ret.expect("LLVM does not have support for catchswitch")
     }
 
-    pub fn add_handler(&self, catch_switch: &'ll Value, handler: BasicBlockRef) {
+    pub fn add_handler(&self, catch_switch: &'ll Value, handler: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustAddHandler(catch_switch, handler);
         }
@@ -1260,13 +1260,13 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn add_case(&self, s: &'ll Value, on_val: &'ll Value, dest: BasicBlockRef) {
+    pub fn add_case(&self, s: &'ll Value, on_val: &'ll Value, dest: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMAddCase(s, on_val, dest)
         }
     }
 
-    pub fn add_incoming_to_phi(&self, phi: &'ll Value, val: &'ll Value, bb: BasicBlockRef) {
+    pub fn add_incoming_to_phi(&self, phi: &'ll Value, val: &'ll Value, bb: &'ll BasicBlock) {
         self.count_insn("addincoming");
         unsafe {
             llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);

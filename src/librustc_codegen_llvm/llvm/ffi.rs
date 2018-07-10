@@ -381,7 +381,6 @@ extern { pub type Type; }
 extern { pub type Value; }
 extern { pub type Metadata; }
 extern { pub type BasicBlock; }
-pub type BasicBlockRef = *mut BasicBlock;
 extern { pub type Builder; }
 extern { pub type MemoryBuffer; }
 pub type MemoryBufferRef = *mut MemoryBuffer;
@@ -716,18 +715,18 @@ extern "C" {
     pub fn LLVMGetParam(Fn: &Value, Index: c_uint) -> &Value;
 
     // Operations on basic blocks
-    pub fn LLVMBasicBlockAsValue(BB: BasicBlockRef) -> &'a Value;
-    pub fn LLVMGetBasicBlockParent(BB: BasicBlockRef) -> &'a Value;
+    pub fn LLVMBasicBlockAsValue(BB: &BasicBlock) -> &Value;
+    pub fn LLVMGetBasicBlockParent(BB: &BasicBlock) -> &Value;
     pub fn LLVMAppendBasicBlockInContext(C: &'a Context,
                                          Fn: &'a Value,
                                          Name: *const c_char)
-                                         -> BasicBlockRef;
-    pub fn LLVMDeleteBasicBlock(BB: BasicBlockRef);
+                                         -> &'a BasicBlock;
+    pub fn LLVMDeleteBasicBlock(BB: &BasicBlock);
 
     // Operations on instructions
-    pub fn LLVMGetInstructionParent(Inst: &Value) -> BasicBlockRef;
-    pub fn LLVMGetFirstBasicBlock(Fn: &Value) -> BasicBlockRef;
-    pub fn LLVMGetFirstInstruction(BB: BasicBlockRef) -> &'a Value;
+    pub fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
+    pub fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
+    pub fn LLVMGetFirstInstruction(BB: &BasicBlock) -> &'a Value;
     pub fn LLVMInstructionEraseFromParent(Inst: &Value);
 
     // Operations on call sites
@@ -745,15 +744,15 @@ extern "C" {
     // Operations on phi nodes
     pub fn LLVMAddIncoming(PhiNode: &'a Value,
                            IncomingValues: *const &'a Value,
-                           IncomingBlocks: *const BasicBlockRef,
+                           IncomingBlocks: *const &'a BasicBlock,
                            Count: c_uint);
 
     // Instruction builders
     pub fn LLVMCreateBuilderInContext(C: &Context) -> &Builder;
-    pub fn LLVMPositionBuilder(Builder: &'a Builder, Block: BasicBlockRef, Instr: &'a Value);
+    pub fn LLVMPositionBuilder(Builder: &'a Builder, Block: &'a BasicBlock, Instr: &'a Value);
     pub fn LLVMPositionBuilderBefore(Builder: &'a Builder, Instr: &'a Value);
-    pub fn LLVMPositionBuilderAtEnd(Builder: &Builder, Block: BasicBlockRef);
-    pub fn LLVMGetInsertBlock(Builder: &Builder) -> BasicBlockRef;
+    pub fn LLVMPositionBuilderAtEnd(Builder: &'a Builder, Block: &'a BasicBlock);
+    pub fn LLVMGetInsertBlock(Builder: &Builder) -> &BasicBlock;
     pub fn LLVMDisposeBuilder(Builder: &Builder);
 
     // Metadata
@@ -765,15 +764,15 @@ extern "C" {
     pub fn LLVMBuildRetVoid(B: &Builder) -> &Value;
     pub fn LLVMBuildRet(B: &'a Builder, V: &'a Value) -> &'a Value;
     pub fn LLVMBuildAggregateRet(B: &'a Builder, RetVals: *const &'a Value, N: c_uint) -> &'a Value;
-    pub fn LLVMBuildBr(B: &Builder, Dest: BasicBlockRef) -> &Value;
+    pub fn LLVMBuildBr(B: &'a Builder, Dest: &'a BasicBlock) -> &'a Value;
     pub fn LLVMBuildCondBr(B: &'a Builder,
                            If: &'a Value,
-                           Then: BasicBlockRef,
-                           Else: BasicBlockRef)
+                           Then: &'a BasicBlock,
+                           Else: &'a BasicBlock)
                            -> &'a Value;
     pub fn LLVMBuildSwitch(B: &'a Builder,
                            V: &'a Value,
-                           Else: BasicBlockRef,
+                           Else: &'a BasicBlock,
                            NumCases: c_uint)
                            -> &'a Value;
     pub fn LLVMBuildIndirectBr(B: &'a Builder, Addr: &'a Value, NumDests: c_uint) -> &'a Value;
@@ -781,8 +780,8 @@ extern "C" {
                                Fn: &'a Value,
                                Args: *const &'a Value,
                                NumArgs: c_uint,
-                               Then: BasicBlockRef,
-                               Catch: BasicBlockRef,
+                               Then: &'a BasicBlock,
+                               Catch: &'a BasicBlock,
                                Bundle: Option<NonNull<OperandBundleDef>>,
                                Name: *const c_char)
                                -> &'a Value;
@@ -803,7 +802,7 @@ extern "C" {
                                    -> Option<&'a Value>;
     pub fn LLVMRustBuildCleanupRet(B: &'a Builder,
                                    CleanupPad: &'a Value,
-                                   UnwindBB: Option<NonNull<BasicBlock>>)
+                                   UnwindBB: Option<&'a BasicBlock>)
                                    -> Option<&'a Value>;
     pub fn LLVMRustBuildCatchPad(B: &'a Builder,
                                  ParentPad: &'a Value,
@@ -811,18 +810,18 @@ extern "C" {
                                  Args: *const &'a Value,
                                  Name: *const c_char)
                                  -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchRet(B: &'a Builder, Pad: &'a Value, BB: BasicBlockRef) -> Option<&'a Value>;
+    pub fn LLVMRustBuildCatchRet(B: &'a Builder, Pad: &'a Value, BB: &'a BasicBlock) -> Option<&'a Value>;
     pub fn LLVMRustBuildCatchSwitch(Builder: &'a Builder,
                                     ParentPad: Option<&'a Value>,
-                                    BB: Option<NonNull<BasicBlock>>,
+                                    BB: Option<&'a BasicBlock>,
                                     NumHandlers: c_uint,
                                     Name: *const c_char)
                                     -> Option<&'a Value>;
-    pub fn LLVMRustAddHandler(CatchSwitch: &Value, Handler: BasicBlockRef);
+    pub fn LLVMRustAddHandler(CatchSwitch: &'a Value, Handler: &'a BasicBlock);
     pub fn LLVMSetPersonalityFn(Func: &'a Value, Pers: &'a Value);
 
     // Add a case to the switch instruction
-    pub fn LLVMAddCase(Switch: &'a Value, OnVal: &'a Value, Dest: BasicBlockRef);
+    pub fn LLVMAddCase(Switch: &'a Value, OnVal: &'a Value, Dest: &'a BasicBlock);
 
     // Add a clause to the landing pad instruction
     pub fn LLVMAddClause(LandingPad: &'a Value, ClauseVal: &'a Value);
@@ -1503,7 +1502,7 @@ extern "C" {
                                                AddrOps: *const i64,
                                                AddrOpsCount: c_uint,
                                                DL: &'a Value,
-                                               InsertAtEnd: BasicBlockRef)
+                                               InsertAtEnd: &'a BasicBlock)
                                                -> &'a Value;
 
     pub fn LLVMRustDIBuilderCreateEnumerator(Builder: &DIBuilder,
@@ -1691,7 +1690,7 @@ extern "C" {
                                          -> OperandBundleDefRef;
     pub fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
 
-    pub fn LLVMRustPositionBuilderAtStart(B: &Builder, BB: BasicBlockRef);
+    pub fn LLVMRustPositionBuilderAtStart(B: &'a Builder, BB: &'a BasicBlock);
 
     pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: &Value);

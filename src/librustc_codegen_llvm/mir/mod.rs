@@ -10,7 +10,7 @@
 
 use common::{C_i32, C_null};
 use libc::c_uint;
-use llvm::{self, BasicBlockRef};
+use llvm::{self, BasicBlock};
 use llvm::debuginfo::DIScope;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout};
@@ -66,7 +66,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     personality_slot: Option<PlaceRef<'ll, 'tcx>>,
 
     /// A `Block` for each MIR `BasicBlock`
-    blocks: IndexVec<mir::BasicBlock, BasicBlockRef>,
+    blocks: IndexVec<mir::BasicBlock, &'ll BasicBlock>,
 
     /// The funclet status of each basic block
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
@@ -77,10 +77,10 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
-    landing_pads: IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
+    landing_pads: IndexVec<mir::BasicBlock, Option<&'ll BasicBlock>>,
 
     /// Cached unreachable block
-    unreachable_block: Option<BasicBlockRef>,
+    unreachable_block: Option<&'ll BasicBlock>,
 
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `PlaceRef` representing an alloca, but not always:
@@ -219,7 +219,7 @@ pub fn codegen_mir(
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
     let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
-    let block_bxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
+    let block_bxs: IndexVec<mir::BasicBlock, &'ll BasicBlock> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK && !reentrant_start_block {
                 bx.llbb()
@@ -348,8 +348,8 @@ fn create_funclets(
     mir: &'a Mir<'tcx>,
     bx: &Builder<'a, 'll, 'tcx>,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, BasicBlockRef>)
-    -> (IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
+    block_bxs: &IndexVec<mir::BasicBlock, &'ll BasicBlock>)
+    -> (IndexVec<mir::BasicBlock, Option<&'ll BasicBlock>>,
         IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>)
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {

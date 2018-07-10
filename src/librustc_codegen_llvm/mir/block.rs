@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, BasicBlockRef};
+use llvm::{self, BasicBlock};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
@@ -754,7 +754,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     /// Return the landingpad wrapper around the given basic block
     ///
     /// No-op in MSVC SEH scheme.
-    fn landing_pad_to(&mut self, target_bb: mir::BasicBlock) -> BasicBlockRef {
+    fn landing_pad_to(&mut self, target_bb: mir::BasicBlock) -> &'ll BasicBlock {
         if let Some(block) = self.landing_pads[target_bb] {
             return block;
         }
@@ -765,7 +765,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         landing_pad
     }
 
-    fn landing_pad_uncached(&mut self, target_bb: BasicBlockRef) -> BasicBlockRef {
+    fn landing_pad_uncached(&mut self, target_bb: &'ll BasicBlock) -> &'ll BasicBlock {
         if base::wants_msvc_seh(self.cx.sess()) {
             span_bug!(self.mir.span, "landing pad was not inserted?")
         }
@@ -790,7 +790,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false)
     }
 
-    fn unreachable_block(&mut self) -> BasicBlockRef {
+    fn unreachable_block(&mut self) -> &'ll BasicBlock {
         self.unreachable_block.unwrap_or_else(|| {
             let bl = self.new_block("unreachable");
             bl.unreachable();
