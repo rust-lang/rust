@@ -709,6 +709,7 @@ impl<'a> Builder<'a> {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
 
+        // command specific path, we call clear_if_dirty with this
         let mut my_out = match cmd {
             "build" => self.cargo_out(compiler, mode, target),
 
@@ -754,20 +755,22 @@ impl<'a> Builder<'a> {
                 Mode::Std => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
                 },
+                Mode::Test => {
+                    self.clear_if_dirty(&my_out, &libstd_stamp);
+                },
                 Mode::Rustc => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);
                 },
-                Mode::Test => {
-                    self.clear_if_dirty(&my_out, &libstd_stamp);
-                },
+                Mode::Codegen => { },
+                Mode::ToolStd => { },
+                Mode::ToolTest => { },
                 Mode::ToolRustc => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);
                     self.clear_if_dirty(&my_out, &librustc_stamp);
-                }
-                _ => { }
+                },
             }
         }
 
