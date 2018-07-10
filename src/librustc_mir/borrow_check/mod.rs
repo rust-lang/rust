@@ -1905,8 +1905,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // highlighted text will always be `&<expr>` and
                     // thus can transform to `&mut` by slicing off
                     // first ASCII character and prepending "&mut ".
-                    let borrowed_expr = src[1..].to_string();
-                    return (assignment_rhs_span, format!("&mut {}", borrowed_expr));
+                    if src.starts_with('&') {
+                        let borrowed_expr = src[1..].to_string();
+                        return (assignment_rhs_span, format!("&mut {}", borrowed_expr));
+                    }
                 }
             }
 
