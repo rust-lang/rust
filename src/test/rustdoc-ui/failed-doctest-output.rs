@@ -17,3 +17,8 @@
 /// panic!("oh no");
 /// ```
 pub struct SomeStruct;
+
+/// ```
+/// no
+/// ```
+pub struct OtherStruct;
