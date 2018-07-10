@@ -4,6 +4,7 @@
 pub mod wrapping;
 
 pub mod masks_reductions;
+pub mod swap_bytes;
 
 pub mod abs;
 pub mod cos;

@@ -9,7 +9,7 @@ macro_rules! impl_mask_reductions {
             pub fn all(self) -> bool {
                 unsafe { super::codegen::masks_reductions::All::all(self) }
             }
-            /// Is `any` vector lanes `true`?
+            /// Is `any` vector lane `true`?
             #[inline]
             pub fn any(self) -> bool {
                 unsafe { super::codegen::masks_reductions::Any::any(self) }
