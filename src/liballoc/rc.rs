@@ -618,7 +618,7 @@ impl<T: Clone> Rc<T> {
     }
 }
 
-impl Rc<dyn Any> {
+impl Rc<Any> {
     #[inline]
     #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Rc<Any>` to a concrete type.
@@ -641,7 +641,7 @@ impl Rc<dyn Any> {
     ///     print_if_string(Rc::new(0i8));
     /// }
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
+    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<Any>> {
         if (*self).is::<T>() {
             let ptr = self.ptr.cast::<RcBox<T>>();
             forget(self);
@@ -1554,7 +1554,7 @@ mod tests {
         assert_eq!(unsafe { &*ptr }, "foo");
         assert_eq!(rc, rc2);
 
-        let rc: Rc<Display> = Rc::new(123);
+        let rc: Rc<dyn Display> = Rc::new(123);
 
         let ptr = Rc::into_raw(rc.clone());
         let rc2 = unsafe { Rc::from_raw(ptr) };
@@ -1755,8 +1755,8 @@ mod tests {
         use std::fmt::Display;
         use std::string::ToString;
 
-        let b: Box<Display> = box 123;
-        let r: Rc<Display> = Rc::from(b);
+        let b: Box<dyn Display> = box 123;
+        let r: Rc<dyn Display> = Rc::from(b);
 
         assert_eq!(r.to_string(), "123");
     }
@@ -1765,8 +1765,8 @@ mod tests {
     fn test_from_box_trait_zero_sized() {
         use std::fmt::Debug;
 
-        let b: Box<Debug> = box ();
-        let r: Rc<Debug> = Rc::from(b);
+        let b: Box<dyn Debug> = box ();
+        let r: Rc<dyn Debug> = Rc::from(b);
 
         assert_eq!(format!("{:?}", r), "()");
     }
@@ -1783,8 +1783,8 @@ mod tests {
     fn test_downcast() {
         use std::any::Any;
 
-        let r1: Rc<Any> = Rc::new(i32::max_value());
-        let r2: Rc<Any> = Rc::new("abc");
+        let r1: Rc<dyn Any> = Rc::new(i32::max_value());
+        let r2: Rc<dyn Any> = Rc::new("abc");
 
         assert!(r1.clone().downcast::<u32>().is_err());
 

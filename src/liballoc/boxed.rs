@@ -446,7 +446,7 @@ impl From<Box<str>> for Box<[u8]> {
     }
 }
 
-impl Box<dyn Any> {
+impl Box<Any> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Attempt to downcast the box to a concrete type.
@@ -468,10 +468,10 @@ impl Box<dyn Any> {
     ///     print_if_string(Box::new(0i8));
     /// }
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any>> {
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
-                let raw: *mut dyn Any = Box::into_raw(self);
+                let raw: *mut Any = Box::into_raw(self);
                 Ok(Box::from_raw(raw as *mut T))
             }
         } else {
@@ -480,7 +480,7 @@ impl Box<dyn Any> {
     }
 }
 
-impl Box<dyn Any + Send> {
+impl Box<Any + Send> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Attempt to downcast the box to a concrete type.
@@ -502,10 +502,10 @@ impl Box<dyn Any + Send> {
     ///     print_if_string(Box::new(0i8));
     /// }
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any + Send>> {
-        <Box<dyn Any>>::downcast(self).map_err(|s| unsafe {
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any + Send>> {
+        <Box<Any>>::downcast(self).map_err(|s| unsafe {
             // reapply the Send marker
-            Box::from_raw(Box::into_raw(s) as *mut (dyn Any + Send))
+            Box::from_raw(Box::into_raw(s) as *mut (Any + Send))
         })
     }
 }
@@ -643,7 +643,7 @@ impl<A, F> FnBox<A> for F
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
+impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + 'a> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -653,7 +653,7 @@ impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + 'a> {
+impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + Send + 'a> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
