@@ -115,6 +115,9 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if lang_items::$item == lang_items::PanicImplLangItem {
                 tcx.sess.err(&format!("`#[panic_implementation]` function required, \
                                         but not found"));
+            } else if lang_items::$item == lang_items::OomLangItem {
+                tcx.sess.err(&format!("`#[alloc_error_handler]` function required, \
+                                        but not found"));
             } else {
                 tcx.sess.err(&format!("language item required, but not found: `{}`",
                                         stringify!($name)));

@@ -1,0 +1,4 @@
+error: `#[alloc_error_handler]` function required, but not found
+
+error: aborting due to previous error
+

@@ -8,24 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "bin"]
-#![feature(lang_items)]
-#![feature(panic_implementation)]
-#![no_main]
+// compile-flags:-C panic=abort
+
 #![no_std]
+#![no_main]
 
 use core::alloc::Layout;
-use core::panic::PanicInfo;
 
-#[panic_implementation]
-fn panic(_: &PanicInfo) -> ! {
-    loop {}
-}
-
-#[lang = "eh_personality"]
-fn eh() {}
-
-#[lang = "oom"]
-fn oom(_: Layout) -> ! {
+#[alloc_error_handler] //~ ERROR #[alloc_error_handler] is an unstable feature (see issue #51540)
+fn oom(info: Layout) -> ! {
     loop {}
 }

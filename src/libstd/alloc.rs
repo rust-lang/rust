@@ -125,9 +125,10 @@ fn default_alloc_error_hook(layout: Layout) {
 
 #[cfg(not(test))]
 #[doc(hidden)]
-#[lang = "oom"]
+#[cfg_attr(stage0, lang = "oom")]
+#[cfg_attr(not(stage0), alloc_error_handler)]
 #[unstable(feature = "alloc_internals", issue = "0")]
-pub extern fn rust_oom(layout: Layout) -> ! {
+pub fn rust_oom(layout: Layout) -> ! {
     let hook = HOOK.load(Ordering::SeqCst);
     let hook: fn(Layout) = if hook.is_null() {
         default_alloc_error_hook

@@ -481,6 +481,9 @@ declare_features! (
 
     // Allows async and await syntax
     (active, async_await, "1.28.0", Some(50547), None),
+
+    // #[alloc_error_handler]
+    (active, alloc_error_handler, "1.29.0", Some(51540), None),
 );
 
 declare_features! (
@@ -1082,6 +1085,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                            "panic_implementation",
                            "#[panic_implementation] is an unstable feature",
                            cfg_fn!(panic_implementation))),
+
+    ("alloc_error_handler", Normal, Gated(Stability::Unstable,
+                           "alloc_error_handler",
+                           "#[alloc_error_handler] is an unstable feature",
+                           cfg_fn!(alloc_error_handler))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),
