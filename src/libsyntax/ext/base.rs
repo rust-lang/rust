@@ -255,7 +255,8 @@ pub type MacroExpanderFn =
                 -> Box<dyn MacResult+'cx>;
 
 impl<F> TTMacroExpander for F
-    where F: for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree]) -> Box<dyn MacResult+'cx>
+    where F: for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
+    -> Box<dyn MacResult+'cx>
 {
     fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
                    -> Box<dyn MacResult+'cx> {
