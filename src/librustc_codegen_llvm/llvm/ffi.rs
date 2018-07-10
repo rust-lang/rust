@@ -388,8 +388,6 @@ extern { pub type PassManager; }
 pub type PassManagerRef = *mut PassManager;
 extern { pub type PassManagerBuilder; }
 pub type PassManagerBuilderRef = *mut PassManagerBuilder;
-extern { pub type Use; }
-pub type UseRef = *mut Use;
 extern { pub type ObjectFile; }
 pub type ObjectFileRef = *mut ObjectFile;
 extern { pub type SectionIterator; }
@@ -555,11 +553,6 @@ extern "C" {
     pub fn LLVMSetValueName(Val: &Value, Name: *const c_char);
     pub fn LLVMReplaceAllUsesWith(OldVal: &'a Value, NewVal: &'a Value);
     pub fn LLVMSetMetadata(Val: &'a Value, KindID: c_uint, Node: &'a Value);
-
-    // Operations on Uses
-    pub fn LLVMGetFirstUse(Val: &Value) -> UseRef;
-    pub fn LLVMGetNextUse(U: UseRef) -> UseRef;
-    pub fn LLVMGetUser(U: UseRef) -> &'a Value;
 
     // Operations on Users
     pub fn LLVMGetOperand(Val: &Value, Index: c_uint) -> &Value;
