@@ -1493,7 +1493,7 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
     // Temporarily have stack size set to 16MB to deal with nom-using crates failing
     const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
-    #[cfg(unix)]
+    #[cfg(all(unix,not(target_os = "haiku")))]
     let spawn_thread = unsafe {
         // Fetch the current resource limits
         let mut rlim = libc::rlimit {
@@ -1524,6 +1524,26 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
     // We set the stack size at link time. See src/rustc/rustc.rs.
     #[cfg(windows)]
     let spawn_thread = false;
+
+    #[cfg(target_os = "haiku")]
+    let spawn_thread = unsafe {
+        // Haiku does not have setrlimit implemented for the stack size.
+        // By default it does have the 16 MB stack limit, but we check this in
+        // case the minimum STACK_SIZE changes or Haiku's defaults change.
+        let mut rlim = libc::rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
+        if libc::getrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
+            let err = io::Error::last_os_error();
+            error!("in_rustc_thread: error calling getrlimit: {}", err);
+            true
+        } else if rlim.rlim_cur >= STACK_SIZE {
+            false
+        } else {
+            true
+        }
+    };
 
     #[cfg(not(any(windows,unix)))]
     let spawn_thread = true;
