@@ -1367,4 +1367,26 @@ extern "rust-intrinsic" {
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
+
+    /// Add `a + b`, but with undefined behaviour if the sum overflows.
+    #[cfg(not(stage0))]
+    pub fn nowrap_add<T>(a: T, b: T) -> T;
+    /// Subtract `a - b`, but with undefined behaviour if the difference overflows.
+    #[cfg(not(stage0))]
+    pub fn nowrap_sub<T>(a: T, b: T) -> T;
+    /// Multiply `a * b`, but with undefined behaviour if the produce overflows.
+    #[cfg(not(stage0))]
+    pub fn nowrap_mul<T>(a: T, b: T) -> T;
+    /// Negate `-a`, but with undefined behaviour if it the negation overflows.
+    #[cfg(not(stage0))]
+    pub fn nowrap_neg<T>(a: T) -> T;
 }
+
+#[cfg(stage0)]
+pub unsafe fn nowrap_add<T>(a: T, b: T) -> T { add_with_overflow(a, b).0 }
+#[cfg(stage0)]
+pub unsafe fn nowrap_sub<T>(a: T, b: T) -> T { sub_with_overflow(a, b).0 }
+#[cfg(stage0)]
+pub unsafe fn nowrap_mul<T>(a: T, b: T) -> T { mul_with_overflow(a, b).0 }
+#[cfg(stage0)]
+pub unsafe fn nowrap_neg<T: Default>(a: T) -> T { nowrap_sub(T::default(), a) }

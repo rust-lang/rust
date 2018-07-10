@@ -318,6 +318,13 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil())
             }
 
+            "nowrap_add" | "nowrap_sub" | "nowrap_mul" => {
+                (1, vec![param(0), param(0)], param(0))
+            }
+            "nowrap_neg" => {
+                (1, vec![param(0)], param(0))
+            }
+
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
                                 "unrecognized intrinsic function: `{}`",
