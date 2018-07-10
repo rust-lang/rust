@@ -582,9 +582,21 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => continue,
                 PassMode::Direct(_) => arg.layout.immediate_llvm_type(cx),
                 PassMode::Pair(..) => {
-                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 0));
-                    llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1));
-                    continue;
+                    let imm_type_of = |i, scalar: &layout::Scalar| {
+                        if scalar.is_bool() {
+                            Type::i1(cx)
+                        } else {
+                            arg.layout.scalar_pair_element_llvm_type(cx, i)
+                        }
+                    };
+                    match &arg.layout.abi {
+                        layout::Abi::ScalarPair(a, b) => {
+                            llargument_tys.push(imm_type_of(0, a));
+                            llargument_tys.push(imm_type_of(1, b));
+                            continue;
+                        }
+                        _ => bug!("FnType::llvm_type: {:?} invalid for pair arugment", arg.layout)
+                    }
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),
                 PassMode::Indirect(_) => arg.memory_ty(cx).ptr_to(),

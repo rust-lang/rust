@@ -361,16 +361,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         };
         let scalar = [a, b][index];
 
-        // Make sure to return the same type `immediate_llvm_type` would,
-        // to avoid dealing with two types and the associated conversions.
-        // This means that `(bool, bool)` is represented as `{i1, i1}`,
-        // both in memory and as an immediate, while `bool` is typically
-        // `i8` in memory and only `i1` when immediate. While we need to
-        // load/store `bool` as `i8` to avoid crippling LLVM optimizations,
-        // `i1` in a LLVM aggregate is valid and mostly equivalent to `i8`.
-        if scalar.is_bool() {
-            return Type::i1(cx);
-        }
+        // Note: We used to define `bool` as `i1` in a scalar pair, but now we
+        // always use `i8` to match the memory storage, more like LLVM expects.
 
         let offset = if index == 0 {
             Size::ZERO

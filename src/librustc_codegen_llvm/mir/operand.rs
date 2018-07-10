@@ -238,15 +238,22 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
             // Extract a scalar component from a pair.
             (OperandValue::Pair(a_llval, b_llval), &layout::Abi::ScalarPair(ref a, ref b)) => {
-                if offset.bytes() == 0 {
+                let (mut llval, scalar) = if offset.bytes() == 0 {
                     assert_eq!(field.size, a.value.size(bx.cx));
-                    OperandValue::Immediate(a_llval)
+                    (a_llval, a)
                 } else {
                     assert_eq!(offset, a.value.size(bx.cx)
                         .abi_align(b.value.align(bx.cx)));
                     assert_eq!(field.size, b.value.size(bx.cx));
-                    OperandValue::Immediate(b_llval)
+                    (b_llval, b)
+                };
+                if scalar.is_bool() {
+                    // Scalar pairs store `bool` in its `i8` memory storage, like any other
+                    // aggregate, so we have to truncate to an `i1` immediate value.
+                    assert_eq!(common::val_ty(llval), Type::i8(bx.cx));
+                    llval = bx.trunc(llval, Type::i1(bx.cx));
                 }
+                OperandValue::Immediate(llval)
             }
 
             // `#[repr(simd)]` types are also immediate.
@@ -308,11 +315,9 @@ impl<'a, 'tcx> OperandValue {
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
-                    let mut llptr = bx.struct_gep(dest.llval, i as u64);
-                    // Make sure to always store i1 as i8.
-                    if common::val_ty(x) == Type::i1(bx.cx) {
-                        llptr = bx.pointercast(llptr, Type::i8p(bx.cx));
-                    }
+                    let llptr = bx.struct_gep(dest.llval, i as u64);
+                    // Pairs should always contain the memory type, particularly `bool` as `i8`.
+                    assert_ne!(common::val_ty(llptr), Type::i1(bx.cx).ptr_to());
                     let val = base::from_immediate(bx, x);
                     bx.store_with_flags(val, llptr, dest.align, flags);
                 }
