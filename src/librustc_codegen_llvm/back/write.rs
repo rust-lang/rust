@@ -696,7 +696,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
 
         if config.emit_bc_compressed {
             let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
-            let data = bytecode::encode(&module.llmod_id, data);
+            let data = bytecode::encode(&module.name, data);
             if let Err(e) = fs::write(&dst, data) {
                 diag_handler.err(&format!("failed to write bytecode: {}", e));
             }
@@ -1308,7 +1308,6 @@ fn execute_work_item(cgcx: &CodegenContext,
         assert_eq!(bytecode_compressed.is_some(), config.emit_bc_compressed);
 
         Ok(WorkItemResult::Compiled(CompiledModule {
-            llmod_id: module.llmod_id.clone(),
             name: module_name,
             kind: ModuleKind::Regular,
             pre_existing: true,
