@@ -4318,14 +4318,6 @@ where
 
 // Start of code copied from rust-clippy
 
-pub fn get_trait_def_id(tcx: &TyCtxt, path: &[&str], use_local: bool) -> Option<DefId> {
-    if use_local {
-        path_to_def_local(tcx, path)
-    } else {
-        path_to_def(tcx, path)
-    }
-}
-
 pub fn path_to_def_local(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
     let krate = tcx.hir.krate();
     let mut items = krate.module.item_ids.clone();
