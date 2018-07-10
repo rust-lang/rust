@@ -193,6 +193,17 @@ pub fn run_core(search_paths: SearchPaths,
     let intra_link_resolution_failure_name = lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
     let warnings_lint_name = lint::builtin::WARNINGS.name;
     let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
+
+    // In addition to those specific lints, we also need to whitelist those given through
+    // command line, otherwise they'll get ignored and we don't want that.
+    let mut whitelisted_lints = vec![warnings_lint_name.to_owned(),
+                                     intra_link_resolution_failure_name.to_owned(),
+                                     missing_docs.to_owned()];
+
+    for (lint, _) in &cmd_lints {
+        whitelisted_lints.push(lint.clone());
+    }
+
     let lints = lint::builtin::HardwiredLints.get_lints()
                     .into_iter()
                     .chain(rustc_lint::SoftLints.get_lints().into_iter())
@@ -248,9 +259,7 @@ pub fn run_core(search_paths: SearchPaths,
                                      .filter_map(|lint| {
                                          // We don't want to whitelist *all* lints so let's
                                          // ignore those ones.
-                                         if lint.name == warnings_lint_name ||
-                                            lint.name == intra_link_resolution_failure_name ||
-                                            lint.name == missing_docs {
+                                         if whitelisted_lints.iter().any(|l| &lint.name == l) {
                                              None
                                          } else {
                                              Some(lint)
