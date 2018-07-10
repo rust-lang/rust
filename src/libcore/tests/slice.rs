@@ -390,6 +390,106 @@ fn test_windows_zip() {
     assert_eq!(res, [14, 18, 22, 26]);
 }
 
+#[test]
+#[allow(const_err)]
+fn test_iter_ref_consistency() {
+    use std::fmt::Debug;
+
+    fn helper<T : Copy + Debug + PartialEq>(x : T) {
+        let v : &[T] = &[x, x, x];
+        let v_ptrs : [*const T; 3] = match v {
+            [ref v1, ref v2, ref v3] => [v1 as *const _, v2 as *const _, v3 as *const _],
+            _ => unreachable!()
+        };
+        let len = v.len();
+
+        for i in 0..len {
+            assert_eq!(&v[i] as *const _, v_ptrs[i]); // check the v_ptrs array, just to be sure
+            let nth = v.iter().nth(i).unwrap();
+            assert_eq!(nth as *const _, v_ptrs[i]);
+        }
+        assert_eq!(v.iter().nth(len), None, "nth(len) should return None");
+
+        {
+            let mut it = v.iter();
+            for i in 0..len{
+                let remaining = len - i;
+                assert_eq!(it.size_hint(), (remaining, Some(remaining)));
+
+                let next = it.next().unwrap();
+                assert_eq!(next as *const _, v_ptrs[i]);
+            }
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert_eq!(it.next(), None, "The final call to next() should return None");
+        }
+
+        {
+            let mut it = v.iter();
+            for i in 0..len{
+                let remaining = len - i;
+                assert_eq!(it.size_hint(), (remaining, Some(remaining)));
+
+                let prev = it.next_back().unwrap();
+                assert_eq!(prev as *const _, v_ptrs[remaining-1]);
+            }
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert_eq!(it.next_back(), None, "The final call to next_back() should return None");
+        }
+    }
+
+    fn helper_mut<T : Copy + Debug + PartialEq>(x : T) {
+        let v : &mut [T] = &mut [x, x, x];
+        let v_ptrs : [*mut T; 3] = match v {
+            [ref v1, ref v2, ref v3] =>
+              [v1 as *const _ as *mut _, v2 as *const _ as *mut _, v3 as *const _ as *mut _],
+            _ => unreachable!()
+        };
+        let len = v.len();
+
+        for i in 0..len {
+            assert_eq!(&mut v[i] as *mut _, v_ptrs[i]); // check the v_ptrs array, just to be sure
+            let nth = v.iter_mut().nth(i).unwrap();
+            assert_eq!(nth as *mut _, v_ptrs[i]);
+        }
+        assert_eq!(v.iter().nth(len), None, "nth(len) should return None");
+
+        {
+            let mut it = v.iter_mut();
+            for i in 0..len {
+                let remaining = len - i;
+                assert_eq!(it.size_hint(), (remaining, Some(remaining)));
+
+                let next = it.next().unwrap();
+                assert_eq!(next as *mut _, v_ptrs[i]);
+            }
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert_eq!(it.next(), None, "The final call to next() should return None");
+        }
+
+        {
+            let mut it = v.iter_mut();
+            for i in 0..len{
+                let remaining = len - i;
+                assert_eq!(it.size_hint(), (remaining, Some(remaining)));
+
+                let prev = it.next_back().unwrap();
+                assert_eq!(prev as *mut _, v_ptrs[remaining-1]);
+            }
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert_eq!(it.next_back(), None, "The final call to next_back() should return None");
+        }
+    }
+
+    // Make sure iterators and slice patterns yield consistent addresses for various types,
+    // including ZSTs.
+    helper(0u32);
+    helper(());
+    helper([0u32; 0]); // ZST with alignment > 0
+    helper_mut(0u32);
+    helper_mut(());
+    helper_mut([0u32; 0]); // ZST with alignment > 0
+}
+
 // The current implementation of SliceIndex fails to handle methods
 // orthogonally from range types; therefore, it is worth testing
 // all of the indexing operations on each input.
