@@ -21,7 +21,6 @@ use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
-use llvm::ValueRef;
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
@@ -35,6 +34,7 @@ use rustc::ty::{self, ParamEnv, Ty, InstanceDef};
 use rustc::mir;
 use rustc::session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
+use value::Value;
 
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
@@ -135,12 +135,12 @@ pub struct FunctionDebugContextData<'ll> {
     pub defining_crate: CrateNum,
 }
 
-pub enum VariableAccess<'a> {
+pub enum VariableAccess<'a, 'll> {
     // The llptr given is an alloca containing the variable's value
-    DirectVariable { alloca: ValueRef },
+    DirectVariable { alloca: &'ll Value },
     // The llptr given is an alloca containing the start of some pointer chain
     // leading to the variable's content.
-    IndirectVariable { alloca: ValueRef, address_operations: &'a [i64] }
+    IndirectVariable { alloca: &'ll Value, address_operations: &'a [i64] }
 }
 
 pub enum VariableKind {
@@ -204,7 +204,7 @@ pub fn create_function_debug_context(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
-    llfn: ValueRef,
+    llfn: &'ll Value,
     mir: &mir::Mir,
 ) -> FunctionDebugContext<'ll> {
     if cx.sess().opts.debuginfo == NoDebugInfo {
@@ -482,7 +482,7 @@ pub fn declare_local(
     variable_name: ast::Name,
     variable_type: Ty<'tcx>,
     scope_metadata: &'ll DIScope,
-    variable_access: VariableAccess,
+    variable_access: VariableAccess<'_, 'll>,
     variable_kind: VariableKind,
     span: Span,
 ) {

@@ -9,9 +9,7 @@
 // except according to those terms.
 
 use libc::c_uint;
-use llvm;
-use llvm::{SetUnnamedAddr};
-use llvm::{ValueRef, True};
+use llvm::{self, SetUnnamedAddr, True};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use debuginfo;
@@ -24,27 +22,29 @@ use syntax_pos::Span;
 use syntax_pos::symbol::LocalInternedString;
 use type_::Type;
 use type_of::LayoutLlvmExt;
+use value::Value;
 use rustc::ty::{self, Ty};
+
 use rustc::ty::layout::{Align, LayoutOf};
 
 use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
 use std::ffi::{CStr, CString};
 
-pub fn ptrcast(val: ValueRef, ty: &Type) -> ValueRef {
+pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
     unsafe {
         llvm::LLVMConstPointerCast(val, ty)
     }
 }
 
-pub fn bitcast(val: ValueRef, ty: &Type) -> ValueRef {
+pub fn bitcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
     unsafe {
         llvm::LLVMConstBitCast(val, ty)
     }
 }
 
-fn set_global_alignment(cx: &CodegenCx,
-                        gv: ValueRef,
+fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
+                        gv: &'ll Value,
                         mut align: Align) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
@@ -62,11 +62,12 @@ fn set_global_alignment(cx: &CodegenCx,
     }
 }
 
-pub fn addr_of_mut(cx: &CodegenCx,
-                   cv: ValueRef,
-                   align: Align,
-                   kind: &str)
-                    -> ValueRef {
+pub fn addr_of_mut(
+    cx: &CodegenCx<'ll, '_>,
+    cv: &'ll Value,
+    align: Align,
+    kind: &str,
+) -> &'ll Value {
     unsafe {
         let name = cx.generate_local_symbol_name(kind);
         let gv = declare::define_global(cx, &name[..], val_ty(cv)).unwrap_or_else(||{
@@ -80,11 +81,12 @@ pub fn addr_of_mut(cx: &CodegenCx,
     }
 }
 
-pub fn addr_of(cx: &CodegenCx,
-               cv: ValueRef,
-               align: Align,
-               kind: &str)
-               -> ValueRef {
+pub fn addr_of(
+    cx: &CodegenCx<'ll, '_>,
+    cv: &'ll Value,
+    align: Align,
+    kind: &str,
+) -> &'ll Value {
     if let Some(&gv) = cx.const_globals.borrow().get(&cv) {
         unsafe {
             // Upgrade the alignment in cases where the same constant is used with different
@@ -104,7 +106,7 @@ pub fn addr_of(cx: &CodegenCx,
     gv
 }
 
-pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
+pub fn get_static(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll Value {
     let instance = Instance::mono(cx.tcx, def_id);
     if let Some(&g) = cx.instances.borrow().get(&instance) {
         return g;
@@ -213,13 +215,13 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
     g
 }
 
-fn check_and_apply_linkage<'tcx>(
-    cx: &CodegenCx<'_, 'tcx>,
+fn check_and_apply_linkage(
+    cx: &CodegenCx<'ll, 'tcx>,
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
     sym: LocalInternedString,
     span: Option<Span>
-) -> ValueRef {
+) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
     if let Some(linkage) = attrs.linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);

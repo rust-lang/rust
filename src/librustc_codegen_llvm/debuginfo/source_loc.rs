@@ -19,7 +19,6 @@ use llvm::debuginfo::DIScope;
 use builder::Builder;
 
 use libc::c_uint;
-use std::ptr::NonNull;
 use syntax_pos::{Span, Pos};
 
 /// Sets the current debug location at the beginning of the span.
@@ -96,7 +95,7 @@ pub fn set_debug_location(bx: &Builder<'_, 'll, '_>, debug_location: InternalDeb
             debug!("setting debug location to {} {}", line, col);
 
             unsafe {
-                NonNull::new(llvm::LLVMRustDIBuilderCreateDebugLocation(
+                Some(llvm::LLVMRustDIBuilderCreateDebugLocation(
                     debug_context(bx.cx).llcontext,
                     line as c_uint,
                     col_used,

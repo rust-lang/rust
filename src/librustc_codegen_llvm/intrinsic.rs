@@ -11,8 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use intrinsics::{self, Intrinsic};
-use llvm;
-use llvm::{TypeKind, ValueRef};
+use llvm::{self, TypeKind};
 use abi::{Abi, FnType, LlvmType, PassMode};
 use mir::place::PlaceRef;
 use mir::operand::{OperandRef, OperandValue};
@@ -28,6 +27,7 @@ use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use builder::Builder;
+use value::Value;
 
 use rustc::session::Session;
 use syntax_pos::Span;
@@ -35,7 +35,7 @@ use syntax_pos::Span;
 use std::cmp::Ordering;
 use std::iter;
 
-fn get_simple_intrinsic(cx: &CodegenCx, name: &str) -> Option<ValueRef> {
+fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
     let llvm_name = match name {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -89,8 +89,8 @@ pub fn codegen_intrinsic_call(
     bx: &Builder<'a, 'll, 'tcx>,
     callee_ty: Ty<'tcx>,
     fn_ty: &FnType<'tcx, Ty<'tcx>>,
-    args: &[OperandRef<'tcx>],
-    llresult: ValueRef,
+    args: &[OperandRef<'ll, 'tcx>],
+    llresult: &'ll Value,
     span: Span,
 ) {
     let cx = bx.cx;
@@ -148,7 +148,7 @@ pub fn codegen_intrinsic_call(
             let tp_ty = substs.type_at(0);
             if let OperandValue::Pair(_, meta) = args[0].val {
                 let (llsize, _) =
-                    glue::size_and_align_of_dst(bx, tp_ty, meta);
+                    glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
                 llsize
             } else {
                 C_usize(cx, cx.size_of(tp_ty).bytes())
@@ -162,7 +162,7 @@ pub fn codegen_intrinsic_call(
             let tp_ty = substs.type_at(0);
             if let OperandValue::Pair(_, meta) = args[0].val {
                 let (_, llalign) =
-                    glue::size_and_align_of_dst(bx, tp_ty, meta);
+                    glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
                 llalign
             } else {
                 C_usize(cx, cx.align_of(tp_ty).abi())
@@ -592,9 +592,8 @@ pub fn codegen_intrinsic_call(
             fn modify_as_needed(
                 bx: &Builder<'a, 'll, 'tcx>,
                 t: &intrinsics::Type,
-                arg: &OperandRef<'tcx>,
-            ) -> Vec<ValueRef>
-            {
+                arg: &OperandRef<'ll, 'tcx>,
+            ) -> Vec<&'ll Value> {
                 match *t {
                     intrinsics::Type::Aggregate(true, ref contents) => {
                         // We found a tuple that needs squishing! So
@@ -685,10 +684,10 @@ fn copy_intrinsic(
     allow_overlap: bool,
     volatile: bool,
     ty: Ty<'tcx>,
-    dst: ValueRef,
-    src: ValueRef,
-    count: ValueRef,
-) -> ValueRef {
+    dst: &'ll Value,
+    src: &'ll Value,
+    count: &'ll Value,
+) -> &'ll Value {
     let cx = bx.cx;
     let (size, align) = cx.size_and_align_of(ty);
     let size = C_usize(cx, size.bytes());
@@ -720,10 +719,10 @@ fn memset_intrinsic(
     bx: &Builder<'a, 'll, 'tcx>,
     volatile: bool,
     ty: Ty<'tcx>,
-    dst: ValueRef,
-    val: ValueRef,
-    count: ValueRef
-) -> ValueRef {
+    dst: &'ll Value,
+    val: &'ll Value,
+    count: &'ll Value
+) -> &'ll Value {
     let cx = bx.cx;
     let (size, align) = cx.size_and_align_of(ty);
     let size = C_usize(cx, size.bytes());
@@ -734,11 +733,11 @@ fn memset_intrinsic(
 
 fn try_intrinsic(
     bx: &Builder<'a, 'll, 'tcx>,
-    cx: &CodegenCx,
-    func: ValueRef,
-    data: ValueRef,
-    local_ptr: ValueRef,
-    dest: ValueRef,
+    cx: &CodegenCx<'ll, 'tcx>,
+    func: &'ll Value,
+    data: &'ll Value,
+    local_ptr: &'ll Value,
+    dest: &'ll Value,
 ) {
     if bx.sess().no_landing_pads() {
         bx.call(func, &[data], None);
@@ -760,11 +759,11 @@ fn try_intrinsic(
 // as the old ones are still more optimized.
 fn codegen_msvc_try(
     bx: &Builder<'a, 'll, 'tcx>,
-    cx: &CodegenCx,
-    func: ValueRef,
-    data: ValueRef,
-    local_ptr: ValueRef,
-    dest: ValueRef,
+    cx: &CodegenCx<'ll, 'tcx>,
+    func: &'ll Value,
+    data: &'ll Value,
+    local_ptr: &'ll Value,
+    dest: &'ll Value,
 ) {
     let llfn = get_rust_try_fn(cx, &mut |bx| {
         let cx = bx.cx;
@@ -870,11 +869,11 @@ fn codegen_msvc_try(
 // the right personality function.
 fn codegen_gnu_try(
     bx: &Builder<'a, 'll, 'tcx>,
-    cx: &CodegenCx,
-    func: ValueRef,
-    data: ValueRef,
-    local_ptr: ValueRef,
-    dest: ValueRef,
+    cx: &CodegenCx<'ll, 'tcx>,
+    func: &'ll Value,
+    data: &'ll Value,
+    local_ptr: &'ll Value,
+    dest: &'ll Value,
 ) {
     let llfn = get_rust_try_fn(cx, &mut |bx| {
         let cx = bx.cx;
@@ -936,7 +935,7 @@ fn gen_fn<'ll, 'tcx>(
     inputs: Vec<Ty<'tcx>>,
     output: Ty<'tcx>,
     codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
-) -> ValueRef {
+) -> &'ll Value {
     let rust_fn_ty = cx.tcx.mk_fn_ptr(ty::Binder::bind(cx.tcx.mk_fn_sig(
         inputs.into_iter(),
         output,
@@ -957,7 +956,7 @@ fn gen_fn<'ll, 'tcx>(
 fn get_rust_try_fn<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
-) -> ValueRef {
+) -> &'ll Value {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
     }
@@ -986,11 +985,11 @@ fn generic_simd_intrinsic(
     bx: &Builder<'a, 'll, 'tcx>,
     name: &str,
     callee_ty: Ty<'tcx>,
-    args: &[OperandRef<'tcx>],
+    args: &[OperandRef<'ll, 'tcx>],
     ret_ty: Ty<'tcx>,
     llret_ty: &'ll Type,
     span: Span
-) -> Result<ValueRef, ()> {
+) -> Result<&'ll Value, ()> {
     // macros for error handling:
     macro_rules! emit_error {
         ($msg: tt) => {
@@ -1167,8 +1166,8 @@ fn generic_simd_intrinsic(
         in_len: usize,
         bx: &Builder<'a, 'll, 'tcx>,
         span: Span,
-        args: &[OperandRef<'tcx>],
-    ) -> Result<ValueRef, ()> {
+        args: &[OperandRef<'ll, 'tcx>],
+    ) -> Result<&'ll Value, ()> {
         macro_rules! emit_error {
             ($msg: tt) => {
                 emit_error!($msg, )

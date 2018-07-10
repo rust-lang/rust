@@ -12,8 +12,7 @@
 
 //! Code that is useful in various codegen modules.
 
-use llvm;
-use llvm::{ValueRef, TypeKind};
+use llvm::{self, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
@@ -25,6 +24,7 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
+
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
@@ -90,20 +90,20 @@ pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bo
 /// When inside of a landing pad, each function call in LLVM IR needs to be
 /// annotated with which landing pad it's a part of. This is accomplished via
 /// the `OperandBundleDef` value created for MSVC landing pads.
-pub struct Funclet {
-    cleanuppad: ValueRef,
+pub struct Funclet<'ll> {
+    cleanuppad: &'ll Value,
     operand: OperandBundleDef,
 }
 
-impl Funclet {
-    pub fn new(cleanuppad: ValueRef) -> Funclet {
+impl Funclet<'ll> {
+    pub fn new(cleanuppad: &'ll Value) -> Self {
         Funclet {
             cleanuppad,
             operand: OperandBundleDef::new("funclet", &[cleanuppad]),
         }
     }
 
-    pub fn cleanuppad(&self) -> ValueRef {
+    pub fn cleanuppad(&self) -> &'ll Value {
         self.cleanuppad
     }
 
@@ -112,62 +112,61 @@ impl Funclet {
     }
 }
 
-// TODO: use proper lifetime in return type
-pub fn val_ty(v: ValueRef) -> &'static Type {
+pub fn val_ty(v: &'ll Value) -> &'ll Type {
     unsafe {
-        llvm::LLVMTypeOf(&*v)
+        llvm::LLVMTypeOf(v)
     }
 }
 
 // LLVM constant constructors.
-pub fn C_null(t: &Type) -> ValueRef {
+pub fn C_null(t: &'ll Type) -> &'ll Value {
     unsafe {
         llvm::LLVMConstNull(t)
     }
 }
 
-pub fn C_undef(t: &Type) -> ValueRef {
+pub fn C_undef(t: &'ll Type) -> &'ll Value {
     unsafe {
         llvm::LLVMGetUndef(t)
     }
 }
 
-pub fn C_int(t: &Type, i: i64) -> ValueRef {
+pub fn C_int(t: &'ll Type, i: i64) -> &'ll Value {
     unsafe {
         llvm::LLVMConstInt(t, i as u64, True)
     }
 }
 
-pub fn C_uint(t: &Type, i: u64) -> ValueRef {
+pub fn C_uint(t: &'ll Type, i: u64) -> &'ll Value {
     unsafe {
         llvm::LLVMConstInt(t, i, False)
     }
 }
 
-pub fn C_uint_big(t: &Type, u: u128) -> ValueRef {
+pub fn C_uint_big(t: &'ll Type, u: u128) -> &'ll Value {
     unsafe {
         let words = [u as u64, (u >> 64) as u64];
         llvm::LLVMConstIntOfArbitraryPrecision(t, 2, words.as_ptr())
     }
 }
 
-pub fn C_bool(cx: &CodegenCx, val: bool) -> ValueRef {
+pub fn C_bool(cx: &CodegenCx<'ll, '_>, val: bool) -> &'ll Value {
     C_uint(Type::i1(cx), val as u64)
 }
 
-pub fn C_i32(cx: &CodegenCx, i: i32) -> ValueRef {
+pub fn C_i32(cx: &CodegenCx<'ll, '_>, i: i32) -> &'ll Value {
     C_int(Type::i32(cx), i as i64)
 }
 
-pub fn C_u32(cx: &CodegenCx, i: u32) -> ValueRef {
+pub fn C_u32(cx: &CodegenCx<'ll, '_>, i: u32) -> &'ll Value {
     C_uint(Type::i32(cx), i as u64)
 }
 
-pub fn C_u64(cx: &CodegenCx, i: u64) -> ValueRef {
+pub fn C_u64(cx: &CodegenCx<'ll, '_>, i: u64) -> &'ll Value {
     C_uint(Type::i64(cx), i)
 }
 
-pub fn C_usize(cx: &CodegenCx, i: u64) -> ValueRef {
+pub fn C_usize(cx: &CodegenCx<'ll, '_>, i: u64) -> &'ll Value {
     let bit_size = cx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow
@@ -177,14 +176,14 @@ pub fn C_usize(cx: &CodegenCx, i: u64) -> ValueRef {
     C_uint(cx.isize_ty, i)
 }
 
-pub fn C_u8(cx: &CodegenCx, i: u8) -> ValueRef {
+pub fn C_u8(cx: &CodegenCx<'ll, '_>, i: u8) -> &'ll Value {
     C_uint(Type::i8(cx), i as u64)
 }
 
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: &CodegenCx, s: LocalInternedString, null_terminated: bool) -> ValueRef {
+pub fn C_cstr(cx: &CodegenCx<'ll, '_>, s: LocalInternedString, null_terminated: bool) -> &'ll Value {
     unsafe {
         if let Some(&llval) = cx.const_cstr_cache.borrow().get(&s) {
             return llval;
@@ -209,24 +208,24 @@ pub fn C_cstr(cx: &CodegenCx, s: LocalInternedString, null_terminated: bool) -> 
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_str_slice(cx: &CodegenCx, s: LocalInternedString) -> ValueRef {
+pub fn C_str_slice(cx: &CodegenCx<'ll, '_>, s: LocalInternedString) -> &'ll Value {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
         cx.layout_of(cx.tcx.mk_str()).llvm_type(cx).ptr_to());
     C_fat_ptr(cx, cs, C_usize(cx, len as u64))
 }
 
-pub fn C_fat_ptr(cx: &CodegenCx, ptr: ValueRef, meta: ValueRef) -> ValueRef {
+pub fn C_fat_ptr(cx: &CodegenCx<'ll, '_>, ptr: &'ll Value, meta: &'ll Value) -> &'ll Value {
     assert_eq!(abi::FAT_PTR_ADDR, 0);
     assert_eq!(abi::FAT_PTR_EXTRA, 1);
     C_struct(cx, &[ptr, meta], false)
 }
 
-pub fn C_struct(cx: &CodegenCx, elts: &[ValueRef], packed: bool) -> ValueRef {
+pub fn C_struct(cx: &CodegenCx<'ll, '_>, elts: &[&'ll Value], packed: bool) -> &'ll Value {
     C_struct_in_context(cx.llcx, elts, packed)
 }
 
-pub fn C_struct_in_context(llcx: &llvm::Context, elts: &[ValueRef], packed: bool) -> ValueRef {
+pub fn C_struct_in_context(llcx: &'ll llvm::Context, elts: &[&'ll Value], packed: bool) -> &'ll Value {
     unsafe {
         llvm::LLVMConstStructInContext(llcx,
                                        elts.as_ptr(), elts.len() as c_uint,
@@ -234,43 +233,43 @@ pub fn C_struct_in_context(llcx: &llvm::Context, elts: &[ValueRef], packed: bool
     }
 }
 
-pub fn C_array(ty: &Type, elts: &[ValueRef]) -> ValueRef {
+pub fn C_array(ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
     unsafe {
         return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
     }
 }
 
-pub fn C_vector(elts: &[ValueRef]) -> ValueRef {
+pub fn C_vector(elts: &[&'ll Value]) -> &'ll Value {
     unsafe {
         return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
     }
 }
 
-pub fn C_bytes(cx: &CodegenCx, bytes: &[u8]) -> ValueRef {
+pub fn C_bytes(cx: &CodegenCx<'ll, '_>, bytes: &[u8]) -> &'ll Value {
     C_bytes_in_context(cx.llcx, bytes)
 }
 
-pub fn C_bytes_in_context(llcx: &llvm::Context, bytes: &[u8]) -> ValueRef {
+pub fn C_bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
         return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
     }
 }
 
-pub fn const_get_elt(v: ValueRef, idx: u64) -> ValueRef {
+pub fn const_get_elt(v: &'ll Value, idx: u64) -> &'ll Value {
     unsafe {
         assert_eq!(idx as c_uint as u64, idx);
         let us = &[idx as c_uint];
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
         debug!("const_get_elt(v={:?}, idx={}, r={:?})",
-               Value(v), idx, Value(r));
+               v, idx, r);
 
         r
     }
 }
 
-pub fn const_get_real(v: ValueRef) -> Option<(f64, bool)> {
+pub fn const_get_real(v: &'ll Value) -> Option<(f64, bool)> {
     unsafe {
         if is_const_real(v) {
             let mut loses_info: llvm::Bool = ::std::mem::uninitialized();
@@ -283,21 +282,21 @@ pub fn const_get_real(v: ValueRef) -> Option<(f64, bool)> {
     }
 }
 
-pub fn const_to_uint(v: ValueRef) -> u64 {
+pub fn const_to_uint(v: &'ll Value) -> u64 {
     unsafe {
         llvm::LLVMConstIntGetZExtValue(v)
     }
 }
 
-pub fn is_const_integral(v: ValueRef) -> bool {
+pub fn is_const_integral(v: &'ll Value) -> bool {
     unsafe {
-        !llvm::LLVMIsAConstantInt(v).is_null()
+        llvm::LLVMIsAConstantInt(v).is_some()
     }
 }
 
-pub fn is_const_real(v: ValueRef) -> bool {
+pub fn is_const_real(v: &'ll Value) -> bool {
     unsafe {
-        !llvm::LLVMIsAConstantFP(v).is_null()
+        llvm::LLVMIsAConstantFP(v).is_some()
     }
 }
 
@@ -307,7 +306,7 @@ fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
 }
 
-pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
+pub fn const_to_opt_u128(v: &'ll Value, sign_ext: bool) -> Option<u128> {
     unsafe {
         if is_const_integral(v) {
             let (mut lo, mut hi) = (0u64, 0u64);
@@ -348,9 +347,9 @@ pub fn langcall(tcx: TyCtxt,
 
 pub fn build_unchecked_lshift(
     bx: &Builder<'a, 'll, 'tcx>,
-    lhs: ValueRef,
-    rhs: ValueRef
-) -> ValueRef {
+    lhs: &'ll Value,
+    rhs: &'ll Value
+) -> &'ll Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
@@ -358,8 +357,8 @@ pub fn build_unchecked_lshift(
 }
 
 pub fn build_unchecked_rshift(
-    bx: &Builder<'a, 'll, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
-) -> ValueRef {
+    bx: &Builder<'a, 'll, 'tcx>, lhs_t: Ty<'tcx>, lhs: &'ll Value, rhs: &'ll Value
+) -> &'ll Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
@@ -371,7 +370,7 @@ pub fn build_unchecked_rshift(
     }
 }
 
-fn shift_mask_rhs(bx: &Builder<'a, 'll, 'tcx>, rhs: ValueRef) -> ValueRef {
+fn shift_mask_rhs(bx: &Builder<'a, 'll, 'tcx>, rhs: &'ll Value) -> &'ll Value {
     let rhs_llty = val_ty(rhs);
     bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
 }
@@ -381,7 +380,7 @@ pub fn shift_mask_val(
     llty: &'ll Type,
     mask_llty: &'ll Type,
     invert: bool
-) -> ValueRef {
+) -> &'ll Value {
     let kind = llty.kind();
     match kind {
         TypeKind::Integer => {

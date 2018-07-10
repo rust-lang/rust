@@ -34,7 +34,7 @@ pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx>) -> BitVector<mir::Local> {
         let layout = fx.cx.layout_of(ty);
         if layout.is_llvm_immediate() {
             // These sorts of types are immediates that we can store
-            // in an ValueRef without an alloca.
+            // in an Value without an alloca.
         } else if layout.is_llvm_scalar_pair() {
             // We allow pairs and uses of any of their 2 fields.
         } else {

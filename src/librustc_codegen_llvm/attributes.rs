@@ -22,15 +22,17 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 
 use attributes;
-use llvm::{self, Attribute, ValueRef};
+use llvm::{self, Attribute};
 use llvm::AttributePlace::Function;
 use llvm_util;
 pub use syntax::attr::{self, InlineAttr};
+
 use context::CodegenCx;
+use value::Value;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-pub fn inline(val: ValueRef, inline: InlineAttr) {
+pub fn inline(val: &'ll Value, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
         Hint   => Attribute::InlineHint.apply_llfn(Function, val),
@@ -46,30 +48,30 @@ pub fn inline(val: ValueRef, inline: InlineAttr) {
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
-pub fn emit_uwtable(val: ValueRef, emit: bool) {
+pub fn emit_uwtable(val: &'ll Value, emit: bool) {
     Attribute::UWTable.toggle_llfn(Function, val, emit);
 }
 
 /// Tell LLVM whether the function can or cannot unwind.
 #[inline]
-pub fn unwind(val: ValueRef, can_unwind: bool) {
+pub fn unwind(val: &'ll Value, can_unwind: bool) {
     Attribute::NoUnwind.toggle_llfn(Function, val, !can_unwind);
 }
 
 /// Tell LLVM whether it should optimize function for size.
 #[inline]
 #[allow(dead_code)] // possibly useful function
-pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {
+pub fn set_optimize_for_size(val: &'ll Value, optimize: bool) {
     Attribute::OptimizeForSize.toggle_llfn(Function, val, optimize);
 }
 
 /// Tell LLVM if this function should be 'naked', i.e. skip the epilogue and prologue.
 #[inline]
-pub fn naked(val: ValueRef, is_naked: bool) {
+pub fn naked(val: &'ll Value, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
-pub fn set_frame_pointer_elimination(cx: &CodegenCx, llfn: ValueRef) {
+pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().must_not_eliminate_frame_pointers() {
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
@@ -77,7 +79,7 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx, llfn: ValueRef) {
     }
 }
 
-pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
+pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
     if !cx.sess().target.target.options.stack_probes {
@@ -123,7 +125,7 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
+pub fn from_fn_attrs(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value, id: DefId) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(id);
 
     inline(llfn, codegen_fn_attrs.inline);

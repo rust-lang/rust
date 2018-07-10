@@ -10,7 +10,6 @@
 
 use common;
 use llvm;
-use llvm::ValueRef;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -19,6 +18,7 @@ use callee;
 use base;
 use declare;
 use monomorphize::Instance;
+use value::Value;
 
 use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
@@ -56,38 +56,38 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
-    pub instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
+    pub instances: RefCell<FxHashMap<Instance<'tcx>, &'a Value>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>,
-                                Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>>,
+                                Option<ty::PolyExistentialTraitRef<'tcx>>), &'a Value>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, ValueRef>>,
+    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'a Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
-    /// Key is a ValueRef holding a *T,
-    /// Val is a ValueRef holding a *[T].
+    /// Key is a Value holding a *T,
+    /// Val is a Value holding a *[T].
     ///
     /// Needed because LLVM loses pointer->pointee association
     /// when we ptrcast, and we have to ptrcast during codegen
     /// of a [T] const because we form a slice, a (*T,usize) pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
-    pub const_unsized: RefCell<FxHashMap<ValueRef, ValueRef>>,
+    pub const_unsized: RefCell<FxHashMap<&'a Value, &'a Value>>,
 
     /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<ValueRef, ValueRef>>,
+    pub const_globals: RefCell<FxHashMap<&'a Value, &'a Value>>,
 
     /// Mapping from static definitions to their DefId's.
-    pub statics: RefCell<FxHashMap<ValueRef, DefId>>,
+    pub statics: RefCell<FxHashMap<&'a Value, DefId>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
-    /// (We have to make sure we don't invalidate any ValueRefs referring
+    /// (We have to make sure we don't invalidate any Values referring
     /// to constants.)
-    pub statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
+    pub statics_to_rauw: RefCell<Vec<(&'a Value, &'a Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
-    pub used_statics: RefCell<Vec<ValueRef>>,
+    pub used_statics: RefCell<Vec<&'a Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), &'a Type>>,
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'a Type>>,
@@ -96,11 +96,11 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
 
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'a, 'tcx>>,
 
-    eh_personality: Cell<Option<ValueRef>>,
-    eh_unwind_resume: Cell<Option<ValueRef>>,
-    pub rust_try_fn: Cell<Option<ValueRef>>,
+    eh_personality: Cell<Option<&'a Value>>,
+    eh_unwind_resume: Cell<Option<&'a Value>>,
+    pub rust_try_fn: Cell<Option<&'a Value>>,
 
-    intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
+    intrinsics: RefCell<FxHashMap<&'static str, &'a Value>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -314,7 +314,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         &self.tcx.sess
     }
 
-    pub fn get_intrinsic(&self, key: &str) -> ValueRef {
+    pub fn get_intrinsic(&self, key: &str) -> &'b Value {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
@@ -338,7 +338,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         name
     }
 
-    pub fn eh_personality(&self) -> ValueRef {
+    pub fn eh_personality(&self) -> &'b Value {
         // The exception handling personality function.
         //
         // If our compilation unit has the `eh_personality` lang item somewhere
@@ -381,9 +381,9 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         llfn
     }
 
-    // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
+    // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
-    pub fn eh_unwind_resume(&self) -> ValueRef {
+    pub fn eh_unwind_resume(&self) -> &'b Value {
         use attributes;
         let unwresume = &self.eh_unwind_resume;
         if let Some(llfn) = unwresume.get() {
@@ -471,7 +471,7 @@ impl LayoutOf for &'a CodegenCx<'ll, 'tcx> {
 }
 
 /// Declare any llvm intrinsics that you might need
-fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
+fn declare_intrinsic(cx: &CodegenCx<'ll, '_>, key: &str) -> Option<&'ll Value> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {

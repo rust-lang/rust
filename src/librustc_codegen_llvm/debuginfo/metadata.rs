@@ -18,8 +18,9 @@ use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
 use abi;
+use value::Value;
 
-use llvm::{self, ValueRef};
+use llvm;
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
                       DICompositeType, DILexicalBlock, DIFlags};
 
@@ -890,7 +891,7 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
         return unit_metadata;
     };
 
-    fn path_to_mdstring(llcx: &llvm::Context, path: &Path) -> llvm::ValueRef {
+    fn path_to_mdstring(llcx: &'ll llvm::Context, path: &Path) -> &'ll Value {
         let path_str = path2cstr(path);
         unsafe {
             llvm::LLVMMDStringInContext(llcx,
@@ -1679,9 +1680,11 @@ fn create_union_stub(
 /// Creates debug information for the given global variable.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_global_var_metadata(cx: &CodegenCx,
-                                  def_id: DefId,
-                                  global: ValueRef) {
+pub fn create_global_var_metadata(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: DefId,
+    global: &'ll Value,
+) {
     if cx.dbg_cx.is_none() {
         return;
     }
@@ -1759,9 +1762,11 @@ pub fn extend_scope_to_file(
 /// given type.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                                        ty: ty::Ty<'tcx>,
-                                        vtable: ValueRef) {
+pub fn create_vtable_metadata(
+    cx: &CodegenCx<'ll, 'tcx>,
+    ty: ty::Ty<'tcx>,
+    vtable: &'ll Value,
+) {
     if cx.dbg_cx.is_none() {
         return;
     }

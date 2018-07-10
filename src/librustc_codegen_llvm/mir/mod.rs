@@ -10,7 +10,7 @@
 
 use common::{C_i32, C_null};
 use libc::c_uint;
-use llvm::{self, ValueRef, BasicBlockRef};
+use llvm::{self, BasicBlockRef};
 use llvm::debuginfo::DIScope;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout};
@@ -24,6 +24,7 @@ use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebug
 use monomorphize::Instance;
 use abi::{ArgTypeExt, FnType, FnTypeExt, PassMode};
 use type_::Type;
+use value::Value;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -49,7 +50,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
 
     debug_context: FunctionDebugContext<'ll>,
 
-    llfn: ValueRef,
+    llfn: &'ll Value,
 
     cx: &'a CodegenCx<'ll, 'tcx>,
 
@@ -62,7 +63,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'tcx>>,
+    personality_slot: Option<PlaceRef<'ll, 'tcx>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, BasicBlockRef>,
@@ -72,7 +73,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
 
     /// When targeting MSVC, this stores the cleanup info for each funclet
     /// BB. This is initialized as we compute the funclets' head block in RPO.
-    funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet>>,
+    funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
@@ -96,7 +97,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    locals: IndexVec<mir::Local, LocalRef<'tcx>>,
+    locals: IndexVec<mir::Local, LocalRef<'ll, 'tcx>>,
 
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
@@ -177,13 +178,13 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 }
 
-enum LocalRef<'tcx> {
-    Place(PlaceRef<'tcx>),
-    Operand(Option<OperandRef<'tcx>>),
+enum LocalRef<'ll, 'tcx> {
+    Place(PlaceRef<'ll, 'tcx>),
+    Operand(Option<OperandRef<'ll, 'tcx>>),
 }
 
-impl<'a, 'tcx> LocalRef<'tcx> {
-    fn new_operand(cx: &CodegenCx<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
+impl LocalRef<'ll, 'tcx> {
+    fn new_operand(cx: &CodegenCx<'ll, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'ll, 'tcx> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -199,7 +200,7 @@ impl<'a, 'tcx> LocalRef<'tcx> {
 
 pub fn codegen_mir(
     cx: &'a CodegenCx<'ll, 'tcx>,
-    llfn: ValueRef,
+    llfn: &'ll Value,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
@@ -349,7 +350,7 @@ fn create_funclets(
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, BasicBlockRef>)
     -> (IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
-        IndexVec<mir::BasicBlock, Option<Funclet>>)
+        IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>)
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
@@ -409,7 +410,7 @@ fn create_funclets(
     }).unzip()
 }
 
-/// Produce, for each argument, a `ValueRef` pointing at the
+/// Produce, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
 fn arg_local_refs(
@@ -417,7 +418,7 @@ fn arg_local_refs(
     fx: &FunctionCx<'a, 'll, 'tcx>,
     scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
     memory_locals: &BitVector<mir::Local>,
-) -> Vec<LocalRef<'tcx>> {
+) -> Vec<LocalRef<'ll, 'tcx>> {
     let mir = fx.mir;
     let tcx = bx.tcx();
     let mut idx = 0;

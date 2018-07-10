@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef};
+use llvm;
 use common::*;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use builder::Builder;
+use value::Value;
 
 use rustc::hir;
 
@@ -27,8 +28,8 @@ use libc::{c_uint, c_char};
 pub fn codegen_inline_asm(
     bx: &Builder<'a, 'll, 'tcx>,
     ia: &hir::InlineAsm,
-    outputs: Vec<PlaceRef<'tcx>>,
-    mut inputs: Vec<ValueRef>
+    outputs: Vec<PlaceRef<'ll, 'tcx>>,
+    mut inputs: Vec<&'ll Value>
 ) {
     let mut ext_constraints = vec![];
     let mut output_types = vec![];
@@ -111,7 +112,7 @@ pub fn codegen_inline_asm(
         let kind = llvm::LLVMGetMDKindIDInContext(bx.cx.llcx,
             key.as_ptr() as *const c_char, key.len() as c_uint);
 
-        let val: llvm::ValueRef = C_i32(bx.cx, ia.ctxt.outer().as_u32() as i32);
+        let val: &'ll Value = C_i32(bx.cx, ia.ctxt.outer().as_u32() as i32);
 
         llvm::LLVMSetMetadata(r, kind,
             llvm::LLVMMDNodeInContext(bx.cx.llcx, &val, 1));

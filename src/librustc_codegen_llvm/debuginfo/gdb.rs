@@ -15,8 +15,9 @@ use llvm;
 use common::{C_bytes, CodegenCx, C_i32};
 use builder::Builder;
 use declare;
-use type_::Type;
 use rustc::session::config::NoDebugInfo;
+use type_::Type;
+use value::Value;
 
 use syntax::attr;
 
@@ -39,8 +40,8 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &Builder) {
 
 /// Allocates the global variable responsible for the .debug_gdb_scripts binary
 /// section.
-pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx)
-                                                  -> llvm::ValueRef {
+pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_>)
+                                                  -> &'ll Value {
     let c_section_var_name = "__rustc_debug_gdb_scripts_section__\0";
     let section_var_name = &c_section_var_name[..c_section_var_name.len()-1];
 
@@ -49,7 +50,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx)
                                  c_section_var_name.as_ptr() as *const _)
     };
 
-    if section_var.is_null() {
+    section_var.unwrap_or_else(|| {
         let section_name = b".debug_gdb_scripts\0";
         let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
 
@@ -71,9 +72,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx)
             llvm::LLVMSetAlignment(section_var, 1);
             section_var
         }
-    } else {
-        section_var
-    }
+    })
 }
 
 pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx) -> bool {

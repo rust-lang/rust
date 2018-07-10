@@ -17,7 +17,7 @@
 //!
 //! Hopefully useful general knowledge about codegen:
 //!
-//!   * There's no way to find out the Ty type of a ValueRef.  Doing so
+//!   * There's no way to find out the Ty type of a Value.  Doing so
 //!     would be "trying to get the eggs out of an omelette" (credit:
 //!     pcwalton).  You can, instead, find out its llvm::Type by calling val_ty,
 //!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
@@ -31,8 +31,7 @@ use super::ModuleKind;
 use abi;
 use back::link;
 use back::write::{self, OngoingCodegen};
-use llvm::{TypeKind, ValueRef, get_param};
-use llvm;
+use llvm::{self, TypeKind, get_param};
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
@@ -86,6 +85,8 @@ use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
 use syntax::attr;
 use rustc::hir::{self, CodegenFnAttrs};
+
+use value::Value;
 
 use mir::operand::OperandValue;
 
@@ -157,12 +158,12 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> llvm::RealPredicate {
 
 pub fn compare_simd_types(
     bx: &Builder<'a, 'll, 'tcx>,
-    lhs: ValueRef,
-    rhs: ValueRef,
+    lhs: &'ll Value,
+    rhs: &'ll Value,
     t: Ty<'tcx>,
     ret_ty: &'ll Type,
     op: hir::BinOpKind
-) -> ValueRef {
+) -> &'ll Value {
     let signed = match t.sty {
         ty::TyFloat(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
@@ -187,11 +188,12 @@ pub fn compare_simd_types(
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
-                                source: Ty<'tcx>,
-                                target: Ty<'tcx>,
-                                old_info: Option<ValueRef>)
-                                -> ValueRef {
+pub fn unsized_info(
+    cx: &CodegenCx<'ll, 'tcx>,
+    source: Ty<'tcx>,
+    target: Ty<'tcx>,
+    old_info: Option<&'ll Value>,
+) -> &'ll Value {
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => {
@@ -218,10 +220,10 @@ pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
 pub fn unsize_thin_ptr(
     bx: &Builder<'a, 'll, 'tcx>,
-    src: ValueRef,
+    src: &'ll Value,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
-) -> (ValueRef, ValueRef) {
+) -> (&'ll Value, &'ll Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyRef(_, a, _),
@@ -273,8 +275,8 @@ pub fn unsize_thin_ptr(
 /// to a value of type `dst_ty` and store the result in `dst`
 pub fn coerce_unsized_into(
     bx: &Builder<'a, 'll, 'tcx>,
-    src: PlaceRef<'tcx>,
-    dst: PlaceRef<'tcx>
+    src: PlaceRef<'ll, 'tcx>,
+    dst: PlaceRef<'ll, 'tcx>
 ) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
@@ -331,19 +333,19 @@ pub fn coerce_unsized_into(
 }
 
 pub fn cast_shift_expr_rhs(
-    cx: &Builder, op: hir::BinOpKind, lhs: ValueRef, rhs: ValueRef
-) -> ValueRef {
+    cx: &Builder<'_, 'll, '_>, op: hir::BinOpKind, lhs: &'ll Value, rhs: &'ll Value
+) -> &'ll Value {
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
 
 fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
-                        lhs: ValueRef,
-                        rhs: ValueRef,
+                        lhs: &'ll Value,
+                        rhs: &'ll Value,
                         trunc: F,
                         zext: G)
-                        -> ValueRef
-    where F: FnOnce(ValueRef, &'ll Type) -> ValueRef,
-          G: FnOnce(ValueRef, &'ll Type) -> ValueRef
+                        -> &'ll Value
+    where F: FnOnce(&'ll Value, &'ll Type) -> &'ll Value,
+          G: FnOnce(&'ll Value, &'ll Type) -> &'ll Value
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
@@ -380,12 +382,12 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn call_assume(bx: &Builder<'a, 'll, 'tcx>, val: ValueRef) {
+pub fn call_assume(bx: &Builder<'_, 'll, '_>, val: &'ll Value) {
     let assume_intrinsic = bx.cx.get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate(bx: &Builder, val: ValueRef) -> ValueRef {
+pub fn from_immediate(bx: &Builder<'_, 'll, '_>, val: &'ll Value) -> &'ll Value {
     if val_ty(val) == Type::i1(bx.cx) {
         bx.zext(val, Type::i8(bx.cx))
     } else {
@@ -393,26 +395,28 @@ pub fn from_immediate(bx: &Builder, val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn to_immediate(bx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
+pub fn to_immediate(bx: &Builder<'_, 'll, '_>, val: &'ll Value, layout: layout::TyLayout) -> &'ll Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
     val
 }
 
-pub fn to_immediate_scalar(bx: &Builder, val: ValueRef, scalar: &layout::Scalar) -> ValueRef {
+pub fn to_immediate_scalar(bx: &Builder<'_, 'll, '_>, val: &'ll Value, scalar: &layout::Scalar) -> &'ll Value {
     if scalar.is_bool() {
         return bx.trunc(val, Type::i1(bx.cx));
     }
     val
 }
 
-pub fn call_memcpy(bx: &Builder,
-                   dst: ValueRef,
-                   src: ValueRef,
-                   n_bytes: ValueRef,
-                   align: Align,
-                   flags: MemFlags) {
+pub fn call_memcpy(
+    bx: &Builder<'_, 'll, '_>,
+    dst: &'ll Value,
+    src: &'ll Value,
+    n_bytes: &'ll Value,
+    align: Align,
+    flags: MemFlags,
+) {
     if flags.contains(MemFlags::NONTEMPORAL) {
         // HACK(nox): This is inefficient but there is no nontemporal memcpy.
         let val = bx.load(src, align);
@@ -433,9 +437,9 @@ pub fn call_memcpy(bx: &Builder,
 }
 
 pub fn memcpy_ty(
-    bx: &Builder<'a, 'll, 'tcx>,
-    dst: ValueRef,
-    src: ValueRef,
+    bx: &Builder<'_, 'll, 'tcx>,
+    dst: &'ll Value,
+    src: &'ll Value,
     layout: TyLayout<'tcx>,
     align: Align,
     flags: MemFlags,
@@ -449,13 +453,13 @@ pub fn memcpy_ty(
 }
 
 pub fn call_memset(
-    bx: &Builder<'a, 'll, 'tcx>,
-    ptr: ValueRef,
-    fill_byte: ValueRef,
-    size: ValueRef,
-    align: ValueRef,
+    bx: &Builder<'_, 'll, '_>,
+    ptr: &'ll Value,
+    fill_byte: &'ll Value,
+    size: &'ll Value,
+    align: &'ll Value,
     volatile: bool,
-) -> ValueRef {
+) -> &'ll Value {
     let ptr_width = &bx.cx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = bx.cx.get_intrinsic(&intrinsic_key);
@@ -514,7 +518,7 @@ pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'
     mir::codegen_mir(cx, lldecl, &mir, instance, sig);
 }
 
-pub fn set_link_section(llval: ValueRef, attrs: &CodegenFnAttrs) {
+pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
     let sect = match attrs.link_section {
         Some(name) => name,
         None => return,
@@ -552,11 +556,13 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         None => {}    // Do nothing.
     }
 
-    fn create_entry_fn<'cx>(cx: &'cx CodegenCx,
-                       sp: Span,
-                       rust_main: ValueRef,
-                       rust_main_def_id: DefId,
-                       use_start_lang_item: bool) {
+    fn create_entry_fn(
+        cx: &CodegenCx<'ll, '_>,
+        sp: Span,
+        rust_main: &'ll Value,
+        rust_main_def_id: DefId,
+        use_start_lang_item: bool,
+    ) {
         let llfty = Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], Type::c_int(cx));
 
         let main_ret_ty = cx.tcx.fn_sig(rust_main_def_id).output();
@@ -678,26 +684,24 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     return metadata;
 }
 
-pub struct ValueIter {
-    cur: ValueRef,
-    step: unsafe extern "C" fn(ValueRef) -> ValueRef,
+pub struct ValueIter<'ll> {
+    cur: Option<&'ll Value>,
+    step: unsafe extern "C" fn(&'ll Value) -> Option<&'ll Value>,
 }
 
-impl Iterator for ValueIter {
-    type Item = ValueRef;
+impl Iterator for ValueIter<'ll> {
+    type Item = &'ll Value;
 
-    fn next(&mut self) -> Option<ValueRef> {
+    fn next(&mut self) -> Option<&'ll Value> {
         let old = self.cur;
-        if !old.is_null() {
+        if let Some(old) = old {
             self.cur = unsafe { (self.step)(old) };
-            Some(old)
-        } else {
-            None
         }
+        old
     }
 }
 
-pub fn iter_globals(llmod: &llvm::Module) -> ValueIter {
+pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     unsafe {
         ValueIter {
             cur: llvm::LLVMGetFirstGlobal(llmod),

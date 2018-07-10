@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::ValueRef;
 use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
 use rustc::mir::interpret::ConstValue;
@@ -32,31 +31,15 @@ use super::place::PlaceRef;
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
 /// safety check.
-#[derive(Copy, Clone)]
-pub enum OperandValue {
+#[derive(Copy, Clone, Debug)]
+pub enum OperandValue<'ll> {
     /// A reference to the actual operand. The data is guaranteed
     /// to be valid for the operand's lifetime.
-    Ref(ValueRef, Align),
+    Ref(&'ll Value, Align),
     /// A single LLVM value.
-    Immediate(ValueRef),
+    Immediate(&'ll Value),
     /// A pair of immediate LLVM values. Used by fat pointers too.
-    Pair(ValueRef, ValueRef)
-}
-
-impl fmt::Debug for OperandValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            OperandValue::Ref(r, align) => {
-                write!(f, "Ref({:?}, {:?})", Value(r), align)
-            }
-            OperandValue::Immediate(i) => {
-                write!(f, "Immediate({:?})", Value(i))
-            }
-            OperandValue::Pair(a, b) => {
-                write!(f, "Pair({:?}, {:?})", Value(a), Value(b))
-            }
-        }
-    }
+    Pair(&'ll Value, &'ll Value)
 }
 
 /// An `OperandRef` is an "SSA" reference to a Rust value, along with
@@ -68,23 +51,23 @@ impl fmt::Debug for OperandValue {
 /// directly is sure to cause problems -- use `OperandRef::store`
 /// instead.
 #[derive(Copy, Clone)]
-pub struct OperandRef<'tcx> {
+pub struct OperandRef<'ll, 'tcx> {
     // The value.
-    pub val: OperandValue,
+    pub val: OperandValue<'ll>,
 
     // The layout of value, based on its Rust type.
     pub layout: TyLayout<'tcx>,
 }
 
-impl<'tcx> fmt::Debug for OperandRef<'tcx> {
+impl fmt::Debug for OperandRef<'ll, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
 }
 
-impl<'a, 'tcx> OperandRef<'tcx> {
-    pub fn new_zst(cx: &CodegenCx<'a, 'tcx>,
-                   layout: TyLayout<'tcx>) -> OperandRef<'tcx> {
+impl OperandRef<'ll, 'tcx> {
+    pub fn new_zst(cx: &CodegenCx<'ll, 'tcx>,
+                   layout: TyLayout<'tcx>) -> OperandRef<'ll, 'tcx> {
         assert!(layout.is_zst());
         OperandRef {
             val: OperandValue::Immediate(C_undef(layout.immediate_llvm_type(cx))),
@@ -94,7 +77,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     pub fn from_const(bx: &Builder<'a, 'll, 'tcx>,
                       val: &'tcx ty::Const<'tcx>)
-                      -> Result<OperandRef<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
+                      -> Result<OperandRef<'ll, 'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         let layout = bx.cx.layout_of(val.ty);
 
         if layout.is_zst() {
@@ -148,19 +131,19 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
-    pub fn immediate(self) -> ValueRef {
+    pub fn immediate(self) -> &'ll Value {
         match self.val {
             OperandValue::Immediate(s) => s,
             _ => bug!("not immediate: {:?}", self)
         }
     }
 
-    pub fn deref(self, cx: &CodegenCx<'a, 'tcx>) -> PlaceRef<'tcx> {
+    pub fn deref(self, cx: &CodegenCx<'ll, 'tcx>) -> PlaceRef<'ll, 'tcx> {
         let projected_ty = self.layout.ty.builtin_deref(true)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
-            OperandValue::Immediate(llptr) => (llptr, 0 as *mut _),
-            OperandValue::Pair(llptr, llextra) => (llptr, llextra),
+            OperandValue::Immediate(llptr) => (llptr, None),
+            OperandValue::Pair(llptr, llextra) => (llptr, Some(llextra)),
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
         };
         let layout = cx.layout_of(projected_ty);
@@ -174,7 +157,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// If this operand is a `Pair`, we return an aggregate with the two values.
     /// For other cases, see `immediate`.
-    pub fn immediate_or_packed_pair(self, bx: &Builder<'a, 'll, 'tcx>) -> ValueRef {
+    pub fn immediate_or_packed_pair(self, bx: &Builder<'a, 'll, 'tcx>) -> &'ll Value {
         if let OperandValue::Pair(a, b) = self.val {
             let llty = self.layout.llvm_type(bx.cx);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}",
@@ -191,9 +174,9 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
     pub fn from_immediate_or_packed_pair(bx: &Builder<'a, 'll, 'tcx>,
-                                         llval: ValueRef,
+                                         llval: &'ll Value,
                                          layout: TyLayout<'tcx>)
-                                         -> OperandRef<'tcx> {
+                                         -> OperandRef<'ll, 'tcx> {
         let val = if let layout::Abi::ScalarPair(ref a, ref b) = layout.abi {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}",
                     llval, layout);
@@ -208,7 +191,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         OperandRef { val, layout }
     }
 
-    pub fn extract_field(&self, bx: &Builder<'a, 'll, 'tcx>, i: usize) -> OperandRef<'tcx> {
+    pub fn extract_field(&self, bx: &Builder<'a, 'll, 'tcx>, i: usize) -> OperandRef<'ll, 'tcx> {
         let field = self.layout.field(bx.cx, i);
         let offset = self.layout.fields.offset(i);
 
@@ -266,24 +249,24 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     }
 }
 
-impl<'a, 'tcx> OperandValue {
-    pub fn store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>) {
+impl OperandValue<'ll> {
+    pub fn store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'ll, 'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::empty());
     }
 
-    pub fn volatile_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>) {
+    pub fn volatile_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'ll, 'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
     }
 
-    pub fn unaligned_volatile_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>) {
+    pub fn unaligned_volatile_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'ll, 'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
     }
 
-    pub fn nontemporal_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>) {
+    pub fn nontemporal_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'ll, 'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
 
-    fn store_with_flags(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>, flags: MemFlags) {
+    fn store_with_flags(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'ll, 'tcx>, flags: MemFlags) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
@@ -314,7 +297,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     fn maybe_codegen_consume_direct(&mut self,
                                   bx: &Builder<'a, 'll, 'tcx>,
                                   place: &mir::Place<'tcx>)
-                                   -> Option<OperandRef<'tcx>>
+                                   -> Option<OperandRef<'ll, 'tcx>>
     {
         debug!("maybe_codegen_consume_direct(place={:?})", place);
 
@@ -362,7 +345,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_consume(&mut self,
                          bx: &Builder<'a, 'll, 'tcx>,
                          place: &mir::Place<'tcx>)
-                         -> OperandRef<'tcx>
+                         -> OperandRef<'ll, 'tcx>
     {
         debug!("codegen_consume(place={:?})", place);
 
@@ -386,7 +369,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_operand(&mut self,
                          bx: &Builder<'a, 'll, 'tcx>,
                          operand: &mir::Operand<'tcx>)
-                         -> OperandRef<'tcx>
+                         -> OperandRef<'ll, 'tcx>
     {
         debug!("codegen_operand(operand={:?})", operand);
 

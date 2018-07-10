@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef, BasicBlockRef};
+use llvm::{self, BasicBlockRef};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
@@ -24,6 +24,7 @@ use meth;
 use monomorphize;
 use type_of::LayoutLlvmExt;
 use type_::Type;
+use value::Value;
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
@@ -97,7 +98,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             }
         };
 
-        let funclet_br = |this: &mut Self, bx: Builder, target: mir::BasicBlock| {
+        let funclet_br = |this: &mut Self, bx: Builder<'_, 'll, '_>, target: mir::BasicBlock| {
             let (lltarget, is_cleanupret) = lltarget(this, target);
             if is_cleanupret {
                 // micro-optimization: generate a `ret` rather than a jump
@@ -112,9 +113,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
             this: &mut Self,
             bx: Builder<'a, 'll, 'tcx>,
             fn_ty: FnType<'tcx, Ty<'tcx>>,
-            fn_ptr: ValueRef,
-            llargs: &[ValueRef],
-            destination: Option<(ReturnDest<'tcx>, mir::BasicBlock)>,
+            fn_ptr: &'ll Value,
+            llargs: &[&'ll Value],
+            destination: Option<(ReturnDest<'ll, 'tcx>, mir::BasicBlock)>,
             cleanup: Option<mir::BasicBlock>
         | {
             if let Some(cleanup) = cleanup {
@@ -285,8 +286,14 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 }
 
                 let place = self.codegen_place(&bx, location);
-                let mut args: &[_] = &[place.llval, place.llextra];
-                args = &args[..1 + place.has_extra() as usize];
+                let (args1, args2);
+                let mut args = if let Some(llextra) = place.llextra {
+                    args2 = [place.llval, llextra];
+                    &args2[..]
+                } else {
+                    args1 = [place.llval];
+                    &args1[..]
+                };
                 let (drop_fn, fn_ty) = match ty.sty {
                     ty::TyDynamic(..) => {
                         let fn_ty = drop_fn.ty(bx.cx.tcx);
@@ -296,8 +303,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
                             &sig,
                         );
                         let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
+                        let vtable = args[1];
                         args = &args[..1];
-                        (meth::DESTRUCTOR.get_fn(&bx, place.llextra, &fn_ty), fn_ty)
+                        (meth::DESTRUCTOR.get_fn(&bx, vtable, &fn_ty), fn_ty)
                     }
                     _ => {
                         (callee::get_fn(bx.cx, drop_fn),
@@ -628,8 +636,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     fn codegen_argument(&mut self,
                       bx: &Builder<'a, 'll, 'tcx>,
-                      op: OperandRef<'tcx>,
-                      llargs: &mut Vec<ValueRef>,
+                      op: OperandRef<'ll, 'tcx>,
+                      llargs: &mut Vec<&'ll Value>,
                       arg: &ArgType<'tcx, Ty<'tcx>>) {
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
@@ -708,7 +716,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     fn codegen_arguments_untupled(&mut self,
                                 bx: &Builder<'a, 'll, 'tcx>,
                                 operand: &mir::Operand<'tcx>,
-                                llargs: &mut Vec<ValueRef>,
+                                llargs: &mut Vec<&'ll Value>,
                                 args: &[ArgType<'tcx, Ty<'tcx>>]) {
         let tuple = self.codegen_operand(bx, operand);
 
@@ -728,7 +736,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         }
     }
 
-    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx>) -> PlaceRef<'tcx> {
+    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx>) -> PlaceRef<'ll, 'tcx> {
         let cx = bx.cx;
         if let Some(slot) = self.personality_slot {
             slot
@@ -803,8 +811,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     fn make_return_dest(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                         dest: &mir::Place<'tcx>, fn_ret: &ArgType<'tcx, Ty<'tcx>>,
-                        llargs: &mut Vec<ValueRef>, is_intrinsic: bool)
-                        -> ReturnDest<'tcx> {
+                        llargs: &mut Vec<&'ll Value>, is_intrinsic: bool)
+                        -> ReturnDest<'ll, 'tcx> {
         // If the return is ignored, we can just return a do-nothing ReturnDest
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
@@ -886,7 +894,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                             src: &mir::Operand<'tcx>,
-                            dst: PlaceRef<'tcx>) {
+                            dst: PlaceRef<'ll, 'tcx>) {
         let src = self.codegen_operand(bx, src);
         let llty = src.layout.llvm_type(bx.cx);
         let cast_ptr = bx.pointercast(dst.llval, llty.ptr_to());
@@ -898,9 +906,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
     // Stores the return value of a function call into it's final location.
     fn store_return(&mut self,
                     bx: &Builder<'a, 'll, 'tcx>,
-                    dest: ReturnDest<'tcx>,
+                    dest: ReturnDest<'ll, 'tcx>,
                     ret_ty: &ArgType<'tcx, Ty<'tcx>>,
-                    llval: ValueRef) {
+                    llval: &'ll Value) {
         use self::ReturnDest::*;
 
         match dest {
@@ -929,13 +937,13 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 }
 
-enum ReturnDest<'tcx> {
+enum ReturnDest<'ll, 'tcx> {
     // Do nothing, the return value is indirect or ignored
     Nothing,
     // Store the return value to the pointer
-    Store(PlaceRef<'tcx>),
+    Store(PlaceRef<'ll, 'tcx>),
     // Stores an indirect return value to an operand local place
-    IndirectOperand(PlaceRef<'tcx>, mir::Local),
+    IndirectOperand(PlaceRef<'ll, 'tcx>, mir::Local),
     // Stores a direct return value to an operand local place
     DirectOperand(mir::Local)
 }

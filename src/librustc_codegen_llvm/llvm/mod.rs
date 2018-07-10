@@ -42,7 +42,7 @@ impl LLVMRustResult {
     }
 }
 
-pub fn AddFunctionAttrStringValue(llfn: ValueRef,
+pub fn AddFunctionAttrStringValue(llfn: &'a Value,
                                   idx: AttributePlace,
                                   attr: &CStr,
                                   value: &CStr) {
@@ -108,12 +108,12 @@ pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: RustStringRef,
     (*sr).borrow_mut().extend_from_slice(slice);
 }
 
-pub fn SetInstructionCallConv(instr: ValueRef, cc: CallConv) {
+pub fn SetInstructionCallConv(instr: &'a Value, cc: CallConv) {
     unsafe {
         LLVMSetInstructionCallConv(instr, cc as c_uint);
     }
 }
-pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
+pub fn SetFunctionCallConv(fn_: &'a Value, cc: CallConv) {
     unsafe {
         LLVMSetFunctionCallConv(fn_, cc as c_uint);
     }
@@ -125,49 +125,49 @@ pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
 // function.
 // For more details on COMDAT sections see e.g. http://www.airs.com/blog/archives/52
-pub fn SetUniqueComdat(llmod: &Module, val: ValueRef) {
+pub fn SetUniqueComdat(llmod: &Module, val: &'a Value) {
     unsafe {
         LLVMRustSetComdat(llmod, val, LLVMGetValueName(val));
     }
 }
 
-pub fn UnsetComdat(val: ValueRef) {
+pub fn UnsetComdat(val: &'a Value) {
     unsafe {
         LLVMRustUnsetComdat(val);
     }
 }
 
-pub fn SetUnnamedAddr(global: ValueRef, unnamed: bool) {
+pub fn SetUnnamedAddr(global: &'a Value, unnamed: bool) {
     unsafe {
         LLVMSetUnnamedAddr(global, unnamed as Bool);
     }
 }
 
-pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
+pub fn set_thread_local(global: &'a Value, is_thread_local: bool) {
     unsafe {
         LLVMSetThreadLocal(global, is_thread_local as Bool);
     }
 }
-pub fn set_thread_local_mode(global: ValueRef, mode: ThreadLocalMode) {
+pub fn set_thread_local_mode(global: &'a Value, mode: ThreadLocalMode) {
     unsafe {
         LLVMSetThreadLocalMode(global, mode);
     }
 }
 
 impl Attribute {
-    pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
+    pub fn apply_llfn(&self, idx: AttributePlace, llfn: &Value) {
         unsafe { LLVMRustAddFunctionAttribute(llfn, idx.as_uint(), *self) }
     }
 
-    pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
+    pub fn apply_callsite(&self, idx: AttributePlace, callsite: &Value) {
         unsafe { LLVMRustAddCallSiteAttribute(callsite, idx.as_uint(), *self) }
     }
 
-    pub fn unapply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
+    pub fn unapply_llfn(&self, idx: AttributePlace, llfn: &Value) {
         unsafe { LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), *self) }
     }
 
-    pub fn toggle_llfn(&self, idx: AttributePlace, llfn: ValueRef, set: bool) {
+    pub fn toggle_llfn(&self, idx: AttributePlace, llfn: &Value, set: bool) {
         if set {
             self.apply_llfn(idx, llfn);
         } else {
@@ -226,7 +226,7 @@ pub fn mk_section_iter(llof: ObjectFileRef) -> SectionIter {
 }
 
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
-pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
+pub fn get_param(llfn: &'a Value, index: c_uint) -> &'a Value {
     unsafe {
         assert!(index < LLVMCountParams(llfn),
             "out of bounds argument access: {} out of {} arguments", index, LLVMCountParams(llfn));
@@ -265,7 +265,7 @@ pub struct OperandBundleDef {
 }
 
 impl OperandBundleDef {
-    pub fn new(name: &str, vals: &[ValueRef]) -> OperandBundleDef {
+    pub fn new(name: &str, vals: &[&'a Value]) -> OperandBundleDef {
         let name = CString::new(name).unwrap();
         let def = unsafe {
             LLVMRustBuildOperandBundleDef(name.as_ptr(), vals.as_ptr(), vals.len() as c_uint)

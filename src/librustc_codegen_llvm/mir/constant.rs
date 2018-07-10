@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef};
+use llvm;
 use rustc::mir::interpret::ConstEvalErr;
 use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
@@ -26,14 +26,17 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
+use value::Value;
 
 use super::super::callee;
 use super::FunctionCx;
 
-pub fn scalar_to_llvm(cx: &CodegenCx,
-                       cv: Scalar,
-                       layout: &layout::Scalar,
-                       llty: &Type) -> ValueRef {
+pub fn scalar_to_llvm(
+    cx: &CodegenCx<'ll, '_>,
+    cv: Scalar,
+    layout: &layout::Scalar,
+    llty: &'ll Type,
+) -> &'ll Value {
     let bitsize = if layout.is_bool() { 1 } else { layout.value.size(cx).bits() };
     match cv {
         Scalar::Bits { defined, .. } if (defined as u64) < bitsize || defined == 0 => {
@@ -81,7 +84,7 @@ pub fn scalar_to_llvm(cx: &CodegenCx,
     }
 }
 
-pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
+pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations.len() + 1);
     let layout = cx.data_layout();
     let pointer_size = layout.pointer_size.bytes() as usize;
@@ -116,10 +119,10 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
     C_struct(cx, &llvals, true)
 }
 
-pub fn codegen_static_initializer<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
+pub fn codegen_static_initializer(
+    cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
-) -> Result<(ValueRef, &'tcx Allocation), Lrc<ConstEvalErr<'tcx>>> {
+) -> Result<(&'ll Value, &'tcx Allocation), Lrc<ConstEvalErr<'tcx>>> {
     let instance = ty::Instance::mono(cx.tcx, def_id);
     let cid = GlobalId {
         instance,
@@ -172,7 +175,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         span: Span,
         ty: Ty<'tcx>,
         constant: Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>,
-    ) -> (ValueRef, Ty<'tcx>) {
+    ) -> (&'ll Value, Ty<'tcx>) {
         constant
             .and_then(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
@@ -180,7 +183,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     ty::TyArray(_, n) => n.unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
-                let values: Result<Vec<ValueRef>, Lrc<_>> = (0..fields).map(|field| {
+                let values: Result<Vec<_>, Lrc<_>> = (0..fields).map(|field| {
                     let field = const_val_field(
                         bx.tcx(),
                         ty::ParamEnv::reveal_all(),
