@@ -402,6 +402,15 @@ pub enum GenericArg {
     Type(Ty),
 }
 
+impl GenericArg {
+    pub fn span(&self) -> Span {
+        match self {
+            GenericArg::Lifetime(l) => l.span,
+            GenericArg::Type(t) => t.span,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct GenericArgs {
     /// The generic arguments for this path segment.

@@ -689,6 +689,15 @@ impl CodeMap {
         self.span_until_char(sp, '{')
     }
 
+    /// Returns a new span representing just the start-point of this span
+    pub fn start_point(&self, sp: Span) -> Span {
+        let pos = sp.lo().0;
+        let width = self.find_width_of_character_at_span(sp, false);
+        let corrected_start_position = pos.checked_add(width).unwrap_or(pos);
+        let end_point = BytePos(cmp::max(corrected_start_position, sp.lo().0));
+        sp.with_hi(end_point)
+    }
+
     /// Returns a new span representing just the end-point of this span
     pub fn end_point(&self, sp: Span) -> Span {
         let pos = sp.hi().0;
