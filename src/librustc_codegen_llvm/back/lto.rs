@@ -238,7 +238,7 @@ fn fat_lto(cgcx: &CodegenContext,
         .expect("must be codegen'ing at least one module");
     let module = modules.remove(costliest_module);
     let llmod = module.llvm().expect("can't lto pre-codegened modules").llmod;
-    info!("using {:?} as a base module", module.llmod_id);
+    info!("using {:?} as a base module", module.name);
 
     // For all other modules we codegened we'll need to link them into our own
     // bitcode. All modules were codegened in their own LLVM context, however,
@@ -248,7 +248,7 @@ fn fat_lto(cgcx: &CodegenContext,
     for module in modules {
         let llvm = module.llvm().expect("can't lto pre-codegened modules");
         let buffer = ModuleBuffer::new(llvm.llmod);
-        let llmod_id = CString::new(&module.llmod_id[..]).unwrap();
+        let llmod_id = CString::new(&module.name[..]).unwrap();
         serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
     }
 
@@ -376,9 +376,9 @@ fn thin_lto(cgcx: &CodegenContext,
         //        the most expensive portion of this small bit of global
         //        analysis!
         for (i, module) in modules.iter().enumerate() {
-            info!("local module: {} - {}", i, module.llmod_id);
+            info!("local module: {} - {}", i, module.name);
             let llvm = module.llvm().expect("can't lto precodegened module");
-            let name = CString::new(module.llmod_id.clone()).unwrap();
+            let name = CString::new(module.name.clone()).unwrap();
             let buffer = ThinBuffer::new(llvm.llmod);
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: name.as_ptr(),
@@ -387,7 +387,7 @@ fn thin_lto(cgcx: &CodegenContext,
             });
             thin_buffers.push(buffer);
             module_names.push(name);
-            timeline.record(&module.llmod_id);
+            timeline.record(&module.name);
         }
 
         // FIXME: All upstream crates are deserialized internally in the
@@ -676,7 +676,6 @@ impl ThinModule {
                 llcx,
                 tm,
             }),
-            llmod_id: self.name().to_string(),
             name: self.name().to_string(),
             kind: ModuleKind::Regular,
         };
