@@ -113,7 +113,7 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![deny(warnings)]
+#![deny(bare_trait_objects)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 
@@ -1174,13 +1174,13 @@ impl Build {
     /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
     /// when this function is called. Unwanted files or directories can be skipped
     /// by returning `false` from the filter function.
-    pub fn cp_filtered(&self, src: &Path, dst: &Path, filter: &Fn(&Path) -> bool) {
+    pub fn cp_filtered(&self, src: &Path, dst: &Path, filter: &dyn Fn(&Path) -> bool) {
         // Immediately recurse with an empty relative path
         self.recurse_(src, dst, Path::new(""), filter)
     }
 
     // Inner function does the actual work
-    fn recurse_(&self, src: &Path, dst: &Path, relative: &Path, filter: &Fn(&Path) -> bool) {
+    fn recurse_(&self, src: &Path, dst: &Path, relative: &Path, filter: &dyn Fn(&Path) -> bool) {
         for f in self.read_dir(src) {
             let path = f.path();
             let name = path.file_name().unwrap();
