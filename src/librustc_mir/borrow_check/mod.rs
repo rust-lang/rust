@@ -1850,22 +1850,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         binding_mode: ty::BindingMode::BindByValue(_),
                         opt_ty_info,
                         ..
-                    }))) => {
-                        if let Some(x) = try_suggest_ampmut_rhs(
-                            self.tcx, self.mir, *local,
-                        ) {
-                            Some(x)
-                        } else {
-                            Some(suggest_ampmut_type(local_decl, opt_ty_info))
-                        }
-                    },
+                    }))) => Some(suggest_ampmut(
+                        self.tcx,
+                        self.mir,
+                        *local,
+                        local_decl,
+                        opt_ty_info,
+                    )),
 
                     Some(ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
                         binding_mode: ty::BindingMode::BindByReference(_),
                         ..
-                    }))) => {
-                        suggest_ref_mut(self.tcx, local_decl)
-                    },
+                    }))) => suggest_ref_mut(self.tcx, local_decl),
 
                     Some(ClearCrossCrate::Clear) => bug!("saw cleared local state"),
 
@@ -1927,12 +1923,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //
         // This implementation attempts to emulate AST-borrowck prioritization
         // by trying (3.), then (2.) and finally falling back on (1.).
-
-        fn try_suggest_ampmut_rhs<'cx, 'gcx, 'tcx>(
+        fn suggest_ampmut<'cx, 'gcx, 'tcx>(
             tcx: TyCtxt<'cx, 'gcx, 'tcx>,
             mir: &Mir<'tcx>,
             local: Local,
-        ) -> Option<(Span, String)> {
+            local_decl: &mir::LocalDecl<'tcx>,
+            opt_ty_info: Option<Span>,
+        ) -> (Span, String) {
             let locations = mir.find_assignments(local);
             if locations.len() > 0 {
                 let assignment_rhs_span = mir.source_info(locations[0]).span;
@@ -1940,17 +1937,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if let Ok(src) = snippet {
                     if src.starts_with('&') {
                         let borrowed_expr = src[1..].to_string();
-                        return Some((assignment_rhs_span, format!("&mut {}", borrowed_expr)));
+                        return (
+                            assignment_rhs_span,
+                            format!("&mut {}", borrowed_expr),
+                        );
                     }
                 }
             }
-            None
-        }
 
-        fn suggest_ampmut_type<'tcx>(
-            local_decl: &mir::LocalDecl<'tcx>,
-            opt_ty_info: Option<Span>,
-        ) -> (Span, String) {
             let highlight_span = match opt_ty_info {
                 // if this is a variable binding with an explicit type,
                 // try to highlight that for the suggestion.
