@@ -13,7 +13,6 @@
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
 pub use self::FunctionRetTy::*;
-pub use self::ForeignItem_::*;
 pub use self::Item_::*;
 pub use self::Mutability::*;
 pub use self::PrimTy::*;
@@ -2192,7 +2191,7 @@ pub enum AssociatedItemKind {
 pub struct ForeignItem {
     pub name: Name,
     pub attrs: HirVec<Attribute>,
-    pub node: ForeignItem_,
+    pub node: ForeignItemKind,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
@@ -2200,22 +2199,22 @@ pub struct ForeignItem {
 
 /// An item within an `extern` block
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ForeignItem_ {
+pub enum ForeignItemKind {
     /// A foreign function
-    ForeignItemFn(P<FnDecl>, HirVec<Ident>, Generics),
+    Fn(P<FnDecl>, HirVec<Ident>, Generics),
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
-    ForeignItemStatic(P<Ty>, bool),
+    Static(P<Ty>, bool),
     /// A foreign type
-    ForeignItemType,
+    Type,
 }
 
-impl ForeignItem_ {
+impl ForeignItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
-            ForeignItemFn(..) => "foreign function",
-            ForeignItemStatic(..) => "foreign static item",
-            ForeignItemType => "foreign type",
+            ForeignItemKind::Fn(..) => "foreign function",
+            ForeignItemKind::Static(..) => "foreign static item",
+            ForeignItemKind::Type => "foreign type",
         }
     }
 }

@@ -4018,7 +4018,7 @@ impl Clean<Vec<Item>> for hir::ForeignMod {
 impl Clean<Item> for hir::ForeignItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            hir::ForeignItemFn(ref decl, ref names, ref generics) => {
+            hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (generics.clean(cx), (&**decl, &names[..]).clean(cx))
                 });
@@ -4033,14 +4033,14 @@ impl Clean<Item> for hir::ForeignItem {
                     },
                 })
             }
-            hir::ForeignItemStatic(ref ty, mutbl) => {
+            hir::ForeignItemKind::Static(ref ty, mutbl) => {
                 ForeignStaticItem(Static {
                     type_: ty.clean(cx),
                     mutability: if mutbl {Mutable} else {Immutable},
                     expr: "".to_string(),
                 })
             }
-            hir::ForeignItemType => {
+            hir::ForeignItemKind::Type => {
                 ForeignTypeItem
             }
         };

@@ -451,9 +451,9 @@ impl<'hir> Map<'hir> {
             NodeForeignItem(item) => {
                 let def_id = self.local_def_id(item.id);
                 match item.node {
-                    ForeignItemFn(..) => Some(Def::Fn(def_id)),
-                    ForeignItemStatic(_, m) => Some(Def::Static(def_id, m)),
-                    ForeignItemType => Some(Def::TyForeign(def_id)),
+                    ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
+                    ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
+                    ForeignItemKind::Type => Some(Def::TyForeign(def_id)),
                 }
             }
             NodeTraitItem(item) => {

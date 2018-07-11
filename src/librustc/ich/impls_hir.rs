@@ -909,10 +909,10 @@ impl_stable_hash_for!(struct hir::ForeignItem {
     vis
 });
 
-impl_stable_hash_for!(enum hir::ForeignItem_ {
-    ForeignItemFn(fn_decl, arg_names, generics),
-    ForeignItemStatic(ty, is_mutbl),
-    ForeignItemType
+impl_stable_hash_for!(enum hir::ForeignItemKind {
+    Fn(fn_decl, arg_names, generics),
+    Static(ty, is_mutbl),
+    Type
 });
 
 impl_stable_hash_for!(enum hir::StmtKind {

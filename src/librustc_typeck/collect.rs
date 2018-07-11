@@ -287,7 +287,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeForeignItem(item) => {
             match item.node {
-                ForeignItemFn(_, _, ref generics) => generics,
+                ForeignItemKind::Fn(_, _, ref generics) => generics,
                 _ => return result
             }
         }
@@ -375,7 +375,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
                 tcx.generics_of(def_id);
                 tcx.type_of(def_id);
                 tcx.predicates_of(def_id);
-                if let hir::ForeignItemFn(..) = item.node {
+                if let hir::ForeignItemKind::Fn(..) = item.node {
                     tcx.fn_sig(def_id);
                 }
             }
@@ -774,7 +774,7 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             _ => None,
         },
         hir_map::NodeForeignItem(item) => match item.node {
-            hir::ForeignItemFn(ref fn_decl, _, ref generics) =>
+            hir::ForeignItemKind::Fn(ref fn_decl, _, ref generics) =>
                 has_late_bound_regions(tcx, generics, fn_decl),
             _ => None,
         },
@@ -869,9 +869,9 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeForeignItem(item) => {
             match item.node {
-                ForeignItemStatic(..) => &no_generics,
-                ForeignItemFn(_, _, ref generics) => generics,
-                ForeignItemType => &no_generics,
+                ForeignItemKind::Static(..) => &no_generics,
+                ForeignItemKind::Fn(_, _, ref generics) => generics,
+                ForeignItemKind::Type => &no_generics,
             }
         }
 
@@ -1080,12 +1080,12 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeForeignItem(foreign_item) => {
             match foreign_item.node {
-                ForeignItemFn(..) => {
+                ForeignItemKind::Fn(..) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)
                 }
-                ForeignItemStatic(ref t, _) => icx.to_ty(t),
-                ForeignItemType => tcx.mk_foreign(def_id),
+                ForeignItemKind::Static(ref t, _) => icx.to_ty(t),
+                ForeignItemKind::Type => tcx.mk_foreign(def_id),
             }
         }
 
@@ -1169,7 +1169,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
         }
 
-        NodeForeignItem(&hir::ForeignItem { node: ForeignItemFn(ref fn_decl, _, _), .. }) => {
+        NodeForeignItem(&hir::ForeignItem { node: ForeignItemKind::Fn(ref fn_decl, _, _), .. }) => {
             let abi = tcx.hir.get_foreign_abi(node_id);
             compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
         }
@@ -1412,9 +1412,9 @@ fn explicit_predicates_of<'a, 'tcx>(
 
         NodeForeignItem(item) => {
             match item.node {
-                ForeignItemStatic(..) => &no_generics,
-                ForeignItemFn(_, _, ref generics) => generics,
-                ForeignItemType => &no_generics,
+                ForeignItemKind::Static(..) => &no_generics,
+                ForeignItemKind::Fn(_, _, ref generics) => generics,
+                ForeignItemKind::Type => &no_generics,
             }
         }
 

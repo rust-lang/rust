@@ -447,7 +447,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo())?;
         self.print_outer_attributes(&item.attrs)?;
         match item.node {
-            hir::ForeignItemFn(ref decl, ref arg_names, ref generics) => {
+            hir::ForeignItemKind::Fn(ref decl, ref arg_names, ref generics) => {
                 self.head("")?;
                 self.print_fn(decl,
                               hir::FnHeader {
@@ -465,7 +465,7 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end() // end the outer fn box
             }
-            hir::ForeignItemStatic(ref t, m) => {
+            hir::ForeignItemKind::Static(ref t, m) => {
                 self.head(&visibility_qualified(&item.vis, "static"))?;
                 if m {
                     self.word_space("mut")?;
@@ -477,7 +477,7 @@ impl<'a> State<'a> {
                 self.end()?; // end the head-ibox
                 self.end() // end the outer cbox
             }
-            hir::ForeignItemType => {
+            hir::ForeignItemKind::Type => {
                 self.head(&visibility_qualified(&item.vis, "type"))?;
                 self.print_name(item.name)?;
                 self.s.word(";")?;

@@ -786,13 +786,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
             if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
                 for ni in &nmod.items {
                     match ni.node {
-                        hir::ForeignItemFn(ref decl, _, _) => {
+                        hir::ForeignItemKind::Fn(ref decl, _, _) => {
                             vis.check_foreign_fn(ni.id, decl);
                         }
-                        hir::ForeignItemStatic(ref ty, _) => {
+                        hir::ForeignItemKind::Static(ref ty, _) => {
                             vis.check_foreign_static(ni.id, ty.span);
                         }
-                        hir::ForeignItemType => ()
+                        hir::ForeignItemKind::Type => ()
                     }
                 }
             }

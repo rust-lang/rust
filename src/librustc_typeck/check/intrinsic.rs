@@ -35,7 +35,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let def_id = tcx.hir.local_def_id(it.id);
 
     match it.node {
-        hir::ForeignItemFn(..) => {}
+        hir::ForeignItemKind::Fn(..) => {}
         _ => {
             struct_span_err!(tcx.sess, it.span, E0622,
                              "intrinsic must be a function")
@@ -48,7 +48,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     if i_n_tps != n_tps {
         let span = match it.node {
-            hir::ForeignItemFn(_, _, ref generics) => generics.span,
+            hir::ForeignItemKind::Fn(_, _, ref generics) => generics.span,
             _ => bug!()
         };
 

@@ -1561,7 +1561,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_info_for_foreign_item({:?})", def_id);
 
         let kind = match nitem.node {
-            hir::ForeignItemFn(_, ref names, _) => {
+            hir::ForeignItemKind::Fn(_, ref names, _) => {
                 let data = FnData {
                     constness: hir::Constness::NotConst,
                     arg_names: self.encode_fn_arg_names(names),
@@ -1569,9 +1569,9 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 };
                 EntryKind::ForeignFn(self.lazy(&data))
             }
-            hir::ForeignItemStatic(_, true) => EntryKind::ForeignMutStatic,
-            hir::ForeignItemStatic(_, false) => EntryKind::ForeignImmStatic,
-            hir::ForeignItemType => EntryKind::ForeignType,
+            hir::ForeignItemKind::Static(_, true) => EntryKind::ForeignMutStatic,
+            hir::ForeignItemKind::Static(_, false) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemKind::Type => EntryKind::ForeignType,
         };
 
         Entry {
@@ -1586,7 +1586,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
             variances: match nitem.node {
-                hir::ForeignItemFn(..) => self.encode_variances_of(def_id),
+                hir::ForeignItemKind::Fn(..) => self.encode_variances_of(def_id),
                 _ => LazySeq::empty(),
             },
             generics: Some(self.encode_generics(def_id)),

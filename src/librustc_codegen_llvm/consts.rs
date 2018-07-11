@@ -143,7 +143,7 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
             }
 
             hir_map::NodeForeignItem(&hir::ForeignItem {
-                ref attrs, span, node: hir::ForeignItemStatic(..), ..
+                ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
             }) => {
                 let g = if let Some(linkage) = cx.tcx.codegen_fn_attrs(def_id).linkage {
                     // If this is a static with a linkage specified, then we need to handle

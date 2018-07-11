@@ -710,15 +710,15 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
     visitor.visit_name(foreign_item.span, foreign_item.name);
 
     match foreign_item.node {
-        ForeignItemFn(ref function_declaration, ref param_names, ref generics) => {
+        ForeignItemKind::Fn(ref function_declaration, ref param_names, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_fn_decl(function_declaration);
             for &param_name in param_names {
                 visitor.visit_ident(param_name);
             }
         }
-        ForeignItemStatic(ref typ, _) => visitor.visit_ty(typ),
-        ForeignItemType => (),
+        ForeignItemKind::Static(ref typ, _) => visitor.visit_ty(typ),
+        ForeignItemKind::Type => (),
     }
 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);

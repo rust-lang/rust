@@ -3230,12 +3230,12 @@ impl<'a> LoweringContext<'a> {
                         },
                     );
 
-                    hir::ForeignItemFn(fn_dec, fn_args, generics)
+                    hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
                 ForeignItemKind::Static(ref t, m) => {
-                    hir::ForeignItemStatic(self.lower_ty(t, ImplTraitContext::Disallowed), m)
+                    hir::ForeignItemKind::Static(self.lower_ty(t, ImplTraitContext::Disallowed), m)
                 }
-                ForeignItemKind::Ty => hir::ForeignItemType,
+                ForeignItemKind::Ty => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("shouldn't exist here"),
             },
             vis: self.lower_visibility(&i.vis, None),

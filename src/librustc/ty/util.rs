@@ -608,7 +608,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     node: hir::ItemStatic(_, mutbl, _), ..
                 }) => Some(mutbl),
                 Node::NodeForeignItem(&hir::ForeignItem {
-                    node: hir::ForeignItemStatic(_, is_mutbl), ..
+                    node: hir::ForeignItemKind::Static(_, is_mutbl), ..
                 }) =>
                     Some(if is_mutbl {
                         hir::Mutability::MutMutable

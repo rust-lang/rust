@@ -167,7 +167,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
 
             hir::ItemForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
-                    if let hir::ForeignItemFn(..) = foreign_item.node {
+                    if let hir::ForeignItemKind::Fn(..) = foreign_item.node {
                         self.add_inferreds_for_item(foreign_item.id);
                     }
                 }

@@ -83,7 +83,7 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
         },
 
         hir::map::NodeForeignItem(item) => match item.node {
-            hir::ForeignItemFn(..) => {}
+            hir::ForeignItemKind::Fn(..) => {}
 
             _ => unsupported()
         },

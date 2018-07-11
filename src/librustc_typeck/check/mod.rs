@@ -1340,7 +1340,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
                     err.emit();
                 }
 
-                if let hir::ForeignItemFn(ref fn_decl, _, _) = item.node {
+                if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
                     require_c_abi_if_variadic(tcx, fn_decl, m.abi, item.span);
                 }
             }
