@@ -642,6 +642,11 @@ impl fmt::Debug for CString {
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl From<CString> for Vec<u8> {
+    /// Converts a [`CString`] into a [`Vec`]`<u8>`.
+    /// The conversion consumes the [`CString`], and removes the terminating NUL byte.
+    ///
+    /// [`Vec`]: ../vec/struct.Vec.html
+    /// [`CString`]: ../ffi/struct.CString.html
     #[inline]
     fn from(s: CString) -> Vec<u8> {
         s.into_bytes()
@@ -700,6 +705,10 @@ impl<'a> From<&'a CStr> for Box<CStr> {
 
 #[stable(feature = "c_string_from_box", since = "1.18.0")]
 impl From<Box<CStr>> for CString {
+    /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`CString`]: ../ffi/struct.CString.html
     #[inline]
     fn from(s: Box<CStr>) -> CString {
         s.into_c_string()
@@ -716,6 +725,10 @@ impl Clone for Box<CStr> {
 
 #[stable(feature = "box_from_c_string", since = "1.20.0")]
 impl From<CString> for Box<CStr> {
+    /// Converts a [`CString`] into a [`Box`]`<CStr>` without copying or allocating.
+    ///
+    /// [`CString`]: ../ffi/struct.CString.html
+    /// [`Box`]: ../boxed/struct.Box.html
     #[inline]
     fn from(s: CString) -> Box<CStr> {
         s.into_boxed_c_str()
@@ -748,6 +761,10 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
+    /// Converts a [`CString`] into a [`Arc`]`<CStr>` without copying or allocating.
+    ///
+    /// [`CString`]: ../ffi/struct.CString.html
+    /// [`Arc`]: ../sync/struct.Arc.html
     #[inline]
     fn from(s: CString) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.into_inner());
@@ -766,6 +783,10 @@ impl<'a> From<&'a CStr> for Arc<CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Rc<CStr> {
+    /// Converts a [`CString`] into a [`Rc`]`<CStr>` without copying or allocating.
+    ///
+    /// [`CString`]: ../ffi/struct.CString.html
+    /// [`Rc`]: ../rc/struct.Rc.html
     #[inline]
     fn from(s: CString) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.into_inner());
@@ -839,6 +860,10 @@ impl fmt::Display for NulError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<NulError> for io::Error {
+    /// Converts a [`NulError`] into a [`io::Error`].
+    ///
+    /// [`NulError`]: ../ffi/struct.NulError.html
+    /// [`io::Error`]: ../io/struct.Error.html
     fn from(_: NulError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput,
                        "data provided contains a nul byte")
