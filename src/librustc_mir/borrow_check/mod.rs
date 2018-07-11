@@ -1841,31 +1841,29 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 elem: ProjectionElem::Deref,
             }) if self.mir.local_decls[*local].is_user_variable.is_some() => {
                 let local_decl = &self.mir.local_decls[*local];
-                let suggestion = match local_decl.is_user_variable {
-                    Some(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf)) => {
+                let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
+                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
                         Some(suggest_ampmut_self(local_decl))
                     },
 
-                    Some(ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
+                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
                         binding_mode: ty::BindingMode::BindByValue(_),
                         opt_ty_info,
                         ..
-                    }))) => Some(suggest_ampmut(
+                    })) => Some(suggest_ampmut(
                         self.tcx,
                         self.mir,
                         *local,
                         local_decl,
-                        opt_ty_info,
+                        *opt_ty_info,
                     )),
 
-                    Some(ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
+                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
                         binding_mode: ty::BindingMode::BindByReference(_),
                         ..
-                    }))) => suggest_ref_mut(self.tcx, local_decl),
+                    })) => suggest_ref_mut(self.tcx, local_decl),
 
-                    Some(ClearCrossCrate::Clear) => bug!("saw cleared local state"),
-
-                    None => bug!(),
+                    ClearCrossCrate::Clear => bug!("saw cleared local state"),
                 };
 
                 if let Some((err_help_span, suggested_code)) = suggestion {
