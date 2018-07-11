@@ -85,8 +85,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     // If this is just an expression with some `?`s, then format it trivially and
     // return early.
     if chain.children.is_empty() {
-        let rewrite = chain.parent.expr.rewrite(context, shape.sub_width(chain.parent.tries)?)?;
-        return Some(format!("{}{}", rewrite, "?".repeat(chain.parent.tries)));
+        return chain.parent.rewrite(context, shape);
     }
 
     match context.config.indent_style() {
@@ -100,6 +99,89 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 struct ChainItem {
     expr: ast::Expr,
     tries: usize,
+}
+
+impl Rewrite for ChainItem {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        let rewrite = self.expr.rewrite(context, shape.sub_width(self.tries)?)?;
+        Some(format!("{}{}", rewrite, "?".repeat(self.tries)))
+    }
+}
+
+impl ChainItem {
+    // Rewrite the last element in the chain `expr`. E.g., given `a.b.c` we rewrite
+    // `.c` and any trailing `?`s.
+    fn rewrite_postfix(
+        &self,
+        context: &RewriteContext,
+        shape: Shape,
+    ) -> Option<String> {
+        let shape = shape.sub_width(self.tries)?;
+        let mut rewrite = match self.expr.node {
+            ast::ExprKind::MethodCall(ref segment, ref expressions) => {
+                let types = match segment.args {
+                    Some(ref params) => match **params {
+                        ast::GenericArgs::AngleBracketed(ref data) => &data.args[..],
+                        _ => &[],
+                    },
+                    _ => &[],
+                };
+                Self::rewrite_method_call(segment.ident, types, expressions, self.expr.span, context, shape)?
+            }
+            ast::ExprKind::Field(ref nested, ref field) => {
+                let space = if Self::is_tup_field_access(&self.expr) && Self::is_tup_field_access(nested) {
+                    " "
+                } else {
+                    ""
+                };
+                let result = format!("{}.{}", space, field.name);
+                if result.len() <= shape.width {
+                    result
+                } else {
+                    return None;
+                }
+            }
+            _ => unreachable!(),
+        };
+        rewrite.push_str(&"?".repeat(self.tries));
+        Some(rewrite)
+    }
+
+    fn is_tup_field_access(expr: &ast::Expr) -> bool {
+        match expr.node {
+            ast::ExprKind::Field(_, ref field) => {
+                field.name.to_string().chars().all(|c| c.is_digit(10))
+            }
+            _ => false,
+        }
+    }
+
+    fn rewrite_method_call(
+        method_name: ast::Ident,
+        types: &[ast::GenericArg],
+        args: &[ptr::P<ast::Expr>],
+        span: Span,
+        context: &RewriteContext,
+        shape: Shape,
+    ) -> Option<String> {
+        let (lo, type_str) = if types.is_empty() {
+            (args[0].span.hi(), String::new())
+        } else {
+            let type_list = types
+                .iter()
+                .map(|ty| ty.rewrite(context, shape))
+                .collect::<Option<Vec<_>>>()?;
+
+            let type_str = format!("::<{}>", type_list.join(", "));
+
+            (types.last().unwrap().span().hi(), type_str)
+        };
+
+        let callee_str = format!(".{}{}", method_name, type_str);
+        let span = mk_sp(lo, span.hi());
+
+        rewrite_call(context, &callee_str, &args[1..], span, shape)
+    }
 }
 
 #[derive(Debug)]
@@ -209,9 +291,7 @@ impl <'a> ChainFormatterBlock<'a> {
     // ```
     // If `bar` were not part of the root, then baz would be orphaned and 'float'.
     fn format_root(&mut self, parent: &ChainItem, context: &RewriteContext, shape: Shape) -> Option<()> {
-        let mut root_rewrite: String = parent.expr
-            .rewrite(context, shape)
-            .map(|parent_rw| parent_rw + &"?".repeat(parent.tries))?;
+        let mut root_rewrite: String = parent.rewrite(context, shape)?;
 
         self.root_ends_with_block = is_block_expr(context, &parent.expr, &root_rewrite);
         let tab_width = context.config.tab_spaces().saturating_sub(shape.offset);
@@ -219,11 +299,8 @@ impl <'a> ChainFormatterBlock<'a> {
         while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
             let item = &self.children[0];
             let shape = shape.offset_left(root_rewrite.len())?;
-            match rewrite_chain_subexpr(&item.expr, context, shape) {
-                Some(rewrite) => {
-                    root_rewrite.push_str(&rewrite);
-                    root_rewrite.push_str(&"?".repeat(item.tries));
-                }
+            match &item.rewrite_postfix(context, shape) {
+                Some(rewrite) => root_rewrite.push_str(rewrite),
                 None => break,
             }
 
@@ -248,10 +325,10 @@ impl <'a> ChainFormatterBlock<'a> {
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
         self.is_block_like.push(self.root_ends_with_block);
-        for item in &self.children[..self.children.len()] {
-            let rewrite = rewrite_chain_subexpr(&item.expr, context, child_shape)?;
+        for item in &self.children[..self.children.len() - 1] {
+            let rewrite = item.rewrite_postfix(context, child_shape)?;
             self.is_block_like.push(is_block_expr(context, &item.expr, &rewrite));
-            self.rewrites.push(format!("{}{}", rewrite, "?".repeat(item.tries)));
+            self.rewrites.push(rewrite);
         }
         Some(())
     }
@@ -315,7 +392,7 @@ impl <'a> ChainFormatterBlock<'a> {
             // First we try to 'overflow' the last child and see if it looks better than using
             // vertical layout.
             if let Some(shape) = last_shape.offset_left(almost_total) {
-                if let Some(rw) = rewrite_chain_subexpr(&last.expr, context, shape) {
+                if let Some(rw) = last.rewrite_postfix(context, shape) {
                     // We allow overflowing here only if both of the following conditions match:
                     // 1. The entire chain fits in a single line except the last child.
                     // 2. `last_child_str.lines().count() >= 5`.
@@ -328,7 +405,7 @@ impl <'a> ChainFormatterBlock<'a> {
                         // We could not know whether overflowing is better than using vertical layout,
                         // just by looking at the overflowed rewrite. Now we rewrite the last child
                         // on its own line, and compare two rewrites to choose which is better.
-                        match rewrite_chain_subexpr(&last.expr, context, last_shape) {
+                        match last.rewrite_postfix(context, last_shape) {
                             Some(ref new_rw) if !could_fit_single_line => {
                                 last_subexpr_str = Some(new_rw.clone());
                             }
@@ -349,8 +426,8 @@ impl <'a> ChainFormatterBlock<'a> {
             }
         }
 
-        last_subexpr_str = last_subexpr_str.or_else(|| rewrite_chain_subexpr(&last.expr, context, last_shape));
-        self.rewrites.push(format!("{}{}", last_subexpr_str?, "?".repeat(last.tries)));
+        last_subexpr_str = last_subexpr_str.or_else(|| last.rewrite_postfix(context, last_shape));
+        self.rewrites.push(last_subexpr_str?);
         Some(())
     }
 
@@ -424,17 +501,14 @@ impl<'a> ChainFormatterVisual<'a> {
         } else {
             shape
         };
-        let mut root_rewrite = parent.expr
-            .rewrite(context, parent_shape)
-            .map(|parent_rw| parent_rw + &"?".repeat(parent.tries))?;
+        let mut root_rewrite = parent.rewrite(context, parent_shape)?;
 
         if !root_rewrite.contains('\n') && Self::is_continuable(&parent.expr) {
             let item = &self.children[0];
             let overhead = last_line_width(&root_rewrite);
             let shape = parent_shape.offset_left(overhead)?;
-            let rewrite = rewrite_chain_subexpr(&item.expr, context, shape)?;
+            let rewrite = item.rewrite_postfix(context, shape)?;
             root_rewrite.push_str(&rewrite);
-            root_rewrite.push_str(&"?".repeat(item.tries));
 
             self.children = &self.children[1..];
         }
@@ -453,8 +527,8 @@ impl<'a> ChainFormatterVisual<'a> {
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
         for item in &self.children[..self.children.len() - 1] {
-            let rewrite = rewrite_chain_subexpr(&item.expr, context, child_shape)?;
-            self.rewrites.push(format!("{}{}", rewrite, "?".repeat(item.tries)));
+            let rewrite = item.rewrite_postfix(context, child_shape)?;
+            self.rewrites.push(rewrite);
         }
         Some(())
     }
@@ -479,7 +553,7 @@ impl<'a> ChainFormatterVisual<'a> {
             // First we try to 'overflow' the last child and see if it looks better than using
             // vertical layout.
             if let Some(shape) = shape.offset_left(almost_total) {
-                if let Some(rw) = rewrite_chain_subexpr(&last.expr, context, shape) {
+                if let Some(rw) = last.rewrite_postfix(context, shape) {
                     // We allow overflowing here only if both of the following conditions match:
                     // 1. The entire chain fits in a single line except the last child.
                     // 2. `last_child_str.lines().count() >= 5`.
@@ -492,7 +566,7 @@ impl<'a> ChainFormatterVisual<'a> {
                         // We could not know whether overflowing is better than using vertical layout,
                         // just by looking at the overflowed rewrite. Now we rewrite the last child
                         // on its own line, and compare two rewrites to choose which is better.
-                        match rewrite_chain_subexpr(&last.expr, context, last_shape) {
+                        match last.rewrite_postfix(context, last_shape) {
                             Some(ref new_rw) if !could_fit_single_line => {
                                 last_subexpr_str = Some(new_rw.clone());
                             }
@@ -513,8 +587,8 @@ impl<'a> ChainFormatterVisual<'a> {
             }
         } 
 
-        let last_subexpr_str = last_subexpr_str.or_else(|| rewrite_chain_subexpr(&last.expr, context, last_shape));
-        self.rewrites.push(format!("{}{}", last_subexpr_str?, "?".repeat(last.tries)));
+        let last_subexpr_str = last_subexpr_str.or_else(|| last.rewrite_postfix(context, last_shape));
+        self.rewrites.push(last_subexpr_str?);
         Some(())
     }
 
@@ -588,79 +662,4 @@ fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
         _ => false,
     }
-}
-
-// Rewrite the last element in the chain `expr`. E.g., given `a.b.c` we rewrite
-// `.c`.
-fn rewrite_chain_subexpr(
-    expr: &ast::Expr,
-    context: &RewriteContext,
-    shape: Shape,
-) -> Option<String> {
-    let rewrite_element = |expr_str: String| {
-        if expr_str.len() <= shape.width {
-            Some(expr_str)
-        } else {
-            None
-        }
-    };
-
-    match expr.node {
-        ast::ExprKind::MethodCall(ref segment, ref expressions) => {
-            let types = match segment.args {
-                Some(ref params) => match **params {
-                    ast::GenericArgs::AngleBracketed(ref data) => &data.args[..],
-                    _ => &[],
-                },
-                _ => &[],
-            };
-            rewrite_method_call(segment.ident, types, expressions, expr.span, context, shape)
-        }
-        ast::ExprKind::Field(ref nested, ref field) => {
-            let space = if is_tup_field_access(expr) && is_tup_field_access(nested) {
-                " "
-            } else {
-                ""
-            };
-            rewrite_element(format!("{}.{}", space, field.name))
-        }
-        ast::ExprKind::Try(_) => rewrite_element(String::from("?")),
-        _ => unreachable!(),
-    }
-}
-
-fn is_tup_field_access(expr: &ast::Expr) -> bool {
-    match expr.node {
-        ast::ExprKind::Field(_, ref field) => {
-            field.name.to_string().chars().all(|c| c.is_digit(10))
-        }
-        _ => false,
-    }
-}
-
-fn rewrite_method_call(
-    method_name: ast::Ident,
-    types: &[ast::GenericArg],
-    args: &[ptr::P<ast::Expr>],
-    span: Span,
-    context: &RewriteContext,
-    shape: Shape,
-) -> Option<String> {
-    let (lo, type_str) = if types.is_empty() {
-        (args[0].span.hi(), String::new())
-    } else {
-        let type_list = types
-            .iter()
-            .map(|ty| ty.rewrite(context, shape))
-            .collect::<Option<Vec<_>>>()?;
-
-        let type_str = format!("::<{}>", type_list.join(", "));
-
-        (types.last().unwrap().span().hi(), type_str)
-    };
-
-    let callee_str = format!(".{}{}", method_name, type_str);
-    let span = mk_sp(lo, span.hi());
-
-    rewrite_call(context, &callee_str, &args[1..], span, shape)
 }
