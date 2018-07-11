@@ -56,23 +56,23 @@ pub trait CodegenBackend {
     fn print_version(&self) {}
     fn diagnostics(&self) -> &[(&'static str, &'static str)] { &[] }
 
-    fn metadata_loader(&self) -> Box<MetadataLoader + Sync>;
+    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync>;
     fn provide(&self, _providers: &mut Providers);
     fn provide_extern(&self, _providers: &mut Providers);
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        rx: mpsc::Receiver<Box<Any + Send>>
-    ) -> Box<Any>;
+        rx: mpsc::Receiver<Box<dyn Any + Send>>
+    ) -> Box<dyn Any>;
 
-    /// This is called on the returned `Box<Any>` from `codegen_backend`
+    /// This is called on the returned `Box<dyn Any>` from `codegen_backend`
     ///
     /// # Panics
     ///
-    /// Panics when the passed `Box<Any>` was not returned by `codegen_backend`.
+    /// Panics when the passed `Box<dyn Any>` was not returned by `codegen_backend`.
     fn join_codegen_and_link(
         &self,
-        ongoing_codegen: Box<Any>,
+        ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         dep_graph: &DepGraph,
         outputs: &OutputFilenames,
@@ -105,7 +105,7 @@ pub struct OngoingCodegen {
 }
 
 impl MetadataOnlyCodegenBackend {
-    pub fn new() -> Box<CodegenBackend> {
+    pub fn new() -> Box<dyn CodegenBackend> {
         box MetadataOnlyCodegenBackend(())
     }
 }
@@ -125,7 +125,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         }
     }
 
-    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
+    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
         box NoLlvmMetadataLoader
     }
 
@@ -145,8 +145,8 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        _rx: mpsc::Receiver<Box<Any + Send>>
-    ) -> Box<Any> {
+        _rx: mpsc::Receiver<Box<dyn Any + Send>>
+    ) -> Box<dyn Any> {
         use rustc_mir::monomorphize::item::MonoItem;
 
         ::check_for_rustc_errors_attr(tcx);
@@ -193,13 +193,13 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
 
     fn join_codegen_and_link(
         &self,
-        ongoing_codegen: Box<Any>,
+        ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete> {
         let ongoing_codegen = ongoing_codegen.downcast::<OngoingCodegen>()
-            .expect("Expected MetadataOnlyCodegenBackend's OngoingCodegen, found Box<Any>");
+            .expect("Expected MetadataOnlyCodegenBackend's OngoingCodegen, found Box<dyn Any>");
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::CrateTypeRlib && crate_type != CrateType::CrateTypeDylib {
                 continue;
