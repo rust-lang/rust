@@ -3,6 +3,10 @@ error: expected a literal
    |
 LL |     println!(3 + 4); //~ ERROR expected a literal
    |              ^^^^^
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{}", 3 + 4); //~ ERROR expected a literal
+   |              ^^^^^^^^^^^
 
 error: aborting due to previous error
 
