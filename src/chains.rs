@@ -111,7 +111,7 @@ struct Chain {
 
 impl Chain {
     fn from_ast(expr: &ast::Expr, context: &RewriteContext) -> Chain {
-        let mut subexpr_list = make_subexpr_list(expr, context);
+        let mut subexpr_list = Self::make_subexpr_list(expr, context);
 
         // Un-parse the expression tree into ChainItems
         let mut children = vec![];
@@ -139,10 +139,67 @@ impl Chain {
             children,
         }
     }
+
+    // Returns a Vec of the prefixes of the chain.
+    // E.g., for input `a.b.c` we return [`a.b.c`, `a.b`, 'a']
+    fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> Vec<ast::Expr> {
+        let mut subexpr_list = vec![expr.clone()];
+
+        while let Some(subexpr) = Self::pop_expr_chain(subexpr_list.last().unwrap(), context) {
+            subexpr_list.push(subexpr.clone());
+        }
+
+        subexpr_list
+    }
+
+    // Returns the expression's subexpression, if it exists. When the subexpr
+    // is a try! macro, we'll convert it to shorthand when the option is set.
+    fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext) -> Option<ast::Expr> {
+        match expr.node {
+            ast::ExprKind::MethodCall(_, ref expressions) => {
+                Some(Self::convert_try(&expressions[0], context))
+            }
+            ast::ExprKind::Field(ref subexpr, _) | ast::ExprKind::Try(ref subexpr) => {
+                Some(Self::convert_try(subexpr, context))
+            }
+            _ => None,
+        }
+    }
+
+    fn convert_try(expr: &ast::Expr, context: &RewriteContext) -> ast::Expr {
+        match expr.node {
+            ast::ExprKind::Mac(ref mac) if context.config.use_try_shorthand() => {
+                if let Some(subexpr) = convert_try_mac(mac, context) {
+                    subexpr
+                } else {
+                    expr.clone()
+                }
+            }
+            _ => expr.clone(),
+        }
+    }
 }
 
-fn rewrite_chain_block(chain: Chain, context: &RewriteContext, shape: Shape) -> Option<String> {
-    debug!("rewrite_chain_block {:?} {:?}", chain, shape);
+// TODO comments
+struct ChainFormatterBlock<'a> {
+    children: &'a[ChainItem],
+    rewrites: Vec<String>,
+    root_ends_with_block: bool,
+    is_block_like: Vec<bool>,
+    fits_single_line: bool,
+}
+
+impl <'a> ChainFormatterBlock<'a> {
+    fn new(chain: &'a Chain) -> ChainFormatterBlock<'a> {
+        ChainFormatterBlock {
+            children: &chain.children,
+            root_ends_with_block: false,
+            rewrites: Vec::with_capacity(chain.children.len() + 1),
+            is_block_like: Vec::with_capacity(chain.children.len() + 1),
+            fits_single_line: false,
+        }
+    }
+
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
     // Root is the parent plus any other chain items placed on the first line to
     // avoid an orphan. E.g.,
@@ -151,73 +208,53 @@ fn rewrite_chain_block(chain: Chain, context: &RewriteContext, shape: Shape) -> 
     //     .baz()
     // ```
     // If `bar` were not part of the root, then baz would be orphaned and 'float'.
-    let mut root_rewrite = chain.parent.expr
-        .rewrite(context, shape)
-        .map(|parent_rw| parent_rw + &"?".repeat(chain.parent.tries))?;
+    fn format_root(&mut self, parent: &ChainItem, context: &RewriteContext, shape: Shape) -> Option<()> {
+        let mut root_rewrite: String = parent.expr
+            .rewrite(context, shape)
+            .map(|parent_rw| parent_rw + &"?".repeat(parent.tries))?;
 
-    let mut children: &[_] = &chain.children;
-    let mut root_ends_with_block = is_block_expr(context, &chain.parent.expr, &root_rewrite);
-    let tab_width = context.config.tab_spaces().saturating_sub(shape.offset);
+        self.root_ends_with_block = is_block_expr(context, &parent.expr, &root_rewrite);
+        let tab_width = context.config.tab_spaces().saturating_sub(shape.offset);
 
-    while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
-        let item = &children[0];
-        let shape = shape.offset_left(root_rewrite.len())?;
-        match rewrite_chain_subexpr(&item.expr, context, shape) {
-            Some(rewrite) => {
-                root_rewrite.push_str(&rewrite);
-                root_rewrite.push_str(&"?".repeat(item.tries));
+        while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
+            let item = &self.children[0];
+            let shape = shape.offset_left(root_rewrite.len())?;
+            match rewrite_chain_subexpr(&item.expr, context, shape) {
+                Some(rewrite) => {
+                    root_rewrite.push_str(&rewrite);
+                    root_rewrite.push_str(&"?".repeat(item.tries));
+                }
+                None => break,
             }
-            None => break,
-        }
 
-        root_ends_with_block = is_block_expr(context, &item.expr, &root_rewrite);
+            self.root_ends_with_block = is_block_expr(context, &item.expr, &root_rewrite);
 
-        children = &children[1..];
-        if children.is_empty() {
-            return Some(root_rewrite);
+            self.children = &self.children[1..];
+            if self.children.is_empty() {
+                break;
+            }
         }
+        self.rewrites.push(root_rewrite);
+        Some(())
     }
 
-    // Separate out the last item in the chain for special treatment below.
-    let last = &children[children.len() - 1];
-    children = &children[..children.len() - 1];
-
-    // Decide how to layout the rest of the chain.
-    let child_shape = if root_ends_with_block {
-        shape
-    } else {
-        shape.block_indent(context.config.tab_spaces())
-    }.with_max_width(context.config);
-
-    let mut rewrites: Vec<String> = Vec::with_capacity(children.len() + 2);
-    rewrites.push(root_rewrite);
-    let mut is_block_like = Vec::with_capacity(children.len() + 2);
-    is_block_like.push(root_ends_with_block);
-    for item in children {
-        let rewrite = rewrite_chain_subexpr(&item.expr, context, child_shape)?;
-        is_block_like.push(is_block_expr(context, &item.expr, &rewrite));
-        rewrites.push(format!("{}{}", rewrite, "?".repeat(item.tries)));
+    fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Shape {
+        if self.root_ends_with_block {
+            shape
+        } else {
+            shape.block_indent(context.config.tab_spaces())
+        }.with_max_width(context.config)
     }
 
-    // Total of all items excluding the last.
-    let extend_last_subexpr = last_line_extendable(&rewrites[rewrites.len() - 1]);
-    let almost_total = if extend_last_subexpr {
-        last_line_width(&rewrites[rewrites.len() - 1])
-    } else {
-        rewrites.iter().fold(0, |a, b| a + b.len())
-    } + last.tries;
-    let one_line_budget = if rewrites.len() == 1 {
-        shape.width
-    } else {
-        min(shape.width, context.config.width_heuristics().chain_width)
-    };
-    let all_in_one_line = rewrites.iter().all(|s| !s.contains('\n'))
-        && almost_total < one_line_budget;
-    let last_shape = if all_in_one_line {
-        shape.sub_width(last.tries)?
-    } else {
-        child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?
-    };
+    fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
+        self.is_block_like.push(self.root_ends_with_block);
+        for item in &self.children[..self.children.len()] {
+            let rewrite = rewrite_chain_subexpr(&item.expr, context, child_shape)?;
+            self.is_block_like.push(is_block_expr(context, &item.expr, &rewrite));
+            self.rewrites.push(format!("{}{}", rewrite, "?".repeat(item.tries)));
+        }
+        Some(())
+    }
 
     // Rewrite the last child. The last child of a chain requires special treatment. We need to
     // know whether 'overflowing' the last child make a better formatting:
@@ -251,237 +288,277 @@ fn rewrite_chain_block(chain: Chain, context: &RewriteContext, shape: Shape) -> 
     //     result
     // })
     // ```
+    fn format_last_child(&mut self, context: &RewriteContext, shape: Shape, child_shape: Shape) -> Option<()> {
+        let last = &self.children[self.children.len() - 1];
+        let extendable = last_line_extendable(&self.rewrites[self.rewrites.len() - 1]);
+        // Total of all items excluding the last.
+        let almost_total = if extendable {
+            last_line_width(&self.rewrites[self.rewrites.len() - 1])
+        } else {
+            self.rewrites.iter().fold(0, |a, b| a + b.len())
+        } + last.tries;
+        let one_line_budget = if self.rewrites.len() == 1 {
+            shape.width
+        } else {
+            min(shape.width, context.config.width_heuristics().chain_width)
+        }.saturating_sub(almost_total);
 
-    let mut last_subexpr_str = None;
-    let mut fits_single_line = false;
-    if all_in_one_line || extend_last_subexpr {
-        // First we try to 'overflow' the last child and see if it looks better than using
-        // vertical layout.
-        if let Some(shape) = last_shape.offset_left(almost_total) {
-            if let Some(rw) = rewrite_chain_subexpr(&last.expr, context, shape) {
-                // We allow overflowing here only if both of the following conditions match:
-                // 1. The entire chain fits in a single line except the last child.
-                // 2. `last_child_str.lines().count() >= 5`.
-                let line_count = rw.lines().count();
-                let could_fit_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
-                if fits_single_line && line_count >= 5 {
-                    last_subexpr_str = Some(rw);
-                    fits_single_line = true;
-                } else {
-                    // We could not know whether overflowing is better than using vertical layout,
-                    // just by looking at the overflowed rewrite. Now we rewrite the last child
-                    // on its own line, and compare two rewrites to choose which is better.
-                    match rewrite_chain_subexpr(&last.expr, context, last_shape) {
-                        Some(ref new_rw) if !could_fit_single_line => {
-                            last_subexpr_str = Some(new_rw.clone());
-                        }
-                        Some(ref new_rw) if new_rw.lines().count() >= line_count => {
-                            last_subexpr_str = Some(rw);
-                            fits_single_line = could_fit_single_line;
-                        }
-                        new_rw @ Some(..) => {
-                            last_subexpr_str = new_rw;
-                        }
-                        _ => {
-                            last_subexpr_str = Some(rw);
-                            fits_single_line = could_fit_single_line;
+        let all_in_one_line = self.rewrites.iter().all(|s| !s.contains('\n')) && one_line_budget > 0;
+        let last_shape = if all_in_one_line {
+            shape.sub_width(last.tries)?
+        } else {
+            child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?
+        };
+
+        let mut last_subexpr_str = None;
+        if all_in_one_line || extendable {
+            // First we try to 'overflow' the last child and see if it looks better than using
+            // vertical layout.
+            if let Some(shape) = last_shape.offset_left(almost_total) {
+                if let Some(rw) = rewrite_chain_subexpr(&last.expr, context, shape) {
+                    // We allow overflowing here only if both of the following conditions match:
+                    // 1. The entire chain fits in a single line except the last child.
+                    // 2. `last_child_str.lines().count() >= 5`.
+                    let line_count = rw.lines().count();
+                    let could_fit_single_line = first_line_width(&rw) <= one_line_budget;
+                    if could_fit_single_line && line_count >= 5 {
+                        last_subexpr_str = Some(rw);
+                        self.fits_single_line = all_in_one_line;
+                    } else {
+                        // We could not know whether overflowing is better than using vertical layout,
+                        // just by looking at the overflowed rewrite. Now we rewrite the last child
+                        // on its own line, and compare two rewrites to choose which is better.
+                        match rewrite_chain_subexpr(&last.expr, context, last_shape) {
+                            Some(ref new_rw) if !could_fit_single_line => {
+                                last_subexpr_str = Some(new_rw.clone());
+                            }
+                            Some(ref new_rw) if new_rw.lines().count() >= line_count => {
+                                last_subexpr_str = Some(rw);
+                                self.fits_single_line = could_fit_single_line && all_in_one_line;
+                            }
+                            new_rw @ Some(..) => {
+                                last_subexpr_str = new_rw;
+                            }
+                            _ => {
+                                last_subexpr_str = Some(rw);
+                                self.fits_single_line = could_fit_single_line && all_in_one_line;
+                            }
                         }
                     }
                 }
             }
         }
+
+        last_subexpr_str = last_subexpr_str.or_else(|| rewrite_chain_subexpr(&last.expr, context, last_shape));
+        self.rewrites.push(format!("{}{}", last_subexpr_str?, "?".repeat(last.tries)));
+        Some(())
     }
 
-    last_subexpr_str = last_subexpr_str.or_else(|| rewrite_chain_subexpr(&last.expr, context, last_shape));
-    rewrites.push(format!("{}{}", last_subexpr_str?, "?".repeat(last.tries)));
 
-    // We should never look at this, since we only look at the block-ness of the
-    // previous item in the chain.
-    is_block_like.push(false);
+    fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape) -> Option<String> {
+        let connector = if self.fits_single_line {
+            // Yay, we can put everything on one line.
+            Cow::from("")
+        } else {
+            // Use new lines.
+            if *context.force_one_line_chain.borrow() {
+                return None;
+            }
+            child_shape.indent.to_string_with_newline(context.config)
+        };
 
-    let connector = if fits_single_line && all_in_one_line {
-        // Yay, we can put everything on one line.
-        Cow::from("")
-    } else {
-        // Use new lines.
-        if *context.force_one_line_chain.borrow() {
-            return None;
+        let mut rewrite_iter = self.rewrites.iter();
+        let mut result = rewrite_iter.next().unwrap().clone();
+
+        for (rewrite, prev_is_block_like) in rewrite_iter.zip(self.is_block_like.iter()) {
+            if rewrite != "?" && !prev_is_block_like {
+                result.push_str(&connector);
+            }
+            result.push_str(&rewrite);
         }
-        child_shape.indent.to_string_with_newline(context.config)
-    };
 
-    let result = join_rewrites(&rewrites, &is_block_like, &connector);
+        Some(result)
+    }
+}
+
+fn rewrite_chain_block(chain: Chain, context: &RewriteContext, shape: Shape) -> Option<String> {
+    debug!("rewrite_chain_block {:?} {:?}", chain, shape);
+
+    let mut formatter = ChainFormatterBlock::new(&chain);
+
+    formatter.format_root(&chain.parent, context, shape)?;
+    if formatter.children.is_empty() {
+        assert_eq!(formatter.rewrites.len(), 1);
+        return Some(formatter.rewrites.pop().unwrap());
+    }
+
+    // Decide how to layout the rest of the chain.
+    let child_shape = formatter.child_shape(context, shape);
+    formatter.format_children(context, child_shape)?;
+
+    formatter.format_last_child(context, shape, child_shape)?;
+
+    let result = formatter.join_rewrites(context, child_shape)?;
     Some(result)
 }
 
-fn rewrite_chain_visual(chain: Chain, context: &RewriteContext, shape: Shape) -> Option<String> {
-    // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
-    let parent_shape = if is_block_expr(context, &chain.parent.expr, "\n") {
-        shape.visual_indent(0)
-    } else {
-        shape
-    };
-    let mut children: &[_] = &chain.children;
-    let mut root_rewrite = chain.parent.expr
-        .rewrite(context, parent_shape)
-        .map(|parent_rw| parent_rw + &"?".repeat(chain.parent.tries))?;
+struct ChainFormatterVisual<'a> {
+    children: &'a[ChainItem],
+    rewrites: Vec<String>,
+    fits_single_line: bool,
+}
 
-    if !root_rewrite.contains('\n') && is_continuable(&chain.parent.expr) {
-        let item = &children[0];
-        let overhead = last_line_width(&root_rewrite);
-        let shape = parent_shape.offset_left(overhead)?;
-        let rewrite = rewrite_chain_subexpr(&item.expr, context, shape)?;
-        root_rewrite.push_str(&rewrite);
-        root_rewrite.push_str(&"?".repeat(item.tries));
-        children = &children[1..];
-        if children.is_empty() {
-            return Some(root_rewrite);
+impl<'a> ChainFormatterVisual<'a> {
+    fn new(chain: &'a Chain) -> ChainFormatterVisual<'a> {
+        ChainFormatterVisual {
+            children: &chain.children,
+            rewrites: Vec::with_capacity(chain.children.len() + 1),
+            fits_single_line: false,
         }
     }
 
-    let last = &children[children.len() - 1];
-    children = &children[..children.len() - 1];
+    fn format_root(&mut self, parent: &ChainItem, context: &RewriteContext, shape: Shape) -> Option<()> {
+        // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
+        let parent_shape = if is_block_expr(context, &parent.expr, "\n") {
+            shape.visual_indent(0)
+        } else {
+            shape
+        };
+        let mut root_rewrite = parent.expr
+            .rewrite(context, parent_shape)
+            .map(|parent_rw| parent_rw + &"?".repeat(parent.tries))?;
 
-    let child_shape = shape.visual_indent(0).with_max_width(context.config);
+        if !root_rewrite.contains('\n') && Self::is_continuable(&parent.expr) {
+            let item = &self.children[0];
+            let overhead = last_line_width(&root_rewrite);
+            let shape = parent_shape.offset_left(overhead)?;
+            let rewrite = rewrite_chain_subexpr(&item.expr, context, shape)?;
+            root_rewrite.push_str(&rewrite);
+            root_rewrite.push_str(&"?".repeat(item.tries));
 
-    let mut rewrites: Vec<String> = Vec::with_capacity(children.len() + 2);
-    rewrites.push(root_rewrite);
-    for item in chain.children.iter() {
-        let rewrite = rewrite_chain_subexpr(&item.expr, context, child_shape)?;
-        rewrites.push(format!("{}{}", rewrite, "?".repeat(item.tries)));
+            self.children = &self.children[1..];
+        }
+
+        self.rewrites.push(root_rewrite);
+        Some(())
     }
 
-    // Total of all items excluding the last.
-    let almost_total = rewrites.iter().fold(0, |a, b| a + b.len()) + last.tries;
-    let one_line_budget = if rewrites.len() == 1 {
-        shape.width
-    } else {
-        min(shape.width, context.config.width_heuristics().chain_width)
-    };
-    let all_in_one_line = rewrites.iter().all(|s| !s.contains('\n'))
-        && almost_total < one_line_budget;
-    let last_shape = child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?;
+    // Determines if we can continue formatting a given expression on the same line.
+    fn is_continuable(expr: &ast::Expr) -> bool {
+        match expr.node {
+            ast::ExprKind::Path(..) => true,
+            _ => false,
+        }
+    }
 
-    // Rewrite the last child. The last child of a chain requires special treatment. We need to
-    // know whether 'overflowing' the last child make a better formatting:
-    //
-    // A chain with overflowing the last child:
-    // ```
-    // parent.child1.child2.last_child(
-    //     a,
-    //     b,
-    //     c,
-    // )
-    // ```
-    //
-    // A chain without overflowing the last child (in vertical layout):
-    // ```
-    // parent
-    //     .child1
-    //     .child2
-    //     .last_child(a, b, c)
-    // ```
-    //
-    // In particular, overflowing is effective when the last child is a method with a multi-lined
-    // block-like argument (e.g. closure):
-    // ```
-    // parent.child1.child2.last_child(|a, b, c| {
-    //     let x = foo(a, b, c);
-    //     let y = bar(a, b, c);
-    //
-    //     // ...
-    //
-    //     result
-    // })
-    // ```
+    fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
+        for item in &self.children[..self.children.len() - 1] {
+            let rewrite = rewrite_chain_subexpr(&item.expr, context, child_shape)?;
+            self.rewrites.push(format!("{}{}", rewrite, "?".repeat(item.tries)));
+        }
+        Some(())
+    }
 
-    let mut last_subexpr_str = None;
-    let mut fits_single_line = false;
-    if all_in_one_line {
-        // First we try to 'overflow' the last child and see if it looks better than using
-        // vertical layout.
-        if let Some(shape) = parent_shape.offset_left(almost_total) {
-            if let Some(rw) = rewrite_chain_subexpr(&last.expr, context, shape) {
-                // We allow overflowing here only if both of the following conditions match:
-                // 1. The entire chain fits in a single line except the last child.
-                // 2. `last_child_str.lines().count() >= 5`.
-                let line_count = rw.lines().count();
-                let could_fit_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
-                if could_fit_single_line && line_count >= 5 {
-                    last_subexpr_str = Some(rw);
-                    fits_single_line = true;
-                } else {
-                    // We could not know whether overflowing is better than using vertical layout,
-                    // just by looking at the overflowed rewrite. Now we rewrite the last child
-                    // on its own line, and compare two rewrites to choose which is better.
-                    match rewrite_chain_subexpr(&last.expr, context, last_shape) {
-                        Some(ref new_rw) if !could_fit_single_line => {
-                            last_subexpr_str = Some(new_rw.clone());
-                        }
-                        Some(ref new_rw) if new_rw.lines().count() >= line_count => {
-                            last_subexpr_str = Some(rw);
-                            fits_single_line = could_fit_single_line;
-                        }
-                        new_rw @ Some(..) => {
-                            last_subexpr_str = new_rw;
-                        }
-                        _ => {
-                            last_subexpr_str = Some(rw);
-                            fits_single_line = could_fit_single_line;
+    fn format_last_child(&mut self, context: &RewriteContext, shape: Shape, child_shape: Shape) -> Option<()> {
+        let last = &self.children[self.children.len() - 1];
+
+        // Total of all items excluding the last.
+        let almost_total = self.rewrites.iter().fold(0, |a, b| a + b.len()) + last.tries;
+        let one_line_budget = if self.rewrites.len() == 1 {
+            shape.width
+        } else {
+            min(shape.width, context.config.width_heuristics().chain_width)
+        };
+        let all_in_one_line = self.rewrites.iter().all(|s| !s.contains('\n'))
+            && almost_total < one_line_budget;
+        let last_shape = child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?;
+
+
+        let mut last_subexpr_str = None;
+        if all_in_one_line {
+            // First we try to 'overflow' the last child and see if it looks better than using
+            // vertical layout.
+            if let Some(shape) = shape.offset_left(almost_total) {
+                if let Some(rw) = rewrite_chain_subexpr(&last.expr, context, shape) {
+                    // We allow overflowing here only if both of the following conditions match:
+                    // 1. The entire chain fits in a single line except the last child.
+                    // 2. `last_child_str.lines().count() >= 5`.
+                    let line_count = rw.lines().count();
+                    let could_fit_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
+                    if could_fit_single_line && line_count >= 5 {
+                        last_subexpr_str = Some(rw);
+                        self.fits_single_line = all_in_one_line;
+                    } else {
+                        // We could not know whether overflowing is better than using vertical layout,
+                        // just by looking at the overflowed rewrite. Now we rewrite the last child
+                        // on its own line, and compare two rewrites to choose which is better.
+                        match rewrite_chain_subexpr(&last.expr, context, last_shape) {
+                            Some(ref new_rw) if !could_fit_single_line => {
+                                last_subexpr_str = Some(new_rw.clone());
+                            }
+                            Some(ref new_rw) if new_rw.lines().count() >= line_count => {
+                                last_subexpr_str = Some(rw);
+                                self.fits_single_line = could_fit_single_line && all_in_one_line;
+                            }
+                            new_rw @ Some(..) => {
+                                last_subexpr_str = new_rw;
+                            }
+                            _ => {
+                                last_subexpr_str = Some(rw);
+                                self.fits_single_line = could_fit_single_line && all_in_one_line;
+                            }
                         }
                     }
                 }
             }
+        } 
+
+        let last_subexpr_str = last_subexpr_str.or_else(|| rewrite_chain_subexpr(&last.expr, context, last_shape));
+        self.rewrites.push(format!("{}{}", last_subexpr_str?, "?".repeat(last.tries)));
+        Some(())
+    }
+
+    fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape) -> Option<String> {
+        let connector = if self.fits_single_line {
+            // Yay, we can put everything on one line.
+            Cow::from("")
+        } else {
+            // Use new lines.
+            if *context.force_one_line_chain.borrow() {
+                return None;
+            }
+            child_shape.indent.to_string_with_newline(context.config)
+        };
+
+        let mut rewrite_iter = self.rewrites.iter();
+        let mut result = rewrite_iter.next().unwrap().clone();
+
+        for rewrite in rewrite_iter {
+            result.push_str(&connector);
+            result.push_str(&rewrite);
         }
-    } 
 
-    last_subexpr_str = last_subexpr_str.or_else(|| rewrite_chain_subexpr(&last.expr, context, last_shape));
-    rewrites.push(last_subexpr_str?);
+        Some(result)
+    }
+}
 
-    let connector = if fits_single_line && all_in_one_line {
-        // Yay, we can put everything on one line.
-        Cow::from("")
-    } else {
-        // Use new lines.
-        if *context.force_one_line_chain.borrow() {
-            return None;
-        }
-        child_shape.indent.to_string_with_newline(context.config)
-    };
+fn rewrite_chain_visual(chain: Chain, context: &RewriteContext, shape: Shape) -> Option<String> {
+    let mut formatter = ChainFormatterVisual::new(&chain);
 
-    let result = format!("{}{}",
-        join_rewrites_vis(&rewrites, &connector),
-        "?".repeat(last.tries),
-    );
+    formatter.format_root(&chain.parent, context, shape)?;
+
+    if formatter.children.is_empty() {
+        assert_eq!(formatter.rewrites.len(), 1);
+        return Some(formatter.rewrites.pop().unwrap());
+    }
+
+    let child_shape = shape.visual_indent(0).with_max_width(context.config);
+
+    formatter.format_children(context, child_shape)?;
+    formatter.format_last_child(context, shape, child_shape)?;
+
+    let result = formatter.join_rewrites(context, child_shape)?;
     wrap_str(result, context.config.max_width(), shape)
-}
-
-fn join_rewrites(rewrites: &[String], is_block_like: &[bool], connector: &str) -> String {
-    let mut rewrite_iter = rewrites.iter();
-    let mut result = rewrite_iter.next().unwrap().clone();
-
-    for (rewrite, prev_is_block_like) in rewrite_iter.zip(is_block_like.iter()) {
-        if rewrite != "?" && !prev_is_block_like {
-            result.push_str(connector);
-        }
-        result.push_str(&rewrite);
-    }
-
-    result
-}
-
-fn join_rewrites_vis(rewrites: &[String], connector: &str) -> String {
-    let mut rewrite_iter = rewrites.iter();
-    let mut result = rewrite_iter.next().unwrap().clone();
-
-    for rewrite in rewrite_iter {
-        if rewrite != "?" {
-            result.push_str(connector);
-        }
-        result.push_str(&rewrite);
-    }
-
-    result
 }
 
 // States whether an expression's last line exclusively consists of closing
@@ -510,45 +587,6 @@ fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
         _ => false,
-    }
-}
-
-// Returns a Vec of the prefixes of the chain.
-// E.g., for input `a.b.c` we return [`a.b.c`, `a.b`, 'a']
-fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> Vec<ast::Expr> {
-    let mut subexpr_list = vec![expr.clone()];
-
-    while let Some(subexpr) = pop_expr_chain(subexpr_list.last().unwrap(), context) {
-        subexpr_list.push(subexpr.clone());
-    }
-
-    subexpr_list
-}
-
-// Returns the expression's subexpression, if it exists. When the subexpr
-// is a try! macro, we'll convert it to shorthand when the option is set.
-fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext) -> Option<ast::Expr> {
-    match expr.node {
-        ast::ExprKind::MethodCall(_, ref expressions) => {
-            Some(convert_try(&expressions[0], context))
-        }
-        ast::ExprKind::Field(ref subexpr, _) | ast::ExprKind::Try(ref subexpr) => {
-            Some(convert_try(subexpr, context))
-        }
-        _ => None,
-    }
-}
-
-fn convert_try(expr: &ast::Expr, context: &RewriteContext) -> ast::Expr {
-    match expr.node {
-        ast::ExprKind::Mac(ref mac) if context.config.use_try_shorthand() => {
-            if let Some(subexpr) = convert_try_mac(mac, context) {
-                subexpr
-            } else {
-                expr.clone()
-            }
-        }
-        _ => expr.clone(),
     }
 }
 
@@ -596,14 +634,6 @@ fn is_tup_field_access(expr: &ast::Expr) -> bool {
         ast::ExprKind::Field(_, ref field) => {
             field.name.to_string().chars().all(|c| c.is_digit(10))
         }
-        _ => false,
-    }
-}
-
-// Determines if we can continue formatting a given expression on the same line.
-fn is_continuable(expr: &ast::Expr) -> bool {
-    match expr.node {
-        ast::ExprKind::Path(..) => true,
         _ => false,
     }
 }
