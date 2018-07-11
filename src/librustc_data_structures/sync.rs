@@ -88,7 +88,7 @@ cfg_if! {
             t.into_iter()
         }
 
-        pub type MetadataRef = OwningRef<Box<Erased>, [u8]>;
+        pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
@@ -268,7 +268,7 @@ cfg_if! {
             t.into_par_iter()
         }
 
-        pub type MetadataRef = OwningRef<Box<Erased + Send + Sync>, [u8]>;
+        pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;
 
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
