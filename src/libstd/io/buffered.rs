@@ -756,11 +756,11 @@ impl<W> fmt::Display for IntoInnerError<W> {
 ///
 ///     // No bytes are written until a newline is encountered (or
 ///     // the internal buffer is filled).
-///     assert_eq!(fs::read_to_string("poem.txt")?.as_bytes(), b"");
+///     assert_eq!(fs::read_to_string("poem.txt")?, "");
 ///     file.write_all(b"\n")?;
 ///     assert_eq!(
-///         fs::read_to_string("poem.txt")?.as_bytes(),
-///         &b"I shall be telling this with a sigh\n"[..],
+///         fs::read_to_string("poem.txt")?,
+///         "I shall be telling this with a sigh\n",
 ///     );
 ///
 ///     // Write the rest of the poem.
@@ -775,8 +775,7 @@ impl<W> fmt::Display for IntoInnerError<W> {
 ///     file.flush()?;
 ///
 ///     // Confirm the whole poem was written.
-///     let mut poem = fs::read_to_string("poem.txt")?;
-///     assert_eq!(poem.as_bytes(), &road_not_taken[..]);
+///     assert_eq!(fs::read("poem.txt")?, &road_not_taken[..]);
 ///     Ok(())
 /// }
 /// ```
