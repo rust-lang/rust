@@ -273,7 +273,7 @@ pub struct Context<'a> {
     pub rejected_via_filename: Vec<CrateMismatch>,
     pub should_match_name: bool,
     pub is_proc_macro: Option<bool>,
-    pub metadata_loader: &'a MetadataLoader,
+    pub metadata_loader: &'a dyn MetadataLoader,
 }
 
 pub struct CratePaths {
@@ -842,7 +842,7 @@ impl<'a> Context<'a> {
 fn get_metadata_section(target: &Target,
                         flavor: CrateFlavor,
                         filename: &Path,
-                        loader: &MetadataLoader)
+                        loader: &dyn MetadataLoader)
                         -> Result<MetadataBlob, String> {
     let start = Instant::now();
     let ret = get_metadata_section_imp(target, flavor, filename, loader);
@@ -855,7 +855,7 @@ fn get_metadata_section(target: &Target,
 fn get_metadata_section_imp(target: &Target,
                             flavor: CrateFlavor,
                             filename: &Path,
-                            loader: &MetadataLoader)
+                            loader: &dyn MetadataLoader)
                             -> Result<MetadataBlob, String> {
     if !filename.exists() {
         return Err(format!("no such file: '{}'", filename.display()));
@@ -904,8 +904,8 @@ fn get_metadata_section_imp(target: &Target,
 // A diagnostic function for dumping crate metadata to an output stream
 pub fn list_file_metadata(target: &Target,
                           path: &Path,
-                          loader: &MetadataLoader,
-                          out: &mut io::Write)
+                          loader: &dyn MetadataLoader,
+                          out: &mut dyn io::Write)
                           -> io::Result<()> {
     let filename = path.file_name().unwrap().to_str().unwrap();
     let flavor = if filename.ends_with(".rlib") {

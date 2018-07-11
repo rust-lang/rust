@@ -413,11 +413,11 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
 }
 
 impl CrateStore for cstore::CStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<Any> {
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any> {
         self.get_crate_data(krate)
     }
 
-    fn metadata_loader(&self) -> &MetadataLoader {
+    fn metadata_loader(&self) -> &dyn MetadataLoader {
         &*self.metadata_loader
     }
 
