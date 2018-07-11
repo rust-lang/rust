@@ -87,10 +87,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         let start_fn = this.start_fn;
         control.after_analysis.callback = Box::new(move |state| after_analysis(state, start_fn));
-        if sess.target.target != sess.host {
-            // only fully compile targets on the host. linking will fail for cross-compilation.
-            control.after_analysis.stop = Compilation::Stop;
-        }
+        control.after_analysis.stop = Compilation::Stop;
         control
     }
 }
