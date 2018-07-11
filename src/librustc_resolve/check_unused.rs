@@ -129,7 +129,22 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
         match directive.subclass {
             _ if directive.used.get() ||
                  directive.vis.get() == ty::Visibility::Public ||
-                 directive.span.is_dummy() => {}
+                 directive.span.is_dummy() => {
+                if let ImportDirectiveSubclass::MacroUse = directive.subclass {
+                    if resolver.session.features_untracked().use_extern_macros &&
+                        !directive.span.is_dummy() {
+                        resolver.session.buffer_lint(
+                            lint::builtin::MACRO_USE_EXTERN_CRATE,
+                            directive.id,
+                            directive.span,
+                            "deprecated `#[macro_use]` directive used to \
+                             import macros should be replaced at use sites \
+                             with a `use` statement to import the macro \
+                             instead",
+                        );
+                    }
+                }
+            }
             ImportDirectiveSubclass::ExternCrate(_) => {
                 resolver.maybe_unused_extern_crates.push((directive.id, directive.span));
             }
