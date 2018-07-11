@@ -90,11 +90,11 @@ pub struct CStore {
     metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: Lock<NodeMap<CrateNum>>,
-    pub metadata_loader: Box<MetadataLoader + Sync>,
+    pub metadata_loader: Box<dyn MetadataLoader + Sync>,
 }
 
 impl CStore {
-    pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
+    pub fn new(metadata_loader: Box<dyn MetadataLoader + Sync>) -> CStore {
         CStore {
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
             // order to make array indices in `metas` match with the

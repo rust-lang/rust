@@ -391,7 +391,7 @@ impl<'a, 'tcx> MetadataBlob {
     }
 
     pub fn list_crate_metadata(&self,
-                               out: &mut io::Write) -> io::Result<()> {
+                               out: &mut dyn io::Write) -> io::Result<()> {
         write!(out, "=External Dependencies=\n")?;
         let root = self.get_root();
         for (i, dep) in root.crate_deps
