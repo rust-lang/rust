@@ -587,6 +587,7 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             RemainderByZero => RemainderByZero,
             GeneratorResumedAfterReturn => GeneratorResumedAfterReturn,
             GeneratorResumedAfterPanic => GeneratorResumedAfterPanic,
+            InfiniteLoop => InfiniteLoop,
         })
     }
 }

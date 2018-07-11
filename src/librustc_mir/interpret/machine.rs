@@ -2,6 +2,8 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
+use std::hash::Hash;
+
 use rustc::mir::interpret::{AllocId, EvalResult, Scalar, Pointer, AccessKind, GlobalId};
 use super::{EvalContext, Place, ValTy, Memory};
 
@@ -13,9 +15,9 @@ use syntax::ast::Mutability;
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
-pub trait Machine<'mir, 'tcx>: Sized {
+pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     /// Additional data that can be accessed via the Memory
-    type MemoryData;
+    type MemoryData: Clone + Eq + Hash;
 
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKinds: ::std::fmt::Debug + PartialEq + Copy + Clone;

@@ -1636,7 +1636,7 @@ impl Debug for ValidationOp {
 }
 
 // This is generic so that it can be reused by miri
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Hash, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct ValidationOperand<'tcx, T> {
     pub place: T,
     pub ty: Ty<'tcx>,

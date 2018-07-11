@@ -185,6 +185,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     Ok((value, ptr, layout.ty))
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CompileTimeEvaluator;
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
