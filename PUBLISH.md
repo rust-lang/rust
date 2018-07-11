@@ -2,6 +2,7 @@ Steps to publish a new Clippy version
 
 - Bump `package.version` in `./Cargo.toml` (no need to manually bump `dependencies.clippy_lints.version`).
 - Write a changelog entry.
+- If a nightly update is needed, update `min_version.txt` using `rustc -vV > min_version.txt`
 - Run `./pre_publish.sh`
 - Review and commit all changed files
 - `git push`
