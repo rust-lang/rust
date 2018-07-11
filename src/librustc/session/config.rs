@@ -1151,8 +1151,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "gather codegen statistics"),
     asm_comments: bool = (false, parse_bool, [TRACKED],
         "generate comments into the assembly (may change behavior)"),
-    no_verify: bool = (false, parse_bool, [TRACKED],
-        "skip LLVM verification"),
+    verify_llvm_ir: bool = (false, parse_bool, [TRACKED],
+        "verify LLVM IR"),
     borrowck_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather borrowck statistics"),
     no_landing_pads: bool = (false, parse_bool, [TRACKED],
@@ -3114,7 +3114,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.no_verify = true;
+        opts.debugging_opts.verify_llvm_ir = true;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
