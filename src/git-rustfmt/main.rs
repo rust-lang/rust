@@ -46,8 +46,7 @@ fn prune_files(files: Vec<&str>) -> Vec<&str> {
                 return true;
             }
             pruned_prefixes.iter().all(|pp| !f.starts_with(pp))
-        })
-        .collect()
+        }).collect()
 }
 
 fn git_diff(commits: &str) -> String {

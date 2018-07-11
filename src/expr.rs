@@ -1212,8 +1212,7 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
                             new_indent.to_string(context.config),
                             line.trim_left()
                         )
-                    })
-                    .collect::<Vec<_>>()
+                    }).collect::<Vec<_>>()
                     .join("\n")
                     .trim_left(),
             );

@@ -151,8 +151,7 @@ fn rewrite_reorderable_items(
                 .map(|use_tree| ListItem {
                     item: use_tree.rewrite_top_level(context, nested_shape),
                     ..use_tree.list_item.unwrap_or_else(ListItem::empty)
-                })
-                .collect();
+                }).collect();
 
             wrap_reorderable_items(context, &item_vec, nested_shape)
         }
@@ -242,15 +241,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let item_length = items
             .iter()
             .take_while(|ppi| {
-                item_kind.is_same_item_kind(&***ppi)
-                    && (!in_group || {
-                        let current = self.codemap.lookup_line_range(ppi.span());
-                        let in_same_group = current.lo < last.hi + 2;
-                        last = current;
-                        in_same_group
-                    })
-            })
-            .count();
+                item_kind.is_same_item_kind(&***ppi) && (!in_group || {
+                    let current = self.codemap.lookup_line_range(ppi.span());
+                    let in_same_group = current.lo < last.hi + 2;
+                    last = current;
+                    in_same_group
+                })
+            }).count();
         let items = &items[..item_length];
 
         let at_least_one_in_file_lines = items

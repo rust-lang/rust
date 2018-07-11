@@ -322,8 +322,7 @@ impl IgnoreList {
                     path.push(s);
                     path
                 }
-            })
-            .collect();
+            }).collect();
     }
 
     fn skip_file_inner(&self, file: &Path) -> bool {

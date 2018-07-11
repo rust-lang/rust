@@ -344,8 +344,7 @@ impl UseTree {
                         .zip(items.into_iter())
                         .map(|(t, list_item)| {
                             Self::from_ast(context, &t.0, Some(list_item), None, None, None)
-                        })
-                        .collect(),
+                        }).collect(),
                 ));
             }
             UseTreeKind::Simple(ref rename, ..) => {

@@ -113,11 +113,7 @@ impl Rewrite for ChainItem {
 impl ChainItem {
     // Rewrite the last element in the chain `expr`. E.g., given `a.b.c` we rewrite
     // `.c` and any trailing `?`s.
-    fn rewrite_postfix(
-        &self,
-        context: &RewriteContext,
-        shape: Shape,
-    ) -> Option<String> {
+    fn rewrite_postfix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let shape = shape.sub_width(self.tries)?;
         let mut rewrite = match self.expr.node {
             ast::ExprKind::MethodCall(ref segment, ref expressions) => {
@@ -128,14 +124,22 @@ impl ChainItem {
                     },
                     _ => &[],
                 };
-                Self::rewrite_method_call(segment.ident, types, expressions, self.expr.span, context, shape)?
+                Self::rewrite_method_call(
+                    segment.ident,
+                    types,
+                    expressions,
+                    self.expr.span,
+                    context,
+                    shape,
+                )?
             }
             ast::ExprKind::Field(ref nested, ref field) => {
-                let space = if Self::is_tup_field_access(&self.expr) && Self::is_tup_field_access(nested) {
-                    " "
-                } else {
-                    ""
-                };
+                let space =
+                    if Self::is_tup_field_access(&self.expr) && Self::is_tup_field_access(nested) {
+                        " "
+                    } else {
+                        ""
+                    };
                 let result = format!("{}.{}", space, field.name);
                 if result.len() <= shape.width {
                     result
@@ -296,10 +300,20 @@ trait ChainFormatter {
     //     .baz()
     // ```
     // If `bar` were not part of the root, then baz would be orphaned and 'float'.
-    fn format_root(&mut self, parent: &ChainItem, context: &RewriteContext, shape: Shape) -> Option<()>;
+    fn format_root(
+        &mut self,
+        parent: &ChainItem,
+        context: &RewriteContext,
+        shape: Shape,
+    ) -> Option<()>;
     fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Shape;
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()>;
-    fn format_last_child(&mut self, context: &RewriteContext, shape: Shape, child_shape: Shape) -> Option<()>;
+    fn format_last_child(
+        &mut self,
+        context: &RewriteContext,
+        shape: Shape,
+        child_shape: Shape,
+    ) -> Option<()>;
     fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape) -> Option<String>;
     // Returns `Some` if the chain is only a root, None otherwise.
     fn pure_root(&mut self) -> Option<String>;
@@ -309,7 +323,7 @@ trait ChainFormatter {
 // formatters can delegate much behaviour to `ChainFormatterShared`.
 struct ChainFormatterShared<'a> {
     // The current working set of child items.
-    children: &'a[ChainItem],
+    children: &'a [ChainItem],
     // The current rewrites of items (includes trailing `?`s, but not any way to
     // connect the rewrites together).
     rewrites: Vec<String>,
@@ -320,7 +334,7 @@ struct ChainFormatterShared<'a> {
     child_count: usize,
 }
 
-impl <'a> ChainFormatterShared<'a> {
+impl<'a> ChainFormatterShared<'a> {
     fn new(chain: &'a Chain) -> ChainFormatterShared<'a> {
         ChainFormatterShared {
             children: &chain.children,
@@ -371,9 +385,16 @@ impl <'a> ChainFormatterShared<'a> {
     //     result
     // })
     // ```
-    fn format_last_child(&mut self, may_extend: bool, context: &RewriteContext, shape: Shape, child_shape: Shape) -> Option<()> {
+    fn format_last_child(
+        &mut self,
+        may_extend: bool,
+        context: &RewriteContext,
+        shape: Shape,
+        child_shape: Shape,
+    ) -> Option<()> {
         let last = &self.children[0];
-        let extendable = may_extend && last_line_extendable(&self.rewrites[self.rewrites.len() - 1]);
+        let extendable =
+            may_extend && last_line_extendable(&self.rewrites[self.rewrites.len() - 1]);
 
         // Total of all items excluding the last.
         let almost_total = if extendable {
@@ -387,7 +408,8 @@ impl <'a> ChainFormatterShared<'a> {
             min(shape.width, context.config.width_heuristics().chain_width)
         }.saturating_sub(almost_total);
 
-        let all_in_one_line = self.rewrites.iter().all(|s| !s.contains('\n')) && one_line_budget > 0;
+        let all_in_one_line =
+            self.rewrites.iter().all(|s| !s.contains('\n')) && one_line_budget > 0;
         let last_shape = if all_in_one_line {
             shape.sub_width(last.tries)?
         } else {
@@ -413,7 +435,8 @@ impl <'a> ChainFormatterShared<'a> {
                         // layout, just by looking at the overflowed rewrite. Now we rewrite the
                         // last child on its own line, and compare two rewrites to choose which is
                         // better.
-                        let last_shape = child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?;
+                        let last_shape = child_shape
+                            .sub_width(shape.rhs_overhead(context.config) + last.tries)?;
                         match last.rewrite_postfix(context, last_shape) {
                             Some(ref new_rw) if !could_fit_single_line => {
                                 last_subexpr_str = Some(new_rw.clone());
@@ -440,7 +463,12 @@ impl <'a> ChainFormatterShared<'a> {
         Some(())
     }
 
-    fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape, block_like_iter: impl Iterator<Item=bool>) -> Option<String> {
+    fn join_rewrites(
+        &self,
+        context: &RewriteContext,
+        child_shape: Shape,
+        block_like_iter: impl Iterator<Item = bool>,
+    ) -> Option<String> {
         let connector = if self.fits_single_line {
             // Yay, we can put everything on one line.
             Cow::from("")
@@ -473,7 +501,7 @@ struct ChainFormatterBlock<'a> {
     is_block_like: Vec<bool>,
 }
 
-impl <'a> ChainFormatterBlock<'a> {
+impl<'a> ChainFormatterBlock<'a> {
     fn new(chain: &'a Chain) -> ChainFormatterBlock<'a> {
         ChainFormatterBlock {
             shared: ChainFormatterShared::new(chain),
@@ -482,8 +510,13 @@ impl <'a> ChainFormatterBlock<'a> {
     }
 }
 
-impl <'a> ChainFormatter for ChainFormatterBlock<'a> {
-    fn format_root(&mut self, parent: &ChainItem, context: &RewriteContext, shape: Shape) -> Option<()> {
+impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
+    fn format_root(
+        &mut self,
+        parent: &ChainItem,
+        context: &RewriteContext,
+        shape: Shape,
+    ) -> Option<()> {
         let mut root_rewrite: String = parent.rewrite(context, shape)?;
 
         let mut root_ends_with_block = is_block_expr(context, &parent.expr, &root_rewrite);
@@ -520,18 +553,26 @@ impl <'a> ChainFormatter for ChainFormatterBlock<'a> {
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
         for item in self.shared.children[1..].iter().rev() {
             let rewrite = item.rewrite_postfix(context, child_shape)?;
-            self.is_block_like.push(is_block_expr(context, &item.expr, &rewrite));
+            self.is_block_like
+                .push(is_block_expr(context, &item.expr, &rewrite));
             self.shared.rewrites.push(rewrite);
         }
         Some(())
     }
 
-    fn format_last_child(&mut self, context: &RewriteContext, shape: Shape, child_shape: Shape) -> Option<()> {
-        self.shared.format_last_child(true, context, shape, child_shape)
+    fn format_last_child(
+        &mut self,
+        context: &RewriteContext,
+        shape: Shape,
+        child_shape: Shape,
+    ) -> Option<()> {
+        self.shared
+            .format_last_child(true, context, shape, child_shape)
     }
 
     fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape) -> Option<String> {
-        self.shared.join_rewrites(context, child_shape, self.is_block_like.iter().cloned())
+        self.shared
+            .join_rewrites(context, child_shape, self.is_block_like.iter().cloned())
     }
 
     fn pure_root(&mut self) -> Option<String> {
@@ -552,8 +593,13 @@ impl<'a> ChainFormatterVisual<'a> {
     }
 }
 
-impl <'a> ChainFormatter for ChainFormatterVisual<'a> {
-    fn format_root(&mut self, parent: &ChainItem, context: &RewriteContext, shape: Shape) -> Option<()> {
+impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
+    fn format_root(
+        &mut self,
+        parent: &ChainItem,
+        context: &RewriteContext,
+        shape: Shape,
+    ) -> Option<()> {
         // Determines if we can continue formatting a given expression on the same line.
         fn is_continuable(expr: &ast::Expr) -> bool {
             match expr.node {
@@ -596,12 +642,19 @@ impl <'a> ChainFormatter for ChainFormatterVisual<'a> {
         Some(())
     }
 
-    fn format_last_child(&mut self, context: &RewriteContext, shape: Shape, child_shape: Shape) -> Option<()> {
-        self.shared.format_last_child(false, context, shape, child_shape)
+    fn format_last_child(
+        &mut self,
+        context: &RewriteContext,
+        shape: Shape,
+        child_shape: Shape,
+    ) -> Option<()> {
+        self.shared
+            .format_last_child(false, context, shape, child_shape)
     }
 
     fn join_rewrites(&self, context: &RewriteContext, child_shape: Shape) -> Option<String> {
-        self.shared.join_rewrites(context, child_shape, iter::repeat(false))
+        self.shared
+            .join_rewrites(context, child_shape, iter::repeat(false))
     }
 
     fn pure_root(&mut self) -> Option<String> {
@@ -613,9 +666,7 @@ impl <'a> ChainFormatter for ChainFormatterVisual<'a> {
 // parens, braces, and brackets in its idiomatic formatting.
 fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
     match expr.node {
-        ast::ExprKind::Mac(..)
-        | ast::ExprKind::Call(..)
-        | ast::ExprKind::MethodCall(..) => {
+        ast::ExprKind::Mac(..) | ast::ExprKind::Call(..) | ast::ExprKind::MethodCall(..) => {
             context.use_block_indent() && repr.contains('\n')
         }
         ast::ExprKind::Struct(..)
@@ -631,7 +682,7 @@ fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool
         | ast::ExprKind::Binary(_, _, ref expr)
         | ast::ExprKind::Index(_, ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Closure(_, _, _, _, ref expr, _) 
+        | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
         _ => false,

@@ -198,8 +198,7 @@ fn rewrite_closure_expr(
             } else {
                 Some(rw)
             }
-        })
-        .map(|rw| format!("{} {}", prefix, rw))
+        }).map(|rw| format!("{} {}", prefix, rw))
 }
 
 // Rewrite closure whose body is block.
@@ -376,11 +375,8 @@ where
                 .map(|e| match e.node {
                     ast::ExprKind::Closure(..) => true,
                     _ => false,
-                })
-                .unwrap_or(false)
-        })
-        .count()
-        > 1
+                }).unwrap_or(false)
+        }).count() > 1
 }
 
 fn is_block_closure_forced(context: &RewriteContext, expr: &ast::Expr) -> bool {

@@ -548,7 +548,8 @@ impl Rewrite for ast::GenericParam {
             };
             result.push_str(eq_str);
             let budget = shape.width.checked_sub(result.len())?;
-            let rewrite = def.rewrite(context, Shape::legacy(budget, shape.indent + result.len()))?;
+            let rewrite =
+                def.rewrite(context, Shape::legacy(budget, shape.indent + result.len()))?;
             result.push_str(&rewrite);
         }
 
@@ -793,8 +794,7 @@ fn rewrite_lifetime_param(
         .filter(|p| match p.kind {
             ast::GenericParamKind::Lifetime => true,
             _ => false,
-        })
-        .map(|lt| lt.rewrite(context, shape))
+        }).map(|lt| lt.rewrite(context, shape))
         .collect::<Option<Vec<_>>>()?
         .join(", ");
     if result.is_empty() {
