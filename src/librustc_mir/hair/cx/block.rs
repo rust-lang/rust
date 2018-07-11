@@ -67,10 +67,10 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
             hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
-                    hir::DeclItem(..) => {
+                    hir::DeclKind::Item(..) => {
                         // ignore for purposes of the MIR
                     }
-                    hir::DeclLocal(ref local) => {
+                    hir::DeclKind::Local(ref local) => {
                         let remainder_scope = region::Scope::Remainder(BlockRemainder {
                             block: block_id,
                             first_statement_index: region::FirstStatementIndex::new(index),

@@ -126,12 +126,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn decl(&mut self, decl: &hir::Decl, pred: CFGIndex) -> CFGIndex {
         match decl.node {
-            hir::DeclLocal(ref local) => {
+            hir::DeclKind::Local(ref local) => {
                 let init_exit = self.opt_expr(&local.init, pred);
                 self.pat(&local.pat, init_exit)
             }
 
-            hir::DeclItem(_) => pred,
+            hir::DeclKind::Item(_) => pred,
         }
     }
 

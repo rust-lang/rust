@@ -12,8 +12,7 @@
 
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
-pub use self::Decl_::*;
-pub use self::Expr_::*;
+pub use self::ExprKind::*;
 pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
 pub use self::Item_::*;
@@ -1158,27 +1157,27 @@ pub struct Local {
     pub source: LocalSource,
 }
 
-pub type Decl = Spanned<Decl_>;
+pub type Decl = Spanned<DeclKind>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum Decl_ {
+pub enum DeclKind {
     /// A local (let) binding:
-    DeclLocal(P<Local>),
+    Local(P<Local>),
     /// An item binding:
-    DeclItem(ItemId),
+    Item(ItemId),
 }
 
-impl Decl_ {
+impl DeclKind {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
-            DeclLocal(ref l) => &l.attrs,
-            DeclItem(_) => &[]
+            DeclKind::Local(ref l) => &l.attrs,
+            DeclKind::Item(_) => &[]
         }
     }
 
     pub fn is_local(&self) -> bool {
         match *self {
-            Decl_::DeclLocal(_) => true,
+            DeclKind::Local(_) => true,
             _ => false,
         }
     }

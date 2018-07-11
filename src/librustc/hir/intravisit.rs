@@ -949,8 +949,8 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
 
 pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
     match declaration.node {
-        DeclLocal(ref local) => visitor.visit_local(local),
-        DeclItem(item) => visitor.visit_nested_item(item),
+        DeclKind::Local(ref local) => visitor.visit_local(local),
+        DeclKind::Item(item) => visitor.visit_nested_item(item),
     }
 }
 

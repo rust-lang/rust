@@ -4248,7 +4248,7 @@ impl<'a> LoweringContext<'a> {
             StmtKind::Local(ref l) => Spanned {
                 node: hir::StmtKind::Decl(
                     P(Spanned {
-                        node: hir::DeclLocal(self.lower_local(l)),
+                        node: hir::DeclKind::Local(self.lower_local(l)),
                         span: s.span,
                     }),
                     self.lower_node_id(s.id).node_id,
@@ -4263,7 +4263,7 @@ impl<'a> LoweringContext<'a> {
                     .map(|item_id| Spanned {
                         node: hir::StmtKind::Decl(
                             P(Spanned {
-                                node: hir::DeclItem(item_id),
+                                node: hir::DeclKind::Item(item_id),
                                 span: s.span,
                             }),
                             id.take()
@@ -4493,7 +4493,7 @@ impl<'a> LoweringContext<'a> {
             attrs: ThinVec::new(),
             source,
         });
-        let decl = respan(sp, hir::DeclLocal(local));
+        let decl = respan(sp, hir::DeclKind::Local(local));
         respan(sp, hir::StmtKind::Decl(P(decl), self.next_id().node_id))
     }
 

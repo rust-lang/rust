@@ -263,7 +263,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         match stmt.node {
             hir::StmtKind::Decl(ref decl, _node_id) => {
                 match &decl.node {
-                    hir::DeclLocal(local) => {
+                    hir::DeclKind::Local(local) => {
                         if self.remove_mut_rvalue_borrow(&local.pat) {
                             if let Some(init) = &local.init {
                                 self.mut_rvalue_borrows.insert(init.id);
@@ -277,7 +277,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                         NotPromotable
                     }
                     // Item statements are allowed
-                    hir::DeclItem(_) => Promotable
+                    hir::DeclKind::Item(_) => Promotable
                 }
             }
             hir::StmtKind::Expr(ref box_expr, _node_id) |

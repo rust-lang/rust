@@ -4379,8 +4379,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match stmt.node {
             hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
-                    hir::DeclLocal(_) => {}
-                    hir::DeclItem(_) => {
+                    hir::DeclKind::Local(_) => {}
+                    hir::DeclKind::Item(_) => {
                         return;
                     }
                 }
@@ -4399,10 +4399,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match stmt.node {
             hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
-                    hir::DeclLocal(ref l) => {
+                    hir::DeclKind::Local(ref l) => {
                         self.check_decl_local(&l);
                     }
-                    hir::DeclItem(_) => {/* ignore for now */}
+                    hir::DeclKind::Item(_) => {/* ignore for now */}
                 }
             }
             hir::StmtKind::Expr(ref expr, _) => {

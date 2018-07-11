@@ -479,10 +479,10 @@ impl_stable_hash_for!(struct hir::Local {
     source
 });
 
-impl_stable_hash_for_spanned!(hir::Decl_);
-impl_stable_hash_for!(enum hir::Decl_ {
-    DeclLocal(local),
-    DeclItem(item_id)
+impl_stable_hash_for_spanned!(hir::DeclKind);
+impl_stable_hash_for!(enum hir::DeclKind {
+    Local(local),
+    Item(item_id)
 });
 
 impl_stable_hash_for!(struct hir::Arm {

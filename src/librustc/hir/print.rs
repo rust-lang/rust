@@ -1575,7 +1575,7 @@ impl<'a> State<'a> {
     pub fn print_decl(&mut self, decl: &hir::Decl) -> io::Result<()> {
         self.maybe_print_comment(decl.span.lo())?;
         match decl.node {
-            hir::DeclLocal(ref loc) => {
+            hir::DeclKind::Local(ref loc) => {
                 self.space_if_not_bol()?;
                 self.ibox(indent_unit)?;
                 self.word_nbsp("let")?;
@@ -1590,7 +1590,7 @@ impl<'a> State<'a> {
                 }
                 self.end()
             }
-            hir::DeclItem(item) => {
+            hir::DeclKind::Item(item) => {
                 self.ann.nested(self, Nested::Item(item))
             }
         }
@@ -2400,8 +2400,8 @@ fn stmt_ends_with_semi(stmt: &hir::StmtKind) -> bool {
     match *stmt {
         hir::StmtKind::Decl(ref d, _) => {
             match d.node {
-                hir::DeclLocal(_) => true,
-                hir::DeclItem(_) => false,
+                hir::DeclKind::Local(_) => true,
+                hir::DeclKind::Item(_) => false,
             }
         }
         hir::StmtKind::Expr(ref e, _) => {

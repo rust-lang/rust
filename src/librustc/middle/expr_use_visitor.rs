@@ -588,11 +588,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         match stmt.node {
             hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
-                    hir::DeclLocal(ref local) => {
+                    hir::DeclKind::Local(ref local) => {
                         self.walk_local(&local);
                     }
 
-                    hir::DeclItem(_) => {
+                    hir::DeclKind::Item(_) => {
                         // we don't visit nested items in this visitor,
                         // only the fn body we were given.
                     }

@@ -873,10 +873,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_decl(&mut self, decl: &hir::Decl, succ: LiveNode)
                               -> LiveNode {
         match decl.node {
-            hir::DeclLocal(ref local) => {
+            hir::DeclKind::Local(ref local) => {
                 self.propagate_through_local(&local, succ)
             }
-            hir::DeclItem(_) => succ,
+            hir::DeclKind::Item(_) => succ,
         }
     }
 
