@@ -793,14 +793,14 @@ impl_stable_hash_for!(struct hir::EnumDef {
     variants
 });
 
-impl_stable_hash_for!(struct hir::Variant_ {
+impl_stable_hash_for!(struct hir::VariantKind {
     name,
     attrs,
     data,
     disr_expr
 });
 
-impl_stable_hash_for_spanned!(hir::Variant_);
+impl_stable_hash_for_spanned!(hir::VariantKind);
 
 impl_stable_hash_for!(enum hir::UseKind {
     Single,

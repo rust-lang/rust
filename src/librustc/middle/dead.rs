@@ -475,7 +475,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             && !has_allow_dead_code_or_lang_attr(self.tcx, field.id, &field.attrs)
     }
 
-    fn should_warn_about_variant(&mut self, variant: &hir::Variant_) -> bool {
+    fn should_warn_about_variant(&mut self, variant: &hir::VariantKind) -> bool {
         !self.symbol_is_live(variant.data.id(), None)
             && !has_allow_dead_code_or_lang_attr(self.tcx,
                                                  variant.data.id(),

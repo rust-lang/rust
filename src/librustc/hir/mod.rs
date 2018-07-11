@@ -1878,7 +1878,7 @@ pub struct EnumDef {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Variant_ {
+pub struct VariantKind {
     pub name: Name,
     pub attrs: HirVec<Attribute>,
     pub data: VariantData,
@@ -1886,7 +1886,7 @@ pub struct Variant_ {
     pub disr_expr: Option<AnonConst>,
 }
 
-pub type Variant = Spanned<Variant_>;
+pub type Variant = Spanned<VariantKind>;
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum UseKind {

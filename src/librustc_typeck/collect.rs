@@ -1090,7 +1090,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         NodeStructCtor(&ref def) |
-        NodeVariant(&Spanned { node: hir::Variant_ { data: ref def, .. }, .. }) => {
+        NodeVariant(&Spanned { node: hir::VariantKind { data: ref def, .. }, .. }) => {
             match *def {
                 VariantData::Unit(..) | VariantData::Struct(..) => {
                     tcx.type_of(tcx.hir.get_parent_did(node_id))
@@ -1123,7 +1123,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             NodeExpr(&hir::Expr { node: ExprRepeat(_, ref constant), .. })
                 if constant.id == node_id => tcx.types.usize,
 
-            NodeVariant(&Spanned { node: Variant_ { disr_expr: Some(ref e), .. }, .. })
+            NodeVariant(&Spanned { node: VariantKind { disr_expr: Some(ref e), .. }, .. })
                 if e.id == node_id => {
                     tcx.adt_def(tcx.hir.get_parent_did(node_id))
                         .repr.discr_type().to_ty(tcx)
@@ -1175,7 +1175,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         NodeStructCtor(&VariantData::Tuple(ref fields, _)) |
-        NodeVariant(&Spanned { node: hir::Variant_ {
+        NodeVariant(&Spanned { node: hir::VariantKind {
             data: VariantData::Tuple(ref fields, _), ..
         }, .. }) => {
             let ty = tcx.type_of(tcx.hir.get_parent_did(node_id));

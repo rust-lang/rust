@@ -1507,7 +1507,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
         Spanned {
-            node: hir::Variant_ {
+            node: hir::VariantKind {
                 name: v.node.ident.name,
                 attrs: self.lower_attrs(&v.node.attrs),
                 data: self.lower_variant_data(&v.node.data),
