@@ -1,20 +1,28 @@
 error[E0594]: cannot assign to `*foo` which is behind a `&` reference
   --> $DIR/suggest-ref-mut.rs:17:5
    |
+LL |     let ref foo = 16;
+   |         ------- help: consider changing this to be a mutable reference: `ref mut foo`
+...
 LL |     *foo = 32;
-   |     ^^^^^^^^^ cannot assign
+   |     ^^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be written
 
 error[E0594]: cannot assign to `*bar` which is behind a `&` reference
   --> $DIR/suggest-ref-mut.rs:22:9
    |
+LL |     if let Some(ref bar) = Some(16) {
+   |                 ------- help: consider changing this to be a mutable reference: `ref mut bar`
+...
 LL |         *bar = 32;
-   |         ^^^^^^^^^ cannot assign
+   |         ^^^^^^^^^ `bar` is a `&` reference, so the data it refers to cannot be written
 
 error[E0594]: cannot assign to `*quo` which is behind a `&` reference
   --> $DIR/suggest-ref-mut.rs:26:22
    |
 LL |         ref quo => { *quo = 32; },
-   |                      ^^^^^^^^^ cannot assign
+   |         -------      ^^^^^^^^^ `quo` is a `&` reference, so the data it refers to cannot be written
+   |         |
+   |         help: consider changing this to be a mutable reference: `ref mut quo`
 
 error: aborting due to 3 previous errors
 
