@@ -978,10 +978,10 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     }
 }
 
-impl Arc<Any + Send + Sync> {
+impl Arc<dyn Any + Send + Sync> {
     #[inline]
     #[stable(feature = "rc_downcast", since = "1.29.0")]
-    /// Attempt to downcast the `Arc<Any + Send + Sync>` to a concrete type.
+    /// Attempt to downcast the `Arc<dyn Any + Send + Sync>` to a concrete type.
     ///
     /// # Examples
     ///
@@ -989,7 +989,7 @@ impl Arc<Any + Send + Sync> {
     /// use std::any::Any;
     /// use std::sync::Arc;
     ///
-    /// fn print_if_string(value: Arc<Any + Send + Sync>) {
+    /// fn print_if_string(value: Arc<dyn Any + Send + Sync>) {
     ///     if let Ok(string) = value.downcast::<String>() {
     ///         println!("String ({}): {}", string.len(), string);
     ///     }
@@ -1574,7 +1574,7 @@ mod tests {
         assert_eq!(unsafe { &*ptr }, "foo");
         assert_eq!(arc, arc2);
 
-        let arc: Arc<Display> = Arc::new(123);
+        let arc: Arc<dyn Display> = Arc::new(123);
 
         let ptr = Arc::into_raw(arc.clone());
         let arc2 = unsafe { Arc::from_raw(ptr) };
@@ -1879,8 +1879,8 @@ mod tests {
         use std::fmt::Display;
         use std::string::ToString;
 
-        let b: Box<Display> = box 123;
-        let r: Arc<Display> = Arc::from(b);
+        let b: Box<dyn Display> = box 123;
+        let r: Arc<dyn Display> = Arc::from(b);
 
         assert_eq!(r.to_string(), "123");
     }
@@ -1889,8 +1889,8 @@ mod tests {
     fn test_from_box_trait_zero_sized() {
         use std::fmt::Debug;
 
-        let b: Box<Debug> = box ();
-        let r: Arc<Debug> = Arc::from(b);
+        let b: Box<dyn Debug> = box ();
+        let r: Arc<dyn Debug> = Arc::from(b);
 
         assert_eq!(format!("{:?}", r), "()");
     }
@@ -1907,8 +1907,8 @@ mod tests {
     fn test_downcast() {
         use std::any::Any;
 
-        let r1: Arc<Any + Send + Sync> = Arc::new(i32::max_value());
-        let r2: Arc<Any + Send + Sync> = Arc::new("abc");
+        let r1: Arc<dyn Any + Send + Sync> = Arc::new(i32::max_value());
+        let r2: Arc<dyn Any + Send + Sync> = Arc::new("abc");
 
         assert!(r1.clone().downcast::<u32>().is_err());
 
