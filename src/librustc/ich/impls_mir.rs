@@ -32,7 +32,7 @@ impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
 });
 impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, var_hir_id, by_ref, mutability });
 impl_stable_hash_for!(struct mir::BasicBlockData<'tcx> { statements, terminator, is_cleanup });
-impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, kind });
+impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, details, kind });
 impl_stable_hash_for!(struct mir::UnsafetyCheckResult { violations, unsafe_blocks });
 
 impl<'a> HashStable<StableHashingContext<'a>>

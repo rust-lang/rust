@@ -18,8 +18,8 @@ extern {
 }
 
 fn main() {
-    let b = B; //~ ERROR use of mutable static requires unsafe function or block
-    let rb = &B; //~ ERROR use of mutable static requires unsafe function or block
-    let xb = XB; //~ ERROR use of mutable static requires unsafe function or block
-    let xrb = &XB; //~ ERROR use of mutable static requires unsafe function or block
+    let b = B; //~ ERROR use of mutable static is unsafe
+    let rb = &B; //~ ERROR use of mutable static is unsafe
+    let xb = XB; //~ ERROR use of mutable static is unsafe
+    let xrb = &XB; //~ ERROR use of mutable static is unsafe
 }

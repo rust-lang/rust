@@ -17,5 +17,5 @@ mod test {
 
 fn main() {
     test::free();
-    //~^ ERROR call to unsafe function requires unsafe function or block
+    //~^ ERROR call to unsafe function is unsafe
 }
