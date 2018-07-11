@@ -533,13 +533,13 @@ mod tests {
     #[test]
     fn downcasting() {
         let mut a = A;
-        let a = &mut a as &mut (Error + 'static);
+        let a = &mut a as &mut (dyn Error + 'static);
         assert_eq!(a.downcast_ref::<A>(), Some(&A));
         assert_eq!(a.downcast_ref::<B>(), None);
         assert_eq!(a.downcast_mut::<A>(), Some(&mut A));
         assert_eq!(a.downcast_mut::<B>(), None);
 
-        let a: Box<Error> = Box::new(A);
+        let a: Box<dyn Error> = Box::new(A);
         match a.downcast::<B>() {
             Ok(..) => panic!("expected error"),
             Err(e) => assert_eq!(*e.downcast::<A>().unwrap(), A),
