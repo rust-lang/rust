@@ -81,8 +81,9 @@ use syntax::codemap::Span;
 use syntax::{ast, ptr};
 
 pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {
-    debug!("rewrite_chain {:?}", shape);
     let chain = Chain::from_ast(expr, context);
+    debug!("rewrite_chain {:?} {:?}", chain, shape);
+
     // If this is just an expression with some `?`s, then format it trivially and
     // return early.
     if chain.children.is_empty() {
@@ -95,6 +96,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 // An expression plus trailing `?`s to be formatted together.
 #[derive(Debug)]
 struct ChainItem {
+    // FIXME: we can't use a reference here because to convert `try!` to `?` we
+    // synthesise the AST node. However, I think we could use `Cow` and that
+    // would remove a lot of cloning.
     expr: ast::Expr,
     tries: usize,
 }
@@ -185,28 +189,22 @@ impl ChainItem {
 #[derive(Debug)]
 struct Chain {
     parent: ChainItem,
-    // TODO do we need to clone the exprs?
     children: Vec<ChainItem>,
 }
 
 impl Chain {
     fn from_ast(expr: &ast::Expr, context: &RewriteContext) -> Chain {
-        let mut subexpr_list = Self::make_subexpr_list(expr, context);
+        let subexpr_list = Self::make_subexpr_list(expr, context);
 
         // Un-parse the expression tree into ChainItems
         let mut children = vec![];
         let mut sub_tries = 0;
-        loop {
-            if subexpr_list.is_empty() {
-                break;
-            }
-
-            let subexpr = subexpr_list.pop().unwrap();
+        for subexpr in subexpr_list {
             match subexpr.node {
                 ast::ExprKind::Try(_) => sub_tries += 1,
                 _ => {
                     children.push(ChainItem {
-                        expr: subexpr.clone(),
+                        expr: subexpr,
                         tries: sub_tries,
                     });
                     sub_tries = 0;
@@ -215,7 +213,7 @@ impl Chain {
         }
 
         Chain {
-            parent: children.remove(0),
+            parent: children.pop().unwrap(),
             children,
         }
     }
@@ -317,6 +315,9 @@ struct ChainFormatterShared<'a> {
     rewrites: Vec<String>,
     // Whether the chain can fit on one line.
     fits_single_line: bool,
+    // The number of children in the chain. This is not equal to `self.children.len()`
+    // because `self.children` will change size as we process the chain.
+    child_count: usize,
 }
 
 impl <'a> ChainFormatterShared<'a> {
@@ -325,6 +326,7 @@ impl <'a> ChainFormatterShared<'a> {
             children: &chain.children,
             rewrites: Vec::with_capacity(chain.children.len() + 1),
             fits_single_line: false,
+            child_count: chain.children.len(),
         }
     }
 
@@ -370,7 +372,7 @@ impl <'a> ChainFormatterShared<'a> {
     // })
     // ```
     fn format_last_child(&mut self, may_extend: bool, context: &RewriteContext, shape: Shape, child_shape: Shape) -> Option<()> {
-        let last = &self.children[self.children.len() - 1];
+        let last = &self.children[0];
         let extendable = may_extend && last_line_extendable(&self.rewrites[self.rewrites.len() - 1]);
 
         // Total of all items excluding the last.
@@ -379,7 +381,7 @@ impl <'a> ChainFormatterShared<'a> {
         } else {
             self.rewrites.iter().fold(0, |a, b| a + b.len())
         } + last.tries;
-        let one_line_budget = if self.rewrites.len() == 1 {
+        let one_line_budget = if self.child_count == 1 {
             shape.width
         } else {
             min(shape.width, context.config.width_heuristics().chain_width)
@@ -407,9 +409,10 @@ impl <'a> ChainFormatterShared<'a> {
                         last_subexpr_str = Some(rw);
                         self.fits_single_line = all_in_one_line;
                     } else {
-                        // We could not know whether overflowing is better than using vertical layout,
-                        // just by looking at the overflowed rewrite. Now we rewrite the last child
-                        // on its own line, and compare two rewrites to choose which is better.
+                        // We could not know whether overflowing is better than using vertical
+                        // layout, just by looking at the overflowed rewrite. Now we rewrite the
+                        // last child on its own line, and compare two rewrites to choose which is
+                        // better.
                         match last.rewrite_postfix(context, last_shape) {
                             Some(ref new_rw) if !could_fit_single_line => {
                                 last_subexpr_str = Some(new_rw.clone());
@@ -486,7 +489,7 @@ impl <'a> ChainFormatter for ChainFormatterBlock<'a> {
         let tab_width = context.config.tab_spaces().saturating_sub(shape.offset);
 
         while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
-            let item = &self.shared.children[0];
+            let item = &self.shared.children[self.shared.children.len() - 1];
             let shape = shape.offset_left(root_rewrite.len())?;
             match &item.rewrite_postfix(context, shape) {
                 Some(rewrite) => root_rewrite.push_str(rewrite),
@@ -495,7 +498,7 @@ impl <'a> ChainFormatter for ChainFormatterBlock<'a> {
 
             root_ends_with_block = is_block_expr(context, &item.expr, &root_rewrite);
 
-            self.shared.children = &self.shared.children[1..];
+            self.shared.children = &self.shared.children[..self.shared.children.len() - 1];
             if self.shared.children.is_empty() {
                 break;
             }
@@ -514,7 +517,7 @@ impl <'a> ChainFormatter for ChainFormatterBlock<'a> {
     }
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
-        for item in &self.shared.children[..self.shared.children.len() - 1] {
+        for item in self.shared.children[1..].iter().rev() {
             let rewrite = item.rewrite_postfix(context, child_shape)?;
             self.is_block_like.push(is_block_expr(context, &item.expr, &rewrite));
             self.shared.rewrites.push(rewrite);
@@ -567,13 +570,13 @@ impl <'a> ChainFormatter for ChainFormatterVisual<'a> {
         let mut root_rewrite = parent.rewrite(context, parent_shape)?;
 
         if !root_rewrite.contains('\n') && is_continuable(&parent.expr) {
-            let item = &self.shared.children[0];
+            let item = &self.shared.children[self.shared.children.len() - 1];
             let overhead = last_line_width(&root_rewrite);
             let shape = parent_shape.offset_left(overhead)?;
             let rewrite = item.rewrite_postfix(context, shape)?;
             root_rewrite.push_str(&rewrite);
 
-            self.shared.children = &self.shared.children[1..];
+            self.shared.children = &self.shared.children[..self.shared.children.len() - 1];
         }
 
         self.shared.rewrites.push(root_rewrite);
@@ -585,7 +588,7 @@ impl <'a> ChainFormatter for ChainFormatterVisual<'a> {
     }
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
-        for item in &self.shared.children[..self.shared.children.len() - 1] {
+        for item in self.shared.children[1..].iter().rev() {
             let rewrite = item.rewrite_postfix(context, child_shape)?;
             self.shared.rewrites.push(rewrite);
         }
