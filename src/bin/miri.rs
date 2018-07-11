@@ -138,8 +138,12 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bo
         );
     } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
-        // Use start_fn lang item if it is available and we have -Zmiri-start-fn set
-        let start_wrapper = if use_start_fn { tcx.lang_items().start_fn() } else { None };
+        // Use start_fn lang item if we have -Zmiri-start-fn set
+        let start_wrapper = if use_start_fn {
+            Some(tcx.lang_items().start_fn().unwrap())
+        } else {
+            None
+        };
         miri::eval_main(tcx, entry_def_id, start_wrapper);
 
         state.session.abort_if_errors();
