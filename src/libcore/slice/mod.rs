@@ -2353,6 +2353,7 @@ macro_rules! iterator {
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
+                    // This is *reducing* the length.  `ptr` never changes with ZST.
                     self.end = (self.end as isize).wrapping_sub(offset) as * $raw_mut T;
                     self.ptr
                 } else {
@@ -2434,8 +2435,8 @@ macro_rules! iterator {
                     // This iterator is now empty.  The way we encode the length of a non-ZST
                     // iterator, this works for both ZST and non-ZST.
                     // For a ZST we would usually do `self.end = self.ptr`, but since
-                    // we will not give out an address any more after this there is no
-                    // way to observe the difference.
+                    // we will not give out an reference any more after this there is no
+                    // way to observe the difference except for raw pointers.
                     self.ptr = self.end;
                     return None;
                 }
