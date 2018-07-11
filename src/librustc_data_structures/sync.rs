@@ -88,7 +88,7 @@ cfg_if! {
             t.into_iter()
         }
 
-        pub type MetadataRef = OwningRef<Box<Erased>, [u8]>;
+        pub type MetadataRef = OwningRef<Box<dyn Erased>, [u8]>;
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
