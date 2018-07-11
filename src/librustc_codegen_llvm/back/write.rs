@@ -140,7 +140,7 @@ pub fn create_target_machine(sess: &Session, find_features: bool) -> TargetMachi
 // that `is_pie_binary` is false. When we discover LLVM target features
 // `sess.crate_types` is uninitialized so we cannot access it.
 pub fn target_machine_factory(sess: &Session, find_features: bool)
-    -> Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>
+    -> Arc<dyn Fn() -> Result<TargetMachineRef, String> + Send + Sync>
 {
     let reloc_model = get_reloc_model(sess);
 
@@ -343,7 +343,7 @@ pub struct CodegenContext {
     regular_module_config: Arc<ModuleConfig>,
     metadata_module_config: Arc<ModuleConfig>,
     allocator_module_config: Arc<ModuleConfig>,
-    pub tm_factory: Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
+    pub tm_factory: Arc<dyn Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
     debuginfo: config::DebugInfoLevel,
@@ -362,7 +362,7 @@ pub struct CodegenContext {
     // compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
-    coordinator_send: Sender<Box<Any + Send>>,
+    coordinator_send: Sender<Box<dyn Any + Send>>,
     // A reference to the TimeGraph so we can register timings. None means that
     // measuring is disabled.
     time_graph: Option<TimeGraph>,
@@ -884,7 +884,7 @@ pub fn start_async_codegen(tcx: TyCtxt,
                                time_graph: Option<TimeGraph>,
                                link: LinkMeta,
                                metadata: EncodedMetadata,
-                               coordinator_receive: Receiver<Box<Any + Send>>,
+                               coordinator_receive: Receiver<Box<dyn Any + Send>>,
                                total_cgus: usize)
                                -> OngoingCodegen {
     let sess = tcx.sess;
@@ -1412,7 +1412,7 @@ fn start_executing_work(tcx: TyCtxt,
                         crate_info: &CrateInfo,
                         shared_emitter: SharedEmitter,
                         codegen_worker_send: Sender<Message>,
-                        coordinator_receive: Receiver<Box<Any + Send>>,
+                        coordinator_receive: Receiver<Box<dyn Any + Send>>,
                         total_cgus: usize,
                         jobserver: Client,
                         time_graph: Option<TimeGraph>,
@@ -1976,7 +1976,7 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
         struct Bomb {
-            coordinator_send: Sender<Box<Any + Send>>,
+            coordinator_send: Sender<Box<dyn Any + Send>>,
             result: Option<WorkItemResult>,
             worker_id: usize,
         }
@@ -2056,7 +2056,7 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
                             config: &ModuleConfig,
                             opt_level: llvm::CodeGenOptLevel,
                             prepare_for_thin_lto: bool,
-                            f: &mut FnMut(llvm::PassManagerBuilderRef)) {
+                            f: &mut dyn FnMut(llvm::PassManagerBuilderRef)) {
     use std::ptr;
 
     // Create the PassManagerBuilder for LLVM. We configure it with
@@ -2243,7 +2243,7 @@ pub struct OngoingCodegen {
     linker_info: LinkerInfo,
     crate_info: CrateInfo,
     time_graph: Option<TimeGraph>,
-    coordinator_send: Sender<Box<Any + Send>>,
+    coordinator_send: Sender<Box<dyn Any + Send>>,
     codegen_worker_receive: Receiver<Message>,
     shared_emitter_main: SharedEmitterMain,
     future: thread::JoinHandle<Result<CompiledModules, ()>>,

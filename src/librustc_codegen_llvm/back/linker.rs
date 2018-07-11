@@ -44,7 +44,7 @@ impl LinkerInfo {
 
     pub fn to_linker<'a>(&'a self,
                          cmd: Command,
-                         sess: &'a Session) -> Box<Linker+'a> {
+                         sess: &'a Session) -> Box<dyn Linker+'a> {
         match sess.linker_flavor() {
             LinkerFlavor::Lld(LldFlavor::Link) |
             LinkerFlavor::Msvc => {
@@ -52,14 +52,14 @@ impl LinkerInfo {
                     cmd,
                     sess,
                     info: self
-                }) as Box<Linker>
+                }) as Box<dyn Linker>
             }
             LinkerFlavor::Em =>  {
                 Box::new(EmLinker {
                     cmd,
                     sess,
                     info: self
-                }) as Box<Linker>
+                }) as Box<dyn Linker>
             }
             LinkerFlavor::Gcc =>  {
                 Box::new(GccLinker {
@@ -68,7 +68,7 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: false,
-                }) as Box<Linker>
+                }) as Box<dyn Linker>
             }
 
             LinkerFlavor::Lld(LldFlavor::Ld) |
@@ -80,14 +80,14 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: true,
-                }) as Box<Linker>
+                }) as Box<dyn Linker>
             }
 
             LinkerFlavor::Lld(LldFlavor::Wasm) => {
                 Box::new(WasmLd {
                     cmd,
                     sess,
-                }) as Box<Linker>
+                }) as Box<dyn Linker>
             }
         }
     }

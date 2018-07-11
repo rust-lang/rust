@@ -48,7 +48,7 @@ enum Addition {
     },
     Archive {
         archive: ArchiveRO,
-        skip: Box<FnMut(&str) -> bool>,
+        skip: Box<dyn FnMut(&str) -> bool>,
     },
 }
 

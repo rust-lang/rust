@@ -251,7 +251,7 @@ fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilen
 
 pub(crate) fn each_linked_rlib(sess: &Session,
                                info: &CrateInfo,
-                               f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
+                               f: &mut dyn FnMut(CrateNum, &Path)) -> Result<(), String> {
     let crates = info.used_crates_static.iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)
@@ -984,7 +984,7 @@ fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &
     }
 }
 
-fn link_args(cmd: &mut Linker,
+fn link_args(cmd: &mut dyn Linker,
              sess: &Session,
              crate_type: config::CrateType,
              tmpdir: &Path,
@@ -1195,7 +1195,7 @@ fn link_args(cmd: &mut Linker,
 // Also note that the native libraries linked here are only the ones located
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
-fn add_local_native_libraries(cmd: &mut Linker,
+fn add_local_native_libraries(cmd: &mut dyn Linker,
                               sess: &Session,
                               codegen_results: &CodegenResults) {
     sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
@@ -1226,7 +1226,7 @@ fn add_local_native_libraries(cmd: &mut Linker,
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
-fn add_upstream_rust_crates(cmd: &mut Linker,
+fn add_upstream_rust_crates(cmd: &mut dyn Linker,
                             sess: &Session,
                             codegen_results: &CodegenResults,
                             crate_type: config::CrateType,
@@ -1350,7 +1350,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // it's packed in a .rlib, it contains stuff that are not objects that will
     // make the linker error. So we must remove those bits from the .rlib before
     // linking it.
-    fn link_sanitizer_runtime(cmd: &mut Linker,
+    fn link_sanitizer_runtime(cmd: &mut dyn Linker,
                               sess: &Session,
                               codegen_results: &CodegenResults,
                               tmpdir: &Path,
@@ -1419,7 +1419,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // (aka we're making an executable), we can just pass the rlib blindly to
     // the linker (fast) because it's fine if it's not actually included as
     // we're at the end of the dependency chain.
-    fn add_static_crate(cmd: &mut Linker,
+    fn add_static_crate(cmd: &mut dyn Linker,
                         sess: &Session,
                         codegen_results: &CodegenResults,
                         tmpdir: &Path,
@@ -1524,7 +1524,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     }
 
     // Same thing as above, but for dynamic crates instead of static crates.
-    fn add_dynamic_crate(cmd: &mut Linker, sess: &Session, cratepath: &Path) {
+    fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
         assert!(!is_full_lto_enabled(sess));
@@ -1559,7 +1559,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(cmd: &mut Linker,
+fn add_upstream_native_libraries(cmd: &mut dyn Linker,
                                  sess: &Session,
                                  codegen_results: &CodegenResults,
                                  crate_type: config::CrateType) {

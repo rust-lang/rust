@@ -23,6 +23,7 @@
 #![feature(custom_attribute)]
 #![feature(fs_read_write)]
 #![allow(unused_attributes)]
+#![deny(bare_trait_objects)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(range_contains)]
@@ -125,7 +126,7 @@ impl !Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
 impl !Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
-    pub fn new() -> Box<CodegenBackend> {
+    pub fn new() -> Box<dyn CodegenBackend> {
         box LlvmCodegenBackend(())
     }
 }
@@ -178,7 +179,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         target_features(sess)
     }
 
-    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
+    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
         box metadata::LlvmMetadataLoader
     }
 
@@ -198,14 +199,14 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        rx: mpsc::Receiver<Box<Any + Send>>
-    ) -> Box<Any> {
+        rx: mpsc::Receiver<Box<dyn Any + Send>>
+    ) -> Box<dyn Any> {
         box base::codegen_crate(tcx, rx)
     }
 
     fn join_codegen_and_link(
         &self,
-        ongoing_codegen: Box<Any>,
+        ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         dep_graph: &DepGraph,
         outputs: &OutputFilenames,
@@ -247,7 +248,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
 /// This is the entrypoint for a hot plugged rustc_codegen_llvm
 #[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
+pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     LlvmCodegenBackend::new()
 }
 
