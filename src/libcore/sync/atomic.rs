@@ -405,6 +405,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(stage0, target_has_atomic = "cas"))]
+    #[must_use = "if compare_and_swap does not return `current`, the stored value was not changed"]
     pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
         match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
             Ok(x) => x,
@@ -826,6 +827,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(any(stage0, target_has_atomic = "cas"))]
+    #[must_use = "if compare_and_swap does not return `current`, the stored value was not changed"]
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
         match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
             Ok(x) => x,
@@ -1185,6 +1187,8 @@ assert_eq!(some_var.load(Ordering::Relaxed), 10);
                 #[inline]
                 #[$stable]
                 #[cfg(any(stage0, target_has_atomic = "cas"))]
+                #[must_use = "if compare_and_swap does not return `current`, \
+                              the stored value was not changed"]
                 pub fn compare_and_swap(&self,
                                         current: $int_type,
                                         new: $int_type,
