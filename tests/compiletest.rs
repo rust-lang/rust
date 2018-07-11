@@ -192,7 +192,9 @@ fn run_pass_miri_noopt() {
 }
 
 #[test]
-#[ignore] // FIXME: Disabled for now, as the optimizer is pretty broken and crashes...
+#[ignore]
+// FIXME: Disabled for now, as the optimizer is pretty broken and crashes...
+// See https://github.com/rust-lang/rust/issues/50411
 fn run_pass_miri_opt() {
     run_pass_miri(true);
 }
@@ -204,13 +206,11 @@ fn run_pass_rustc() {
 }
 
 #[test]
-#[should_panic] // TODO: update test errors
 fn compile_fail_miri() {
     let sysroot = get_sysroot();
     let host = get_host();
 
     // FIXME: run tests for other targets, too
     compile_fail(&sysroot, "tests/compile-fail", &host, &host, true);
-
     compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true);
 }
