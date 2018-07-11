@@ -1,6 +1,7 @@
 #![feature(slice_concat_ext)]
 
 extern crate compiletest_rs as compiletest;
+extern crate dirs;
 
 use std::slice::SliceConcatExt;
 use std::path::{PathBuf, Path};
@@ -50,7 +51,7 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
             // skip fullmir on nonhost
             return;
         }
-        let sysroot = std::env::home_dir().unwrap()
+        let sysroot = dirs::home_dir().unwrap()
             .join(".xargo")
             .join("HOST");
         flags.push(format!("--sysroot {}", sysroot.to_str().unwrap()));
@@ -110,7 +111,7 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
             // skip fullmir on nonhost
             return;
         }
-        let sysroot = std::env::home_dir().unwrap()
+        let sysroot = dirs::home_dir().unwrap()
             .join(".xargo")
             .join("HOST");
 
