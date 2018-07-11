@@ -257,7 +257,7 @@ pub trait CrateStore {
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
-pub type CrateStoreDyn = CrateStore + sync::Sync;
+pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 
 // FIXME: find a better place for this?
 pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {

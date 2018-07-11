@@ -82,9 +82,9 @@ pub struct LoweringContext<'a> {
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
     sess: &'a Session,
 
-    cstore: &'a CrateStore,
+    cstore: &'a dyn CrateStore,
 
-    resolver: &'a mut Resolver,
+    resolver: &'a mut dyn Resolver,
 
     /// The items being lowered are collected here.
     items: BTreeMap<NodeId, hir::Item>,
@@ -199,10 +199,10 @@ impl<'a> ImplTraitContext<'a> {
 
 pub fn lower_crate(
     sess: &Session,
-    cstore: &CrateStore,
+    cstore: &dyn CrateStore,
     dep_graph: &DepGraph,
     krate: &Crate,
-    resolver: &mut Resolver,
+    resolver: &mut dyn Resolver,
 ) -> hir::Crate {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
