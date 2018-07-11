@@ -149,9 +149,9 @@ struct Waiter {
 
 // Helper struct used to clean up after a closure call with a `Drop`
 // implementation to also run on panic.
-struct Finish {
+struct Finish<'a> {
     panicked: bool,
-    me: &'static Once,
+    me: &'a Once,
 }
 
 impl Once {
@@ -218,7 +218,7 @@ impl Once {
     ///
     /// [poison]: struct.Mutex.html#poisoning
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn call_once<F>(&'static self, f: F) where F: FnOnce() {
+    pub fn call_once<F>(&self, f: F) where F: FnOnce() {
         // Fast path, just see if we've completed initialization.
         if self.state.load(Ordering::SeqCst) == COMPLETE {
             return
@@ -275,7 +275,7 @@ impl Once {
     /// INIT.call_once(|| {});
     /// ```
     #[unstable(feature = "once_poison", issue = "33577")]
-    pub fn call_once_force<F>(&'static self, f: F) where F: FnOnce(&OnceState) {
+    pub fn call_once_force<F>(&self, f: F) where F: FnOnce(&OnceState) {
         // same as above, just with a different parameter to `call_inner`.
         if self.state.load(Ordering::SeqCst) == COMPLETE {
             return
@@ -299,7 +299,7 @@ impl Once {
     // currently no way to take an `FnOnce` and call it via virtual dispatch
     // without some allocation overhead.
     #[cold]
-    fn call_inner(&'static self,
+    fn call_inner(&self,
                   ignore_poisoning: bool,
                   init: &mut FnMut(bool)) {
         let mut state = self.state.load(Ordering::SeqCst);
@@ -390,7 +390,7 @@ impl fmt::Debug for Once {
     }
 }
 
-impl Drop for Finish {
+impl<'a> Drop for Finish<'a> {
     fn drop(&mut self) {
         // Swap out our state with however we finished. We should only ever see
         // an old state which was RUNNING.
