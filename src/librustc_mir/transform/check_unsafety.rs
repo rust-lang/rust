@@ -202,8 +202,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                                             self.source_info.span) {
                                     self.require_unsafe(
                                         "assignment to non-`Copy` union field",
-                                        "the previous content of the field may be dropped, which \
-                                         cause undefined behavior if the field was not properly \
+                                        "the previous content of the field will be dropped, which \
+                                         causes undefined behavior if the field was not properly \
                                          initialized")
                                 } else {
                                     // write to non-move union, safe
