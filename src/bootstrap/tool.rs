@@ -584,6 +584,14 @@ macro_rules! tool_extended {
 
 tool_extended!((self, builder),
     Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
+    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {
+        // Clippy depends on procedural macros (serde), which requires a full host
+        // compiler to be available, so we need to depend on that.
+        builder.ensure(compile::Rustc {
+            compiler: self.compiler,
+            target: builder.config.build,
+        });
+    };
     Clippy, clippy, "src/tools/clippy", "clippy-driver", {
         // Clippy depends on procedural macros (serde), which requires a full host
         // compiler to be available, so we need to depend on that.
@@ -594,6 +602,14 @@ tool_extended!((self, builder),
     };
     Miri, miri, "src/tools/miri", "miri", {};
     Rls, rls, "src/tools/rls", "rls", {
+        let clippy = builder.ensure(Clippy {
+            compiler: self.compiler,
+            target: self.target,
+            extra_features: Vec::new(),
+        });
+        if clippy.is_some() {
+            self.extra_features.push("clippy".to_owned());
+        }
         builder.ensure(native::Openssl {
             target: self.target,
         });
