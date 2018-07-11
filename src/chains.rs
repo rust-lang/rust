@@ -71,7 +71,10 @@ use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
-use utils::{first_line_width, last_line_extendable, last_line_width, mk_sp, wrap_str};
+use utils::{
+    first_line_width, last_line_extendable, last_line_width, mk_sp, trimmed_last_line_width,
+    wrap_str,
+};
 
 use std::borrow::Cow;
 use std::cmp::min;
@@ -395,10 +398,11 @@ impl<'a> ChainFormatterShared<'a> {
         let last = &self.children[0];
         let extendable =
             may_extend && last_line_extendable(&self.rewrites[self.rewrites.len() - 1]);
+        let prev_last_line_width = last_line_width(&self.rewrites[self.rewrites.len() - 1]);
 
         // Total of all items excluding the last.
         let almost_total = if extendable {
-            last_line_width(&self.rewrites[self.rewrites.len() - 1])
+            prev_last_line_width
         } else {
             self.rewrites.iter().fold(0, |a, b| a + b.len())
         } + last.tries;
@@ -410,7 +414,7 @@ impl<'a> ChainFormatterShared<'a> {
 
         let all_in_one_line =
             self.rewrites.iter().all(|s| !s.contains('\n')) && one_line_budget > 0;
-        let last_shape = if all_in_one_line {
+        let last_shape = if all_in_one_line || extendable {
             shape.sub_width(last.tries)?
         } else {
             child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?
@@ -508,6 +512,37 @@ impl<'a> ChainFormatterBlock<'a> {
             is_block_like: Vec::with_capacity(chain.children.len() + 1),
         }
     }
+
+    // States whether an expression's last line exclusively consists of closing
+    // parens, braces, and brackets in its idiomatic formatting.
+    fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
+        match expr.node {
+            ast::ExprKind::Mac(..)
+            | ast::ExprKind::Call(..)
+            | ast::ExprKind::MethodCall(..)
+            | ast::ExprKind::Struct(..)
+            | ast::ExprKind::While(..)
+            | ast::ExprKind::WhileLet(..)
+            | ast::ExprKind::If(..)
+            | ast::ExprKind::IfLet(..)
+            | ast::ExprKind::Block(..)
+            | ast::ExprKind::Loop(..)
+            | ast::ExprKind::ForLoop(..)
+            | ast::ExprKind::Match(..) => repr.contains('\n'),
+            ast::ExprKind::Paren(ref expr)
+            | ast::ExprKind::Binary(_, _, ref expr)
+            | ast::ExprKind::Index(_, ref expr)
+            | ast::ExprKind::Unary(_, ref expr)
+            | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
+            | ast::ExprKind::Try(ref expr)
+            | ast::ExprKind::Yield(Some(ref expr)) => Self::is_block_expr(context, expr, repr),
+            // This can only be a string lit
+            ast::ExprKind::Lit(_) => {
+                repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
+            }
+            _ => false,
+        }
+    }
 }
 
 impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
@@ -519,7 +554,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
     ) -> Option<()> {
         let mut root_rewrite: String = parent.rewrite(context, shape)?;
 
-        let mut root_ends_with_block = is_block_expr(context, &parent.expr, &root_rewrite);
+        let mut root_ends_with_block = Self::is_block_expr(context, &parent.expr, &root_rewrite);
         let tab_width = context.config.tab_spaces().saturating_sub(shape.offset);
 
         while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
@@ -530,7 +565,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
                 None => break,
             }
 
-            root_ends_with_block = is_block_expr(context, &item.expr, &root_rewrite);
+            root_ends_with_block = Self::is_block_expr(context, &item.expr, &root_rewrite);
 
             self.shared.children = &self.shared.children[..self.shared.children.len() - 1];
             if self.shared.children.is_empty() {
@@ -554,7 +589,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
         for item in self.shared.children[1..].iter().rev() {
             let rewrite = item.rewrite_postfix(context, child_shape)?;
             self.is_block_like
-                .push(is_block_expr(context, &item.expr, &rewrite));
+                .push(Self::is_block_expr(context, &item.expr, &rewrite));
             self.shared.rewrites.push(rewrite);
         }
         Some(())
@@ -608,12 +643,7 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
             }
         }
 
-        // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
-        let parent_shape = if is_block_expr(context, &parent.expr, "\n") {
-            shape.visual_indent(0)
-        } else {
-            shape
-        };
+        let parent_shape = shape.visual_indent(0);
         let mut root_rewrite = parent.rewrite(context, parent_shape)?;
 
         if !root_rewrite.contains('\n') && is_continuable(&parent.expr) {
@@ -659,32 +689,5 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
 
     fn pure_root(&mut self) -> Option<String> {
         self.shared.pure_root()
-    }
-}
-
-// States whether an expression's last line exclusively consists of closing
-// parens, braces, and brackets in its idiomatic formatting.
-fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
-    match expr.node {
-        ast::ExprKind::Mac(..) | ast::ExprKind::Call(..) | ast::ExprKind::MethodCall(..) => {
-            context.use_block_indent() && repr.contains('\n')
-        }
-        ast::ExprKind::Struct(..)
-        | ast::ExprKind::While(..)
-        | ast::ExprKind::WhileLet(..)
-        | ast::ExprKind::If(..)
-        | ast::ExprKind::IfLet(..)
-        | ast::ExprKind::Block(..)
-        | ast::ExprKind::Loop(..)
-        | ast::ExprKind::ForLoop(..)
-        | ast::ExprKind::Match(..) => repr.contains('\n'),
-        ast::ExprKind::Paren(ref expr)
-        | ast::ExprKind::Binary(_, _, ref expr)
-        | ast::ExprKind::Index(_, ref expr)
-        | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
-        | ast::ExprKind::Try(ref expr)
-        | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
-        _ => false,
     }
 }
