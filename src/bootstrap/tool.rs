@@ -607,7 +607,6 @@ tool_extended!((self, builder),
             target: self.target,
             extra_features: Vec::new(),
         });
-        let channel = &builder.config.channel;
         if clippy.is_some() {
             self.extra_features.push("clippy".to_owned());
         }
