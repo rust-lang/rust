@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Rust adaptation of Grisu3 algorithm described in \[1\]. It uses about
-1KB of precomputed table, and in turn, it's very quick for most inputs.
-
-\[1\] Florian Loitsch. 2010. Printing floating-point numbers quickly and
-    accurately with integers. SIGPLAN Not. 45, 6 (June 2010), 233-243.
-*/
+//! Rust adaptation of the Grisu3 algorithm. It uses about 1KB of precomputed table, and in turn,
+//! it's very quick for most inputs.
+//! 
+//! The Grisu3 algorithm is described in "Florian Loitsch. 2010. Printing floating-point numbers
+//! quickly and accurately with integers. SIGPLAN Not. 45, 6 (June 2010), 233-243."
 
 use num::diy_float::Fp;
 use num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
