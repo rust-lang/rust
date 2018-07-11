@@ -31,3 +31,4 @@ cargo_miri = ["cargo_metadata"]
 
 [dev-dependencies]
 compiletest_rs = { version = "0.3.4", features = ["tmp"] }
+dirs = "1.0.2"
