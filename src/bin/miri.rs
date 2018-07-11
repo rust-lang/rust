@@ -229,9 +229,6 @@ fn main() {
         }
     });
 
-    // Make sure we always have all the MIR (e.g. for auxilary builds in unit tests).
-    args.push("-Zalways-encode-mir".to_owned());
-
     rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
         default: Box::new(RustcDefaultCalls),
         start_fn,
