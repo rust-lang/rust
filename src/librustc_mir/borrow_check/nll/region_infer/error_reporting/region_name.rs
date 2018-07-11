@@ -201,7 +201,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
             // must highlight the variable.
-            hir::TyInfer => None,
+            hir::TyKind::Infer => None,
 
             _ => self.give_name_if_we_can_match_hir_ty(
                 tcx,
@@ -263,7 +263,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 //
                 //     &
                 //     - let's call the lifetime of this reference `'1`
-                (ty::TyRef(region, referent_ty, _), hir::TyRptr(_lifetime, referent_hir_ty)) => {
+                (ty::TyRef(region, referent_ty, _), hir::TyKind::Rptr(_lifetime, referent_hir_ty)) => {
                     if region.to_region_vid() == needle_fr {
                         let region_name = self.synthesize_region_name(counter);
 
@@ -287,7 +287,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 // Match up something like `Foo<'1>`
-                (ty::TyAdt(_adt_def, substs), hir::TyPath(hir::QPath::Resolved(None, path))) => {
+                (ty::TyAdt(_adt_def, substs), hir::TyKind::Path(hir::QPath::Resolved(None, path))) => {
                     if let Some(last_segment) = path.segments.last() {
                         if let Some(name) = self.match_adt_and_segment(
                             substs,
@@ -305,16 +305,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // The following cases don't have lifetimes, so we
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
-                (ty::TyTuple(elem_tys), hir::TyTup(elem_hir_tys)) => {
+                (ty::TyTuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
                     search_stack.extend(elem_tys.iter().cloned().zip(elem_hir_tys));
                 }
 
-                (ty::TySlice(elem_ty), hir::TySlice(elem_hir_ty))
-                | (ty::TyArray(elem_ty, _), hir::TyArray(elem_hir_ty, _)) => {
+                (ty::TySlice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
+                | (ty::TyArray(elem_ty, _), hir::TyKind::Array(elem_hir_ty, _)) => {
                     search_stack.push((elem_ty, elem_hir_ty));
                 }
 
-                (ty::TyRawPtr(mut_ty), hir::TyPtr(mut_hir_ty)) => {
+                (ty::TyRawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {
                     search_stack.push((mut_ty.ty, &mut_hir_ty.ty));
                 }
 

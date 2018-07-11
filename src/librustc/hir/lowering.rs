@@ -1080,17 +1080,17 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext) -> hir::Ty {
         let kind = match t.node {
-            TyKind::Infer => hir::TyInfer,
-            TyKind::Err => hir::TyErr,
-            TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty, itctx)),
-            TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt, itctx)),
+            TyKind::Infer => hir::TyKind::Infer,
+            TyKind::Err => hir::TyKind::Err,
+            TyKind::Slice(ref ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
+            TyKind::Ptr(ref mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Rptr(ref region, ref mt) => {
                 let span = t.span.shrink_to_lo();
                 let lifetime = match *region {
                     Some(ref lt) => self.lower_lifetime(lt),
                     None => self.elided_ref_lifetime(span),
                 };
-                hir::TyRptr(lifetime, self.lower_mt(mt, itctx))
+                hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(
                 &f.generic_params,
@@ -1098,7 +1098,7 @@ impl<'a> LoweringContext<'a> {
                     this.with_anonymous_lifetime_mode(
                         AnonymousLifetimeMode::PassThrough,
                         |this| {
-                            hir::TyBareFn(P(hir::BareFnTy {
+                            hir::TyKind::BareFn(P(hir::BareFnTy {
                                 generic_params: this.lower_generic_params(
                                     &f.generic_params,
                                     &NodeMap(),
@@ -1113,9 +1113,9 @@ impl<'a> LoweringContext<'a> {
                     )
                 },
             ),
-            TyKind::Never => hir::TyNever,
+            TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(ref tys) => {
-                hir::TyTup(tys.iter().map(|ty| {
+                hir::TyKind::Tup(tys.iter().map(|ty| {
                     self.lower_ty_direct(ty, itctx.reborrow())
                 }).collect())
             }
@@ -1126,12 +1126,12 @@ impl<'a> LoweringContext<'a> {
                 let id = self.lower_node_id(t.id);
                 let qpath = self.lower_qpath(t.id, qself, path, ParamMode::Explicit, itctx);
                 let ty = self.ty_path(id, t.span, qpath);
-                if let hir::TyTraitObject(..) = ty.node {
+                if let hir::TyKind::TraitObject(..) = ty.node {
                     self.maybe_lint_bare_trait(t.span, t.id, qself.is_none() && path.is_global());
                 }
                 return ty;
             }
-            TyKind::ImplicitSelf => hir::TyPath(hir::QPath::Resolved(
+            TyKind::ImplicitSelf => hir::TyKind::Path(hir::QPath::Resolved(
                 None,
                 P(hir::Path {
                     def: self.expect_full_def(t.id),
@@ -1140,10 +1140,10 @@ impl<'a> LoweringContext<'a> {
                 }),
             )),
             TyKind::Array(ref ty, ref length) => {
-                hir::TyArray(self.lower_ty(ty, itctx), self.lower_anon_const(length))
+                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_anon_const(length))
             }
             TyKind::Typeof(ref expr) => {
-                hir::TyTypeof(self.lower_anon_const(expr))
+                hir::TyKind::Typeof(self.lower_anon_const(expr))
             }
             TyKind::TraitObject(ref bounds, kind) => {
                 let mut lifetime_bound = None;
@@ -1167,7 +1167,7 @@ impl<'a> LoweringContext<'a> {
                 if kind != TraitObjectSyntax::Dyn {
                     self.maybe_lint_bare_trait(t.span, t.id, false);
                 }
-                hir::TyTraitObject(bounds, lifetime_bound)
+                hir::TyKind::TraitObject(bounds, lifetime_bound)
             }
             TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
@@ -1206,7 +1206,7 @@ impl<'a> LoweringContext<'a> {
                             }
                         });
 
-                        hir::TyPath(hir::QPath::Resolved(
+                        hir::TyKind::Path(hir::QPath::Resolved(
                             None,
                             P(hir::Path {
                                 span,
@@ -1223,7 +1223,7 @@ impl<'a> LoweringContext<'a> {
                             "`impl Trait` not allowed outside of function \
                              and inherent method return types"
                         );
-                        hir::TyErr
+                        hir::TyKind::Err
                     }
                 }
             }
@@ -1245,7 +1245,7 @@ impl<'a> LoweringContext<'a> {
         fn_def_id: DefId,
         exist_ty_node_id: NodeId,
         lower_bounds: impl FnOnce(&mut LoweringContext) -> hir::GenericBounds,
-    ) -> hir::Ty_ {
+    ) -> hir::TyKind {
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
         // desugaring that explicitly states that we don't want to track that.
@@ -1320,7 +1320,7 @@ impl<'a> LoweringContext<'a> {
                     }))
                 }],
             });
-            hir::TyPath(hir::QPath::Resolved(None, path))
+            hir::TyKind::Path(hir::QPath::Resolved(None, path))
         })
     }
 
@@ -1365,7 +1365,7 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_ty(&mut self, t: &'v hir::Ty) {
                 // Don't collect elided lifetimes used inside of `fn()` syntax
-                if let hir::Ty_::TyBareFn(_) = t.node {
+                if let hir::TyKind::BareFn(_) = t.node {
                     let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
                     self.collect_elided_lifetimes = false;
 
@@ -1805,7 +1805,7 @@ impl<'a> LoweringContext<'a> {
                 let inputs = inputs.iter().map(|ty| this.lower_ty_direct(ty, DISALLOWED)).collect();
                 let mk_tup = |this: &mut Self, tys, span| {
                     let LoweredNodeId { node_id, hir_id } = this.next_id();
-                    hir::Ty { node: hir::TyTup(tys), id: node_id, hir_id, span }
+                    hir::Ty { node: hir::TyKind::Tup(tys), id: node_id, hir_id, span }
                 };
 
                 (
@@ -1985,7 +1985,7 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_ty(&mut self, t: &'v hir::Ty) {
                 // Don't collect elided lifetimes used inside of `fn()` syntax
-                if let &hir::Ty_::TyBareFn(_) = &t.node {
+                if let &hir::TyKind::BareFn(_) = &t.node {
                     let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
                     self.collect_elided_lifetimes = false;
 
@@ -2105,7 +2105,7 @@ impl<'a> LoweringContext<'a> {
                     P(hir::Ty {
                         id: node_id,
                         hir_id: hir_id,
-                        node: hir::TyTup(hir_vec![]),
+                        node: hir::TyKind::Tup(hir_vec![]),
                         span: *span,
                     })
                 }
@@ -4624,7 +4624,7 @@ impl<'a> LoweringContext<'a> {
         let mut id = id;
         let node = match qpath {
             hir::QPath::Resolved(None, path) => {
-                // Turn trait object paths into `TyTraitObject` instead.
+                // Turn trait object paths into `TyKind::TraitObject` instead.
                 if let Def::Trait(_) = path.def {
                     let principal = hir::PolyTraitRef {
                         bound_generic_params: hir::HirVec::new(),
@@ -4638,12 +4638,12 @@ impl<'a> LoweringContext<'a> {
                     // The original ID is taken by the `PolyTraitRef`,
                     // so the `Ty` itself needs a different one.
                     id = self.next_id();
-                    hir::TyTraitObject(hir_vec![principal], self.elided_dyn_bound(span))
+                    hir::TyKind::TraitObject(hir_vec![principal], self.elided_dyn_bound(span))
                 } else {
-                    hir::TyPath(hir::QPath::Resolved(None, path))
+                    hir::TyKind::Path(hir::QPath::Resolved(None, path))
                 }
             }
-            _ => hir::TyPath(qpath),
+            _ => hir::TyKind::Path(qpath),
         };
         hir::Ty {
             id: id.node_id,

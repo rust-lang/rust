@@ -216,7 +216,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
             let ty = hir::Ty {
                 id: ast::DUMMY_NODE_ID,
-                node: hir::Ty_::TyPath(hir::QPath::Resolved(None, P(new_path))),
+                node: hir::TyKind::TyPath(hir::QPath::Resolved(None, P(new_path))),
                 span: DUMMY_SP,
                 hir_id: hir::DUMMY_HIR_ID,
             };
@@ -279,7 +279,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
         hir::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: hir::Ty_::TyPath(hir::QPath::Resolved(
+            node: hir::TyKind::TyPath(hir::QPath::Resolved(
                 None,
                 P(hir::Path {
                     span: DUMMY_SP,

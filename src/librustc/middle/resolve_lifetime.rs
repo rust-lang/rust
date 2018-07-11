@@ -567,7 +567,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         debug!("visit_ty: id={:?} ty={:?}", ty.id, ty);
         match ty.node {
-            hir::TyBareFn(ref c) => {
+            hir::TyKind::BareFn(ref c) => {
                 let next_early_index = self.next_early_index();
                 let was_in_fn_syntax = self.is_in_fn_syntax;
                 self.is_in_fn_syntax = true;
@@ -591,7 +591,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 });
                 self.is_in_fn_syntax = was_in_fn_syntax;
             }
-            hir::TyTraitObject(ref bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                 for bound in bounds {
                     self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                 }
@@ -617,7 +617,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }
                 }
             }
-            hir::TyRptr(ref lifetime_ref, ref mt) => {
+            hir::TyKind::Rptr(ref lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: self.map.defs.get(&lifetime_ref.id).cloned(),
@@ -625,7 +625,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| this.visit_ty(&mt.ty));
             }
-            hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+            hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                 if let Def::Existential(exist_ty_did) = path.def {
                     assert!(exist_ty_did.is_local());
                     // Resolve the lifetimes that are applied to the existential type.
@@ -1287,7 +1287,7 @@ fn object_lifetime_defaults_for_item(
                 }
 
                 let def = match data.bounded_ty.node {
-                    hir::TyPath(hir::QPath::Resolved(None, ref path)) => path.def,
+                    hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => path.def,
                     _ => continue,
                 };
 
@@ -1912,7 +1912,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 // Can't always rely on literal (or implied) `Self` due
                 // to the way elision rules were originally specified.
                 let impl_self = impl_self.map(|ty| &ty.node);
-                if let Some(&hir::TyPath(hir::QPath::Resolved(None, ref path))) = impl_self {
+                if let Some(&hir::TyKind::Path(hir::QPath::Resolved(None, ref path))) = impl_self {
                     match path.def {
                         // Whitelist the types that unambiguously always
                         // result in the same type constructor being used
@@ -1927,8 +1927,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 false
             };
 
-            if let hir::TyRptr(lifetime_ref, ref mt) = inputs[0].node {
-                if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
+            if let hir::TyKind::Rptr(lifetime_ref, ref mt) = inputs[0].node {
+                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
                     if is_self_ty(path.def) {
                         if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.id) {
                             let scope = Scope::Elision {
@@ -2007,10 +2007,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             fn visit_ty(&mut self, ty: &hir::Ty) {
-                if let hir::TyBareFn(_) = ty.node {
+                if let hir::TyKind::BareFn(_) = ty.node {
                     self.outer_index.shift_in(1);
                 }
-                if let hir::TyTraitObject(ref bounds, ref lifetime) = ty.node {
+                if let hir::TyKind::TraitObject(ref bounds, ref lifetime) = ty.node {
                     for bound in bounds {
                         self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                     }
@@ -2023,7 +2023,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 } else {
                     intravisit::walk_ty(self, ty);
                 }
-                if let hir::TyBareFn(_) = ty.node {
+                if let hir::TyKind::BareFn(_) = ty.node {
                     self.outer_index.shift_out(1);
                 }
             }
@@ -2578,14 +2578,14 @@ fn insert_late_bound_lifetimes(
 
         fn visit_ty(&mut self, ty: &'v hir::Ty) {
             match ty.node {
-                hir::TyPath(hir::QPath::Resolved(Some(_), _))
-                | hir::TyPath(hir::QPath::TypeRelative(..)) => {
+                hir::TyKind::Path(hir::QPath::Resolved(Some(_), _))
+                | hir::TyKind::Path(hir::QPath::TypeRelative(..)) => {
                     // ignore lifetimes appearing in associated type
                     // projections, as they are not *constrained*
                     // (defined above)
                 }
 
-                hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+                hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                     // consider only the lifetimes on the final
                     // segment; I am not sure it's even currently
                     // valid to have them elsewhere, but even if it

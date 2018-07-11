@@ -1678,7 +1678,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
         match ty.node {
-            hir::TyArray(_, ref length) => {
+            hir::TyKind::Array(_, ref length) => {
                 let def_id = self.tcx.hir.local_def_id(length.id);
                 self.record(def_id, IsolatedEncoder::encode_info_for_anon_const, def_id);
             }

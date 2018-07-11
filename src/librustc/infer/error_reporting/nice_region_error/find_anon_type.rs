@@ -109,20 +109,20 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_ty(&mut self, arg: &'gcx hir::Ty) {
         match arg.node {
-            hir::TyBareFn(_) => {
+            hir::TyKind::BareFn(_) => {
                 self.current_index.shift_in(1);
                 intravisit::walk_ty(self, arg);
                 self.current_index.shift_out(1);
                 return;
             }
 
-            hir::TyTraitObject(ref bounds, _) => for bound in bounds {
+            hir::TyKind::TraitObject(ref bounds, _) => for bound in bounds {
                 self.current_index.shift_in(1);
                 self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                 self.current_index.shift_out(1);
             },
 
-            hir::TyRptr(ref lifetime, _) => {
+            hir::TyKind::Rptr(ref lifetime, _) => {
                 // the lifetime of the TyRptr
                 let hir_id = self.tcx.hir.node_to_hir_id(lifetime.id);
                 match (self.tcx.named_region(hir_id), self.bound_region) {
@@ -190,8 +190,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            // Checks if it is of type `hir::TyPath` which corresponds to a struct.
-            hir::TyPath(_) => {
+            // Checks if it is of type `hir::TyKind::Path` which corresponds to a struct.
+            hir::TyKind::Path(_) => {
                 let subvisitor = &mut TyPathVisitor {
                     tcx: self.tcx,
                     found_it: false,
@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 }
 
 // The visitor captures the corresponding `hir::Ty` of the anonymous region
-// in the case of structs ie. `hir::TyPath`.
+// in the case of structs ie. `hir::TyKind::Path`.
 // This visitor would be invoked for each lifetime corresponding to a struct,
 // and would walk the types like Vec<Ref> in the above example and Ref looking for the HIR
 // where that lifetime appears. This allows us to highlight the

@@ -17,7 +17,6 @@ pub use self::ForeignItem_::*;
 pub use self::Item_::*;
 pub use self::Mutability::*;
 pub use self::PrimTy::*;
-pub use self::Ty_::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
@@ -439,7 +438,7 @@ impl GenericArgs {
                 match arg {
                     GenericArg::Lifetime(_) => {}
                     GenericArg::Type(ref ty) => {
-                        if let TyTup(ref tys) = ty.node {
+                        if let TyKind::Tup(ref tys) = ty.node {
                             return tys;
                         }
                         break;
@@ -1448,7 +1447,7 @@ pub enum QPath {
     ///
     /// UFCS source paths can desugar into this, with `Vec::new` turning into
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
-    /// the `X` and `Y` nodes each being a `TyPath(QPath::TypeRelative(..))`.
+    /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
     TypeRelative(P<Ty>, P<PathSegment>)
 }
 
@@ -1638,7 +1637,7 @@ pub struct TypeBinding {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
     pub id: NodeId,
-    pub node: Ty_,
+    pub node: TyKind,
     pub span: Span,
     pub hir_id: HirId,
 }
@@ -1679,36 +1678,36 @@ pub struct ExistTy {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 /// The different kinds of types recognized by the compiler
-pub enum Ty_ {
+pub enum TyKind {
     /// A variable length slice (`[T]`)
-    TySlice(P<Ty>),
+    Slice(P<Ty>),
     /// A fixed length array (`[T; n]`)
-    TyArray(P<Ty>, AnonConst),
+    Array(P<Ty>, AnonConst),
     /// A raw pointer (`*const T` or `*mut T`)
-    TyPtr(MutTy),
+    Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
-    TyRptr(Lifetime, MutTy),
+    Rptr(Lifetime, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
-    TyBareFn(P<BareFnTy>),
+    BareFn(P<BareFnTy>),
     /// The never type (`!`)
-    TyNever,
+    Never,
     /// A tuple (`(A, B, C, D,...)`)
-    TyTup(HirVec<Ty>),
+    Tup(HirVec<Ty>),
     /// A path to a type definition (`module::module::...::Type`), or an
     /// associated type, e.g. `<Vec<T> as Trait>::Type` or `<T>::Target`.
     ///
     /// Type parameters may be stored in each `PathSegment`.
-    TyPath(QPath),
+    Path(QPath),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
+    TraitObject(HirVec<PolyTraitRef>, Lifetime),
     /// Unused for now
-    TyTypeof(AnonConst),
-    /// TyInfer means the type should be inferred instead of it having been
+    Typeof(AnonConst),
+    /// TyKind::Infer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
-    TyInfer,
+    Infer,
     /// Placeholder for a type that has failed to be defined.
-    TyErr,
+    Err,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

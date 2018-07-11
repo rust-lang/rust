@@ -33,6 +33,7 @@ use hir::svh::Svh;
 use util::nodemap::FxHashMap;
 
 use std::io;
+use std::result::Result::Err;
 use ty::TyCtxt;
 
 pub mod blocks;

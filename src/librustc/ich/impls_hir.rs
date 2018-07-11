@@ -330,19 +330,19 @@ impl_stable_hash_for!(struct hir::ExistTy {
     bounds
 });
 
-impl_stable_hash_for!(enum hir::Ty_ {
-    TySlice(t),
-    TyArray(t, body_id),
-    TyPtr(t),
-    TyRptr(lifetime, t),
-    TyBareFn(t),
-    TyNever,
-    TyTup(ts),
-    TyPath(qpath),
-    TyTraitObject(trait_refs, lifetime),
-    TyTypeof(body_id),
-    TyErr,
-    TyInfer
+impl_stable_hash_for!(enum hir::TyKind {
+    Slice(t),
+    Array(t, body_id),
+    Ptr(t),
+    Rptr(lifetime, t),
+    BareFn(t),
+    Never,
+    Tup(ts),
+    Path(qpath),
+    TraitObject(trait_refs, lifetime),
+    Typeof(body_id),
+    Err,
+    Infer
 });
 
 impl_stable_hash_for!(struct hir::FnDecl {

@@ -1131,7 +1131,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn suggest_mut_for_immutable(&self, pty: &hir::Ty, is_implicit_self: bool) -> Option<String> {
         // Check whether the argument is an immutable reference
         debug!("suggest_mut_for_immutable({:?}, {:?})", pty, is_implicit_self);
-        if let hir::TyRptr(lifetime, hir::MutTy {
+        if let hir::TyKind::Rptr(lifetime, hir::MutTy {
             mutbl: hir::Mutability::MutImmutable,
             ref ty
         }) = pty.node {
@@ -1259,7 +1259,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     // avoid suggesting `mut &self`.
                     return
                 }
-                if let Some(&hir::TyRptr(
+                if let Some(&hir::TyKind::Rptr(
                     _,
                     hir::MutTy {
                         mutbl: hir::MutMutable,

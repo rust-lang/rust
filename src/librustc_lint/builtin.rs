@@ -1475,7 +1475,7 @@ impl TypeAliasBounds {
             hir::QPath::TypeRelative(ref ty, _) => {
                 // If this is a type variable, we found a `T::Assoc`.
                 match ty.node {
-                    hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+                    hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                         match path.def {
                             Def::TyParam(_) => true,
                             _ => false

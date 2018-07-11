@@ -970,7 +970,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }) => {
                 (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
                         .map(|arg| match arg.clone().node {
-                    hir::TyTup(ref tys) => ArgKind::Tuple(
+                    hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
                         tys.iter()
                             .map(|_| ("_".to_owned(), "_".to_owned()))

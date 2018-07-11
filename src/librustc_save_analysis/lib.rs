@@ -666,7 +666,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }) => HirDef::Local(canonical_id),
 
             Node::NodeTy(ty) => if let hir::Ty {
-                node: hir::TyPath(ref qpath),
+                node: hir::TyKind::Path(ref qpath),
                 ..
             } = *ty
             {

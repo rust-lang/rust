@@ -1117,60 +1117,60 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
 
         let result_ty = match ast_ty.node {
-            hir::TySlice(ref ty) => {
+            hir::TyKind::Slice(ref ty) => {
                 tcx.mk_slice(self.ast_ty_to_ty(&ty))
             }
-            hir::TyPtr(ref mt) => {
+            hir::TyKind::Ptr(ref mt) => {
                 tcx.mk_ptr(ty::TypeAndMut {
                     ty: self.ast_ty_to_ty(&mt.ty),
                     mutbl: mt.mutbl
                 })
             }
-            hir::TyRptr(ref region, ref mt) => {
+            hir::TyKind::Rptr(ref region, ref mt) => {
                 let r = self.ast_region_to_region(region, None);
                 debug!("TyRef r={:?}", r);
                 let t = self.ast_ty_to_ty(&mt.ty);
                 tcx.mk_ref(r, ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
             }
-            hir::TyNever => {
+            hir::TyKind::Never => {
                 tcx.types.never
             },
-            hir::TyTup(ref fields) => {
+            hir::TyKind::Tup(ref fields) => {
                 tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(&t)))
             }
-            hir::TyBareFn(ref bf) => {
+            hir::TyKind::BareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
                 tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
             }
-            hir::TyTraitObject(ref bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
             }
-            hir::TyPath(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
+            hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| {
                     self.ast_ty_to_ty(qself)
                 });
                 self.def_to_ty(opt_self_ty, path, false)
             }
-            hir::TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
+            hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
                 let ty = self.ast_ty_to_ty(qself);
 
-                let def = if let hir::TyPath(hir::QPath::Resolved(_, ref path)) = qself.node {
+                let def = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.node {
                     path.def
                 } else {
                     Def::Err
                 };
                 self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
-            hir::TyArray(ref ty, ref length) => {
+            hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir.local_def_id(length.id);
                 let substs = Substs::identity_for_item(tcx, length_def_id);
                 let length = ty::Const::unevaluated(tcx, length_def_id, substs, tcx.types.usize);
                 let array_ty = tcx.mk_ty(ty::TyArray(self.ast_ty_to_ty(&ty), length));
                 self.normalize_ty(ast_ty.span, array_ty)
             }
-            hir::TyTypeof(ref _e) => {
+            hir::TyKind::Typeof(ref _e) => {
                 struct_span_err!(tcx.sess, ast_ty.span, E0516,
                                  "`typeof` is a reserved keyword but unimplemented")
                     .span_label(ast_ty.span, "reserved keyword")
@@ -1178,14 +1178,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
                 tcx.types.err
             }
-            hir::TyInfer => {
+            hir::TyKind::Infer => {
                 // TyInfer also appears as the type of arguments or return
                 // values in a ExprKind::Closure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
                 self.ty_infer(ast_ty.span)
             }
-            hir::TyErr => {
+            hir::TyKind::Err => {
                 tcx.types.err
             }
         };
@@ -1241,7 +1241,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                      -> Ty<'tcx>
     {
         match ty.node {
-            hir::TyInfer if expected_ty.is_some() => {
+            hir::TyKind::Infer if expected_ty.is_some() => {
                 self.record_ty(ty.hir_id, expected_ty.unwrap(), ty.span);
                 expected_ty.unwrap()
             }

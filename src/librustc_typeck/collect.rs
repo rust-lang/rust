@@ -346,7 +346,7 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       param_id: ast::NodeId)
                       -> bool
 {
-    if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
+    if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
         match path.def {
             Def::SelfTy(Some(def_id), None) |
             Def::TyParam(def_id) => {
@@ -701,7 +701,7 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
             if self.has_late_bound_regions.is_some() { return }
             match ty.node {
-                hir::TyBareFn(..) => {
+                hir::TyKind::BareFn(..) => {
                     self.outer_index.shift_in(1);
                     intravisit::walk_ty(self, ty);
                     self.outer_index.shift_out(1);
@@ -1118,8 +1118,8 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         NodeAnonConst(_) => match tcx.hir.get(tcx.hir.get_parent_node(node_id)) {
-            NodeTy(&hir::Ty { node: TyArray(_, ref constant), .. }) |
-            NodeTy(&hir::Ty { node: TyTypeof(ref constant), .. }) |
+            NodeTy(&hir::Ty { node: hir::TyKind::Array(_, ref constant), .. }) |
+            NodeTy(&hir::Ty { node: hir::TyKind::Typeof(ref constant), .. }) |
             NodeExpr(&hir::Expr { node: ExprKind::Repeat(_, ref constant), .. })
                 if constant.id == node_id => tcx.types.usize,
 

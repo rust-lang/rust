@@ -367,12 +367,12 @@ impl<'a> State<'a> {
         self.maybe_print_comment(ty.span.lo())?;
         self.ibox(0)?;
         match ty.node {
-            hir::TySlice(ref ty) => {
+            hir::TyKind::Slice(ref ty) => {
                 self.s.word("[")?;
                 self.print_type(&ty)?;
                 self.s.word("]")?;
             }
-            hir::TyPtr(ref mt) => {
+            hir::TyKind::Ptr(ref mt) => {
                 self.s.word("*")?;
                 match mt.mutbl {
                     hir::MutMutable => self.word_nbsp("mut")?,
@@ -380,15 +380,15 @@ impl<'a> State<'a> {
                 }
                 self.print_type(&mt.ty)?;
             }
-            hir::TyRptr(ref lifetime, ref mt) => {
+            hir::TyKind::Rptr(ref lifetime, ref mt) => {
                 self.s.word("&")?;
                 self.print_opt_lifetime(lifetime)?;
                 self.print_mt(mt)?;
             }
-            hir::TyNever => {
+            hir::TyKind::Never => {
                 self.s.word("!")?;
             },
-            hir::TyTup(ref elts) => {
+            hir::TyKind::Tup(ref elts) => {
                 self.popen()?;
                 self.commasep(Inconsistent, &elts[..], |s, ty| s.print_type(&ty))?;
                 if elts.len() == 1 {
@@ -396,14 +396,14 @@ impl<'a> State<'a> {
                 }
                 self.pclose()?;
             }
-            hir::TyBareFn(ref f) => {
+            hir::TyKind::BareFn(ref f) => {
                 self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &f.generic_params,
                                  &f.arg_names[..])?;
             }
-            hir::TyPath(ref qpath) => {
+            hir::TyKind::Path(ref qpath) => {
                 self.print_qpath(qpath, false)?
             }
-            hir::TyTraitObject(ref bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                 let mut first = true;
                 for bound in bounds {
                     if first {
@@ -420,22 +420,22 @@ impl<'a> State<'a> {
                     self.print_lifetime(lifetime)?;
                 }
             }
-            hir::TyArray(ref ty, ref length) => {
+            hir::TyKind::Array(ref ty, ref length) => {
                 self.s.word("[")?;
                 self.print_type(&ty)?;
                 self.s.word("; ")?;
                 self.print_anon_const(length)?;
                 self.s.word("]")?;
             }
-            hir::TyTypeof(ref e) => {
+            hir::TyKind::Typeof(ref e) => {
                 self.s.word("typeof(")?;
                 self.print_anon_const(e)?;
                 self.s.word(")")?;
             }
-            hir::TyInfer => {
+            hir::TyKind::Infer => {
                 self.s.word("_")?;
             }
-            hir::TyErr => {
+            hir::TyKind::Err => {
                 self.s.word("?")?;
             }
         }
@@ -2035,7 +2035,7 @@ impl<'a> State<'a> {
             s.ann.nested(s, Nested::BodyArgPat(body_id, i))?;
             i += 1;
 
-            if let hir::TyInfer = ty.node {
+            if let hir::TyKind::Infer = ty.node {
                 // Print nothing
             } else {
                 s.s.word(":")?;

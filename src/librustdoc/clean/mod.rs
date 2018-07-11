@@ -2586,7 +2586,7 @@ pub struct PolyTrait {
 /// it does not preserve mutability or boxes.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum Type {
-    /// structs/enums/traits (most that'd be an hir::TyPath)
+    /// structs/enums/traits (most that'd be an hir::TyKind::Path)
     ResolvedPath {
         path: Path,
         typarams: Option<Vec<GenericBound>>,

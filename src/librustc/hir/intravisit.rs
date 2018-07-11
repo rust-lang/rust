@@ -50,6 +50,7 @@ use super::itemlikevisit::DeepVisitor;
 
 use std::cmp;
 use std::u32;
+use std::result::Result::Err;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
@@ -576,41 +577,41 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     visitor.visit_id(typ.id);
 
     match typ.node {
-        TySlice(ref ty) => {
+        TyKind::Slice(ref ty) => {
             visitor.visit_ty(ty)
         }
-        TyPtr(ref mutable_type) => {
+        TyKind::Ptr(ref mutable_type) => {
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyRptr(ref lifetime, ref mutable_type) => {
+        TyKind::Rptr(ref lifetime, ref mutable_type) => {
             visitor.visit_lifetime(lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyNever => {},
-        TyTup(ref tuple_element_types) => {
+        TyKind::Never => {},
+        TyKind::Tup(ref tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
-        TyBareFn(ref function_declaration) => {
+        TyKind::BareFn(ref function_declaration) => {
             walk_list!(visitor, visit_generic_param, &function_declaration.generic_params);
             visitor.visit_fn_decl(&function_declaration.decl);
         }
-        TyPath(ref qpath) => {
+        TyKind::Path(ref qpath) => {
             visitor.visit_qpath(qpath, typ.id, typ.span);
         }
-        TyArray(ref ty, ref length) => {
+        TyKind::Array(ref ty, ref length) => {
             visitor.visit_ty(ty);
             visitor.visit_anon_const(length)
         }
-        TyTraitObject(ref bounds, ref lifetime) => {
+        TyKind::TraitObject(ref bounds, ref lifetime) => {
             for bound in bounds {
                 visitor.visit_poly_trait_ref(bound, TraitBoundModifier::None);
             }
             visitor.visit_lifetime(lifetime);
         }
-        TyTypeof(ref expression) => {
+        TyKind::Typeof(ref expression) => {
             visitor.visit_anon_const(expression)
         }
-        TyInfer | TyErr => {}
+        TyKind::Infer | TyKind::Err => {}
     }
 }
 

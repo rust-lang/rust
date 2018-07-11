@@ -4265,7 +4265,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
-                let def = if let hir::TyPath(hir::QPath::Resolved(_, ref path)) = qself.node {
+                let def = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.node {
                     path.def
                 } else {
                     Def::Err
