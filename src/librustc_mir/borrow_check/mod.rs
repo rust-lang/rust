@@ -1841,9 +1841,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 elem: ProjectionElem::Deref,
             }) if self.mir.local_decls[*local].is_user_variable.is_some() => {
                 let local_decl = &self.mir.local_decls[*local];
-                let (err_help_span, suggested_code) = match local_decl.is_user_variable {
+                let suggestion = match local_decl.is_user_variable {
                     Some(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf)) => {
-                        suggest_ampmut_self(local_decl)
+                        Some(suggest_ampmut_self(local_decl))
                     },
 
                     Some(ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
@@ -1854,9 +1854,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         if let Some(x) = try_suggest_ampmut_rhs(
                             self.tcx, self.mir, *local,
                         ) {
-                            x
+                            Some(x)
                         } else {
-                            suggest_ampmut_type(local_decl, opt_ty_info)
+                            Some(suggest_ampmut_type(local_decl, opt_ty_info))
                         }
                     },
 
@@ -1872,11 +1872,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     None => bug!(),
                 };
 
-                err.span_suggestion(
-                    err_help_span,
-                    "consider changing this to be a mutable reference",
-                    suggested_code,
-                );
+                if let Some((err_help_span, suggested_code)) = suggestion {
+                    err.span_suggestion(
+                        err_help_span,
+                        "consider changing this to be a mutable reference",
+                        suggested_code,
+                    );
+                }
 
                 if let Some(name) = local_decl.name {
                     err.span_label(
@@ -1967,13 +1969,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         fn suggest_ref_mut<'cx, 'gcx, 'tcx>(
             tcx: TyCtxt<'cx, 'gcx, 'tcx>,
             local_decl: &mir::LocalDecl<'tcx>,
-        ) -> (Span, String) {
+        ) -> Option<(Span, String)> {
             let hi_span = local_decl.source_info.span;
             let hi_src = tcx.sess.codemap().span_to_snippet(hi_span).unwrap();
-            assert!(hi_src.starts_with("ref"));
-            assert!(hi_src["ref".len()..].starts_with(Pattern_White_Space));
-            let suggestion = format!("ref mut{}", &hi_src["ref".len()..]);
-            (hi_span, suggestion)
+            if hi_src.starts_with("ref")
+                && hi_src["ref".len()..].starts_with(Pattern_White_Space)
+            {
+                let suggestion = format!("ref mut{}", &hi_src["ref".len()..]);
+                Some((hi_span, suggestion))
+            } else {
+                None
+            }
         }
     }
 
