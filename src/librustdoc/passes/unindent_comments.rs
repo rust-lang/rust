@@ -13,10 +13,9 @@ use std::string::String;
 use std::usize;
 
 use clean::{self, DocFragment, Item};
-use plugins;
 use fold::{self, DocFolder};
 
-pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
+pub fn unindent_comments(krate: clean::Crate) -> clean::Crate {
     CommentCleaner.fold_crate(krate)
 }
 
