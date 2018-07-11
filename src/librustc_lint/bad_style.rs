@@ -133,11 +133,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
         }
 
         match it.node {
-            hir::ItemTy(..) |
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemUnion(..) => self.check_case(cx, "type", it.name, it.span),
-            hir::ItemTrait(..) => self.check_case(cx, "trait", it.name, it.span),
+            hir::ItemKind::Ty(..) |
+            hir::ItemKind::Enum(..) |
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::Union(..) => self.check_case(cx, "type", it.name, it.span),
+            hir::ItemKind::Trait(..) => self.check_case(cx, "trait", it.name, it.span),
             _ => (),
         }
     }
@@ -296,7 +296,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        if let hir::ItemMod(_) = it.node {
+        if let hir::ItemKind::Mod(_) = it.node {
             self.check_snake_case(cx, "module", &it.name.as_str(), Some(it.span));
         }
     }
@@ -369,13 +369,13 @@ impl LintPass for NonUpperCaseGlobals {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemStatic(..) => {
+            hir::ItemKind::Static(..) => {
                 if attr::find_by_name(&it.attrs, "no_mangle").is_some() {
                     return;
                 }
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.name, it.span);
             }
-            hir::ItemConst(..) => {
+            hir::ItemKind::Const(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant", it.name, it.span);
             }
             _ => {}

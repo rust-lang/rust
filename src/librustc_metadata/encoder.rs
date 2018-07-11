@@ -1039,16 +1039,16 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_info_for_item({:?})", def_id);
 
         let kind = match item.node {
-            hir::ItemStatic(_, hir::MutMutable, _) => EntryKind::MutStatic,
-            hir::ItemStatic(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
-            hir::ItemConst(_, body_id) => {
+            hir::ItemKind::Static(_, hir::MutMutable, _) => EntryKind::MutStatic,
+            hir::ItemKind::Static(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
+            hir::ItemKind::Const(_, body_id) => {
                 let mir = tcx.at(item.span).mir_const_qualif(def_id).0;
                 EntryKind::Const(
                     self.const_qualif(mir, body_id),
                     self.encode_rendered_const_for_body(body_id)
                 )
             }
-            hir::ItemFn(_, header, .., body) => {
+            hir::ItemKind::Fn(_, header, .., body) => {
                 let data = FnData {
                     constness: header.constness,
                     arg_names: self.encode_fn_arg_names_for_body(body),
@@ -1057,15 +1057,15 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
                 EntryKind::Fn(self.lazy(&data))
             }
-            hir::ItemMod(ref m) => {
+            hir::ItemKind::Mod(ref m) => {
                 return self.encode_info_for_mod(FromId(item.id, (m, &item.attrs, &item.vis)));
             }
-            hir::ItemForeignMod(_) => EntryKind::ForeignMod,
-            hir::ItemGlobalAsm(..) => EntryKind::GlobalAsm,
-            hir::ItemTy(..) => EntryKind::Type,
-            hir::ItemExistential(..) => EntryKind::Existential,
-            hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
-            hir::ItemStruct(ref struct_def, _) => {
+            hir::ItemKind::ForeignMod(_) => EntryKind::ForeignMod,
+            hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
+            hir::ItemKind::Ty(..) => EntryKind::Type,
+            hir::ItemKind::Existential(..) => EntryKind::Existential,
+            hir::ItemKind::Enum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
+            hir::ItemKind::Struct(ref struct_def, _) => {
                 let variant = tcx.adt_def(def_id).non_enum_variant();
 
                 // Encode def_ids for each field and method
@@ -1086,7 +1086,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_sig: None,
                 }), repr_options)
             }
-            hir::ItemUnion(..) => {
+            hir::ItemKind::Union(..) => {
                 let variant = tcx.adt_def(def_id).non_enum_variant();
                 let repr_options = get_repr_options(&tcx, def_id);
 
@@ -1097,7 +1097,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_sig: None,
                 }), repr_options)
             }
-            hir::ItemImpl(_, polarity, defaultness, ..) => {
+            hir::ItemKind::Impl(_, polarity, defaultness, ..) => {
                 let trait_ref = tcx.impl_trait_ref(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
                     let trait_def = tcx.trait_def(trait_ref.def_id);
@@ -1132,7 +1132,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
                 EntryKind::Impl(self.lazy(&data))
             }
-            hir::ItemTrait(..) => {
+            hir::ItemKind::Trait(..) => {
                 let trait_def = tcx.trait_def(def_id);
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
@@ -1143,9 +1143,9 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
                 EntryKind::Trait(self.lazy(&data))
             }
-            hir::ItemExternCrate(_) |
-            hir::ItemTraitAlias(..) |
-            hir::ItemUse(..) => bug!("cannot encode info for item {:?}", item),
+            hir::ItemKind::ExternCrate(_) |
+            hir::ItemKind::TraitAlias(..) |
+            hir::ItemKind::Use(..) => bug!("cannot encode info for item {:?}", item),
         };
 
         Entry {
@@ -1154,28 +1154,28 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             span: self.lazy(&item.span),
             attributes: self.encode_attributes(&item.attrs),
             children: match item.node {
-                hir::ItemForeignMod(ref fm) => {
+                hir::ItemKind::ForeignMod(ref fm) => {
                     self.lazy_seq(fm.items
                         .iter()
                         .map(|foreign_item| tcx.hir.local_def_id(foreign_item.id).index))
                 }
-                hir::ItemEnum(..) => {
+                hir::ItemKind::Enum(..) => {
                     let def = self.tcx.adt_def(def_id);
                     self.lazy_seq(def.variants.iter().map(|v| {
                         assert!(v.did.is_local());
                         v.did.index
                     }))
                 }
-                hir::ItemStruct(..) |
-                hir::ItemUnion(..) => {
+                hir::ItemKind::Struct(..) |
+                hir::ItemKind::Union(..) => {
                     let def = self.tcx.adt_def(def_id);
                     self.lazy_seq(def.non_enum_variant().fields.iter().map(|f| {
                         assert!(f.did.is_local());
                         f.did.index
                     }))
                 }
-                hir::ItemImpl(..) |
-                hir::ItemTrait(..) => {
+                hir::ItemKind::Impl(..) |
+                hir::ItemKind::Trait(..) => {
                     self.lazy_seq(tcx.associated_item_def_ids(def_id).iter().map(|&def_id| {
                         assert!(def_id.is_local());
                         def_id.index
@@ -1187,49 +1187,49 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             deprecation: self.encode_deprecation(def_id),
 
             ty: match item.node {
-                hir::ItemStatic(..) |
-                hir::ItemConst(..) |
-                hir::ItemFn(..) |
-                hir::ItemTy(..) |
-                hir::ItemExistential(..) |
-                hir::ItemEnum(..) |
-                hir::ItemStruct(..) |
-                hir::ItemUnion(..) |
-                hir::ItemImpl(..) => Some(self.encode_item_type(def_id)),
+                hir::ItemKind::Static(..) |
+                hir::ItemKind::Const(..) |
+                hir::ItemKind::Fn(..) |
+                hir::ItemKind::Ty(..) |
+                hir::ItemKind::Existential(..) |
+                hir::ItemKind::Enum(..) |
+                hir::ItemKind::Struct(..) |
+                hir::ItemKind::Union(..) |
+                hir::ItemKind::Impl(..) => Some(self.encode_item_type(def_id)),
                 _ => None,
             },
             inherent_impls: self.encode_inherent_implementations(def_id),
             variances: match item.node {
-                hir::ItemEnum(..) |
-                hir::ItemStruct(..) |
-                hir::ItemUnion(..) |
-                hir::ItemFn(..) => self.encode_variances_of(def_id),
+                hir::ItemKind::Enum(..) |
+                hir::ItemKind::Struct(..) |
+                hir::ItemKind::Union(..) |
+                hir::ItemKind::Fn(..) => self.encode_variances_of(def_id),
                 _ => LazySeq::empty(),
             },
             generics: match item.node {
-                hir::ItemStatic(..) |
-                hir::ItemConst(..) |
-                hir::ItemFn(..) |
-                hir::ItemTy(..) |
-                hir::ItemEnum(..) |
-                hir::ItemStruct(..) |
-                hir::ItemUnion(..) |
-                hir::ItemImpl(..) |
-                hir::ItemExistential(..) |
-                hir::ItemTrait(..) => Some(self.encode_generics(def_id)),
+                hir::ItemKind::Static(..) |
+                hir::ItemKind::Const(..) |
+                hir::ItemKind::Fn(..) |
+                hir::ItemKind::Ty(..) |
+                hir::ItemKind::Enum(..) |
+                hir::ItemKind::Struct(..) |
+                hir::ItemKind::Union(..) |
+                hir::ItemKind::Impl(..) |
+                hir::ItemKind::Existential(..) |
+                hir::ItemKind::Trait(..) => Some(self.encode_generics(def_id)),
                 _ => None,
             },
             predicates: match item.node {
-                hir::ItemStatic(..) |
-                hir::ItemConst(..) |
-                hir::ItemFn(..) |
-                hir::ItemTy(..) |
-                hir::ItemEnum(..) |
-                hir::ItemStruct(..) |
-                hir::ItemUnion(..) |
-                hir::ItemImpl(..) |
-                hir::ItemExistential(..) |
-                hir::ItemTrait(..) => Some(self.encode_predicates(def_id)),
+                hir::ItemKind::Static(..) |
+                hir::ItemKind::Const(..) |
+                hir::ItemKind::Fn(..) |
+                hir::ItemKind::Ty(..) |
+                hir::ItemKind::Enum(..) |
+                hir::ItemKind::Struct(..) |
+                hir::ItemKind::Union(..) |
+                hir::ItemKind::Impl(..) |
+                hir::ItemKind::Existential(..) |
+                hir::ItemKind::Trait(..) => Some(self.encode_predicates(def_id)),
                 _ => None,
             },
 
@@ -1239,16 +1239,16 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             // hack. (No reason not to expand it in the future if
             // necessary.)
             predicates_defined_on: match item.node {
-                hir::ItemTrait(..) => Some(self.encode_predicates_defined_on(def_id)),
+                hir::ItemKind::Trait(..) => Some(self.encode_predicates_defined_on(def_id)),
                 _ => None, // not *wrong* for other kinds of items, but not needed
             },
 
             mir: match item.node {
-                hir::ItemStatic(..) => {
+                hir::ItemKind::Static(..) => {
                     self.encode_optimized_mir(def_id)
                 }
-                hir::ItemConst(..) => self.encode_optimized_mir(def_id),
-                hir::ItemFn(_, header, ..) => {
+                hir::ItemKind::Const(..) => self.encode_optimized_mir(def_id),
+                hir::ItemKind::Fn(_, header, ..) => {
                     let generics = tcx.generics_of(def_id);
                     let has_types = generics.params.iter().any(|param| match param.kind {
                         ty::GenericParamDefKind::Type { .. } => true,
@@ -1614,8 +1614,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
         intravisit::walk_item(self, item);
         let def_id = self.index.tcx.hir.local_def_id(item.id);
         match item.node {
-            hir::ItemExternCrate(_) |
-            hir::ItemUse(..) => (), // ignore these
+            hir::ItemKind::ExternCrate(_) |
+            hir::ItemKind::Use(..) => (), // ignore these
             _ => self.index.record(def_id, IsolatedEncoder::encode_info_for_item, (def_id, item)),
         }
         self.index.encode_addl_info_for_item(item);
@@ -1703,20 +1703,20 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     fn encode_addl_info_for_item(&mut self, item: &hir::Item) {
         let def_id = self.tcx.hir.local_def_id(item.id);
         match item.node {
-            hir::ItemStatic(..) |
-            hir::ItemConst(..) |
-            hir::ItemFn(..) |
-            hir::ItemMod(..) |
-            hir::ItemForeignMod(..) |
-            hir::ItemGlobalAsm(..) |
-            hir::ItemExternCrate(..) |
-            hir::ItemUse(..) |
-            hir::ItemTy(..) |
-            hir::ItemExistential(..) |
-            hir::ItemTraitAlias(..) => {
+            hir::ItemKind::Static(..) |
+            hir::ItemKind::Const(..) |
+            hir::ItemKind::Fn(..) |
+            hir::ItemKind::Mod(..) |
+            hir::ItemKind::ForeignMod(..) |
+            hir::ItemKind::GlobalAsm(..) |
+            hir::ItemKind::ExternCrate(..) |
+            hir::ItemKind::Use(..) |
+            hir::ItemKind::Ty(..) |
+            hir::ItemKind::Existential(..) |
+            hir::ItemKind::TraitAlias(..) => {
                 // no sub-item recording needed in these cases
             }
-            hir::ItemEnum(..) => {
+            hir::ItemKind::Enum(..) => {
                 self.encode_fields(def_id);
 
                 let def = self.tcx.adt_def(def_id);
@@ -1726,7 +1726,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                                 (def_id, Untracked(i)));
                 }
             }
-            hir::ItemStruct(ref struct_def, _) => {
+            hir::ItemKind::Struct(ref struct_def, _) => {
                 self.encode_fields(def_id);
 
                 // If the struct has a constructor, encode it.
@@ -1737,17 +1737,17 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                                 (def_id, ctor_def_id));
                 }
             }
-            hir::ItemUnion(..) => {
+            hir::ItemKind::Union(..) => {
                 self.encode_fields(def_id);
             }
-            hir::ItemImpl(..) => {
+            hir::ItemKind::Impl(..) => {
                 for &trait_item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.record(trait_item_def_id,
                                 IsolatedEncoder::encode_info_for_impl_item,
                                 trait_item_def_id);
                 }
             }
-            hir::ItemTrait(..) => {
+            hir::ItemKind::Trait(..) => {
                 for &item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.record(item_def_id,
                                 IsolatedEncoder::encode_info_for_trait_item,
@@ -1765,7 +1765,7 @@ struct ImplVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        if let hir::ItemImpl(..) = item.node {
+        if let hir::ItemKind::Impl(..) = item.node {
             let impl_id = self.tcx.hir.local_def_id(item.id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
                 self.impls

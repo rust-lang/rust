@@ -97,7 +97,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
-        hir::ItemImpl(_, polarity, defaultness, _, ref trait_ref, ref self_ty, _) => {
+        hir::ItemKind::Impl(_, polarity, defaultness, _, ref trait_ref, ref self_ty, _) => {
             let is_auto = tcx.impl_trait_ref(tcx.hir.local_def_id(item.id))
                                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
@@ -114,37 +114,37 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
                 }
             }
         }
-        hir::ItemFn(..) => {
+        hir::ItemKind::Fn(..) => {
             check_item_fn(tcx, item);
         }
-        hir::ItemStatic(..) => {
+        hir::ItemKind::Static(..) => {
             check_item_type(tcx, item);
         }
-        hir::ItemConst(..) => {
+        hir::ItemKind::Const(..) => {
             check_item_type(tcx, item);
         }
-        hir::ItemStruct(ref struct_def, ref ast_generics) => {
+        hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| {
                 vec![fcx.non_enum_variant(struct_def)]
             });
 
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemUnion(ref struct_def, ref ast_generics) => {
+        hir::ItemKind::Union(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, true, |fcx| {
                 vec![fcx.non_enum_variant(struct_def)]
             });
 
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemEnum(ref enum_def, ref ast_generics) => {
+        hir::ItemKind::Enum(ref enum_def, ref ast_generics) => {
             check_type_defn(tcx, item, true, |fcx| {
                 fcx.enum_variants(enum_def)
             });
 
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemTrait(..) => {
+        hir::ItemKind::Trait(..) => {
             check_trait(tcx, item);
         }
         _ => {}

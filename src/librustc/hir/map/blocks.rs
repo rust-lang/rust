@@ -47,7 +47,7 @@ pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 
 impl MaybeFnLike for ast::Item {
     fn is_fn_like(&self) -> bool {
-        match self.node { ast::ItemFn(..) => true, _ => false, }
+        match self.node { ast::ItemKind::Fn(..) => true, _ => false, }
     }
 }
 
@@ -229,7 +229,7 @@ impl<'a> FnLikeNode<'a> {
     {
         match self.node {
             map::NodeItem(i) => match i.node {
-                ast::ItemFn(ref decl, header, ref generics, block) =>
+                ast::ItemKind::Fn(ref decl, header, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
                         name: i.name,

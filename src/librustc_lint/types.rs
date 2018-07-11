@@ -782,7 +782,7 @@ impl LintPass for ImproperCTypes {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let mut vis = ImproperCTypesVisitor { cx: cx };
-        if let hir::ItemForeignMod(ref nmod) = it.node {
+        if let hir::ItemKind::ForeignMod(ref nmod) = it.node {
             if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
                 for ni in &nmod.items {
                     match ni.node {
@@ -810,7 +810,7 @@ impl LintPass for VariantSizeDifferences {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        if let hir::ItemEnum(ref enum_definition, _) = it.node {
+        if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
             let item_def_id = cx.tcx.hir.local_def_id(it.id);
             let generics = cx.tcx.generics_of(item_def_id);
             for param in &generics.params {

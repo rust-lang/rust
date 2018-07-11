@@ -463,23 +463,23 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_name(item.span, item.name);
     match item.node {
-        ItemExternCrate(orig_name) => {
+        ItemKind::ExternCrate(orig_name) => {
             visitor.visit_id(item.id);
             if let Some(orig_name) = orig_name {
                 visitor.visit_name(item.span, orig_name);
             }
         }
-        ItemUse(ref path, _) => {
+        ItemKind::Use(ref path, _) => {
             visitor.visit_id(item.id);
             visitor.visit_path(path, item.id);
         }
-        ItemStatic(ref typ, _, body) |
-        ItemConst(ref typ, body) => {
+        ItemKind::Static(ref typ, _, body) |
+        ItemKind::Const(ref typ, body) => {
             visitor.visit_id(item.id);
             visitor.visit_ty(typ);
             visitor.visit_nested_body(body);
         }
-        ItemFn(ref declaration, header, ref generics, body_id) => {
+        ItemKind::Fn(ref declaration, header, ref generics, body_id) => {
             visitor.visit_fn(FnKind::ItemFn(item.name,
                                             generics,
                                             header,
@@ -490,23 +490,23 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                              item.span,
                              item.id)
         }
-        ItemMod(ref module) => {
+        ItemKind::Mod(ref module) => {
             // visit_mod() takes care of visiting the Item's NodeId
             visitor.visit_mod(module, item.span, item.id)
         }
-        ItemForeignMod(ref foreign_module) => {
+        ItemKind::ForeignMod(ref foreign_module) => {
             visitor.visit_id(item.id);
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
-        ItemGlobalAsm(_) => {
+        ItemKind::GlobalAsm(_) => {
             visitor.visit_id(item.id);
         }
-        ItemTy(ref typ, ref type_parameters) => {
+        ItemKind::Ty(ref typ, ref type_parameters) => {
             visitor.visit_id(item.id);
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
         }
-        ItemExistential(ExistTy {ref generics, ref bounds, impl_trait_fn}) => {
+        ItemKind::Existential(ExistTy {ref generics, ref bounds, impl_trait_fn}) => {
             visitor.visit_id(item.id);
             walk_generics(visitor, generics);
             walk_list!(visitor, visit_param_bound, bounds);
@@ -514,31 +514,31 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                 visitor.visit_def_mention(Def::Fn(impl_trait_fn))
             }
         }
-        ItemEnum(ref enum_definition, ref type_parameters) => {
+        ItemKind::Enum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
             // visit_enum_def() takes care of visiting the Item's NodeId
             visitor.visit_enum_def(enum_definition, type_parameters, item.id, item.span)
         }
-        ItemImpl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_item_refs) => {
+        ItemKind::Impl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_item_refs) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_impl_item_ref, impl_item_refs);
         }
-        ItemStruct(ref struct_definition, ref generics) |
-        ItemUnion(ref struct_definition, ref generics) => {
+        ItemKind::Struct(ref struct_definition, ref generics) |
+        ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_id(item.id);
             visitor.visit_variant_data(struct_definition, item.name, generics, item.id, item.span);
         }
-        ItemTrait(.., ref generics, ref bounds, ref trait_item_refs) => {
+        ItemKind::Trait(.., ref generics, ref bounds, ref trait_item_refs) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_trait_item_ref, trait_item_refs);
         }
-        ItemTraitAlias(ref generics, ref bounds) => {
+        ItemKind::TraitAlias(ref generics, ref bounds) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);

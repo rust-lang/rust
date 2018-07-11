@@ -120,11 +120,11 @@ impl LintPass for BoxPointers {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemFn(..) |
-            hir::ItemTy(..) |
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemUnion(..) => {
+            hir::ItemKind::Fn(..) |
+            hir::ItemKind::Ty(..) |
+            hir::ItemKind::Enum(..) |
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::Union(..) => {
                 let def_id = cx.tcx.hir.local_def_id(it.id);
                 self.check_heap_type(cx, it.span, cx.tcx.type_of(def_id))
             }
@@ -133,8 +133,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
 
         // If it's a struct, we also have to check the fields' types
         match it.node {
-            hir::ItemStruct(ref struct_def, _) |
-            hir::ItemUnion(ref struct_def, _) => {
+            hir::ItemKind::Struct(ref struct_def, _) |
+            hir::ItemKind::Union(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
                     let def_id = cx.tcx.hir.local_def_id(struct_field.id);
                     self.check_heap_type(cx, struct_field.span,
@@ -236,11 +236,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemTrait(_, hir::Unsafety::Unsafe, ..) => {
+            hir::ItemKind::Trait(_, hir::Unsafety::Unsafe, ..) => {
                 self.report_unsafe(cx, it.span, "declaration of an `unsafe` trait")
             }
 
-            hir::ItemImpl(hir::Unsafety::Unsafe, ..) => {
+            hir::ItemKind::Impl(hir::Unsafety::Unsafe, ..) => {
                 self.report_unsafe(cx, it.span, "implementation of an `unsafe` trait")
             }
 
@@ -390,12 +390,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let desc = match it.node {
-            hir::ItemFn(..) => "a function",
-            hir::ItemMod(..) => "a module",
-            hir::ItemEnum(..) => "an enum",
-            hir::ItemStruct(..) => "a struct",
-            hir::ItemUnion(..) => "a union",
-            hir::ItemTrait(.., ref trait_item_refs) => {
+            hir::ItemKind::Fn(..) => "a function",
+            hir::ItemKind::Mod(..) => "a module",
+            hir::ItemKind::Enum(..) => "an enum",
+            hir::ItemKind::Struct(..) => "a struct",
+            hir::ItemKind::Union(..) => "a union",
+            hir::ItemKind::Trait(.., ref trait_item_refs) => {
                 // Issue #11592, traits are always considered exported, even when private.
                 if let hir::VisibilityKind::Inherited = it.vis.node {
                     self.private_traits.insert(it.id);
@@ -406,8 +406,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 }
                 "a trait"
             }
-            hir::ItemTy(..) => "a type alias",
-            hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
+            hir::ItemKind::Ty(..) => "a type alias",
+            hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.def.def_id();
@@ -425,8 +425,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 }
                 return;
             }
-            hir::ItemConst(..) => "a constant",
-            hir::ItemStatic(..) => "a static",
+            hir::ItemKind::Const(..) => "a constant",
+            hir::ItemKind::Static(..) => "a static",
             _ => return,
         };
 
@@ -509,21 +509,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
             return;
         }
         let (def, ty) = match item.node {
-            hir::ItemStruct(_, ref ast_generics) => {
+            hir::ItemKind::Struct(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
-            hir::ItemUnion(_, ref ast_generics) => {
+            hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(cx.tcx.hir.local_def_id(item.id));
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
-            hir::ItemEnum(_, ref ast_generics) => {
+            hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
@@ -577,9 +577,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
         }
 
         match item.node {
-            hir::ItemStruct(..) |
-            hir::ItemUnion(..) |
-            hir::ItemEnum(..) => {}
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::Union(..) |
+            hir::ItemKind::Enum(..) => {}
             _ => return,
         }
 
@@ -1121,7 +1121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
         }
 
         match it.node {
-            hir::ItemExternCrate(..) => (),
+            hir::ItemKind::ExternCrate(..) => (),
             _ => return,
         };
 
@@ -1203,7 +1203,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
         };
 
         match it.node {
-            hir::ItemFn(.., ref generics, _) => {
+            hir::ItemKind::Fn(.., ref generics, _) => {
                 if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, "no_mangle") {
                     if attr::contains_name(&it.attrs, "linkage") {
                         return;
@@ -1232,7 +1232,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     }
                 }
             }
-            hir::ItemStatic(..) => {
+            hir::ItemKind::Static(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
                     !cx.access_levels.is_reachable(it.id) {
                         let msg = "static is marked #[no_mangle], but not exported";
@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                         err.emit();
                     }
             }
-            hir::ItemConst(..) => {
+            hir::ItemKind::Const(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
@@ -1369,7 +1369,7 @@ impl LintPass for UnionsWithDropFields {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
     fn check_item(&mut self, ctx: &LateContext, item: &hir::Item) {
-        if let hir::ItemUnion(ref vdata, _) = item.node {
+        if let hir::ItemKind::Union(ref vdata, _) = item.node {
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.type_of(ctx.tcx.hir.local_def_id(field.id));
                 if field_ty.needs_drop(ctx.tcx, ctx.param_env) {
@@ -1523,7 +1523,7 @@ impl TypeAliasBounds {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         let (ty, type_alias_generics) = match item.node {
-            hir::ItemTy(ref ty, ref generics) => (&*ty, generics),
+            hir::ItemKind::Ty(ref ty, ref generics) => (&*ty, generics),
             _ => return,
         };
         let mut suggested_changing_assoc_types = false;
@@ -1605,10 +1605,10 @@ impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UnusedBrokenConstVisitor<'a,
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemConst(_, body_id) => {
+            hir::ItemKind::Const(_, body_id) => {
                 check_const(cx, body_id, "constant");
             },
-            hir::ItemTy(ref ty, _) => hir::intravisit::walk_ty(
+            hir::ItemKind::Ty(ref ty, _) => hir::intravisit::walk_ty(
                 &mut UnusedBrokenConstVisitor(cx),
                 ty
             ),
@@ -1761,12 +1761,12 @@ impl LintPass for UnnameableTestFunctions {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemFn(..) => {
+            hir::ItemKind::Fn(..) => {
                 for attr in &it.attrs {
                     if attr.name() == "test" {
                         let parent = cx.tcx.hir.get_parent(it.id);
                         match cx.tcx.hir.find(parent) {
-                            Some(hir_map::NodeItem(hir::Item {node: hir::ItemMod(_), ..})) |
+                            Some(hir_map::NodeItem(hir::Item {node: hir::ItemKind::Mod(_), ..})) |
                             None => {}
                             _ => {
                                 cx.struct_span_lint(

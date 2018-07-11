@@ -420,7 +420,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             match self.tcx.impl_of_method(self.tcx.hir.local_def_id(id)) {
                 Some(impl_id) => match self.tcx.hir.get_if_local(impl_id) {
                     Some(Node::NodeItem(item)) => match item.node {
-                        hir::ItemImpl(.., ref ty, _) => {
+                        hir::ItemKind::Impl(.., ref ty, _) => {
                             let mut qualname = String::from("<");
                             qualname.push_str(&self.tcx.hir.node_to_pretty_string(ty.id));
 
@@ -630,7 +630,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::NodeTraitRef(tr) => tr.path.def,
 
             Node::NodeItem(&hir::Item {
-                node: hir::ItemUse(ref path, _),
+                node: hir::ItemKind::Use(ref path, _),
                 ..
             }) |
             Node::NodeVisibility(&Spanned {

@@ -384,8 +384,8 @@ impl<'a> LoweringContext<'a> {
 
                 if item_lowered {
                     let item_generics = match self.lctx.items.get(&item.id).unwrap().node {
-                        hir::Item_::ItemImpl(_, _, _, ref generics, ..)
-                        | hir::Item_::ItemTrait(_, _, ref generics, ..) => {
+                        hir::ItemKind::Impl(_, _, _, ref generics, ..)
+                        | hir::ItemKind::Trait(_, _, ref generics, ..) => {
                             generics.params.clone()
                         }
                         _ => HirVec::new(),
@@ -1274,7 +1274,7 @@ impl<'a> LoweringContext<'a> {
         );
 
         self.with_hir_id_owner(exist_ty_node_id, |lctx| {
-            let exist_ty_item_kind = hir::ItemExistential(hir::ExistTy {
+            let exist_ty_item_kind = hir::ItemKind::Existential(hir::ExistTy {
                 generics: hir::Generics {
                     params: lifetime_defs,
                     where_clause: hir::WhereClause {
@@ -2575,9 +2575,9 @@ impl<'a> LoweringContext<'a> {
         attrs: &hir::HirVec<Attribute>,
         vis: &mut hir::Visibility,
         i: &ItemKind,
-    ) -> hir::Item_ {
+    ) -> hir::ItemKind {
         match *i {
-            ItemKind::ExternCrate(orig_name) => hir::ItemExternCrate(orig_name),
+            ItemKind::ExternCrate(orig_name) => hir::ItemKind::ExternCrate(orig_name),
             ItemKind::Use(ref use_tree) => {
                 // Start with an empty prefix
                 let prefix = Path {
@@ -2589,7 +2589,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Static(ref t, m, ref e) => {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
-                hir::ItemStatic(
+                hir::ItemKind::Static(
                     self.lower_ty(t, ImplTraitContext::Disallowed),
                     self.lower_mutability(m),
                     value,
@@ -2597,7 +2597,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Const(ref t, ref e) => {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
-                hir::ItemConst(self.lower_ty(t, ImplTraitContext::Disallowed), value)
+                hir::ItemKind::Const(self.lower_ty(t, ImplTraitContext::Disallowed), value)
             }
             ItemKind::Fn(ref decl, header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
@@ -2617,7 +2617,7 @@ impl<'a> LoweringContext<'a> {
                             decl, Some((fn_def_id, idty)), true, header.asyncness.opt_return_id()),
                     );
 
-                    hir::ItemFn(
+                    hir::ItemKind::Fn(
                         fn_decl,
                         this.lower_fn_header(header),
                         generics,
@@ -2625,14 +2625,14 @@ impl<'a> LoweringContext<'a> {
                     )
                 })
             }
-            ItemKind::Mod(ref m) => hir::ItemMod(self.lower_mod(m)),
-            ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(self.lower_foreign_mod(nm)),
-            ItemKind::GlobalAsm(ref ga) => hir::ItemGlobalAsm(self.lower_global_asm(ga)),
-            ItemKind::Ty(ref t, ref generics) => hir::ItemTy(
+            ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
+            ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
+            ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
+            ItemKind::Ty(ref t, ref generics) => hir::ItemKind::Ty(
                 self.lower_ty(t, ImplTraitContext::Disallowed),
                 self.lower_generics(generics, ImplTraitContext::Disallowed),
             ),
-            ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemEnum(
+            ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemKind::Enum(
                 hir::EnumDef {
                     variants: enum_definition
                         .variants
@@ -2644,14 +2644,14 @@ impl<'a> LoweringContext<'a> {
             ),
             ItemKind::Struct(ref struct_def, ref generics) => {
                 let struct_def = self.lower_variant_data(struct_def);
-                hir::ItemStruct(
+                hir::ItemKind::Struct(
                     struct_def,
                     self.lower_generics(generics, ImplTraitContext::Disallowed),
                 )
             }
             ItemKind::Union(ref vdata, ref generics) => {
                 let vdata = self.lower_variant_data(vdata);
-                hir::ItemUnion(
+                hir::ItemKind::Union(
                     vdata,
                     self.lower_generics(generics, ImplTraitContext::Disallowed),
                 )
@@ -2711,7 +2711,7 @@ impl<'a> LoweringContext<'a> {
                     },
                 );
 
-                hir::ItemImpl(
+                hir::ItemKind::Impl(
                     self.lower_unsafety(unsafety),
                     self.lower_impl_polarity(polarity),
                     self.lower_defaultness(defaultness, true /* [1] */),
@@ -2727,7 +2727,7 @@ impl<'a> LoweringContext<'a> {
                     .iter()
                     .map(|item| self.lower_trait_item_ref(item))
                     .collect();
-                hir::ItemTrait(
+                hir::ItemKind::Trait(
                     self.lower_is_auto(is_auto),
                     self.lower_unsafety(unsafety),
                     self.lower_generics(generics, ImplTraitContext::Disallowed),
@@ -2735,7 +2735,7 @@ impl<'a> LoweringContext<'a> {
                     items,
                 )
             }
-            ItemKind::TraitAlias(ref generics, ref bounds) => hir::ItemTraitAlias(
+            ItemKind::TraitAlias(ref generics, ref bounds) => hir::ItemKind::TraitAlias(
                 self.lower_generics(generics, ImplTraitContext::Disallowed),
                 self.lower_param_bounds(bounds, ImplTraitContext::Disallowed),
             ),
@@ -2754,7 +2754,7 @@ impl<'a> LoweringContext<'a> {
         vis: &mut hir::Visibility,
         name: &mut Name,
         attrs: &hir::HirVec<Attribute>,
-    ) -> hir::Item_ {
+    ) -> hir::ItemKind {
         let path = &tree.prefix;
 
         match tree.kind {
@@ -2804,7 +2804,7 @@ impl<'a> LoweringContext<'a> {
                     self.with_hir_id_owner(new_node_id, |this| {
                         let new_id = this.lower_node_id(new_node_id);
                         let path = this.lower_path_extra(def, &path, None, ParamMode::Explicit);
-                        let item = hir::ItemUse(P(path), hir::UseKind::Single);
+                        let item = hir::ItemKind::Use(P(path), hir::UseKind::Single);
                         let vis_kind = match vis.node {
                             hir::VisibilityKind::Public => hir::VisibilityKind::Public,
                             hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
@@ -2835,7 +2835,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 let path = P(self.lower_path_extra(ret_def, &path, None, ParamMode::Explicit));
-                hir::ItemUse(path, hir::UseKind::Single)
+                hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
                 let path = P(self.lower_path(
@@ -2851,7 +2851,7 @@ impl<'a> LoweringContext<'a> {
                     },
                     ParamMode::Explicit,
                 ));
-                hir::ItemUse(path, hir::UseKind::Glob)
+                hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
                 let prefix = Path {
@@ -2912,7 +2912,7 @@ impl<'a> LoweringContext<'a> {
                 // a re-export by accident when `pub`, e.g. in documentation.
                 let path = P(self.lower_path(id, &prefix, ParamMode::Explicit));
                 *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityKind::Inherited);
-                hir::ItemUse(path, hir::UseKind::ListStem)
+                hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
     }

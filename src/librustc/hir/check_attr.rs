@@ -38,13 +38,13 @@ enum Target {
 impl Target {
     fn from_item(item: &hir::Item) -> Target {
         match item.node {
-            hir::ItemFn(..) => Target::Fn,
-            hir::ItemStruct(..) => Target::Struct,
-            hir::ItemUnion(..) => Target::Union,
-            hir::ItemEnum(..) => Target::Enum,
-            hir::ItemConst(..) => Target::Const,
-            hir::ItemForeignMod(..) => Target::ForeignMod,
-            hir::ItemStatic(..) => Target::Static,
+            hir::ItemKind::Fn(..) => Target::Fn,
+            hir::ItemKind::Struct(..) => Target::Struct,
+            hir::ItemKind::Union(..) => Target::Union,
+            hir::ItemKind::Enum(..) => Target::Enum,
+            hir::ItemKind::Const(..) => Target::Const,
+            hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
+            hir::ItemKind::Static(..) => Target::Static,
             _ => Target::Other,
         }
     }
@@ -340,7 +340,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 fn is_c_like_enum(item: &hir::Item) -> bool {
-    if let hir::ItemEnum(ref def, _) = item.node {
+    if let hir::ItemKind::Enum(ref def, _) = item.node {
         for variant in &def.variants {
             match variant.node.data {
                 hir::VariantData::Unit(_) => { /* continue */ }

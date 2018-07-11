@@ -476,21 +476,21 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            hir::ItemFn(ref decl, _, ref generics, _) => {
+            hir::ItemKind::Fn(ref decl, _, ref generics, _) => {
                 self.visit_early_late(None, decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });
             }
 
-            hir::ItemExternCrate(_)
-            | hir::ItemUse(..)
-            | hir::ItemMod(..)
-            | hir::ItemForeignMod(..)
-            | hir::ItemGlobalAsm(..) => {
+            hir::ItemKind::ExternCrate(_)
+            | hir::ItemKind::Use(..)
+            | hir::ItemKind::Mod(..)
+            | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::GlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemStatic(..) | hir::ItemConst(..) => {
+            hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
                 // No lifetime parameters, but implied 'static.
                 let scope = Scope::Elision {
                     elide: Elide::Exact(Region::Static),
@@ -498,27 +498,27 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemExistential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {
+            hir::ItemKind::Existential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {
                 // currently existential type declarations are just generated from impl Trait
                 // items. doing anything on this node is irrelevant, as we currently don't need
                 // it.
             }
-            hir::ItemTy(_, ref generics)
-            | hir::ItemExistential(hir::ExistTy { impl_trait_fn: None, ref generics, .. })
-            | hir::ItemEnum(_, ref generics)
-            | hir::ItemStruct(_, ref generics)
-            | hir::ItemUnion(_, ref generics)
-            | hir::ItemTrait(_, _, ref generics, ..)
-            | hir::ItemTraitAlias(ref generics, ..)
-            | hir::ItemImpl(_, _, _, ref generics, ..) => {
+            hir::ItemKind::Ty(_, ref generics)
+            | hir::ItemKind::Existential(hir::ExistTy { impl_trait_fn: None, ref generics, .. })
+            | hir::ItemKind::Enum(_, ref generics)
+            | hir::ItemKind::Struct(_, ref generics)
+            | hir::ItemKind::Union(_, ref generics)
+            | hir::ItemKind::Trait(_, _, ref generics, ..)
+            | hir::ItemKind::TraitAlias(ref generics, ..)
+            | hir::ItemKind::Impl(_, _, _, ref generics, ..) => {
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
                 // This is not true for other kinds of items.x
                 let track_lifetime_uses = match item.node {
-                    hir::ItemImpl(..) => true,
+                    hir::ItemKind::Impl(..) => true,
                     _ => false,
                 };
                 // These kinds of items have only early bound lifetime parameters.
-                let mut index = if let hir::ItemTrait(..) = item.node {
+                let mut index = if let hir::ItemKind::Trait(..) = item.node {
                     1 // Self comes before lifetimes
                 } else {
                     0
@@ -675,7 +675,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     //                          ^            ^ this gets resolved in the scope of
                     //                                         the exist_ty generics
                     let (generics, bounds) = match self.tcx.hir.expect_item(id).node {
-                        hir::ItemExistential(hir::ExistTy{ ref generics, ref bounds, .. }) => (
+                        hir::ItemKind::Existential(hir::ExistTy{ ref generics, ref bounds, .. }) => (
                             generics,
                             bounds,
                         ),
@@ -1208,11 +1208,11 @@ fn compute_object_lifetime_defaults(
     let mut map = NodeMap();
     for item in tcx.hir.krate().items.values() {
         match item.node {
-            hir::ItemStruct(_, ref generics)
-            | hir::ItemUnion(_, ref generics)
-            | hir::ItemEnum(_, ref generics)
-            | hir::ItemTy(_, ref generics)
-            | hir::ItemTrait(_, _, ref generics, ..) => {
+            hir::ItemKind::Struct(_, ref generics)
+            | hir::ItemKind::Union(_, ref generics)
+            | hir::ItemKind::Enum(_, ref generics)
+            | hir::ItemKind::Ty(_, ref generics)
+            | hir::ItemKind::Trait(_, _, ref generics, ..) => {
                 let result = object_lifetime_defaults_for_item(tcx, generics);
 
                 // Debugging aid.
@@ -1485,12 +1485,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut index = 0;
         if let Some(parent_id) = parent_id {
             let parent = self.tcx.hir.expect_item(parent_id);
-            if let hir::ItemTrait(..) = parent.node {
+            if let hir::ItemKind::Trait(..) = parent.node {
                 index += 1; // Self comes first.
             }
             match parent.node {
-                hir::ItemTrait(_, _, ref generics, ..)
-                | hir::ItemImpl(_, _, _, ref generics, ..) => {
+                hir::ItemKind::Trait(_, _, ref generics, ..)
+                | hir::ItemKind::Impl(_, _, _, ref generics, ..) => {
                     index += generics.params.len() as u32;
                 }
                 _ => {}
@@ -1609,7 +1609,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 let fn_id = self.tcx.hir.body_owner(body_id);
                 match self.tcx.hir.get(fn_id) {
                     hir::map::NodeItem(&hir::Item {
-                        node: hir::ItemFn(..),
+                        node: hir::ItemKind::Fn(..),
                         ..
                     })
                     | hir::map::NodeTraitItem(&hir::TraitItem {
@@ -1834,7 +1834,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let body = match self.tcx.hir.get(parent) {
             // `fn` definitions and methods.
             hir::map::NodeItem(&hir::Item {
-                node: hir::ItemFn(.., body),
+                node: hir::ItemKind::Fn(.., body),
                 ..
             }) => Some(body),
 
@@ -1847,7 +1847,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     .expect_item(self.tcx.hir.get_parent(parent))
                     .node
                 {
-                    hir::ItemTrait(.., ref trait_items) => {
+                    hir::ItemKind::Trait(.., ref trait_items) => {
                         assoc_item_kind = trait_items
                             .iter()
                             .find(|ti| ti.id.node_id == parent)
@@ -1870,7 +1870,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     .expect_item(self.tcx.hir.get_parent(parent))
                     .node
                 {
-                    hir::ItemImpl(.., ref self_ty, ref impl_items) => {
+                    hir::ItemKind::Impl(.., ref self_ty, ref impl_items) => {
                         impl_self = Some(self_ty);
                         assoc_item_kind = impl_items
                             .iter()

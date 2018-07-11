@@ -847,23 +847,23 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
     }
 }
 
-impl_stable_hash_for!(enum hir::Item_ {
-    ItemExternCrate(orig_name),
-    ItemUse(path, use_kind),
-    ItemStatic(ty, mutability, body_id),
-    ItemConst(ty, body_id),
-    ItemFn(fn_decl, header, generics, body_id),
-    ItemMod(module),
-    ItemForeignMod(foreign_mod),
-    ItemGlobalAsm(global_asm),
-    ItemTy(ty, generics),
-    ItemExistential(exist),
-    ItemEnum(enum_def, generics),
-    ItemStruct(variant_data, generics),
-    ItemUnion(variant_data, generics),
-    ItemTrait(is_auto, unsafety, generics, bounds, item_refs),
-    ItemTraitAlias(generics, bounds),
-    ItemImpl(unsafety, impl_polarity, impl_defaultness, generics, trait_ref, ty, impl_item_refs)
+impl_stable_hash_for!(enum hir::ItemKind {
+    ExternCrate(orig_name),
+    Use(path, use_kind),
+    Static(ty, mutability, body_id),
+    Const(ty, body_id),
+    Fn(fn_decl, header, generics, body_id),
+    Mod(module),
+    ForeignMod(foreign_mod),
+    GlobalAsm(global_asm),
+    Ty(ty, generics),
+    Existential(exist),
+    Enum(enum_def, generics),
+    Struct(variant_data, generics),
+    Union(variant_data, generics),
+    Trait(is_auto, unsafety, generics, bounds, item_refs),
+    TraitAlias(generics, bounds),
+    Impl(unsafety, impl_polarity, impl_defaultness, generics, trait_ref, ty, impl_item_refs)
 });
 
 impl_stable_hash_for!(struct hir::TraitItemRef {

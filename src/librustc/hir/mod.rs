@@ -13,7 +13,6 @@
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
 pub use self::FunctionRetTy::*;
-pub use self::Item_::*;
 pub use self::Mutability::*;
 pub use self::PrimTy::*;
 pub use self::UnOp::*;
@@ -2040,7 +2039,7 @@ pub struct Item {
     pub id: NodeId,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
-    pub node: Item_,
+    pub node: ItemKind,
     pub vis: Visibility,
     pub span: Span,
 }
@@ -2054,96 +2053,96 @@ pub struct FnHeader {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum Item_ {
+pub enum ItemKind {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
     /// E.g. `extern crate foo` or `extern crate foo_bar as foo`
-    ItemExternCrate(Option<Name>),
+    ExternCrate(Option<Name>),
 
     /// `use foo::bar::*;` or `use foo::bar::baz as quux;`
     ///
     /// or just
     ///
     /// `use foo::bar::baz;` (with `as baz` implicitly on the right)
-    ItemUse(P<Path>, UseKind),
+    Use(P<Path>, UseKind),
 
     /// A `static` item
-    ItemStatic(P<Ty>, Mutability, BodyId),
+    Static(P<Ty>, Mutability, BodyId),
     /// A `const` item
-    ItemConst(P<Ty>, BodyId),
+    Const(P<Ty>, BodyId),
     /// A function declaration
-    ItemFn(P<FnDecl>, FnHeader, Generics, BodyId),
+    Fn(P<FnDecl>, FnHeader, Generics, BodyId),
     /// A module
-    ItemMod(Mod),
+    Mod(Mod),
     /// An external module
-    ItemForeignMod(ForeignMod),
+    ForeignMod(ForeignMod),
     /// Module-level inline assembly (from global_asm!)
-    ItemGlobalAsm(P<GlobalAsm>),
+    GlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
-    ItemTy(P<Ty>, Generics),
+    Ty(P<Ty>, Generics),
     /// A type alias, e.g. `type Foo = Bar<u8>`
-    ItemExistential(ExistTy),
+    Existential(ExistTy),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
-    ItemEnum(EnumDef, Generics),
+    Enum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
-    ItemStruct(VariantData, Generics),
+    Struct(VariantData, Generics),
     /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
-    ItemUnion(VariantData, Generics),
+    Union(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
     /// Represents a Trait Alias Declaration
-    ItemTraitAlias(Generics, GenericBounds),
+    TraitAlias(Generics, GenericBounds),
 
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
-    ItemImpl(Unsafety,
-             ImplPolarity,
-             Defaultness,
-             Generics,
-             Option<TraitRef>, // (optional) trait this impl implements
-             P<Ty>, // self
-             HirVec<ImplItemRef>),
+    Impl(Unsafety,
+         ImplPolarity,
+         Defaultness,
+         Generics,
+         Option<TraitRef>, // (optional) trait this impl implements
+         P<Ty>, // self
+         HirVec<ImplItemRef>),
 }
 
-impl Item_ {
+impl ItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
-            ItemExternCrate(..) => "extern crate",
-            ItemUse(..) => "use",
-            ItemStatic(..) => "static item",
-            ItemConst(..) => "constant item",
-            ItemFn(..) => "function",
-            ItemMod(..) => "module",
-            ItemForeignMod(..) => "foreign module",
-            ItemGlobalAsm(..) => "global asm",
-            ItemTy(..) => "type alias",
-            ItemExistential(..) => "existential type",
-            ItemEnum(..) => "enum",
-            ItemStruct(..) => "struct",
-            ItemUnion(..) => "union",
-            ItemTrait(..) => "trait",
-            ItemTraitAlias(..) => "trait alias",
-            ItemImpl(..) => "item",
+            ItemKind::ExternCrate(..) => "extern crate",
+            ItemKind::Use(..) => "use",
+            ItemKind::Static(..) => "static item",
+            ItemKind::Const(..) => "constant item",
+            ItemKind::Fn(..) => "function",
+            ItemKind::Mod(..) => "module",
+            ItemKind::ForeignMod(..) => "foreign module",
+            ItemKind::GlobalAsm(..) => "global asm",
+            ItemKind::Ty(..) => "type alias",
+            ItemKind::Existential(..) => "existential type",
+            ItemKind::Enum(..) => "enum",
+            ItemKind::Struct(..) => "struct",
+            ItemKind::Union(..) => "union",
+            ItemKind::Trait(..) => "trait",
+            ItemKind::TraitAlias(..) => "trait alias",
+            ItemKind::Impl(..) => "item",
         }
     }
 
     pub fn adt_kind(&self) -> Option<AdtKind> {
         match *self {
-            ItemStruct(..) => Some(AdtKind::Struct),
-            ItemUnion(..) => Some(AdtKind::Union),
-            ItemEnum(..) => Some(AdtKind::Enum),
+            ItemKind::Struct(..) => Some(AdtKind::Struct),
+            ItemKind::Union(..) => Some(AdtKind::Union),
+            ItemKind::Enum(..) => Some(AdtKind::Enum),
             _ => None,
         }
     }
 
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
-            ItemFn(_, _, ref generics, _) |
-            ItemTy(_, ref generics) |
-            ItemEnum(_, ref generics) |
-            ItemStruct(_, ref generics) |
-            ItemUnion(_, ref generics) |
-            ItemTrait(_, _, ref generics, _, _) |
-            ItemImpl(_, _, _, ref generics, _, _, _)=> generics,
+            ItemKind::Fn(_, _, ref generics, _) |
+            ItemKind::Ty(_, ref generics) |
+            ItemKind::Enum(_, ref generics) |
+            ItemKind::Struct(_, ref generics) |
+            ItemKind::Union(_, ref generics) |
+            ItemKind::Trait(_, _, ref generics, _, _) |
+            ItemKind::Impl(_, _, _, ref generics, _, _, _)=> generics,
             _ => return None
         })
     }

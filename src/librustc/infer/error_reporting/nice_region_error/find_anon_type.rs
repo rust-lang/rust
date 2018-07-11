@@ -41,7 +41,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let fndecl = match self.tcx.hir.get(node_id) {
                     hir_map::NodeItem(&hir::Item {
-                        node: hir::ItemFn(ref fndecl, ..),
+                        node: hir::ItemKind::Fn(ref fndecl, ..),
                         ..
                     }) => &fndecl,
                     hir_map::NodeTraitItem(&hir::TraitItem {

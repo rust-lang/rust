@@ -175,7 +175,7 @@ impl<'hir> MapEntry<'hir> {
         match self {
             EntryItem(_, _, ref item) => {
                 match item.node {
-                    ItemFn(ref fn_decl, _, _, _) => Some(&fn_decl),
+                    ItemKind::Fn(ref fn_decl, _, _, _) => Some(&fn_decl),
                     _ => None,
                 }
             }
@@ -209,9 +209,9 @@ impl<'hir> MapEntry<'hir> {
         match self {
             EntryItem(_, _, item) => {
                 match item.node {
-                    ItemConst(_, body) |
-                    ItemStatic(.., body) |
-                    ItemFn(_, _, _, body) => Some(body),
+                    ItemKind::Const(_, body) |
+                    ItemKind::Static(.., body) |
+                    ItemKind::Fn(_, _, _, body) => Some(body),
                     _ => None,
                 }
             }
@@ -427,25 +427,25 @@ impl<'hir> Map<'hir> {
                 };
 
                 match item.node {
-                    ItemStatic(_, m, _) => Some(Def::Static(def_id(),
+                    ItemKind::Static(_, m, _) => Some(Def::Static(def_id(),
                                                             m == MutMutable)),
-                    ItemConst(..) => Some(Def::Const(def_id())),
-                    ItemFn(..) => Some(Def::Fn(def_id())),
-                    ItemMod(..) => Some(Def::Mod(def_id())),
-                    ItemGlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
-                    ItemExistential(..) => Some(Def::Existential(def_id())),
-                    ItemTy(..) => Some(Def::TyAlias(def_id())),
-                    ItemEnum(..) => Some(Def::Enum(def_id())),
-                    ItemStruct(..) => Some(Def::Struct(def_id())),
-                    ItemUnion(..) => Some(Def::Union(def_id())),
-                    ItemTrait(..) => Some(Def::Trait(def_id())),
-                    ItemTraitAlias(..) => {
+                    ItemKind::Const(..) => Some(Def::Const(def_id())),
+                    ItemKind::Fn(..) => Some(Def::Fn(def_id())),
+                    ItemKind::Mod(..) => Some(Def::Mod(def_id())),
+                    ItemKind::GlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
+                    ItemKind::Existential(..) => Some(Def::Existential(def_id())),
+                    ItemKind::Ty(..) => Some(Def::TyAlias(def_id())),
+                    ItemKind::Enum(..) => Some(Def::Enum(def_id())),
+                    ItemKind::Struct(..) => Some(Def::Struct(def_id())),
+                    ItemKind::Union(..) => Some(Def::Union(def_id())),
+                    ItemKind::Trait(..) => Some(Def::Trait(def_id())),
+                    ItemKind::TraitAlias(..) => {
                         bug!("trait aliases are not yet implemented (see issue #41517)")
                     },
-                    ItemExternCrate(_) |
-                    ItemUse(..) |
-                    ItemForeignMod(..) |
-                    ItemImpl(..) => None,
+                    ItemKind::ExternCrate(_) |
+                    ItemKind::Use(..) |
+                    ItemKind::ForeignMod(..) |
+                    ItemKind::Impl(..) => None,
                 }
             }
             NodeForeignItem(item) => {
@@ -587,13 +587,13 @@ impl<'hir> Map<'hir> {
 
     pub fn body_owner_kind(&self, id: NodeId) -> BodyOwnerKind {
         match self.get(id) {
-            NodeItem(&Item { node: ItemConst(..), .. }) |
+            NodeItem(&Item { node: ItemKind::Const(..), .. }) |
             NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
             NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) |
             NodeAnonConst(_) => {
                 BodyOwnerKind::Const
             }
-            NodeItem(&Item { node: ItemStatic(_, m, _), .. }) => {
+            NodeItem(&Item { node: ItemKind::Static(_, m, _), .. }) => {
                 BodyOwnerKind::Static(m)
             }
             // Default to function if it's not a constant or static.
@@ -603,7 +603,7 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
         match self.get(id) {
-            NodeItem(&Item { node: ItemTrait(..), .. }) => id,
+            NodeItem(&Item { node: ItemKind::Trait(..), .. }) => id,
             NodeGenericParam(_) => self.get_parent_node(id),
             _ => {
                 bug!("ty_param_owner: {} not a type parameter",
@@ -614,7 +614,7 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_name(&self, id: NodeId) -> Name {
         match self.get(id) {
-            NodeItem(&Item { node: ItemTrait(..), .. }) => {
+            NodeItem(&Item { node: ItemKind::Trait(..), .. }) => {
                 keywords::SelfType.name()
             }
             NodeGenericParam(param) => param.name.ident().name,
@@ -672,14 +672,14 @@ impl<'hir> Map<'hir> {
                 NodeTraitItem(ref trait_item) => Some(&trait_item.generics),
                 NodeItem(ref item) => {
                     match item.node {
-                        ItemFn(_, _, ref generics, _) |
-                        ItemTy(_, ref generics) |
-                        ItemEnum(_, ref generics) |
-                        ItemStruct(_, ref generics) |
-                        ItemUnion(_, ref generics) |
-                        ItemTrait(_, _, ref generics, ..) |
-                        ItemTraitAlias(ref generics, _) |
-                        ItemImpl(_, _, _, ref generics, ..) => Some(generics),
+                        ItemKind::Fn(_, _, ref generics, _) |
+                        ItemKind::Ty(_, ref generics) |
+                        ItemKind::Enum(_, ref generics) |
+                        ItemKind::Struct(_, ref generics) |
+                        ItemKind::Union(_, ref generics) |
+                        ItemKind::Trait(_, _, ref generics, ..) |
+                        ItemKind::TraitAlias(ref generics, _) |
+                        ItemKind::Impl(_, _, _, ref generics, ..) => Some(generics),
                         _ => None,
                     }
                 }
@@ -857,7 +857,7 @@ impl<'hir> Map<'hir> {
     /// module parent is in this map.
     pub fn get_module_parent(&self, id: NodeId) -> DefId {
         let id = match self.walk_parent_nodes(id, |node| match *node {
-            NodeItem(&Item { node: Item_::ItemMod(_), .. }) => true,
+            NodeItem(&Item { node: ItemKind::Mod(_), .. }) => true,
             _ => false,
         }, |_| false) {
             Ok(id) => id,
@@ -893,7 +893,7 @@ impl<'hir> Map<'hir> {
         let abi = match self.find_entry(parent) {
             Some(EntryItem(_, _, i)) => {
                 match i.node {
-                    ItemForeignMod(ref nm) => Some(nm.abi),
+                    ItemKind::ForeignMod(ref nm) => Some(nm.abi),
                     _ => None
                 }
             }
@@ -934,8 +934,8 @@ impl<'hir> Map<'hir> {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
-                    ItemStruct(ref struct_def, _) |
-                    ItemUnion(ref struct_def, _) => struct_def,
+                    ItemKind::Struct(ref struct_def, _) |
+                    ItemKind::Union(ref struct_def, _) => struct_def,
                     _ => {
                         bug!("struct ID bound to non-struct {}",
                              self.node_to_string(id));
@@ -1129,7 +1129,7 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
 
             fn item_is_mod(item: &Item) -> bool {
                 match item.node {
-                    ItemMod(_) => true,
+                    ItemKind::Mod(_) => true,
                     _ => false,
                 }
             }
@@ -1314,22 +1314,22 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
     match map.find(id) {
         Some(NodeItem(item)) => {
             let item_str = match item.node {
-                ItemExternCrate(..) => "extern crate",
-                ItemUse(..) => "use",
-                ItemStatic(..) => "static",
-                ItemConst(..) => "const",
-                ItemFn(..) => "fn",
-                ItemMod(..) => "mod",
-                ItemForeignMod(..) => "foreign mod",
-                ItemGlobalAsm(..) => "global asm",
-                ItemTy(..) => "ty",
-                ItemExistential(..) => "existential",
-                ItemEnum(..) => "enum",
-                ItemStruct(..) => "struct",
-                ItemUnion(..) => "union",
-                ItemTrait(..) => "trait",
-                ItemTraitAlias(..) => "trait alias",
-                ItemImpl(..) => "impl",
+                ItemKind::ExternCrate(..) => "extern crate",
+                ItemKind::Use(..) => "use",
+                ItemKind::Static(..) => "static",
+                ItemKind::Const(..) => "const",
+                ItemKind::Fn(..) => "fn",
+                ItemKind::Mod(..) => "mod",
+                ItemKind::ForeignMod(..) => "foreign mod",
+                ItemKind::GlobalAsm(..) => "global asm",
+                ItemKind::Ty(..) => "ty",
+                ItemKind::Existential(..) => "existential",
+                ItemKind::Enum(..) => "enum",
+                ItemKind::Struct(..) => "struct",
+                ItemKind::Union(..) => "union",
+                ItemKind::Trait(..) => "trait",
+                ItemKind::TraitAlias(..) => "trait alias",
+                ItemKind::Impl(..) => "impl",
             };
             format!("{} {}{}", item_str, path_str(), id_str)
         }

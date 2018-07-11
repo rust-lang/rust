@@ -706,7 +706,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item) {
-        let name = if let hir::ItemImpl(.., ref ty, _) = item.node {
+        let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.node {
             self.map.node_to_pretty_string(ty.id)
         } else {
             item.name.to_string()

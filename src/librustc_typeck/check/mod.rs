@@ -132,7 +132,7 @@ use syntax_pos::{self, BytePos, Span, MultiSpan};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map::Node;
-use rustc::hir::{self, PatKind, Item_};
+use rustc::hir::{self, PatKind, ItemKind};
 use rustc::middle::lang_items;
 
 mod autoderef;
@@ -759,10 +759,10 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match tcx.hir.get(id) {
         hir::map::NodeItem(item) => {
             match item.node {
-                hir::ItemConst(_, body) |
-                hir::ItemStatic(_, _, body) =>
+                hir::ItemKind::Const(_, body) |
+                hir::ItemKind::Static(_, _, body) =>
                     Some((body, None)),
-                hir::ItemFn(ref decl, .., body) =>
+                hir::ItemKind::Fn(ref decl, .., body) =>
                     Some((body, Some(decl))),
                 _ =>
                     None,
@@ -1165,7 +1165,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                     }
 
                     if let Node::NodeItem(item) = fcx.tcx.hir.get(fn_id) {
-                        if let Item_::ItemFn(_, _, ref generics, _) = item.node {
+                        if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -1213,7 +1213,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                     }
 
                     if let Node::NodeItem(item) = fcx.tcx.hir.get(fn_id) {
-                        if let Item_::ItemFn(_, _, ref generics, _) = item.node {
+                        if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -1269,25 +1269,25 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
     let _indenter = indenter();
     match it.node {
       // Consts can play a role in type-checking, so they are included here.
-      hir::ItemStatic(..) => {
+      hir::ItemKind::Static(..) => {
         tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
       }
-      hir::ItemConst(..) => {
+      hir::ItemKind::Const(..) => {
         tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
         if it.attrs.iter().any(|a| a.check_name("wasm_custom_section")) {
             let def_id = tcx.hir.local_def_id(it.id);
             check_const_is_u8_array(tcx, def_id, it.span);
         }
       }
-      hir::ItemEnum(ref enum_definition, _) => {
+      hir::ItemKind::Enum(ref enum_definition, _) => {
         check_enum(tcx,
                    it.span,
                    &enum_definition.variants,
                    it.id);
       }
-      hir::ItemFn(..) => {} // entirely within check_item_body
-      hir::ItemImpl(.., ref impl_item_refs) => {
-          debug!("ItemImpl {} with id {}", it.name, it.id);
+      hir::ItemKind::Fn(..) => {} // entirely within check_item_body
+      hir::ItemKind::Impl(.., ref impl_item_refs) => {
+          debug!("ItemKind::Impl {} with id {}", it.name, it.id);
           let impl_def_id = tcx.hir.local_def_id(it.id);
           if let Some(impl_trait_ref) = tcx.impl_trait_ref(impl_def_id) {
               check_impl_items_against_trait(tcx,
@@ -1299,23 +1299,23 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
               check_on_unimplemented(tcx, trait_def_id, it);
           }
       }
-      hir::ItemTrait(..) => {
+      hir::ItemKind::Trait(..) => {
         let def_id = tcx.hir.local_def_id(it.id);
         check_on_unimplemented(tcx, def_id, it);
       }
-      hir::ItemStruct(..) => {
+      hir::ItemKind::Struct(..) => {
         check_struct(tcx, it.id, it.span);
       }
-      hir::ItemUnion(..) => {
+      hir::ItemKind::Union(..) => {
         check_union(tcx, it.id, it.span);
       }
-      hir::ItemTy(..) => {
+      hir::ItemKind::Ty(..) => {
         let def_id = tcx.hir.local_def_id(it.id);
         let pty_ty = tcx.type_of(def_id);
         let generics = tcx.generics_of(def_id);
         check_bounds_are_used(tcx, &generics, pty_ty);
       }
-      hir::ItemForeignMod(ref m) => {
+      hir::ItemKind::ForeignMod(ref m) => {
         check_abi(tcx, it.span, m.abi);
 
         if m.abi == Abi::RustIntrinsic {
@@ -4548,7 +4548,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let parent = self.tcx.hir.get(fn_id);
 
             if let Node::NodeItem(&hir::Item {
-                name, node: hir::ItemFn(ref decl, ..), ..
+                name, node: hir::ItemKind::Fn(ref decl, ..), ..
             }) = parent {
                 decl.clone().and_then(|decl| {
                     // This is less than ideal, it will not suggest a return type span on any

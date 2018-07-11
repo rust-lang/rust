@@ -283,10 +283,10 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx.hir.krate().module.item_ids.iter().filter_map(|&id| {
                 let item = cx.tcx.hir.expect_item(id.id);
                 match item.node {
-                    hir::ItemMod(_) => {
+                    hir::ItemKind::Mod(_) => {
                         as_primitive(Def::Mod(cx.tcx.hir.local_def_id(id.id)))
                     }
-                    hir::ItemUse(ref path, hir::UseKind::Single)
+                    hir::ItemKind::Use(ref path, hir::UseKind::Single)
                     if item.vis.node.is_pub() => {
                         as_primitive(path.def).map(|(_, prim, attrs)| {
                             // Pretend the primitive is local.
@@ -325,10 +325,10 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx.hir.krate().module.item_ids.iter().filter_map(|&id| {
                 let item = cx.tcx.hir.expect_item(id.id);
                 match item.node {
-                    hir::ItemMod(_) => {
+                    hir::ItemKind::Mod(_) => {
                         as_keyword(Def::Mod(cx.tcx.hir.local_def_id(id.id)))
                     }
-                    hir::ItemUse(ref path, hir::UseKind::Single)
+                    hir::ItemKind::Use(ref path, hir::UseKind::Single)
                     if item.vis.node.is_pub() => {
                         as_keyword(path.def).map(|(_, prim, attrs)| {
                             (cx.tcx.hir.local_def_id(id.id), prim, attrs)
@@ -2852,9 +2852,9 @@ impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
         use rustc::hir::*;
         match self.node {
-            TyNever => Never,
-            TyPtr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
-            TyRptr(ref l, ref m) => {
+            TyKind::Never => Never,
+            TyKind::Ptr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
+            TyKind::Rptr(ref l, ref m) => {
                 let lifetime = if l.is_elided() {
                     None
                 } else {
@@ -2863,8 +2863,8 @@ impl Clean<Type> for hir::Ty {
                 BorrowedRef {lifetime: lifetime, mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)}
             }
-            TySlice(ref ty) => Slice(box ty.clean(cx)),
-            TyArray(ref ty, ref length) => {
+            TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
+            TyKind::Array(ref ty, ref length) => {
                 let def_id = cx.tcx.hir.local_def_id(length.id);
                 let param_env = cx.tcx.param_env(def_id);
                 let substs = Substs::identity_for_item(cx.tcx, def_id);
@@ -2878,8 +2878,8 @@ impl Clean<Type> for hir::Ty {
                 let length = print_const(cx, length);
                 Array(box ty.clean(cx), length)
             },
-            TyTup(ref tys) => Tuple(tys.clean(cx)),
-            TyPath(hir::QPath::Resolved(None, ref path)) => {
+            TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
+            TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                 if let Some(new_ty) = cx.ty_substs.borrow().get(&path.def).cloned() {
                     return new_ty;
                 }
@@ -2900,7 +2900,7 @@ impl Clean<Type> for hir::Ty {
                     }
                 };
 
-                if let Some(&hir::ItemTy(ref ty, ref generics)) = alias {
+                if let Some(&hir::ItemKind::Ty(ref ty, ref generics)) = alias {
                     let provided_params = &path.segments.last().unwrap();
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
@@ -2965,7 +2965,7 @@ impl Clean<Type> for hir::Ty {
                 }
                 resolve_type(cx, path.clean(cx), self.id)
             }
-            TyPath(hir::QPath::Resolved(Some(ref qself), ref p)) => {
+            TyKind::Path(hir::QPath::Resolved(Some(ref qself), ref p)) => {
                 let mut segments: Vec<_> = p.segments.clone().into();
                 segments.pop();
                 let trait_path = hir::Path {
@@ -2979,7 +2979,7 @@ impl Clean<Type> for hir::Ty {
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }
-            TyPath(hir::QPath::TypeRelative(ref qself, ref segment)) => {
+            TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 let mut def = Def::Err;
                 let ty = hir_ty_to_ty(cx.tcx, self);
                 if let ty::TyProjection(proj) = ty.sty {
@@ -2996,7 +2996,7 @@ impl Clean<Type> for hir::Ty {
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }
-            TyTraitObject(ref bounds, ref lifetime) => {
+            TyKind::TraitObject(ref bounds, ref lifetime) => {
                 match bounds[0].clean(cx).trait_ {
                     ResolvedPath { path, typarams: None, did, is_generic } => {
                         let mut bounds: Vec<self::GenericBound> = bounds[1..].iter().map(|bound| {
@@ -3011,9 +3011,9 @@ impl Clean<Type> for hir::Ty {
                     _ => Infer // shouldn't happen
                 }
             }
-            TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
-            TyInfer | TyErr => Infer,
-            TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
+            TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
+            TyKind::Infer | TyKind::Err => Infer,
+            TyKind::Typeof(..) => panic!("Unimplemented type {:?}", self.node),
         }
     }
 }
@@ -4370,7 +4370,7 @@ pub fn path_to_def_local(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
                 }
 
                 items = match &item.node {
-                    &hir::ItemMod(ref m) => m.item_ids.clone(),
+                    &hir::ItemKind::Mod(ref m) => m.item_ids.clone(),
                     _ => panic!("Unexpected item {:?} in path {:?} path")
                 };
                 break;

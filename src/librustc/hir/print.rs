@@ -531,7 +531,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&item.attrs)?;
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
-            hir::ItemExternCrate(orig_name) => {
+            hir::ItemKind::ExternCrate(orig_name) => {
                 self.head(&visibility_qualified(&item.vis, "extern crate"))?;
                 if let Some(orig_name) = orig_name {
                     self.print_name(orig_name)?;
@@ -544,7 +544,7 @@ impl<'a> State<'a> {
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
-            hir::ItemUse(ref path, kind) => {
+            hir::ItemKind::Use(ref path, kind) => {
                 self.head(&visibility_qualified(&item.vis, "use"))?;
                 self.print_path(path, false)?;
 
@@ -563,7 +563,7 @@ impl<'a> State<'a> {
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
-            hir::ItemStatic(ref ty, m, expr) => {
+            hir::ItemKind::Static(ref ty, m, expr) => {
                 self.head(&visibility_qualified(&item.vis, "static"))?;
                 if m == hir::MutMutable {
                     self.word_space("mut")?;
@@ -579,7 +579,7 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the outer cbox
             }
-            hir::ItemConst(ref ty, expr) => {
+            hir::ItemKind::Const(ref ty, expr) => {
                 self.head(&visibility_qualified(&item.vis, "const"))?;
                 self.print_name(item.name)?;
                 self.word_space(":")?;
@@ -592,7 +592,7 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the outer cbox
             }
-            hir::ItemFn(ref decl, header, ref typarams, body) => {
+            hir::ItemKind::Fn(ref decl, header, ref typarams, body) => {
                 self.head("")?;
                 self.print_fn(decl,
                               header,
@@ -606,7 +606,7 @@ impl<'a> State<'a> {
                 self.end()?; // need to close a box
                 self.ann.nested(self, Nested::Body(body))?;
             }
-            hir::ItemMod(ref _mod) => {
+            hir::ItemKind::Mod(ref _mod) => {
                 self.head(&visibility_qualified(&item.vis, "mod"))?;
                 self.print_name(item.name)?;
                 self.nbsp()?;
@@ -614,19 +614,19 @@ impl<'a> State<'a> {
                 self.print_mod(_mod, &item.attrs)?;
                 self.bclose(item.span)?;
             }
-            hir::ItemForeignMod(ref nmod) => {
+            hir::ItemKind::ForeignMod(ref nmod) => {
                 self.head("extern")?;
                 self.word_nbsp(&nmod.abi.to_string())?;
                 self.bopen()?;
                 self.print_foreign_mod(nmod, &item.attrs)?;
                 self.bclose(item.span)?;
             }
-            hir::ItemGlobalAsm(ref ga) => {
+            hir::ItemKind::GlobalAsm(ref ga) => {
                 self.head(&visibility_qualified(&item.vis, "global asm"))?;
                 self.s.word(&ga.asm.as_str())?;
                 self.end()?
             }
-            hir::ItemTy(ref ty, ref generics) => {
+            hir::ItemKind::Ty(ref ty, ref generics) => {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
                 self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
@@ -641,7 +641,7 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the outer ibox
             }
-            hir::ItemExistential(ref exist) => {
+            hir::ItemKind::Existential(ref exist) => {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
                 self.word_nbsp(&visibility_qualified(&item.vis, "existential type"))?;
@@ -666,18 +666,18 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the outer ibox
             }
-            hir::ItemEnum(ref enum_definition, ref params) => {
+            hir::ItemKind::Enum(ref enum_definition, ref params) => {
                 self.print_enum_def(enum_definition, params, item.name, item.span, &item.vis)?;
             }
-            hir::ItemStruct(ref struct_def, ref generics) => {
+            hir::ItemKind::Struct(ref struct_def, ref generics) => {
                 self.head(&visibility_qualified(&item.vis, "struct"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
-            hir::ItemUnion(ref struct_def, ref generics) => {
+            hir::ItemKind::Union(ref struct_def, ref generics) => {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
-            hir::ItemImpl(unsafety,
+            hir::ItemKind::Impl(unsafety,
                           polarity,
                           defaultness,
                           ref generics,
@@ -722,7 +722,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
-            hir::ItemTrait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
+            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_is_auto(is_auto)?;
@@ -749,7 +749,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
-            hir::ItemTraitAlias(ref generics, ref bounds) => {
+            hir::ItemKind::TraitAlias(ref generics, ref bounds) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.word_nbsp("trait")?;

@@ -605,7 +605,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(node) = self.hir.get_if_local(def_id) {
             match node {
                 Node::NodeItem(&hir::Item {
-                    node: hir::ItemStatic(_, mutbl, _), ..
+                    node: hir::ItemKind::Static(_, mutbl, _), ..
                 }) => Some(mutbl),
                 Node::NodeForeignItem(&hir::ForeignItem {
                     node: hir::ForeignItemKind::Static(_, is_mutbl), ..

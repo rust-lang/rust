@@ -24,7 +24,7 @@ use rustc::infer;
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
-use rustc::hir::{self, ItemImpl};
+use rustc::hir::{self, ItemKind};
 
 pub fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
@@ -64,7 +64,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 match tcx.hir.find(impl_node_id) {
                     Some(hir_map::NodeItem(item)) => {
                         let span = match item.node {
-                            ItemImpl(.., ref ty, _) => ty.span,
+                            ItemKind::Impl(.., ref ty, _) => ty.span,
                             _ => item.span,
                         };
                         struct_span_err!(tcx.sess,
@@ -115,7 +115,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let item = tcx.hir.expect_item(impl_node_id);
-            let span = if let ItemImpl(.., Some(ref tr), _, _) = item.node {
+            let span = if let ItemKind::Impl(.., Some(ref tr), _, _) = item.node {
                 tr.path.span
             } else {
                 span
@@ -132,7 +132,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir.expect_item(impl_node_id);
-            let span = if let ItemImpl(.., ref ty, _) = item.node {
+            let span = if let ItemKind::Impl(.., ref ty, _) = item.node {
                 ty.span
             } else {
                 span
@@ -336,7 +336,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                     return err_info;
                 } else if diff_fields.len() > 1 {
                     let item = gcx.hir.expect_item(impl_node_id);
-                    let span = if let ItemImpl(.., Some(ref t), _, _) = item.node {
+                    let span = if let ItemKind::Impl(.., Some(ref t), _, _) = item.node {
                         t.path.span
                     } else {
                         gcx.hir.span(impl_node_id)

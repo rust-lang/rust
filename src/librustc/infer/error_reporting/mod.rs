@@ -259,12 +259,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     fn item_scope_tag(item: &hir::Item) -> &'static str {
         match item.node {
-            hir::ItemImpl(..) => "impl",
-            hir::ItemStruct(..) => "struct",
-            hir::ItemUnion(..) => "union",
-            hir::ItemEnum(..) => "enum",
-            hir::ItemTrait(..) => "trait",
-            hir::ItemFn(..) => "function body",
+            hir::ItemKind::Impl(..) => "impl",
+            hir::ItemKind::Struct(..) => "struct",
+            hir::ItemKind::Union(..) => "union",
+            hir::ItemKind::Enum(..) => "enum",
+            hir::ItemKind::Trait(..) => "trait",
+            hir::ItemKind::Fn(..) => "function body",
             _ => "item",
         }
     }

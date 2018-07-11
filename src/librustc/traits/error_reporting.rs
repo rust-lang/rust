@@ -955,7 +955,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             hir::map::NodeItem(&hir::Item {
                 span,
-                node: hir::ItemFn(ref decl, ..),
+                node: hir::ItemKind::Fn(ref decl, ..),
                 ..
             }) |
             hir::map::NodeImplItem(&hir::ImplItem {

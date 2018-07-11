@@ -297,7 +297,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         if !self.view_item_stack.insert(def_node_id) { return false }
 
         let ret = match tcx.hir.get(def_node_id) {
-            hir_map::NodeItem(&hir::Item { node: hir::ItemMod(ref m), .. }) if glob => {
+            hir_map::NodeItem(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {
                     let i = self.cx.tcx.hir.expect_item(i.id);
@@ -340,7 +340,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         }
 
         match item.node {
-            hir::ItemForeignMod(ref fm) => {
+            hir::ItemKind::ForeignMod(ref fm) => {
                 // If inlining we only want to include public functions.
                 om.foreigns.push(if self.inlining {
                     hir::ForeignMod {
@@ -353,8 +353,8 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             }
             // If we're inlining, skip private items.
             _ if self.inlining && !item.vis.node.is_pub() => {}
-            hir::ItemGlobalAsm(..) => {}
-            hir::ItemExternCrate(orig_name) => {
+            hir::ItemKind::GlobalAsm(..) => {}
+            hir::ItemKind::ExternCrate(orig_name) => {
                 let def_id = self.cx.tcx.hir.local_def_id(item.id);
                 om.extern_crates.push(ExternCrate {
                     cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id)
@@ -366,8 +366,8 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     whence: item.span,
                 })
             }
-            hir::ItemUse(_, hir::UseKind::ListStem) => {}
-            hir::ItemUse(ref path, kind) => {
+            hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
+            hir::ItemKind::Use(ref path, kind) => {
                 let is_glob = kind == hir::UseKind::Glob;
 
                 // struct and variant constructors always show up alongside their definitions, we've
@@ -409,7 +409,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     whence: item.span,
                 });
             }
-            hir::ItemMod(ref m) => {
+            hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(item.span,
                                                      item.attrs.clone(),
                                                      item.vis.clone(),
@@ -417,15 +417,15 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                                                      m,
                                                      Some(name)));
             },
-            hir::ItemEnum(ref ed, ref gen) =>
+            hir::ItemKind::Enum(ref ed, ref gen) =>
                 om.enums.push(self.visit_enum_def(item, name, ed, gen)),
-            hir::ItemStruct(ref sd, ref gen) =>
+            hir::ItemKind::Struct(ref sd, ref gen) =>
                 om.structs.push(self.visit_variant_data(item, name, sd, gen)),
-            hir::ItemUnion(ref sd, ref gen) =>
+            hir::ItemKind::Union(ref sd, ref gen) =>
                 om.unions.push(self.visit_union_data(item, name, sd, gen)),
-            hir::ItemFn(ref fd, header, ref gen, body) =>
+            hir::ItemKind::Fn(ref fd, header, ref gen, body) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, header, gen, body)),
-            hir::ItemTy(ref ty, ref gen) => {
+            hir::ItemKind::Ty(ref ty, ref gen) => {
                 let t = Typedef {
                     ty: ty.clone(),
                     gen: gen.clone(),
@@ -439,7 +439,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 };
                 om.typedefs.push(t);
             },
-            hir::ItemStatic(ref ty, ref mut_, ref exp) => {
+            hir::ItemKind::Static(ref ty, ref mut_, ref exp) => {
                 let s = Static {
                     type_: ty.clone(),
                     mutability: mut_.clone(),
@@ -454,7 +454,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 };
                 om.statics.push(s);
             },
-            hir::ItemConst(ref ty, ref exp) => {
+            hir::ItemKind::Const(ref ty, ref exp) => {
                 let s = Constant {
                     type_: ty.clone(),
                     expr: exp.clone(),
@@ -468,7 +468,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 };
                 om.constants.push(s);
             },
-            hir::ItemTrait(is_auto, unsafety, ref gen, ref b, ref item_ids) => {
+            hir::ItemKind::Trait(is_auto, unsafety, ref gen, ref b, ref item_ids) => {
                 let items = item_ids.iter()
                                     .map(|ti| self.cx.tcx.hir.trait_item(ti.id).clone())
                                     .collect();
@@ -488,11 +488,11 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 };
                 om.traits.push(t);
             },
-            hir::ItemTraitAlias(..) => {
+            hir::ItemKind::TraitAlias(..) => {
                 unimplemented!("trait objects are not yet implemented")
             },
 
-            hir::ItemImpl(unsafety,
+            hir::ItemKind::Impl(unsafety,
                           polarity,
                           defaultness,
                           ref gen,
@@ -523,7 +523,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     om.impls.push(i);
                 }
             },
-            hir::ItemExistential(_) => {
+            hir::ItemKind::Existential(_) => {
                 // FIXME(oli-obk): actually generate docs for real existential items
             }
         }

@@ -18,7 +18,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::map::{NodeItem, NodeExpr};
-use rustc::hir::{Item, ItemConst, print};
+use rustc::hir::{Item, ItemKind, print};
 use rustc::ty::{self, Ty, AssociatedItem};
 use rustc::ty::adjustment::AllowTwoPhase;
 use errors::{DiagnosticBuilder, CodeMapper};
@@ -376,7 +376,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match self.tcx.hir.find(parent_id) {
             Some(parent) => {
                 // Shouldn't suggest `.into()` on `const`s.
-                if let NodeItem(Item { node: ItemConst(_, _), .. }) = parent {
+                if let NodeItem(Item { node: ItemKind::Const(_, _), .. }) = parent {
                     // FIXME(estebank): modify once we decide to suggest `as` casts
                     return false;
                 }

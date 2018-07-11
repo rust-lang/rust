@@ -709,7 +709,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
         impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'v hir::Item) {
                 match i.node {
-                    hir::ItemTrait(..) => {
+                    hir::ItemKind::Trait(..) => {
                         let def_id = self.map.local_def_id(i.id);
                         self.traits.push(def_id);
                     }
@@ -810,7 +810,7 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
         for item_id in &module.item_ids {
             let item = self.tcx.hir.expect_item(item_id.id);
             match item.node {
-                hir::ItemUse(..) => {
+                hir::ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
                     if item.span.ctxt().outer().expn_info().is_none() {
@@ -820,7 +820,7 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
                     }
                 },
                 // don't place use before extern crate
-                hir::ItemExternCrate(_) => {}
+                hir::ItemKind::ExternCrate(_) => {}
                 // but place them before the first other item
                 _ => if self.span.map_or(true, |span| item.span < span ) {
                     if item.span.ctxt().outer().expn_info().is_none() {

@@ -945,18 +945,18 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
 impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
-            hir::ItemExternCrate(..) |
-            hir::ItemUse(..)         |
-            hir::ItemForeignMod(..)  |
-            hir::ItemTy(..)          |
-            hir::ItemTrait(..)       |
-            hir::ItemTraitAlias(..)  |
-            hir::ItemExistential(..) |
-            hir::ItemMod(..)         => {
+            hir::ItemKind::ExternCrate(..) |
+            hir::ItemKind::Use(..)         |
+            hir::ItemKind::ForeignMod(..)  |
+            hir::ItemKind::Ty(..)          |
+            hir::ItemKind::Trait(..)       |
+            hir::ItemKind::TraitAlias(..)  |
+            hir::ItemKind::Existential(..) |
+            hir::ItemKind::Mod(..)         => {
                 // Nothing to do, just keep recursing...
             }
 
-            hir::ItemImpl(..) => {
+            hir::ItemKind::Impl(..) => {
                 if self.mode == MonoItemCollectionMode::Eager {
                     create_mono_items_for_default_impls(self.tcx,
                                                         item,
@@ -964,9 +964,9 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 }
             }
 
-            hir::ItemEnum(_, ref generics) |
-            hir::ItemStruct(_, ref generics) |
-            hir::ItemUnion(_, ref generics) => {
+            hir::ItemKind::Enum(_, ref generics) |
+            hir::ItemKind::Struct(_, ref generics) |
+            hir::ItemKind::Union(_, ref generics) => {
                 if generics.params.is_empty() {
                     if self.mode == MonoItemCollectionMode::Eager {
                         let def_id = self.tcx.hir.local_def_id(item.id);
@@ -978,19 +978,19 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                     }
                 }
             }
-            hir::ItemGlobalAsm(..) => {
-                debug!("RootCollector: ItemGlobalAsm({})",
+            hir::ItemKind::GlobalAsm(..) => {
+                debug!("RootCollector: ItemKind::GlobalAsm({})",
                        def_id_to_string(self.tcx,
                                         self.tcx.hir.local_def_id(item.id)));
                 self.output.push(MonoItem::GlobalAsm(item.id));
             }
-            hir::ItemStatic(..) => {
+            hir::ItemKind::Static(..) => {
                 let def_id = self.tcx.hir.local_def_id(item.id);
-                debug!("RootCollector: ItemStatic({})",
+                debug!("RootCollector: ItemKind::Static({})",
                        def_id_to_string(self.tcx, def_id));
                 self.output.push(MonoItem::Static(def_id));
             }
-            hir::ItemConst(..) => {
+            hir::ItemKind::Const(..) => {
                 // const items only generate mono items if they are
                 // actually used somewhere. Just declaring them is insufficient.
 
@@ -1001,7 +1001,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                     self.output.push(MonoItem::CustomSection(def_id));
                 }
             }
-            hir::ItemFn(..) => {
+            hir::ItemKind::Fn(..) => {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 self.push_if_root(def_id);
             }
@@ -1102,7 +1102,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  item: &'tcx hir::Item,
                                                  output: &mut Vec<MonoItem<'tcx>>) {
     match item.node {
-        hir::ItemImpl(_, _, _, ref generics, .., ref impl_item_refs) => {
+        hir::ItemKind::Impl(_, _, _, ref generics, .., ref impl_item_refs) => {
             for param in &generics.params {
                 match param.kind {
                     hir::GenericParamKind::Lifetime { .. } => {}
