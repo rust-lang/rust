@@ -261,7 +261,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
     fn check_stmt(&mut self, stmt: &'tcx hir::Stmt) -> Promotability {
         match stmt.node {
-            hir::StmtDecl(ref decl, _node_id) => {
+            hir::StmtKind::Decl(ref decl, _node_id) => {
                 match &decl.node {
                     hir::DeclLocal(local) => {
                         if self.remove_mut_rvalue_borrow(&local.pat) {
@@ -280,8 +280,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                     hir::DeclItem(_) => Promotable
                 }
             }
-            hir::StmtExpr(ref box_expr, _node_id) |
-            hir::StmtSemi(ref box_expr, _node_id) => {
+            hir::StmtKind::Expr(ref box_expr, _node_id) |
+            hir::StmtKind::Semi(ref box_expr, _node_id) => {
                 let _ = self.check_expr(box_expr);
                 NotPromotable
             }

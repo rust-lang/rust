@@ -19,7 +19,6 @@ pub use self::ForeignItem_::*;
 pub use self::Item_::*;
 pub use self::Mutability::*;
 pub use self::PrimTy::*;
-pub use self::Stmt_::*;
 pub use self::Ty_::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
@@ -1102,9 +1101,9 @@ impl UnOp {
 }
 
 /// A statement
-pub type Stmt = Spanned<Stmt_>;
+pub type Stmt = Spanned<StmtKind>;
 
-impl fmt::Debug for Stmt_ {
+impl fmt::Debug for StmtKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Sadness.
         let spanned = codemap::dummy_spanned(self.clone());
@@ -1116,31 +1115,31 @@ impl fmt::Debug for Stmt_ {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum Stmt_ {
+pub enum StmtKind {
     /// Could be an item or a local (let) binding:
-    StmtDecl(P<Decl>, NodeId),
+    Decl(P<Decl>, NodeId),
 
     /// Expr without trailing semi-colon (must have unit type):
-    StmtExpr(P<Expr>, NodeId),
+    Expr(P<Expr>, NodeId),
 
     /// Expr with trailing semi-colon (may have any type):
-    StmtSemi(P<Expr>, NodeId),
+    Semi(P<Expr>, NodeId),
 }
 
-impl Stmt_ {
+impl StmtKind {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
-            StmtDecl(ref d, _) => d.node.attrs(),
-            StmtExpr(ref e, _) |
-            StmtSemi(ref e, _) => &e.attrs,
+            StmtKind::Decl(ref d, _) => d.node.attrs(),
+            StmtKind::Expr(ref e, _) |
+            StmtKind::Semi(ref e, _) => &e.attrs,
         }
     }
 
     pub fn id(&self) -> NodeId {
         match *self {
-            StmtDecl(_, id) => id,
-            StmtExpr(_, id) => id,
-            StmtSemi(_, id) => id,
+            StmtKind::Decl(_, id) => id,
+            StmtKind::Expr(_, id) => id,
+            StmtKind::Semi(_, id) => id,
         }
     }
 }

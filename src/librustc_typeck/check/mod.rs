@@ -4377,7 +4377,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
         // Don't do all the complex logic below for DeclItem.
         match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
                     hir::DeclLocal(_) => {}
                     hir::DeclItem(_) => {
@@ -4385,7 +4385,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            hir::StmtExpr(..) | hir::StmtSemi(..) => {}
+            hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
 
         self.warn_if_unreachable(stmt.node.id(), stmt.span, "statement");
@@ -4397,7 +4397,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.has_errors.set(false);
 
         match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
                     hir::DeclLocal(ref l) => {
                         self.check_decl_local(&l);
@@ -4405,11 +4405,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     hir::DeclItem(_) => {/* ignore for now */}
                 }
             }
-            hir::StmtExpr(ref expr, _) => {
+            hir::StmtKind::Expr(ref expr, _) => {
                 // Check with expected type of ()
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_nil());
             }
-            hir::StmtSemi(ref expr, _) => {
+            hir::StmtKind::Semi(ref expr, _) => {
                 self.check_expr(&expr);
             }
         }
@@ -4733,7 +4733,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             None => return,
         };
         let last_expr = match last_stmt.node {
-            hir::StmtSemi(ref e, _) => e,
+            hir::StmtKind::Semi(ref e, _) => e,
             _ => return,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);

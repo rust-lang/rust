@@ -111,13 +111,13 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
         let hir_id = self.tcx.hir.node_to_hir_id(stmt.node.id());
         match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl, _) => {
                 let exit = self.decl(&decl, pred);
                 self.add_ast_node(hir_id.local_id, &[exit])
             }
 
-            hir::StmtExpr(ref expr, _) |
-            hir::StmtSemi(ref expr, _) => {
+            hir::StmtKind::Expr(ref expr, _) |
+            hir::StmtKind::Semi(ref expr, _) => {
                 let exit = self.expr(&expr, pred);
                 self.add_ast_node(hir_id.local_id, &[exit])
             }

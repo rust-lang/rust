@@ -935,12 +935,12 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
     match statement.node {
-        StmtDecl(ref declaration, id) => {
+        StmtKind::Decl(ref declaration, id) => {
             visitor.visit_id(id);
             visitor.visit_decl(declaration)
         }
-        StmtExpr(ref expression, id) |
-        StmtSemi(ref expression, id) => {
+        StmtKind::Expr(ref expression, id) |
+        StmtKind::Semi(ref expression, id) => {
             visitor.visit_id(id);
             visitor.visit_expr(expression)
         }

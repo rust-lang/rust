@@ -466,7 +466,7 @@ impl_stable_hash_for!(enum hir::UnOp {
     UnNeg
 });
 
-impl_stable_hash_for_spanned!(hir::Stmt_);
+impl_stable_hash_for_spanned!(hir::StmtKind);
 
 impl_stable_hash_for!(struct hir::Local {
     pat,
@@ -915,10 +915,10 @@ impl_stable_hash_for!(enum hir::ForeignItem_ {
     ForeignItemType
 });
 
-impl_stable_hash_for!(enum hir::Stmt_ {
-    StmtDecl(decl, id),
-    StmtExpr(expr, id),
-    StmtSemi(expr, id)
+impl_stable_hash_for!(enum hir::StmtKind {
+    Decl(decl, id),
+    Expr(expr, id),
+    Semi(expr, id)
 });
 
 impl_stable_hash_for!(struct hir::Arg {

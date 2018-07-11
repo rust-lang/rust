@@ -860,11 +860,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt, succ: LiveNode)
                               -> LiveNode {
         match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl, _) => {
                 self.propagate_through_decl(&decl, succ)
             }
 
-            hir::StmtExpr(ref expr, _) | hir::StmtSemi(ref expr, _) => {
+            hir::StmtKind::Expr(ref expr, _) | hir::StmtKind::Semi(ref expr, _) => {
                 self.propagate_through_expr(&expr, succ)
             }
         }
