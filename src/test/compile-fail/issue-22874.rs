@@ -10,7 +10,7 @@
 
 struct Table {
     rows: [[String]],
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 }
 
 fn f(table: &Table) -> &[String] {

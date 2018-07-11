@@ -87,7 +87,7 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the size for value values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:62:1
    |
 LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
@@ -98,7 +98,7 @@ LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the size for value values of type `(dyn A + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:65:1
    |
 LL | / fn unsized_local() where Dst<A>: Sized { //~ ERROR
@@ -112,7 +112,7 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the size for value values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:69:1
    |
 LL | / fn return_str() -> str where str: Sized { //~ ERROR

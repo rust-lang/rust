@@ -10,7 +10,7 @@
 
 enum E {
     V([Box<E>]),
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 }
 
 fn main() {}

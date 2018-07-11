@@ -11,7 +11,7 @@
 fn main() {
     static foo: Fn() -> u32 = || -> u32 {
         //~^ ERROR mismatched types
-        //~| ERROR the size for value values of type
+        //~| ERROR the size for values of type
         0
     };
 }

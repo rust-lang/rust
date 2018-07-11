@@ -10,7 +10,7 @@
 
 #[repr(packed)]
 pub struct Bad<T: ?Sized> {
-    data: T, //~ ERROR the size for value values of type
+    data: T, //~ ERROR the size for values of type
 }
 
 fn main() {}

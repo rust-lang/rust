@@ -1,4 +1,4 @@
-error[E0277]: the size for value values of type `[u8]` cannot be known at compilation time
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/E0277.rs:23:6
    |
 LL | fn f(p: Path) { }

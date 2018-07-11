@@ -1,4 +1,4 @@
-error[E0277]: the size for value values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/trivial-bounds-leak.rs:22:25
    |
 LL | fn cant_return_str() -> str { //~ ERROR

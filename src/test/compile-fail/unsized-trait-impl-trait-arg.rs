@@ -16,7 +16,7 @@ trait T2<Z> {
 }
 struct S4<Y: ?Sized>(Box<Y>);
 impl<X: ?Sized> T2<X> for S4<X> {
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 }
 
 fn main() { }
