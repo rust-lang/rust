@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(bare_trait_objects)]
 #![feature(rustc_private)]
 
 #[macro_use] extern crate log;
