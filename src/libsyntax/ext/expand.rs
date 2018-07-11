@@ -71,7 +71,7 @@ macro_rules! ast_fragments {
                 }
             }
 
-            fn make_from<'a>(self, result: Box<MacResult + 'a>) -> Option<AstFragment> {
+            fn make_from<'a>(self, result: Box<dyn MacResult + 'a>) -> Option<AstFragment> {
                 match self {
                     AstFragmentKind::OptExpr =>
                         result.make_expr().map(Some).map(AstFragment::OptExpr),

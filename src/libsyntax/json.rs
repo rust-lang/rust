@@ -34,9 +34,9 @@ use std::sync::{Arc, Mutex};
 use rustc_serialize::json::{as_json, as_pretty_json};
 
 pub struct JsonEmitter {
-    dst: Box<Write + Send>,
+    dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
-    cm: Lrc<CodeMapper + sync::Send + sync::Sync>,
+    cm: Lrc<dyn CodeMapper + sync::Send + sync::Sync>,
     pretty: bool,
     ui_testing: bool,
 }
@@ -60,7 +60,7 @@ impl JsonEmitter {
                             pretty)
     }
 
-    pub fn new(dst: Box<Write + Send>,
+    pub fn new(dst: Box<dyn Write + Send>,
                registry: Option<Registry>,
                code_map: Lrc<CodeMap>,
                pretty: bool) -> JsonEmitter {
