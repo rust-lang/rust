@@ -10,6 +10,17 @@
 
 #![feature(nll)]
 
+struct X(usize);
+
+impl X {
+    fn zap(&self) {
+        //~^ HELP
+        //~| SUGGESTION &mut self
+        self.0 = 32;
+        //~^ ERROR
+    }
+}
+
 fn main() {
     let ref foo = 16;
     //~^ HELP
