@@ -414,6 +414,9 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         MonoItem::GlobalAsm(..) => {
             recursion_depth_reset = None;
         }
+        MonoItem::CustomSection(..) => {
+            recursion_depth_reset = None;
+        }
     }
 
     record_accesses(tcx, starting_point, &neighbors[..], inlining_map);
@@ -990,6 +993,13 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemConst(..) => {
                 // const items only generate mono items if they are
                 // actually used somewhere. Just declaring them is insufficient.
+
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                if self.tcx.sess.opts.target_triple.triple().starts_with("wasm32") &&
+                    self.tcx.codegen_fn_attrs(def_id).wasm_custom_section.is_some()
+                {
+                    self.output.push(MonoItem::CustomSection(def_id));
+                }
             }
             hir::ItemFn(..) => {
                 let def_id = self.tcx.hir.local_def_id(item.id);

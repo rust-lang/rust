@@ -65,7 +65,6 @@ pub use llvm_util::target_features;
 use std::any::Any;
 use std::path::PathBuf;
 use std::sync::mpsc;
-use std::collections::BTreeMap;
 use rustc_data_structures::sync::Lrc;
 
 use rustc::dep_graph::DepGraph;
@@ -94,7 +93,7 @@ mod back {
     pub mod symbol_export;
     pub mod write;
     mod rpath;
-    mod wasm;
+    pub mod wasm;
 }
 
 mod abi;
@@ -382,7 +381,6 @@ struct CrateInfo {
     used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     used_crates_static: Vec<(CrateNum, LibSource)>,
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
-    wasm_custom_sections: BTreeMap<String, Vec<u8>>,
     wasm_imports: FxHashMap<String, String>,
     lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
     missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,

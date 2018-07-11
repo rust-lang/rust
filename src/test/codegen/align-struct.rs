@@ -10,6 +10,7 @@
 
 // compile-flags: -C no-prepopulate-passes
 // ignore-tidy-linelength
+// min-llvm-version 7.0
 
 #![crate_type = "lib"]
 
@@ -42,7 +43,7 @@ pub enum Enum64 {
 #[no_mangle]
 pub fn align64(i : i32) -> Align64 {
 // CHECK: %a64 = alloca %Align64, align 64
-// CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{.*}}, i8* %{{.*}}, i{{[0-9]+}} 64, i32 64, i1 false)
+// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 64 %{{.*}}, i8* align 64 %{{.*}}, i{{[0-9]+}} 64, i1 false)
     let a64 = Align64(i);
     a64
 }

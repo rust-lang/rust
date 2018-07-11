@@ -41,6 +41,24 @@ extern "platform-intrinsic" {
     fn simd_fpowi<T>(x: T, y: i32) -> T;
 }
 
+macro_rules! assert_approx_eq_f32 {
+    ($a:expr, $b:expr) => ({
+        let (a, b) = (&$a, &$b);
+        assert!((*a - *b).abs() < 1.0e-6,
+                "{} is not approximately equal to {}", *a, *b);
+    })
+}
+macro_rules! assert_approx_eq {
+    ($a:expr, $b:expr) => ({
+        let a = $a;
+        let b = $b;
+        assert_approx_eq_f32!(a.0, b.0);
+        assert_approx_eq_f32!(a.1, b.1);
+        assert_approx_eq_f32!(a.2, b.2);
+        assert_approx_eq_f32!(a.3, b.3);
+    })
+}
+
 fn main() {
     let x = f32x4(1.0, 1.0, 1.0, 1.0);
     let y = f32x4(-1.0, -1.0, -1.0, -1.0);
@@ -50,45 +68,45 @@ fn main() {
 
     unsafe {
         let r = simd_fabs(y);
-        assert_eq!(x, r);
+        assert_approx_eq!(x, r);
 
         let r = simd_fcos(z);
-        assert_eq!(x, r);
+        assert_approx_eq!(x, r);
 
         let r = simd_ceil(h);
-        assert_eq!(x, r);
+        assert_approx_eq!(x, r);
 
         let r = simd_fexp(z);
-        assert_eq!(x, r);
+        assert_approx_eq!(x, r);
 
         let r = simd_fexp2(z);
-        assert_eq!(x, r);
+        assert_approx_eq!(x, r);
 
         let r = simd_floor(h);
-        assert_eq!(z, r);
+        assert_approx_eq!(z, r);
 
         let r = simd_fma(x, h, h);
-        assert_eq!(x, r);
+        assert_approx_eq!(x, r);
 
         let r = simd_fsqrt(x);
-        assert_eq!(x, r);
+        assert_approx_eq!(x, r);
 
         let r = simd_flog(x);
-        assert_eq!(z, r);
+        assert_approx_eq!(z, r);
 
         let r = simd_flog2(x);
-        assert_eq!(z, r);
+        assert_approx_eq!(z, r);
 
         let r = simd_flog10(x);
-        assert_eq!(z, r);
+        assert_approx_eq!(z, r);
 
         let r = simd_fpow(h, x);
-        assert_eq!(h, r);
+        assert_approx_eq!(h, r);
 
         let r = simd_fpowi(h, 1);
-        assert_eq!(h, r);
+        assert_approx_eq!(h, r);
 
         let r = simd_fsin(z);
-        assert_eq!(z, r);
+        assert_approx_eq!(z, r);
     }
 }

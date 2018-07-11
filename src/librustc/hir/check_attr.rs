@@ -57,7 +57,7 @@ struct CheckAttrVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Check any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
-        if target == Target::Fn {
+        if target == Target::Fn || target == Target::Const {
             self.tcx.codegen_fn_attrs(self.tcx.hir.local_def_id(item.id));
         } else if let Some(a) = item.attrs.iter().find(|a| a.check_name("target_feature")) {
             self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
@@ -84,11 +84,6 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             } else if attr.check_name("wasm_custom_section") {
                 if target != Target::Const {
                     self.tcx.sess.span_err(attr.span, "only allowed on consts");
-                }
-
-                if attr.value_str().is_none() {
-                    self.tcx.sess.span_err(attr.span, "must be of the form \
-                        #[wasm_custom_section = \"foo\"]");
                 }
             }
         }

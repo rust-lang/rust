@@ -1011,16 +1011,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn wasm_custom_sections(&self) -> Vec<DefId> {
-        let sections = self.root
-            .wasm_custom_sections
-            .decode(self)
-            .map(|def_index| self.local_def_id(def_index))
-            .collect::<Vec<_>>();
-        info!("loaded wasm sections {:?}", sections);
-        return sections
-    }
-
     pub fn get_macro(&self, id: DefIndex) -> (InternedString, MacroDef) {
         let entry = self.entry(id);
         match entry.kind {

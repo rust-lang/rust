@@ -137,7 +137,6 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
-        providers.wasm_custom_sections = |_tcx, _crate| Lrc::new(Vec::new());
     }
     fn provide_extern(&self, providers: &mut Providers) {
         providers.is_reachable_non_generic = |_tcx, _defid| true;
