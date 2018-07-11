@@ -274,6 +274,12 @@ impl Shape {
         );
         Shape { width, ..*self }
     }
+
+    pub fn to_string_with_newline(&self, config: &Config) -> Cow<'static, str> {
+        let mut offset_indent = self.indent;
+        offset_indent.alignment = self.offset;
+        offset_indent.to_string_inner(config, 0)
+    }
 }
 
 #[cfg(test)]

@@ -275,12 +275,12 @@ impl Rewrite for Chain {
         };
 
         formatter.format_root(&self.parent, context, shape)?;
-        if let result @ Some(_) = formatter.pure_root() {
-            return result;
+        if let Some(result) = formatter.pure_root() {
+            return wrap_str(result, context.config.max_width(), shape);
         }
 
         // Decide how to layout the rest of the chain.
-        let child_shape = formatter.child_shape(context, shape);
+        let child_shape = formatter.child_shape(context, shape)?;
 
         formatter.format_children(context, child_shape)?;
         formatter.format_last_child(context, shape, child_shape)?;
@@ -309,7 +309,7 @@ trait ChainFormatter {
         context: &RewriteContext,
         shape: Shape,
     ) -> Option<()>;
-    fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Shape;
+    fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Option<Shape>;
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()>;
     fn format_last_child(
         &mut self,
@@ -414,8 +414,10 @@ impl<'a> ChainFormatterShared<'a> {
 
         let all_in_one_line =
             self.rewrites.iter().all(|s| !s.contains('\n')) && one_line_budget > 0;
-        let last_shape = if all_in_one_line || extendable {
+        let last_shape = if all_in_one_line {
             shape.sub_width(last.tries)?
+        } else if extendable {
+            child_shape.sub_width(last.tries)?
         } else {
             child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?
         };
@@ -481,7 +483,7 @@ impl<'a> ChainFormatterShared<'a> {
             if *context.force_one_line_chain.borrow() {
                 return None;
             }
-            child_shape.indent.to_string_with_newline(context.config)
+            child_shape.to_string_with_newline(context.config)
         };
 
         let mut rewrite_iter = self.rewrites.iter();
@@ -512,37 +514,6 @@ impl<'a> ChainFormatterBlock<'a> {
             is_block_like: Vec::with_capacity(chain.children.len() + 1),
         }
     }
-
-    // States whether an expression's last line exclusively consists of closing
-    // parens, braces, and brackets in its idiomatic formatting.
-    fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
-        match expr.node {
-            ast::ExprKind::Mac(..)
-            | ast::ExprKind::Call(..)
-            | ast::ExprKind::MethodCall(..)
-            | ast::ExprKind::Struct(..)
-            | ast::ExprKind::While(..)
-            | ast::ExprKind::WhileLet(..)
-            | ast::ExprKind::If(..)
-            | ast::ExprKind::IfLet(..)
-            | ast::ExprKind::Block(..)
-            | ast::ExprKind::Loop(..)
-            | ast::ExprKind::ForLoop(..)
-            | ast::ExprKind::Match(..) => repr.contains('\n'),
-            ast::ExprKind::Paren(ref expr)
-            | ast::ExprKind::Binary(_, _, ref expr)
-            | ast::ExprKind::Index(_, ref expr)
-            | ast::ExprKind::Unary(_, ref expr)
-            | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
-            | ast::ExprKind::Try(ref expr)
-            | ast::ExprKind::Yield(Some(ref expr)) => Self::is_block_expr(context, expr, repr),
-            // This can only be a string lit
-            ast::ExprKind::Lit(_) => {
-                repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
-            }
-            _ => false,
-        }
-    }
 }
 
 impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
@@ -554,7 +525,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
     ) -> Option<()> {
         let mut root_rewrite: String = parent.rewrite(context, shape)?;
 
-        let mut root_ends_with_block = Self::is_block_expr(context, &parent.expr, &root_rewrite);
+        let mut root_ends_with_block = is_block_expr(context, &parent.expr, &root_rewrite);
         let tab_width = context.config.tab_spaces().saturating_sub(shape.offset);
 
         while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
@@ -565,7 +536,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
                 None => break,
             }
 
-            root_ends_with_block = Self::is_block_expr(context, &item.expr, &root_rewrite);
+            root_ends_with_block = is_block_expr(context, &item.expr, &root_rewrite);
 
             self.shared.children = &self.shared.children[..self.shared.children.len() - 1];
             if self.shared.children.is_empty() {
@@ -577,19 +548,21 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
         Some(())
     }
 
-    fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Shape {
-        if self.is_block_like[0] {
-            shape
-        } else {
-            shape.block_indent(context.config.tab_spaces())
-        }.with_max_width(context.config)
+    fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Option<Shape> {
+        Some(
+            if self.is_block_like[0] {
+                shape.block_indent(0)
+            } else {
+                shape.block_indent(context.config.tab_spaces())
+            }.with_max_width(context.config),
+        )
     }
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
         for item in self.shared.children[1..].iter().rev() {
             let rewrite = item.rewrite_postfix(context, child_shape)?;
             self.is_block_like
-                .push(Self::is_block_expr(context, &item.expr, &rewrite));
+                .push(is_block_expr(context, &item.expr, &rewrite));
             self.shared.rewrites.push(rewrite);
         }
         Some(())
@@ -618,12 +591,15 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
 // Format a chain using visual indent.
 struct ChainFormatterVisual<'a> {
     shared: ChainFormatterShared<'a>,
+    // The extra offset from the chain's shape to the position of the `.`
+    offset: usize,
 }
 
 impl<'a> ChainFormatterVisual<'a> {
     fn new(chain: &'a Chain) -> ChainFormatterVisual<'a> {
         ChainFormatterVisual {
             shared: ChainFormatterShared::new(chain),
+            offset: 0,
         }
     }
 }
@@ -635,23 +611,31 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
         context: &RewriteContext,
         shape: Shape,
     ) -> Option<()> {
-        // Determines if we can continue formatting a given expression on the same line.
-        fn is_continuable(expr: &ast::Expr) -> bool {
-            match expr.node {
-                ast::ExprKind::Path(..) => true,
-                _ => false,
-            }
-        }
-
         let parent_shape = shape.visual_indent(0);
         let mut root_rewrite = parent.rewrite(context, parent_shape)?;
+        let multiline = root_rewrite.contains('\n');
+        self.offset = if multiline {
+            last_line_width(&root_rewrite).saturating_sub(shape.used_width())
+        } else {
+            trimmed_last_line_width(&root_rewrite)
+        };
 
-        if !root_rewrite.contains('\n') && is_continuable(&parent.expr) {
+        if !multiline || is_block_expr(context, &parent.expr, &root_rewrite) {
             let item = &self.shared.children[self.shared.children.len() - 1];
-            let overhead = last_line_width(&root_rewrite);
-            let shape = parent_shape.offset_left(overhead)?;
-            let rewrite = item.rewrite_postfix(context, shape)?;
-            root_rewrite.push_str(&rewrite);
+            let child_shape = parent_shape
+                .visual_indent(self.offset)
+                .sub_width(self.offset)?;
+            let rewrite = item.rewrite_postfix(context, child_shape)?;
+            match wrap_str(rewrite, context.config.max_width(), shape) {
+                Some(rewrite) => root_rewrite.push_str(&rewrite),
+                None => {
+                    // We couldn't fit in at the visual indent, try the last
+                    // indent.
+                    let rewrite = item.rewrite_postfix(context, parent_shape)?;
+                    root_rewrite.push_str(&rewrite);
+                    self.offset = 0;
+                }
+            }
 
             self.shared.children = &self.shared.children[..self.shared.children.len() - 1];
         }
@@ -660,8 +644,11 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
         Some(())
     }
 
-    fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Shape {
-        shape.visual_indent(0).with_max_width(context.config)
+    fn child_shape(&self, context: &RewriteContext, shape: Shape) -> Option<Shape> {
+        shape
+            .with_max_width(context.config)
+            .offset_left(self.offset)
+            .map(|s| s.visual_indent(0))
     }
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
@@ -689,5 +676,36 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
 
     fn pure_root(&mut self) -> Option<String> {
         self.shared.pure_root()
+    }
+}
+
+// States whether an expression's last line exclusively consists of closing
+// parens, braces, and brackets in its idiomatic formatting.
+fn is_block_expr(context: &RewriteContext, expr: &ast::Expr, repr: &str) -> bool {
+    match expr.node {
+        ast::ExprKind::Mac(..)
+        | ast::ExprKind::Call(..)
+        | ast::ExprKind::MethodCall(..)
+        | ast::ExprKind::Struct(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..)
+        | ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::Block(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Match(..) => repr.contains('\n'),
+        ast::ExprKind::Paren(ref expr)
+        | ast::ExprKind::Binary(_, _, ref expr)
+        | ast::ExprKind::Index(_, ref expr)
+        | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
+        // This can only be a string lit
+        ast::ExprKind::Lit(_) => {
+            repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
+        }
+        _ => false,
     }
 }
