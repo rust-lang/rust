@@ -30,38 +30,38 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
             },
         );
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
-        return new_key;
+        new_key
     }
 
     fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx> {
-        return match self.data.thread_local.remove(&key) {
+        match self.data.thread_local.remove(&key) {
             Some(_) => {
                 trace!("TLS key {} removed", key);
                 Ok(())
             }
             None => err!(TlsOutOfBounds),
-        };
+        }
     }
 
     fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar> {
-        return match self.data.thread_local.get(&key) {
+        match self.data.thread_local.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
                 Ok(data)
             }
             None => err!(TlsOutOfBounds),
-        };
+        }
     }
 
     fn store_tls(&mut self, key: TlsKey, new_data: Scalar) -> EvalResult<'tcx> {
-        return match self.data.thread_local.get_mut(&key) {
+        match self.data.thread_local.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
                 *data = new_data;
                 Ok(())
             }
             None => err!(TlsOutOfBounds),
-        };
+        }
     }
 
     /// Returns a dtor, its argument and its index, if one is supposed to run
@@ -104,7 +104,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
                 }
             }
         }
-        return Ok(None);
+        Ok(None)
     }
 }
 
@@ -124,8 +124,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 Place::undef(),
                 StackPopCleanup::None,
             )?;
-            let arg_local = self.frame().mir.args_iter().next().ok_or(
-                EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
+            let arg_local = self.frame().mir.args_iter().next().ok_or_else(
+                || EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
             let dest = self.eval_place(&mir::Place::Local(arg_local))?;
             let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
