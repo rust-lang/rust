@@ -22,6 +22,7 @@
 //! More documentation about each implementation can be found in the respective
 //! module.
 
+#![deny(bare_trait_objects)]
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -117,6 +118,6 @@ pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
 #[no_mangle]
 #[unwind(allowed)]
 pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
-    let payload = payload as *mut &mut BoxMeUp;
+    let payload = payload as *mut &mut dyn BoxMeUp;
     imp::panic(Box::from_raw((*payload).box_me_up()))
 }

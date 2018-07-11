@@ -48,8 +48,8 @@ pub const DW_EH_PE_indirect: u8 = 0x80;
 pub struct EHContext<'a> {
     pub ip: usize, // Current instruction pointer
     pub func_start: usize, // Address of the current function
-    pub get_text_start: &'a Fn() -> usize, // Get address of the code section
-    pub get_data_start: &'a Fn() -> usize, // Get address of the data section
+    pub get_text_start: &'a dyn Fn() -> usize, // Get address of the code section
+    pub get_data_start: &'a dyn Fn() -> usize, // Get address of the data section
 }
 
 pub enum EHAction {

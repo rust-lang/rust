@@ -67,10 +67,10 @@ use dwarf::eh::{self, EHContext, EHAction};
 #[repr(C)]
 struct Exception {
     _uwe: uw::_Unwind_Exception,
-    cause: Option<Box<Any + Send>>,
+    cause: Option<Box<dyn Any + Send>>,
 }
 
-pub unsafe fn panic(data: Box<Any + Send>) -> u32 {
+pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let exception = Box::new(Exception {
         _uwe: uw::_Unwind_Exception {
             exception_class: rust_exception_class(),
@@ -94,7 +94,7 @@ pub fn payload() -> *mut u8 {
     ptr::null_mut()
 }
 
-pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send> {
+pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let my_ep = ptr as *mut Exception;
     let cause = (*my_ep).cause.take();
     uw::_Unwind_DeleteException(ptr as *mut _);
