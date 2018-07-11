@@ -1443,8 +1443,8 @@ mod tests {
             let c: OwningRef<Rc<Vec<u8>>, [u8]> = unsafe {a.map_owner(Rc::new)};
             let d: OwningRef<Rc<Box<[u8]>>, [u8]> = unsafe {b.map_owner(Rc::new)};
 
-            let e: OwningRef<Rc<Erased>, [u8]> = c.erase_owner();
-            let f: OwningRef<Rc<Erased>, [u8]> = d.erase_owner();
+            let e: OwningRef<Rc<dyn Erased>, [u8]> = c.erase_owner();
+            let f: OwningRef<Rc<dyn Erased>, [u8]> = d.erase_owner();
 
             let _g = e.clone();
             let _h = f.clone();
@@ -1460,8 +1460,8 @@ mod tests {
             let c: OwningRef<Box<Vec<u8>>, [u8]> = a.map_owner_box();
             let d: OwningRef<Box<Box<[u8]>>, [u8]> = b.map_owner_box();
 
-            let _e: OwningRef<Box<Erased>, [u8]> = c.erase_owner();
-            let _f: OwningRef<Box<Erased>, [u8]> = d.erase_owner();
+            let _e: OwningRef<Box<dyn Erased>, [u8]> = c.erase_owner();
+            let _f: OwningRef<Box<dyn Erased>, [u8]> = d.erase_owner();
         }
 
         #[test]
@@ -1469,7 +1469,7 @@ mod tests {
             use std::any::Any;
 
             let x = Box::new(123_i32);
-            let y: Box<Any> = x;
+            let y: Box<dyn Any> = x;
 
             OwningRef::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_ok();
         }
@@ -1479,7 +1479,7 @@ mod tests {
             use std::any::Any;
 
             let x = Box::new(123_i32);
-            let y: Box<Any> = x;
+            let y: Box<dyn Any> = x;
 
             OwningRef::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_err();
         }
@@ -1843,8 +1843,8 @@ mod tests {
             let c: OwningRefMut<Box<Vec<u8>>, [u8]> = unsafe {a.map_owner(Box::new)};
             let d: OwningRefMut<Box<Box<[u8]>>, [u8]> = unsafe {b.map_owner(Box::new)};
 
-            let _e: OwningRefMut<Box<Erased>, [u8]> = c.erase_owner();
-            let _f: OwningRefMut<Box<Erased>, [u8]> = d.erase_owner();
+            let _e: OwningRefMut<Box<dyn Erased>, [u8]> = c.erase_owner();
+            let _f: OwningRefMut<Box<dyn Erased>, [u8]> = d.erase_owner();
         }
 
         #[test]
@@ -1857,8 +1857,8 @@ mod tests {
             let c: OwningRefMut<Box<Vec<u8>>, [u8]> = a.map_owner_box();
             let d: OwningRefMut<Box<Box<[u8]>>, [u8]> = b.map_owner_box();
 
-            let _e: OwningRefMut<Box<Erased>, [u8]> = c.erase_owner();
-            let _f: OwningRefMut<Box<Erased>, [u8]> = d.erase_owner();
+            let _e: OwningRefMut<Box<dyn Erased>, [u8]> = c.erase_owner();
+            let _f: OwningRefMut<Box<dyn Erased>, [u8]> = d.erase_owner();
         }
 
         #[test]
@@ -1866,7 +1866,7 @@ mod tests {
             use std::any::Any;
 
             let x = Box::new(123_i32);
-            let y: Box<Any> = x;
+            let y: Box<dyn Any> = x;
 
             OwningRefMut::new(y).try_map_mut(|x| x.downcast_mut::<i32>().ok_or(())).is_ok();
         }
@@ -1876,7 +1876,7 @@ mod tests {
             use std::any::Any;
 
             let x = Box::new(123_i32);
-            let y: Box<Any> = x;
+            let y: Box<dyn Any> = x;
 
             OwningRefMut::new(y).try_map_mut(|x| x.downcast_mut::<i32>().ok_or(())).is_err();
         }
@@ -1886,7 +1886,7 @@ mod tests {
             use std::any::Any;
 
             let x = Box::new(123_i32);
-            let y: Box<Any> = x;
+            let y: Box<dyn Any> = x;
 
             OwningRefMut::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_ok();
         }
@@ -1896,7 +1896,7 @@ mod tests {
             use std::any::Any;
 
             let x = Box::new(123_i32);
-            let y: Box<Any> = x;
+            let y: Box<dyn Any> = x;
 
             OwningRefMut::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_err();
         }
