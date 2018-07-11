@@ -30,7 +30,11 @@ use fmt;
 /// use std::panic;
 ///
 /// panic::set_hook(Box::new(|panic_info| {
-///     println!("panic occurred: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
+///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+///         println!("panic occurred: {:?}", s);
+///     } else {
+///         println!("panic occurred");
+///     }
 /// }));
 ///
 /// panic!("Normal panic");
