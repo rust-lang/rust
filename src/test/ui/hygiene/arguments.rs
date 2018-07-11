@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core_intrinsics)]
+// ignore-pretty pretty-printing is unhygienic
 
-use std::intrinsics::{init};
+#![feature(decl_macro)]
 
-// Test that the `forget` and `init` intrinsics are really unsafe
-pub fn main() {
-    let stuff = init::<isize>(); //~ ERROR call to unsafe function requires unsafe
+macro m($t:ty, $e:expr) {
+    mod foo {
+        #[allow(unused)]
+        struct S;
+        pub(super) fn f(_: $t) {}
+    }
+    foo::f($e);
+}
+
+fn main() {
+    struct S;
+    m!(S, S); //~ ERROR cannot find type `S` in this scope
 }

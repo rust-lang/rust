@@ -241,7 +241,7 @@ pub struct PrintStackElem {
 
 const SIZE_INFINITY: isize = 0xffff;
 
-pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
+pub fn mk_printer<'a>(out: Box<dyn io::Write+'a>, linewidth: usize) -> Printer<'a> {
     // Yes 55, it makes the ring buffers big enough to never fall behind.
     let n: usize = 55 * linewidth;
     debug!("mk_printer {}", linewidth);
@@ -264,7 +264,7 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
 }
 
 pub struct Printer<'a> {
-    out: Box<io::Write+'a>,
+    out: Box<dyn io::Write+'a>,
     buf_max_len: usize,
     /// Width of lines we're constrained to
     margin: isize,

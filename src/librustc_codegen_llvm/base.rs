@@ -717,7 +717,7 @@ pub fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
 }
 
 pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             rx: mpsc::Receiver<Box<Any + Send>>)
+                             rx: mpsc::Receiver<Box<dyn Any + Send>>)
                              -> OngoingCodegen {
 
     check_for_rustc_errors_attr(tcx);

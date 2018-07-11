@@ -100,7 +100,7 @@ const INTERNED_INDEX_OFFSET: u32 = 1;
 
 #[inline]
 fn encode(sd: &SpanData) -> Span {
-    let (base, len, ctxt) = (sd.lo.0, sd.hi.0 - sd.lo.0, sd.ctxt.0);
+    let (base, len, ctxt) = (sd.lo.0, sd.hi.0 - sd.lo.0, sd.ctxt.as_u32());
 
     let val = if (base >> INLINE_SIZES[BASE_INDEX]) == 0 &&
                  (len >> INLINE_SIZES[LEN_INDEX]) == 0 &&
@@ -132,7 +132,7 @@ fn decode(span: Span) -> SpanData {
         let index = extract(INTERNED_INDEX_OFFSET, INTERNED_INDEX_SIZE);
         return with_span_interner(|interner| *interner.get(index));
     };
-    SpanData { lo: BytePos(base), hi: BytePos(base + len), ctxt: SyntaxContext(ctxt) }
+    SpanData { lo: BytePos(base), hi: BytePos(base + len), ctxt: SyntaxContext::from_u32(ctxt) }
 }
 
 #[derive(Default)]

@@ -37,7 +37,7 @@ use {AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 
 pub fn modify(
     sess: &ParseSess,
-    resolver: &mut Resolver,
+    resolver: &mut dyn Resolver,
     krate: Crate,
     crate_name: String,
     handler: &rustc_errors::Handler,
@@ -56,7 +56,7 @@ struct ExpandAllocatorDirectives<'a> {
     found: bool,
     handler: &'a rustc_errors::Handler,
     sess: &'a ParseSess,
-    resolver: &'a mut Resolver,
+    resolver: &'a mut dyn Resolver,
     crate_name: Option<String>,
 
     // For now, we disallow `global_allocator` in submodules because hygiene is hard. Keep track of
@@ -256,7 +256,7 @@ impl<'a> AllocFnFactory<'a> {
         &self,
         ty: &AllocatorTy,
         args: &mut Vec<Arg>,
-        ident: &mut FnMut() -> Ident,
+        ident: &mut dyn FnMut() -> Ident,
     ) -> P<Expr> {
         match *ty {
             AllocatorTy::Layout => {

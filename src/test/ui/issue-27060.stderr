@@ -1,0 +1,27 @@
+error: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
+  --> $DIR/issue-27060.rs:36:13
+   |
+LL |     let _ = &good.data; //~ ERROR borrow of packed field is unsafe
+   |             ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-27060.rs:23:8
+   |
+LL | #[deny(safe_packed_borrows)]
+   |        ^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+   = note: fields of packed structs might be misaligned: dereferencing a misaligned pointer or even just creating a misaligned reference is undefined behavior
+
+error: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
+  --> $DIR/issue-27060.rs:38:13
+   |
+LL |     let _ = &good.data2[0]; //~ ERROR borrow of packed field is unsafe
+   |             ^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+   = note: fields of packed structs might be misaligned: dereferencing a misaligned pointer or even just creating a misaligned reference is undefined behavior
+
+error: aborting due to 2 previous errors
+

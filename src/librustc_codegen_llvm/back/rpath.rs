@@ -22,7 +22,7 @@ pub struct RPathConfig<'a> {
     pub is_like_osx: bool,
     pub has_rpath: bool,
     pub linker_is_gnu: bool,
-    pub get_install_prefix_lib_path: &'a mut FnMut() -> PathBuf,
+    pub get_install_prefix_lib_path: &'a mut dyn FnMut() -> PathBuf,
 }
 
 pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {

@@ -536,7 +536,7 @@ impl<'a> CrateLoader<'a> {
                 Ok(f) => f,
                 Err(err) => self.sess.span_fatal(span, &err),
             };
-            mem::transmute::<*mut u8, fn(&mut Registry)>(sym)
+            mem::transmute::<*mut u8, fn(&mut dyn Registry)>(sym)
         };
 
         struct MyRegistrar {
@@ -1019,7 +1019,7 @@ impl<'a> CrateLoader<'a> {
     fn inject_dependency_if(&self,
                             krate: CrateNum,
                             what: &str,
-                            needs_dep: &Fn(&cstore::CrateMetadata) -> bool) {
+                            needs_dep: &dyn Fn(&cstore::CrateMetadata) -> bool) {
         // don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.

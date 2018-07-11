@@ -37,10 +37,10 @@ const RUST_PANIC: c::DWORD = ETYPE | (1 << 24) | MAGIC;
 
 #[repr(C)]
 struct PanicData {
-    data: Box<Any + Send>,
+    data: Box<dyn Any + Send>,
 }
 
-pub unsafe fn panic(data: Box<Any + Send>) -> u32 {
+pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let panic_ctx = Box::new(PanicData { data: data });
     let params = [Box::into_raw(panic_ctx) as c::ULONG_PTR];
     c::RaiseException(RUST_PANIC,
@@ -54,7 +54,7 @@ pub fn payload() -> *mut u8 {
     ptr::null_mut()
 }
 
-pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send> {
+pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let panic_ctx = Box::from_raw(ptr as *mut PanicData);
     return panic_ctx.data;
 }

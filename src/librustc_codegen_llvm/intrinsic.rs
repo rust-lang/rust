@@ -916,7 +916,7 @@ fn gen_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     name: &str,
                     inputs: Vec<Ty<'tcx>>,
                     output: Ty<'tcx>,
-                    codegen: &mut for<'b> FnMut(Builder<'b, 'tcx>))
+                    codegen: &mut dyn for<'b> FnMut(Builder<'b, 'tcx>))
                     -> ValueRef {
     let rust_fn_ty = cx.tcx.mk_fn_ptr(ty::Binder::bind(cx.tcx.mk_fn_sig(
         inputs.into_iter(),
@@ -936,7 +936,7 @@ fn gen_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 //
 // This function is only generated once and is then cached.
 fn get_rust_try_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                             codegen: &mut for<'b> FnMut(Builder<'b, 'tcx>))
+                             codegen: &mut dyn for<'b> FnMut(Builder<'b, 'tcx>))
                              -> ValueRef {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;

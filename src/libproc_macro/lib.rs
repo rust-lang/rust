@@ -1351,7 +1351,7 @@ pub mod __internal {
     use syntax::parse::token::{self, Token};
     use syntax::tokenstream;
     use syntax_pos::{BytePos, Loc, DUMMY_SP};
-    use syntax_pos::hygiene::{Mark, SyntaxContext, Transparency};
+    use syntax_pos::hygiene::{SyntaxContext, Transparency};
 
     use super::{TokenStream, LexError, Span};
 
@@ -1436,20 +1436,15 @@ pub mod __internal {
 
             // No way to determine def location for a proc macro right now, so use call location.
             let location = cx.current_expansion.mark.expn_info().unwrap().call_site;
-            // Opaque mark was already created by expansion, now create its transparent twin.
-            // We can't use the call-site span literally here, even if it appears to provide
-            // correct name resolution, because it has all the `ExpnInfo` wrong, so the edition
-            // checks, lint macro checks, macro backtraces will all break.
-            let opaque_mark = cx.current_expansion.mark;
-            let transparent_mark = Mark::fresh_cloned(opaque_mark);
-            transparent_mark.set_transparency(Transparency::Transparent);
-
-            let to_span = |mark| Span(location.with_ctxt(SyntaxContext::empty().apply_mark(mark)));
+            let to_span = |transparency| Span(location.with_ctxt(
+                SyntaxContext::empty().apply_mark_with_transparency(cx.current_expansion.mark,
+                                                                    transparency))
+            );
             p.set(ProcMacroSess {
                 parse_sess: cx.parse_sess,
                 data: ProcMacroData {
-                    def_site: to_span(opaque_mark),
-                    call_site: to_span(transparent_mark),
+                    def_site: to_span(Transparency::Opaque),
+                    call_site: to_span(Transparency::Transparent),
                 },
             });
             f()
