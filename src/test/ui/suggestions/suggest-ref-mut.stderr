@@ -1,0 +1,21 @@
+error[E0594]: cannot assign to `*foo` which is behind a `&` reference
+  --> $DIR/suggest-ref-mut.rs:17:5
+   |
+LL |     *foo = 32;
+   |     ^^^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `*bar` which is behind a `&` reference
+  --> $DIR/suggest-ref-mut.rs:22:9
+   |
+LL |         *bar = 32;
+   |         ^^^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `*quo` which is behind a `&` reference
+  --> $DIR/suggest-ref-mut.rs:26:22
+   |
+LL |         ref quo => { *quo = 32; },
+   |                      ^^^^^^^^^ cannot assign
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0594`.
