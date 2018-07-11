@@ -102,12 +102,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let tag = match self.hir.find(scope.node_id(self, region_scope_tree)) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
-                        hir::ExprCall(..) => "call",
-                        hir::ExprMethodCall(..) => "method call",
-                        hir::ExprMatch(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                        hir::ExprMatch(.., hir::MatchSource::WhileLetDesugar) => "while let",
-                        hir::ExprMatch(.., hir::MatchSource::ForLoopDesugar) => "for",
-                        hir::ExprMatch(..) => "match",
+                        hir::ExprKind::Call(..) => "call",
+                        hir::ExprKind::MethodCall(..) => "method call",
+                        hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
+                        hir::ExprKind::Match(.., hir::MatchSource::WhileLetDesugar) => "while let",
+                        hir::ExprKind::Match(.., hir::MatchSource::ForLoopDesugar) => "for",
+                        hir::ExprKind::Match(..) => "match",
                         _ => "expression",
                     },
                     Some(hir_map::NodeStmt(_)) => "statement",

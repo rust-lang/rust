@@ -245,7 +245,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             "f32"
                         };
                         match expr.node {
-                            hir::ExprLit(ref lit) => {  // numeric literal
+                            hir::ExprKind::Lit(ref lit) => {  // numeric literal
                                 let snippet = tcx.sess.codemap().span_to_snippet(lit.span)
                                     .unwrap_or("<numeric literal>".to_string());
 
@@ -257,7 +257,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                             snippet,
                                                             concrete_type));
                             }
-                            hir::ExprPath(ref qpath) => {  // local binding
+                            hir::ExprKind::Path(ref qpath) => {  // local binding
                                 if let &hir::QPath::Resolved(_, ref path) = &qpath {
                                     if let hir::def::Def::Local(node_id) = path.def {
                                         let span = tcx.hir.span(node_id);
@@ -389,7 +389,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(expr) = rcvr_expr {
                         if let Ok(expr_string) = tcx.sess.codemap().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
-                        } else if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = expr.node {
+                        } else if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
                             if let Some(segment) = path.segments.last() {
                                 report_function!(expr.span, segment.ident);
                             }

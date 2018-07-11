@@ -68,20 +68,20 @@ impl LintPass for TypeLimits {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
         match e.node {
-            hir::ExprUnary(hir::UnNeg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.id {
                     self.negated_expr_id = expr.id;
                 }
             }
-            hir::ExprBinary(binop, ref l, ref r) => {
+            hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
                     cx.span_lint(UNUSED_COMPARISONS,
                                  e.span,
                                  "comparison is useless due to type limits");
                 }
             }
-            hir::ExprLit(ref lit) => {
+            hir::ExprKind::Lit(ref lit) => {
                 match cx.tables.node_id_to_type(e.hir_id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         if lit_val < min || lit_val > max {
                             let parent_id = cx.tcx.hir.get_parent_node(e.id);
                             if let hir_map::NodeExpr(parent_expr) = cx.tcx.hir.get(parent_id) {
-                                if let hir::ExprCast(..) = parent_expr.node {
+                                if let hir::ExprKind::Cast(..) = parent_expr.node {
                                     if let ty::TyChar = cx.tables.expr_ty(parent_expr).sty {
                                         let mut err = cx.struct_span_lint(
                                                              OVERFLOWING_LITERALS,
@@ -244,8 +244,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         r: &hir::Expr)
                         -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
-                (&hir::ExprLit(_), _) => (l, r, true),
-                (_, &hir::ExprLit(_)) => (r, l, false),
+                (&hir::ExprKind::Lit(_), _) => (l, r, true),
+                (_, &hir::ExprKind::Lit(_)) => (r, l, false),
                 _ => return true,
             };
             // Normalize the binop so that the literal is always on the RHS in
@@ -255,7 +255,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {
-                        hir::ExprLit(ref li) => {
+                        hir::ExprKind::Lit(ref li) => {
                             match li.node {
                                 ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
                                 ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i128,
@@ -269,7 +269,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ty::TyUint(uint_ty) => {
                     let (min, max) :(u128, u128) = uint_ty_range(uint_ty);
                     let lit_val: u128 = match lit.node {
-                        hir::ExprLit(ref li) => {
+                        hir::ExprKind::Lit(ref li) => {
                             match li.node {
                                 ast::LitKind::Int(v, _) => v,
                                 _ => return true

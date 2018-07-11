@@ -1688,7 +1688,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
     fn encode_info_for_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            hir::ExprClosure(..) => {
+            hir::ExprKind::Closure(..) => {
                 let def_id = self.tcx.hir.local_def_id(expr.id);
                 self.record(def_id, IsolatedEncoder::encode_info_for_closure, def_id);
             }

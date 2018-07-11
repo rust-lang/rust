@@ -129,7 +129,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if let hir::ExprClosure(..) = expr.node {
+        if let hir::ExprKind::Closure(..) = expr.node {
             let def_id = self.tcx.hir.local_def_id(expr.id);
             self.tcx.generics_of(def_id);
             self.tcx.type_of(def_id);
@@ -805,7 +805,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let parent_id = tcx.hir.get_parent(node_id);
             Some(tcx.hir.local_def_id(parent_id))
         }
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+        NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(..), .. }) => {
             Some(tcx.closure_base_def_id(def_id))
         }
         NodeItem(item) => {
@@ -946,7 +946,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
-    if let NodeExpr(&hir::Expr { node: hir::ExprClosure(.., gen), .. }) = node {
+    if let NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(.., gen), .. }) = node {
         let dummy_args = if gen.is_some() {
             &["<yield_ty>", "<return_ty>", "<witness>"][..]
         } else {
@@ -1104,7 +1104,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeField(field) => icx.to_ty(&field.ty),
 
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(.., gen), .. }) => {
+        NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(.., gen), .. }) => {
             if gen.is_some() {
                 let hir_id = tcx.hir.node_to_hir_id(node_id);
                 return tcx.typeck_tables_of(def_id).node_id_to_type(hir_id);
@@ -1120,7 +1120,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeAnonConst(_) => match tcx.hir.get(tcx.hir.get_parent_node(node_id)) {
             NodeTy(&hir::Ty { node: TyArray(_, ref constant), .. }) |
             NodeTy(&hir::Ty { node: TyTypeof(ref constant), .. }) |
-            NodeExpr(&hir::Expr { node: ExprRepeat(_, ref constant), .. })
+            NodeExpr(&hir::Expr { node: ExprKind::Repeat(_, ref constant), .. })
                 if constant.id == node_id => tcx.types.usize,
 
             NodeVariant(&Spanned { node: VariantKind { disr_expr: Some(ref e), .. }, .. })
@@ -1191,7 +1191,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ))
         }
 
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+        NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(..), .. }) => {
             // Closure signatures are not like other function
             // signatures and cannot be accessed through `fn_sig`. For
             // example, a closure signature excludes the `self`

@@ -63,7 +63,7 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
         NodeExpr(ref e) => {
             // the enclosing expression must be a `match` or something else
             assert!(match e.node {
-                        ExprMatch(..) => true,
+                        ExprKind::Match(..) => true,
                         _ => return PatternSource::Other,
                     });
             PatternSource::MatchExpr(e)

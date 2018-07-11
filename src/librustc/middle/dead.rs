@@ -225,17 +225,17 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
+            hir::ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let def = self.tables.qpath_def(qpath, expr.hir_id);
                 self.handle_definition(def);
             }
-            hir::ExprMethodCall(..) => {
+            hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
             }
-            hir::ExprField(ref lhs, ..) => {
+            hir::ExprKind::Field(ref lhs, ..) => {
                 self.handle_field_access(&lhs, expr.id);
             }
-            hir::ExprStruct(_, ref fields, _) => {
+            hir::ExprKind::Struct(_, ref fields, _) => {
                 if let ty::TypeVariants::TyAdt(ref adt, _) = self.tables.expr_ty(expr).sty {
                     self.mark_as_used_if_union(adt, fields);
                 }
@@ -492,7 +492,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     //            `None` otherwise.
     // If the item is a struct_ctor, then either its `id` or
     // `ctor_id` (unwrapped) is in the live_symbols set. More specifically,
-    // DefMap maps the ExprPath of a struct_ctor to the node referred by
+    // DefMap maps the ExprKind::Path of a struct_ctor to the node referred by
     // `ctor_id`. On the other hand, in a statement like
     // `type <ident> <generics> = <ty>;` where <ty> refers to a struct_ctor,
     // DefMap maps <ty> to `id` instead.

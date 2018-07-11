@@ -75,8 +75,8 @@ impl LintPass for WhileTrue {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprWhile(ref cond, ..) = e.node {
-            if let hir::ExprLit(ref lit) = cond.node {
+        if let hir::ExprKind::While(ref cond, ..) = e.node {
+            if let hir::ExprKind::Lit(ref lit) = cond.node {
                 if let ast::LitKind::Bool(true) = lit.node {
                     if lit.span.ctxt() == SyntaxContext::empty() {
                         let msg = "denote infinite loops with `loop { ... }`";
@@ -226,7 +226,7 @@ impl UnsafeCode {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprBlock(ref blk, _) = e.node {
+        if let hir::ExprKind::Block(ref blk, _) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == hir::UnsafeBlock(hir::UserProvided) {
                 self.report_unsafe(cx, blk.span, "usage of an `unsafe` block");
@@ -960,8 +960,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
 
         fn expr_refers_to_this_fn(cx: &LateContext, fn_id: ast::NodeId, id: ast::NodeId) -> bool {
             match cx.tcx.hir.get(id) {
-                hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    let def = if let hir::ExprPath(ref qpath) = callee.node {
+                hir_map::NodeExpr(&hir::Expr { node: hir::ExprKind::Call(ref callee, _), .. }) => {
+                    let def = if let hir::ExprKind::Path(ref qpath) = callee.node {
                         cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
                         return false;
@@ -1018,8 +1018,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
 
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
             match expr.node {
-                hir::ExprCall(ref callee, _) => {
-                    let def = if let hir::ExprPath(ref qpath) = callee.node {
+                hir::ExprKind::Call(ref callee, _) => {
+                    let def = if let hir::ExprKind::Path(ref qpath) = callee.node {
                         cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
                         return false;
@@ -1300,7 +1300,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
             (cx: &LateContext<'a, 'tcx>,
              expr: &hir::Expr)
              -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
-            let def = if let hir::ExprPath(ref qpath) = expr.node {
+            let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
                 cx.tables.qpath_def(qpath, expr.hir_id)
             } else {
                 return None;

@@ -1180,7 +1180,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyInfer => {
                 // TyInfer also appears as the type of arguments or return
-                // values in a ExprClosure, or as
+                // values in a ExprKind::Closure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
                 self.ty_infer(ast_ty.span)

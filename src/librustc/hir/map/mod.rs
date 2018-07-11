@@ -195,7 +195,7 @@ impl<'hir> MapEntry<'hir> {
 
             EntryExpr(_, _, ref expr) => {
                 match expr.node {
-                    ExprClosure(_, ref fn_decl, ..) => Some(&fn_decl),
+                    ExprKind::Closure(_, ref fn_decl, ..) => Some(&fn_decl),
                     _ => None,
                 }
             }
@@ -235,7 +235,7 @@ impl<'hir> MapEntry<'hir> {
 
             EntryExpr(_, _, expr) => {
                 match expr.node {
-                    ExprClosure(.., body, _, _) => Some(body),
+                    ExprKind::Closure(.., body, _, _) => Some(body),
                     _ => None,
                 }
             }
@@ -734,7 +734,7 @@ impl<'hir> Map<'hir> {
             Some(NodeImplItem(_)) => true,
             Some(NodeExpr(e)) => {
                 match e.node {
-                    ExprClosure(..) => true,
+                    ExprKind::Closure(..) => true,
                     _ => false,
                 }
             }
@@ -821,7 +821,7 @@ impl<'hir> Map<'hir> {
             match *node {
                 NodeExpr(ref expr) => {
                     match expr.node {
-                        ExprWhile(..) | ExprLoop(..) => true,
+                        ExprKind::While(..) | ExprKind::Loop(..) => true,
                         _ => false,
                     }
                 }

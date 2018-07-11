@@ -283,7 +283,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_expr_attributes(&self, expr: &hir::Expr) {
         let target = match expr.node {
-            hir::ExprClosure(..) => Target::Closure,
+            hir::ExprKind::Closure(..) => Target::Closure,
             _ => Target::Expression,
         };
         for attr in expr.attrs.iter() {

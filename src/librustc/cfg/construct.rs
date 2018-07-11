@@ -179,12 +179,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn expr(&mut self, expr: &hir::Expr, pred: CFGIndex) -> CFGIndex {
         match expr.node {
-            hir::ExprBlock(ref blk, _) => {
+            hir::ExprKind::Block(ref blk, _) => {
                 let blk_exit = self.block(&blk, pred);
                 self.add_ast_node(expr.hir_id.local_id, &[blk_exit])
             }
 
-            hir::ExprIf(ref cond, ref then, None) => {
+            hir::ExprKind::If(ref cond, ref then, None) => {
                 //
                 //     [pred]
                 //       |
@@ -204,7 +204,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(expr.hir_id.local_id, &[cond_exit, then_exit])      // 3,4
             }
 
-            hir::ExprIf(ref cond, ref then, Some(ref otherwise)) => {
+            hir::ExprKind::If(ref cond, ref then, Some(ref otherwise)) => {
                 //
                 //     [pred]
                 //       |
@@ -225,7 +225,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(expr.hir_id.local_id, &[then_exit, else_exit])      // 4, 5
             }
 
-            hir::ExprWhile(ref cond, ref body, _) => {
+            hir::ExprKind::While(ref cond, ref body, _) => {
                 //
                 //         [pred]
                 //           |
@@ -267,7 +267,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 expr_exit
             }
 
-            hir::ExprLoop(ref body, _, _) => {
+            hir::ExprKind::Loop(ref body, _, _) => {
                 //
                 //     [pred]
                 //       |
@@ -295,11 +295,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 expr_exit
             }
 
-            hir::ExprMatch(ref discr, ref arms, _) => {
+            hir::ExprKind::Match(ref discr, ref arms, _) => {
                 self.match_(expr.hir_id.local_id, &discr, &arms, pred)
             }
 
-            hir::ExprBinary(op, ref l, ref r) if op.node.is_lazy() => {
+            hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
                 //
                 //     [pred]
                 //       |
@@ -319,14 +319,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(expr.hir_id.local_id, &[l_exit, r_exit])            // 3,4
             }
 
-            hir::ExprRet(ref v) => {
+            hir::ExprKind::Ret(ref v) => {
                 let v_exit = self.opt_expr(v, pred);
                 let b = self.add_ast_node(expr.hir_id.local_id, &[v_exit]);
                 self.add_returning_edge(expr, b);
                 self.add_unreachable_node()
             }
 
-            hir::ExprBreak(destination, ref opt_expr) => {
+            hir::ExprKind::Break(destination, ref opt_expr) => {
                 let v = self.opt_expr(opt_expr, pred);
                 let (target_scope, break_dest) =
                     self.find_scope_edge(expr, destination, ScopeCfKind::Break);
@@ -335,7 +335,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_unreachable_node()
             }
 
-            hir::ExprContinue(destination) => {
+            hir::ExprKind::Continue(destination) => {
                 let (target_scope, cont_dest) =
                     self.find_scope_edge(expr, destination, ScopeCfKind::Continue);
                 let a = self.add_ast_node(expr.hir_id.local_id, &[pred]);
@@ -343,66 +343,66 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_unreachable_node()
             }
 
-            hir::ExprArray(ref elems) => {
+            hir::ExprKind::Array(ref elems) => {
                 self.straightline(expr, pred, elems.iter().map(|e| &*e))
             }
 
-            hir::ExprCall(ref func, ref args) => {
+            hir::ExprKind::Call(ref func, ref args) => {
                 self.call(expr, pred, &func, args.iter().map(|e| &*e))
             }
 
-            hir::ExprMethodCall(.., ref args) => {
+            hir::ExprKind::MethodCall(.., ref args) => {
                 self.call(expr, pred, &args[0], args[1..].iter().map(|e| &*e))
             }
 
-            hir::ExprIndex(ref l, ref r) |
-            hir::ExprBinary(_, ref l, ref r) if self.tables.is_method_call(expr) => {
+            hir::ExprKind::Index(ref l, ref r) |
+            hir::ExprKind::Binary(_, ref l, ref r) if self.tables.is_method_call(expr) => {
                 self.call(expr, pred, &l, Some(&**r).into_iter())
             }
 
-            hir::ExprUnary(_, ref e) if self.tables.is_method_call(expr) => {
+            hir::ExprKind::Unary(_, ref e) if self.tables.is_method_call(expr) => {
                 self.call(expr, pred, &e, None::<hir::Expr>.iter())
             }
 
-            hir::ExprTup(ref exprs) => {
+            hir::ExprKind::Tup(ref exprs) => {
                 self.straightline(expr, pred, exprs.iter().map(|e| &*e))
             }
 
-            hir::ExprStruct(_, ref fields, ref base) => {
+            hir::ExprKind::Struct(_, ref fields, ref base) => {
                 let field_cfg = self.straightline(expr, pred, fields.iter().map(|f| &*f.expr));
                 self.opt_expr(base, field_cfg)
             }
 
-            hir::ExprAssign(ref l, ref r) |
-            hir::ExprAssignOp(_, ref l, ref r) => {
+            hir::ExprKind::Assign(ref l, ref r) |
+            hir::ExprKind::AssignOp(_, ref l, ref r) => {
                 self.straightline(expr, pred, [r, l].iter().map(|&e| &**e))
             }
 
-            hir::ExprIndex(ref l, ref r) |
-            hir::ExprBinary(_, ref l, ref r) => { // NB: && and || handled earlier
+            hir::ExprKind::Index(ref l, ref r) |
+            hir::ExprKind::Binary(_, ref l, ref r) => { // NB: && and || handled earlier
                 self.straightline(expr, pred, [l, r].iter().map(|&e| &**e))
             }
 
-            hir::ExprBox(ref e) |
-            hir::ExprAddrOf(_, ref e) |
-            hir::ExprCast(ref e, _) |
-            hir::ExprType(ref e, _) |
-            hir::ExprUnary(_, ref e) |
-            hir::ExprField(ref e, _) |
-            hir::ExprYield(ref e) |
-            hir::ExprRepeat(ref e, _) => {
+            hir::ExprKind::Box(ref e) |
+            hir::ExprKind::AddrOf(_, ref e) |
+            hir::ExprKind::Cast(ref e, _) |
+            hir::ExprKind::Type(ref e, _) |
+            hir::ExprKind::Unary(_, ref e) |
+            hir::ExprKind::Field(ref e, _) |
+            hir::ExprKind::Yield(ref e) |
+            hir::ExprKind::Repeat(ref e, _) => {
                 self.straightline(expr, pred, Some(&**e).into_iter())
             }
 
-            hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+            hir::ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
                 let post_outputs = self.exprs(outputs.iter().map(|e| &*e), pred);
                 let post_inputs = self.exprs(inputs.iter().map(|e| &*e), post_outputs);
                 self.add_ast_node(expr.hir_id.local_id, &[post_inputs])
             }
 
-            hir::ExprClosure(..) |
-            hir::ExprLit(..) |
-            hir::ExprPath(_) => {
+            hir::ExprKind::Closure(..) |
+            hir::ExprKind::Lit(..) |
+            hir::ExprKind::Path(_) => {
                 self.straightline(expr, pred, None::<hir::Expr>.iter())
             }
         }

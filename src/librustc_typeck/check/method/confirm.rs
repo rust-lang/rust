@@ -449,9 +449,9 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         loop {
             let last = exprs[exprs.len() - 1];
             match last.node {
-                hir::ExprField(ref expr, _) |
-                hir::ExprIndex(ref expr, _) |
-                hir::ExprUnary(hir::UnDeref, ref expr) => exprs.push(&expr),
+                hir::ExprKind::Field(ref expr, _) |
+                hir::ExprKind::Index(ref expr, _) |
+                hir::ExprKind::Unary(hir::UnDeref, ref expr) => exprs.push(&expr),
                 _ => break,
             }
         }
@@ -493,12 +493,12 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             }
 
             match expr.node {
-                hir::ExprIndex(ref base_expr, ref index_expr) => {
+                hir::ExprKind::Index(ref base_expr, ref index_expr) => {
                     let index_expr_ty = self.node_ty(index_expr.hir_id);
                     self.convert_place_op_to_mutable(
                         PlaceOp::Index, expr, base_expr, &[index_expr_ty]);
                 }
-                hir::ExprUnary(hir::UnDeref, ref base_expr) => {
+                hir::ExprKind::Unary(hir::UnDeref, ref base_expr) => {
                     self.convert_place_op_to_mutable(
                         PlaceOp::Deref, expr, base_expr, &[]);
                 }

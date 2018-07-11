@@ -196,17 +196,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// opt.map(|arg| { takes_ref(arg) });
     /// ```
     fn can_use_as_ref(&self, expr: &hir::Expr) -> Option<(Span, &'static str, String)> {
-        if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = expr.node {
+        if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
             if let hir::def::Def::Local(id) = path.def {
                 let parent = self.tcx.hir.get_parent_node(id);
                 if let Some(NodeExpr(hir::Expr {
                     id,
-                    node: hir::ExprClosure(_, decl, ..),
+                    node: hir::ExprKind::Closure(_, decl, ..),
                     ..
                 })) = self.tcx.hir.find(parent) {
                     let parent = self.tcx.hir.get_parent_node(*id);
                     if let (Some(NodeExpr(hir::Expr {
-                        node: hir::ExprMethodCall(path, span, expr),
+                        node: hir::ExprKind::MethodCall(path, span, expr),
                         ..
                     })), 1) = (self.tcx.hir.find(parent), decl.inputs.len()) {
                         let self_ty = self.tables.borrow().node_id_to_type(expr[0].hir_id);
@@ -262,7 +262,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (&ty::TyRef(_, exp, _), &ty::TyRef(_, check, _)) => match (&exp.sty, &check.sty) {
                 (&ty::TyStr, &ty::TyArray(arr, _)) |
                 (&ty::TyStr, &ty::TySlice(arr)) if arr == self.tcx.types.u8 => {
-                    if let hir::ExprLit(_) = expr.node {
+                    if let hir::ExprKind::Lit(_) = expr.node {
                         if let Ok(src) = cm.span_to_snippet(sp) {
                             if src.starts_with("b\"") {
                                 return Some((sp,
@@ -274,7 +274,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 },
                 (&ty::TyArray(arr, _), &ty::TyStr) |
                 (&ty::TySlice(arr), &ty::TyStr) if arr == self.tcx.types.u8 => {
-                    if let hir::ExprLit(_) = expr.node {
+                    if let hir::ExprKind::Lit(_) = expr.node {
                         if let Ok(src) = cm.span_to_snippet(sp) {
                             if src.starts_with("\"") {
                                 return Some((sp,
@@ -306,7 +306,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if self.can_coerce(ref_ty, expected) {
                     if let Ok(src) = cm.span_to_snippet(sp) {
                         let sugg_expr = match expr.node { // parenthesize if needed (Issue #46756)
-                            hir::ExprCast(_, _) | hir::ExprBinary(_, _, _) => format!("({})", src),
+                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => format!("({})", src),
                             _ => src,
                         };
                         if let Some(sugg) = self.can_use_as_ref(expr) {
@@ -336,7 +336,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                    sp.ctxt().outer().expn_info().is_none() {
                     match expr.node {
                         // Maybe remove `&`?
-                        hir::ExprAddrOf(_, ref expr) => {
+                        hir::ExprKind::AddrOf(_, ref expr) => {
                             if !cm.span_to_filename(expr.span).is_real() {
                                 return None;
                             }

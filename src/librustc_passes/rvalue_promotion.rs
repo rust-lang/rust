@@ -334,11 +334,11 @@ fn check_expr_kind<'a, 'tcx>(
     };
 
     let node_result = match e.node {
-        hir::ExprBox(ref expr) => {
+        hir::ExprKind::Box(ref expr) => {
             let _ = v.check_expr(&expr);
             NotPromotable
         }
-        hir::ExprUnary(op, ref expr) => {
+        hir::ExprKind::Unary(op, ref expr) => {
             let expr_promotability = v.check_expr(expr);
             if v.tables.is_method_call(e) {
                 return NotPromotable;
@@ -348,7 +348,7 @@ fn check_expr_kind<'a, 'tcx>(
             }
             expr_promotability
         }
-        hir::ExprBinary(op, ref lhs, ref rhs) => {
+        hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
             let lefty = v.check_expr(lhs);
             let righty = v.check_expr(rhs);
             if v.tables.is_method_call(e) {
@@ -365,7 +365,7 @@ fn check_expr_kind<'a, 'tcx>(
                 _ => lefty & righty
             }
         }
-        hir::ExprCast(ref from, _) => {
+        hir::ExprKind::Cast(ref from, _) => {
             let expr_promotability = v.check_expr(from);
             debug!("Checking const cast(id={})", from.id);
             match v.tables.cast_kinds().get(from.hir_id) {
@@ -379,7 +379,7 @@ fn check_expr_kind<'a, 'tcx>(
                 _ => expr_promotability
             }
         }
-        hir::ExprPath(ref qpath) => {
+        hir::ExprKind::Path(ref qpath) => {
             let def = v.tables.qpath_def(qpath, e.hir_id);
             match def {
                 Def::VariantCtor(..) | Def::StructCtor(..) |
@@ -426,7 +426,7 @@ fn check_expr_kind<'a, 'tcx>(
                 _ => NotPromotable
             }
         }
-        hir::ExprCall(ref callee, ref hirvec) => {
+        hir::ExprKind::Call(ref callee, ref hirvec) => {
             let mut call_result = v.check_expr(callee);
             for index in hirvec.iter() {
                 call_result = call_result & v.check_expr(index);
@@ -434,7 +434,7 @@ fn check_expr_kind<'a, 'tcx>(
             let mut callee = &**callee;
             loop {
                 callee = match callee.node {
-                    hir::ExprBlock(ref block, _) => match block.expr {
+                    hir::ExprKind::Block(ref block, _) => match block.expr {
                         Some(ref tail) => &tail,
                         None => break
                     },
@@ -442,7 +442,7 @@ fn check_expr_kind<'a, 'tcx>(
                 };
             }
             // The callee is an arbitrary expression, it doesn't necessarily have a definition.
-            let def = if let hir::ExprPath(ref qpath) = callee.node {
+            let def = if let hir::ExprKind::Path(ref qpath) = callee.node {
                 v.tables.qpath_def(qpath, callee.hir_id)
             } else {
                 Def::Err
@@ -465,7 +465,7 @@ fn check_expr_kind<'a, 'tcx>(
             };
             def_result & call_result
         }
-        hir::ExprMethodCall(ref _pathsegment, ref _span, ref hirvec) => {
+        hir::ExprKind::MethodCall(ref _pathsegment, ref _span, ref hirvec) => {
             let mut method_call_result = Promotable;
             for index in hirvec.iter() {
                 method_call_result = method_call_result & v.check_expr(index);
@@ -484,7 +484,7 @@ fn check_expr_kind<'a, 'tcx>(
             }
             method_call_result
         }
-        hir::ExprStruct(ref _qpath, ref hirvec, ref option_expr) => {
+        hir::ExprKind::Struct(ref _qpath, ref hirvec, ref option_expr) => {
             let mut struct_result = Promotable;
             for index in hirvec.iter() {
                 struct_result = struct_result & v.check_expr(&index.expr);
@@ -502,14 +502,14 @@ fn check_expr_kind<'a, 'tcx>(
             struct_result
         }
 
-        hir::ExprLit(_) => Promotable,
+        hir::ExprKind::Lit(_) => Promotable,
 
-        hir::ExprAddrOf(_, ref expr) |
-        hir::ExprRepeat(ref expr, _) => {
+        hir::ExprKind::AddrOf(_, ref expr) |
+        hir::ExprKind::Repeat(ref expr, _) => {
             v.check_expr(&expr)
         }
 
-        hir::ExprClosure(_capture_clause, ref _box_fn_decl,
+        hir::ExprKind::Closure(_capture_clause, ref _box_fn_decl,
                          body_id, _span, _option_generator_movability) => {
             let nested_body_promotable = v.check_nested_body(body_id);
             // Paths in constant contexts cannot refer to local variables,
@@ -521,7 +521,7 @@ fn check_expr_kind<'a, 'tcx>(
             }
         }
 
-        hir::ExprField(ref expr, _ident) => {
+        hir::ExprKind::Field(ref expr, _ident) => {
             let expr_promotability = v.check_expr(&expr);
             if let Some(def) = v.tables.expr_ty(expr).ty_adt_def() {
                 if def.is_union() {
@@ -531,11 +531,11 @@ fn check_expr_kind<'a, 'tcx>(
             expr_promotability
         }
 
-        hir::ExprBlock(ref box_block, ref _option_label) => {
+        hir::ExprKind::Block(ref box_block, ref _option_label) => {
             v.check_block(box_block)
         }
 
-        hir::ExprIndex(ref lhs, ref rhs) => {
+        hir::ExprKind::Index(ref lhs, ref rhs) => {
             let lefty = v.check_expr(lhs);
             let righty = v.check_expr(rhs);
             if v.tables.is_method_call(e) {
@@ -544,7 +544,7 @@ fn check_expr_kind<'a, 'tcx>(
             lefty & righty
         }
 
-        hir::ExprArray(ref hirvec) => {
+        hir::ExprKind::Array(ref hirvec) => {
             let mut array_result = Promotable;
             for index in hirvec.iter() {
                 array_result = array_result & v.check_expr(index);
@@ -552,11 +552,11 @@ fn check_expr_kind<'a, 'tcx>(
             array_result
         }
 
-        hir::ExprType(ref expr, ref _ty) => {
+        hir::ExprKind::Type(ref expr, ref _ty) => {
             v.check_expr(&expr)
         }
 
-        hir::ExprTup(ref hirvec) => {
+        hir::ExprKind::Tup(ref hirvec) => {
             let mut tup_result = Promotable;
             for index in hirvec.iter() {
                 tup_result = tup_result & v.check_expr(index);
@@ -566,7 +566,7 @@ fn check_expr_kind<'a, 'tcx>(
 
 
         // Conditional control flow (possible to implement).
-        hir::ExprMatch(ref expr, ref hirvec_arm, ref _match_source) => {
+        hir::ExprKind::Match(ref expr, ref hirvec_arm, ref _match_source) => {
             // Compute the most demanding borrow from all the arms'
             // patterns and set that on the discriminator.
             let mut mut_borrow = false;
@@ -590,7 +590,7 @@ fn check_expr_kind<'a, 'tcx>(
             NotPromotable
         }
 
-        hir::ExprIf(ref lhs, ref rhs, ref option_expr) => {
+        hir::ExprKind::If(ref lhs, ref rhs, ref option_expr) => {
             let _ = v.check_expr(lhs);
             let _ = v.check_expr(rhs);
             match option_expr {
@@ -601,19 +601,19 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         // Loops (not very meaningful in constants).
-        hir::ExprWhile(ref expr, ref box_block, ref _option_label) => {
+        hir::ExprKind::While(ref expr, ref box_block, ref _option_label) => {
             let _ = v.check_expr(expr);
             let _ = v.check_block(box_block);
             NotPromotable
         }
 
-        hir::ExprLoop(ref box_block, ref _option_label, ref _loop_source) => {
+        hir::ExprKind::Loop(ref box_block, ref _option_label, ref _loop_source) => {
             let _ = v.check_block(box_block);
             NotPromotable
         }
 
         // More control flow (also not very meaningful).
-        hir::ExprBreak(_, ref option_expr) | hir::ExprRet(ref option_expr) => {
+        hir::ExprKind::Break(_, ref option_expr) | hir::ExprKind::Ret(ref option_expr) => {
             match *option_expr {
                 Some(ref expr) => { let _ = v.check_expr(&expr); },
                 None => {},
@@ -621,24 +621,24 @@ fn check_expr_kind<'a, 'tcx>(
             NotPromotable
         }
 
-        hir::ExprContinue(_) => {
+        hir::ExprKind::Continue(_) => {
             NotPromotable
         }
 
         // Generator expressions
-        hir::ExprYield(ref expr) => {
+        hir::ExprKind::Yield(ref expr) => {
             let _ = v.check_expr(&expr);
             NotPromotable
         }
 
         // Expressions with side-effects.
-        hir::ExprAssignOp(_, ref lhs, ref rhs) | hir::ExprAssign(ref lhs, ref rhs) => {
+        hir::ExprKind::AssignOp(_, ref lhs, ref rhs) | hir::ExprKind::Assign(ref lhs, ref rhs) => {
             let _ = v.check_expr(lhs);
             let _ = v.check_expr(rhs);
             NotPromotable
         }
 
-        hir::ExprInlineAsm(ref _inline_asm, ref hirvec_lhs, ref hirvec_rhs) => {
+        hir::ExprKind::InlineAsm(ref _inline_asm, ref hirvec_lhs, ref hirvec_rhs) => {
             for index in hirvec_lhs.iter() {
                 let _ = v.check_expr(index);
             }

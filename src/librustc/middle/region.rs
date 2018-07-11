@@ -950,32 +950,32 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
                 terminating(r.hir_id.local_id);
             }
 
-            hir::ExprIf(ref expr, ref then, Some(ref otherwise)) => {
+            hir::ExprKind::If(ref expr, ref then, Some(ref otherwise)) => {
                 terminating(expr.hir_id.local_id);
                 terminating(then.hir_id.local_id);
                 terminating(otherwise.hir_id.local_id);
             }
 
-            hir::ExprIf(ref expr, ref then, None) => {
+            hir::ExprKind::If(ref expr, ref then, None) => {
                 terminating(expr.hir_id.local_id);
                 terminating(then.hir_id.local_id);
             }
 
-            hir::ExprLoop(ref body, _, _) => {
+            hir::ExprKind::Loop(ref body, _, _) => {
                 terminating(body.hir_id.local_id);
             }
 
-            hir::ExprWhile(ref expr, ref body, _) => {
+            hir::ExprKind::While(ref expr, ref body, _) => {
                 terminating(expr.hir_id.local_id);
                 terminating(body.hir_id.local_id);
             }
 
-            hir::ExprMatch(..) => {
+            hir::ExprKind::Match(..) => {
                 visitor.cx.var_parent = visitor.cx.parent;
             }
 
-            hir::ExprAssignOp(..) | hir::ExprIndex(..) |
-            hir::ExprUnary(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) => {
+            hir::ExprKind::AssignOp(..) | hir::ExprKind::Index(..) |
+            hir::ExprKind::Unary(..) | hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) => {
                 // FIXME(https://github.com/rust-lang/rfcs/issues/811) Nested method calls
                 //
                 // The lifetimes for a call or method call look as follows:
@@ -1003,7 +1003,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
     match expr.node {
         // Manually recurse over closures, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprClosure(.., body, _, _) => {
+        hir::ExprKind::Closure(.., body, _, _) => {
             let body = visitor.tcx.hir.body(body);
             visitor.visit_body(body);
         }
@@ -1015,7 +1015,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
 
     debug!("resolve_expr post-increment {}, expr = {:?}", visitor.expr_and_pat_count, expr);
 
-    if let hir::ExprYield(..) = expr.node {
+    if let hir::ExprKind::Yield(..) = expr.node {
         // Mark this expr's scope and all parent scopes as containing `yield`.
         let mut scope = Scope::Node(expr.hir_id.local_id);
         loop {
@@ -1193,27 +1193,27 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
         blk_id: Option<Scope>)
     {
         match expr.node {
-            hir::ExprAddrOf(_, ref subexpr) => {
+            hir::ExprKind::AddrOf(_, ref subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 record_rvalue_scope(visitor, &subexpr, blk_id);
             }
-            hir::ExprStruct(_, ref fields, _) => {
+            hir::ExprKind::Struct(_, ref fields, _) => {
                 for field in fields {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &field.expr, blk_id);
                 }
             }
-            hir::ExprArray(ref subexprs) |
-            hir::ExprTup(ref subexprs) => {
+            hir::ExprKind::Array(ref subexprs) |
+            hir::ExprKind::Tup(ref subexprs) => {
                 for subexpr in subexprs {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &subexpr, blk_id);
                 }
             }
-            hir::ExprCast(ref subexpr, _) => {
+            hir::ExprKind::Cast(ref subexpr, _) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id)
             }
-            hir::ExprBlock(ref block, _) => {
+            hir::ExprKind::Block(ref block, _) => {
                 if let Some(ref subexpr) = block.expr {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &subexpr, blk_id);
@@ -1251,10 +1251,10 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
             visitor.scope_tree.record_rvalue_scope(expr.hir_id.local_id, blk_scope);
 
             match expr.node {
-                hir::ExprAddrOf(_, ref subexpr) |
-                hir::ExprUnary(hir::UnDeref, ref subexpr) |
-                hir::ExprField(ref subexpr, _) |
-                hir::ExprIndex(ref subexpr, _) => {
+                hir::ExprKind::AddrOf(_, ref subexpr) |
+                hir::ExprKind::Unary(hir::UnDeref, ref subexpr) |
+                hir::ExprKind::Field(ref subexpr, _) |
+                hir::ExprKind::Index(ref subexpr, _) => {
                     expr = &subexpr;
                 }
                 _ => {

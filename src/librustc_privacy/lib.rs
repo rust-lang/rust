@@ -568,7 +568,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprStruct(ref qpath, ref fields, ref base) => {
+            hir::ExprKind::Struct(ref qpath, ref fields, ref base) => {
                 let def = self.tables.qpath_def(qpath, expr.hir_id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
@@ -778,13 +778,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             return;
         }
         match expr.node {
-            hir::ExprAssign(.., ref rhs) | hir::ExprMatch(ref rhs, ..) => {
+            hir::ExprKind::Assign(.., ref rhs) | hir::ExprKind::Match(ref rhs, ..) => {
                 // Do not report duplicate errors for `x = y` and `match x { ... }`.
                 if self.check_expr_pat_type(rhs.hir_id, rhs.span) {
                     return;
                 }
             }
-            hir::ExprMethodCall(_, span, _) => {
+            hir::ExprKind::MethodCall(_, span, _) => {
                 // Method calls have to be checked specially.
                 self.span = span;
                 if let Some(def) = self.tables.type_dependent_defs().get(expr.hir_id) {

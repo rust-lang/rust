@@ -409,7 +409,7 @@ fn closure_to_block(closure_id: LocalDefId,
     let closure_id = tcx.hir.local_def_id_to_node_id(closure_id);
     match tcx.hir.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
-            hir::ExprClosure(.., body_id, _, _) => {
+            hir::ExprKind::Closure(.., body_id, _, _) => {
                 body_id.node_id
             }
             _ => {
@@ -722,7 +722,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
             move_data::Captured =>
                 (match self.tcx.hir.expect_expr(node_id).node {
-                    hir::ExprClosure(.., fn_decl_span, _) => fn_decl_span,
+                    hir::ExprKind::Closure(.., fn_decl_span, _) => fn_decl_span,
                     ref r => bug!("Captured({:?}) maps to non-closure: {:?}",
                                   the_move.id, r),
                 }, " (into closure)"),

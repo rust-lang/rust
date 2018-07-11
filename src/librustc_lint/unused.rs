@@ -53,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             _ => return,
         };
 
-        if let hir::ExprRet(..) = expr.node {
+        if let hir::ExprKind::Ret(..) = expr.node {
             return;
         }
 
@@ -74,9 +74,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         let mut fn_warned = false;
         let mut op_warned = false;
         let maybe_def = match expr.node {
-            hir::ExprCall(ref callee, _) => {
+            hir::ExprKind::Call(ref callee, _) => {
                 match callee.node {
-                    hir::ExprPath(ref qpath) => {
+                    hir::ExprKind::Path(ref qpath) => {
                         let def = cx.tables.qpath_def(qpath, callee.hir_id);
                         if let Def::Fn(_) = def {
                             Some(def)
@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     _ => None
                 }
             },
-            hir::ExprMethodCall(..) => {
+            hir::ExprKind::MethodCall(..) => {
                 cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
             },
             _ => None
@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             // Hardcoding operators here seemed more expedient than the
             // refactoring that would be needed to look up the `#[must_use]`
             // attribute which does exist on the comparison trait methods
-            hir::ExprBinary(bin_op, ..)  => {
+            hir::ExprKind::Binary(bin_op, ..)  => {
                 match bin_op.node {
                     hir::BinOpKind::Eq | hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Ne | hir::BinOpKind::Ge | hir::BinOpKind::Gt => {
                         Some("comparison")
@@ -116,7 +116,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     },
                 }
             },
-            hir::ExprUnary(..) => Some("unary operation"),
+            hir::ExprKind::Unary(..) => Some("unary operation"),
             _ => None
         };
 
@@ -447,7 +447,7 @@ impl LintPass for UnusedAllocation {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
-            hir::ExprBox(_) => {}
+            hir::ExprKind::Box(_) => {}
             _ => return,
         }
 

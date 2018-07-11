@@ -98,7 +98,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, ex);
 
         match ex.node {
-            hir::ExprMatch(ref scrut, ref arms, source) => {
+            hir::ExprKind::Match(ref scrut, ref arms, source) => {
                 self.check_match(scrut, arms, source);
             }
             _ => {}

@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
-            hir::ExprClosure(cc, _, body_id, _, _) => {
+            hir::ExprKind::Closure(cc, _, body_id, _, _) => {
                 let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
                 self.fcx

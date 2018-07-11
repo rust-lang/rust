@@ -12,7 +12,6 @@
 
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
-pub use self::ExprKind::*;
 pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
 pub use self::Item_::*;
@@ -1285,7 +1284,7 @@ pub struct AnonConst {
 pub struct Expr {
     pub id: NodeId,
     pub span: Span,
-    pub node: Expr_,
+    pub node: ExprKind,
     pub attrs: ThinVec<Attribute>,
     pub hir_id: HirId,
 }
@@ -1293,34 +1292,34 @@ pub struct Expr {
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.node {
-            ExprBox(_) => ExprPrecedence::Box,
-            ExprArray(_) => ExprPrecedence::Array,
-            ExprCall(..) => ExprPrecedence::Call,
-            ExprMethodCall(..) => ExprPrecedence::MethodCall,
-            ExprTup(_) => ExprPrecedence::Tup,
-            ExprBinary(op, ..) => ExprPrecedence::Binary(op.node.into()),
-            ExprUnary(..) => ExprPrecedence::Unary,
-            ExprLit(_) => ExprPrecedence::Lit,
-            ExprType(..) | ExprCast(..) => ExprPrecedence::Cast,
-            ExprIf(..) => ExprPrecedence::If,
-            ExprWhile(..) => ExprPrecedence::While,
-            ExprLoop(..) => ExprPrecedence::Loop,
-            ExprMatch(..) => ExprPrecedence::Match,
-            ExprClosure(..) => ExprPrecedence::Closure,
-            ExprBlock(..) => ExprPrecedence::Block,
-            ExprAssign(..) => ExprPrecedence::Assign,
-            ExprAssignOp(..) => ExprPrecedence::AssignOp,
-            ExprField(..) => ExprPrecedence::Field,
-            ExprIndex(..) => ExprPrecedence::Index,
-            ExprPath(..) => ExprPrecedence::Path,
-            ExprAddrOf(..) => ExprPrecedence::AddrOf,
-            ExprBreak(..) => ExprPrecedence::Break,
-            ExprContinue(..) => ExprPrecedence::Continue,
-            ExprRet(..) => ExprPrecedence::Ret,
-            ExprInlineAsm(..) => ExprPrecedence::InlineAsm,
-            ExprStruct(..) => ExprPrecedence::Struct,
-            ExprRepeat(..) => ExprPrecedence::Repeat,
-            ExprYield(..) => ExprPrecedence::Yield,
+            ExprKind::Box(_) => ExprPrecedence::Box,
+            ExprKind::Array(_) => ExprPrecedence::Array,
+            ExprKind::Call(..) => ExprPrecedence::Call,
+            ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
+            ExprKind::Tup(_) => ExprPrecedence::Tup,
+            ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node.into()),
+            ExprKind::Unary(..) => ExprPrecedence::Unary,
+            ExprKind::Lit(_) => ExprPrecedence::Lit,
+            ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
+            ExprKind::If(..) => ExprPrecedence::If,
+            ExprKind::While(..) => ExprPrecedence::While,
+            ExprKind::Loop(..) => ExprPrecedence::Loop,
+            ExprKind::Match(..) => ExprPrecedence::Match,
+            ExprKind::Closure(..) => ExprPrecedence::Closure,
+            ExprKind::Block(..) => ExprPrecedence::Block,
+            ExprKind::Assign(..) => ExprPrecedence::Assign,
+            ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
+            ExprKind::Field(..) => ExprPrecedence::Field,
+            ExprKind::Index(..) => ExprPrecedence::Index,
+            ExprKind::Path(..) => ExprPrecedence::Path,
+            ExprKind::AddrOf(..) => ExprPrecedence::AddrOf,
+            ExprKind::Break(..) => ExprPrecedence::Break,
+            ExprKind::Continue(..) => ExprPrecedence::Continue,
+            ExprKind::Ret(..) => ExprPrecedence::Ret,
+            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::Struct(..) => ExprPrecedence::Struct,
+            ExprKind::Repeat(..) => ExprPrecedence::Repeat,
+            ExprKind::Yield(..) => ExprPrecedence::Yield,
         }
     }
 }
@@ -1333,18 +1332,18 @@ impl fmt::Debug for Expr {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum Expr_ {
+pub enum ExprKind {
     /// A `box x` expression.
-    ExprBox(P<Expr>),
+    Box(P<Expr>),
     /// An array (`[a, b, c, d]`)
-    ExprArray(HirVec<Expr>),
+    Array(HirVec<Expr>),
     /// A function call
     ///
-    /// The first field resolves to the function itself (usually an `ExprPath`),
+    /// The first field resolves to the function itself (usually an `ExprKind::Path`),
     /// and the second field is the list of arguments.
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
-    ExprCall(P<Expr>, HirVec<Expr>),
+    Call(P<Expr>, HirVec<Expr>),
     /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
     /// The `PathSegment`/`Span` represent the method name and its generic arguments
@@ -1354,83 +1353,83 @@ pub enum Expr_ {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
-    ExprMethodCall(PathSegment, Span, HirVec<Expr>),
+    MethodCall(PathSegment, Span, HirVec<Expr>),
     /// A tuple (`(a, b, c ,d)`)
-    ExprTup(HirVec<Expr>),
+    Tup(HirVec<Expr>),
     /// A binary operation (For example: `a + b`, `a * b`)
-    ExprBinary(BinOp, P<Expr>, P<Expr>),
+    Binary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
-    ExprUnary(UnOp, P<Expr>),
+    Unary(UnOp, P<Expr>),
     /// A literal (For example: `1`, `"foo"`)
-    ExprLit(P<Lit>),
+    Lit(P<Lit>),
     /// A cast (`foo as f64`)
-    ExprCast(P<Expr>, P<Ty>),
-    ExprType(P<Expr>, P<Ty>),
+    Cast(P<Expr>, P<Ty>),
+    Type(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
     ///
     /// `if expr { expr } else { expr }`
-    ExprIf(P<Expr>, P<Expr>, Option<P<Expr>>),
+    If(P<Expr>, P<Expr>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
-    ExprWhile(P<Expr>, P<Block>, Option<Label>),
+    While(P<Expr>, P<Block>, Option<Label>),
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    ExprLoop(P<Block>, Option<Label>, LoopSource),
+    Loop(P<Block>, Option<Label>, LoopSource),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
-    ExprMatch(P<Expr>, HirVec<Arm>, MatchSource),
+    Match(P<Expr>, HirVec<Arm>, MatchSource),
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
     ///
     /// This may also be a generator literal, indicated by the final boolean,
     /// in that case there is an GeneratorClause.
-    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
+    Closure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
     /// A block (`'label: { ... }`)
-    ExprBlock(P<Block>, Option<Label>),
+    Block(P<Block>, Option<Label>),
 
     /// An assignment (`a = foo()`)
-    ExprAssign(P<Expr>, P<Expr>),
+    Assign(P<Expr>, P<Expr>),
     /// An assignment with an operator
     ///
     /// For example, `a += 1`.
-    ExprAssignOp(BinOp, P<Expr>, P<Expr>),
+    AssignOp(BinOp, P<Expr>, P<Expr>),
     /// Access of a named (`obj.foo`) or unnamed (`obj.0`) struct or tuple field
-    ExprField(P<Expr>, Ident),
+    Field(P<Expr>, Ident),
     /// An indexing operation (`foo[2]`)
-    ExprIndex(P<Expr>, P<Expr>),
+    Index(P<Expr>, P<Expr>),
 
     /// Path to a definition, possibly containing lifetime or type parameters.
-    ExprPath(QPath),
+    Path(QPath),
 
     /// A referencing operation (`&a` or `&mut a`)
-    ExprAddrOf(Mutability, P<Expr>),
+    AddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Destination, Option<P<Expr>>),
+    Break(Destination, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    ExprContinue(Destination),
+    Continue(Destination),
     /// A `return`, with an optional value to be returned
-    ExprRet(Option<P<Expr>>),
+    Ret(Option<P<Expr>>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
-    ExprInlineAsm(P<InlineAsm>, HirVec<Expr>, HirVec<Expr>),
+    InlineAsm(P<InlineAsm>, HirVec<Expr>, HirVec<Expr>),
 
     /// A struct or struct-like variant literal expression.
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    ExprStruct(QPath, HirVec<Field>, Option<P<Expr>>),
+    Struct(QPath, HirVec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
     /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    ExprRepeat(P<Expr>, AnonConst),
+    Repeat(P<Expr>, AnonConst),
 
     /// A suspension point for generators. This is `yield <expr>` in Rust.
-    ExprYield(P<Expr>),
+    Yield(P<Expr>),
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.
@@ -1480,7 +1479,7 @@ pub enum MatchSource {
     TryDesugar,
 }
 
-/// The loop type that yielded an ExprLoop
+/// The loop type that yielded an ExprKind::Loop
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum LoopSource {
     /// A `loop { .. }` loop

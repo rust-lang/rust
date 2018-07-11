@@ -392,43 +392,43 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         self.walk_adjustment(expr);
 
         match expr.node {
-            hir::ExprPath(_) => { }
+            hir::ExprKind::Path(_) => { }
 
-            hir::ExprType(ref subexpr, _) => {
+            hir::ExprKind::Type(ref subexpr, _) => {
                 self.walk_expr(&subexpr)
             }
 
-            hir::ExprUnary(hir::UnDeref, ref base) => {      // *base
+            hir::ExprKind::Unary(hir::UnDeref, ref base) => {      // *base
                 self.select_from_expr(&base);
             }
 
-            hir::ExprField(ref base, _) => {         // base.f
+            hir::ExprKind::Field(ref base, _) => {         // base.f
                 self.select_from_expr(&base);
             }
 
-            hir::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
+            hir::ExprKind::Index(ref lhs, ref rhs) => {       // lhs[rhs]
                 self.select_from_expr(&lhs);
                 self.consume_expr(&rhs);
             }
 
-            hir::ExprCall(ref callee, ref args) => {    // callee(args)
+            hir::ExprKind::Call(ref callee, ref args) => {    // callee(args)
                 self.walk_callee(expr, &callee);
                 self.consume_exprs(args);
             }
 
-            hir::ExprMethodCall(.., ref args) => { // callee.m(args)
+            hir::ExprKind::MethodCall(.., ref args) => { // callee.m(args)
                 self.consume_exprs(args);
             }
 
-            hir::ExprStruct(_, ref fields, ref opt_with) => {
+            hir::ExprKind::Struct(_, ref fields, ref opt_with) => {
                 self.walk_struct_expr(fields, opt_with);
             }
 
-            hir::ExprTup(ref exprs) => {
+            hir::ExprKind::Tup(ref exprs) => {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprIf(ref cond_expr, ref then_expr, ref opt_else_expr) => {
+            hir::ExprKind::If(ref cond_expr, ref then_expr, ref opt_else_expr) => {
                 self.consume_expr(&cond_expr);
                 self.walk_expr(&then_expr);
                 if let Some(ref else_expr) = *opt_else_expr {
@@ -436,7 +436,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            hir::ExprMatch(ref discr, ref arms, _) => {
+            hir::ExprKind::Match(ref discr, ref arms, _) => {
                 let discr_cmt = Rc::new(return_if_err!(self.mc.cat_expr(&discr)));
                 let r = self.tcx().types.re_empty;
                 self.borrow_expr(&discr, r, ty::ImmBorrow, MatchDiscriminant);
@@ -449,11 +449,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            hir::ExprArray(ref exprs) => {
+            hir::ExprKind::Array(ref exprs) => {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprAddrOf(m, ref base) => {   // &base
+            hir::ExprKind::AddrOf(m, ref base) => {   // &base
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
                 let expr_ty = return_if_err!(self.mc.expr_ty(expr));
@@ -463,7 +463,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
+            hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
                 for (o, output) in ia.outputs.iter().zip(outputs) {
                     if o.is_indirect {
                         self.consume_expr(output);
@@ -479,47 +479,47 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_exprs(inputs);
             }
 
-            hir::ExprContinue(..) |
-            hir::ExprLit(..) => {}
+            hir::ExprKind::Continue(..) |
+            hir::ExprKind::Lit(..) => {}
 
-            hir::ExprLoop(ref blk, _, _) => {
+            hir::ExprKind::Loop(ref blk, _, _) => {
                 self.walk_block(&blk);
             }
 
-            hir::ExprWhile(ref cond_expr, ref blk, _) => {
+            hir::ExprKind::While(ref cond_expr, ref blk, _) => {
                 self.consume_expr(&cond_expr);
                 self.walk_block(&blk);
             }
 
-            hir::ExprUnary(_, ref lhs) => {
+            hir::ExprKind::Unary(_, ref lhs) => {
                 self.consume_expr(&lhs);
             }
 
-            hir::ExprBinary(_, ref lhs, ref rhs) => {
+            hir::ExprKind::Binary(_, ref lhs, ref rhs) => {
                 self.consume_expr(&lhs);
                 self.consume_expr(&rhs);
             }
 
-            hir::ExprBlock(ref blk, _) => {
+            hir::ExprKind::Block(ref blk, _) => {
                 self.walk_block(&blk);
             }
 
-            hir::ExprBreak(_, ref opt_expr) | hir::ExprRet(ref opt_expr) => {
+            hir::ExprKind::Break(_, ref opt_expr) | hir::ExprKind::Ret(ref opt_expr) => {
                 if let Some(ref expr) = *opt_expr {
                     self.consume_expr(&expr);
                 }
             }
 
-            hir::ExprAssign(ref lhs, ref rhs) => {
+            hir::ExprKind::Assign(ref lhs, ref rhs) => {
                 self.mutate_expr(expr, &lhs, MutateMode::JustWrite);
                 self.consume_expr(&rhs);
             }
 
-            hir::ExprCast(ref base, _) => {
+            hir::ExprKind::Cast(ref base, _) => {
                 self.consume_expr(&base);
             }
 
-            hir::ExprAssignOp(_, ref lhs, ref rhs) => {
+            hir::ExprKind::AssignOp(_, ref lhs, ref rhs) => {
                 if self.mc.tables.is_method_call(expr) {
                     self.consume_expr(lhs);
                 } else {
@@ -528,19 +528,19 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&rhs);
             }
 
-            hir::ExprRepeat(ref base, _) => {
+            hir::ExprKind::Repeat(ref base, _) => {
                 self.consume_expr(&base);
             }
 
-            hir::ExprClosure(.., fn_decl_span, _) => {
+            hir::ExprKind::Closure(.., fn_decl_span, _) => {
                 self.walk_captures(expr, fn_decl_span)
             }
 
-            hir::ExprBox(ref base) => {
+            hir::ExprKind::Box(ref base) => {
                 self.consume_expr(&base);
             }
 
-            hir::ExprYield(ref value) => {
+            hir::ExprKind::Yield(ref value) => {
                 self.consume_expr(&value);
             }
         }

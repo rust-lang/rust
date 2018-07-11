@@ -200,7 +200,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
     let kind = match expr.node {
         // Here comes the interesting stuff:
-        hir::ExprMethodCall(.., ref args) => {
+        hir::ExprKind::MethodCall(.., ref args) => {
             // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
             let expr = method_callee(cx, expr, None);
             let args = args.iter()
@@ -213,7 +213,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprCall(ref fun, ref args) => {
+        hir::ExprKind::Call(ref fun, ref args) => {
             if cx.tables().is_method_call(expr) {
                 // The callee is something implementing Fn, FnMut, or FnOnce.
                 // Find the actual method implementation being called and
@@ -238,8 +238,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     args: vec![fun.to_ref(), tupled_args.to_ref()],
                 }
             } else {
-                let adt_data = if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = fun.node {
-                    // Tuple-like ADTs are represented as ExprCall. We convert them here.
+                let adt_data = if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = fun.node {
+                    // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     expr_ty.ty_adt_def().and_then(|adt_def| {
                         match path.def {
                             Def::VariantCtor(variant_id, CtorKind::Fn) => {
@@ -280,7 +280,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprAddrOf(mutbl, ref expr) => {
+        hir::ExprKind::AddrOf(mutbl, ref expr) => {
             let region = match expr_ty.sty {
                 ty::TyRef(r, _, _) => r,
                 _ => span_bug!(expr.span, "type of & not region"),
@@ -292,16 +292,16 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprBlock(ref blk, _) => ExprKind::Block { body: &blk },
+        hir::ExprKind::Block(ref blk, _) => ExprKind::Block { body: &blk },
 
-        hir::ExprAssign(ref lhs, ref rhs) => {
+        hir::ExprKind::Assign(ref lhs, ref rhs) => {
             ExprKind::Assign {
                 lhs: lhs.to_ref(),
                 rhs: rhs.to_ref(),
             }
         }
 
-        hir::ExprAssignOp(op, ref lhs, ref rhs) => {
+        hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
             if cx.tables().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![lhs.to_ref(), rhs.to_ref()])
             } else {
@@ -313,11 +313,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprLit(ref lit) => ExprKind::Literal {
+        hir::ExprKind::Lit(ref lit) => ExprKind::Literal {
             literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, false),
         },
 
-        hir::ExprBinary(op, ref lhs, ref rhs) => {
+        hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
             if cx.tables().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![lhs.to_ref(), rhs.to_ref()])
             } else {
@@ -367,7 +367,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprIndex(ref lhs, ref index) => {
+        hir::ExprKind::Index(ref lhs, ref index) => {
             if cx.tables().is_method_call(expr) {
                 overloaded_place(cx, expr, expr_ty, None, vec![lhs.to_ref(), index.to_ref()])
             } else {
@@ -378,7 +378,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprUnary(hir::UnOp::UnDeref, ref arg) => {
+        hir::ExprKind::Unary(hir::UnOp::UnDeref, ref arg) => {
             if cx.tables().is_method_call(expr) {
                 overloaded_place(cx, expr, expr_ty, None, vec![arg.to_ref()])
             } else {
@@ -386,7 +386,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprUnary(hir::UnOp::UnNot, ref arg) => {
+        hir::ExprKind::Unary(hir::UnOp::UnNot, ref arg) => {
             if cx.tables().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![arg.to_ref()])
             } else {
@@ -397,11 +397,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprUnary(hir::UnOp::UnNeg, ref arg) => {
+        hir::ExprKind::Unary(hir::UnOp::UnNeg, ref arg) => {
             if cx.tables().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![arg.to_ref()])
             } else {
-                if let hir::ExprLit(ref lit) = arg.node {
+                if let hir::ExprKind::Lit(ref lit) = arg.node {
                     ExprKind::Literal {
                         literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
                     }
@@ -414,7 +414,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprStruct(ref qpath, ref fields, ref base) => {
+        hir::ExprKind::Struct(ref qpath, ref fields, ref base) => {
             match expr_ty.sty {
                 ty::TyAdt(adt, substs) => {
                     match adt.adt_kind() {
@@ -467,7 +467,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprClosure(..) => {
+        hir::ExprKind::Closure(..) => {
             let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs, movability) = match closure_ty.sty {
                 ty::TyClosure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
@@ -492,12 +492,12 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprPath(ref qpath) => {
+        hir::ExprKind::Path(ref qpath) => {
             let def = cx.tables().qpath_def(qpath, expr.hir_id);
             convert_path_expr(cx, expr, def)
         }
 
-        hir::ExprInlineAsm(ref asm, ref outputs, ref inputs) => {
+        hir::ExprKind::InlineAsm(ref asm, ref outputs, ref inputs) => {
             ExprKind::InlineAsm {
                 asm,
                 outputs: outputs.to_ref(),
@@ -506,7 +506,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         // Now comes the rote stuff:
-        hir::ExprRepeat(ref v, ref count) => {
+        hir::ExprKind::Repeat(ref v, ref count) => {
             let def_id = cx.tcx.hir.local_def_id(count.id);
             let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
@@ -533,8 +533,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 count,
             }
         }
-        hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },
-        hir::ExprBreak(dest, ref value) => {
+        hir::ExprKind::Ret(ref v) => ExprKind::Return { value: v.to_ref() },
+        hir::ExprKind::Break(dest, ref value) => {
             match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
                     label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(target_id).local_id),
@@ -543,7 +543,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 Err(err) => bug!("invalid loop id for break: {}", err)
             }
         }
-        hir::ExprContinue(dest) => {
+        hir::ExprKind::Continue(dest) => {
             match dest.target_id {
                 Ok(loop_id) => ExprKind::Continue {
                     label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(loop_id).local_id),
@@ -551,38 +551,38 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 Err(err) => bug!("invalid loop id for continue: {}", err)
             }
         }
-        hir::ExprMatch(ref discr, ref arms, _) => {
+        hir::ExprKind::Match(ref discr, ref arms, _) => {
             ExprKind::Match {
                 discriminant: discr.to_ref(),
                 arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),
             }
         }
-        hir::ExprIf(ref cond, ref then, ref otherwise) => {
+        hir::ExprKind::If(ref cond, ref then, ref otherwise) => {
             ExprKind::If {
                 condition: cond.to_ref(),
                 then: then.to_ref(),
                 otherwise: otherwise.to_ref(),
             }
         }
-        hir::ExprWhile(ref cond, ref body, _) => {
+        hir::ExprKind::While(ref cond, ref body, _) => {
             ExprKind::Loop {
                 condition: Some(cond.to_ref()),
                 body: block::to_expr_ref(cx, body),
             }
         }
-        hir::ExprLoop(ref body, _, _) => {
+        hir::ExprKind::Loop(ref body, _, _) => {
             ExprKind::Loop {
                 condition: None,
                 body: block::to_expr_ref(cx, body),
             }
         }
-        hir::ExprField(ref source, ..) => {
+        hir::ExprKind::Field(ref source, ..) => {
             ExprKind::Field {
                 lhs: source.to_ref(),
                 name: Field::new(cx.tcx.field_index(expr.id, cx.tables)),
             }
         }
-        hir::ExprCast(ref source, _) => {
+        hir::ExprKind::Cast(ref source, _) => {
             // Check to see if this cast is a "coercion cast", where the cast is actually done
             // using a coercion (or is a no-op).
             if let Some(&TyCastKind::CoercionCast) = cx.tables()
@@ -602,7 +602,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 // }
                 // The correct solution would be to add symbolic computations to miri,
                 // so we wouldn't have to compute and store the actual value
-                let var = if let hir::ExprPath(ref qpath) = source.node {
+                let var = if let hir::ExprKind::Path(ref qpath) = source.node {
                     let def = cx.tables().qpath_def(qpath, source.hir_id);
                     cx
                         .tables()
@@ -666,16 +666,16 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ExprKind::Cast { source }
             }
         }
-        hir::ExprType(ref source, _) => return source.make_mirror(cx),
-        hir::ExprBox(ref value) => {
+        hir::ExprKind::Type(ref source, _) => return source.make_mirror(cx),
+        hir::ExprKind::Box(ref value) => {
             ExprKind::Box {
                 value: value.to_ref(),
             }
         }
-        hir::ExprArray(ref fields) => ExprKind::Array { fields: fields.to_ref() },
-        hir::ExprTup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
+        hir::ExprKind::Array(ref fields) => ExprKind::Array { fields: fields.to_ref() },
+        hir::ExprKind::Tup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
 
-        hir::ExprYield(ref v) => ExprKind::Yield { value: v.to_ref() },
+        hir::ExprKind::Yield(ref v) => ExprKind::Yield { value: v.to_ref() },
     };
 
     Expr {

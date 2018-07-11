@@ -1080,7 +1080,7 @@ impl<'a> State<'a> {
             Some(_else) => {
                 match _else.node {
                     // "another else-if"
-                    hir::ExprIf(ref i, ref then, ref e) => {
+                    hir::ExprKind::If(ref i, ref then, ref e) => {
                         self.cbox(indent_unit - 1)?;
                         self.ibox(0)?;
                         self.s.word(" else if ")?;
@@ -1090,7 +1090,7 @@ impl<'a> State<'a> {
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
                     // "final else"
-                    hir::ExprBlock(ref b, _) => {
+                    hir::ExprKind::Block(ref b, _) => {
                         self.cbox(indent_unit - 1)?;
                         self.ibox(0)?;
                         self.s.word(" else ")?;
@@ -1162,9 +1162,9 @@ impl<'a> State<'a> {
         let needs_par = match expr.node {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
-            hir::ExprClosure(..) |
-            hir::ExprRet(..) |
-            hir::ExprBreak(..) => true,
+            hir::ExprKind::Closure(..) |
+            hir::ExprKind::Ret(..) |
+            hir::ExprKind::Break(..) => true,
 
             _ => contains_exterior_struct_lit(expr),
         };
@@ -1247,7 +1247,7 @@ impl<'a> State<'a> {
     fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) -> io::Result<()> {
         let prec =
             match func.node {
-                hir::ExprField(..) => parser::PREC_FORCE_PAREN,
+                hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
                 _ => parser::PREC_POSTFIX,
             };
 
@@ -1292,8 +1292,8 @@ impl<'a> State<'a> {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
-            (&hir::ExprCast { .. }, hir::BinOpKind::Lt) |
-            (&hir::ExprCast { .. }, hir::BinOpKind::Shl) => parser::PREC_FORCE_PAREN,
+            (&hir::ExprKind::Cast { .. }, hir::BinOpKind::Lt) |
+            (&hir::ExprKind::Cast { .. }, hir::BinOpKind::Shl) => parser::PREC_FORCE_PAREN,
             _ => left_prec,
         };
 
@@ -1323,57 +1323,57 @@ impl<'a> State<'a> {
         self.ibox(indent_unit)?;
         self.ann.pre(self, NodeExpr(expr))?;
         match expr.node {
-            hir::ExprBox(ref expr) => {
+            hir::ExprKind::Box(ref expr) => {
                 self.word_space("box")?;
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)?;
             }
-            hir::ExprArray(ref exprs) => {
+            hir::ExprKind::Array(ref exprs) => {
                 self.print_expr_vec(exprs)?;
             }
-            hir::ExprRepeat(ref element, ref count) => {
+            hir::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(&element, count)?;
             }
-            hir::ExprStruct(ref qpath, ref fields, ref wth) => {
+            hir::ExprKind::Struct(ref qpath, ref fields, ref wth) => {
                 self.print_expr_struct(qpath, &fields[..], wth)?;
             }
-            hir::ExprTup(ref exprs) => {
+            hir::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(exprs)?;
             }
-            hir::ExprCall(ref func, ref args) => {
+            hir::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(&func, args)?;
             }
-            hir::ExprMethodCall(ref segment, _, ref args) => {
+            hir::ExprKind::MethodCall(ref segment, _, ref args) => {
                 self.print_expr_method_call(segment, args)?;
             }
-            hir::ExprBinary(op, ref lhs, ref rhs) => {
+            hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, &lhs, &rhs)?;
             }
-            hir::ExprUnary(op, ref expr) => {
+            hir::ExprKind::Unary(op, ref expr) => {
                 self.print_expr_unary(op, &expr)?;
             }
-            hir::ExprAddrOf(m, ref expr) => {
+            hir::ExprKind::AddrOf(m, ref expr) => {
                 self.print_expr_addr_of(m, &expr)?;
             }
-            hir::ExprLit(ref lit) => {
+            hir::ExprKind::Lit(ref lit) => {
                 self.print_literal(&lit)?;
             }
-            hir::ExprCast(ref expr, ref ty) => {
+            hir::ExprKind::Cast(ref expr, ref ty) => {
                 let prec = AssocOp::As.precedence() as i8;
                 self.print_expr_maybe_paren(&expr, prec)?;
                 self.s.space()?;
                 self.word_space("as")?;
                 self.print_type(&ty)?;
             }
-            hir::ExprType(ref expr, ref ty) => {
+            hir::ExprKind::Type(ref expr, ref ty) => {
                 let prec = AssocOp::Colon.precedence() as i8;
                 self.print_expr_maybe_paren(&expr, prec)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
             }
-            hir::ExprIf(ref test, ref blk, ref elseopt) => {
+            hir::ExprKind::If(ref test, ref blk, ref elseopt) => {
                 self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e))?;
             }
-            hir::ExprWhile(ref test, ref blk, opt_label) => {
+            hir::ExprKind::While(ref test, ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident)?;
                     self.word_space(":")?;
@@ -1383,7 +1383,7 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.print_block(&blk)?;
             }
-            hir::ExprLoop(ref blk, opt_label, _) => {
+            hir::ExprKind::Loop(ref blk, opt_label, _) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident)?;
                     self.word_space(":")?;
@@ -1392,7 +1392,7 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.print_block(&blk)?;
             }
-            hir::ExprMatch(ref expr, ref arms, _) => {
+            hir::ExprKind::Match(ref expr, ref arms, _) => {
                 self.cbox(indent_unit)?;
                 self.ibox(4)?;
                 self.word_nbsp("match")?;
@@ -1404,7 +1404,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, indent_unit)?;
             }
-            hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
+            hir::ExprKind::Closure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_closure_args(&decl, body)?;
@@ -1419,7 +1419,7 @@ impl<'a> State<'a> {
                 // empty box to satisfy the close.
                 self.ibox(0)?;
             }
-            hir::ExprBlock(ref blk, opt_label) => {
+            hir::ExprKind::Block(ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident)?;
                     self.word_space(":")?;
@@ -1430,14 +1430,14 @@ impl<'a> State<'a> {
                 self.ibox(0)?;
                 self.print_block(&blk)?;
             }
-            hir::ExprAssign(ref lhs, ref rhs) => {
+            hir::ExprKind::Assign(ref lhs, ref rhs) => {
                 let prec = AssocOp::Assign.precedence() as i8;
                 self.print_expr_maybe_paren(&lhs, prec + 1)?;
                 self.s.space()?;
                 self.word_space("=")?;
                 self.print_expr_maybe_paren(&rhs, prec)?;
             }
-            hir::ExprAssignOp(op, ref lhs, ref rhs) => {
+            hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                 let prec = AssocOp::Assign.precedence() as i8;
                 self.print_expr_maybe_paren(&lhs, prec + 1)?;
                 self.s.space()?;
@@ -1445,21 +1445,21 @@ impl<'a> State<'a> {
                 self.word_space("=")?;
                 self.print_expr_maybe_paren(&rhs, prec)?;
             }
-            hir::ExprField(ref expr, ident) => {
+            hir::ExprKind::Field(ref expr, ident) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;
                 self.s.word(".")?;
                 self.print_ident(ident)?;
             }
-            hir::ExprIndex(ref expr, ref index) => {
+            hir::ExprKind::Index(ref expr, ref index) => {
                 self.print_expr_maybe_paren(&expr, parser::PREC_POSTFIX)?;
                 self.s.word("[")?;
                 self.print_expr(&index)?;
                 self.s.word("]")?;
             }
-            hir::ExprPath(ref qpath) => {
+            hir::ExprKind::Path(ref qpath) => {
                 self.print_qpath(qpath, true)?
             }
-            hir::ExprBreak(destination, ref opt_expr) => {
+            hir::ExprKind::Break(destination, ref opt_expr) => {
                 self.s.word("break")?;
                 self.s.space()?;
                 if let Some(label) = destination.label {
@@ -1471,7 +1471,7 @@ impl<'a> State<'a> {
                     self.s.space()?;
                 }
             }
-            hir::ExprContinue(destination) => {
+            hir::ExprKind::Continue(destination) => {
                 self.s.word("continue")?;
                 self.s.space()?;
                 if let Some(label) = destination.label {
@@ -1479,7 +1479,7 @@ impl<'a> State<'a> {
                     self.s.space()?
                 }
             }
-            hir::ExprRet(ref result) => {
+            hir::ExprKind::Ret(ref result) => {
                 self.s.word("return")?;
                 match *result {
                     Some(ref expr) => {
@@ -1489,7 +1489,7 @@ impl<'a> State<'a> {
                     _ => (),
                 }
             }
-            hir::ExprInlineAsm(ref a, ref outputs, ref inputs) => {
+            hir::ExprKind::InlineAsm(ref a, ref outputs, ref inputs) => {
                 self.s.word("asm!")?;
                 self.popen()?;
                 self.print_string(&a.asm.as_str(), a.asm_str_style)?;
@@ -1554,7 +1554,7 @@ impl<'a> State<'a> {
 
                 self.pclose()?;
             }
-            hir::ExprYield(ref expr) => {
+            hir::ExprKind::Yield(ref expr) => {
                 self.word_space("yield")?;
                 self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
             }
@@ -1959,7 +1959,7 @@ impl<'a> State<'a> {
         self.word_space("=>")?;
 
         match arm.body.node {
-            hir::ExprBlock(ref blk, opt_label) => {
+            hir::ExprKind::Block(ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident)?;
                     self.word_space(":")?;
@@ -2384,11 +2384,11 @@ impl<'a> State<'a> {
 /// isn't parsed as (if true {...} else {...} | x) | 5
 fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
     match e.node {
-        hir::ExprIf(..) |
-        hir::ExprMatch(..) |
-        hir::ExprBlock(..) |
-        hir::ExprWhile(..) |
-        hir::ExprLoop(..) => false,
+        hir::ExprKind::If(..) |
+        hir::ExprKind::Match(..) |
+        hir::ExprKind::Block(..) |
+        hir::ExprKind::While(..) |
+        hir::ExprKind::Loop(..) => false,
         _ => true,
     }
 }
@@ -2445,24 +2445,24 @@ fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
 fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
     match value.node {
-        hir::ExprStruct(..) => true,
+        hir::ExprKind::Struct(..) => true,
 
-        hir::ExprAssign(ref lhs, ref rhs) |
-        hir::ExprAssignOp(_, ref lhs, ref rhs) |
-        hir::ExprBinary(_, ref lhs, ref rhs) => {
+        hir::ExprKind::Assign(ref lhs, ref rhs) |
+        hir::ExprKind::AssignOp(_, ref lhs, ref rhs) |
+        hir::ExprKind::Binary(_, ref lhs, ref rhs) => {
             // X { y: 1 } + X { y: 2 }
             contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
         }
-        hir::ExprUnary(_, ref x) |
-        hir::ExprCast(ref x, _) |
-        hir::ExprType(ref x, _) |
-        hir::ExprField(ref x, _) |
-        hir::ExprIndex(ref x, _) => {
+        hir::ExprKind::Unary(_, ref x) |
+        hir::ExprKind::Cast(ref x, _) |
+        hir::ExprKind::Type(ref x, _) |
+        hir::ExprKind::Field(ref x, _) |
+        hir::ExprKind::Index(ref x, _) => {
             // &X { y: 1 }, X { y: 1 }.y
             contains_exterior_struct_lit(&x)
         }
 
-        hir::ExprMethodCall(.., ref exprs) => {
+        hir::ExprKind::MethodCall(.., ref exprs) => {
             // X { y: 1 }.bar(...)
             contains_exterior_struct_lit(&exprs[0])
         }
