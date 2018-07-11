@@ -102,16 +102,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             // attribute which does exist on the comparison trait methods
             hir::ExprBinary(bin_op, ..)  => {
                 match bin_op.node {
-                    hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => {
+                    hir::BinOpKind::Eq | hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Ne | hir::BinOpKind::Ge | hir::BinOpKind::Gt => {
                         Some("comparison")
                     },
-                    hir::BiAdd | hir::BiSub | hir::BiDiv | hir::BiMul | hir::BiRem => {
+                    hir::BinOpKind::Add | hir::BinOpKind::Sub | hir::BinOpKind::Div | hir::BinOpKind::Mul | hir::BinOpKind::Rem => {
                         Some("arithmetic operation")
                     },
-                    hir::BiAnd | hir::BiOr => {
+                    hir::BinOpKind::And | hir::BinOpKind::Or => {
                         Some("logical operation")
                     },
-                    hir::BiBitXor | hir::BiBitAnd | hir::BiBitOr | hir::BiShl | hir::BiShr => {
+                    hir::BinOpKind::BitXor | hir::BinOpKind::BitAnd | hir::BinOpKind::BitOr | hir::BinOpKind::Shl | hir::BinOpKind::Shr => {
                         Some("bitwise operation")
                     },
                 }

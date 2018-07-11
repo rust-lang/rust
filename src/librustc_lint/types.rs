@@ -194,11 +194,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn is_valid<T: cmp::PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
             match binop.node {
-                hir::BiLt => v > min && v <= max,
-                hir::BiLe => v >= min && v < max,
-                hir::BiGt => v >= min && v < max,
-                hir::BiGe => v > min && v <= max,
-                hir::BiEq | hir::BiNe => v >= min && v <= max,
+                hir::BinOpKind::Lt => v > min && v <= max,
+                hir::BinOpKind::Le => v >= min && v < max,
+                hir::BinOpKind::Gt => v >= min && v < max,
+                hir::BinOpKind::Ge => v > min && v <= max,
+                hir::BinOpKind::Eq | hir::BinOpKind::Ne => v >= min && v <= max,
                 _ => bug!(),
             }
         }
@@ -206,10 +206,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
             codemap::respan(binop.span,
                             match binop.node {
-                                hir::BiLt => hir::BiGt,
-                                hir::BiLe => hir::BiGe,
-                                hir::BiGt => hir::BiLt,
-                                hir::BiGe => hir::BiLe,
+                                hir::BinOpKind::Lt => hir::BinOpKind::Gt,
+                                hir::BinOpKind::Le => hir::BinOpKind::Ge,
+                                hir::BinOpKind::Gt => hir::BinOpKind::Lt,
+                                hir::BinOpKind::Ge => hir::BinOpKind::Le,
                                 _ => return binop,
                             })
         }
@@ -285,7 +285,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn is_comparison(binop: hir::BinOp) -> bool {
             match binop.node {
-                hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => true,
+                hir::BinOpKind::Eq | hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Ne | hir::BinOpKind::Ge | hir::BinOpKind::Gt => true,
                 _ => false,
             }
         }

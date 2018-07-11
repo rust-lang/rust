@@ -943,8 +943,8 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
             // scopes, meaning that temporaries cannot outlive them.
             // This ensures fixed size stacks.
 
-            hir::ExprBinary(codemap::Spanned { node: hir::BiAnd, .. }, _, ref r) |
-            hir::ExprBinary(codemap::Spanned { node: hir::BiOr, .. }, _, ref r) => {
+            hir::ExprKind::Binary(codemap::Spanned { node: hir::BinOpKind::And, .. }, _, ref r) |
+            hir::ExprKind::Binary(codemap::Spanned { node: hir::BinOpKind::Or, .. }, _, ref r) => {
                 // For shortcircuiting operators, mark the RHS as a terminating
                 // scope since it only executes conditionally.
                 terminating(r.hir_id.local_id);

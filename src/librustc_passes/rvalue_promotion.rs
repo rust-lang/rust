@@ -356,9 +356,9 @@ fn check_expr_kind<'a, 'tcx>(
             }
             match v.tables.node_id_to_type(lhs.hir_id).sty {
                 ty::TyRawPtr(_) => {
-                    assert!(op.node == hir::BiEq || op.node == hir::BiNe ||
-                        op.node == hir::BiLe || op.node == hir::BiLt ||
-                        op.node == hir::BiGe || op.node == hir::BiGt);
+                    assert!(op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne ||
+                        op.node == hir::BinOpKind::Le || op.node == hir::BinOpKind::Lt ||
+                        op.node == hir::BinOpKind::Ge || op.node == hir::BinOpKind::Gt);
 
                     NotPromotable
                 }

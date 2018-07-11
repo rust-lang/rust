@@ -350,7 +350,7 @@ pub fn build_unchecked_lshift<'a, 'tcx>(
     lhs: ValueRef,
     rhs: ValueRef
 ) -> ValueRef {
-    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOp_::BiShl, lhs, rhs);
+    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
     bx.shl(lhs, rhs)
@@ -359,7 +359,7 @@ pub fn build_unchecked_lshift<'a, 'tcx>(
 pub fn build_unchecked_rshift<'a, 'tcx>(
     bx: &Builder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
-    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOp_::BiShr, lhs, rhs);
+    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bx, rhs);
     let is_signed = lhs_t.is_signed();

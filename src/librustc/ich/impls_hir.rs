@@ -437,28 +437,28 @@ impl_stable_hash_for!(enum hir::PatKind {
     Slice(one, two, three)
 });
 
-impl_stable_hash_for!(enum hir::BinOp_ {
-    BiAdd,
-    BiSub,
-    BiMul,
-    BiDiv,
-    BiRem,
-    BiAnd,
-    BiOr,
-    BiBitXor,
-    BiBitAnd,
-    BiBitOr,
-    BiShl,
-    BiShr,
-    BiEq,
-    BiLt,
-    BiLe,
-    BiNe,
-    BiGe,
-    BiGt
+impl_stable_hash_for!(enum hir::BinOpKind {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    And,
+    Or,
+    BitXor,
+    BitAnd,
+    BitOr,
+    Shl,
+    Shr,
+    Eq,
+    Lt,
+    Le,
+    Ne,
+    Ge,
+    Gt
 });
 
-impl_stable_hash_for_spanned!(hir::BinOp_);
+impl_stable_hash_for_spanned!(hir::BinOpKind);
 
 impl_stable_hash_for!(enum hir::UnOp {
     UnDeref,

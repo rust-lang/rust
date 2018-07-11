@@ -325,14 +325,14 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 match (op.node, cx.constness) {
                     // FIXME(eddyb) use logical ops in constants when
                     // they can handle that kind of control-flow.
-                    (hir::BinOp_::BiAnd, hir::Constness::Const) => {
+                    (hir::BinOpKind::And, hir::Constness::Const) => {
                         ExprKind::Binary {
                             op: BinOp::BitAnd,
                             lhs: lhs.to_ref(),
                             rhs: rhs.to_ref(),
                         }
                     }
-                    (hir::BinOp_::BiOr, hir::Constness::Const) => {
+                    (hir::BinOpKind::Or, hir::Constness::Const) => {
                         ExprKind::Binary {
                             op: BinOp::BitOr,
                             lhs: lhs.to_ref(),
@@ -340,14 +340,14 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         }
                     }
 
-                    (hir::BinOp_::BiAnd, hir::Constness::NotConst) => {
+                    (hir::BinOpKind::And, hir::Constness::NotConst) => {
                         ExprKind::LogicalOp {
                             op: LogicalOp::And,
                             lhs: lhs.to_ref(),
                             rhs: rhs.to_ref(),
                         }
                     }
-                    (hir::BinOp_::BiOr, hir::Constness::NotConst) => {
+                    (hir::BinOpKind::Or, hir::Constness::NotConst) => {
                         ExprKind::LogicalOp {
                             op: LogicalOp::Or,
                             lhs: lhs.to_ref(),
@@ -930,24 +930,24 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 }
 
 
-fn bin_op(op: hir::BinOp_) -> BinOp {
+fn bin_op(op: hir::BinOpKind) -> BinOp {
     match op {
-        hir::BinOp_::BiAdd => BinOp::Add,
-        hir::BinOp_::BiSub => BinOp::Sub,
-        hir::BinOp_::BiMul => BinOp::Mul,
-        hir::BinOp_::BiDiv => BinOp::Div,
-        hir::BinOp_::BiRem => BinOp::Rem,
-        hir::BinOp_::BiBitXor => BinOp::BitXor,
-        hir::BinOp_::BiBitAnd => BinOp::BitAnd,
-        hir::BinOp_::BiBitOr => BinOp::BitOr,
-        hir::BinOp_::BiShl => BinOp::Shl,
-        hir::BinOp_::BiShr => BinOp::Shr,
-        hir::BinOp_::BiEq => BinOp::Eq,
-        hir::BinOp_::BiLt => BinOp::Lt,
-        hir::BinOp_::BiLe => BinOp::Le,
-        hir::BinOp_::BiNe => BinOp::Ne,
-        hir::BinOp_::BiGe => BinOp::Ge,
-        hir::BinOp_::BiGt => BinOp::Gt,
+        hir::BinOpKind::Add => BinOp::Add,
+        hir::BinOpKind::Sub => BinOp::Sub,
+        hir::BinOpKind::Mul => BinOp::Mul,
+        hir::BinOpKind::Div => BinOp::Div,
+        hir::BinOpKind::Rem => BinOp::Rem,
+        hir::BinOpKind::BitXor => BinOp::BitXor,
+        hir::BinOpKind::BitAnd => BinOp::BitAnd,
+        hir::BinOpKind::BitOr => BinOp::BitOr,
+        hir::BinOpKind::Shl => BinOp::Shl,
+        hir::BinOpKind::Shr => BinOp::Shr,
+        hir::BinOpKind::Eq => BinOp::Eq,
+        hir::BinOpKind::Lt => BinOp::Lt,
+        hir::BinOpKind::Le => BinOp::Le,
+        hir::BinOpKind::Ne => BinOp::Ne,
+        hir::BinOpKind::Ge => BinOp::Ge,
+        hir::BinOpKind::Gt => BinOp::Gt,
         _ => bug!("no equivalent for ast binop {:?}", op),
     }
 }

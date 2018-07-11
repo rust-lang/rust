@@ -10,7 +10,6 @@
 
 // The Rust HIR.
 
-pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
 pub use self::Decl_::*;
@@ -941,98 +940,103 @@ impl Mutability {
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, Hash)]
-pub enum BinOp_ {
+pub enum BinOpKind {
     /// The `+` operator (addition)
-    BiAdd,
+    Add,
     /// The `-` operator (subtraction)
-    BiSub,
+    Sub,
     /// The `*` operator (multiplication)
-    BiMul,
+    Mul,
     /// The `/` operator (division)
-    BiDiv,
+    Div,
     /// The `%` operator (modulus)
-    BiRem,
+    Rem,
     /// The `&&` operator (logical and)
-    BiAnd,
+    And,
     /// The `||` operator (logical or)
-    BiOr,
+    Or,
     /// The `^` operator (bitwise xor)
-    BiBitXor,
+    BitXor,
     /// The `&` operator (bitwise and)
-    BiBitAnd,
+    BitAnd,
     /// The `|` operator (bitwise or)
-    BiBitOr,
+    BitOr,
     /// The `<<` operator (shift left)
-    BiShl,
+    Shl,
     /// The `>>` operator (shift right)
-    BiShr,
+    Shr,
     /// The `==` operator (equality)
-    BiEq,
+    Eq,
     /// The `<` operator (less than)
-    BiLt,
+    Lt,
     /// The `<=` operator (less than or equal to)
-    BiLe,
+    Le,
     /// The `!=` operator (not equal to)
-    BiNe,
+    Ne,
     /// The `>=` operator (greater than or equal to)
-    BiGe,
+    Ge,
     /// The `>` operator (greater than)
-    BiGt,
+    Gt,
 }
 
-impl BinOp_ {
+impl BinOpKind {
     pub fn as_str(self) -> &'static str {
         match self {
-            BiAdd => "+",
-            BiSub => "-",
-            BiMul => "*",
-            BiDiv => "/",
-            BiRem => "%",
-            BiAnd => "&&",
-            BiOr => "||",
-            BiBitXor => "^",
-            BiBitAnd => "&",
-            BiBitOr => "|",
-            BiShl => "<<",
-            BiShr => ">>",
-            BiEq => "==",
-            BiLt => "<",
-            BiLe => "<=",
-            BiNe => "!=",
-            BiGe => ">=",
-            BiGt => ">",
+            BinOpKind::Add => "+",
+            BinOpKind::Sub => "-",
+            BinOpKind::Mul => "*",
+            BinOpKind::Div => "/",
+            BinOpKind::Rem => "%",
+            BinOpKind::And => "&&",
+            BinOpKind::Or => "||",
+            BinOpKind::BitXor => "^",
+            BinOpKind::BitAnd => "&",
+            BinOpKind::BitOr => "|",
+            BinOpKind::Shl => "<<",
+            BinOpKind::Shr => ">>",
+            BinOpKind::Eq => "==",
+            BinOpKind::Lt => "<",
+            BinOpKind::Le => "<=",
+            BinOpKind::Ne => "!=",
+            BinOpKind::Ge => ">=",
+            BinOpKind::Gt => ">",
         }
     }
 
     pub fn is_lazy(self) -> bool {
         match self {
-            BiAnd | BiOr => true,
+            BinOpKind::And | BinOpKind::Or => true,
             _ => false,
         }
     }
 
     pub fn is_shift(self) -> bool {
         match self {
-            BiShl | BiShr => true,
+            BinOpKind::Shl | BinOpKind::Shr => true,
             _ => false,
         }
     }
 
     pub fn is_comparison(self) -> bool {
         match self {
-            BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
-            BiAnd |
-            BiOr |
-            BiAdd |
-            BiSub |
-            BiMul |
-            BiDiv |
-            BiRem |
-            BiBitXor |
-            BiBitAnd |
-            BiBitOr |
-            BiShl |
-            BiShr => false,
+            BinOpKind::Eq |
+            BinOpKind::Lt |
+            BinOpKind::Le |
+            BinOpKind::Ne |
+            BinOpKind::Gt |
+            BinOpKind::Ge => true,
+            BinOpKind::And |
+            BinOpKind::Or |
+            BinOpKind::Add |
+            BinOpKind::Sub |
+            BinOpKind::Mul |
+            BinOpKind::Div |
+            BinOpKind::Rem |
+            BinOpKind::BitXor |
+            BinOpKind::BitAnd |
+            BinOpKind::BitOr |
+            BinOpKind::Shl |
+            BinOpKind::Shr => false,
         }
     }
 
@@ -1042,32 +1046,32 @@ impl BinOp_ {
     }
 }
 
-impl Into<ast::BinOpKind> for BinOp_ {
+impl Into<ast::BinOpKind> for BinOpKind {
     fn into(self) -> ast::BinOpKind {
         match self {
-            BiAdd => ast::BinOpKind::Add,
-            BiSub => ast::BinOpKind::Sub,
-            BiMul => ast::BinOpKind::Mul,
-            BiDiv => ast::BinOpKind::Div,
-            BiRem => ast::BinOpKind::Rem,
-            BiAnd => ast::BinOpKind::And,
-            BiOr => ast::BinOpKind::Or,
-            BiBitXor => ast::BinOpKind::BitXor,
-            BiBitAnd => ast::BinOpKind::BitAnd,
-            BiBitOr => ast::BinOpKind::BitOr,
-            BiShl => ast::BinOpKind::Shl,
-            BiShr => ast::BinOpKind::Shr,
-            BiEq => ast::BinOpKind::Eq,
-            BiLt => ast::BinOpKind::Lt,
-            BiLe => ast::BinOpKind::Le,
-            BiNe => ast::BinOpKind::Ne,
-            BiGe => ast::BinOpKind::Ge,
-            BiGt => ast::BinOpKind::Gt,
+            BinOpKind::Add => ast::BinOpKind::Add,
+            BinOpKind::Sub => ast::BinOpKind::Sub,
+            BinOpKind::Mul => ast::BinOpKind::Mul,
+            BinOpKind::Div => ast::BinOpKind::Div,
+            BinOpKind::Rem => ast::BinOpKind::Rem,
+            BinOpKind::And => ast::BinOpKind::And,
+            BinOpKind::Or => ast::BinOpKind::Or,
+            BinOpKind::BitXor => ast::BinOpKind::BitXor,
+            BinOpKind::BitAnd => ast::BinOpKind::BitAnd,
+            BinOpKind::BitOr => ast::BinOpKind::BitOr,
+            BinOpKind::Shl => ast::BinOpKind::Shl,
+            BinOpKind::Shr => ast::BinOpKind::Shr,
+            BinOpKind::Eq => ast::BinOpKind::Eq,
+            BinOpKind::Lt => ast::BinOpKind::Lt,
+            BinOpKind::Le => ast::BinOpKind::Le,
+            BinOpKind::Ne => ast::BinOpKind::Ne,
+            BinOpKind::Ge => ast::BinOpKind::Ge,
+            BinOpKind::Gt => ast::BinOpKind::Gt,
         }
     }
 }
 
-pub type BinOp = Spanned<BinOp_>;
+pub type BinOp = Spanned<BinOpKind>;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, Hash)]
 pub enum UnOp {

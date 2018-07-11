@@ -1292,8 +1292,8 @@ impl<'a> State<'a> {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
-            (&hir::ExprCast { .. }, hir::BinOp_::BiLt) |
-            (&hir::ExprCast { .. }, hir::BinOp_::BiShl) => parser::PREC_FORCE_PAREN,
+            (&hir::ExprCast { .. }, hir::BinOpKind::Lt) |
+            (&hir::ExprCast { .. }, hir::BinOpKind::Shl) => parser::PREC_FORCE_PAREN,
             _ => left_prec,
         };
 
@@ -2413,30 +2413,30 @@ fn stmt_ends_with_semi(stmt: &hir::Stmt_) -> bool {
     }
 }
 
-fn bin_op_to_assoc_op(op: hir::BinOp_) -> AssocOp {
-    use hir::BinOp_::*;
+fn bin_op_to_assoc_op(op: hir::BinOpKind) -> AssocOp {
+    use hir::BinOpKind::*;
     match op {
-        BiAdd => AssocOp::Add,
-        BiSub => AssocOp::Subtract,
-        BiMul => AssocOp::Multiply,
-        BiDiv => AssocOp::Divide,
-        BiRem => AssocOp::Modulus,
+        Add => AssocOp::Add,
+        Sub => AssocOp::Subtract,
+        Mul => AssocOp::Multiply,
+        Div => AssocOp::Divide,
+        Rem => AssocOp::Modulus,
 
-        BiAnd => AssocOp::LAnd,
-        BiOr => AssocOp::LOr,
+        And => AssocOp::LAnd,
+        Or => AssocOp::LOr,
 
-        BiBitXor => AssocOp::BitXor,
-        BiBitAnd => AssocOp::BitAnd,
-        BiBitOr => AssocOp::BitOr,
-        BiShl => AssocOp::ShiftLeft,
-        BiShr => AssocOp::ShiftRight,
+        BitXor => AssocOp::BitXor,
+        BitAnd => AssocOp::BitAnd,
+        BitOr => AssocOp::BitOr,
+        Shl => AssocOp::ShiftLeft,
+        Shr => AssocOp::ShiftRight,
 
-        BiEq => AssocOp::Equal,
-        BiLt => AssocOp::Less,
-        BiLe => AssocOp::LessEqual,
-        BiNe => AssocOp::NotEqual,
-        BiGe => AssocOp::GreaterEqual,
-        BiGt => AssocOp::Greater,
+        Eq => AssocOp::Equal,
+        Lt => AssocOp::Less,
+        Le => AssocOp::LessEqual,
+        Ne => AssocOp::NotEqual,
+        Ge => AssocOp::GreaterEqual,
+        Gt => AssocOp::Greater,
     }
 }
 
