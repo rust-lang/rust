@@ -76,6 +76,9 @@ MIRI_SYSROOT=~/.xargo/HOST cargo run --bin miri tests/run-pass-fullmir/vecs.rs
 Notice that you will have to re-run the last step of the preparations above when
 your toolchain changes (e.g., when you update the nightly).
 
+You can also set `-Zmiri-start-fn` to make miri start evaluation with the
+`start_fn` lang item, instead of starting at the `main` function.
+
 ## Contributing and getting help
 
 Check out the issues on this GitHub repository for some ideas. There's lots that
