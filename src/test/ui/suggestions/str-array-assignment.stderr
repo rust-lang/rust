@@ -19,7 +19,7 @@ LL |   let u: &str = if true { s[..2] } else { s };
    = note: expected type `&str`
               found type `str`
 
-error[E0277]: the size for value values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-array-assignment.rs:17:7
    |
 LL |   let v = s[..2];

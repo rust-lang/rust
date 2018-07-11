@@ -12,7 +12,7 @@
 
 union U {
     a: str,
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 
     b: u8,
 }
@@ -20,7 +20,7 @@ union U {
 union W {
     a: u8,
     b: str,
-    //~^ ERROR the size for value values of type
+    //~^ ERROR the size for values of type
 }
 
 fn main() {}

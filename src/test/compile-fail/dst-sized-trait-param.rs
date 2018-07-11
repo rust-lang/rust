@@ -15,9 +15,9 @@
 trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
 
 impl Foo<[isize]> for usize { }
-//~^ ERROR the size for value values of type
+//~^ ERROR the size for values of type
 
 impl Foo<isize> for [usize] { }
-//~^ ERROR the size for value values of type
+//~^ ERROR the size for values of type
 
 pub fn main() { }

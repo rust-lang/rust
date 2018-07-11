@@ -14,7 +14,7 @@ trait Get {
 }
 
 fn foo<T:Get>(t: T) {
-    let x = t.get(); //~ ERROR the size for value values of type
+    let x = t.get(); //~ ERROR the size for values of type
 }
 
 fn main() {

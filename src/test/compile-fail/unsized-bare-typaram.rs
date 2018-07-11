@@ -10,5 +10,5 @@
 
 fn bar<T: Sized>() { }
 fn foo<T: ?Sized>() { bar::<T>() }
-//~^ ERROR the size for value values of type
+//~^ ERROR the size for values of type
 fn main() { }

@@ -1,4 +1,4 @@
-error[E0277]: the size for value values of type `T` cannot be known at compilation time
+error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/union-sized-field.rs:14:5
    |
 LL |     value: T,
@@ -9,7 +9,7 @@ LL |     value: T,
    = help: consider adding a `where T: std::marker::Sized` bound
    = note: no field of a union may have a dynamically sized type
 
-error[E0277]: the size for value values of type `T` cannot be known at compilation time
+error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/union-sized-field.rs:19:5
    |
 LL |     value: T,
@@ -20,7 +20,7 @@ LL |     value: T,
    = help: consider adding a `where T: std::marker::Sized` bound
    = note: only the last field of a struct may have a dynamically sized type
 
-error[E0277]: the size for value values of type `T` cannot be known at compilation time
+error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/union-sized-field.rs:25:11
    |
 LL |     Value(T),

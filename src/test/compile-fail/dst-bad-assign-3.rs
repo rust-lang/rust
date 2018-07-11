@@ -45,5 +45,5 @@ pub fn main() {
     //~| expected type `dyn ToBar`
     //~| found type `Bar1`
     //~| expected trait ToBar, found struct `Bar1`
-    //~| ERROR the size for value values of type
+    //~| ERROR the size for values of type
 }
