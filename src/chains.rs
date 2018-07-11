@@ -398,8 +398,8 @@ impl <'a> ChainFormatterShared<'a> {
         if all_in_one_line || extendable {
             // First we try to 'overflow' the last child and see if it looks better than using
             // vertical layout.
-            if let Some(shape) = last_shape.offset_left(almost_total) {
-                if let Some(rw) = last.rewrite_postfix(context, shape) {
+            if let Some(one_line_shape) = last_shape.offset_left(almost_total) {
+                if let Some(rw) = last.rewrite_postfix(context, one_line_shape) {
                     // We allow overflowing here only if both of the following conditions match:
                     // 1. The entire chain fits in a single line except the last child.
                     // 2. `last_child_str.lines().count() >= 5`.
@@ -413,6 +413,7 @@ impl <'a> ChainFormatterShared<'a> {
                         // layout, just by looking at the overflowed rewrite. Now we rewrite the
                         // last child on its own line, and compare two rewrites to choose which is
                         // better.
+                        let last_shape = child_shape.sub_width(shape.rhs_overhead(context.config) + last.tries)?;
                         match last.rewrite_postfix(context, last_shape) {
                             Some(ref new_rw) if !could_fit_single_line => {
                                 last_subexpr_str = Some(new_rw.clone());

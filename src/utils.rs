@@ -382,6 +382,7 @@ pub fn colon_spaces(before: bool, after: bool) -> &'static str {
     }
 }
 
+#[inline]
 pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
     match e.node {
         ast::ExprKind::Call(ref e, _)
@@ -398,6 +399,12 @@ pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
     }
 }
 
+#[inline]
 pub fn starts_with_newline(s: &str) -> bool {
     s.starts_with('\n') || s.starts_with("\r\n")
+}
+
+#[inline]
+pub fn first_line_ends_with(s: &str, c: char) -> bool {
+    s.lines().next().map_or(false, |l| l.ends_with(c))
 }
