@@ -240,6 +240,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
     let reexport_mod = ast::Mod {
         inner: DUMMY_SP,
         items,
+        inline: true,
     };
 
     let sym = Ident::with_empty_ctxt(Symbol::gensym("__test_reexports"));
@@ -392,6 +393,59 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
         tokens: None,
     })
 
+    let testmod = ast::Mod {
+        inner: DUMMY_SP,
+        items: vec![import, mainfn, tests],
+        inline: true,
+    };
+    let item_ = ast::ItemKind::Mod(testmod);
+    let mod_ident = Ident::with_empty_ctxt(Symbol::gensym("__test"));
+
+    let mut expander = cx.ext_cx.monotonic_expander();
+    let item = expander.fold_item(P(ast::Item {
+        id: ast::DUMMY_NODE_ID,
+        ident: mod_ident,
+        attrs: vec![],
+        node: item_,
+        vis: dummy_spanned(ast::VisibilityKind::Public),
+        span: DUMMY_SP,
+        tokens: None,
+    })).pop().unwrap();
+    let reexport = cx.reexport_test_harness_main.map(|s| {
+        // building `use __test::main as <ident>;`
+        let rename = Ident::with_empty_ctxt(s);
+
+        let use_path = ast::UseTree {
+            span: DUMMY_SP,
+            prefix: path_node(vec![mod_ident, Ident::from_str("main")]),
+            kind: ast::UseTreeKind::Simple(Some(rename), ast::DUMMY_NODE_ID, ast::DUMMY_NODE_ID),
+        };
+
+        expander.fold_item(P(ast::Item {
+            id: ast::DUMMY_NODE_ID,
+            ident: keywords::Invalid.ident(),
+            attrs: vec![],
+            node: ast::ItemKind::Use(P(use_path)),
+            vis: dummy_spanned(ast::VisibilityKind::Inherited),
+            span: DUMMY_SP,
+            tokens: None,
+        })).pop().unwrap()
+    });
+
+    debug!("Synthetic test module:\n{}\n", pprust::item_to_string(&item));
+
+    (item, reexport)
+}
+
+fn nospan<T>(t: T) -> codemap::Spanned<T> {
+    codemap::Spanned { node: t, span: DUMMY_SP }
+}
+
+fn path_node(ids: Vec<Ident>) -> ast::Path {
+    ast::Path {
+        span: DUMMY_SP,
+        segments: ids.into_iter().map(|id| ast::PathSegment::from_ident(id)).collect(),
+    }
 }
 
 fn path_name_i(idents: &[Ident]) -> String {

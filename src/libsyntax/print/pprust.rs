@@ -1260,10 +1260,16 @@ impl<'a> State<'a> {
             ast::ItemKind::Mod(ref _mod) => {
                 self.head(&visibility_qualified(&item.vis, "mod"))?;
                 self.print_ident(item.ident)?;
-                self.nbsp()?;
-                self.bopen()?;
-                self.print_mod(_mod, &item.attrs)?;
-                self.bclose(item.span)?;
+
+                if _mod.inline {
+                    self.nbsp()?;
+                    self.bopen()?;
+                    self.print_mod(_mod, &item.attrs)?;
+                    self.bclose(item.span)?;
+                } else {
+                    self.s.word(";")?;
+                }
+
             }
             ast::ItemKind::ForeignMod(ref nmod) => {
                 self.head("extern")?;

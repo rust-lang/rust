@@ -6252,6 +6252,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Mod {
             inner: inner_lo.to(hi),
             items,
+            inline: true
         })
     }
 
@@ -6287,8 +6288,10 @@ impl<'a> Parser<'a> {
                 // This mod is in an external file. Let's go get it!
                 let ModulePathSuccess { path, directory_ownership, warn } =
                     self.submod_path(id, &outer_attrs, id_span)?;
-                let (module, mut attrs) =
+                let (mut module, mut attrs) =
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
+                // Record that we fetched the mod from an external file
+                module.inline = false;
                 if warn {
                     let attr = Attribute {
                         id: attr::mk_attr_id(),
@@ -6301,9 +6304,13 @@ impl<'a> Parser<'a> {
                     attr::mark_known(&attr);
                     attrs.push(attr);
                 }
-                Ok((id, module, Some(attrs)))
+                Ok((id, ItemKind::Mod(module), Some(attrs)))
             } else {
-                let placeholder = ast::Mod { inner: syntax_pos::DUMMY_SP, items: Vec::new() };
+                let placeholder = ast::Mod {
+                    inner: syntax_pos::DUMMY_SP,
+                    items: Vec::new(),
+                    inline: false
+                };
                 Ok((id, ItemKind::Mod(placeholder), None))
             }
         } else {
@@ -6503,7 +6510,7 @@ impl<'a> Parser<'a> {
                     directory_ownership: DirectoryOwnership,
                     name: String,
                     id_sp: Span)
-                    -> PResult<'a, (ast::ItemKind, Vec<Attribute> )> {
+                    -> PResult<'a, (ast::Mod, Vec<Attribute> )> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
             let mut err = String::from("circular modules: ");
@@ -6525,7 +6532,7 @@ impl<'a> Parser<'a> {
         let mod_attrs = p0.parse_inner_attributes()?;
         let m0 = p0.parse_mod_items(&token::Eof, mod_inner_lo)?;
         self.sess.included_mod_stack.borrow_mut().pop();
-        Ok((ast::ItemKind::Mod(m0), mod_attrs))
+        Ok((m0, mod_attrs))
     }
 
     /// Parse a function declaration from a foreign module
