@@ -978,10 +978,10 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     }
 }
 
-impl Arc<Any + Send + Sync> {
+impl Arc<dyn Any + Send + Sync> {
     #[inline]
     #[stable(feature = "rc_downcast", since = "1.29.0")]
-    /// Attempt to downcast the `Arc<Any + Send + Sync>` to a concrete type.
+    /// Attempt to downcast the `Arc<dyn Any + Send + Sync>` to a concrete type.
     ///
     /// # Examples
     ///
@@ -989,7 +989,7 @@ impl Arc<Any + Send + Sync> {
     /// use std::any::Any;
     /// use std::sync::Arc;
     ///
-    /// fn print_if_string(value: Arc<Any + Send + Sync>) {
+    /// fn print_if_string(value: Arc<dyn Any + Send + Sync>) {
     ///     if let Ok(string) = value.downcast::<String>() {
     ///         println!("String ({}): {}", string.len(), string);
     ///     }

@@ -72,6 +72,7 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
 #![needs_allocator]
+#![deny(bare_trait_objects)]
 #![deny(missing_debug_implementations)]
 
 #![cfg_attr(test, allow(deprecated))] // rand

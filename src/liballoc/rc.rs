@@ -618,7 +618,7 @@ impl<T: Clone> Rc<T> {
     }
 }
 
-impl Rc<Any> {
+impl Rc<dyn Any> {
     #[inline]
     #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Rc<Any>` to a concrete type.
@@ -641,7 +641,7 @@ impl Rc<Any> {
     ///     print_if_string(Rc::new(0i8));
     /// }
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<Any>> {
+    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
         if (*self).is::<T>() {
             let ptr = self.ptr.cast::<RcBox<T>>();
             forget(self);
