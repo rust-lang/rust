@@ -293,6 +293,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #50589 <https://github.com/rust-lang/rust/issues/50589>",
             edition: None,
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(PROC_MACRO_DERIVE_RESOLUTION_FALLBACK),
+            reference: "issue #50504 <https://github.com/rust-lang/rust/issues/50504>",
+            edition: None,
+        },
         ]);
 
     // Register renamed and removed lints

@@ -17,7 +17,7 @@ use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use ext::expand::{self, AstFragment, Invocation};
-use ext::hygiene::{self, Mark, SyntaxContext};
+use ext::hygiene::{self, Mark, SyntaxContext, Transparency};
 use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
@@ -673,20 +673,14 @@ impl SyntaxExtension {
         }
     }
 
-    pub fn is_modern(&self) -> bool {
+    pub fn default_transparency(&self) -> Transparency {
         match *self {
-            SyntaxExtension::DeclMacro { .. } |
             SyntaxExtension::ProcMacro { .. } |
             SyntaxExtension::AttrProcMacro(..) |
-            SyntaxExtension::ProcMacroDerive(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_transparent(&self) -> bool {
-        match *self {
-            SyntaxExtension::DeclMacro { is_transparent, .. } => is_transparent,
-            _ => false,
+            SyntaxExtension::ProcMacroDerive(..) |
+            SyntaxExtension::DeclMacro { is_transparent: false, .. } => Transparency::Opaque,
+            SyntaxExtension::DeclMacro { is_transparent: true, .. } => Transparency::Transparent,
+            _ => Transparency::SemiTransparent,
         }
     }
 
