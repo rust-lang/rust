@@ -123,12 +123,14 @@ completed without error (whether or not changes were made).
 * [Atom](atom.md)
 * Visual Studio Code using [vscode-rust](https://github.com/editor-rs/vscode-rust), [vsc-rustfmt](https://github.com/Connorcpu/vsc-rustfmt) or [rls_vscode](https://github.com/jonathandturner/rls_vscode) through RLS.
 
+
 ## Checking style on a CI server
 
 To keep your code base consistently formatted, it can be helpful to fail the CI build
 when a pull request contains unformatted code. Using `--check` instructs
 rustfmt to exit with an error code if the input is not formatted correctly.
-It will also print any found differences.
+It will also print any found differences. (Older versions of Rustfmt don't
+support `--check`, use `--write-mode diff`).
 
 A minimal Travis setup could look like this (requires Rust 1.24.0 or greater):
 
@@ -143,6 +145,9 @@ script:
 - cargo build
 - cargo test
 ```
+
+See [this blog post](https://medium.com/@ag_dubs/enforcing-style-in-ci-for-rust-projects-18f6b09ec69d)
+for more info.
 
 ## How to build and test
 
