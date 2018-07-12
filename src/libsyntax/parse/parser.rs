@@ -6288,10 +6288,9 @@ impl<'a> Parser<'a> {
                 // This mod is in an external file. Let's go get it!
                 let ModulePathSuccess { path, directory_ownership, warn } =
                     self.submod_path(id, &outer_attrs, id_span)?;
-                let (mut module, mut attrs) =
+                let (module, mut attrs) =
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
                 // Record that we fetched the mod from an external file
-                module.inline = false;
                 if warn {
                     let attr = Attribute {
                         id: attr::mk_attr_id(),
@@ -6530,7 +6529,8 @@ impl<'a> Parser<'a> {
         p0.cfg_mods = self.cfg_mods;
         let mod_inner_lo = p0.span;
         let mod_attrs = p0.parse_inner_attributes()?;
-        let m0 = p0.parse_mod_items(&token::Eof, mod_inner_lo)?;
+        let mut m0 = p0.parse_mod_items(&token::Eof, mod_inner_lo)?;
+        m0.inline = false;
         self.sess.included_mod_stack.borrow_mut().pop();
         Ok((m0, mod_attrs))
     }
