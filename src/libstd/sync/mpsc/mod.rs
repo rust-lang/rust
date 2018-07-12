@@ -689,7 +689,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// only one [`Receiver`] is supported.
 ///
 /// If the [`Receiver`] is disconnected while trying to [`send`] with the
-/// [`Sender`], the [`send`] method will return a [`SendError`]. Similarly, If the
+/// [`Sender`], the [`send`] method will return a [`SendError`]. Similarly, if the
 /// [`Sender`] is disconnected while trying to [`recv`], the [`recv`] method will
 /// return a [`RecvError`].
 ///
