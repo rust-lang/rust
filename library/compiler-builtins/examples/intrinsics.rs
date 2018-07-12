@@ -12,11 +12,12 @@
 #![feature(core_float)]
 #![feature(lang_items)]
 #![feature(start)]
-#![feature(global_allocator)]
 #![feature(allocator_api)]
 #![feature(panic_implementation)]
 #![cfg_attr(windows, feature(panic_unwind))]
 #![no_std]
+
+extern crate panic_implementation;
 
 #[cfg(not(thumb))]
 #[link(name = "c")]
@@ -393,6 +394,13 @@ fn run() {
     bb(modti3(bb(2), bb(2)));
 
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
+
+    extern {
+        fn rust_begin_unwind();
+    }
+    // if bb(false) {
+        unsafe { rust_begin_unwind(); }
+    // }
 }
 
 fn something_with_a_dtor(f: &Fn()) {
@@ -442,8 +450,3 @@ pub fn _Unwind_Resume() {}
 #[lang = "eh_personality"]
 #[no_mangle]
 pub extern "C" fn eh_personality() {}
-
-#[panic_implementation]
-fn panic(x: &core::panic::PanicInfo) -> ! {
-    loop {}
-}

@@ -9,6 +9,9 @@ test = false
 [build-dependencies]
 cc = { optional = true, version = "1.0" }
 
+[dev-dependencies]
+panic-implementation = { path = 'crates/panic-implementation' }
+
 [features]
 default = ["compiler-builtins"]
 
