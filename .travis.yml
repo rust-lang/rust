@@ -3,6 +3,10 @@ sudo: required
 dist: trusty
 services:
   - docker
+addons:
+  apt:
+    packages:
+      - gdb
 
 git:
   depth: 2
@@ -249,6 +253,8 @@ before_script:
           export RUN_SCRIPT="$RUN_SCRIPT && src/ci/run.sh";
       else
           export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
+          # Enable core dump on Linux.
+          sudo sh -c 'echo "/checkout/obj/cores/core.%p.%E" > /proc/sys/kernel/core_pattern';
       fi
 
 # Log time information from this machine and an external machine for insight into possible
@@ -274,6 +280,8 @@ after_failure:
 
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
+
+  # Dump backtrace for macOS
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
   - find $HOME/Library/Logs/DiagnosticReports
       -type f
@@ -284,8 +292,24 @@ after_failure:
       -exec head -750 {} \;
       -exec echo travis_fold":"end:crashlog \; || true
 
+  # Dump backtrace for Linux
+  - ln -s . checkout &&
+    for CORE in obj/cores/core.*; do
+      EXE=$(echo $CORE | sed 's|obj/cores/core\.[0-9]*\.!checkout!\(.*\)|\1|;y|!|/|');
+      if [ -f "$EXE" ]; then
+        printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" "$CORE";
+        gdb -q -c "$CORE" "$EXE"
+          -iex 'set auto-load off'
+          -iex 'dir src/'
+          -iex 'set sysroot .'
+          -ex bt
+          -ex q;
+        echo travis_fold":"end:crashlog;
+      fi;
+    done || true
+
   # see #50887
-  - head -30 ./obj/build/x86_64-unknown-linux-gnu/native/asan/build/lib/asan/clang_rt.asan-dynamic-i386.vers || true
+  - cat ./obj/build/x86_64-unknown-linux-gnu/native/asan/build/lib/asan/clang_rt.asan-dynamic-i386.vers || true
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
