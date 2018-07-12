@@ -69,10 +69,7 @@ fn rewrite_pairs_one_line<T: Rewrite>(
     let mut result = String::new();
     let base_shape = shape.block();
 
-    for (e, s) in list.list[..list.list.len()]
-        .iter()
-        .zip(list.separators.iter())
-    {
+    for (e, s) in list.list.iter().zip(list.separators.iter()) {
         let cur_shape = base_shape.offset_left(last_line_width(&result))?;
         let rewrite = e.rewrite(context, cur_shape)?;
 
@@ -137,7 +134,15 @@ fn rewrite_pairs_multiline<T: Rewrite>(
     result.push_str(&rewrite);
 
     for (e, s) in list.list[1..].iter().zip(list.separators.iter()) {
-        if trimmed_last_line_width(&result) <= context.config.tab_spaces() {
+        // The following test checks if we should keep two subexprs on the same
+        // line. We do this if not doing so would create an orphan and there is
+        // enough space to do so.
+        let offset = if result.contains('\n') {
+            0
+        } else {
+            shape.used_width()
+        };
+        if last_line_width(&result) + offset <= nested_shape.used_width() {
             // We must snuggle the next line onto the previous line to avoid an orphan.
             if let Some(line_shape) =
                 shape.offset_left(s.len() + 2 + trimmed_last_line_width(&result))

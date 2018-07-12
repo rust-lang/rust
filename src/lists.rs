@@ -419,7 +419,8 @@ where
                 if first_line_width(&formatted_comment)
                     + last_line_width(&result)
                     + comment_alignment
-                    + 1 > formatting.config.max_width()
+                    + 1
+                    > formatting.config.max_width()
                 {
                     item_max_width = None;
                     formatted_comment = rewrite_post_comment(&mut item_max_width)?;

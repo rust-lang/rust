@@ -22,7 +22,8 @@ fn foo() -> bool {
         trivial_value,
     );
     (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        + a + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        + a
+        + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         + aaaaa);
 
     {
@@ -514,5 +515,6 @@ fn issue_2802() {
         * a_very_specific_length(specific_length_arg)
         * very_specific_length(Foo {
             a: some_much_much_longer_value,
-        }) * some_value
+        })
+        * some_value
 }
