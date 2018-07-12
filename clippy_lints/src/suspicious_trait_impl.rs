@@ -60,7 +60,7 @@ impl LintPass for SuspiciousImpl {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         use rustc::hir::BinOp_::*;
-        if let hir::ExprBinary(binop, _, _) = expr.node {
+        if let hir::ExprKind::Binary(binop, _, _) = expr.node {
             match binop.node {
                 BiEq | BiLt | BiLe | BiNe | BiGe | BiGt => return,
                 _ => {},
@@ -71,9 +71,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             while parent_expr != ast::CRATE_NODE_ID {
                 if let hir::map::Node::NodeExpr(e) = cx.tcx.hir.get(parent_expr) {
                     match e.node {
-                        hir::ExprBinary(..)
-                        | hir::ExprUnary(hir::UnOp::UnNot, _)
-                        | hir::ExprUnary(hir::UnOp::UnNeg, _) => return,
+                        hir::ExprKind::Binary(..)
+                        | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
+                        | hir::ExprKind::Unary(hir::UnOp::UnNeg, _) => return,
                         _ => {},
                     }
                 }
@@ -185,9 +185,9 @@ struct BinaryExprVisitor {
 impl<'a, 'tcx: 'a> Visitor<'tcx> for BinaryExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprBinary(..)
-            | hir::ExprUnary(hir::UnOp::UnNot, _)
-            | hir::ExprUnary(hir::UnOp::UnNeg, _) => {
+            hir::ExprKind::Binary(..)
+            | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
+            | hir::ExprKind::Unary(hir::UnOp::UnNeg, _) => {
                 self.in_binary_expr = true
             },
             _ => {},

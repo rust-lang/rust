@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local) {
         if_chain! {
             if let Some(ref expr) = local.init;
-            if let Expr_::ExprMatch(ref target, ref arms, MatchSource::Normal) = expr.node;
+            if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.node;
             if arms.len() == 1 && arms[0].pats.len() == 1 && arms[0].guard.is_none();
             if let PatKind::TupleStruct(QPath::Resolved(None, ref variant_name), ref args, _) = arms[0].pats[0].node;
             if args.len() == 1;

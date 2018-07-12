@@ -175,9 +175,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
             // print!()
-            ExprCall(ref fun, ref args) => {
+            ExprKind::Call(ref fun, ref args) => {
                 if_chain! {
-                    if let ExprPath(ref qpath) = fun.node;
+                    if let ExprKind::Path(ref qpath) = fun.node;
                     if let Some(fun_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
                     then {
                         check_print_variants(cx, expr, fun_id, args);
@@ -185,7 +185,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
             },
             // write!()
-            ExprMethodCall(ref fun, _, ref args) => {
+            ExprKind::MethodCall(ref fun, _, ref args) => {
                 if fun.ident.name == "write_fmt" {
                     check_write_variants(cx, expr, args);
                 }
@@ -206,8 +206,8 @@ fn check_write_variants<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
         if_chain! {
             // ensure we're calling Arguments::new_v1 or Arguments::new_v1_formatted
             if write_args.len() == 2;
-            if let ExprCall(ref args_fun, ref args_args) = write_args[1].node;
-            if let ExprPath(ref qpath) = args_fun.node;
+            if let ExprKind::Call(ref args_fun, ref args_args) = write_args[1].node;
+            if let ExprKind::Path(ref qpath) = args_fun.node;
             if let Some(const_def_id) = opt_def_id(resolve_node(cx, qpath, args_fun.hir_id));
             if match_def_path(cx.tcx, const_def_id, &paths::FMT_ARGUMENTS_NEWV1) ||
                match_def_path(cx.tcx, const_def_id, &paths::FMT_ARGUMENTS_NEWV1FORMATTED);
@@ -219,9 +219,9 @@ fn check_write_variants<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
 
                 if_chain! {
                     if args_args.len() >= 2;
-                    if let ExprAddrOf(_, ref match_expr) = args_args[1].node;
-                    if let ExprMatch(ref args, _, _) = match_expr.node;
-                    if let ExprTup(ref args) = args.node;
+                    if let ExprKind::AddrOf(_, ref match_expr) = args_args[1].node;
+                    if let ExprKind::Match(ref args, _, _) = match_expr.node;
+                    if let ExprKind::Tup(ref args) = args.node;
                     if let Some((fmtstr, fmtlen)) = get_argument_fmtstr_parts(&args_args[0]);
                     then {
                         match name {
@@ -269,7 +269,7 @@ fn check_print_variants<'a, 'tcx>(
             if_chain! {
                 // ensure we're calling Arguments::new_v1
                 if args.len() == 1;
-                if let ExprCall(ref args_fun, ref args_args) = args[0].node;
+                if let ExprKind::Call(ref args_fun, ref args_args) = args[0].node;
                 then {
                     // Check for literals in the print!/println! args
                     check_fmt_args_for_literal(cx, args_args, |span| {
@@ -277,13 +277,13 @@ fn check_print_variants<'a, 'tcx>(
                     });
 
                     if_chain! {
-                        if let ExprPath(ref qpath) = args_fun.node;
+                        if let ExprKind::Path(ref qpath) = args_fun.node;
                         if let Some(const_def_id) = opt_def_id(resolve_node(cx, qpath, args_fun.hir_id));
                         if match_def_path(cx.tcx, const_def_id, &paths::FMT_ARGUMENTS_NEWV1);
                         if args_args.len() == 2;
-                        if let ExprAddrOf(_, ref match_expr) = args_args[1].node;
-                        if let ExprMatch(ref args, _, _) = match_expr.node;
-                        if let ExprTup(ref args) = args.node;
+                        if let ExprKind::AddrOf(_, ref match_expr) = args_args[1].node;
+                        if let ExprKind::Match(ref args, _, _) = match_expr.node;
+                        if let ExprKind::Tup(ref args) = args.node;
                         if let Some((fmtstr, fmtlen)) = get_argument_fmtstr_parts(&args_args[0]);
                         then {
                             match name {
@@ -315,7 +315,7 @@ fn check_print_variants<'a, 'tcx>(
     // Search for something like
     // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
     else if args.len() == 2 && match_def_path(cx.tcx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
-        if let ExprPath(ref qpath) = args[1].node {
+        if let ExprKind::Path(ref qpath) = args[1].node {
             if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, args[1].hir_id)) {
                 if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr)
                     && is_expn_of(expr.span, "panic").is_none()
@@ -341,25 +341,25 @@ where
         if args.len() >= 2;
 
         // the match statement
-        if let ExprAddrOf(_, ref match_expr) = args[1].node;
-        if let ExprMatch(ref matchee, ref arms, _) = match_expr.node;
-        if let ExprTup(ref tup) = matchee.node;
+        if let ExprKind::AddrOf(_, ref match_expr) = args[1].node;
+        if let ExprKind::Match(ref matchee, ref arms, _) = match_expr.node;
+        if let ExprKind::Tup(ref tup) = matchee.node;
         if arms.len() == 1;
-        if let ExprArray(ref arm_body_exprs) = arms[0].body.node;
+        if let ExprKind::Array(ref arm_body_exprs) = arms[0].body.node;
         then {
             // it doesn't matter how many args there are in the `write!`/`writeln!`,
             // if there's one literal, we should warn the user
             for (idx, tup_arg) in tup.iter().enumerate() {
                 if_chain! {
-                    // first, make sure we're dealing with a literal (i.e., an ExprLit)
-                    if let ExprAddrOf(_, ref tup_val) = tup_arg.node;
-                    if let ExprLit(_) = tup_val.node;
+                    // first, make sure we're dealing with a literal (i.e., an ExprKind::Lit)
+                    if let ExprKind::AddrOf(_, ref tup_val) = tup_arg.node;
+                    if let ExprKind::Lit(_) = tup_val.node;
 
                     // next, check the corresponding match arm body to ensure
                     // this is DISPLAY_FMT_METHOD
-                    if let ExprCall(_, ref body_args) = arm_body_exprs[idx].node;
+                    if let ExprKind::Call(_, ref body_args) = arm_body_exprs[idx].node;
                     if body_args.len() == 2;
-                    if let ExprPath(ref body_qpath) = body_args[1].node;
+                    if let ExprKind::Path(ref body_qpath) = body_args[1].node;
                     if let Some(fun_def_id) = opt_def_id(resolve_node(cx, body_qpath, body_args[1].hir_id));
                     if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
                     then {
@@ -371,10 +371,10 @@ where
                         // and is just "{}"
                         if_chain! {
                             if args.len() == 3;
-                            if let ExprAddrOf(_, ref format_expr) = args[2].node;
-                            if let ExprArray(ref format_exprs) = format_expr.node;
+                            if let ExprKind::AddrOf(_, ref format_expr) = args[2].node;
+                            if let ExprKind::Array(ref format_exprs) = format_expr.node;
                             if format_exprs.len() >= 1;
-                            if let ExprStruct(_, ref fields, _) = format_exprs[idx].node;
+                            if let ExprKind::Struct(_, ref fields, _) = format_exprs[idx].node;
                             if let Some(format_field) = fields.iter().find(|f| f.ident.name == "format");
                             if check_unformatted(&format_field.expr);
                             then {
@@ -429,10 +429,10 @@ fn has_empty_arg<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: Local
 /// Returns the slice of format string parts in an `Arguments::new_v1` call.
 fn get_argument_fmtstr_parts(expr: &Expr) -> Option<(LocalInternedString, usize)> {
     if_chain! {
-        if let ExprAddrOf(_, ref expr) = expr.node; // &["…", "…", …]
-        if let ExprArray(ref exprs) = expr.node;
+        if let ExprKind::AddrOf(_, ref expr) = expr.node; // &["…", "…", …]
+        if let ExprKind::Array(ref exprs) = expr.node;
         if let Some(expr) = exprs.last();
-        if let ExprLit(ref lit) = expr.node;
+        if let ExprKind::Lit(ref lit) = expr.node;
         if let LitKind::Str(ref lit, _) = lit.node;
         then {
             return Some((lit.as_str(), exprs.len()));
@@ -468,15 +468,15 @@ fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
 /// ```
 pub fn check_unformatted(format_field: &Expr) -> bool {
     if_chain! {
-        if let ExprStruct(_, ref fields, _) = format_field.node;
+        if let ExprKind::Struct(_, ref fields, _) = format_field.node;
         if let Some(width_field) = fields.iter().find(|f| f.ident.name == "width");
-        if let ExprPath(ref qpath) = width_field.expr.node;
+        if let ExprKind::Path(ref qpath) = width_field.expr.node;
         if last_path_segment(qpath).ident.name == "Implied";
         if let Some(align_field) = fields.iter().find(|f| f.ident.name == "align");
-        if let ExprPath(ref qpath) = align_field.expr.node;
+        if let ExprKind::Path(ref qpath) = align_field.expr.node;
         if last_path_segment(qpath).ident.name == "Unknown";
         if let Some(precision_field) = fields.iter().find(|f| f.ident.name == "precision");
-        if let ExprPath(ref qpath_precision) = precision_field.expr.node;
+        if let ExprKind::Path(ref qpath_precision) = precision_field.expr.node;
         if last_path_segment(qpath_precision).ident.name == "Implied";
         then {
             return true;

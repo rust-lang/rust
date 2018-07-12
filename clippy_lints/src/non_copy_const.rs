@@ -190,7 +190,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprPath(qpath) = &expr.node {
+        if let ExprKind::Path(qpath) = &expr.node {
             // Only lint if we use the const item inside a function.
             if in_constant(cx, expr.id) {
                 return;
@@ -213,22 +213,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                 }
                 if let Some(map::NodeExpr(parent_expr)) = cx.tcx.hir.find(parent_id) {
                     match &parent_expr.node {
-                        ExprAddrOf(..) => {
+                        ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced
                             needs_check_adjustment = false;
                         }
-                        ExprField(..) => {
+                        ExprKind::Field(..) => {
                             dereferenced_expr = parent_expr;
                             needs_check_adjustment = true;
                         }
-                        ExprIndex(e, _) if ptr::eq(&**e, cur_expr) => {
+                        ExprKind::Index(e, _) if ptr::eq(&**e, cur_expr) => {
                             // `e[i]` => desugared to `*Index::index(&e, i)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.
                             needs_check_adjustment = false;
                             break;
                         }
-                        ExprUnary(UnDeref, _) => {
+                        ExprKind::Unary(UnDeref, _) => {
                             // `*e` => desugared to `*Deref::deref(&e)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.

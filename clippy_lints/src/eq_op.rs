@@ -52,7 +52,7 @@ impl LintPass for EqOp {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprBinary(op, ref left, ref right) = e.node {
+        if let ExprKind::Binary(op, ref left, ref right) = e.node {
             if in_macro(e.span) {
                 return;
             }
@@ -85,9 +85,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 #[allow(match_same_arms)]
                 match (&left.node, &right.node) {
                     // do not suggest to dereference literals
-                    (&ExprLit(..), _) | (_, &ExprLit(..)) => {},
+                    (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},
                     // &foo == &bar
-                    (&ExprAddrOf(_, ref l), &ExprAddrOf(_, ref r)) => {
+                    (&ExprKind::AddrOf(_, ref l), &ExprKind::AddrOf(_, ref r)) => {
                         let lty = cx.tables.expr_ty(l);
                         let rty = cx.tables.expr_ty(r);
                         let lcpy = is_copy(cx, lty);
@@ -128,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         }
                     },
                     // &foo == bar
-                    (&ExprAddrOf(_, ref l), _) => {
+                    (&ExprKind::AddrOf(_, ref l), _) => {
                         let lty = cx.tables.expr_ty(l);
                         let lcpy = is_copy(cx, lty);
                         if (requires_ref || lcpy) && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right).into()]) {
@@ -139,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         }
                     },
                     // foo == &bar
-                    (_, &ExprAddrOf(_, ref r)) => {
+                    (_, &ExprKind::AddrOf(_, ref r)) => {
                         let rty = cx.tables.expr_ty(r);
                         let rcpy = is_copy(cx, rty);
                         if (requires_ref || rcpy) && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()]) {

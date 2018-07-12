@@ -75,52 +75,52 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
 
         match (&left.node, &right.node) {
-            (&ExprAddrOf(l_mut, ref le), &ExprAddrOf(r_mut, ref re)) => l_mut == r_mut && self.eq_expr(le, re),
-            (&ExprContinue(li), &ExprContinue(ri)) => {
+            (&ExprKind::AddrOf(l_mut, ref le), &ExprKind::AddrOf(r_mut, ref re)) => l_mut == r_mut && self.eq_expr(le, re),
+            (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
                 both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
             },
-            (&ExprAssign(ref ll, ref lr), &ExprAssign(ref rl, ref rr)) => self.eq_expr(ll, rl) && self.eq_expr(lr, rr),
-            (&ExprAssignOp(ref lo, ref ll, ref lr), &ExprAssignOp(ref ro, ref rl, ref rr)) => {
+            (&ExprKind::Assign(ref ll, ref lr), &ExprKind::Assign(ref rl, ref rr)) => self.eq_expr(ll, rl) && self.eq_expr(lr, rr),
+            (&ExprKind::AssignOp(ref lo, ref ll, ref lr), &ExprKind::AssignOp(ref ro, ref rl, ref rr)) => {
                 lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
-            (&ExprBlock(ref l, _), &ExprBlock(ref r, _)) => self.eq_block(l, r),
-            (&ExprBinary(l_op, ref ll, ref lr), &ExprBinary(r_op, ref rl, ref rr)) => {
+            (&ExprKind::Block(ref l, _), &ExprKind::Block(ref r, _)) => self.eq_block(l, r),
+            (&ExprKind::Binary(l_op, ref ll, ref lr), &ExprKind::Binary(r_op, ref rl, ref rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     || swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| {
                         l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     })
             },
-            (&ExprBreak(li, ref le), &ExprBreak(ri, ref re)) => {
+            (&ExprKind::Break(li, ref le), &ExprKind::Break(ri, ref re)) => {
                 both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
                     && both(le, re, |l, r| self.eq_expr(l, r))
             },
-            (&ExprBox(ref l), &ExprBox(ref r)) => self.eq_expr(l, r),
-            (&ExprCall(ref l_fun, ref l_args), &ExprCall(ref r_fun, ref r_args)) => {
+            (&ExprKind::Box(ref l), &ExprKind::Box(ref r)) => self.eq_expr(l, r),
+            (&ExprKind::Call(ref l_fun, ref l_args), &ExprKind::Call(ref r_fun, ref r_args)) => {
                 !self.ignore_fn && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             },
-            (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) |
-            (&ExprType(ref lx, ref lt), &ExprType(ref rx, ref rt)) => self.eq_expr(lx, rx) && self.eq_ty(lt, rt),
-            (&ExprField(ref l_f_exp, ref l_f_ident), &ExprField(ref r_f_exp, ref r_f_ident)) => {
+            (&ExprKind::Cast(ref lx, ref lt), &ExprKind::Cast(ref rx, ref rt)) |
+            (&ExprKind::Type(ref lx, ref lt), &ExprKind::Type(ref rx, ref rt)) => self.eq_expr(lx, rx) && self.eq_ty(lt, rt),
+            (&ExprKind::Field(ref l_f_exp, ref l_f_ident), &ExprKind::Field(ref r_f_exp, ref r_f_ident)) => {
                 l_f_ident.name == r_f_ident.name && self.eq_expr(l_f_exp, r_f_exp)
             },
-            (&ExprIndex(ref la, ref li), &ExprIndex(ref ra, ref ri)) => self.eq_expr(la, ra) && self.eq_expr(li, ri),
-            (&ExprIf(ref lc, ref lt, ref le), &ExprIf(ref rc, ref rt, ref re)) => {
+            (&ExprKind::Index(ref la, ref li), &ExprKind::Index(ref ra, ref ri)) => self.eq_expr(la, ra) && self.eq_expr(li, ri),
+            (&ExprKind::If(ref lc, ref lt, ref le), &ExprKind::If(ref rc, ref rt, ref re)) => {
                 self.eq_expr(lc, rc) && self.eq_expr(&**lt, &**rt) && both(le, re, |l, r| self.eq_expr(l, r))
             },
-            (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
-            (&ExprLoop(ref lb, ref ll, ref lls), &ExprLoop(ref rb, ref rl, ref rls)) => {
+            (&ExprKind::Lit(ref l), &ExprKind::Lit(ref r)) => l.node == r.node,
+            (&ExprKind::Loop(ref lb, ref ll, ref lls), &ExprKind::Loop(ref rb, ref rl, ref rls)) => {
                 lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
             },
-            (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
+            (&ExprKind::Match(ref le, ref la, ref ls), &ExprKind::Match(ref re, ref ra, ref rs)) => {
                 ls == rs && self.eq_expr(le, re) && over(la, ra, |l, r| {
                     self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r))
                         && over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
                 })
             },
-            (&ExprMethodCall(ref l_path, _, ref l_args), &ExprMethodCall(ref r_path, _, ref r_args)) => {
+            (&ExprKind::MethodCall(ref l_path, _, ref l_args), &ExprKind::MethodCall(ref r_path, _, ref r_args)) => {
                 !self.ignore_fn && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
-            (&ExprRepeat(ref le, ref ll_id), &ExprRepeat(ref re, ref rl_id)) => {
+            (&ExprKind::Repeat(ref le, ref ll_id), &ExprKind::Repeat(ref re, ref rl_id)) => {
                 let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
                 let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id.body).value);
                 let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id.body));
@@ -128,16 +128,16 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
                 self.eq_expr(le, re) && ll == rl
             },
-            (&ExprRet(ref l), &ExprRet(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
-            (&ExprPath(ref l), &ExprPath(ref r)) => self.eq_qpath(l, r),
-            (&ExprStruct(ref l_path, ref lf, ref lo), &ExprStruct(ref r_path, ref rf, ref ro)) => {
+            (&ExprKind::Ret(ref l), &ExprKind::Ret(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
+            (&ExprKind::Path(ref l), &ExprKind::Path(ref r)) => self.eq_qpath(l, r),
+            (&ExprKind::Struct(ref l_path, ref lf, ref lo), &ExprKind::Struct(ref r_path, ref rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path) && both(lo, ro, |l, r| self.eq_expr(l, r))
                     && over(lf, rf, |l, r| self.eq_field(l, r))
             },
-            (&ExprTup(ref l_tup), &ExprTup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
-            (&ExprUnary(l_op, ref le), &ExprUnary(r_op, ref re)) => l_op == r_op && self.eq_expr(le, re),
-            (&ExprArray(ref l), &ExprArray(ref r)) => self.eq_exprs(l, r),
-            (&ExprWhile(ref lc, ref lb, ref ll), &ExprWhile(ref rc, ref rb, ref rl)) => {
+            (&ExprKind::Tup(ref l_tup), &ExprKind::Tup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
+            (&ExprKind::Unary(l_op, ref le), &ExprKind::Unary(r_op, ref re)) => l_op == r_op && self.eq_expr(le, re),
+            (&ExprKind::Array(ref l), &ExprKind::Array(ref r)) => self.eq_exprs(l, r),
+            (&ExprKind::While(ref lc, ref lb, ref ll), &ExprKind::While(ref rc, ref rb, ref rl)) => {
                 self.eq_expr(lc, rc) && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
             },
             _ => false,
@@ -359,51 +359,51 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
         }
 
         match e.node {
-            ExprAddrOf(m, ref e) => {
-                let c: fn(_, _) -> _ = ExprAddrOf;
+            ExprKind::AddrOf(m, ref e) => {
+                let c: fn(_, _) -> _ = ExprKind::AddrOf;
                 c.hash(&mut self.s);
                 m.hash(&mut self.s);
                 self.hash_expr(e);
             },
-            ExprContinue(i) => {
-                let c: fn(_) -> _ = ExprContinue;
+            ExprKind::Continue(i) => {
+                let c: fn(_) -> _ = ExprKind::Continue;
                 c.hash(&mut self.s);
                 if let Some(i) = i.label {
                     self.hash_name(i.ident.name);
                 }
             },
-            ExprYield(ref e) => {
-                let c: fn(_) -> _ = ExprYield;
+            ExprKind::Yield(ref e) => {
+                let c: fn(_) -> _ = ExprKind::Yield;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
             },
-            ExprAssign(ref l, ref r) => {
-                let c: fn(_, _) -> _ = ExprAssign;
+            ExprKind::Assign(ref l, ref r) => {
+                let c: fn(_, _) -> _ = ExprKind::Assign;
                 c.hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
-            ExprAssignOp(ref o, ref l, ref r) => {
-                let c: fn(_, _, _) -> _ = ExprAssignOp;
+            ExprKind::AssignOp(ref o, ref l, ref r) => {
+                let c: fn(_, _, _) -> _ = ExprKind::AssignOp;
                 c.hash(&mut self.s);
                 o.hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
-            ExprBlock(ref b, _) => {
-                let c: fn(_, _) -> _ = ExprBlock;
+            ExprKind::Block(ref b, _) => {
+                let c: fn(_, _) -> _ = ExprKind::Block;
                 c.hash(&mut self.s);
                 self.hash_block(b);
             },
-            ExprBinary(op, ref l, ref r) => {
-                let c: fn(_, _, _) -> _ = ExprBinary;
+            ExprKind::Binary(op, ref l, ref r) => {
+                let c: fn(_, _, _) -> _ = ExprKind::Binary;
                 c.hash(&mut self.s);
                 op.node.hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
-            ExprBreak(i, ref j) => {
-                let c: fn(_, _) -> _ = ExprBreak;
+            ExprKind::Break(i, ref j) => {
+                let c: fn(_, _) -> _ = ExprKind::Break;
                 c.hash(&mut self.s);
                 if let Some(i) = i.label {
                     self.hash_name(i.ident.name);
@@ -412,25 +412,25 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(&*j);
                 }
             },
-            ExprBox(ref e) => {
-                let c: fn(_) -> _ = ExprBox;
+            ExprKind::Box(ref e) => {
+                let c: fn(_) -> _ = ExprKind::Box;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
             },
-            ExprCall(ref fun, ref args) => {
-                let c: fn(_, _) -> _ = ExprCall;
+            ExprKind::Call(ref fun, ref args) => {
+                let c: fn(_, _) -> _ = ExprKind::Call;
                 c.hash(&mut self.s);
                 self.hash_expr(fun);
                 self.hash_exprs(args);
             },
-            ExprCast(ref e, ref _ty) => {
-                let c: fn(_, _) -> _ = ExprCast;
+            ExprKind::Cast(ref e, ref _ty) => {
+                let c: fn(_, _) -> _ = ExprKind::Cast;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
                 // TODO: _ty
             },
-            ExprClosure(cap, _, eid, _, _) => {
-                let c: fn(_, _, _, _, _) -> _ = ExprClosure;
+            ExprKind::Closure(cap, _, eid, _, _) => {
+                let c: fn(_, _, _, _, _) -> _ = ExprKind::Closure;
                 c.hash(&mut self.s);
                 match cap {
                     CaptureClause::CaptureByValue => 0,
@@ -438,24 +438,24 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 }.hash(&mut self.s);
                 self.hash_expr(&self.cx.tcx.hir.body(eid).value);
             },
-            ExprField(ref e, ref f) => {
-                let c: fn(_, _) -> _ = ExprField;
+            ExprKind::Field(ref e, ref f) => {
+                let c: fn(_, _) -> _ = ExprKind::Field;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
                 self.hash_name(f.name);
             },
-            ExprIndex(ref a, ref i) => {
-                let c: fn(_, _) -> _ = ExprIndex;
+            ExprKind::Index(ref a, ref i) => {
+                let c: fn(_, _) -> _ = ExprKind::Index;
                 c.hash(&mut self.s);
                 self.hash_expr(a);
                 self.hash_expr(i);
             },
-            ExprInlineAsm(..) => {
-                let c: fn(_, _, _) -> _ = ExprInlineAsm;
+            ExprKind::InlineAsm(..) => {
+                let c: fn(_, _, _) -> _ = ExprKind::InlineAsm;
                 c.hash(&mut self.s);
             },
-            ExprIf(ref cond, ref t, ref e) => {
-                let c: fn(_, _, _) -> _ = ExprIf;
+            ExprKind::If(ref cond, ref t, ref e) => {
+                let c: fn(_, _, _) -> _ = ExprKind::If;
                 c.hash(&mut self.s);
                 self.hash_expr(cond);
                 self.hash_expr(&**t);
@@ -463,21 +463,21 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
-            ExprLit(ref l) => {
-                let c: fn(_) -> _ = ExprLit;
+            ExprKind::Lit(ref l) => {
+                let c: fn(_) -> _ = ExprKind::Lit;
                 c.hash(&mut self.s);
                 l.hash(&mut self.s);
             },
-            ExprLoop(ref b, ref i, _) => {
-                let c: fn(_, _, _) -> _ = ExprLoop;
+            ExprKind::Loop(ref b, ref i, _) => {
+                let c: fn(_, _, _) -> _ = ExprKind::Loop;
                 c.hash(&mut self.s);
                 self.hash_block(b);
                 if let Some(i) = *i {
                     self.hash_name(i.ident.name);
                 }
             },
-            ExprMatch(ref e, ref arms, ref s) => {
-                let c: fn(_, _, _) -> _ = ExprMatch;
+            ExprKind::Match(ref e, ref arms, ref s) => {
+                let c: fn(_, _, _) -> _ = ExprKind::Match;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
 
@@ -491,14 +491,14 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
                 s.hash(&mut self.s);
             },
-            ExprMethodCall(ref path, ref _tys, ref args) => {
-                let c: fn(_, _, _) -> _ = ExprMethodCall;
+            ExprKind::MethodCall(ref path, ref _tys, ref args) => {
+                let c: fn(_, _, _) -> _ = ExprKind::MethodCall;
                 c.hash(&mut self.s);
                 self.hash_name(path.ident.name);
                 self.hash_exprs(args);
             },
-            ExprRepeat(ref e, ref l_id) => {
-                let c: fn(_, _) -> _ = ExprRepeat;
+            ExprKind::Repeat(ref e, ref l_id) => {
+                let c: fn(_, _) -> _ = ExprKind::Repeat;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
                 let full_table = self.tables;
@@ -506,20 +506,20 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(&self.cx.tcx.hir.body(l_id.body).value);
                 self.tables = full_table;
             },
-            ExprRet(ref e) => {
-                let c: fn(_) -> _ = ExprRet;
+            ExprKind::Ret(ref e) => {
+                let c: fn(_) -> _ = ExprKind::Ret;
                 c.hash(&mut self.s);
                 if let Some(ref e) = *e {
                     self.hash_expr(e);
                 }
             },
-            ExprPath(ref qpath) => {
-                let c: fn(_) -> _ = ExprPath;
+            ExprKind::Path(ref qpath) => {
+                let c: fn(_) -> _ = ExprKind::Path;
                 c.hash(&mut self.s);
                 self.hash_qpath(qpath);
             },
-            ExprStruct(ref path, ref fields, ref expr) => {
-                let c: fn(_, _, _) -> _ = ExprStruct;
+            ExprKind::Struct(ref path, ref fields, ref expr) => {
+                let c: fn(_, _, _) -> _ = ExprKind::Struct;
                 c.hash(&mut self.s);
 
                 self.hash_qpath(path);
@@ -533,32 +533,32 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
-            ExprTup(ref tup) => {
-                let c: fn(_) -> _ = ExprTup;
+            ExprKind::Tup(ref tup) => {
+                let c: fn(_) -> _ = ExprKind::Tup;
                 c.hash(&mut self.s);
                 self.hash_exprs(tup);
             },
-            ExprType(ref e, ref _ty) => {
-                let c: fn(_, _) -> _ = ExprType;
+            ExprKind::Type(ref e, ref _ty) => {
+                let c: fn(_, _) -> _ = ExprKind::Type;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
                 // TODO: _ty
             },
-            ExprUnary(lop, ref le) => {
-                let c: fn(_, _) -> _ = ExprUnary;
+            ExprKind::Unary(lop, ref le) => {
+                let c: fn(_, _) -> _ = ExprKind::Unary;
                 c.hash(&mut self.s);
 
                 lop.hash(&mut self.s);
                 self.hash_expr(le);
             },
-            ExprArray(ref v) => {
-                let c: fn(_) -> _ = ExprArray;
+            ExprKind::Array(ref v) => {
+                let c: fn(_) -> _ = ExprKind::Array;
                 c.hash(&mut self.s);
 
                 self.hash_exprs(v);
             },
-            ExprWhile(ref cond, ref b, l) => {
-                let c: fn(_, _, _) -> _ = ExprWhile;
+            ExprKind::While(ref cond, ref b, l) => {
+                let c: fn(_, _, _) -> _ = ExprKind::While;
                 c.hash(&mut self.s);
 
                 self.hash_expr(cond);

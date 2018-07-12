@@ -38,8 +38,8 @@ impl LintPass for DurationSubsec {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
-            if let ExprBinary(Spanned { node: BiDiv, .. }, ref left, ref right) = expr.node;
-            if let ExprMethodCall(ref method_path, _ , ref args) = left.node;
+            if let ExprKind::Binary(Spanned { node: BiDiv, .. }, ref left, ref right) = expr.node;
+            if let ExprKind::MethodCall(ref method_path, _ , ref args) = left.node;
             if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(&args[0])), &paths::DURATION);
             if let Some((Constant::Int(divisor), _)) = constant(cx, cx.tables, right);
             then {

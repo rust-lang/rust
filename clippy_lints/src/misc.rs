@@ -304,7 +304,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         };
         if_chain! {
             if let StmtSemi(ref expr, _) = s.node;
-            if let Expr_::ExprBinary(ref binop, ref a, ref b) = expr.node;
+            if let ExprKind::Binary(ref binop, ref a, ref b) = expr.node;
             if binop.node == BiAnd || binop.node == BiOr;
             if let Some(sugg) = Sugg::hir_opt(cx, a);
             then {
@@ -323,17 +323,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
-            ExprCast(ref e, ref ty) => {
+            ExprKind::Cast(ref e, ref ty) => {
                 check_cast(cx, expr.span, e, ty);
                 return;
             },
-            ExprBinary(ref cmp, ref left, ref right) => {
+            ExprKind::Binary(ref cmp, ref left, ref right) => {
                 let op = cmp.node;
                 if op.is_comparison() {
-                    if let ExprPath(QPath::Resolved(_, ref path)) = left.node {
+                    if let ExprKind::Path(QPath::Resolved(_, ref path)) = left.node {
                         check_nan(cx, path, expr);
                     }
-                    if let ExprPath(QPath::Resolved(_, ref path)) = right.node {
+                    if let ExprKind::Path(QPath::Resolved(_, ref path)) = right.node {
                         check_nan(cx, path, expr);
                     }
                     check_to_owned(cx, left, right);
@@ -378,7 +378,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         let binding = match expr.node {
-            ExprPath(ref qpath) => {
+            ExprKind::Path(ref qpath) => {
                 let binding = last_path_segment(qpath).ident.as_str();
                 if binding.starts_with('_') &&
                     !binding.starts_with("__") &&
@@ -392,7 +392,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     None
                 }
             },
-            ExprField(_, ident) => {
+            ExprKind::Field(_, ident) => {
                 let name = ident.as_str();
                 if name.starts_with('_') && !name.starts_with("__") {
                     Some(name)
@@ -467,14 +467,14 @@ fn is_float(cx: &LateContext, expr: &Expr) -> bool {
 
 fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
     let (arg_ty, snip) = match expr.node {
-        ExprMethodCall(.., ref args) if args.len() == 1 => {
+        ExprKind::MethodCall(.., ref args) if args.len() == 1 => {
             if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
                 (cx.tables.expr_ty_adjusted(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
                 return;
             }
         },
-        ExprCall(ref path, ref v) if v.len() == 1 => if let ExprPath(ref path) = path.node {
+        ExprKind::Call(ref path, ref v) if v.len() == 1 => if let ExprKind::Path(ref path) = path.node {
             if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
                 (cx.tables.expr_ty_adjusted(&v[0]), snippet(cx, v[0].span, ".."))
             } else {
@@ -542,7 +542,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
 fn is_used(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         match parent.node {
-            ExprAssign(_, ref rhs) | ExprAssignOp(_, _, ref rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
+            ExprKind::Assign(_, ref rhs) | ExprKind::AssignOp(_, _, ref rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
             _ => is_used(cx, parent),
         }
     } else {
@@ -572,7 +572,7 @@ fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
 fn check_cast(cx: &LateContext, span: Span, e: &Expr, ty: &Ty) {
     if_chain! {
         if let TyPtr(MutTy { mutbl, .. }) = ty.node;
-        if let ExprLit(ref lit) = e.node;
+        if let ExprKind::Lit(ref lit) = e.node;
         if let LitKind::Int(value, ..) = lit.node;
         if value == 0;
         if !in_constant(cx, e.id);

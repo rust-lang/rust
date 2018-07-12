@@ -54,7 +54,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
         if self.abort {
             return;
         }
-        if let ExprMethodCall(ref seg, _, ref args) = expr.node {
+        if let ExprKind::MethodCall(ref seg, _, ref args) = expr.node {
             if args.len() == 1 && match_var(&args[0], self.name) {
                 if seg.ident.name == "capacity" {
                     self.abort = true;

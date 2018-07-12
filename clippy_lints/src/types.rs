@@ -446,7 +446,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
         if in_macro(expr.span) {
             return;
         }
-        if let ExprBinary(ref cmp, ref left, _) = expr.node {
+        if let ExprKind::Binary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
             if op.is_comparison() && is_unit(cx.tables.expr_ty(left)) {
                 let result = match op {
@@ -501,7 +501,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
             return;
         }
         match expr.node {
-            ExprCall(_, ref args) | ExprMethodCall(_, _, ref args) => {
+            ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => {
                 for arg in args {
                     if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
                         let map = &cx.tcx.hir;
@@ -539,7 +539,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
 
 fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
     use syntax_pos::hygiene::CompilerDesugaringKind;
-    if let ExprCall(ref callee, _) = expr.node {
+    if let ExprKind::Call(ref callee, _) = expr.node {
         callee.span.is_compiler_desugaring(CompilerDesugaringKind::QuestionMark)
     } else {
         false
@@ -555,7 +555,7 @@ fn is_unit(ty: Ty) -> bool {
 
 fn is_unit_literal(expr: &Expr) -> bool {
     match expr.node {
-        ExprTup(ref slice) if slice.is_empty() => true,
+        ExprKind::Tup(ref slice) if slice.is_empty() => true,
         _ => false,
     }
 }
@@ -812,7 +812,7 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_t
 }
 
 fn should_strip_parens(op: &Expr, snip: &str) -> bool {
-    if let ExprBinary(_, _, _) = op.node {
+    if let ExprKind::Binary(_, _, _) = op.node {
         if snip.starts_with('(') && snip.ends_with(')') {
             return true;
         }
@@ -951,9 +951,9 @@ impl LintPass for CastPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprCast(ref ex, _) = expr.node {
+        if let ExprKind::Cast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
-            if let ExprLit(ref lit) = ex.node {
+            if let ExprKind::Lit(ref lit) = ex.node {
                 use syntax::ast::{LitIntType, LitKind};
                 match lit.node {
                     LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::FloatUnsuffixed(_) => {},
@@ -1289,8 +1289,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         use syntax::ast::{LitKind, UintTy};
 
-        if let ExprCast(ref e, _) = expr.node {
-            if let ExprLit(ref l) = e.node {
+        if let ExprKind::Cast(ref e, _) = expr.node {
+            if let ExprKind::Lit(ref l) = e.node {
                 if let LitKind::Char(_) = l.node {
                     if ty::TyUint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !in_macro(expr.span) {
                         let msg = "casting character literal to u8. `char`s \
@@ -1362,7 +1362,7 @@ fn is_cast_between_fixed_and_target<'a, 'tcx>(
     expr: &'tcx Expr
 ) -> bool {
 
-    if let ExprCast(ref cast_exp, _) = expr.node {
+    if let ExprKind::Cast(ref cast_exp, _) = expr.node {
         let precast_ty = cx.tables.expr_ty(cast_exp);
         let cast_ty = cx.tables.expr_ty(expr);
 
@@ -1453,7 +1453,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
         use crate::types::ExtremeType::*;
         use crate::types::AbsurdComparisonResult::*;
 
-        if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
+        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.node {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
                 if !in_macro(expr.span) {
                     let msg = "this comparison involving the minimum or maximum element for this \
@@ -1564,7 +1564,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
     use syntax::ast::{IntTy, UintTy};
     use std::*;
 
-    if let ExprCast(ref cast_exp, _) = expr.node {
+    if let ExprKind::Cast(ref cast_exp, _) = expr.node {
         let pre_cast_ty = cx.tables.expr_ty(cast_exp);
         let cast_ty = cx.tables.expr_ty(expr);
         // if it's a cast from i32 to u32 wrapping will invalidate all these checks
@@ -1627,7 +1627,7 @@ fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr)
 }
 
 fn err_upcast_comparison(cx: &LateContext, span: Span, expr: &Expr, always: bool) {
-    if let ExprCast(ref cast_val, _) = expr.node {
+    if let ExprKind::Cast(ref cast_val, _) = expr.node {
         span_lint(
             cx,
             INVALID_UPCAST_COMPARISONS,
@@ -1693,7 +1693,7 @@ fn upcast_comparison_bounds_err<'a, 'tcx>(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
+        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.node {
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);
             let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
                 val
@@ -1984,8 +1984,8 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
 
     fn visit_expr(&mut self, e: &'tcx Expr) {
         if_chain! {
-            if let ExprCall(ref fun, ref args) = e.node;
-            if let ExprPath(QPath::TypeRelative(ref ty, ref method)) = fun.node;
+            if let ExprKind::Call(ref fun, ref args) = e.node;
+            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.node;
             if let TyPath(QPath::Resolved(None, ref ty_path)) = ty.node;
             then {
                 if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {

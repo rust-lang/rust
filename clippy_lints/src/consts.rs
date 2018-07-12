@@ -211,25 +211,25 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
-            ExprPath(ref qpath) => self.fetch_path(qpath, e.hir_id),
-            ExprBlock(ref block, _) => self.block(block),
-            ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
-            ExprLit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty(e))),
-            ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),
-            ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
-            ExprRepeat(ref value, _) => {
+            ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id),
+            ExprKind::Block(ref block, _) => self.block(block),
+            ExprKind::If(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
+            ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty(e))),
+            ExprKind::Array(ref vec) => self.multi(vec).map(Constant::Vec),
+            ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
+            ExprKind::Repeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
                     ty::TyArray(_, n) => n.assert_usize(self.tcx).expect("array length"),
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n as u64))
             },
-            ExprUnary(op, ref operand) => self.expr(operand).and_then(|o| match op {
+            ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
                 UnNot => self.constant_not(&o, self.tables.expr_ty(e)),
                 UnNeg => self.constant_negate(&o, self.tables.expr_ty(e)),
                 UnDeref => Some(o),
             }),
-            ExprBinary(op, ref left, ref right) => self.binop(op, left, right),
+            ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
             // TODO: add other expressions
             _ => None,
         }
@@ -279,7 +279,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             .collect::<Option<_>>()
     }
 
-    /// lookup a possibly constant expression from a ExprPath
+    /// lookup a possibly constant expression from a ExprKind::Path
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
         let def = self.tables.qpath_def(qpath, id);
         match def {

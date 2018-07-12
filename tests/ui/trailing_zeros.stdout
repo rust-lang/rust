@@ -1,13 +1,13 @@
 if_chain! {
-    if let Expr_::ExprBinary(ref op, ref left, ref right) = expr.node;
+    if let ExprKind::Binary(ref op, ref left, ref right) = expr.node;
     if BinOp_::BiEq == op.node;
-    if let Expr_::ExprBinary(ref op1, ref left1, ref right1) = left.node;
+    if let ExprKind::Binary(ref op1, ref left1, ref right1) = left.node;
     if BinOp_::BiBitAnd == op1.node;
-    if let Expr_::ExprPath(ref path) = left1.node;
+    if let ExprKind::Path(ref path) = left1.node;
     if match_qpath(path, &["x"]);
-    if let Expr_::ExprLit(ref lit) = right1.node;
+    if let ExprKind::Lit(ref lit) = right1.node;
     if let LitKind::Int(15, _) = lit.node;
-    if let Expr_::ExprLit(ref lit1) = right.node;
+    if let ExprKind::Lit(ref lit1) = right.node;
     if let LitKind::Int(0, _) = lit1.node;
     then {
         // report your lint here

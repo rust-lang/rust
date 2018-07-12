@@ -113,7 +113,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 if let StmtDecl(ref decl, _) = st.node {
                     if let DeclLocal(ref loc) = decl.node {
                         if let Some(ref ex) = loc.init {
-                            if let ExprBox(..) = ex.node {
+                            if let ExprKind::Box(..) = ex.node {
                                 if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
                                     // let x = box (...)
                                     self.set.insert(consume_pat.id);

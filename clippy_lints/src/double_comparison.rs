@@ -47,7 +47,7 @@ impl<'a, 'tcx> DoubleComparisonPass {
         span: Span,
     ) {
         let (lkind, llhs, lrhs, rkind, rlhs, rrhs) = match (lhs.node.clone(), rhs.node.clone()) {
-            (ExprBinary(lb, llhs, lrhs), ExprBinary(rb, rlhs, rrhs)) => {
+            (ExprKind::Binary(lb, llhs, lrhs), ExprKind::Binary(rb, rlhs, rrhs)) => {
                 (lb.node, llhs, lrhs, rb.node, rlhs, rrhs)
             }
             _ => return,
@@ -78,7 +78,7 @@ impl<'a, 'tcx> DoubleComparisonPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DoubleComparisonPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprBinary(ref kind, ref lhs, ref rhs) = expr.node {
+        if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = expr.node {
             self.check_binop(cx, kind.node, lhs, rhs, expr.span);
         }
     }

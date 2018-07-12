@@ -43,19 +43,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
         }
 
         match e.node {
-            ExprMatch(_, ref arms, MatchSource::TryDesugar) => {
+            ExprKind::Match(_, ref arms, MatchSource::TryDesugar) => {
                 let e = match arms[0].body.node {
-                    ExprRet(Some(ref e)) | ExprBreak(_, Some(ref e)) => e,
+                    ExprKind::Ret(Some(ref e)) | ExprKind::Break(_, Some(ref e)) => e,
                     _ => return,
                 };
-                if let ExprCall(_, ref args) = e.node {
+                if let ExprKind::Call(_, ref args) = e.node {
                     self.try_desugar_arm.push(args[0].id);
                 } else {
                     return;
                 }
             },
 
-            ExprMethodCall(ref name, .., ref args) => {
+            ExprKind::MethodCall(ref name, .., ref args) => {
                 if match_trait_method(cx, e, &paths::INTO[..]) && &*name.ident.as_str() == "into" {
                     let a = cx.tables.expr_ty(e);
                     let b = cx.tables.expr_ty(&args[0]);
@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                 }
             },
 
-            ExprCall(ref path, ref args) => if let ExprPath(ref qpath) = path.node {
+            ExprKind::Call(ref path, ref args) => if let ExprKind::Path(ref qpath) = path.node {
                 if let Some(def_id) = opt_def_id(resolve_node(cx, qpath, path.hir_id)) {
                     if match_def_path(cx.tcx, def_id, &paths::FROM_FROM[..]) {
                         let a = cx.tables.expr_ty(e);

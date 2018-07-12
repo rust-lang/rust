@@ -76,7 +76,7 @@ impl LintPass for AssignOps {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprAssignOp(op, ref lhs, ref rhs) => {
+            hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                 span_lint_and_then(cx, ASSIGN_OPS, expr.span, "assign operation detected", |db| {
                     let lhs = &sugg::Sugg::hir(cx, lhs, "..");
                     let rhs = &sugg::Sugg::hir(cx, rhs, "..");
@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                         format!("{} = {}", lhs, sugg::make_binop(higher::binop(op.node), lhs, rhs)),
                     );
                 });
-                if let hir::ExprBinary(binop, ref l, ref r) = rhs.node {
+                if let hir::ExprKind::Binary(binop, ref l, ref r) = rhs.node {
                     if op.node == binop.node {
                         let lint = |assignee: &hir::Expr, rhs_other: &hir::Expr| {
                             span_lint_and_then(
@@ -131,8 +131,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                     }
                 }
             },
-            hir::ExprAssign(ref assignee, ref e) => {
-                if let hir::ExprBinary(op, ref l, ref r) = e.node {
+            hir::ExprKind::Assign(ref assignee, ref e) => {
+                if let hir::ExprKind::Binary(op, ref l, ref r) = e.node {
                     #[allow(cyclomatic_complexity)]
                     let lint = |assignee: &hir::Expr, rhs: &hir::Expr| {
                         let ty = cx.tables.expr_ty(assignee);

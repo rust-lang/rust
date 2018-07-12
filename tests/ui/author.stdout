@@ -2,10 +2,10 @@ if_chain! {
     if let Stmt_::StmtDecl(ref decl, _) = stmt.node
     if let Decl_::DeclLocal(ref local) = decl.node;
     if let Some(ref init) = local.init
-    if let Expr_::ExprCast(ref expr, ref cast_ty) = init.node;
+    if let ExprKind::Cast(ref expr, ref cast_ty) = init.node;
     if let Ty_::TyPath(ref qp) = cast_ty.node;
     if match_qpath(qp, &["char"]);
-    if let Expr_::ExprLit(ref lit) = expr.node;
+    if let ExprKind::Lit(ref lit) = expr.node;
     if let LitKind::Int(69, _) = lit.node;
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = local.pat.node;
     if name.node.as_str() == "x";

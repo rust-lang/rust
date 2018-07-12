@@ -78,7 +78,7 @@ fn collect_unwrap_info<'a, 'tcx: 'a>(
     expr: &'tcx Expr,
     invert: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
-    if let Expr_::ExprBinary(op, left, right) = &expr.node {
+    if let ExprKind::Binary(op, left, right) = &expr.node {
         match (invert, op.node) {
             (false, BinOp_::BiAnd) | (false, BinOp_::BiBitAnd) | (true, BinOp_::BiOr) | (true, BinOp_::BiBitOr) => {
                 let mut unwrap_info = collect_unwrap_info(cx, left, invert);
@@ -87,12 +87,12 @@ fn collect_unwrap_info<'a, 'tcx: 'a>(
             },
             _ => (),
         }
-    } else if let Expr_::ExprUnary(UnNot, expr) = &expr.node {
+    } else if let ExprKind::Unary(UnNot, expr) = &expr.node {
         return collect_unwrap_info(cx, expr, !invert);
     } else {
         if_chain! {
-            if let Expr_::ExprMethodCall(method_name, _, args) = &expr.node;
-            if let Expr_::ExprPath(QPath::Resolved(None, path)) = &args[0].node;
+            if let ExprKind::MethodCall(method_name, _, args) = &expr.node;
+            if let ExprKind::Path(QPath::Resolved(None, path)) = &args[0].node;
             let ty = cx.tables.expr_ty(&args[0]);
             if match_type(cx, ty, &paths::OPTION) || match_type(cx, ty, &paths::RESULT);
             let name = method_name.ident.as_str();
@@ -131,7 +131,7 @@ impl<'a, 'tcx: 'a> UnwrappableVariablesVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if let Expr_::ExprIf(cond, then, els) = &expr.node {
+        if let ExprKind::If(cond, then, els) = &expr.node {
             walk_expr(self, cond);
             self.visit_branch(cond, then, false);
             if let Some(els) = els {
@@ -140,8 +140,8 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         } else {
             // find `unwrap[_err]()` calls:
             if_chain! {
-                if let Expr_::ExprMethodCall(ref method_name, _, ref args) = expr.node;
-                if let Expr_::ExprPath(QPath::Resolved(None, ref path)) = args[0].node;
+                if let ExprKind::MethodCall(ref method_name, _, ref args) = expr.node;
+                if let ExprKind::Path(QPath::Resolved(None, ref path)) = args[0].node;
                 if ["unwrap", "unwrap_err"].contains(&&*method_name.ident.as_str());
                 let call_to_unwrap = method_name.ident.name == "unwrap";
                 if let Some(unwrappable) = self.unwrappables.iter()

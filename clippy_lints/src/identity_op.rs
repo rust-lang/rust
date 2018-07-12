@@ -36,7 +36,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
         if in_macro(e.span) {
             return;
         }
-        if let ExprBinary(ref cmp, ref left, ref right) = e.node {
+        if let ExprKind::Binary(ref cmp, ref left, ref right) = e.node {
             match cmp.node {
                 BiAdd | BiBitOr | BiBitXor => {
                     check(cx, left, 0, e.span, right.span);

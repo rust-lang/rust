@@ -63,7 +63,7 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprLit(ref lit) = e.node {
+        if let ExprKind::Lit(ref lit) = e.node {
             check_lit(cx, lit, e);
         }
     }

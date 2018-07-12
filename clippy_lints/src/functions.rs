@@ -184,7 +184,7 @@ struct DerefVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprCall(ref f, ref args) => {
+            hir::ExprKind::Call(ref f, ref args) => {
                 let ty = self.tables.expr_ty(f);
 
                 if type_is_unsafe_function(self.cx, ty) {
@@ -193,7 +193,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprMethodCall(_, _, ref args) => {
+            hir::ExprKind::MethodCall(_, _, ref args) => {
                 let def_id = self.tables.type_dependent_defs()[expr.hir_id].def_id();
                 let base_type = self.cx.tcx.type_of(def_id);
 
@@ -203,7 +203,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprUnary(hir::UnDeref, ref ptr) => self.check_arg(ptr),
+            hir::ExprKind::Unary(hir::UnDeref, ref ptr) => self.check_arg(ptr),
             _ => (),
         }
 
@@ -216,7 +216,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
-        if let hir::ExprPath(ref qpath) = ptr.node {
+        if let hir::ExprKind::Path(ref qpath) = ptr.node {
             if let Def::Local(id) = self.cx.tables.qpath_def(qpath, ptr.hir_id) {
                 if self.ptrs.contains(&id) {
                     span_lint(

@@ -339,7 +339,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                     match node {
                         map::Node::NodeExpr(e) => {
                             // `match` and `if let`
-                            if let ExprMatch(ref c, ..) = e.node {
+                            if let ExprKind::Match(ref c, ..) = e.node {
                                 self.spans_need_deref
                                     .entry(vid)
                                     .or_insert_with(HashSet::new)

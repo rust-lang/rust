@@ -1,4 +1,4 @@
-use rustc::hir::{Expr, ExprLit, ExprMethodCall};
+use rustc::hir::{Expr, ExprKind};
 use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
@@ -33,7 +33,7 @@ impl LintPass for NonSensical {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSensical {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprMethodCall(ref path, _, ref arguments) = e.node {
+        if let ExprKind::MethodCall(ref path, _, ref arguments) = e.node {
             let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
             if path.ident.name == "open" && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
@@ -61,13 +61,13 @@ enum OpenOption {
 }
 
 fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
-    if let ExprMethodCall(ref path, _, ref arguments) = argument.node {
+    if let ExprKind::MethodCall(ref path, _, ref arguments) = argument.node {
         let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
         if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {
             let argument_option = match arguments[1].node {
-                ExprLit(ref span) => {
+                ExprKind::Lit(ref span) => {
                     if let Spanned {
                         node: LitKind::Bool(lit),
                         ..

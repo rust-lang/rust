@@ -45,9 +45,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
         };
 
         match expr.node {
-            hir::ExprMatch(ref res, _, _) if is_try(expr).is_some() => {
-                if let hir::ExprCall(ref func, ref args) = res.node {
-                    if let hir::ExprPath(ref path) = func.node {
+            hir::ExprKind::Match(ref res, _, _) if is_try(expr).is_some() => {
+                if let hir::ExprKind::Call(ref func, ref args) = res.node {
+                    if let hir::ExprKind::Path(ref path) = func.node {
                         if match_qpath(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {
                             check_method_call(cx, &args[0], expr);
                         }
@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
                 }
             },
 
-            hir::ExprMethodCall(ref path, _, ref args) => match &*path.ident.as_str() {
+            hir::ExprKind::MethodCall(ref path, _, ref args) => match &*path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
                     check_method_call(cx, &args[0], expr);
                 },
@@ -70,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
 }
 
 fn check_method_call(cx: &LateContext, call: &hir::Expr, expr: &hir::Expr) {
-    if let hir::ExprMethodCall(ref path, _, _) = call.node {
+    if let hir::ExprKind::MethodCall(ref path, _, _) = call.node {
         let symbol = &*path.ident.as_str();
         if match_trait_method(cx, call, &paths::IO_READ) && symbol == "read" {
             span_lint(

@@ -109,7 +109,7 @@ impl LintPass for BitMask {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprBinary(ref cmp, ref left, ref right) = e.node {
+        if let ExprKind::Binary(ref cmp, ref left, ref right) = e.node {
             if cmp.node.is_comparison() {
                 if let Some(cmp_opt) = fetch_int_literal(cx, right) {
                     check_compare(cx, left, cmp.node, cmp_opt, e.span)
@@ -119,13 +119,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
             }
         }
         if_chain! {
-            if let Expr_::ExprBinary(ref op, ref left, ref right) = e.node;
+            if let ExprKind::Binary(ref op, ref left, ref right) = e.node;
             if BinOp_::BiEq == op.node;
-            if let Expr_::ExprBinary(ref op1, ref left1, ref right1) = left.node;
+            if let ExprKind::Binary(ref op1, ref left1, ref right1) = left.node;
             if BinOp_::BiBitAnd == op1.node;
-            if let Expr_::ExprLit(ref lit) = right1.node;
+            if let ExprKind::Lit(ref lit) = right1.node;
             if let LitKind::Int(n, _) = lit.node;
-            if let Expr_::ExprLit(ref lit1) = right.node;
+            if let ExprKind::Lit(ref lit1) = right.node;
             if let LitKind::Int(0, _) = lit1.node;
             if n.leading_zeros() == n.count_zeros();
             if n > u128::from(self.verbose_bit_mask_threshold);
@@ -157,7 +157,7 @@ fn invert_cmp(cmp: BinOp_) -> BinOp_ {
 
 
 fn check_compare(cx: &LateContext, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u128, span: Span) {
-    if let ExprBinary(ref op, ref left, ref right) = bit_op.node {
+    if let ExprKind::Binary(ref op, ref left, ref right) = bit_op.node {
         if op.node != BiBitAnd && op.node != BiBitOr {
             return;
         }

@@ -46,35 +46,35 @@ impl<'a> Sugg<'a> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
             match expr.node {
-                hir::ExprAddrOf(..) |
-                hir::ExprBox(..) |
-                hir::ExprClosure(.., _) |
-                hir::ExprIf(..) |
-                hir::ExprUnary(..) |
-                hir::ExprMatch(..) => Sugg::MaybeParen(snippet),
-                hir::ExprContinue(..) |
-                hir::ExprYield(..) |
-                hir::ExprArray(..) |
-                hir::ExprBlock(..) |
-                hir::ExprBreak(..) |
-                hir::ExprCall(..) |
-                hir::ExprField(..) |
-                hir::ExprIndex(..) |
-                hir::ExprInlineAsm(..) |
-                hir::ExprLit(..) |
-                hir::ExprLoop(..) |
-                hir::ExprMethodCall(..) |
-                hir::ExprPath(..) |
-                hir::ExprRepeat(..) |
-                hir::ExprRet(..) |
-                hir::ExprStruct(..) |
-                hir::ExprTup(..) |
-                hir::ExprWhile(..) => Sugg::NonParen(snippet),
-                hir::ExprAssign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
-                hir::ExprAssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
-                hir::ExprBinary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
-                hir::ExprCast(..) => Sugg::BinOp(AssocOp::As, snippet),
-                hir::ExprType(..) => Sugg::BinOp(AssocOp::Colon, snippet),
+                hir::ExprKind::AddrOf(..) |
+                hir::ExprKind::Box(..) |
+                hir::ExprKind::Closure(.., _) |
+                hir::ExprKind::If(..) |
+                hir::ExprKind::Unary(..) |
+                hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+                hir::ExprKind::Continue(..) |
+                hir::ExprKind::Yield(..) |
+                hir::ExprKind::Array(..) |
+                hir::ExprKind::Block(..) |
+                hir::ExprKind::Break(..) |
+                hir::ExprKind::Call(..) |
+                hir::ExprKind::Field(..) |
+                hir::ExprKind::Index(..) |
+                hir::ExprKind::InlineAsm(..) |
+                hir::ExprKind::Lit(..) |
+                hir::ExprKind::Loop(..) |
+                hir::ExprKind::MethodCall(..) |
+                hir::ExprKind::Path(..) |
+                hir::ExprKind::Repeat(..) |
+                hir::ExprKind::Ret(..) |
+                hir::ExprKind::Struct(..) |
+                hir::ExprKind::Tup(..) |
+                hir::ExprKind::While(..) => Sugg::NonParen(snippet),
+                hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
+                hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
+                hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
+                hir::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
+                hir::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
             }
         })
     }

@@ -63,8 +63,8 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
         fn visit_expr(&mut self, expr: &'tcx Expr) {
             // check for `begin_panic`
             if_chain! {
-                if let ExprCall(ref func_expr, _) = expr.node;
-                if let ExprPath(QPath::Resolved(_, ref path)) = func_expr.node;
+                if let ExprKind::Call(ref func_expr, _) = expr.node;
+                if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.node;
                 if let Some(path_def_id) = opt_def_id(path.def);
                 if match_def_path(self.tcx, path_def_id, &BEGIN_PANIC) ||
                     match_def_path(self.tcx, path_def_id, &BEGIN_PANIC_FMT);

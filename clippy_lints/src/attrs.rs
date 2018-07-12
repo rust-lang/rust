@@ -244,10 +244,10 @@ fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> b
 
 fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool {
     match expr.node {
-        ExprBlock(ref block, _) => is_relevant_block(tcx, tables, block),
-        ExprRet(Some(ref e)) => is_relevant_expr(tcx, tables, e),
-        ExprRet(None) | ExprBreak(_, None) => false,
-        ExprCall(ref path_expr, _) => if let ExprPath(ref qpath) = path_expr.node {
+        ExprKind::Block(ref block, _) => is_relevant_block(tcx, tables, block),
+        ExprKind::Ret(Some(ref e)) => is_relevant_expr(tcx, tables, e),
+        ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
+        ExprKind::Call(ref path_expr, _) => if let ExprKind::Path(ref qpath) = path_expr.node {
             if let Some(fun_id) = opt_def_id(tables.qpath_def(qpath, path_expr.hir_id)) {
                 !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
             } else {

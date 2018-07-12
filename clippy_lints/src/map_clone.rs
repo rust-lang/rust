@@ -30,10 +30,10 @@ pub struct Pass;
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // call to .map()
-        if let ExprMethodCall(ref method, _, ref args) = expr.node {
+        if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
             if method.ident.name == "map" && args.len() == 2 {
                 match args[1].node {
-                    ExprClosure(_, ref decl, closure_eid, _, _) => {
+                    ExprKind::Closure(_, ref decl, closure_eid, _, _) => {
                         let body = cx.tcx.hir.body(closure_eid);
                         let closure_expr = remove_blocks(&body.value);
                         if_chain! {
@@ -62,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     }
                                 }
                                 // explicit clone() calls ( .map(|x| x.clone()) )
-                                else if let ExprMethodCall(ref clone_call, _, ref clone_args) = closure_expr.node {
+                                else if let ExprKind::MethodCall(ref clone_call, _, ref clone_args) = closure_expr.node {
                                     if clone_call.ident.name == "clone" &&
                                         clone_args.len() == 1 &&
                                         match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             }
                         }
                     },
-                    ExprPath(ref path) => if match_qpath(path, &paths::CLONE) {
+                    ExprKind::Path(ref path) => if match_qpath(path, &paths::CLONE) {
                         let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
                         span_help_and_lint(
                             cx,
@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 fn expr_eq_name(cx: &LateContext, expr: &Expr, id: ast::Ident) -> bool {
     match expr.node {
-        ExprPath(QPath::Resolved(None, ref path)) => {
+        ExprKind::Path(QPath::Resolved(None, ref path)) => {
             let arg_segment = [
                 PathSegment {
                     ident: id,
@@ -126,7 +126,7 @@ fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static s
 
 fn only_derefs(cx: &LateContext, expr: &Expr, id: ast::Ident) -> bool {
     match expr.node {
-        ExprUnary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => only_derefs(cx, subexpr, id),
+        ExprKind::Unary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => only_derefs(cx, subexpr, id),
         _ => expr_eq_name(cx, expr, id),
     }
 }
