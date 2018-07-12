@@ -1189,7 +1189,7 @@ pub fn run_cargo(builder: &Builder, cargo: &mut Command, stamp: &Path, is_check:
 pub fn stream_cargo(
     builder: &Builder,
     cargo: &mut Command,
-    cb: &mut FnMut(CargoMessage),
+    cb: &mut dyn FnMut(CargoMessage),
 ) -> bool {
     if builder.config.dry_run {
         return true;
