@@ -393,7 +393,6 @@ extern { pub type MemoryBuffer; }
 extern { pub type PassManager; }
 pub type PassManagerRef = *mut PassManager;
 extern { pub type PassManagerBuilder; }
-pub type PassManagerBuilderRef = *mut PassManagerBuilder;
 extern { pub type ObjectFile; }
 extern { pub type SectionIterator; }
 pub type SectionIteratorRef = *mut SectionIterator;
@@ -1119,23 +1118,23 @@ extern "C" {
 
     pub fn LLVMInitializePasses();
 
-    pub fn LLVMPassManagerBuilderCreate() -> PassManagerBuilderRef;
-    pub fn LLVMPassManagerBuilderDispose(PMB: PassManagerBuilderRef);
-    pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: PassManagerBuilderRef, Value: Bool);
-    pub fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: PassManagerBuilderRef, Value: Bool);
-    pub fn LLVMPassManagerBuilderUseInlinerWithThreshold(PMB: PassManagerBuilderRef,
+    pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
+    pub fn LLVMPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
+    pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: &PassManagerBuilder, Value: Bool);
+    pub fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: &PassManagerBuilder, Value: Bool);
+    pub fn LLVMPassManagerBuilderUseInlinerWithThreshold(PMB: &PassManagerBuilder,
                                                          threshold: c_uint);
-    pub fn LLVMPassManagerBuilderPopulateModulePassManager(PMB: PassManagerBuilderRef,
+    pub fn LLVMPassManagerBuilderPopulateModulePassManager(PMB: &PassManagerBuilder,
                                                            PM: PassManagerRef);
 
-    pub fn LLVMPassManagerBuilderPopulateFunctionPassManager(PMB: PassManagerBuilderRef,
+    pub fn LLVMPassManagerBuilderPopulateFunctionPassManager(PMB: &PassManagerBuilder,
                                                              PM: PassManagerRef);
-    pub fn LLVMPassManagerBuilderPopulateLTOPassManager(PMB: PassManagerBuilderRef,
+    pub fn LLVMPassManagerBuilderPopulateLTOPassManager(PMB: &PassManagerBuilder,
                                                         PM: PassManagerRef,
                                                         Internalize: Bool,
                                                         RunInliner: Bool);
     pub fn LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
-        PMB: PassManagerBuilderRef,
+        PMB: &PassManagerBuilder,
         PM: PassManagerRef) -> bool;
 
     // Stuff that's in rustllvm/ because it's not upstream yet.
@@ -1439,10 +1438,10 @@ extern "C" {
                                        -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: &Module);
-    pub fn LLVMRustAddBuilderLibraryInfo(PMB: PassManagerBuilderRef,
-                                         M: &Module,
+    pub fn LLVMRustAddBuilderLibraryInfo(PMB: &'a PassManagerBuilder,
+                                         M: &'a Module,
                                          DisableSimplifyLibCalls: bool);
-    pub fn LLVMRustConfigurePassManagerBuilder(PMB: PassManagerBuilderRef,
+    pub fn LLVMRustConfigurePassManagerBuilder(PMB: &PassManagerBuilder,
                                                OptLevel: CodeGenOptLevel,
                                                MergeFunctions: bool,
                                                SLPVectorize: bool,
@@ -1470,7 +1469,7 @@ extern "C" {
     pub fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: *const *const c_char);
     pub fn LLVMRustPrintPasses();
     pub fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
-    pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef, AddLifetimes: bool);
+    pub fn LLVMRustAddAlwaysInlinePass(P: &PassManagerBuilder, AddLifetimes: bool);
     pub fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
     pub fn LLVMRustMarkAllFunctionsNounwind(M: &Module);
 

@@ -2051,7 +2051,7 @@ pub unsafe fn with_llvm_pmb(llmod: &llvm::Module,
                             config: &ModuleConfig,
                             opt_level: llvm::CodeGenOptLevel,
                             prepare_for_thin_lto: bool,
-                            f: &mut dyn FnMut(llvm::PassManagerBuilderRef)) {
+                            f: &mut dyn FnMut(&llvm::PassManagerBuilder)) {
     use std::ptr;
 
     // Create the PassManagerBuilder for LLVM. We configure it with
