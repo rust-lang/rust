@@ -17,8 +17,6 @@
 #![feature(linkage)]
 #![feature(lang_items)]
 #![allow(unused_features)]
-#![allow(stable_features)] // FIXME(mark-i-m): remove after i128 stabilizes
-#![feature(i128_type)]
 #![no_builtins]
 #![cfg_attr(feature = "compiler-builtins", feature(staged_api))]
 #![cfg_attr(feature = "compiler-builtins",
