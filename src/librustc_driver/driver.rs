@@ -100,7 +100,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
             // the thread local rustc uses. syntax_globals and syntax_pos_globals are
             // captured and set on the new threads. ty::tls::with_thread_locals sets up
             // thread local callbacks from libsyntax
-            let main_handler = move |worker: &mut FnMut()| {
+            let main_handler = move |worker: &mut dyn FnMut()| {
                 syntax::GLOBALS.set(syntax_globals, || {
                     syntax_pos::GLOBALS.set(syntax_pos_globals, || {
                         ty::tls::with_thread_locals(|| {
