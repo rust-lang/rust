@@ -42,10 +42,22 @@ cargo run --bin miri tests/run-pass-fullmir/vecs.rs # Or whatever test you like.
 
 ## Debugging
 
-You can get detailed, statement-by-statement traces by setting the `MIRI_LOG`
-environment variable to `trace`. These traces are indented based on call stack
-depth. You can get a much less verbose set of information with other logging
-levels such as `warn`.
+Since the heart of miri (the main interpreter engine) lives in rustc, tracing
+the interpreter requires a version of rustc compiled with tracing.  To this
+end, you will have to compile your own rustc:
+```
+git clone https://github.com/rust-lang/rust/ rustc
+cd rustc
+cp config.toml.example config.toml
+# Now edit `config.toml` and set `debug-assertions = true`
+./x.py build
+rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
+```
+The `build` step can take 30 to 60 minutes.
+
+Now, in the miri directory, you can `rustup override set custom` and re-build
+everything.  Finally, if you now set `RUST_LOG=rustc_mir::interpret=trace` as
+environment variable, you will get detailed step-by-step tracing information.
 
 ## Running miri on your own project('s test suite)
 
