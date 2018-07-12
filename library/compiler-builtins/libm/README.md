@@ -75,7 +75,7 @@ cf. [rustwasm/team#84](https://github.com/rustwasm/team/issues/84).
 - [ ] fma
 - [ ] fmaf
 - [ ] fmod
-- [ ] fmodf
+- [x] fmodf
 - [ ] hypot
 - [ ] log
 - [ ] log10
