@@ -1,0 +1,38 @@
+error: `#[proc_macro]` attribute does not take any arguments
+  --> $DIR/invalid-attributes.rs:20:1
+   |
+LL | #[proc_macro = "test"] //~ ERROR: does not take any arguments
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[proc_macro]` attribute does not take any arguments
+  --> $DIR/invalid-attributes.rs:23:1
+   |
+LL | #[proc_macro()] //~ ERROR: does not take any arguments
+   | ^^^^^^^^^^^^^^^
+
+error: `#[proc_macro]` attribute does not take any arguments
+  --> $DIR/invalid-attributes.rs:26:1
+   |
+LL | #[proc_macro(x)] //~ ERROR: does not take any arguments
+   | ^^^^^^^^^^^^^^^^
+
+error: `#[proc_macro_attribute]` attribute does not take any arguments
+  --> $DIR/invalid-attributes.rs:29:1
+   |
+LL | #[proc_macro_attribute = "test"] //~ ERROR: does not take any arguments
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[proc_macro_attribute]` attribute does not take any arguments
+  --> $DIR/invalid-attributes.rs:32:1
+   |
+LL | #[proc_macro_attribute()] //~ ERROR: does not take any arguments
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[proc_macro_attribute]` attribute does not take any arguments
+  --> $DIR/invalid-attributes.rs:35:1
+   |
+LL | #[proc_macro_attribute(x)] //~ ERROR: does not take any arguments
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

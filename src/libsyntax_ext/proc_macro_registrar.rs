@@ -200,8 +200,8 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_attr_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        if let Some(_) = attr.meta_item_list() {
-            self.handler.span_err(attr.span, "`#[proc_macro_attribute]` attribute
+        if !attr.is_word() {
+            self.handler.span_err(attr.span, "`#[proc_macro_attribute]` attribute \
                 does not take any arguments");
             return;
         }
@@ -223,8 +223,8 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_bang_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        if let Some(_) = attr.meta_item_list() {
-            self.handler.span_err(attr.span, "`#[proc_macro]` attribute
+        if !attr.is_word() {
+            self.handler.span_err(attr.span, "`#[proc_macro]` attribute \
                 does not take any arguments");
             return;
         }
