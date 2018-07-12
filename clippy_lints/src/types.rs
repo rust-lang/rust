@@ -186,7 +186,7 @@ fn match_type_parameter(cx: &LateContext, qpath: &QPath, path: &[&str]) -> bool 
             GenericArg::Type(ty) => Some(ty),
             GenericArg::Lifetime(_) => None,
         });
-        if let TyPath(ref qpath) = ty.node;
+        if let TyKind::Path(ref qpath) = ty.node;
         if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(ty.id)));
         if match_def_path(cx.tcx, did, path);
         then {
@@ -206,7 +206,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
         return;
     }
     match ast_ty.node {
-        TyPath(ref qpath) if !is_local => {
+        TyKind::Path(ref qpath) if !is_local => {
             let hir_id = cx.tcx.hir.node_to_hir_id(ast_ty.id);
             let def = cx.tables.qpath_def(qpath, hir_id);
             if let Some(def_id) = opt_def_id(def) {
@@ -282,10 +282,10 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                 },
             }
         },
-        TyRptr(ref lt, ref mut_ty) => check_ty_rptr(cx, ast_ty, is_local, lt, mut_ty),
+        TyKind::Rptr(ref lt, ref mut_ty) => check_ty_rptr(cx, ast_ty, is_local, lt, mut_ty),
         // recurse
-        TySlice(ref ty) | TyArray(ref ty, _) | TyPtr(MutTy { ref ty, .. }) => check_ty(cx, ty, is_local),
-        TyTup(ref tys) => for ty in tys {
+        TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => check_ty(cx, ty, is_local),
+        TyKind::Tup(ref tys) => for ty in tys {
             check_ty(cx, ty, is_local);
         },
         _ => {},
@@ -294,7 +294,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
 
 fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
     match mut_ty.ty.node {
-        TyPath(ref qpath) => {
+        TyKind::Path(ref qpath) => {
             let hir_id = cx.tcx.hir.node_to_hir_id(mut_ty.ty.id);
             let def = cx.tables.qpath_def(qpath, hir_id);
             if_chain! {
@@ -1214,13 +1214,13 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         let (add_score, sub_nest) = match ty.node {
             // _, &x and *x have only small overhead; don't mess with nesting level
-            TyInfer | TyPtr(..) | TyRptr(..) => (1, 0),
+            TyKind::Infer | TyKind::Ptr(..) | TyKind::Rptr(..) => (1, 0),
 
             // the "normal" components of a type: named types, arrays/tuples
-            TyPath(..) | TySlice(..) | TyTup(..) | TyArray(..) => (10 * self.nest, 1),
+            TyKind::Path(..) | TyKind::Slice(..) | TyKind::Tup(..) | TyKind::Array(..) => (10 * self.nest, 1),
 
             // function types bring a lot of overhead
-            TyBareFn(..) => (50 * self.nest, 1),
+            TyKind::BareFn(..) => (50 * self.nest, 1),
 
             TyTraitObject(ref param_bounds, _) => {
                 let has_lifetime_parameters = param_bounds
@@ -1878,7 +1878,7 @@ enum ImplicitHasherType<'tcx> {
 impl<'tcx> ImplicitHasherType<'tcx> {
     /// Checks that `ty` is a target type without a BuildHasher.
     fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty) -> Option<Self> {
-        if let TyPath(QPath::Resolved(None, ref path)) = hir_ty.node {
+        if let TyKind::Path(QPath::Resolved(None, ref path)) = hir_ty.node {
             let params: Vec<_> = path.segments.last().as_ref()?.args.as_ref()?
                 .args.iter().filter_map(|arg| match arg {
                     GenericArg::Type(ty) => Some(ty),
@@ -1986,7 +1986,7 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
         if_chain! {
             if let ExprKind::Call(ref fun, ref args) = e.node;
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.node;
-            if let TyPath(QPath::Resolved(None, ref ty_path)) = ty.node;
+            if let TyKind::Path(QPath::Resolved(None, ref ty_path)) = ty.node;
             then {
                 if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
                     return;

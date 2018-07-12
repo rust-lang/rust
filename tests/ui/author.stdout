@@ -3,7 +3,7 @@ if_chain! {
     if let Decl_::DeclLocal(ref local) = decl.node;
     if let Some(ref init) = local.init
     if let ExprKind::Cast(ref expr, ref cast_ty) = init.node;
-    if let Ty_::TyPath(ref qp) = cast_ty.node;
+    if let TyKind::Path(ref qp) = cast_ty.node;
     if match_qpath(qp, &["char"]);
     if let ExprKind::Lit(ref lit) = expr.node;
     if let LitKind::Int(69, _) = lit.node;

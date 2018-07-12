@@ -87,7 +87,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyRptr(
+        if let hir::TyKind::Rptr(
             _,
             hir::MutTy {
                 ty: ref pty,
@@ -95,7 +95,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             },
         ) = ty.node
         {
-            if let hir::TyRptr(
+            if let hir::TyKind::Rptr(
                 _,
                 hir::MutTy {
                     mutbl: hir::MutMutable,

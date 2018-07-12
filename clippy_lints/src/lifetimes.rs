@@ -338,10 +338,10 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty) {
         match ty.node {
-            TyRptr(ref lt, _) if lt.is_elided() => {
+            TyKind::Rptr(ref lt, _) if lt.is_elided() => {
                 self.record(&None);
             },
-            TyPath(ref path) => {
+            TyKind::Path(ref path) => {
                 if let QPath::Resolved(_, ref path) = *path {
                     if let Def::Existential(def_id) = path.def {
                         let node_id = self.cx.tcx.hir.as_local_node_id(def_id).unwrap();

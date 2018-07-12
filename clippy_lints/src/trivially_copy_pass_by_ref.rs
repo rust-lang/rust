@@ -123,7 +123,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
                 if is_copy(cx, ty);
                 if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                 if size <= self.limit;
-                if let Ty_::TyRptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
+                if let TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
                 then {
                     let value_type = if is_self(arg) {
                         "self".into()

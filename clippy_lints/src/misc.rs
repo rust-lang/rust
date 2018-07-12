@@ -571,7 +571,7 @@ fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
 
 fn check_cast(cx: &LateContext, span: Span, e: &Expr, ty: &Ty) {
     if_chain! {
-        if let TyPtr(MutTy { mutbl, .. }) = ty.node;
+        if let TyKind::Ptr(MutTy { mutbl, .. }) = ty.node;
         if let ExprKind::Lit(ref lit) = e.node;
         if let LitKind::Int(value, ..) = lit.node;
         if value == 0;

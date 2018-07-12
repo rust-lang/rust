@@ -215,7 +215,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             if match_type(cx, ty, &paths::VEC);
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
-                            if let TyPath(QPath::Resolved(_, ref path)) = input.node;
+                            if let TyKind::Path(QPath::Resolved(_, ref path)) = input.node;
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.ident.name == "Vec")
                                 .and_then(|ps| ps.args.as_ref())

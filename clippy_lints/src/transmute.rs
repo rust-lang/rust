@@ -461,7 +461,7 @@ fn get_type_snippet(cx: &LateContext, path: &QPath, to_ref_ty: Ty) -> String {
             GenericArg::Type(ty) => Some(ty),
             GenericArg::Lifetime(_) => None,
         }).nth(1);
-        if let TyRptr(_, ref to_ty) = to_ty.node;
+        if let TyKind::Rptr(_, ref to_ty) = to_ty.node;
         then {
             return snippet(cx, to_ty.ty.span, &to_ref_ty.to_string()).to_string();
         }

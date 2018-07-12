@@ -90,7 +90,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
                                 let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
 
-                                if matches!(ty.sty, ty::TySlice(_)) ||
+                                if matches!(ty.sty, ty::TyKind::Slice(_)) ||
                                     matches!(ty.sty, ty::TyArray(_, _)) ||
                                     match_type(cx, ty, &paths::VEC) ||
                                     match_type(cx, ty, &paths::VEC_DEQUE) {

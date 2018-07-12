@@ -159,7 +159,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
             if match_type(cx, ty, &paths::VEC) {
                 let mut ty_snippet = None;
                 if_chain! {
-                    if let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
+                    if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
                     if let Some(&PathSegment{args: Some(ref parameters), ..}) = path.segments.last();
                     then {
                         let types: Vec<_> = parameters.args.iter().filter_map(|arg| match arg {
@@ -219,8 +219,8 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                 }
             } else if match_type(cx, ty, &paths::COW) {
                 if_chain! {
-                    if let TyRptr(_, MutTy { ref ty, ..} ) = arg.node;
-                    if let TyPath(ref path) = ty.node;
+                    if let TyKind::Rptr(_, MutTy { ref ty, ..} ) = arg.node;
+                    if let TyKind::Path(ref path) = ty.node;
                     if let QPath::Resolved(None, ref pp) = *path;
                     if let [ref bx] = *pp.segments;
                     if let Some(ref params) = bx.args;
@@ -273,7 +273,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
 }
 
 fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
-    if let Ty_::TyRptr(ref lt, ref m) = ty.node {
+    if let TyKind::Rptr(ref lt, ref m) = ty.node {
         Some((lt, m.mutbl, ty.span))
     } else {
         None

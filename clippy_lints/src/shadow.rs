@@ -347,16 +347,16 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
 
 fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut Vec<(Name, Span)>) {
     match ty.node {
-        TySlice(ref sty) => check_ty(cx, sty, bindings),
-        TyArray(ref fty, ref anon_const) => {
+        TyKind::Slice(ref sty) => check_ty(cx, sty, bindings),
+        TyKind::Array(ref fty, ref anon_const) => {
             check_ty(cx, fty, bindings);
             check_expr(cx, &cx.tcx.hir.body(anon_const.body).value, bindings);
         },
-        TyPtr(MutTy { ty: ref mty, .. }) | TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
-        TyTup(ref tup) => for t in tup {
+        TyKind::Ptr(MutTy { ty: ref mty, .. }) | TyKind::Rptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
+        TyKind::Tup(ref tup) => for t in tup {
             check_ty(cx, t, bindings)
         },
-        TyTypeof(ref anon_const) => check_expr(cx, &cx.tcx.hir.body(anon_const.body).value, bindings),
+        TyKind::Typeof(ref anon_const) => check_expr(cx, &cx.tcx.hir.body(anon_const.body).value, bindings),
         _ => (),
     }
 }

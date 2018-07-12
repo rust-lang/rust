@@ -283,8 +283,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let qp_label = self.next("qp");
 
                 println!("Cast(ref {}, ref {}) = {};", cast_pat, cast_ty, current);
-                if let Ty_::TyPath(ref qp) = ty.node {
-                    println!("    if let Ty_::TyPath(ref {}) = {}.node;", qp_label, cast_ty);
+                if let TyKind::Path(ref qp) = ty.node {
+                    println!("    if let TyKind::Path(ref {}) = {}.node;", qp_label, cast_ty);
                     self.current = qp_label;
                     self.print_qpath(qp);
                 }
@@ -674,7 +674,7 @@ fn print_path(path: &QPath, first: &mut bool) {
             print!("{:?}", segment.ident.as_str());
         },
         QPath::TypeRelative(ref ty, ref segment) => match ty.node {
-            hir::Ty_::TyPath(ref inner_path) => {
+            hir::TyKind::Path(ref inner_path) => {
                 print_path(inner_path, first);
                 if *first {
                     *first = false;

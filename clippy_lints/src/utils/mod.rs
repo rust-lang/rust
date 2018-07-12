@@ -210,7 +210,7 @@ pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
     match *path {
         QPath::Resolved(_, ref path) => match_path(path, segments),
         QPath::TypeRelative(ref ty, ref segment) => match ty.node {
-            TyPath(ref inner_path) => {
+            TyKind::Path(ref inner_path) => {
                 !segments.is_empty() && match_qpath(inner_path, &segments[..(segments.len() - 1)])
                     && segment.ident.name == segments[segments.len() - 1]
             },
@@ -667,7 +667,7 @@ where
 /// Return the base type for HIR references and pointers.
 pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
     match ty.node {
-        TyPtr(ref mut_ty) | TyRptr(_, ref mut_ty) => walk_ptrs_hir_ty(&mut_ty.ty),
+        TyKind::Ptr(ref mut_ty) | TyKind::Rptr(_, ref mut_ty) => walk_ptrs_hir_ty(&mut_ty.ty),
         _ => ty,
     }
 }
@@ -998,7 +998,7 @@ pub fn is_self(slf: &Arg) -> bool {
 
 pub fn is_self_ty(slf: &hir::Ty) -> bool {
     if_chain! {
-        if let TyPath(ref qp) = slf.node;
+        if let TyKind::Path(ref qp) = slf.node;
         if let QPath::Resolved(None, ref path) = *qp;
         if let Def::SelfTy(..) = path.def;
         then {

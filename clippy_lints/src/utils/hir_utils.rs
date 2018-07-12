@@ -246,10 +246,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         self.eq_ty_kind(&left.node, &right.node)
     }
 
-    pub fn eq_ty_kind(&mut self, left: &Ty_, right: &Ty_) -> bool {
+    pub fn eq_ty_kind(&mut self, left: &TyKind, right: &TyKind) -> bool {
         match (left, right) {
-            (&TySlice(ref l_vec), &TySlice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
-            (&TyArray(ref lt, ref ll_id), &TyArray(ref rt, ref rl_id)) => {
+            (&TyKind::Slice(ref l_vec), &TyKind::Slice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
+            (&TyKind::Array(ref lt, ref ll_id), &TyKind::Array(ref rt, ref rl_id)) => {
                 let full_table = self.tables;
 
                 let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
@@ -264,13 +264,13 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 self.tables = full_table;
                 eq_ty && ll == rl
             },
-            (&TyPtr(ref l_mut), &TyPtr(ref r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty),
-            (&TyRptr(_, ref l_rmut), &TyRptr(_, ref r_rmut)) => {
+            (&TyKind::Ptr(ref l_mut), &TyKind::Ptr(ref r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty),
+            (&TyKind::Rptr(_, ref l_rmut), &TyKind::Rptr(_, ref r_rmut)) => {
                 l_rmut.mutbl == r_rmut.mutbl && self.eq_ty(&*l_rmut.ty, &*r_rmut.ty)
             },
-            (&TyPath(ref l), &TyPath(ref r)) => self.eq_qpath(l, r),
-            (&TyTup(ref l), &TyTup(ref r)) => over(l, r, |l, r| self.eq_ty(l, r)),
-            (&TyInfer, &TyInfer) => true,
+            (&TyKind::Path(ref l), &TyKind::Path(ref r)) => self.eq_qpath(l, r),
+            (&TyKind::Tup(ref l), &TyKind::Tup(ref r)) => over(l, r, |l, r| self.eq_ty(l, r)),
+            (&TyKind::Infer, &TyKind::Infer) => true,
             _ => false,
         }
     }
