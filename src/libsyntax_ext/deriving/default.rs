@@ -23,7 +23,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
                                span: Span,
                                mitem: &MetaItem,
                                item: &Annotatable,
-                               push: &mut FnMut(Annotatable)) {
+                               push: &mut dyn FnMut(Annotatable)) {
     let inline = cx.meta_word(span, Symbol::intern("inline"));
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {

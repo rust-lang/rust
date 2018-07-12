@@ -26,7 +26,7 @@ use std::env;
 pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[tokenstream::TokenTree])
-                              -> Box<base::MacResult + 'cx> {
+                              -> Box<dyn base::MacResult + 'cx> {
     let var = match get_single_str_from_tts(cx, sp, tts, "option_env!") {
         None => return DummyResult::expr(sp),
         Some(v) => v,
@@ -57,7 +57,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
 pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
-                       -> Box<base::MacResult + 'cx> {
+                       -> Box<dyn base::MacResult + 'cx> {
     let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
         Some(ref exprs) if exprs.is_empty() => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");

@@ -55,7 +55,7 @@ struct CollectProcMacros<'a> {
 }
 
 pub fn modify(sess: &ParseSess,
-              resolver: &mut ::syntax::ext::base::Resolver,
+              resolver: &mut dyn (::syntax::ext::base::Resolver),
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,
               is_test_crate: bool,

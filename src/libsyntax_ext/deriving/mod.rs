@@ -72,7 +72,7 @@ macro_rules! derive_traits {
             }
         }
 
-        pub fn register_builtin_derives(resolver: &mut Resolver) {
+        pub fn register_builtin_derives(resolver: &mut dyn Resolver) {
             $(
                 resolver.add_builtin(
                     ast::Ident::with_empty_ctxt(Symbol::intern($name)),

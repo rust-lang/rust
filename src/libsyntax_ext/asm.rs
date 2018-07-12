@@ -50,7 +50,7 @@ const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
-                       -> Box<base::MacResult + 'cx> {
+                       -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_asm() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        "asm",

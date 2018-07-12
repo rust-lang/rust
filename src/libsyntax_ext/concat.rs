@@ -21,7 +21,7 @@ pub fn expand_syntax_ext(
     cx: &mut base::ExtCtxt,
     sp: syntax_pos::Span,
     tts: &[tokenstream::TokenTree],
-) -> Box<base::MacResult + 'static> {
+) -> Box<dyn base::MacResult + 'static> {
     let es = match base::get_exprs_from_tts(cx, sp, tts) {
         Some(e) => e,
         None => return base::DummyResult::expr(sp),

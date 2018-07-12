@@ -22,7 +22,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: &MetaItem,
                             item: &Annotatable,
-                            push: &mut FnMut(Annotatable)) {
+                            push: &mut dyn FnMut(Annotatable)) {
 
     let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
 
