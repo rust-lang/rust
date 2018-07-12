@@ -891,7 +891,7 @@ impl Error for IntoStringError {
         "C string contained non-utf8 bytes"
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         Some(&self.error)
     }
 }

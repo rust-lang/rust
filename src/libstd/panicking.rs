@@ -36,7 +36,7 @@ use sys_common::util;
 use thread;
 
 thread_local! {
-    pub static LOCAL_STDERR: RefCell<Option<Box<Write + Send>>> = {
+    pub static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
@@ -64,7 +64,7 @@ extern {
 #[derive(Copy, Clone)]
 enum Hook {
     Default,
-    Custom(*mut (Fn(&PanicInfo) + 'static + Sync + Send)),
+    Custom(*mut (dyn Fn(&PanicInfo) + 'static + Sync + Send)),
 }
 
 static HOOK_LOCK: RWLock = RWLock::new();
@@ -104,7 +104,7 @@ static mut HOOK: Hook = Hook::Default;
 /// panic!("Normal panic");
 /// ```
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub fn set_hook(hook: Box<Fn(&PanicInfo) + 'static + Sync + Send>) {
+pub fn set_hook(hook: Box<dyn Fn(&PanicInfo) + 'static + Sync + Send>) {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
     }
@@ -149,7 +149,7 @@ pub fn set_hook(hook: Box<Fn(&PanicInfo) + 'static + Sync + Send>) {
 /// panic!("Normal panic");
 /// ```
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
+pub fn take_hook() -> Box<dyn Fn(&PanicInfo) + 'static + Sync + Send> {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
     }
@@ -197,7 +197,7 @@ fn default_hook(info: &PanicInfo) {
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
-    let write = |err: &mut ::io::Write| {
+    let write = |err: &mut dyn (::io::Write)| {
         let _ = writeln!(err, "thread '{}' panicked at '{}', {}",
                          name, msg, location);
 
@@ -248,7 +248,7 @@ pub fn update_panic_count(amt: isize) -> usize {
 pub use realstd::rt::update_panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
-pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
+pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     #[allow(unions_with_drop_fields)]
     union Data<F, R> {
         f: F,
@@ -369,12 +369,12 @@ fn continue_panic_fmt(info: &PanicInfo) -> ! {
     }
 
     unsafe impl<'a> BoxMeUp for PanicPayload<'a> {
-        fn box_me_up(&mut self) -> *mut (Any + Send) {
+        fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
             let contents = mem::replace(self.fill(), String::new());
             Box::into_raw(Box::new(contents))
         }
 
-        fn get(&mut self) -> &(Any + Send) {
+        fn get(&mut self) -> &(dyn Any + Send) {
             self.fill()
         }
     }
@@ -419,15 +419,15 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
     }
 
     unsafe impl<A: Send + 'static> BoxMeUp for PanicPayload<A> {
-        fn box_me_up(&mut self) -> *mut (Any + Send) {
+        fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
             let data = match self.inner.take() {
-                Some(a) => Box::new(a) as Box<Any + Send>,
+                Some(a) => Box::new(a) as Box<dyn Any + Send>,
                 None => Box::new(()),
             };
             Box::into_raw(data)
         }
 
-        fn get(&mut self) -> &(Any + Send) {
+        fn get(&mut self) -> &(dyn Any + Send) {
             match self.inner {
                 Some(ref a) => a,
                 None => &(),
@@ -441,7 +441,7 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
 /// Executes the primary logic for a panic, including checking for recursive
 /// panics, panic hooks, and finally dispatching to the panic runtime to either
 /// abort or unwind.
-fn rust_panic_with_hook(payload: &mut BoxMeUp,
+fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
                         message: Option<&fmt::Arguments>,
                         file_line_col: &(&str, u32, u32)) -> ! {
     let (file, line, col) = *file_line_col;
@@ -496,17 +496,17 @@ fn rust_panic_with_hook(payload: &mut BoxMeUp,
 }
 
 /// Shim around rust_panic. Called by resume_unwind.
-pub fn update_count_then_panic(msg: Box<Any + Send>) -> ! {
+pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
     update_panic_count(1);
 
-    struct RewrapBox(Box<Any + Send>);
+    struct RewrapBox(Box<dyn Any + Send>);
 
     unsafe impl BoxMeUp for RewrapBox {
-        fn box_me_up(&mut self) -> *mut (Any + Send) {
+        fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
             Box::into_raw(mem::replace(&mut self.0, Box::new(())))
         }
 
-        fn get(&mut self) -> &(Any + Send) {
+        fn get(&mut self) -> &(dyn Any + Send) {
             &*self.0
         }
     }
@@ -517,9 +517,9 @@ pub fn update_count_then_panic(msg: Box<Any + Send>) -> ! {
 /// A private no-mangle function on which to slap yer breakpoints.
 #[no_mangle]
 #[allow(private_no_mangle_fns)] // yes we get it, but we like breakpoints
-pub fn rust_panic(mut msg: &mut BoxMeUp) -> ! {
+pub fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
     let code = unsafe {
-        let obj = &mut msg as *mut &mut BoxMeUp;
+        let obj = &mut msg as *mut &mut dyn BoxMeUp;
         __rust_start_panic(obj as usize)
     };
     rtabort!("failed to initiate panic, error {}", code)

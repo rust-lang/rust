@@ -1175,7 +1175,7 @@ impl fmt::Debug for Thread {
 ///
 /// [`Result`]: ../../std/result/enum.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
+pub type Result<T> = ::result::Result<T, Box<dyn Any + Send + 'static>>;
 
 // This packet is used to communicate the return value between the child thread
 // and the parent thread. Memory is shared through the `Arc` within and there's
@@ -1438,7 +1438,7 @@ mod tests {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<Fn() + Send>) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<dyn Fn() + Send>) {
         let (tx, rx) = channel();
 
         let x: Box<_> = box 1;
@@ -1485,7 +1485,7 @@ mod tests {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         const GENERATIONS: u32 = 16;
-        fn child_no(x: u32) -> Box<Fn() + Send> {
+        fn child_no(x: u32) -> Box<dyn Fn() + Send> {
             return Box::new(move|| {
                 if x < GENERATIONS {
                     thread::spawn(move|| child_no(x+1)());
@@ -1531,10 +1531,10 @@ mod tests {
     #[test]
     fn test_try_panic_message_any() {
         match thread::spawn(move|| {
-            panic!(box 413u16 as Box<Any + Send>);
+            panic!(box 413u16 as Box<dyn Any + Send>);
         }).join() {
             Err(e) => {
-                type T = Box<Any + Send>;
+                type T = Box<dyn Any + Send>;
                 assert!(e.is::<T>());
                 let any = e.downcast::<T>().unwrap();
                 assert!(any.is::<u16>());

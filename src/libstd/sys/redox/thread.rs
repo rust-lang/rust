@@ -28,7 +28,7 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 impl Thread {
-    pub unsafe fn new<'a>(_stack: usize, p: Box<FnBox() + 'a>) -> io::Result<Thread> {
+    pub unsafe fn new<'a>(_stack: usize, p: Box<dyn FnBox() + 'a>) -> io::Result<Thread> {
         let p = box p;
 
         let id = cvt(syscall::clone(syscall::CLONE_VM | syscall::CLONE_FS | syscall::CLONE_FILES))?;

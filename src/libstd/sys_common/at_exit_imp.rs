@@ -17,7 +17,7 @@ use ptr;
 use mem;
 use sys_common::mutex::Mutex;
 
-type Queue = Vec<Box<FnBox()>>;
+type Queue = Vec<Box<dyn FnBox()>>;
 
 // NB these are specifically not types from `std::sync` as they currently rely
 // on poisoning and this module needs to operate at a lower level than requiring
@@ -68,7 +68,7 @@ pub fn cleanup() {
     }
 }
 
-pub fn push(f: Box<FnBox()>) -> bool {
+pub fn push(f: Box<dyn FnBox()>) -> bool {
     unsafe {
         let _guard = LOCK.lock();
         if init() {

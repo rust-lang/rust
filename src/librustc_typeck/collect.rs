@@ -1244,7 +1244,7 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 // Is it marked with ?Sized
-fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &dyn AstConv<'gcx, 'tcx>,
                                 ast_bounds: &[hir::GenericBound],
                                 span: Span) -> bool
 {
@@ -1598,7 +1598,7 @@ pub enum SizedByDefault { Yes, No, }
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
-pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &dyn AstConv<'gcx, 'tcx>,
                                         param_ty: Ty<'tcx>,
                                         ast_bounds: &[hir::GenericBound],
                                         sized_by_default: SizedByDefault,
@@ -1646,7 +1646,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 /// because this can be anywhere from 0 predicates (`T:?Sized` adds no
 /// predicates) to 1 (`T:Foo`) to many (`T:Bar<X=i32>` adds `T:Bar`
 /// and `<T as Bar>::X == i32`).
-fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
+fn predicates_from_bound<'tcx>(astconv: &dyn AstConv<'tcx, 'tcx>,
                                param_ty: Ty<'tcx>,
                                bound: &hir::GenericBound)
                                -> Vec<ty::Predicate<'tcx>>
