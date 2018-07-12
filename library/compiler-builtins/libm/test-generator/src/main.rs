@@ -65,7 +65,7 @@ macro_rules! f32_f32 {
                             let outi = outf.to_bits();
 
                             if !((outf.is_nan() && f32::from_bits(expected).is_nan()) ||
-                                 outi == expected) {{
+                                 libm::_eqf(outi, expected)) {{
                                 panic!(
                                     \"input: {{}}, output: {{}}, expected: {{}}\",
                                     inp,
@@ -124,7 +124,7 @@ macro_rules! f32f32_f32 {
                             let outi = outf.to_bits();
 
                             if !((outf.is_nan() && f32::from_bits(expected).is_nan()) ||
-                                 outi == expected) {{
+                                 libm::_eqf(outi, expected)) {{
                                 panic!(
                                     \"input: {{:?}}, output: {{}}, expected: {{}}\",
                                     (i1, i2),
@@ -182,7 +182,7 @@ macro_rules! f32i32_f32 {
                             let outi = outf.to_bits();
 
                             if !((outf.is_nan() && f32::from_bits(expected).is_nan()) ||
-                                 outi == expected) {{
+                                 libm::_eqf(outi, expected)) {{
                                 panic!(
                                     \"input: {{:?}}, output: {{}}, expected: {{}}\",
                                     (i1, i2),
