@@ -140,6 +140,29 @@ Compatibility Notes
 [`{Any + Send + Sync}::downcast_ref`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref-2
 [`{Any + Send + Sync}::is`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.is-2
 
+Version 1.27.1 (2018-07-10)
+===========================
+
+Security Notes
+--------------
+
+- rustdoc would execute plugins in the /tmp/rustdoc/plugins directory
+  when running, which enabled executing code as some other user on a
+  given machine. This release fixes that vulnerability; you can read
+  more about this on the [blog][rustdoc-sec]. The associated CVE is [CVE-2018-1000622].
+
+  Thank you to Red Hat for responsibily disclosing this vulnerability to us.
+
+Compatibility Notes
+-------------------
+
+- The borrow checker was fixed to avoid an additional potential unsoundness when using
+  match ergonomics: [#51415][51415], [#49534][49534].
+
+[51415]: https://github.com/rust-lang/rust/issues/51415
+[49534]: https://github.com/rust-lang/rust/issues/49534
+[rustdoc-sec]: https://blog.rust-lang.org/2018/07/06/security-advisory-for-rustdoc.html
+[CVE-2018-1000622]: https://cve.mitre.org/cgi-bin/cvename.cgi?name=%20CVE-2018-1000622
 
 Version 1.27.0 (2018-06-21)
 ==========================
