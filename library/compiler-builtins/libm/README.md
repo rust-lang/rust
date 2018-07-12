@@ -96,6 +96,7 @@ cf. [rustwasm/team#84](https://github.com/rustwasm/team/issues/84).
 
 ### Other functions
 
+- [x] fabs
 - [x] fabsf
 - [x] scalbnf
 - [x] sqrtf
