@@ -55,7 +55,7 @@ struct CollectProcMacros<'a> {
 }
 
 pub fn modify(sess: &ParseSess,
-              resolver: &mut ::syntax::ext::base::Resolver,
+              resolver: &mut dyn (::syntax::ext::base::Resolver),
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,
               is_test_crate: bool,
@@ -200,8 +200,8 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_attr_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        if let Some(_) = attr.meta_item_list() {
-            self.handler.span_err(attr.span, "`#[proc_macro_attribute]` attribute
+        if !attr.is_word() {
+            self.handler.span_err(attr.span, "`#[proc_macro_attribute]` attribute \
                 does not take any arguments");
             return;
         }
@@ -223,8 +223,8 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_bang_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        if let Some(_) = attr.meta_item_list() {
-            self.handler.span_err(attr.span, "`#[proc_macro]` attribute
+        if !attr.is_word() {
+            self.handler.span_err(attr.span, "`#[proc_macro]` attribute \
                 does not take any arguments");
             return;
         }

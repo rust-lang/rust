@@ -541,7 +541,7 @@ impl Error for JoinPathsError {
 /// ```
 #[rustc_deprecated(since = "1.29.0",
     reason = "This function's behavior is unexpected and probably not what you want. \
-              Consider using the home_dir function from crates.io/crates/dirs instead.")]
+              Consider using the home_dir function from https://crates.io/crates/dirs instead.")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()

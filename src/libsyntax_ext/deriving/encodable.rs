@@ -108,7 +108,7 @@ pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
                                        span: Span,
                                        mitem: &MetaItem,
                                        item: &Annotatable,
-                                       push: &mut FnMut(Annotatable)) {
+                                       push: &mut dyn FnMut(Annotatable)) {
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
 
@@ -116,7 +116,7 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
-                                 push: &mut FnMut(Annotatable)) {
+                                 push: &mut dyn FnMut(Annotatable)) {
     warn_if_deprecated(cx, span, "Encodable");
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
 }
@@ -125,7 +125,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
-                                 push: &mut FnMut(Annotatable),
+                                 push: &mut dyn FnMut(Annotatable),
                                  krate: &'static str) {
     let typaram = &*deriving::hygienic_type_parameter(item, "__S");
 

@@ -679,7 +679,7 @@ impl<'a, 'b> Context<'a, 'b> {
 pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
                                mut sp: Span,
                                tts: &[tokenstream::TokenTree])
-                               -> Box<base::MacResult + 'cx> {
+                               -> Box<dyn base::MacResult + 'cx> {
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
         Some((efmt, args, names)) => {

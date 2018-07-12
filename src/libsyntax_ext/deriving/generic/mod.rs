@@ -330,7 +330,7 @@ pub enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub type CombineSubstructureFunc<'a> =
-    Box<FnMut(&mut ExtCtxt, Span, &Substructure) -> P<Expr> + 'a>;
+    Box<dyn FnMut(&mut ExtCtxt, Span, &Substructure) -> P<Expr> + 'a>;
 
 /// Deal with non-matching enum variants.  The tuple is a list of
 /// identifiers (one for each `Self` argument, which could be any of the
@@ -338,7 +338,7 @@ pub type CombineSubstructureFunc<'a> =
 /// holding the variant index value for each of the `Self` arguments.  The
 /// last argument is all the non-`Self` args of the method being derived.
 pub type EnumNonMatchCollapsedFunc<'a> =
-    Box<FnMut(&mut ExtCtxt, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
+    Box<dyn FnMut(&mut ExtCtxt, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
 
 pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
                                 -> RefCell<CombineSubstructureFunc<'a>> {
@@ -398,7 +398,7 @@ impl<'a> TraitDef<'a> {
                   cx: &mut ExtCtxt,
                   mitem: &ast::MetaItem,
                   item: &'a Annotatable,
-                  push: &mut FnMut(Annotatable)) {
+                  push: &mut dyn FnMut(Annotatable)) {
         self.expand_ext(cx, mitem, item, push, false);
     }
 
@@ -406,7 +406,7 @@ impl<'a> TraitDef<'a> {
                       cx: &mut ExtCtxt,
                       mitem: &ast::MetaItem,
                       item: &'a Annotatable,
-                      push: &mut FnMut(Annotatable),
+                      push: &mut dyn FnMut(Annotatable),
                       from_scratch: bool) {
         match *item {
             Annotatable::Item(ref item) => {

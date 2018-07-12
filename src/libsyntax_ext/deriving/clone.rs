@@ -25,7 +25,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
                              mitem: &MetaItem,
                              item: &Annotatable,
-                             push: &mut FnMut(Annotatable)) {
+                             push: &mut dyn FnMut(Annotatable)) {
     // check if we can use a short form
     //
     // the short form is `fn clone(&self) -> Self { *self }`
