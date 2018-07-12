@@ -4,6 +4,11 @@ A port of [MUSL]'s libm to Rust.
 
 [MUSL]: https://www.musl-libc.org/
 
+## Goals
+
+The short term goal of this library is to enable math support (e.g. `sin`, `atan2`) for the
+`wasm32-unknown-unknown` target. The longer term goal is to enable math support in the `core` crate.
+
 ## Testing
 
 The test suite of this crate can only be run on x86_64 Linux systems.
@@ -24,7 +29,7 @@ $ TARGET=armv7-unknown-linux-gnueabihf bash ci/script.sh
 
 ## Contributing
 
-- Pick your favorite math function from the list below.
+- Pick your favorite math function from the [issue tracker].
 - Look for the C implementation of the function in the [MUSL source code][src].
 - Copy paste the C code into a Rust file in the `src` directory and adjust `src/lib.rs` accordingly.
 - Run `cargo watch check` and fix the compiler errors.
@@ -34,6 +39,7 @@ $ TARGET=armv7-unknown-linux-gnueabihf bash ci/script.sh
 - Send us a pull request!
 - :tada:
 
+[issue tracker]: https://github.com/japaric/libm/issues
 [src]: https://git.musl-libc.org/cgit/musl/tree/src/math
 
 Check [PR #2] for an example.
@@ -52,54 +58,6 @@ Check [PR #2] for an example.
   newtype to avoid this problem.
 
 [`Wrapping`]: https://doc.rust-lang.org/std/num/struct.Wrapping.html
-
-## Progress
-
-### Functions wanted by the wasm WG
-
-cf. [rustwasm/team#84](https://github.com/rustwasm/team/issues/84).
-
-- [ ] acos
-- [ ] asin
-- [ ] atan
-- [ ] atan2
-- [ ] cbrt
-- [ ] cos
-- [ ] cosf
-- [ ] cosh
-- [ ] exp
-- [ ] exp2
-- [ ] exp2f
-- [ ] expf
-- [ ] expm1
-- [ ] fma
-- [ ] fmaf
-- [ ] fmod
-- [x] fmodf
-- [ ] hypot
-- [ ] log
-- [ ] log10
-- [ ] log10f
-- [ ] log1p
-- [ ] log2
-- [ ] log2f
-- [ ] logf
-- [ ] pow
-- [x] powf
-- [ ] round
-- [ ] roundf
-- [ ] sin
-- [ ] sinf
-- [ ] sinh
-- [ ] tan
-- [ ] tanh
-
-### Other functions
-
-- [x] fabs
-- [x] fabsf
-- [x] scalbnf
-- [x] sqrtf
 
 ## License
 
