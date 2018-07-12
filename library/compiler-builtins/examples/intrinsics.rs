@@ -14,6 +14,7 @@
 #![feature(start)]
 #![feature(global_allocator)]
 #![feature(allocator_api)]
+#![feature(panic_implementation)]
 #![cfg_attr(windows, feature(panic_unwind))]
 #![no_std]
 
@@ -442,7 +443,7 @@ pub fn _Unwind_Resume() {}
 #[no_mangle]
 pub extern "C" fn eh_personality() {}
 
-#[lang = "panic_fmt"]
-#[no_mangle]
-#[allow(private_no_mangle_fns)]
-extern "C" fn panic_fmt() {}
+#[panic_implementation]
+fn panic(x: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
