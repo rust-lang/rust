@@ -58,6 +58,8 @@ macro_rules! f32_f32 {
 
                 let mut f = File::create(concat!("tests/", stringify!($intr), ".rs"))?;
                 write!(f, "
+                    #![deny(warnings)]
+
                     extern crate libm;
 
                     #[test]
@@ -118,6 +120,8 @@ macro_rules! f32f32_f32 {
 
                 let mut f = File::create(concat!("tests/", stringify!($intr), ".rs"))?;
                 write!(f, "
+                    #![deny(warnings)]
+
                     extern crate libm;
 
                     #[test]
@@ -137,6 +141,74 @@ macro_rules! f32f32_f32 {
                                 panic!(
                                     \"input: {{:?}}, output: {{}}, expected: {{}}\",
                                     (i1, i2),
+                                    outi,
+                                    expected,
+                                );
+                            }}
+                        }}
+                    }}
+",
+                       stringify!($intr),
+                       cases)?;
+            )*
+
+            Ok(())
+        }
+    };
+}
+
+// fn(f32, f32, f32) -> f32
+macro_rules! f32f32f32_f32 {
+    ($($intr:ident,)*) => {
+        fn f32f32f32_f32(rng: &mut XorShiftRng) -> Result<(), Box<Error>> {
+            extern "C" {
+                $(fn $intr(_: f32, _: f32, _: f32) -> f32;)*
+            }
+
+            $(
+                let mut cases = String::new();
+                for _ in 0..NTESTS {
+                    let i1 = f32(rng);
+                    let i2 = f32(rng);
+                    let i3 = f32(rng);
+                    let out = unsafe { $intr(i1, i2, i3) };
+
+                    let i1 = i1.to_bits();
+                    let i2 = i2.to_bits();
+                    let i3 = i3.to_bits();
+                    let out = out.to_bits();
+
+                    write!(cases, "(({}, {}, {}), {})", i1, i2, i3, out).unwrap();
+                    cases.push(',');
+                }
+
+                let mut f = File::create(concat!("tests/", stringify!($intr), ".rs"))?;
+                write!(f, "
+                    #![deny(warnings)]
+
+                    extern crate libm;
+
+                    #[test]
+                    fn {0}() {{
+                        const CASES: &[((u32, u32, u32), u32)] = &[
+                            {1}
+                        ];
+
+                        for case in CASES {{
+                            let ((i1, i2, i3), expected) = *case;
+
+                            let outf = libm::{0}(
+                                f32::from_bits(i1),
+                                f32::from_bits(i2),
+                                f32::from_bits(i3),
+                            );
+                            let outi = outf.to_bits();
+
+                            if !((outf.is_nan() && f32::from_bits(expected).is_nan()) ||
+                                 libm::_eqf(outi, expected)) {{
+                                panic!(
+                                    \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                    (i1, i2, i3),
                                     outi,
                                     expected,
                                 );
@@ -177,6 +249,8 @@ macro_rules! f32i32_f32 {
 
                 let mut f = File::create(concat!("tests/", stringify!($intr), ".rs"))?;
                 write!(f, "
+                    #![deny(warnings)]
+
                     extern crate libm;
 
                     #[test]
@@ -236,6 +310,8 @@ macro_rules! f64_f64 {
 
                 let mut f = File::create(concat!("tests/", stringify!($intr), ".rs"))?;
                 write!(f, "
+                    #![deny(warnings)]
+
                     extern crate libm;
 
                     #[test]
@@ -296,6 +372,8 @@ macro_rules! f64f64_f64 {
 
                 let mut f = File::create(concat!("tests/", stringify!($intr), ".rs"))?;
                 write!(f, "
+                    #![deny(warnings)]
+
                     extern crate libm;
 
                     #[test]
@@ -315,6 +393,74 @@ macro_rules! f64f64_f64 {
                                 panic!(
                                     \"input: {{:?}}, output: {{}}, expected: {{}}\",
                                     (i1, i2),
+                                    outi,
+                                    expected,
+                                );
+                            }}
+                        }}
+                    }}
+",
+                       stringify!($intr),
+                       cases)?;
+            )*
+
+            Ok(())
+        }
+    };
+}
+
+// fn(f64, f64, f64) -> f64
+macro_rules! f64f64f64_f64 {
+    ($($intr:ident,)*) => {
+        fn f64f64f64_f64(rng: &mut XorShiftRng) -> Result<(), Box<Error>> {
+            extern "C" {
+                $(fn $intr(_: f64, _: f64, _: f64) -> f64;)*
+            }
+
+            $(
+                let mut cases = String::new();
+                for _ in 0..NTESTS {
+                    let i1 = f64(rng);
+                    let i2 = f64(rng);
+                    let i3 = f64(rng);
+                    let out = unsafe { $intr(i1, i2, i3) };
+
+                    let i1 = i1.to_bits();
+                    let i2 = i2.to_bits();
+                    let i3 = i3.to_bits();
+                    let out = out.to_bits();
+
+                    write!(cases, "(({}, {}, {}), {})", i1, i2, i3, out).unwrap();
+                    cases.push(',');
+                }
+
+                let mut f = File::create(concat!("tests/", stringify!($intr), ".rs"))?;
+                write!(f, "
+                    #![deny(warnings)]
+
+                    extern crate libm;
+
+                    #[test]
+                    fn {0}() {{
+                        const CASES: &[((u64, u64, u64), u64)] = &[
+                            {1}
+                        ];
+
+                        for case in CASES {{
+                            let ((i1, i2, i3), expected) = *case;
+
+                            let outf = libm::{0}(
+                                f64::from_bits(i1),
+                                f64::from_bits(i2),
+                                f64::from_bits(i3),
+                            );
+                            let outi = outf.to_bits();
+
+                            if !((outf.is_nan() && f64::from_bits(expected).is_nan()) ||
+                                 libm::_eq(outi, expected)) {{
+                                panic!(
+                                    \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                    (i1, i2, i3),
                                     outi,
                                     expected,
                                 );
@@ -355,6 +501,8 @@ macro_rules! f64i32_f64 {
 
                 let mut f = File::create(concat!("tests/", stringify!($intr), ".rs"))?;
                 write!(f, "
+                    #![deny(warnings)]
+
                     extern crate libm;
 
                     #[test]
@@ -398,9 +546,11 @@ fn main() -> Result<(), Box<Error>> {
 
     f32_f32(&mut rng)?;
     f32f32_f32(&mut rng)?;
+    f32f32f32_f32(&mut rng)?;
     f32i32_f32(&mut rng)?;
     f64_f64(&mut rng)?;
     f64f64_f64(&mut rng)?;
+    f64f64f64_f64(&mut rng)?;
     f64i32_f64(&mut rng)?;
 
     Ok(())
@@ -410,6 +560,13 @@ fn main() -> Result<(), Box<Error>> {
 
 // With signature `fn(f32) -> f32`
 f32_f32! {
+    // cosf,
+    // exp2f,
+    // expf,
+    // log10f,
+    // log2f,
+    // roundf,
+    // sinf,
     fabsf,
     sqrtf,
 }
@@ -420,6 +577,11 @@ f32f32_f32! {
     powf,
 }
 
+// With signature `fn(f32, f32, f32) -> f32`
+f32f32f32_f32! {
+    // fmaf,
+}
+
 // With signature `fn(f32, i32) -> f32`
 f32i32_f32! {
     scalbnf,
@@ -427,12 +589,38 @@ f32i32_f32! {
 
 // With signature `fn(f64) -> f64`
 f64_f64! {
+    // acos,
+    // asin,
+    // atan,
+    // cbrt,
+    // cos,
+    // cosh,
+    // exp,
+    // exp2,
+    // expm1,
+    // log,
+    // log10,
+    // log1p,
+    // log2,
+    // round,
+    // sin,
+    // sinh,
+    // tan,
+    // tanh,
     fabs,
 }
 
 // With signature `fn(f64, f64) -> f64`
 f64f64_f64! {
+    // atan2,
     // fmod,
+    // hypot,
+    // pow,
+}
+
+// With signature `fn(f64, f64, f64) -> f64`
+f64f64f64_f64! {
+    // fma,
 }
 
 // With signature `fn(f64, i32) -> f64`
