@@ -88,13 +88,13 @@ impl Emitter for ExpectErrorEmitter {
     }
 }
 
-fn errors(msgs: &[&str]) -> (Box<Emitter + sync::Send>, usize) {
+fn errors(msgs: &[&str]) -> (Box<dyn Emitter + sync::Send>, usize) {
     let v = msgs.iter().map(|m| m.to_string()).collect();
-    (box ExpectErrorEmitter { messages: v } as Box<Emitter + sync::Send>, msgs.len())
+    (box ExpectErrorEmitter { messages: v } as Box<dyn Emitter + sync::Send>, msgs.len())
 }
 
 fn test_env<F>(source_string: &str,
-               args: (Box<Emitter + sync::Send>, usize),
+               args: (Box<dyn Emitter + sync::Send>, usize),
                body: F)
     where F: FnOnce(Env)
 {
@@ -112,7 +112,7 @@ fn test_env<F>(source_string: &str,
 fn test_env_with_pool<F>(
     options: config::Options,
     source_string: &str,
-    (emitter, expected_err_count): (Box<Emitter + sync::Send>, usize),
+    (emitter, expected_err_count): (Box<dyn Emitter + sync::Send>, usize),
     body: F
 )
     where F: FnOnce(Env)
