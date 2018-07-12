@@ -127,13 +127,13 @@ One of the objectives of this feature is to allow `Box<dyn FnOnce>`, instead of 
 
 ## Variable length arrays
 
-The RFC also describes an extension to the array literal syntax `[e; n]`: you'll be able to specify non-const `n` to allocate variable length arrays on the stack.
+The RFC also describes an extension to the array literal syntax: `[e; dyn n]`. In the syntax, `n` isn't necessarily a constant expression. The array is dynamically allocated on the stack and has the type of `[T]`, instead of `[T; n]`.
 
 ```rust,ignore
 #![feature(unsized_locals)]
 
 fn mergesort<T: Ord>(a: &mut [T]) {
-    let mut tmp = [T; a.len()];
+    let mut tmp = [T; dyn a.len()];
     // ...
 }
 
@@ -144,7 +144,7 @@ fn main() {
 }
 ```
 
-VLAs are not implemented yet.
+VLAs are not implemented yet. The syntax isn't final, either. We may need an alternative syntax for Rust 2015 because, in Rust 2015, expressions like `[e; dyn(1)]` would be ambiguous. One possible alternative proposed in the RFC is `[e; n]`: if `n` captures one or more local variables, then it is considered as `[e; dyn n]`.
 
 ## Advisory on stack usage
 
