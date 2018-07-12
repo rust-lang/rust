@@ -381,8 +381,7 @@ fn issue1456() {
                     .iter()
                     .map(|node| {
                         XPathNodeReader::new(node, &context).and_then(|r| ArtistRef::from_xml(&r))
-                    })
-                    .collect();
+                    }).collect();
                 res?
             }
             _ => Vec::new(),

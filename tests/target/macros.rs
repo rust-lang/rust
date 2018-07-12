@@ -183,8 +183,7 @@ fn issue_1885() {
             chan_select! {
                 rx.recv() => {}
             }
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
 }
 
 fn issue_1917() {

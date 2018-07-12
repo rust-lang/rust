@@ -38,8 +38,7 @@ fn main() {
         .method_call_a(aaaaa, bbbbb, |c| {
             let x = c;
             x
-        })
-        .method_call_b(aaaaa, bbbbb, |c| {
+        }).method_call_b(aaaaa, bbbbb, |c| {
             let x = c;
             x
         });
@@ -65,8 +64,7 @@ fn main() {
         .map(|x| {
             x += 1;
             x
-        })
-        .filter(some_mod::some_filter)
+        }).filter(some_mod::some_filter)
 }
 
 fn floaters() {
@@ -79,7 +77,7 @@ fn floaters() {
         field1: val1,
         field2: val2,
     }.method_call()
-        .method_call();
+    .method_call();
 
     let y = if cond {
         val1
@@ -106,15 +104,14 @@ fn floaters() {
     } else {
         none();
     }.bar()
-        .baz();
+    .baz();
 
     Foo {
         x: val,
     }.baz(|| {
         force();
         multiline();
-    })
-        .quux();
+    }).quux();
 
     Foo {
         y: i_am_multi_line,
@@ -122,8 +119,7 @@ fn floaters() {
     }.baz(|| {
         force();
         multiline();
-    })
-        .quux();
+    }).quux();
 
     a + match x {
         true => "yay!",
@@ -238,8 +234,7 @@ impl Foo {
                         }
                     }
                 })
-            })
-            .collect();
+            }).collect();
     }
 }
 
