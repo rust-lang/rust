@@ -178,22 +178,3 @@ fn main() {
 ```
 
 will unnecessarily extend the stack frame.
-
-Allocation will be improved in the future, but there are still examples that are difficult to optimize:
-
-```rust
-#![feature(unsized_locals)]
-
-fn main() {
-    let mut counter = 10;
-    let x = loop {
-        let x: Box<[i32]> = Box::new([1, 2, 3, 4, 5]);
-        let x = *x;
-        if counter > 0 {
-            counter -= 1;
-        } else {
-            break x;
-        }
-    };
-}
-```
