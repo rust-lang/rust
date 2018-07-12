@@ -211,6 +211,6 @@ fn compile_fail_miri() {
     let host = get_host();
 
     // FIXME: run tests for other targets, too
-    compile_fail(&sysroot, "tests/compile-fail", &host, &host, true);
-    //compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true);
+    compile_fail(&sysroot, "tests/compile-fail", &host, &host, false);
+    compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true);
 }
