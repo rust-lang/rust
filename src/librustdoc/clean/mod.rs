@@ -20,7 +20,7 @@ pub use self::Visibility::{Public, Inherited};
 
 use rustc_target::spec::abi::Abi;
 use syntax;
-use syntax::ast::{self, AttrStyle, NodeId, Ident};
+use syntax::ast::{self, AttrStyle, Name, NodeId, Ident};
 use syntax::attr;
 use syntax::codemap::{dummy_spanned, Spanned};
 use syntax::feature_gate::UnstableFeatures;
@@ -39,6 +39,7 @@ use rustc::hir::{self, GenericArg, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::def_id::DefIndexAddressSpace;
+use rustc::hir::map::Node;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::middle::stability;
@@ -576,10 +577,23 @@ impl Clean<Item> for doctree::Module {
                                  .next()
                                  .map_or(true, |a| a.style == AttrStyle::Inner) {
             // inner doc comment, use the module's own scope for resolution
+            if self.id != NodeId::new(0) {
+                *cx.current_item_name.borrow_mut() = Some(cx.tcx.hir.name(self.id));
+            } else {
+                *cx.current_item_name.borrow_mut() = None;
+            }
             cx.mod_ids.borrow_mut().push(self.id);
             self.attrs.clean(cx)
         } else {
             // outer doc comment, use its parent's scope
+            match cx.mod_ids.borrow().last() {
+                Some(parent) if *parent != NodeId::new(0) => {
+                    *cx.current_item_name.borrow_mut() = Some(cx.tcx.hir.name(*parent));
+                }
+                _ => {
+                    *cx.current_item_name.borrow_mut() = None;
+                }
+            }
             let attrs = self.attrs.clean(cx);
             cx.mod_ids.borrow_mut().push(self.id);
             attrs
@@ -1132,10 +1146,16 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
         };
 
         let mut path = if let Some(second) = split.next() {
-            second
+            second.to_owned()
         } else {
             return Err(())
         };
+
+        if path == "self" || path == "Self" {
+            if let Some(name) = *cx.current_item_name.borrow() {
+                path = name.to_string();
+            }
+        }
 
         let ty = cx.resolver.borrow_mut()
                             .with_scope(*id,
@@ -2110,6 +2130,8 @@ impl Clean<Item> for doctree::Function {
         let (generics, decl) = enter_impl_trait(cx, || {
             (self.generics.clean(cx), (&self.decl, self.body).clean(cx))
         });
+
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -2288,6 +2310,7 @@ pub struct Trait {
 
 impl Clean<Item> for doctree::Trait {
     fn clean(&self, cx: &DocContext) -> Item {
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         let attrs = self.attrs.clean(cx);
         let is_spotlight = attrs.has_doc_flag("spotlight");
         Item {
@@ -2359,6 +2382,7 @@ impl Clean<Item> for hir::TraitItem {
                 AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
             }
         };
+        *cx.current_item_name.borrow_mut() = Some(self.ident.name);
         Item {
             name: Some(self.ident.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -2387,6 +2411,7 @@ impl Clean<Item> for hir::ImplItem {
                 generics: Generics::default(),
             }, true),
         };
+        *cx.current_item_name.borrow_mut() = Some(self.ident.name);
         Item {
             name: Some(self.ident.name.clean(cx)),
             source: self.span.clean(cx),
@@ -3179,6 +3204,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext) -> Item {
+        *cx.current_item_name.borrow_mut() = Some(self.ident.name);
         Item {
             name: Some(self.ident.name).clean(cx),
             attrs: self.attrs.clean(cx),
@@ -3257,6 +3283,7 @@ impl Clean<Vec<Item>> for doctree::Struct {
         let name = self.name.clean(cx);
         let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
 
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         ret.push(Item {
             name: Some(name),
             attrs: self.attrs.clean(cx),
@@ -3282,6 +3309,7 @@ impl Clean<Vec<Item>> for doctree::Union {
         let name = self.name.clean(cx);
         let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
 
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         ret.push(Item {
             name: Some(name),
             attrs: self.attrs.clean(cx),
@@ -3334,6 +3362,7 @@ impl Clean<Vec<Item>> for doctree::Enum {
         let name = self.name.clean(cx);
         let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
 
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         ret.push(Item {
             name: Some(name),
             attrs: self.attrs.clean(cx),
@@ -3360,6 +3389,7 @@ pub struct Variant {
 
 impl Clean<Item> for doctree::Variant {
     fn clean(&self, cx: &DocContext) -> Item {
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -3655,6 +3685,7 @@ pub struct Typedef {
 
 impl Clean<Item> for doctree::Typedef {
     fn clean(&self, cx: &DocContext) -> Item {
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -3706,6 +3737,7 @@ pub struct Static {
 impl Clean<Item> for doctree::Static {
     fn clean(&self, cx: &DocContext) -> Item {
         debug!("cleaning static {}: {:?}", self.name.clean(cx), self);
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -3731,6 +3763,7 @@ pub struct Constant {
 
 impl Clean<Item> for doctree::Constant {
     fn clean(&self, cx: &DocContext) -> Item {
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -3800,6 +3833,23 @@ pub fn get_auto_traits_with_def_id(cx: &DocContext, id: DefId) -> Vec<Item> {
     finder.get_with_def_id(id)
 }
 
+fn get_name_if_possible(cx: &DocContext, node: NodeId) -> Option<Name> {
+    match cx.tcx.hir.get(node) {
+        Node::NodeItem(_) |
+        Node::NodeForeignItem(_) |
+        Node::NodeImplItem(_) |
+        Node::NodeTraitItem(_) |
+        Node::NodeVariant(_) |
+        Node::NodeField(_) |
+        Node::NodeLifetime(_) |
+        Node::NodeGenericParam(_) |
+        Node::NodeBinding(&hir::Pat { node: hir::PatKind::Binding(_,_,_,_), .. }) |
+        Node::NodeStructCtor(_) => {}
+        _ => return None,
+    }
+    Some(cx.tcx.hir.name(node))
+}
+
 impl Clean<Vec<Item>> for doctree::Impl {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
         let mut ret = Vec::new();
@@ -3819,6 +3869,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                   .collect()
         }).unwrap_or(FxHashSet());
 
+        *cx.current_item_name.borrow_mut() = get_name_if_possible(cx, self.for_.id);
         ret.push(Item {
             name: None,
             attrs: self.attrs.clean(cx),
@@ -3905,6 +3956,7 @@ fn build_deref_target_impls(cx: &DocContext,
 
 impl Clean<Item> for doctree::ExternCrate {
     fn clean(&self, cx: &DocContext) -> Item {
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         Item {
             name: None,
             attrs: self.attrs.clean(cx),
@@ -3951,6 +4003,8 @@ impl Clean<Vec<Item>> for doctree::Import {
             }
             Import::Simple(name.clean(cx), resolve_use_source(cx, path))
         };
+
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         vec![Item {
             name: None,
             attrs: self.attrs.clean(cx),
@@ -4019,6 +4073,8 @@ impl Clean<Item> for hir::ForeignItem {
                 ForeignTypeItem
             }
         };
+
+        *cx.current_item_name.borrow_mut() = Some(self.name);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -4194,6 +4250,7 @@ pub struct Macro {
 impl Clean<Item> for doctree::Macro {
     fn clean(&self, cx: &DocContext) -> Item {
         let name = self.name.clean(cx);
+        *cx.current_item_name.borrow_mut() = None;
         Item {
             name: Some(name.clone()),
             attrs: self.attrs.clean(cx),
