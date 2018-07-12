@@ -190,27 +190,12 @@ fn run_pass_miri(opt: bool) {
     miri_pass(&sysroot, "tests/run-pass-fullmir", &host, &host, true, opt);
 }
 
-#[test]
-fn run_pass_miri_noopt() {
-    run_pass_miri(false);
-}
-
-#[test]
-#[ignore]
-// FIXME: Disabled for now, as the optimizer is pretty broken and crashes...
-// See https://github.com/rust-lang/rust/issues/50411
-fn run_pass_miri_opt() {
-    run_pass_miri(true);
-}
-
-#[test]
 fn run_pass_rustc() {
     let sysroot = get_sysroot();
     rustc_pass(&sysroot, "tests/run-pass");
     rustc_pass(&sysroot, "tests/run-pass-fullmir");
 }
 
-#[test]
 fn compile_fail_miri() {
     let sysroot = get_sysroot();
     let host = get_host();
@@ -218,4 +203,21 @@ fn compile_fail_miri() {
     // FIXME: run tests for other targets, too
     compile_fail(&sysroot, "tests/compile-fail", &host, &host, false);
     compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true);
+}
+
+#[test]
+fn test() {
+    // We put everything into a single test to avoid the parallelism `cargo test`
+    // introduces.  We still get parallelism within our tests because `compiletest`
+    // uses `libtest` which runs jobs in parallel.
+
+    run_pass_rustc();
+
+    run_pass_miri(false);
+
+    // FIXME: Disabled for now, as the optimizer is pretty broken and crashes...
+    // See https://github.com/rust-lang/rust/issues/50411
+    //run_pass_miri(true);
+
+    compile_fail_miri();
 }
