@@ -397,7 +397,6 @@ extern { pub type ObjectFile; }
 extern { pub type SectionIterator; }
 pub type SectionIteratorRef = *mut SectionIterator;
 extern { pub type Pass; }
-pub type PassRef = *mut Pass;
 extern { pub type TargetMachine; }
 pub type TargetMachineRef = *const TargetMachine;
 extern { pub type Archive; }
@@ -1414,9 +1413,9 @@ extern "C" {
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&Value>;
     pub fn LLVMIsAConstantFP(value_ref: &Value) -> Option<&Value>;
 
-    pub fn LLVMRustPassKind(Pass: PassRef) -> PassKind;
-    pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> PassRef;
-    pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: PassRef);
+    pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
+    pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
+    pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: &'static mut Pass);
 
     pub fn LLVMRustHasFeature(T: TargetMachineRef, s: *const c_char) -> bool;
 

@@ -522,10 +522,10 @@ unsafe fn optimize(cgcx: &CodegenContext,
         // manager.
         let addpass = |pass_name: &str| {
             let pass_name = CString::new(pass_name).unwrap();
-            let pass = llvm::LLVMRustFindAndCreatePass(pass_name.as_ptr());
-            if pass.is_null() {
-                return false;
-            }
+            let pass = match llvm::LLVMRustFindAndCreatePass(pass_name.as_ptr()) {
+                Some(pass) => pass,
+                None => return false,
+            };
             let pass_manager = match llvm::LLVMRustPassKind(pass) {
                 llvm::PassKind::Function => fpm,
                 llvm::PassKind::Module => mpm,

@@ -468,8 +468,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
 
         if config.verify_llvm_ir {
             let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
-            assert!(!pass.is_null());
-            llvm::LLVMRustAddPass(pm, pass);
+            llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
         // When optimizing for LTO we don't actually pass in `-O0`, but we force
@@ -503,8 +502,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
 
         if config.verify_llvm_ir {
             let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
-            assert!(!pass.is_null());
-            llvm::LLVMRustAddPass(pm, pass);
+            llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
         time_ext(cgcx.time_passes, None, "LTO passes", ||
