@@ -560,19 +560,33 @@ fn main() -> Result<(), Box<Error>> {
 
 // With signature `fn(f32) -> f32`
 f32_f32! {
+    // acosf,
+    // floorf,
+    // truncf
+    // asinf,
+    // atanf,
+    // cbrtf,
+    // ceilf,
     // cosf,
+    // coshf,
     // exp2f,
     // expf,
+    // fdimf,
     // log10f,
     // log2f,
     // roundf,
     // sinf,
+    // sinhf,
+    // tanf,
+    // tanhf,
     fabsf,
     sqrtf,
 }
 
 // With signature `fn(f32, f32) -> f32`
 f32f32_f32! {
+    // atan2f,
+    // hypotf,
     fmodf,
     powf,
 }
@@ -593,11 +607,13 @@ f64_f64! {
     // asin,
     // atan,
     // cbrt,
+    // ceil,
     // cos,
     // cosh,
     // exp,
     // exp2,
     // expm1,
+    // floor,
     // log,
     // log10,
     // log1p,
@@ -605,14 +621,17 @@ f64_f64! {
     // round,
     // sin,
     // sinh,
+    // sqrt,
     // tan,
     // tanh,
+    // trunc,
     fabs,
 }
 
 // With signature `fn(f64, f64) -> f64`
 f64f64_f64! {
     // atan2,
+    // fdim,
     // fmod,
     // hypot,
     // pow,
