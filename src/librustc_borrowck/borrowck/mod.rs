@@ -39,6 +39,7 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
+use rustc_mir::util::suggest_ref_mut;
 use rustc::util::nodemap::FxHashSet;
 
 use std::cell::RefCell;
@@ -1206,21 +1207,17 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 self.note_immutable_local(db, error_node_id, node_id)
             }
             Some(ImmutabilityBlame::LocalDeref(node_id)) => {
-                let let_span = self.tcx.hir.span(node_id);
                 match self.local_binding_mode(node_id) {
                     ty::BindByReference(..) => {
-                        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
-                            let replace_str = if snippet.starts_with("ref ") {
-                                snippet.replacen("ref ", "ref mut ", 1)
-                            } else {
-                                snippet
-                            };
+                        let let_span = self.tcx.hir.span(node_id);
+                        let suggestion = suggest_ref_mut(self.tcx, let_span);
+                        if let Some((let_span, replace_str)) = suggestion {
                             db.span_suggestion(
                                 let_span,
                                 "use a mutable reference instead",
                                 replace_str,
                             );
-                        };
+                        }
                     }
                     ty::BindByValue(..) => {
                         if let (Some(local_ty), is_implicit_self) = self.local_ty(node_id) {

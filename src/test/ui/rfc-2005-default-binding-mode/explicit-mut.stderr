@@ -1,24 +1,18 @@
 error[E0594]: cannot assign to immutable borrowed content `*n`
   --> $DIR/explicit-mut.rs:17:13
    |
-LL |         Some(n) => {
-   |              - help: use a mutable reference instead: `n`
 LL |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content `*n`
   --> $DIR/explicit-mut.rs:25:13
    |
-LL |         Some(n) => {
-   |              - help: use a mutable reference instead: `n`
 LL |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content `*n`
   --> $DIR/explicit-mut.rs:33:13
    |
-LL |         Some(n) => {
-   |              - help: use a mutable reference instead: `n`
 LL |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ cannot borrow as mutable
 

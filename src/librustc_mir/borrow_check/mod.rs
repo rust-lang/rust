@@ -29,8 +29,6 @@ use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::small_vec::SmallVec;
 
-use core::unicode::property::Pattern_White_Space;
-
 use std::rc::Rc;
 
 use syntax_pos::Span;
@@ -46,6 +44,7 @@ use dataflow::{EverInitializedPlaces, MovingOutStatements};
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 use util::collect_writes::FindAssignments;
+use util::suggest_ref_mut;
 
 use self::borrow_set::{BorrowData, BorrowSet};
 use self::flows::Flows;
@@ -1861,7 +1860,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
                         binding_mode: ty::BindingMode::BindByReference(_),
                         ..
-                    })) => suggest_ref_mut(self.tcx, local_decl),
+                    })) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
 
                     ClearCrossCrate::Clear => bug!("saw cleared local state"),
                 };
@@ -1956,22 +1955,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
             assert_eq!(ty_mut.mutbl, hir::MutImmutable);
             (highlight_span, format!("&mut {}", ty_mut.ty))
-        }
-
-        fn suggest_ref_mut<'cx, 'gcx, 'tcx>(
-            tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-            local_decl: &mir::LocalDecl<'tcx>,
-        ) -> Option<(Span, String)> {
-            let hi_span = local_decl.source_info.span;
-            let hi_src = tcx.sess.codemap().span_to_snippet(hi_span).unwrap();
-            if hi_src.starts_with("ref")
-                && hi_src["ref".len()..].starts_with(Pattern_White_Space)
-            {
-                let suggestion = format!("ref mut{}", &hi_src["ref".len()..]);
-                Some((hi_span, suggestion))
-            } else {
-                None
-            }
         }
     }
 
