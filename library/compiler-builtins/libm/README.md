@@ -28,10 +28,17 @@ $ TARGET=armv7-unknown-linux-gnueabihf bash ci/script.sh
 - Look for the C implementation of the function in the [MUSL source code][src].
 - Copy paste the C code into a Rust file in the `src` directory and adjust `src/lib.rs` accordingly.
 - Run `cargo watch check` and fix the compiler errors.
+- Tweak the bottom of `test-generator/src/main.rs` to add your function to the test suite.
 - If you can, run the test suite locally. If you can't, no problem! Your PR will be tested
   automatically.
 - Send us a pull request!
 - :tada:
+
+[src]: https://git.musl-libc.org/cgit/musl/tree/src/math
+
+Check [PR #2] for an example.
+
+[PR #2]: https://github.com/japaric/libm/pull/2
 
 ### Notes
 
@@ -44,7 +51,6 @@ $ TARGET=armv7-unknown-linux-gnueabihf bash ci/script.sh
 - Rust code panics on arithmetic overflows when not optimized. You may need to use the [`Wrapping`]
   newtype to avoid this problem.
 
-[src]: https://git.musl-libc.org/cgit/musl/tree/src/math
 [`Wrapping`]: https://doc.rust-lang.org/std/num/struct.Wrapping.html
 
 ## Progress
