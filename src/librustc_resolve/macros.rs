@@ -385,6 +385,22 @@ impl<'a> Resolver<'a> {
             Err(Determinacy::Determined) => {}
         }
 
+        // Ok at this point we've determined that the `attr` above doesn't
+        // actually resolve at this time, so we may want to report an error.
+        // It could be the case, though, that `attr` won't ever resolve! If
+        // there's a custom derive that could be used it might declare `attr` as
+        // a custom attribute accepted by the derive. In this case we don't want
+        // to report this particular invocation as unresolved, but rather we'd
+        // want to move on to the next invocation.
+        //
+        // This loop here looks through all of the derive annotations in scope
+        // and tries to resolve them. If they themselves successfully resolve
+        // *and* the resolve mentions that this attribute's name is a registered
+        // custom attribute then we flag this attribute as known and update
+        // `invoc` above to point to the next invocation.
+        //
+        // By then returning `Undetermined` we should continue resolution to
+        // resolve the next attribute.
         let attr_name = match path.segments.len() {
             1 => path.segments[0].ident.name,
             _ => return Err(determinacy),
@@ -406,8 +422,8 @@ impl<'a> Resolver<'a> {
                             attrs.push(inert_attr);
                             attrs
                         });
+                        return Err(Determinacy::Undetermined)
                     }
-                    return Err(Determinacy::Undetermined);
                 },
                 Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
                 Err(Determinacy::Determined) => {}
