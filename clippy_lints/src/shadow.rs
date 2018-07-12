@@ -110,8 +110,8 @@ fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, binding
     let len = bindings.len();
     for stmt in &block.stmts {
         match stmt.node {
-            StmtDecl(ref decl, _) => check_decl(cx, decl, bindings),
-            StmtExpr(ref e, _) | StmtSemi(ref e, _) => check_expr(cx, e, bindings),
+            StmtKind::Decl(ref decl, _) => check_decl(cx, decl, bindings),
+            StmtKind::Expr(ref e, _) | StmtKind::Semi(ref e, _) => check_expr(cx, e, bindings),
         }
     }
     if let Some(ref o) = block.expr {

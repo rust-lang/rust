@@ -40,7 +40,7 @@ impl LintPass for UnusedIoAmount {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         let expr = match s.node {
-            hir::StmtSemi(ref expr, _) | hir::StmtExpr(ref expr, _) => &**expr,
+            hir::StmtKind::Semi(ref expr, _) | hir::StmtKind::Expr(ref expr, _) => &**expr,
             _ => return,
         };
 

@@ -61,17 +61,17 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
-            if let StmtDecl(ref tmp, _) = w[0].node;
+            if let StmtKind::Decl(ref tmp, _) = w[0].node;
             if let DeclLocal(ref tmp) = tmp.node;
             if let Some(ref tmp_init) = tmp.init;
             if let PatKind::Binding(_, _, ident, None) = tmp.pat.node;
 
             // foo() = bar();
-            if let StmtSemi(ref first, _) = w[1].node;
+            if let StmtKind::Semi(ref first, _) = w[1].node;
             if let ExprKind::Assign(ref lhs1, ref rhs1) = first.node;
 
             // bar() = t;
-            if let StmtSemi(ref second, _) = w[2].node;
+            if let StmtKind::Semi(ref second, _) = w[2].node;
             if let ExprKind::Assign(ref lhs2, ref rhs2) = second.node;
             if let ExprKind::Path(QPath::Resolved(None, ref rhs2)) = rhs2.node;
             if rhs2.segments.len() == 1;
@@ -145,8 +145,8 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
 fn check_suspicious_swap(cx: &LateContext, block: &Block) {
     for w in block.stmts.windows(2) {
         if_chain! {
-            if let StmtSemi(ref first, _) = w[0].node;
-            if let StmtSemi(ref second, _) = w[1].node;
+            if let StmtKind::Semi(ref first, _) = w[0].node;
+            if let StmtKind::Semi(ref second, _) = w[1].node;
             if !differing_macro_contexts(first.span, second.span);
             if let ExprKind::Assign(ref lhs0, ref rhs0) = first.node;
             if let ExprKind::Assign(ref lhs1, ref rhs1) = second.node;

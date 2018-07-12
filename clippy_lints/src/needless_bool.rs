@@ -184,7 +184,7 @@ enum Expression {
 fn fetch_bool_block(block: &Block) -> Expression {
     match (&*block.stmts, block.expr.as_ref()) {
         (&[], Some(e)) => fetch_bool_expr(&**e),
-        (&[ref e], None) => if let StmtSemi(ref e, _) = e.node {
+        (&[ref e], None) => if let StmtKind::Semi(ref e, _) = e.node {
             if let ExprKind::Ret(_) = e.node {
                 fetch_bool_expr(&**e)
             } else {

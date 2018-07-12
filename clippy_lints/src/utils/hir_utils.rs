@@ -43,14 +43,14 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     /// Check whether two statements are the same.
     pub fn eq_stmt(&mut self, left: &Stmt, right: &Stmt) -> bool {
         match (&left.node, &right.node) {
-            (&StmtDecl(ref l, _), &StmtDecl(ref r, _)) => {
+            (&StmtKind::Decl(ref l, _), &StmtKind::Decl(ref r, _)) => {
                 if let (&DeclLocal(ref l), &DeclLocal(ref r)) = (&l.node, &r.node) {
                     both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r)) && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                 } else {
                     false
                 }
             },
-            (&StmtExpr(ref l, _), &StmtExpr(ref r, _)) | (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => {
+            (&StmtKind::Expr(ref l, _), &StmtKind::Expr(ref r, _)) | (&StmtKind::Semi(ref l, _), &StmtKind::Semi(ref r, _)) => {
                 self.eq_expr(l, r)
             },
             _ => false,
@@ -613,8 +613,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_stmt(&mut self, b: &Stmt) {
         match b.node {
-            StmtDecl(ref decl, _) => {
-                let c: fn(_, _) -> _ = StmtDecl;
+            StmtKind::Decl(ref decl, _) => {
+                let c: fn(_, _) -> _ = StmtKind::Decl;
                 c.hash(&mut self.s);
 
                 if let DeclLocal(ref local) = decl.node {
@@ -623,13 +623,13 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     }
                 }
             },
-            StmtExpr(ref expr, _) => {
-                let c: fn(_, _) -> _ = StmtExpr;
+            StmtKind::Expr(ref expr, _) => {
+                let c: fn(_, _) -> _ = StmtKind::Expr;
                 c.hash(&mut self.s);
                 self.hash_expr(expr);
             },
-            StmtSemi(ref expr, _) => {
-                let c: fn(_, _) -> _ = StmtSemi;
+            StmtKind::Semi(ref expr, _) => {
+                let c: fn(_, _) -> _ = StmtKind::Semi;
                 c.hash(&mut self.s);
                 self.hash_expr(expr);
             },

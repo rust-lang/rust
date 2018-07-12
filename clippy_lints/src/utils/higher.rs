@@ -191,9 +191,9 @@ pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)>
         if let hir::ExprKind::Loop(ref block, _, _) = arms[0].body.node;
         if block.expr.is_none();
         if let [ _, _, ref let_stmt, ref body ] = *block.stmts;
-        if let hir::StmtDecl(ref decl, _) = let_stmt.node;
+        if let hir::StmtKind::Decl(ref decl, _) = let_stmt.node;
         if let hir::DeclLocal(ref decl) = decl.node;
-        if let hir::StmtExpr(ref expr, _) = body.node;
+        if let hir::StmtKind::Expr(ref expr, _) = body.node;
         then {
             return Some((&*decl.pat, &iterargs[0], expr));
         }

@@ -1,7 +1,7 @@
 use rustc::hir;
 use rustc::lint::*;
 use rustc::ty;
-use rustc_errors::{Applicability};
+use rustc_errors::Applicability;
 use syntax::codemap::Span;
 use crate::utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use crate::utils::paths;
@@ -131,9 +131,9 @@ fn reduce_unit_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<S
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.node {
-                        hir::StmtDecl(ref d, _) => Some(d.span),
-                        hir::StmtExpr(ref e, _) => Some(e.span),
-                        hir::StmtSemi(_, _) => Some(inner_stmt.span),
+                        hir::StmtKind::Decl(ref d, _) => Some(d.span),
+                        hir::StmtKind::Expr(ref e, _) => Some(e.span),
+                        hir::StmtKind::Semi(_, _) => Some(inner_stmt.span),
                     }
                 },
                 _ => {
@@ -247,7 +247,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
 
-        if let hir::StmtSemi(ref expr, _) = stmt.node {
+        if let hir::StmtKind::Semi(ref expr, _) = stmt.node {
             if let hir::ExprKind::MethodCall(_, _, _) = expr.node {
                 if let Some(arglists) = method_chain_args(expr, &["map"]) {
                     lint_map_unit_fn(cx, stmt, expr, arglists[0]);

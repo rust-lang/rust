@@ -592,9 +592,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         let current = format!("{}.node", self.current);
         match s.node {
             // Could be an item or a local (let) binding:
-            StmtDecl(ref decl, _) => {
+            StmtKind::Decl(ref decl, _) => {
                 let decl_pat = self.next("decl");
-                println!("StmtDecl(ref {}, _) = {}", decl_pat, current);
+                println!("StmtKind::Decl(ref {}, _) = {}", decl_pat, current);
                 print!("    if let Decl_::");
                 let current = format!("{}.node", decl_pat);
                 match decl.node {
@@ -619,17 +619,17 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
             }
 
             // Expr without trailing semi-colon (must have unit type):
-            StmtExpr(ref e, _) => {
+            StmtKind::Expr(ref e, _) => {
                 let e_pat = self.next("e");
-                println!("StmtExpr(ref {}, _) = {}", e_pat, current);
+                println!("StmtKind::Expr(ref {}, _) = {}", e_pat, current);
                 self.current = e_pat;
                 self.visit_expr(e);
             },
 
             // Expr with trailing semi-colon (may have any type):
-            StmtSemi(ref e, _) => {
+            StmtKind::Semi(ref e, _) => {
                 let e_pat = self.next("e");
-                println!("StmtSemi(ref {}, _) = {}", e_pat, current);
+                println!("StmtKind::Semi(ref {}, _) = {}", e_pat, current);
                 self.current = e_pat;
                 self.visit_expr(e);
             },

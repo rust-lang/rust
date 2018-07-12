@@ -122,8 +122,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         match stmt.node {
-            hir::StmtDecl(ref decl, _) => print_decl(cx, decl),
-            hir::StmtExpr(ref e, _) | hir::StmtSemi(ref e, _) => print_expr(cx, e, 0),
+            hir::StmtKind::Decl(ref decl, _) => print_decl(cx, decl),
+            hir::StmtKind::Expr(ref e, _) | hir::StmtKind::Semi(ref e, _) => print_expr(cx, e, 0),
         }
     }
     // fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx

@@ -1,5 +1,5 @@
 if_chain! {
-    if let Stmt_::StmtDecl(ref decl, _) = stmt.node
+    if let StmtKind::Decl(ref decl, _) = stmt.node
     if let Decl_::DeclLocal(ref local) = decl.node;
     if let Some(ref init) = local.init
     if let ExprKind::Call(ref func, ref args) = init.node;

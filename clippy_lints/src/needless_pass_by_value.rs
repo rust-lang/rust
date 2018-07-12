@@ -350,7 +350,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                         map::Node::NodeStmt(s) => {
                             // `let <pat> = x;`
                             if_chain! {
-                                if let StmtDecl(ref decl, _) = s.node;
+                                if let StmtKind::Decl(ref decl, _) = s.node;
                                 if let DeclLocal(ref local) = decl.node;
                                 then {
                                     self.spans_need_deref

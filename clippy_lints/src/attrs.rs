@@ -234,8 +234,8 @@ fn is_relevant_trait(tcx: TyCtxt, item: &TraitItem) -> bool {
 fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match stmt.node {
-            StmtDecl(_, _) => true,
-            StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => is_relevant_expr(tcx, tables, expr),
+            StmtKind::Decl(_, _) => true,
+            StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => is_relevant_expr(tcx, tables, expr),
         }
     } else {
         block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
