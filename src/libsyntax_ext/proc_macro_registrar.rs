@@ -23,6 +23,7 @@ use syntax::fold::Folder;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -385,9 +386,13 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let register_custom_derive = Ident::from_str("register_custom_derive");
     let register_attr_proc_macro = Ident::from_str("register_attr_proc_macro");
     let register_bang_proc_macro = Ident::from_str("register_bang_proc_macro");
+    let crate_kw = Ident::with_empty_ctxt(keywords::Crate.name());
+    let local_path = |cx: &mut ExtCtxt, sp: Span, name: Ident| {
+        cx.path(sp.with_ctxt(span.ctxt()), vec![crate_kw, name])
+    };
 
     let mut stmts = custom_derives.iter().map(|cd| {
-        let path = cx.path_global(cd.span, vec![cd.function_name]);
+        let path = local_path(cx, cd.span, cd.function_name);
         let trait_name = cx.expr_str(cd.span, cd.trait_name);
         let attrs = cx.expr_vec_slice(
             span,
@@ -404,7 +409,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
 
     stmts.extend(custom_attrs.iter().map(|ca| {
         let name = cx.expr_str(ca.span, ca.function_name.name);
-        let path = cx.path_global(ca.span, vec![ca.function_name]);
+        let path = local_path(cx, ca.span, ca.function_name);
         let registrar = cx.expr_ident(ca.span, registrar);
 
         let ufcs_path = cx.path(span,
@@ -416,7 +421,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
 
     stmts.extend(custom_macros.iter().map(|cm| {
         let name = cx.expr_str(cm.span, cm.function_name.name);
-        let path = cx.path_global(cm.span, vec![cm.function_name]);
+        let path = local_path(cx, cm.span, cm.function_name);
         let registrar = cx.expr_ident(cm.span, registrar);
 
         let ufcs_path = cx.path(span,
