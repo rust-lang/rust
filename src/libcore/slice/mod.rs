@@ -729,7 +729,8 @@ impl<T> [T] {
     /// Returns an iterator over `chunk_size` elements of the slice at a
     /// time. The chunks are slices and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last up to `chunk_size-1`
-    /// elements will be omitted.
+    /// elements will be omitted and can be retrieved from the `remainder`
+    /// function of the iterator.
     ///
     /// Due to each chunk having exactly `chunk_size` elements, the compiler
     /// can often optimize the resulting code better than in the case of
@@ -758,14 +759,15 @@ impl<T> [T] {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
-        ExactChunks { v: &self[..len], chunk_size: chunk_size}
+        let (fst, snd) = self.split_at(len);
+        ExactChunks { v: fst, rem: snd, chunk_size: chunk_size}
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
     /// The chunks are mutable slices, and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last up to `chunk_size-1`
-    /// elements will be omitted.
-    ///
+    /// elements will be omitted and can be retrieved from the `into_remainder`
+    /// function of the iterator.
     ///
     /// Due to each chunk having exactly `chunk_size` elements, the compiler
     /// can often optimize the resulting code better than in the case of
@@ -799,7 +801,8 @@ impl<T> [T] {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
-        ExactChunksMut { v: &mut self[..len], chunk_size: chunk_size}
+        let (fst, snd) = self.split_at_mut(len);
+        ExactChunksMut { v: fst, rem: snd, chunk_size: chunk_size}
     }
 
     /// Divides one slice into two at an index.
@@ -3657,17 +3660,30 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
 /// time).
 ///
 /// When the slice len is not evenly divided by the chunk size, the last
-/// up to `chunk_size-1` elements will be omitted.
+/// up to `chunk_size-1` elements will be omitted but can be retrieved from
+/// the [`remainder`] function from the iterator.
 ///
 /// This struct is created by the [`exact_chunks`] method on [slices].
 ///
 /// [`exact_chunks`]: ../../std/primitive.slice.html#method.exact_chunks
+/// [`remainder`]: ../../std/slice/struct.ExactChunks.html#method.remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[unstable(feature = "exact_chunks", issue = "47115")]
 pub struct ExactChunks<'a, T:'a> {
     v: &'a [T],
+    rem: &'a [T],
     chunk_size: usize
+}
+
+#[unstable(feature = "exact_chunks", issue = "47115")]
+impl<'a, T> ExactChunks<'a, T> {
+    /// Return the remainder of the original slice that is not going to be
+    /// returned by the iterator. The returned slice has at most `chunk_size-1`
+    /// elements.
+    pub fn remainder(&self) -> &'a [T] {
+        self.rem
+    }
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
@@ -3676,6 +3692,7 @@ impl<'a, T> Clone for ExactChunks<'a, T> {
     fn clone(&self) -> ExactChunks<'a, T> {
         ExactChunks {
             v: self.v,
+            rem: self.rem,
             chunk_size: self.chunk_size,
         }
     }
@@ -3763,18 +3780,33 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunks<'a, T> {
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
-/// elements at a time). When the slice len is not evenly divided by the chunk
-/// size, the last up to `chunk_size-1` elements will be omitted.
+/// elements at a time).
+///
+/// When the slice len is not evenly divided by the chunk size, the last up to
+/// `chunk_size-1` elements will be omitted but can be retrieved from the
+/// [`into_remainder`] function from the iterator.
 ///
 /// This struct is created by the [`exact_chunks_mut`] method on [slices].
 ///
 /// [`exact_chunks_mut`]: ../../std/primitive.slice.html#method.exact_chunks_mut
+/// [`into_remainder`]: ../../std/slice/struct.ExactChunksMut.html#method.into_remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
 #[unstable(feature = "exact_chunks", issue = "47115")]
 pub struct ExactChunksMut<'a, T:'a> {
     v: &'a mut [T],
+    rem: &'a mut [T],
     chunk_size: usize
+}
+
+#[unstable(feature = "exact_chunks", issue = "47115")]
+impl<'a, T> ExactChunksMut<'a, T> {
+    /// Return the remainder of the original slice that is not going to be
+    /// returned by the iterator. The returned slice has at most `chunk_size-1`
+    /// elements.
+    pub fn into_remainder(self) -> &'a mut [T] {
+        self.rem
+    }
 }
 
 #[unstable(feature = "exact_chunks", issue = "47115")]
