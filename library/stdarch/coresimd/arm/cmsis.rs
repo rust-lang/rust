@@ -12,6 +12,7 @@
 /// executed in Privileged modes.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(cpsie))]
 pub unsafe fn __enable_irq() {
     asm!("cpsie i" : : : "memory" : "volatile");
 }
@@ -22,6 +23,7 @@ pub unsafe fn __enable_irq() {
 /// executed in Privileged modes.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(cpsid))]
 pub unsafe fn __disable_irq() {
     asm!("cpsid i" : : : "memory" : "volatile");
 }
@@ -31,6 +33,7 @@ pub unsafe fn __disable_irq() {
 /// Returns the content of the Control Register.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(mrs))]
 pub unsafe fn __get_CONTROL() -> u32 {
     let result: u32;
     asm!("mrs $0, CONTROL" : "=r"(result) : : : "volatile");
@@ -42,6 +45,7 @@ pub unsafe fn __get_CONTROL() -> u32 {
 /// Writes the given value to the Control Register.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(msr))]
 pub unsafe fn __set_CONTROL(control: u32) {
     asm!("msr CONTROL, $0" : : "r"(control) : "memory" : "volatile");
 }
@@ -51,6 +55,7 @@ pub unsafe fn __set_CONTROL(control: u32) {
 /// Returns the content of the IPSR Register.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(mrs))]
 pub unsafe fn __get_IPSR() -> u32 {
     let result: u32;
     asm!("mrs $0, IPSR" : "=r"(result) : : : "volatile");
@@ -62,6 +67,7 @@ pub unsafe fn __get_IPSR() -> u32 {
 /// Returns the content of the APSR Register.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(mrs))]
 pub unsafe fn __get_APSR() -> u32 {
     let result: u32;
     asm!("mrs $0, APSR" : "=r"(result) : : : "volatile");
@@ -73,6 +79,7 @@ pub unsafe fn __get_APSR() -> u32 {
 /// Returns the content of the xPSR Register.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(mrs))]
 pub unsafe fn __get_xPSR() -> u32 {
     let result: u32;
     asm!("mrs $0, XPSR" : "=r"(result) : : : "volatile");
@@ -84,6 +91,7 @@ pub unsafe fn __get_xPSR() -> u32 {
 /// Returns the current value of the Process Stack Pointer (PSP).
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(mrs))]
 pub unsafe fn __get_PSP() -> u32 {
     let result: u32;
     asm!("mrs $0, PSP" : "=r"(result) : : : "volatile");
@@ -95,6 +103,7 @@ pub unsafe fn __get_PSP() -> u32 {
 /// Assigns the given value to the Process Stack Pointer (PSP).
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(msr))]
 pub unsafe fn __set_PSP(top_of_proc_stack: u32) {
     asm!("msr PSP, $0" : : "r"(top_of_proc_stack) : : "volatile");
 }
@@ -104,6 +113,7 @@ pub unsafe fn __set_PSP(top_of_proc_stack: u32) {
 /// Returns the current value of the Main Stack Pointer (MSP).
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(mrs))]
 pub unsafe fn __get_MSP() -> u32 {
     let result: u32;
     asm!("mrs $0, MSP" : "=r"(result) : : : "volatile");
@@ -115,6 +125,7 @@ pub unsafe fn __get_MSP() -> u32 {
 /// Assigns the given value to the Main Stack Pointer (MSP).
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(msr))]
 pub unsafe fn __set_MSP(top_of_main_stack: u32) {
     asm!("msr MSP, $0" : : "r"(top_of_main_stack) : : "volatile");
 }
@@ -125,6 +136,7 @@ pub unsafe fn __set_MSP(top_of_main_stack: u32) {
 /// Register.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(mrs))]
 pub unsafe fn __get_PRIMASK() -> u32 {
     let result: u32;
     asm!("mrs $0, PRIMASK" : "=r"(result) : : "memory" : "volatile");
@@ -136,6 +148,7 @@ pub unsafe fn __get_PRIMASK() -> u32 {
 /// Assigns the given value to the Priority Mask Register.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(msr))]
 pub unsafe fn __set_PRIMASK(pri_mask: u32) {
     asm!("msr PRIMASK, $0" : : "r"(pri_mask) : : "volatile");
 }
@@ -148,6 +161,7 @@ mod v7 {
     /// executed in Privileged modes.
     #[inline]
     #[target_feature(enable = "mclass")]
+    #[cfg_attr(test, assert_instr(cpsie))]
     pub unsafe fn __enable_fault_irq() {
         asm!("cpsie f" : : : "memory" : "volatile");
     }
@@ -158,6 +172,7 @@ mod v7 {
     /// executed in Privileged modes.
     #[inline]
     #[target_feature(enable = "mclass")]
+    #[cfg_attr(test, assert_instr(cpsid))]
     pub unsafe fn __disable_fault_irq() {
         asm!("cpsid f" : : : "memory" : "volatile");
     }
@@ -167,6 +182,7 @@ mod v7 {
     /// Returns the current value of the Base Priority register.
     #[inline]
     #[target_feature(enable = "mclass")]
+    #[cfg_attr(test, assert_instr(mrs))]
     pub unsafe fn __get_BASEPRI() -> u32 {
         let result: u32;
         asm!("mrs $0, BASEPRI" : "=r"(result) : : : "volatile");
@@ -178,6 +194,7 @@ mod v7 {
     /// Assigns the given value to the Base Priority register.
     #[inline]
     #[target_feature(enable = "mclass")]
+    #[cfg_attr(test, assert_instr(msr))]
     pub unsafe fn __set_BASEPRI(base_pri: u32) {
         asm!("msr BASEPRI, $0" : : "r"(base_pri) : "memory" : "volatile");
     }
@@ -189,6 +206,7 @@ mod v7 {
     /// priority level.
     #[inline]
     #[target_feature(enable = "mclass")]
+    #[cfg_attr(test, assert_instr(mrs))]
     pub unsafe fn __set_BASEPRI_MAX(base_pri: u32) {
         asm!("msr BASEPRI_MAX, $0" : : "r"(base_pri) : "memory" : "volatile");
     }
@@ -198,6 +216,7 @@ mod v7 {
     /// Returns the current value of the Fault Mask register.
     #[inline]
     #[target_feature(enable = "mclass")]
+    #[cfg_attr(test, assert_instr(mrs))]
     pub unsafe fn __get_FAULTMASK() -> u32 {
         let result: u32;
         asm!("mrs $0, FAULTMASK" : "=r"(result) : : : "volatile");
@@ -209,6 +228,7 @@ mod v7 {
     /// Assigns the given value to the Fault Mask register.
     #[inline]
     #[target_feature(enable = "mclass")]
+    #[cfg_attr(test, assert_instr(msr))]
     pub unsafe fn __set_FAULTMASK(fault_mask: u32) {
         asm!("msr FAULTMASK, $0" : : "r"(fault_mask) : "memory" : "volatile");
     }
@@ -225,6 +245,7 @@ pub use self::v7::*;
 /// purposes.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn __NOP() {
     asm!("nop" : : : : "volatile");
 }
@@ -235,6 +256,7 @@ pub unsafe fn __NOP() {
 /// of a number of events occurs.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(wfi))]
 pub unsafe fn __WFI() {
     asm!("wfi" : : : : "volatile");
 }
@@ -245,6 +267,7 @@ pub unsafe fn __WFI() {
 /// low-power state until one of a number of events occurs.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(wfe))]
 pub unsafe fn __WFE() {
     asm!("wfe" : : : : "volatile");
 }
@@ -255,6 +278,7 @@ pub unsafe fn __WFE() {
 /// CPU.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(sev))]
 pub unsafe fn __SEV() {
     asm!("sev" : : : : "volatile");
 }
@@ -266,6 +290,7 @@ pub unsafe fn __SEV() {
 /// memory, after the instruction has been completed.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(isb))]
 pub unsafe fn __ISB() {
     asm!("isb 0xF" : : : "memory" : "volatile");
 }
@@ -276,6 +301,7 @@ pub unsafe fn __ISB() {
 /// explicit memory accesses before this instruction complete.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(dsb))]
 pub unsafe fn __DSB() {
     asm!("dsb 0xF" : : : "memory" : "volatile");
 }
@@ -286,6 +312,7 @@ pub unsafe fn __DSB() {
 /// after the instruction, without ensuring their completion.
 #[inline]
 #[target_feature(enable = "mclass")]
+#[cfg_attr(test, assert_instr(dmb))]
 pub unsafe fn __DMB() {
     asm!("dmb 0xF" : : : "memory" : "volatile");
 }
