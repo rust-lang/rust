@@ -42,6 +42,10 @@ matrix:
         - cat wasm.wat
         - grep current_memory wasm.wat
         - grep grow_memory wasm.wat
+    - env: TARGET=thumbv6m-none-eabi NOSTD=1
+    - env: TARGET=thumbv7m-none-eabi NOSTD=1
+    - env: TARGET=thumbv7em-none-eabi NOSTD=1
+    - env: TARGET=thumbv7em-none-eabihf NOSTD=1
     - env: DOCUMENTATION
       install: true
       script: ci/dox.sh
@@ -74,6 +78,8 @@ script:
     if [ "$NORUN" == "1" ]; then
       cargo build --target=$TARGET -p coresimd -p stdsimd --manifest-path crates/stdsimd/Cargo.toml
       cargo build --release --target=$TARGET -p coresimd -p stdsimd --manifest-path crates/stdsimd/Cargo.toml
+    elif [ "$NOSTD" == "1" ]; then
+      cargo build --target=$TARGET -p coresimd --manifest-path crates/stdsimd/Cargo.toml
     else
       ci/run-docker.sh $TARGET $FEATURES
     fi
