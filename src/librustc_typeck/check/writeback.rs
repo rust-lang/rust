@@ -526,7 +526,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn resolve<T>(&self, x: &T, span: &Locatable) -> T::Lifted
+    fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T::Lifted
     where
         T: TypeFoldable<'tcx> + ty::Lift<'gcx>,
     {
@@ -580,14 +580,14 @@ impl Locatable for hir::HirId {
 struct Resolver<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
-    span: &'cx Locatable,
+    span: &'cx dyn Locatable,
     body: &'gcx hir::Body,
 }
 
 impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
     fn new(
         fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
-        span: &'cx Locatable,
+        span: &'cx dyn Locatable,
         body: &'gcx hir::Body,
     ) -> Resolver<'cx, 'gcx, 'tcx> {
         Resolver {
