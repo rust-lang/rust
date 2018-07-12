@@ -46,6 +46,13 @@ impl<A: Array> AccumulateVec<A> {
         AccumulateVec::Array(ArrayVec::new())
     }
 
+    pub fn is_array(&self) -> bool {
+        match self {
+            AccumulateVec::Array(..) => true,
+            AccumulateVec::Heap(..) => false,
+        }
+    }
+
     pub fn one(el: A::Element) -> Self {
         iter::once(el).collect()
     }

@@ -11,6 +11,7 @@
 use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint,
                        QueryResult};
 use infer::{InferCtxt, InferOk};
+use rustc_data_structures::small_vec::SmallVec;
 use std::fmt;
 use std::rc::Rc;
 use traits::query::Fallible;
@@ -103,7 +104,9 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
         // `canonicalize_hr_query_hack` here because of things
         // like the subtype query, which go awry around
         // `'static` otherwise.
-        let (canonical_self, canonical_var_values) = infcx.canonicalize_hr_query_hack(&query_key);
+        let mut canonical_var_values = SmallVec::new();
+        let canonical_self =
+            infcx.canonicalize_hr_query_hack(&query_key, &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
         let canonical_result = Self::shrink_to_tcx_lifetime(&canonical_result);
 

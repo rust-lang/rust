@@ -16,8 +16,8 @@
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::canonical::{
-    Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, CanonicalVarValues,
-    Canonicalized,
+    Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
+    SmallCanonicalVarValues,
 };
 use infer::InferCtxt;
 use std::sync::atomic::Ordering;
@@ -26,7 +26,8 @@ use ty::subst::Kind;
 use ty::{self, CanonicalVar, Lift, Slice, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::small_vec::SmallVec;
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,
@@ -47,7 +48,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_query<V>(
         &self,
         value: &V,
-    ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
+        var_values: &mut SmallCanonicalVarValues<'tcx>
+    ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
@@ -65,6 +67,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 static_region: true,
                 other_free_regions: true,
             },
+            var_values,
         )
     }
 
@@ -96,10 +99,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_response<V>(
         &self,
         value: &V,
-    ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
+    ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
+        let mut var_values = SmallVec::new();
         Canonicalizer::canonicalize(
             value,
             Some(self),
@@ -108,6 +112,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 static_region: false,
                 other_free_regions: false,
             },
+            &mut var_values
         )
     }
 
@@ -123,7 +128,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_hr_query_hack<V>(
         &self,
         value: &V,
-    ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
+        var_values: &mut SmallCanonicalVarValues<'tcx>
+    ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
@@ -141,6 +147,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 static_region: false,
                 other_free_regions: true,
             },
+            var_values
         )
     }
 }
@@ -163,9 +170,11 @@ impl CanonicalizeRegionMode {
 struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    variables: IndexVec<CanonicalVar, CanonicalVarInfo>,
+    variables: SmallVec<[CanonicalVarInfo; 8]>,
+    var_values: &'cx mut SmallCanonicalVarValues<'tcx>,
+    // Note that indices is only used once `var_values` is big enough to be
+    // heap-allocated.
     indices: FxHashMap<Kind<'tcx>, CanonicalVar>,
-    var_values: IndexVec<CanonicalVar, Kind<'tcx>>,
     canonicalize_region_mode: CanonicalizeRegionMode,
     needs_canonical_flags: TypeFlags,
 }
@@ -295,7 +304,8 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         canonicalize_region_mode: CanonicalizeRegionMode,
-    ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
+        var_values: &'cx mut SmallCanonicalVarValues<'tcx>
+    ) -> Canonicalized<'gcx, V>
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
@@ -320,10 +330,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 variables: Slice::empty(),
                 value: out_value,
             };
-            let values = CanonicalVarValues {
-                var_values: IndexVec::default(),
-            };
-            return (canon_value, values);
+            return canon_value;
         }
 
         let mut canonicalizer = Canonicalizer {
@@ -331,9 +338,9 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             tcx,
             canonicalize_region_mode,
             needs_canonical_flags,
-            variables: IndexVec::default(),
+            variables: SmallVec::new(),
+            var_values,
             indices: FxHashMap::default(),
-            var_values: IndexVec::default(),
         };
         let out_value = value.fold_with(&mut canonicalizer);
 
@@ -348,16 +355,12 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             )
         });
 
-        let canonical_variables = tcx.intern_canonical_var_infos(&canonicalizer.variables.raw);
+        let canonical_variables = tcx.intern_canonical_var_infos(&canonicalizer.variables);
 
-        let canonical_value = Canonical {
+        Canonical {
             variables: canonical_variables,
             value: out_value,
-        };
-        let canonical_var_values = CanonicalVarValues {
-            var_values: canonicalizer.var_values,
-        };
-        (canonical_value, canonical_var_values)
+        }
     }
 
     /// Creates a canonical variable replacing `kind` from the input,
@@ -366,21 +369,54 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// potentially a free region).
     fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> CanonicalVar {
         let Canonicalizer {
-            indices,
             variables,
             var_values,
+            indices,
             ..
         } = self;
 
-        indices
-            .entry(kind)
-            .or_insert_with(|| {
-                let cvar1 = variables.push(info);
-                let cvar2 = var_values.push(kind);
-                assert_eq!(cvar1, cvar2);
-                cvar1
-            })
-            .clone()
+        // This code is hot. `variables` and `var_values` are usually small
+        // (fewer than 8 elements ~95% of the time). They are SmallVec's to
+        // avoid allocations in those cases. We also don't use `indices` to
+        // determine if a kind has been seen before until the limit of 8 has
+        // been exceeded, to also avoid allocations for `indices`.
+        if var_values.is_array() {
+            // `var_values` is stack-allocated. `indices` isn't used yet. Do a
+            // direct linear search of `var_values`.
+            if let Some(idx) = var_values.iter().position(|&k| k == kind) {
+                // `kind` is already present in `var_values`.
+                CanonicalVar::new(idx)
+            } else {
+                // `kind` isn't present in `var_values`. Append it. Likewise
+                // for `info` and `variables`.
+                variables.push(info);
+                var_values.push(kind);
+                assert_eq!(variables.len(), var_values.len());
+
+                // If `var_values` has become big enough to be heap-allocated,
+                // fill up `indices` to facilitate subsequent lookups.
+                if !var_values.is_array() {
+                    assert!(indices.is_empty());
+                    *indices =
+                        var_values.iter()
+                            .enumerate()
+                            .map(|(i, &kind)| (kind, CanonicalVar::new(i)))
+                            .collect();
+                }
+                // The cv is the index of the appended element.
+                CanonicalVar::new(var_values.len() - 1)
+            }
+        } else {
+            // `var_values` is large. Do a hashmap search via `indices`.
+            *indices
+                .entry(kind)
+                .or_insert_with(|| {
+                    variables.push(info);
+                    var_values.push(kind);
+                    assert_eq!(variables.len(), var_values.len());
+                    CanonicalVar::new(variables.len() - 1)
+                })
+        }
     }
 
     /// Given a type variable `ty_var` of the given kind, first check

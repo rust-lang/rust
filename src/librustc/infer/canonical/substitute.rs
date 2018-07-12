@@ -46,7 +46,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
     where
         T: TypeFoldable<'tcx>,
     {
-        assert_eq!(self.variables.len(), var_values.var_values.len());
+        assert_eq!(self.variables.len(), var_values.len());
         let value = projection_fn(&self.value);
         substitute_value(tcx, var_values, value)
     }
