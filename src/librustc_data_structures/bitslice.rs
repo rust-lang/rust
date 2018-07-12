@@ -28,9 +28,9 @@ impl BitSlice for [Word] {
     fn clear_bit(&mut self, idx: usize) -> bool {
         let words = self;
         debug!("clear_bit: words={} idx={}",
-               bits_to_string(words, words.len() * mem::size_of::<Word>()), bit_str(idx));
+               bits_to_string(words, words.len() * mem::size_of::<Word>() * 8), idx);
         let BitLookup { word, bit_in_word, bit_mask } = bit_lookup(idx);
-        debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, bit_mask);
+        debug!("word={} bit_in_word={} bit_mask=0x{:x}", word, bit_in_word, bit_mask);
         let oldv = words[word];
         let newv = oldv & !bit_mask;
         words[word] = newv;
@@ -42,7 +42,7 @@ impl BitSlice for [Word] {
     fn set_bit(&mut self, idx: usize) -> bool {
         let words = self;
         debug!("set_bit: words={} idx={}",
-               bits_to_string(words, words.len() * mem::size_of::<Word>()), bit_str(idx));
+               bits_to_string(words, words.len() * mem::size_of::<Word>() * 8), idx);
         let BitLookup { word, bit_in_word, bit_mask } = bit_lookup(idx);
         debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, bit_mask);
         let oldv = words[word];
@@ -78,13 +78,6 @@ fn bit_lookup(bit: usize) -> BitLookup {
     BitLookup { word: word, bit_in_word: bit_in_word, bit_mask: bit_mask }
 }
 
-
-fn bit_str(bit: Word) -> String {
-    let byte = bit >> 3;
-    let lobits = 1 << (bit & 0b111);
-    format!("[{}:{}-{:02x}]", bit, byte, lobits)
-}
-
 pub fn bits_to_string(words: &[Word], bits: usize) -> String {
     let mut result = String::new();
     let mut sep = '[';
@@ -95,7 +88,7 @@ pub fn bits_to_string(words: &[Word], bits: usize) -> String {
     let mut i = 0;
     for &word in words.iter() {
         let mut v = word;
-        loop { // for each byte in `v`:
+        for _ in 0..mem::size_of::<Word>() { // for each byte in `v`:
             let remain = bits - i;
             // If less than a byte remains, then mask just that many bits.
             let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
@@ -110,6 +103,7 @@ pub fn bits_to_string(words: &[Word], bits: usize) -> String {
             i += 8;
             sep = '-';
         }
+        sep = '|';
     }
     result.push(']');
     return result
