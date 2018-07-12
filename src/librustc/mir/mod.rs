@@ -1697,7 +1697,7 @@ pub enum Place<'tcx> {
     Local(Local),
 
     /// static or static mut variable
-    Static(Box<Static<'tcx>>),
+    Static(Static<'tcx>),
 
     /// projection out of a place (access a field, deref a pointer, etc)
     Projection(Box<PlaceProjection<'tcx>>),
@@ -1802,7 +1802,7 @@ impl<'tcx> Debug for Place<'tcx> {
 
         match *self {
             Local(id) => write!(fmt, "{:?}", id),
-            Static(box self::Static { def_id, ty }) => write!(
+            Static(self::Static { def_id, ty }) => write!(
                 fmt,
                 "({}: {:?})",
                 ty::tls::with(|tcx| tcx.item_path_str(def_id)),

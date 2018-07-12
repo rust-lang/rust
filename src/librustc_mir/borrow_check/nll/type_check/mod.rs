@@ -340,7 +340,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             Place::Local(index) => PlaceTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
-            Place::Static(box Static { def_id, ty: sty }) => {
+            Place::Static(Static { def_id, ty: sty }) => {
                 let sty = self.sanitize_type(place, sty);
                 let ty = self.tcx().type_of(def_id);
                 let ty = self.cx.normalize(ty, location);
