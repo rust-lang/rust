@@ -113,8 +113,8 @@ impl LocalWaker {
     /// but you otherwise shouldn't call it directly.
     ///
     /// If you're working with the standard library then it's recommended to
-    /// use the `LocalWaker::from` function instead which works with the safe
-    /// `Rc` type and the safe `LocalWake` trait.
+    /// use the `local_waker_from_nonlocal` or `local_waker` to convert a `Waker`
+    /// into a `LocalWaker`.
     ///
     /// For this function to be used safely, it must be sound to call `inner.wake_local()`
     /// on the current thread.
@@ -197,9 +197,7 @@ impl Drop for LocalWaker {
 /// customization.
 ///
 /// When using `std`, a default implementation of the `UnsafeWake` trait is provided for
-/// `Arc<T>` where `T: Wake` and `Rc<T>` where `T: LocalWake`.
-///
-/// Although the methods on `UnsafeWake` take pointers rather than references,
+/// `Arc<T>` where `T: Wake`.
 pub unsafe trait UnsafeWake: Send + Sync {
     /// Creates a clone of this `UnsafeWake` and stores it behind a `Waker`.
     ///
