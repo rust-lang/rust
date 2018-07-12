@@ -1,0 +1,8 @@
+[package]
+name = "test-generator"
+version = "0.1.0"
+authors = ["Jorge Aparicio <jorge@japaric.io>"]
+publish = false
+
+[dependencies]
+rand = "0.5.3"
