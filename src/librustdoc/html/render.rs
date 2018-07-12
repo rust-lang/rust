@@ -2194,7 +2194,6 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
         info!("Documenting {}", name);
     }
     document_stability(w, cx, item)?;
-    document_non_exhaustive(w, item)?;
     let prefix = render_assoc_const_value(item);
     document_full(w, item, cx, &prefix)?;
     Ok(())
@@ -2263,20 +2262,13 @@ fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) 
     Ok(())
 }
 
+fn document_non_exhaustive_header(item: &clean::Item) -> &str {
+    if item.is_non_exhaustive() { " (Non-exhaustive)" } else { "" }
+}
+
 fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
     if item.is_non_exhaustive() {
-        write!(w, "<div class='non-exhaustive'><div class='stab non-exhaustive'>")?;
-        write!(w, "<details><summary><span class=microscope>🔬</span>")?;
-
-        if item.is_struct() {
-            write!(w, "This struct is marked as non exhaustive.")?;
-        } else if item.is_enum() {
-            write!(w, "This enum is marked as non exhaustive.")?;
-        } else {
-            write!(w, "This type is marked as non exhaustive.")?;
-        }
-
-        write!(w, "</summary><p>")?;
+        write!(w, "<p class='non-exhaustive'>")?;
 
         if item.is_struct() {
             write!(w, "This struct is marked as non-exhaustive as additional fields may be \
@@ -2293,7 +2285,7 @@ fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::R
                        constructors.")?;
         }
 
-        write!(w, "</p></details></div></div>")?;
+        write!(w, "</p>")?;
     }
 
     Ok(())
@@ -3159,7 +3151,9 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     if let doctree::Plain = s.struct_type {
         if fields.peek().is_some() {
             write!(w, "<h2 id='fields' class='fields small-section-header'>
-                       Fields<a href='#fields' class='anchor'></a></h2>")?;
+                       Fields{}<a href='#fields' class='anchor'></a></h2>",
+                       document_non_exhaustive_header(it))?;
+            document_non_exhaustive(w, it)?;
             for (field, ty) in fields {
                 let id = derive_id(format!("{}.{}",
                                            ItemType::StructField,
@@ -3291,7 +3285,9 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     document(w, cx, it)?;
     if !e.variants.is_empty() {
         write!(w, "<h2 id='variants' class='variants small-section-header'>
-                   Variants<a href='#variants' class='anchor'></a></h2>\n")?;
+                   Variants{}<a href='#variants' class='anchor'></a></h2>\n",
+                   document_non_exhaustive_header(it))?;
+        document_non_exhaustive(w, it)?;
         for variant in &e.variants {
             let id = derive_id(format!("{}.{}",
                                        ItemType::Variant,
@@ -3392,7 +3388,8 @@ const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
     "must_use",
     "no_mangle",
     "repr",
-    "unsafe_destructor_blind_to_params"
+    "unsafe_destructor_blind_to_params",
+    "non_exhaustive"
 ];
 
 fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {

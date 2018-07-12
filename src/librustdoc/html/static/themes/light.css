@@ -148,6 +148,8 @@ pre {
 .content .fnname { color: #9a6e31; }
 .content span.keyword, .content a.keyword, .block a.current.keyword { color: #de5249; }
 
+.non-exhaustive { color: #222; margin-bottom: 1em; }
+
 pre.rust .comment { color: #8E908C; }
 pre.rust .doccomment { color: #4D4D4C; }
 
@@ -188,7 +190,6 @@ a.test-arrow {
 	border-color: #66afe9;
 }
 
-.stab.non-exhaustive { background: #F5F5F5; border-color: #D3D3D3; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
