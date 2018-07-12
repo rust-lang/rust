@@ -279,13 +279,20 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    hir::ItemKind::ExternCrate(_) | hir::ItemKind::Use(..) |
+                    hir::ItemKind::ExternCrate(_) |
+                    hir::ItemKind::Use(..) |
                     hir::ItemKind::Existential(..) |
-                    hir::ItemKind::Ty(..) | hir::ItemKind::Static(..) |
-                    hir::ItemKind::Mod(..) | hir::ItemKind::ForeignMod(..) |
-                    hir::ItemKind::Impl(..) | hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) |
-                    hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) |
-                    hir::ItemKind::Union(..) |  hir::ItemKind::GlobalAsm(..) => {}
+                    hir::ItemKind::Ty(..) |
+                    hir::ItemKind::Static(..) |
+                    hir::ItemKind::Mod(..) |
+                    hir::ItemKind::ForeignMod(..) |
+                    hir::ItemKind::Impl(..) |
+                    hir::ItemKind::Trait(..) |
+                    hir::ItemKind::TraitAlias(..) |
+                    hir::ItemKind::Struct(..) |
+                    hir::ItemKind::Enum(..) |
+                    hir::ItemKind::Union(..) |
+                    hir::ItemKind::GlobalAsm(..) => {}
                 }
             }
             hir_map::NodeTraitItem(trait_method) => {

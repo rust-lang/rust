@@ -285,7 +285,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn is_comparison(binop: hir::BinOp) -> bool {
             match binop.node {
-                hir::BinOpKind::Eq | hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Ne | hir::BinOpKind::Ge | hir::BinOpKind::Gt => true,
+                hir::BinOpKind::Eq |
+                hir::BinOpKind::Lt |
+                hir::BinOpKind::Le |
+                hir::BinOpKind::Ne |
+                hir::BinOpKind::Ge |
+                hir::BinOpKind::Gt => true,
                 _ => false,
             }
         }

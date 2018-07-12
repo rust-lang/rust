@@ -263,7 +263,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 //
                 //     &
                 //     - let's call the lifetime of this reference `'1`
-                (ty::TyRef(region, referent_ty, _), hir::TyKind::Rptr(_lifetime, referent_hir_ty)) => {
+                (
+                    ty::TyRef(region, referent_ty, _),
+                    hir::TyKind::Rptr(_lifetime, referent_hir_ty),
+                ) => {
                     if region.to_region_vid() == needle_fr {
                         let region_name = self.synthesize_region_name(counter);
 
@@ -287,7 +290,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 // Match up something like `Foo<'1>`
-                (ty::TyAdt(_adt_def, substs), hir::TyKind::Path(hir::QPath::Resolved(None, path))) => {
+                (
+                    ty::TyAdt(_adt_def, substs),
+                    hir::TyKind::Path(hir::QPath::Resolved(None, path)),
+                ) => {
                     if let Some(last_segment) = path.segments.last() {
                         if let Some(name) = self.match_adt_and_segment(
                             substs,

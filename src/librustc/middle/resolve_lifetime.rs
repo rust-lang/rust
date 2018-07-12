@@ -675,7 +675,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     //                          ^            ^ this gets resolved in the scope of
                     //                                         the exist_ty generics
                     let (generics, bounds) = match self.tcx.hir.expect_item(id).node {
-                        hir::ItemKind::Existential(hir::ExistTy{ ref generics, ref bounds, .. }) => (
+                        hir::ItemKind::Existential(
+                            hir::ExistTy { ref generics, ref bounds, .. }
+                        ) => (
                             generics,
                             bounds,
                         ),

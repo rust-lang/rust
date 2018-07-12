@@ -3877,7 +3877,9 @@ impl<'a> LoweringContext<'a> {
                 let expr = opt_expr
                     .as_ref()
                     .map(|x| self.lower_expr(x))
-                    .unwrap_or_else(|| self.expr(e.span, hir::ExprKind::Tup(hir_vec![]), ThinVec::new()));
+                    .unwrap_or_else(||
+                    self.expr(e.span, hir::ExprKind::Tup(hir_vec![]), ThinVec::new())
+                );
                 hir::ExprKind::Yield(P(expr))
             }
 
@@ -4053,11 +4055,18 @@ impl<'a> LoweringContext<'a> {
 
                     P(self.expr(
                         head_sp,
-                        hir::ExprKind::Match(next_expr, arms, hir::MatchSource::ForLoopDesugar),
+                        hir::ExprKind::Match(
+                            next_expr,
+                            arms,
+                            hir::MatchSource::ForLoopDesugar
+                        ),
                         ThinVec::new(),
                     ))
                 };
-                let match_stmt = respan(head_sp, hir::StmtKind::Expr(match_expr, self.next_id().node_id));
+                let match_stmt = respan(
+                    head_sp,
+                    hir::StmtKind::Expr(match_expr, self.next_id().node_id)
+                );
 
                 let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat.id));
 
@@ -4076,7 +4085,10 @@ impl<'a> LoweringContext<'a> {
 
                 let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
                 let body_expr = P(self.expr_block(body_block, ThinVec::new()));
-                let body_stmt = respan(body.span, hir::StmtKind::Expr(body_expr, self.next_id().node_id));
+                let body_stmt = respan(
+                    body.span,
+                    hir::StmtKind::Expr(body_expr, self.next_id().node_id)
+                );
 
                 let loop_block = P(self.block_all(
                     e.span,

@@ -389,7 +389,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(expr) = rcvr_expr {
                         if let Ok(expr_string) = tcx.sess.codemap().span_to_snippet(expr.span) {
                             report_function!(expr.span, expr_string);
-                        } else if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
+                        } else if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) =
+                            expr.node
+                        {
                             if let Some(segment) = path.segments.last() {
                                 report_function!(expr.span, segment.ident);
                             }

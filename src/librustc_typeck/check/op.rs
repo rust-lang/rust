@@ -363,10 +363,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 hir::BinOpKind::BitOr  => Some("std::ops::BitOr"),
                                 hir::BinOpKind::Shl    => Some("std::ops::Shl"),
                                 hir::BinOpKind::Shr    => Some("std::ops::Shr"),
-                                hir::BinOpKind::Eq | hir::BinOpKind::Ne => Some("std::cmp::PartialEq"),
-                                hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge =>
-                                    Some("std::cmp::PartialOrd"),
-                                _             => None
+                                hir::BinOpKind::Eq |
+                                hir::BinOpKind::Ne => Some("std::cmp::PartialEq"),
+                                hir::BinOpKind::Lt |
+                                hir::BinOpKind::Le |
+                                hir::BinOpKind::Gt |
+                                hir::BinOpKind::Ge => Some("std::cmp::PartialOrd"),
+                                _ => None
                             };
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&

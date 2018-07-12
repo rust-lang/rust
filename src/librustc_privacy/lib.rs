@@ -216,9 +216,15 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 }
             }
             hir::ItemKind::Existential(..) |
-            hir::ItemKind::Use(..) | hir::ItemKind::Static(..) | hir::ItemKind::Const(..) |
-            hir::ItemKind::GlobalAsm(..) | hir::ItemKind::Ty(..) | hir::ItemKind::Mod(..) | hir::ItemKind::TraitAlias(..) |
-            hir::ItemKind::Fn(..) | hir::ItemKind::ExternCrate(..) => {}
+            hir::ItemKind::Use(..) |
+            hir::ItemKind::Static(..) |
+            hir::ItemKind::Const(..) |
+            hir::ItemKind::GlobalAsm(..) |
+            hir::ItemKind::Ty(..) |
+            hir::ItemKind::Mod(..) |
+            hir::ItemKind::TraitAlias(..) |
+            hir::ItemKind::Fn(..) |
+            hir::ItemKind::ExternCrate(..) => {}
         }
 
         // Mark all items in interfaces of reachable items as reachable
@@ -373,7 +379,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         loop {
             let module = if module_id == ast::CRATE_NODE_ID {
                 &self.tcx.hir.krate().module
-            } else if let hir::ItemKind::Mod(ref module) = self.tcx.hir.expect_item(module_id).node {
+            } else if let hir::ItemKind::Mod(ref module) = self.tcx.hir.expect_item(module_id).node
+            {
                 module
             } else {
                 unreachable!()

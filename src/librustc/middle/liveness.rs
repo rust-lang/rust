@@ -486,7 +486,10 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       }
 
       // live nodes required for interesting control flow:
-      hir::ExprKind::If(..) | hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) => {
+      hir::ExprKind::If(..) |
+      hir::ExprKind::Match(..) |
+      hir::ExprKind::While(..) |
+      hir::ExprKind::Loop(..) => {
         ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
         intravisit::walk_expr(ir, expr);
       }
@@ -496,15 +499,30 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       }
 
       // otherwise, live nodes are not required:
-      hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
-      hir::ExprKind::Array(..) | hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) |
-      hir::ExprKind::Tup(..) | hir::ExprKind::Binary(..) | hir::ExprKind::AddrOf(..) |
-      hir::ExprKind::Cast(..) | hir::ExprKind::Unary(..) | hir::ExprKind::Break(..) |
-      hir::ExprKind::Continue(_) | hir::ExprKind::Lit(_) | hir::ExprKind::Ret(..) |
-      hir::ExprKind::Block(..) | hir::ExprKind::Assign(..) | hir::ExprKind::AssignOp(..) |
-      hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
-      hir::ExprKind::InlineAsm(..) | hir::ExprKind::Box(..) | hir::ExprKind::Yield(..) |
-      hir::ExprKind::Type(..) | hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => {
+      hir::ExprKind::Index(..) |
+      hir::ExprKind::Field(..) |
+      hir::ExprKind::Array(..) |
+      hir::ExprKind::Call(..) |
+      hir::ExprKind::MethodCall(..) |
+      hir::ExprKind::Tup(..) |
+      hir::ExprKind::Binary(..) |
+      hir::ExprKind::AddrOf(..) |
+      hir::ExprKind::Cast(..) |
+      hir::ExprKind::Unary(..) |
+      hir::ExprKind::Break(..) |
+      hir::ExprKind::Continue(_) |
+      hir::ExprKind::Lit(_) |
+      hir::ExprKind::Ret(..) |
+      hir::ExprKind::Block(..) |
+      hir::ExprKind::Assign(..) |
+      hir::ExprKind::AssignOp(..) |
+      hir::ExprKind::Struct(..) |
+      hir::ExprKind::Repeat(..) |
+      hir::ExprKind::InlineAsm(..) |
+      hir::ExprKind::Box(..) |
+      hir::ExprKind::Yield(..) |
+      hir::ExprKind::Type(..) |
+      hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => {
           intravisit::walk_expr(ir, expr);
       }
     }

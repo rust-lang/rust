@@ -519,7 +519,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             // visit_enum_def() takes care of visiting the Item's NodeId
             visitor.visit_enum_def(enum_definition, type_parameters, item.id, item.span)
         }
-        ItemKind::Impl(.., ref type_parameters, ref opt_trait_reference, ref typ, ref impl_item_refs) => {
+        ItemKind::Impl(
+            ..,
+            ref type_parameters,
+            ref opt_trait_reference,
+            ref typ,
+            ref impl_item_refs
+        ) => {
             visitor.visit_id(item.id);
             visitor.visit_generics(type_parameters);
             walk_list!(visitor, visit_trait_ref, opt_trait_reference);

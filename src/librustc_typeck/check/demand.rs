@@ -306,7 +306,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if self.can_coerce(ref_ty, expected) {
                     if let Ok(src) = cm.span_to_snippet(sp) {
                         let sugg_expr = match expr.node { // parenthesize if needed (Issue #46756)
-                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => format!("({})", src),
+                            hir::ExprKind::Cast(_, _) |
+                            hir::ExprKind::Binary(_, _, _) => format!("({})", src),
                             _ => src,
                         };
                         if let Some(sugg) = self.can_use_as_ref(expr) {

@@ -420,7 +420,10 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             }
         },
         hir::ItemKind::Existential(..) => {}
-        hir::ItemKind::Ty(..) | hir::ItemKind::Static(..) | hir::ItemKind::Const(..) | hir::ItemKind::Fn(..) => {
+        hir::ItemKind::Ty(..) |
+        hir::ItemKind::Static(..) |
+        hir::ItemKind::Const(..) |
+        hir::ItemKind::Fn(..) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.predicates_of(def_id);
@@ -840,7 +843,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     generics
                 }
 
-                ItemKind::Trait(_, _, ref generics, ..) | ItemKind::TraitAlias(ref generics, ..) => {
+                ItemKind::Trait(_, _, ref generics, ..) |
+                ItemKind::TraitAlias(ref generics, ..) => {
                     // Add in the self type parameter.
                     //
                     // Something of a hack: use the node id for the trait, also as
