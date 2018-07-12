@@ -303,6 +303,19 @@ def default_build_triple():
     return "{}-{}".format(cputype, ostype)
 
 
+@contextlib.contextmanager
+def output(filepath):
+    tmp = filepath + '.tmp'
+    with open(tmp, 'w') as f:
+        yield f
+    try:
+        os.remove(filepath)  # PermissionError/OSError on Win32 if in use
+        os.rename(tmp, filepath)
+    except OSError:
+        shutil.copy2(tmp, filepath)
+        os.remove(tmp)
+
+
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
@@ -346,7 +359,7 @@ class RustBuild(object):
             self._download_stage0_helper(filename, "rustc")
             self.fix_executable("{}/bin/rustc".format(self.bin_root()))
             self.fix_executable("{}/bin/rustdoc".format(self.bin_root()))
-            with open(self.rustc_stamp(), 'w') as rust_stamp:
+            with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(self.date)
 
             # This is required so that we don't mix incompatible MinGW
@@ -363,7 +376,7 @@ class RustBuild(object):
             filename = "cargo-{}-{}.tar.gz".format(cargo_channel, self.build)
             self._download_stage0_helper(filename, "cargo")
             self.fix_executable("{}/bin/cargo".format(self.bin_root()))
-            with open(self.cargo_stamp(), 'w') as cargo_stamp:
+            with output(self.cargo_stamp()) as cargo_stamp:
                 cargo_stamp.write(self.date)
 
     def _download_stage0_helper(self, filename, pattern):
@@ -776,7 +789,7 @@ def bootstrap(help_triggered):
     if build.use_vendored_sources:
         if not os.path.exists('.cargo'):
             os.makedirs('.cargo')
-        with open('.cargo/config', 'w') as cargo_config:
+        with output('.cargo/config') as cargo_config:
             cargo_config.write("""
                 [source.crates-io]
                 replace-with = 'vendored-sources'

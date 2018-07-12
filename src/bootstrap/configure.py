@@ -432,7 +432,7 @@ for section_key in config:
 # order that we read it in.
 p("")
 p("writing `config.toml` in current directory")
-with open('config.toml', 'w') as f:
+with bootstrap.output('config.toml') as f:
     for section in section_order:
         if section == 'target':
             for target in targets:
@@ -442,7 +442,7 @@ with open('config.toml', 'w') as f:
             for line in sections[section]:
                 f.write(line + "\n")
 
-with open('Makefile', 'w') as f:
+with bootstrap.output('Makefile') as f:
     contents = os.path.join(rust_dir, 'src', 'bootstrap', 'mk', 'Makefile.in')
     contents = open(contents).read()
     contents = contents.replace("$(CFG_SRC_DIR)", rust_dir + '/')
