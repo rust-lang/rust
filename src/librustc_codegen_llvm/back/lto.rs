@@ -14,7 +14,7 @@ use back::write::{ModuleConfig, with_llvm_pmb, CodegenContext};
 use back::write;
 use errors::{FatalError, Handler};
 use llvm::archive_ro::ArchiveRO;
-use llvm::{TargetMachineRef, True, False};
+use llvm::{True, False};
 use llvm;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
@@ -452,7 +452,7 @@ fn thin_lto(diag_handler: &Handler,
 }
 
 fn run_pass_manager(cgcx: &CodegenContext,
-                    tm: TargetMachineRef,
+                    tm: &llvm::TargetMachine,
                     llmod: &llvm::Module,
                     config: &ModuleConfig,
                     thin: bool) {

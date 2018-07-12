@@ -398,7 +398,6 @@ extern { pub type SectionIterator; }
 pub type SectionIteratorRef = *mut SectionIterator;
 extern { pub type Pass; }
 extern { pub type TargetMachine; }
-pub type TargetMachineRef = *const TargetMachine;
 extern { pub type Archive; }
 pub type ArchiveRef = *mut Archive;
 extern { pub type ArchiveIterator; }
@@ -1417,10 +1416,10 @@ extern "C" {
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
     pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: &'static mut Pass);
 
-    pub fn LLVMRustHasFeature(T: TargetMachineRef, s: *const c_char) -> bool;
+    pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
-    pub fn LLVMRustPrintTargetCPUs(T: TargetMachineRef);
-    pub fn LLVMRustPrintTargetFeatures(T: TargetMachineRef);
+    pub fn LLVMRustPrintTargetCPUs(T: &TargetMachine);
+    pub fn LLVMRustPrintTargetFeatures(T: &TargetMachine);
 
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
@@ -1436,7 +1435,7 @@ extern "C" {
                                        Singlethread: bool)
                                        -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
-    pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: &Module);
+    pub fn LLVMRustAddAnalysisPasses(T: &TargetMachine, PM: PassManagerRef, M: &Module);
     pub fn LLVMRustAddBuilderLibraryInfo(PMB: &'a PassManagerBuilder,
                                          M: &'a Module,
                                          DisableSimplifyLibCalls: bool);
@@ -1452,9 +1451,9 @@ extern "C" {
                                   M: &Module,
                                   DisableSimplifyLibCalls: bool);
     pub fn LLVMRustRunFunctionPassManager(PM: PassManagerRef, M: &Module);
-    pub fn LLVMRustWriteOutputFile(T: TargetMachineRef,
+    pub fn LLVMRustWriteOutputFile(T: &'a TargetMachine,
                                    PM: PassManagerRef,
-                                   M: &Module,
+                                   M: &'a Module,
                                    Output: *const c_char,
                                    FileType: FileType)
                                    -> LLVMRustResult;
@@ -1522,7 +1521,7 @@ extern "C" {
                                     -> RustArchiveMemberRef;
     pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
 
-    pub fn LLVMRustSetDataLayoutFromTargetMachine(M: &Module, TM: TargetMachineRef);
+    pub fn LLVMRustSetDataLayoutFromTargetMachine(M: &'a Module, TM: &'a TargetMachine);
 
     pub fn LLVMRustBuildOperandBundleDef(Name: *const c_char,
                                          Inputs: *const &Value,

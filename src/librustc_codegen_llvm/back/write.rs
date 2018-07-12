@@ -26,7 +26,7 @@ use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm;
-use llvm::{TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
+use llvm::{PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
 use {CodegenResults, ModuleSource, ModuleCodegen, CompiledModule, ModuleKind};
 use CrateInfo;
@@ -94,7 +94,7 @@ pub fn llvm_err(handler: &errors::Handler, msg: String) -> FatalError {
 
 pub fn write_output_file(
         handler: &errors::Handler,
-        target: llvm::TargetMachineRef,
+        target: &llvm::TargetMachine,
         pm: llvm::PassManagerRef,
         m: &llvm::Module,
         output: &Path,
@@ -638,7 +638,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
         // pass manager passed to the closure should be ensured to not
         // escape the closure itself, and the manager should only be
         // used once.
-        unsafe fn with_codegen<F, R>(tm: TargetMachineRef,
+        unsafe fn with_codegen<F, R>(tm: &llvm::TargetMachine,
                                     llmod: &llvm::Module,
                                     no_builtins: bool,
                                     f: F) -> R
