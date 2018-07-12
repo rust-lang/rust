@@ -1,3 +1,4 @@
+// ignore-test FIXME: we are not making these statics read-only any more?
 static X: usize = 5;
 
 #[allow(mutable_transmutes)]

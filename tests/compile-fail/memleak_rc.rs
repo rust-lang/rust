@@ -1,3 +1,4 @@
+// ignore-test FIXME: leak detection is disabled
 //error-pattern: the evaluated program leaked memory
 
 use std::rc::Rc;

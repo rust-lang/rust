@@ -9,7 +9,7 @@ use std::alloc::*;
 
 fn main() {
     unsafe {
-        let x = Global.alloc(Layout::from_size_align_unchecked(1, 1));
+        let x = Global.alloc(Layout::from_size_align_unchecked(1, 1)).unwrap();
         Global.dealloc(x, Layout::from_size_align_unchecked(1, 1));
         Global.dealloc(x, Layout::from_size_align_unchecked(1, 1));
     }
