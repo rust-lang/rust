@@ -1,6 +1,9 @@
 #![feature(slice_concat_ext)]
 
 extern crate compiletest_rs as compiletest;
+extern crate colored;
+
+use colored::*;
 
 use std::slice::SliceConcatExt;
 use std::path::{PathBuf, Path};
@@ -37,19 +40,19 @@ fn have_fullmir() -> bool {
 
 fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool) {
     if need_fullmir && !have_fullmir() {
-        eprintln!(
+        eprintln!("{}", format!(
             "## Skipping compile-fail tests in {} against miri for target {} due to missing mir",
             path,
             target
-        );
+        ).yellow().bold());
         return;
     }
 
-    eprintln!(
+    eprintln!("{}", format!(
         "## Running compile-fail tests in {} against miri for target {}",
         path,
         target
-    );
+    ).green().bold());
     let mut config = compiletest::Config::default().tempdir();
     config.mode = "compile-fail".parse().expect("Invalid mode");
     config.rustc_path = miri_path();
@@ -68,7 +71,7 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
 }
 
 fn rustc_pass(sysroot: &Path, path: &str) {
-    eprintln!("## Running run-pass tests in {} against rustc", path);
+    eprintln!("{}", format!("## Running run-pass tests in {} against rustc", path).green().bold());
     let mut config = compiletest::Config::default().tempdir();
     config.mode = "run-pass".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
@@ -86,21 +89,21 @@ fn rustc_pass(sysroot: &Path, path: &str) {
 
 fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool, opt: bool) {
     if need_fullmir && !have_fullmir() {
-        eprintln!(
+        eprintln!("{}", format!(
             "## Skipping run-pass tests in {} against miri for target {} due to missing mir",
             path,
             target
-        );
+        ).yellow().bold());
         return;
     }
 
     let opt_str = if opt { " with optimizations" } else { "" };
-    eprintln!(
+    eprintln!("{}", format!(
         "## Running run-pass tests in {} against miri for target {}{}",
         path,
         target,
         opt_str
-    );
+    ).green().bold());
     let mut config = compiletest::Config::default().tempdir();
     config.mode = "ui".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
