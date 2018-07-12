@@ -23,7 +23,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                                   span: Span,
                                   mitem: &MetaItem,
                                   item: &Annotatable,
-                                  push: &mut FnMut(Annotatable)) {
+                                  push: &mut dyn FnMut(Annotatable)) {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_op(cx: &mut ExtCtxt,

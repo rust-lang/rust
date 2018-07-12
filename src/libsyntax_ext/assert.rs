@@ -22,7 +22,7 @@ pub fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt,
     sp: Span,
     tts: &[TokenTree],
-) -> Box<MacResult + 'cx> {
+) -> Box<dyn MacResult + 'cx> {
     let mut parser = cx.new_parser_from_tts(tts);
     let cond_expr = panictry!(parser.parse_expr());
     let custom_msg_args = if parser.eat(&token::Comma) {

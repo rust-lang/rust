@@ -23,7 +23,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                           span: Span,
                           mitem: &MetaItem,
                           item: &Annotatable,
-                          push: &mut FnMut(Annotatable)) {
+                          push: &mut dyn FnMut(Annotatable)) {
     let inline = cx.meta_word(span, Symbol::intern("inline"));
     let hidden = cx.meta_list_item_word(span, Symbol::intern("hidden"));
     let doc = cx.meta_list(span, Symbol::intern("doc"), vec![hidden]);

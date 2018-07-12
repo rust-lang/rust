@@ -25,7 +25,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
                                    span: Span,
                                    mitem: &MetaItem,
                                    item: &Annotatable,
-                                   push: &mut FnMut(Annotatable)) {
+                                   push: &mut dyn FnMut(Annotatable)) {
     macro_rules! md {
         ($name:expr, $op:expr, $equal:expr) => { {
             let inline = cx.meta_word(span, Symbol::intern("inline"));
