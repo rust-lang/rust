@@ -72,3 +72,4 @@ rustfmt-nightly = { path = "tools/rustfmt" }
 
 [patch."https://github.com/rust-lang-nursery/rust-clippy"]
 clippy = { path = "tools/clippy" }
+clippy_lints = { path = "tools/clippy/clippy_lints" }
