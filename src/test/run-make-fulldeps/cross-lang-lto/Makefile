@@ -17,22 +17,22 @@ all: staticlib staticlib-fat-lto staticlib-thin-lto rlib exe cdylib rdylib
 staticlib: lib.rs
 	$(BUILD_LIB) --crate-type=staticlib -o $(TMPDIR)/liblib.a
 	$(call EXTRACT_OBJS, liblib.a)
-	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/liblib.lib0.rcgu.o
+	for file in $(TMPDIR)/liblib.*.rcgu.o; do $(ASSERT_IS_BITCODE_OBJ) $$file; done
 
 staticlib-fat-lto: lib.rs
 	$(BUILD_LIB) --crate-type=staticlib -o $(TMPDIR)/liblib-fat-lto.a -Clto=fat
 	$(call EXTRACT_OBJS, liblib-fat-lto.a)
-	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/liblib-fat-lto.lib0.rcgu.o
+	for file in $(TMPDIR)/liblib-fat-lto.*.rcgu.o; do $(ASSERT_IS_BITCODE_OBJ) $$file; done
 
 staticlib-thin-lto: lib.rs
 	$(BUILD_LIB) --crate-type=staticlib -o $(TMPDIR)/liblib-thin-lto.a -Clto=thin
 	$(call EXTRACT_OBJS, liblib-thin-lto.a)
-	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/liblib-thin-lto.lib0.rcgu.o
+	for file in $(TMPDIR)/liblib-thin-lto.*.rcgu.o; do $(ASSERT_IS_BITCODE_OBJ) $$file; done
 
 rlib: lib.rs
 	$(BUILD_LIB) --crate-type=rlib -o $(TMPDIR)/liblib.rlib
 	$(call EXTRACT_OBJS, liblib.rlib)
-	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/liblib.lib0.rcgu.o
+	for file in $(TMPDIR)/liblib.*.rcgu.o; do $(ASSERT_IS_BITCODE_OBJ) $$file; done
 
 cdylib: lib.rs
 	$(BUILD_LIB) --crate-type=cdylib --emit=obj -o $(TMPDIR)/cdylib.o
