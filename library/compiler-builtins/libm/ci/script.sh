@@ -7,6 +7,9 @@ main() {
         cargo fmt
     fi
     cross test --target $TARGET --release
+
+    # TODO need to fix overflow issues (cf. issue #4)
+    # cross test --target $TARGET
 }
 
 main
