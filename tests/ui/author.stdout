@@ -1,6 +1,6 @@
 if_chain! {
     if let StmtKind::Decl(ref decl, _) = stmt.node
-    if let Decl_::DeclLocal(ref local) = decl.node;
+    if let DeclKind::Local(ref local) = decl.node;
     if let Some(ref init) = local.init
     if let ExprKind::Cast(ref expr, ref cast_ty) = init.node;
     if let TyKind::Path(ref qp) = cast_ty.node;

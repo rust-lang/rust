@@ -1,6 +1,6 @@
 if_chain! {
     if let StmtKind::Decl(ref decl, _) = stmt.node
-    if let Decl_::DeclLocal(ref local) = decl.node;
+    if let DeclKind::Local(ref local) = decl.node;
     if let Some(ref init) = local.init
     if let ExprKind::Match(ref expr, ref arms, MatchSource::Normal) = init.node;
     if let ExprKind::Lit(ref lit) = expr.node;
@@ -14,7 +14,7 @@ if_chain! {
     if let LitKind::Int(16, _) = lit2.node;
     if let ExprKind::Block(ref block) = arms[1].body.node;
     if let StmtKind::Decl(ref decl1, _) = block.node
-    if let Decl_::DeclLocal(ref local1) = decl1.node;
+    if let DeclKind::Local(ref local1) = decl1.node;
     if let Some(ref init1) = local1.init
     if let ExprKind::Lit(ref lit3) = init1.node;
     if let LitKind::Int(3, _) = lit3.node;

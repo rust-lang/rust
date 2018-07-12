@@ -599,7 +599,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let current = format!("{}.node", decl_pat);
                 match decl.node {
                     // A local (let) binding:
-                    Decl_::DeclLocal(ref local) => {
+                    DeclKind::Local(ref local) => {
                         let local_pat = self.next("local");
                         println!("DeclLocal(ref {}) = {};", local_pat, current);
                         if let Some(ref init) = local.init {
@@ -612,7 +612,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                         self.visit_pat(&local.pat);
                     },
                     // An item binding:
-                    Decl_::DeclItem(_) => {
+                    DeclKind::Item(_) => {
                         println!("DeclItem(item_id) = {};", current);
                     },
                 }
