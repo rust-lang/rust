@@ -38,10 +38,12 @@ use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit;
 use hir;
 use lint::builtin::BuiltinLintDiagnostics;
+use lint::builtin::parser::QUESTION_MARK_MACRO_SEP;
 use session::{Session, DiagnosticMessageId};
 use std::{hash, ptr};
 use syntax::ast;
 use syntax::codemap::{MultiSpan, ExpnFormat};
+use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax::visit as ast_visit;
@@ -86,6 +88,13 @@ pub struct Lint {
 }
 
 impl Lint {
+    /// Returns the `rust::lint::Lint` for a `syntax::early_buffered_lints::BufferedEarlyLintId`.
+    pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
+        match lint_id {
+            BufferedEarlyLintId::QuestionMarkMacroSep => QUESTION_MARK_MACRO_SEP,
+        }
+    }
+
     /// Get the lint's name, with ASCII letters converted to lowercase.
     pub fn name_lower(&self) -> String {
         self.name.to_ascii_lowercase()

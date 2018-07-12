@@ -52,6 +52,7 @@ use std::path::{Path, PathBuf};
 use rustc_data_structures::sync::{self, Lrc, Lock};
 use std::sync::mpsc;
 use syntax::{self, ast, attr, diagnostics, visit};
+use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
@@ -694,6 +695,13 @@ pub fn phase_1_parse_input<'a>(
 
     if sess.opts.debugging_opts.hir_stats {
         hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
+    }
+
+    // Add all buffered lints from the `ParseSess` to the `Session`.
+    let mut parse_sess_buffered = sess.parse_sess.buffered_lints.borrow_mut();
+    for BufferedEarlyLint{id, span, msg, lint_id} in parse_sess_buffered.drain(..) {
+        let lint = lint::Lint::from_parser_lint_id(lint_id);
+        sess.buffer_lint(lint, id, span, &msg);
     }
 
     Ok(krate)

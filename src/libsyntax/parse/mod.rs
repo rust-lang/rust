@@ -11,9 +11,10 @@
 //! The main parser interface
 
 use rustc_data_structures::sync::{Lrc, Lock};
-use ast::{self, CrateConfig};
+use ast::{self, CrateConfig, NodeId};
+use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use codemap::{CodeMap, FilePathMapping};
-use syntax_pos::{Span, FileMap, FileName};
+use syntax_pos::{Span, FileMap, FileName, MultiSpan};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
@@ -57,6 +58,7 @@ pub struct ParseSess {
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
     code_map: Lrc<CodeMap>,
+    pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
 }
 
 impl ParseSess {
@@ -80,11 +82,28 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             code_map,
             non_modrs_mods: Lock::new(vec![]),
+            buffered_lints: Lock::new(vec![]),
         }
     }
 
     pub fn codemap(&self) -> &CodeMap {
         &self.code_map
+    }
+
+    pub fn buffer_lint<S: Into<MultiSpan>>(&self,
+        lint_id: BufferedEarlyLintId,
+        span: S,
+        id: NodeId,
+        msg: &str,
+    ) {
+        self.buffered_lints
+            .borrow_mut()
+            .push(BufferedEarlyLint{
+                span: span.into(),
+                id,
+                msg: msg.into(),
+                lint_id,
+            });
     }
 }
 

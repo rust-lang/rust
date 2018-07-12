@@ -331,6 +331,15 @@ declare_lint! {
      via the module system"
 }
 
+/// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
+pub mod parser {
+    declare_lint! {
+        pub QUESTION_MARK_MACRO_SEP,
+        Warn,
+        "detects the use of `?` as a macro separator"
+    }
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -389,6 +398,7 @@ impl LintPass for HardwiredLints {
             WHERE_CLAUSES_OBJECT_SAFETY,
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
             MACRO_USE_EXTERN_CRATE,
+            parser::QUESTION_MARK_MACRO_SEP,
         )
     }
 }
