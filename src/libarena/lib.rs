@@ -30,6 +30,7 @@
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]
+#![deny(bare_trait_objects)]
 
 extern crate alloc;
 extern crate rustc_data_structures;

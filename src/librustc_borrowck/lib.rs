@@ -13,6 +13,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![allow(non_camel_case_types)]
+#![deny(bare_trait_objects)]
 
 #![feature(from_ref)]
 #![feature(quote)]
