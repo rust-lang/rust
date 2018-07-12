@@ -927,7 +927,7 @@ mod tests {
     use time::{Instant, Duration};
     use thread;
 
-    fn each_ip(f: &mut FnMut(SocketAddr)) {
+    fn each_ip(f: &mut dyn FnMut(SocketAddr)) {
         f(next_test_ip4());
         f(next_test_ip6());
     }
