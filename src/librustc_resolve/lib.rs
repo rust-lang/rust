@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(bare_trait_objects)]
+
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -1292,7 +1294,7 @@ impl PrimitiveTypeTable {
 /// This is the visitor that walks the whole crate.
 pub struct Resolver<'a> {
     session: &'a Session,
-    cstore: &'a CrateStore,
+    cstore: &'a dyn CrateStore,
 
     pub definitions: Definitions,
 
@@ -1388,7 +1390,7 @@ pub struct Resolver<'a> {
     /// true if `#![feature(use_extern_macros)]`
     use_extern_macros: bool,
 
-    crate_loader: &'a mut CrateLoader,
+    crate_loader: &'a mut dyn CrateLoader,
     macro_names: FxHashSet<Ident>,
     global_macros: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Def>,
@@ -1604,11 +1606,11 @@ impl<'a> Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
-               cstore: &'a CrateStore,
+               cstore: &'a dyn CrateStore,
                krate: &Crate,
                crate_name: &str,
                make_glob_map: MakeGlobMap,
-               crate_loader: &'a mut CrateLoader,
+               crate_loader: &'a mut dyn CrateLoader,
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
