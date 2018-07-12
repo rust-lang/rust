@@ -519,9 +519,8 @@ impl<'test> TestCx<'test> {
 
     fn compare_source(&self, expected: &str, actual: &str) {
         if expected != actual {
-            self.error("pretty-printed source does not match expected source");
-            println!(
-                "\n\
+            self.fatal(&format!(
+                "pretty-printed source does not match expected source\n\
                  expected:\n\
                  ------------------------------------------\n\
                  {}\n\
@@ -531,7 +530,7 @@ impl<'test> TestCx<'test> {
                  {}\n\
                  ------------------------------------------\n\
                  \n",
-                expected, actual
+                expected, actual)
             );
         }
     }
