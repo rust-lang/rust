@@ -30,3 +30,9 @@ cache: cargo
 
 before_cache:
   - chmod -R a+r $HOME/.cargo;
+
+branches:
+  only:
+    - master
+    - staging
+    - trying
