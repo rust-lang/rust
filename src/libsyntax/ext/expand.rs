@@ -232,7 +232,7 @@ pub enum InvocationKind {
 }
 
 impl Invocation {
-    fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match self.kind {
             InvocationKind::Bang { span, .. } => span,
             InvocationKind::Attr { attr: Some(ref attr), .. } => attr.span,

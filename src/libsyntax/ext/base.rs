@@ -571,6 +571,8 @@ pub enum MacroKind {
     Attr,
     /// A derive attribute macro - #[derive(Foo)]
     Derive,
+    /// A view of a procedural macro from the same crate that defines it.
+    ProcMacroStub,
 }
 
 impl MacroKind {
@@ -579,6 +581,7 @@ impl MacroKind {
             MacroKind::Bang => "macro",
             MacroKind::Attr => "attribute macro",
             MacroKind::Derive => "derive macro",
+            MacroKind::ProcMacroStub => "crate-local procedural macro",
         }
     }
 }
