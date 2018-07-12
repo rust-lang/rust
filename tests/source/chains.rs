@@ -228,3 +228,34 @@ fn issue2415() {
     })()
         .unwrap_or_else(|_: Box<::std::error::Error>| String::from(""));
 }
+
+impl issue_2786 {
+    fn thing(&self) {
+        foo(|a| {
+            println!("a");
+            println!("b");
+        }).bar(|c| {
+            println!("a");
+            println!("b");
+        })
+            .baz(|c| {
+                println!("a");
+                println!("b");
+            })
+    }
+}
+
+fn issue_2773() {
+    let bar = Some(0);
+    bar.or_else(|| {
+        // do stuff
+        None
+    }).or_else(|| {
+            // do other stuff
+            None
+        })
+        .and_then(|val| {
+            // do this stuff
+            None
+        });
+}
