@@ -33,7 +33,7 @@ impl LintPass for NegMultiply {
 #[allow(match_same_arms)]
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Binary(Spanned { node: BiMul, .. }, ref l, ref r) = e.node {
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref l, ref r) = e.node {
             match (&l.node, &r.node) {
                 (&ExprKind::Unary(..), &ExprKind::Unary(..)) => (),
                 (&ExprKind::Unary(UnNeg, ref lit), _) => check_mul(cx, e.span, lit, r),

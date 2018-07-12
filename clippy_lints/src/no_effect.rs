@@ -133,7 +133,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
     }
     match expr.node {
         ExprKind::Index(ref a, ref b) => Some(vec![&**a, &**b]),
-        ExprKind::Binary(ref binop, ref a, ref b) if binop.node != BiAnd && binop.node != BiOr => {
+        ExprKind::Binary(ref binop, ref a, ref b) if binop.node != BinOpKind::And && binop.node != BinOpKind::Or => {
             Some(vec![&**a, &**b])
         },
         ExprKind::Array(ref v) | ExprKind::Tup(ref v) => Some(v.iter().collect()),

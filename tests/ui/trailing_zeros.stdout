@@ -1,8 +1,8 @@
 if_chain! {
     if let ExprKind::Binary(ref op, ref left, ref right) = expr.node;
-    if BinOp_::BiEq == op.node;
+    if BinOpKind::Eq == op.node;
     if let ExprKind::Binary(ref op1, ref left1, ref right1) = left.node;
-    if BinOp_::BiBitAnd == op1.node;
+    if BinOpKind::BitAnd == op1.node;
     if let ExprKind::Path(ref path) = left1.node;
     if match_qpath(path, &["x"]);
     if let ExprKind::Lit(ref lit) = right1.node;

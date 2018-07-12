@@ -382,21 +382,21 @@ fn associativity(op: &AssocOp) -> Associativity {
 
 /// Convert a `hir::BinOp` to the corresponding assigning binary operator.
 fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
-    use rustc::hir::BinOp_::*;
+    use rustc::hir::BinOpKind::*;
     use syntax::parse::token::BinOpToken::*;
 
     AssocOp::AssignOp(match op.node {
-        BiAdd => Plus,
-        BiBitAnd => And,
-        BiBitOr => Or,
-        BiBitXor => Caret,
-        BiDiv => Slash,
-        BiMul => Star,
-        BiRem => Percent,
-        BiShl => Shl,
-        BiShr => Shr,
-        BiSub => Minus,
-        BiAnd | BiEq | BiGe | BiGt | BiLe | BiLt | BiNe | BiOr => panic!("This operator does not exist"),
+        BinOpKind::Add => Plus,
+        BinOpKind::BitAnd => And,
+        BinOpKind::BitOr => Or,
+        BinOpKind::BitXor => Caret,
+        BinOpKind::Div => Slash,
+        BinOpKind::Mul => Star,
+        BinOpKind::Rem => Percent,
+        BinOpKind::Shl => Shl,
+        BinOpKind::Shr => Shr,
+        BinOpKind::Sub => Minus,
+        BinOpKind::And | BinOpKind::Eq | BinOpKind::Ge | BinOpKind::Gt | BinOpKind::Le | BinOpKind::Lt | BinOpKind::Ne | BinOpKind::Or => panic!("This operator does not exist"),
     })
 }
 

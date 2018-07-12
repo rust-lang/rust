@@ -171,7 +171,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
             ExprKind::Binary(op, _, _) => {
                 walk_expr(self, e);
                 match op.node {
-                    BiAnd | BiOr => self.short_circuits += 1,
+                    BinOpKind::And | BinOpKind::Or => self.short_circuits += 1,
                     _ => (),
                 }
             },

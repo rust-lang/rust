@@ -771,7 +771,7 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
 
         let offset = match idx.node {
             ExprKind::Binary(op, ref lhs, ref rhs) => match op.node {
-                BinOp_::BiAdd => {
+                BinOpKindAdd => {
                     let offset_opt = if same_var(cx, lhs, var) {
                         extract_offset(cx, rhs, var)
                     } else if same_var(cx, rhs, var) {
@@ -782,7 +782,7 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
 
                     offset_opt.map(Offset::positive)
                 },
-                BinOp_::BiSub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
+                BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
                 _ => None,
             },
             ExprKind::Path(..) => if same_var(cx, idx, var) {
@@ -1884,7 +1884,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                 match parent.node {
                     ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                         if lhs.id == expr.id {
-                            if op.node == BiAdd && is_integer_literal(rhs, 1) {
+                            if op.node == BinOpKind::Add && is_integer_literal(rhs, 1) {
                                 *state = match *state {
                                     VarState::Initial if self.depth == 0 => VarState::IncrOnce,
                                     _ => VarState::DontWarn,

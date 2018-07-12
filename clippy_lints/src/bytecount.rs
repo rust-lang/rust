@@ -51,7 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                     if body.arguments.len() == 1;
                     if let Some(argname) = get_pat_name(&body.arguments[0].pat);
                     if let ExprKind::Binary(ref op, ref l, ref r) = body.value.node;
-                    if op.node == BiEq;
+                    if op.node == BinOpKind::Eq;
                     if match_type(cx,
                                walk_ptrs_ty(cx.tables.expr_ty(&filter_args[0])),
                                &paths::SLICE_ITER);

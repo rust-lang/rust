@@ -240,7 +240,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let left_pat = self.next("left");
                 let right_pat = self.next("right");
                 println!("Binary(ref {}, ref {}, ref {}) = {};", op_pat, left_pat, right_pat, current);
-                println!("    if BinOp_::{:?} == {}.node;", op.node, op_pat);
+                println!("    if BinOpKind::{:?} == {}.node;", op.node, op_pat);
                 self.current = left_pat;
                 self.visit_expr(left);
                 self.current = right_pat;
@@ -385,7 +385,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let target_pat = self.next("target");
                 let value_pat = self.next("value");
                 println!("AssignOp(ref {}, ref {}, ref {}) = {};", op_pat, target_pat, value_pat, current);
-                println!("    if BinOp_::{:?} == {}.node;", op.node, op_pat);
+                println!("    if BinOpKind::{:?} == {}.node;", op.node, op_pat);
                 self.current = target_pat;
                 self.visit_expr(target);
                 self.current = value_pat;

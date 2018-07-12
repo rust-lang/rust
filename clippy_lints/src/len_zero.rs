@@ -81,24 +81,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 
         if let ExprKind::Binary(Spanned { node: cmp, .. }, ref left, ref right) = expr.node {
             match cmp {
-                BiEq => {
+                BinOpKind::Eq => {
                     check_cmp(cx, expr.span, left, right, "", 0); // len == 0
                     check_cmp(cx, expr.span, right, left, "", 0); // 0 == len
                 },
-                BiNe => {
+                BinOpKind::Ne => {
                     check_cmp(cx, expr.span, left, right, "!", 0); // len != 0
                     check_cmp(cx, expr.span, right, left, "!", 0); // 0 != len
                 },
-                BiGt => {
+                BinOpKind::Gt => {
                     check_cmp(cx, expr.span, left, right, "!", 0); // len > 0
                     check_cmp(cx, expr.span, right, left, "", 1); // 1 > len
                 },
-                BiLt => {
+                BinOpKind::Lt => {
                     check_cmp(cx, expr.span, left, right, "", 1); // len < 1
                     check_cmp(cx, expr.span, right, left, "!", 0); // 0 < len
                 },
-                BiGe => check_cmp(cx, expr.span, left, right, "!", 1), // len <= 1
-                BiLe => check_cmp(cx, expr.span, right, left, "!", 1), // 1 >= len
+                BinOpKind::Ge => check_cmp(cx, expr.span, left, right, "!", 1), // len <= 1
+                BinOpKind::Le => check_cmp(cx, expr.span, right, left, "!", 1), // 1 >= len
                 _ => (),
             }
         }

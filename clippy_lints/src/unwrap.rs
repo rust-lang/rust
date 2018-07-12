@@ -80,7 +80,7 @@ fn collect_unwrap_info<'a, 'tcx: 'a>(
 ) -> Vec<UnwrapInfo<'tcx>> {
     if let ExprKind::Binary(op, left, right) = &expr.node {
         match (invert, op.node) {
-            (false, BinOp_::BiAnd) | (false, BinOp_::BiBitAnd) | (true, BinOp_::BiOr) | (true, BinOp_::BiBitOr) => {
+            (false, BinOpKind::And) | (false, BinOpKind::BitAnd) | (true, BinOpKind::Or) | (true, BinOpKind::BitOr) => {
                 let mut unwrap_info = collect_unwrap_info(cx, left, invert);
                 unwrap_info.append(&mut collect_unwrap_info(cx, right, invert));
                 return unwrap_info;

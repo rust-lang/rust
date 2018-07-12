@@ -450,7 +450,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
             let op = cmp.node;
             if op.is_comparison() && is_unit(cx.tables.expr_ty(left)) {
                 let result = match op {
-                    BiEq | BiLe | BiGe => "true",
+                    BinOpKind::Eq | BinOpKind::Le | BinOpKind::Ge => "true",
                     _ => "false",
                 };
                 span_lint(
@@ -1374,7 +1374,7 @@ fn is_cast_between_fixed_and_target<'a, 'tcx>(
 
 fn detect_absurd_comparison<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    op: BinOp_,
+    op: BinOpKind,
     lhs: &'tcx Expr,
     rhs: &'tcx Expr,
 ) -> Option<(ExtremeExpr<'tcx>, AbsurdComparisonResult)> {

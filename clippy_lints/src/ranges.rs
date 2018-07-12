@@ -184,7 +184,7 @@ fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
 
 fn y_plus_one(expr: &Expr) -> Option<&Expr> {
     match expr.node {
-        ExprKind::Binary(Spanned { node: BiAdd, .. }, ref lhs, ref rhs) => if is_integer_literal(lhs, 1) {
+        ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref lhs, ref rhs) => if is_integer_literal(lhs, 1) {
             Some(rhs)
         } else if is_integer_literal(rhs, 1) {
             Some(lhs)
@@ -197,7 +197,7 @@ fn y_plus_one(expr: &Expr) -> Option<&Expr> {
 
 fn y_minus_one(expr: &Expr) -> Option<&Expr> {
     match expr.node {
-        ExprKind::Binary(Spanned { node: BiSub, .. }, ref lhs, ref rhs) if is_integer_literal(rhs, 1) => Some(lhs),
+        ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, ref lhs, ref rhs) if is_integer_literal(rhs, 1) => Some(lhs),
         _ => None,
     }
 }

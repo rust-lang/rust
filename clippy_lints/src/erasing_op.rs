@@ -38,11 +38,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
         }
         if let ExprKind::Binary(ref cmp, ref left, ref right) = e.node {
             match cmp.node {
-                BiMul | BiBitAnd => {
+                BinOpKind::Mul | BinOpKind::BitAnd => {
                     check(cx, left, e.span);
                     check(cx, right, e.span);
                 },
-                BiDiv => check(cx, left, e.span),
+                BinOpKind::Div => check(cx, left, e.span),
                 _ => (),
             }
         }

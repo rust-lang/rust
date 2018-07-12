@@ -82,7 +82,7 @@ impl LintPass for StringAdd {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Binary(Spanned { node: BiAdd, .. }, ref left, _) = e.node {
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref left, _) = e.node {
             if is_string(cx, left) {
                 if !is_allowed(cx, STRING_ADD_ASSIGN, e.id) {
                     let parent = get_parent_expr(cx, e);
@@ -122,7 +122,7 @@ fn is_string(cx: &LateContext, e: &Expr) -> bool {
 
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
     match src.node {
-        ExprKind::Binary(Spanned { node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
+        ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
         ExprKind::Block(ref block, _) => {
             block.stmts.is_empty()
                 && block

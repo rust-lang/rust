@@ -57,19 +57,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
         match expr.node {
             hir::ExprKind::Binary(ref op, ref l, ref r) => {
                 match op.node {
-                    hir::BiAnd
-                    | hir::BiOr
-                    | hir::BiBitAnd
-                    | hir::BiBitOr
-                    | hir::BiBitXor
-                    | hir::BiShl
-                    | hir::BiShr
-                    | hir::BiEq
-                    | hir::BiLt
-                    | hir::BiLe
-                    | hir::BiNe
-                    | hir::BiGe
-                    | hir::BiGt => return,
+                    hir::BinOpKind::And
+                    | hir::BinOpKind::Or
+                    | hir::BinOpKind::BitAnd
+                    | hir::BinOpKind::BitOr
+                    | hir::BinOpKind::BitXor
+                    | hir::BinOpKind::Shl
+                    | hir::BinOpKind::Shr
+                    | hir::BinOpKind::Eq
+                    | hir::BinOpKind::Lt
+                    | hir::BinOpKind::Le
+                    | hir::BinOpKind::Ne
+                    | hir::BinOpKind::Ge
+                    | hir::BinOpKind::Gt => return,
                     _ => (),
                 }
                 let (l_ty, r_ty) = (cx.tables.expr_ty(l), cx.tables.expr_ty(r));

@@ -229,7 +229,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
             walk_expr(vis, expr);
         },
         ExprKind::Binary(op, _, _) | ExprKind::AssignOp(op, _, _) => {
-            if op.node == BiAnd || op.node == BiOr {
+            if op.node == BinOpKind::And || op.node == BinOpKind::Or {
                 // x && y and x || y always evaluate x first, so these are
                 // strictly sequenced.
             } else {

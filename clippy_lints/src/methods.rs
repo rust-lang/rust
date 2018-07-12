@@ -789,12 +789,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     _ => (),
                 }
             },
-            hir::ExprKind::Binary(op, ref lhs, ref rhs) if op.node == hir::BiEq || op.node == hir::BiNe => {
+            hir::ExprKind::Binary(op, ref lhs, ref rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
                     expr,
                     chain: lhs,
                     other: rhs,
-                    eq: op.node == hir::BiEq,
+                    eq: op.node == hir::BinOpKind::Eq,
                 };
                 lint_binary_expr_with_method_call(cx, &mut info);
             },
@@ -1274,7 +1274,7 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
     fn check_fold_with_op(
         cx: &LateContext,
         fold_args: &[hir::Expr],
-        op: hir::BinOp_,
+        op: hir::BinOpKind,
         replacement_method_name: &str,
         replacement_has_args: bool) {
 
@@ -1332,16 +1332,16 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
         hir::ExprKind::Lit(ref lit) => {
             match lit.node {
                 ast::LitKind::Bool(false) => check_fold_with_op(
-                    cx, fold_args, hir::BinOp_::BiOr, "any", true
+                    cx, fold_args, hir::BinOpKind::Or, "any", true
                 ),
                 ast::LitKind::Bool(true) => check_fold_with_op(
-                    cx, fold_args, hir::BinOp_::BiAnd, "all", true
+                    cx, fold_args, hir::BinOpKind::And, "all", true
                 ),
                 ast::LitKind::Int(0, _) => check_fold_with_op(
-                    cx, fold_args, hir::BinOp_::BiAdd, "sum", false
+                    cx, fold_args, hir::BinOpKindAdd, "sum", false
                 ),
                 ast::LitKind::Int(1, _) => check_fold_with_op(
-                    cx, fold_args, hir::BinOp_::BiMul, "product", false
+                    cx, fold_args, hir::BinOpKind::Mul, "product", false
                 ),
                 _ => return
             }

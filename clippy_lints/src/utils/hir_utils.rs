@@ -280,14 +280,26 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     }
 }
 
-fn swap_binop<'a>(binop: BinOp_, lhs: &'a Expr, rhs: &'a Expr) -> Option<(BinOp_, &'a Expr, &'a Expr)> {
+fn swap_binop<'a>(binop: BinOpKind, lhs: &'a Expr, rhs: &'a Expr) -> Option<(BinOpKind, &'a Expr, &'a Expr)> {
     match binop {
-        BiAdd | BiMul | BiBitXor | BiBitAnd | BiEq | BiNe | BiBitOr => Some((binop, rhs, lhs)),
-        BiLt => Some((BiGt, rhs, lhs)),
-        BiLe => Some((BiGe, rhs, lhs)),
-        BiGe => Some((BiLe, rhs, lhs)),
-        BiGt => Some((BiLt, rhs, lhs)),
-        BiShl | BiShr | BiRem | BiSub | BiDiv | BiAnd | BiOr => None,
+        BinOpKind::Add |
+        BinOpKind::Mul |
+        BinOpKind::Eq |
+        BinOpKind::Ne |
+        BinOpKind::BitAnd |
+        BinOpKind::BitXor |
+        BinOpKind::BitOr => Some((binop, rhs, lhs)),
+        BinOpKind::Lt => Some((BinOpKind::Gt, rhs, lhs)),
+        BinOpKind::Le => Some((BinOpKind::Ge, rhs, lhs)),
+        BinOpKind::Ge => Some((BinOpKind::Le, rhs, lhs)),
+        BinOpKind::Gt => Some((BinOpKind::Lt, rhs, lhs)),
+        BinOpKind::Shl |
+        BinOpKind::Shr |
+        BinOpKind::Rem |
+        BinOpKind::Sub |
+        BinOpKind::Div |
+        BinOpKind::And |
+        BinOpKind::Or => None,
     }
 }
 

@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Binary(ref op, ref l, ref r) = expr.node {
-            if (op.node == BiEq || op.node == BiNe) && (is_null_path(l) || is_null_path(r)) {
+            if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(l) || is_null_path(r)) {
                 span_lint(
                     cx,
                     CMP_NULL,

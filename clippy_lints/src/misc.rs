@@ -305,7 +305,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if_chain! {
             if let StmtSemi(ref expr, _) = s.node;
             if let ExprKind::Binary(ref binop, ref a, ref b) = expr.node;
-            if binop.node == BiAnd || binop.node == BiOr;
+            if binop.node == BinOpKind::And || binop.node == BinOpKind::Or;
             if let Some(sugg) = Sugg::hir_opt(cx, a);
             then {
                 span_lint_and_then(cx,
@@ -313,7 +313,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     s.span,
                     "boolean short circuit operator in statement may be clearer using an explicit test",
                     |db| {
-                        let sugg = if binop.node == BiOr { !sugg } else { sugg };
+                        let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
                         db.span_suggestion(s.span, "replace it with",
                                            format!("if {} {{ {}; }}", sugg, &snippet(cx, b.span, "..")));
                     });
@@ -339,7 +339,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     check_to_owned(cx, left, right);
                     check_to_owned(cx, right, left);
                 }
-                if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
+                if (op == BinOpKind::Eq || op == BinOpKind::Ne) && (is_float(cx, left) || is_float(cx, right)) {
                     if is_allowed(cx, left) || is_allowed(cx, right) {
                         return;
                     }
@@ -367,7 +367,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         );
                         db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
                     });
-                } else if op == BiRem && is_integer_literal(right, 1) {
+                } else if op == BinOpKind::Rem && is_integer_literal(right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
                 }
             },

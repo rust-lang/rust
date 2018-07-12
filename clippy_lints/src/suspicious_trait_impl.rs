@@ -59,10 +59,10 @@ impl LintPass for SuspiciousImpl {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        use rustc::hir::BinOp_::*;
+        use rustc::hir::BinOpKind::*;
         if let hir::ExprKind::Binary(binop, _, _) = expr.node {
             match binop.node {
-                BiEq | BiLt | BiLe | BiNe | BiGe | BiGt => return,
+                BinOpKind::Eq | BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ne | BinOpKind::Ge | BinOpKind::Gt => return,
                 _ => {},
             }
             // Check if the binary expression is part of another bi/unary expression
@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                 expr,
                 binop.node,
                 &["Add", "Sub", "Mul", "Div"],
-                &[BiAdd, BiSub, BiMul, BiDiv],
+                &[BinOpKind::Add, BinOpKind::Sub, BinOpKind::Mul, BinOpKind::Div],
             ) {
                 span_lint(
                     cx,
@@ -124,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                     "ShrAssign",
                 ],
                 &[
-                    BiAdd, BiSub, BiMul, BiDiv, BiBitAnd, BiBitOr, BiBitXor, BiRem, BiShl, BiShr
+                    BinOpKind::Add, BinOpKind::Sub, BinOpKind::Mul, BinOpKind::Div, BinOpKind::BitAnd, BinOpKind::BitOr, BinOpKind::BitXor, BinOpKind::Rem, BinOpKind::Shl, BinOpKind::Shr
                 ],
             ) {
                 span_lint(
@@ -144,9 +144,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
 fn check_binop<'a>(
     cx: &LateContext,
     expr: &hir::Expr,
-    binop: hir::BinOp_,
+    binop: hir::BinOpKind,
     traits: &[&'a str],
-    expected_ops: &[hir::BinOp_],
+    expected_ops: &[hir::BinOpKind],
 ) -> Option<&'a str> {
     let mut trait_ids = vec![];
     let [krate, module] = crate::utils::paths::OPS_MODULE;

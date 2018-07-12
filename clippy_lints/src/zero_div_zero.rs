@@ -33,7 +33,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         // check for instances of 0.0/0.0
         if_chain! {
             if let ExprKind::Binary(ref op, ref left, ref right) = expr.node;
-            if let BinOp_::BiDiv = op.node;
+            if let BinOpKind::Div = op.node;
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
