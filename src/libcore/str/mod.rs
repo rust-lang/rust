@@ -2453,7 +2453,7 @@ impl str {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.29.0", reason = "duplicates `get_unchecked`")]
+    #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked(begin..end)` instead")]
     #[inline]
     pub unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
         (begin..end).get_unchecked(self)
@@ -2484,7 +2484,7 @@ impl str {
     /// * `begin` and `end` must be byte positions within the string slice.
     /// * `begin` and `end` must lie on UTF-8 sequence boundaries.
     #[stable(feature = "str_slice_mut", since = "1.5.0")]
-    #[rustc_deprecated(since = "1.29.0", reason = "duplicates `get_unchecked_mut`")]
+    #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked_mut(begin..end)` instead")]
     #[inline]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
         (begin..end).get_unchecked_mut(self)
