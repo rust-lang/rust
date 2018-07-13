@@ -8,7 +8,7 @@ const LG4    : f32 = 0.24279078841; /*  0xf89e26.0p-26 */
 
 #[inline]
 pub fn logf(mut x: f32) -> f32 {
-    let x1p25 = f32::from_bits(0x4c000000); // 0x1p24f === 2 ^ 25
+    let x1p25 = f32::from_bits(0x4c000000); // 0x1p25f === 2 ^ 25
     
     let mut ix = x.to_bits();
     let mut k = 0i32;

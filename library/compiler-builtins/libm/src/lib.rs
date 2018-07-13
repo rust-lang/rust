@@ -365,7 +365,6 @@ impl F32Ext for f32 {
 /// NOTE this meant to be a closed extension trait. The only stable way to use this trait is to
 /// import it to access its methods.
 pub trait F64Ext {
-    #[cfg(todo)]
     fn floor(self) -> Self;
 
     #[cfg(todo)]
@@ -479,7 +478,6 @@ pub trait F64Ext {
 }
 
 impl F64Ext for f64 {
-    #[cfg(todo)]
     #[inline]
     fn floor(self) -> Self {
         floor(self)

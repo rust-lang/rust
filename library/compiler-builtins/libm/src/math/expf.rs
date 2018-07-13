@@ -13,16 +13,16 @@ const P2 : f32 = -2.7667332906e-3;    /* -0xb55215.0p-32 */
 
 #[inline]
 pub fn expf(mut x: f32) -> f32 {
-    let x1p127 = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 127
-    let x1p_126 = f32::from_bits(0x800000); // 0x1p-126f === 2 ^ -126  /*original 0x1p-149f    ??????????? */
+    let x1p127  = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 127
+    let x1p_126 = f32::from_bits(0x800000);   // 0x1p-126f === 2 ^ -126  /*original 0x1p-149f    ??????????? */
     
-    let mut hx = x.to_bits() as i32;
+    let mut hx = x.to_bits();
     let sign = (hx >> 31) as i32;   /* sign bit of x */
     let signb : bool = sign != 0;
     hx &= 0x7fffffff;  /* high word of |x| */
     
     /* special cases */
-    if hx >= 0x42aeac50 {  /* if |x| >= -87.33655f or NaN */
+    if hx >= 0x42aeac50 {   /* if |x| >= -87.33655f or NaN */
         if hx > 0x7f800000 {/* NaN */
             return x;
         }
