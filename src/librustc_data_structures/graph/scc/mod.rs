@@ -54,7 +54,7 @@ impl<N: Idx, S: Idx> Sccs<N, S> {
         self.scc_data.len()
     }
 
-    /// Returns the number of SCCs in the graph.
+    /// Returns an iterator over the SCCs in the graph.
     pub fn all_sccs(&self) -> impl Iterator<Item = S> {
         (0 .. self.scc_data.len()).map(S::new)
     }
