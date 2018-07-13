@@ -12,6 +12,6 @@
 
 #![deny(dead_code)]
 
-fn dead() {} //~ error: function is never used: `dead`
+fn dead() {} //~ error: function is never called: `dead`
 
 fn main() {}

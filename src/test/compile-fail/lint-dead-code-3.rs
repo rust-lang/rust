@@ -20,14 +20,14 @@ extern {
     pub fn extern_foo();
 }
 
-struct Foo; //~ ERROR: struct is never used
+struct Foo; //~ ERROR: struct is never constructed
 impl Foo {
-    fn foo(&self) { //~ ERROR: method is never used
+    fn foo(&self) { //~ ERROR: method is never called
         bar()
     }
 }
 
-fn bar() { //~ ERROR: function is never used
+fn bar() { //~ ERROR: function is never called
     fn baz() {}
 
     Foo.foo();
