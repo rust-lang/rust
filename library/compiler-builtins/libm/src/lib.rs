@@ -377,7 +377,6 @@ pub trait F64Ext {
     #[cfg(todo)]
     fn ceil(self) -> Self;
 
-    #[cfg(todo)]
     fn round(self) -> Self;
 
     #[cfg(todo)]
@@ -498,7 +497,6 @@ impl F64Ext for f64 {
         ceil(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn round(self) -> Self {
         round(self)

@@ -618,7 +618,7 @@ f64_f64! {
     // log10,
     // log1p,
     // log2,
-    // round,
+    round,
     // sin,
     // sinh,
     // sqrt,
