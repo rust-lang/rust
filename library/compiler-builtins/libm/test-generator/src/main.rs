@@ -678,7 +678,7 @@ f32_f32! {
 // With signature `fn(f32, f32) -> f32`
 f32f32_f32! {
     // atan2f,
-    // hypotf,
+    hypotf,
     fmodf,
     powf,
 }
