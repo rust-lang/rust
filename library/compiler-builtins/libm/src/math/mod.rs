@@ -16,6 +16,8 @@ mod logf;
 mod expf;
 mod floor;
 mod cosf;
+mod trunc;
+mod truncf;
 
 pub use self::{
     fabs::fabs,
@@ -30,6 +32,8 @@ pub use self::{
     expf::expf,
     floor::floor,
     cosf::cosf,
+    trunc::trunc,
+    truncf::truncf,
 };
 
 mod sindf;

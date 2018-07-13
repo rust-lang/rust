@@ -562,7 +562,7 @@ fn main() -> Result<(), Box<Error>> {
 f32_f32! {
     // acosf,
     // floorf,
-    // truncf
+    truncf,
     // asinf,
     // atanf,
     // cbrtf,
@@ -625,7 +625,7 @@ f64_f64! {
     // sqrt,
     // tan,
     // tanh,
-    // trunc,
+    trunc,
     fabs,
 }
 
