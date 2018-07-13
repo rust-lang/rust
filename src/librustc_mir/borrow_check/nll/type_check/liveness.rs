@@ -34,10 +34,10 @@ use super::TypeChecker;
 ///
 /// NB. This computation requires normalization; therefore, it must be
 /// performed before
-pub(super) fn generate<'gcx, 'tcx, V: LiveVariableMap>(
+pub(super) fn generate<'gcx, 'tcx>(
     cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    liveness: &LivenessResults<V>,
+    liveness: &LivenessResults<Local>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
@@ -55,7 +55,7 @@ pub(super) fn generate<'gcx, 'tcx, V: LiveVariableMap>(
     }
 }
 
-struct TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx, V: LiveVariableMap>
+struct TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx>
 where
     'typeck: 'gen,
     'flow: 'gen,
@@ -65,7 +65,7 @@ where
 {
     cx: &'gen mut TypeChecker<'typeck, 'gcx, 'tcx>,
     mir: &'gen Mir<'tcx>,
-    liveness: &'gen LivenessResults<V>,
+    liveness: &'gen LivenessResults<Local>,
     flow_inits: &'gen mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
     move_data: &'gen MoveData<'tcx>,
     drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,

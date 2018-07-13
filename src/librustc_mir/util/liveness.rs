@@ -103,18 +103,18 @@ pub struct LivenessMode {
 }
 
 /// A combination of liveness results, used in NLL.
-pub struct LivenessResults<V: LiveVariableMap> {
+pub struct LivenessResults<V> {
     /// Liveness results where a regular use makes a variable X live,
     /// but not a drop.
-    pub regular: LivenessResult<V::LiveVar>,
+    pub regular: LivenessResult<V>,
 
     /// Liveness results where a drop makes a variable X live,
     /// but not a regular use.
-    pub drop: LivenessResult<V::LiveVar>,
+    pub drop: LivenessResult<V>,
 }
 
-impl<V: LiveVariableMap> LivenessResults<V> {
-    pub fn compute<'tcx>(mir: &Mir<'tcx>, map: &dyn LiveVariableMap<LiveVar = V>) -> LivenessResults<V::LiveVar> {
+impl<V, M: LiveVariableMap<LiveVar = V>> LivenessResults<V> {
+    pub fn compute<'tcx>(mir: &Mir<'tcx>, map: &M) -> LivenessResults<V> {
         LivenessResults {
             regular: liveness_of_locals(
                 &mir,
@@ -138,7 +138,7 @@ impl<V: LiveVariableMap> LivenessResults<V> {
 /// Compute which local variables are live within the given function
 /// `mir`. The liveness mode `mode` determines what sorts of uses are
 /// considered to make a variable live (e.g., do drops count?).
-pub fn liveness_of_locals<'tcx, V: LiveVariableMap>(mir: &Mir<'tcx>, mode: LivenessMode) -> LivenessResult<V::LiveVar> {
+pub fn liveness_of_locals<'tcx, V>(mir: &Mir<'tcx>, mode: LivenessMode) -> LivenessResult<V> {
     let locals = mir.local_decls.len();
     let def_use: IndexVec<_, _> = mir.basic_blocks()
         .iter()
