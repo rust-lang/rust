@@ -581,7 +581,10 @@ of the largest we've ever done! As a result alternate implementations of Rust
 will likely have a difficult time catching up to rustc/LLVM with all the SIMD
 intrinsics. Additionaly the semantics of "packed SIMD types should work
 everywhere" may be overly difficult to implement in alternate implementations.
-It is worth noting that both Cretonne and GCC support packed SIMD types.
+It is worth noting that both [Cranelift][cranelift] and GCC support packed SIMD
+types.
+
+[cranelift]: https://github.com/CraneStation/cranelift/
 
 Due to the enormity of what's being added to the standard library it's also
 infeasible to carefully review each addition in isolation. While there are a
@@ -650,10 +653,12 @@ This avenue was decided against, however, for a few reasons:
 
 * Such raw interfaces may change over time as they simply represent LLVM as a
   current point in time rather than what LLVM wants to do in the future.
-* Alternate implementations of rustc or alternate rustc backends like Cretonne
-  may not expose the same sort of functionality that LLVM provides, or
-  implementing the interfaces may be much more difficult in alternate backends
-  than in LLVM's.
+* Alternate implementations of rustc or alternate rustc backends like
+  [Cranelift][cranelift] may not expose the same sort of functionality that
+  LLVM provides, or implementing the interfaces may be much more difficult in
+  alternate backends than in LLVM's.
+
+[cranelift]: https://github.com/CraneStation/cranelift/
 
 As a result, it's intended that instead of exposing raw building blocks (and
 allowing `stdsimd` to live on crates.io) we'll instead pull in `stdsimd` to the
