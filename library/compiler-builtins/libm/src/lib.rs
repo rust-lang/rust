@@ -32,9 +32,8 @@ pub fn _eq(a: u64, b: u64) -> bool {
 
 /// Math support for `f32`
 ///
-/// NOTE this meant to be a closed extension trait. The only stable way to use this trait is to
-/// import it to access its methods.
-pub trait F32Ext {
+/// This trait is sealed and cannot be implemented outside of `libm`.
+pub trait F32Ext: private::Sealed {
     #[cfg(todo)]
     fn floor(self) -> Self;
 
@@ -358,9 +357,8 @@ impl F32Ext for f32 {
 
 /// Math support for `f32`
 ///
-/// NOTE this meant to be a closed extension trait. The only stable way to use this trait is to
-/// import it to access its methods.
-pub trait F64Ext {
+/// This trait is sealed and cannot be implemented outside of `libm`.
+pub trait F64Ext: private::Sealed {
     fn floor(self) -> Self;
 
     #[cfg(todo)]
@@ -688,4 +686,11 @@ impl F64Ext for f64 {
     fn atanh(self) -> Self {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
+}
+
+mod private {
+    pub trait Sealed {}
+
+    impl Sealed for f32 {}
+    impl Sealed for f64 {}
 }
