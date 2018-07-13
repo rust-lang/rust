@@ -177,9 +177,6 @@ where
     /// D' (i.e., D' < D), we know that N, N', and all nodes in
     /// between them on the stack are part of an SCC.
     ///
-    /// For each node, we track the lowest depth of any successor we
-    /// have found, along with that
-    ///
     /// [wikipedia]: https://bit.ly/2EZIx84
     fn construct(graph: &'c G) -> Sccs<G::Node, S> {
         let num_nodes = graph.num_nodes();
@@ -213,6 +210,17 @@ where
         }
     }
 
+    /// Visit a node during the DFS. We first examine its current
+    /// state -- if it is not yet visited (`NotVisited`), we can push
+    /// it onto the stack and start walking its successors.
+    ///
+    /// If it is already on the DFS stack it will be in the state
+    /// `BeingVisited`. In that case, we have found a cycle and we
+    /// return the depth from the stack.
+    ///
+    /// Otherwise, we are looking at a node that has already been
+    /// completely visited. We therefore return `WalkReturn::Complete`
+    /// with its associated SCC index.
     fn walk_node(&mut self, depth: usize, node: G::Node) -> WalkReturn<S> {
         debug!("walk_node(depth = {:?}, node = {:?})", depth, node);
         match self.find_state(node) {
@@ -276,6 +284,7 @@ where
             _ => false,
         });
 
+        // Push `node` onto the stack.
         self.node_states[node] = NodeState::BeingVisited { depth };
         self.node_stack.push(node);
 
@@ -294,6 +303,7 @@ where
                 WalkReturn::Cycle {
                     min_depth: successor_min_depth,
                 } => {
+                    // Track the minimum depth we can reach.
                     assert!(successor_min_depth <= depth);
                     if successor_min_depth < min_depth {
                         debug!(
@@ -308,6 +318,8 @@ where
                 WalkReturn::Complete {
                     scc_index: successor_scc_index,
                 } => {
+                    // Push the completed SCC indices onto
+                    // the `successors_stack` for later.
                     debug!(
                         "walk_unvisited_node: node = {:?} successor_scc_index = {:?}",
                         node, successor_scc_index
@@ -317,9 +329,12 @@ where
             }
         }
 
+        // Completed walk, remove `node` from the stack.
         let r = self.node_stack.pop();
         debug_assert_eq!(r, Some(node));
 
+        // If `min_depth == depth`, then we are the root of the
+        // cycle: we can't reach anyone further down the stack.
         if min_depth == depth {
             // Note that successor stack may have duplicates, so we
             // want to remove those:
@@ -335,7 +350,7 @@ where
             WalkReturn::Complete { scc_index }
         } else {
             // We are not the head of the cycle. Return back to our
-            // caller.  They will take ownership of the
+            // caller. They will take ownership of the
             // `self.successors` data that we pushed.
             self.node_states[node] = NodeState::InCycleWith {
                 parent: min_cycle_root,
