@@ -114,6 +114,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn object_safety_violations(self, trait_def_id: DefId)
                                     -> Vec<ObjectSafetyViolation>
     {
+        debug!("object_safety_violations: {:?}", trait_def_id);
+
         traits::supertrait_def_ids(self, trait_def_id)
             .flat_map(|def_id| self.object_safety_violations_for_trait(def_id))
             .collect()
@@ -334,6 +336,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         receiver_ty: Ty<'tcx>
     ) -> bool
     {
+        debug!("receiver_is_coercible: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
+
         let traits = (self.lang_items().unsize_trait(),
                       self.lang_items().coerce_unsized_trait());
         let (unsize_did, coerce_unsized_did) = if let (Some(u), Some(cu)) = traits {
