@@ -1209,14 +1209,18 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let let_span = self.tcx.hir.span(node_id);
                 match self.local_binding_mode(node_id) {
                     ty::BindByReference(..) => {
-                        let snippet = self.tcx.sess.codemap().span_to_snippet(let_span);
-                        if let Ok(snippet) = snippet {
-                            db.span_label(
+                        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
+                            let replace_str = if snippet.starts_with("ref ") {
+                                snippet.replacen("ref ", "ref mut ", 1)
+                            } else {
+                                snippet
+                            };
+                            db.span_suggestion(
                                 let_span,
-                                format!("consider changing this to `{}`",
-                                         snippet.replace("ref ", "ref mut "))
+                                "use a mutable reference instead",
+                                replace_str,
                             );
-                        }
+                        };
                     }
                     ty::BindByValue(..) => {
                         if let (Some(local_ty), is_implicit_self) = self.local_ty(node_id) {
