@@ -814,6 +814,7 @@ impl Step for Rustdoc {
             target,
             "doc",
             "src/tools/rustdoc",
+            false
         );
 
         cargo.env("RUSTDOCFLAGS", "--document-private-items");

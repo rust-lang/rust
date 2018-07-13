@@ -115,7 +115,15 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build")
         }
 
-        let mut cargo = prepare_tool_cargo(builder, compiler, self.mode, target, "build", path);
+        let mut cargo = prepare_tool_cargo(
+            builder,
+            compiler,
+            self.mode,
+            target,
+            "build",
+            path,
+            is_ext_tool,
+        );
         cargo.arg("--features").arg(self.extra_features.join(" "));
 
         let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
@@ -238,6 +246,7 @@ pub fn prepare_tool_cargo(
     target: Interned<String>,
     command: &'static str,
     path: &'static str,
+    is_ext_tool: bool,
 ) -> Command {
     let mut cargo = builder.cargo(compiler, mode, target, command);
     let dir = builder.src.join(path);
@@ -246,6 +255,10 @@ pub fn prepare_tool_cargo(
     // We don't want to build tools dynamically as they'll be running across
     // stages and such and it's just easier if they're not dynamically linked.
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+    if is_ext_tool {
+        cargo.env("RUSTC_EXT_TOOL", "1");
+    }
 
     if let Some(dir) = builder.openssl_install_dir(target) {
         cargo.env("OPENSSL_STATIC", "1");
@@ -449,12 +462,15 @@ impl Step for Rustdoc {
             target: builder.config.build,
         });
 
-        let mut cargo = prepare_tool_cargo(builder,
-                                           build_compiler,
-                                           Mode::ToolRustc,
-                                           target,
-                                           "build",
-                                           "src/tools/rustdoc");
+        let mut cargo = prepare_tool_cargo(
+            builder,
+            build_compiler,
+            Mode::ToolRustc,
+            target,
+            "build",
+            "src/tools/rustdoc",
+            false,
+        );
 
         // Most tools don't get debuginfo, but rustdoc should.
         cargo.env("RUSTC_DEBUGINFO", builder.config.rust_debuginfo.to_string())

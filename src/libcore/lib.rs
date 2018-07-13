@@ -70,7 +70,6 @@
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![no_core]
-#![deny(bare_trait_objects)]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 

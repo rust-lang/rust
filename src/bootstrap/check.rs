@@ -222,7 +222,8 @@ impl Step for Rustdoc {
                                            Mode::ToolRustc,
                                            target,
                                            "check",
-                                           "src/tools/rustdoc");
+                                           "src/tools/rustdoc",
+                                           false);
 
         let _folder = builder.fold_output(|| format!("stage{}-rustdoc", compiler.stage));
         println!("Checking rustdoc artifacts ({} -> {})", &compiler.host, target);

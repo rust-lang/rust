@@ -13,7 +13,6 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![deny(bare_trait_objects)]
 
 #![recursion_limit="256"]
 

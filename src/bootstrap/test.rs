@@ -286,7 +286,8 @@ impl Step for Rls {
                                                  Mode::ToolRustc,
                                                  host,
                                                  "test",
-                                                 "src/tools/rls");
+                                                 "src/tools/rls",
+                                                 true);
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -341,7 +342,8 @@ impl Step for Rustfmt {
                                                  Mode::ToolRustc,
                                                  host,
                                                  "test",
-                                                 "src/tools/rustfmt");
+                                                 "src/tools/rustfmt",
+                                                 true);
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -1739,7 +1741,8 @@ impl Step for CrateRustdoc {
                                                  Mode::ToolRustc,
                                                  target,
                                                  test_kind.subcommand(),
-                                                 "src/tools/rustdoc");
+                                                 "src/tools/rustdoc",
+                                                 false);
         if test_kind.subcommand() == "test" && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }

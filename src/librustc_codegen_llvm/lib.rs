@@ -23,7 +23,6 @@
 #![feature(custom_attribute)]
 #![feature(fs_read_write)]
 #![allow(unused_attributes)]
-#![deny(bare_trait_objects)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(range_contains)]

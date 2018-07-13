@@ -20,7 +20,6 @@
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![deny(bare_trait_objects)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
