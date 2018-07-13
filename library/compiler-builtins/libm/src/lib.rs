@@ -12,12 +12,6 @@
 #![deny(warnings)]
 #![no_std]
 
-macro_rules! force_eval {
-    ($e:expr) => {
-        unsafe { ::core::ptr::read_volatile(&$e); }
-    }
-}
-
 mod math;
 
 #[cfg(todo)]
