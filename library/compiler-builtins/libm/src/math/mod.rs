@@ -2,6 +2,7 @@ mod fabs;
 mod fabsf;
 mod fmodf;
 mod powf;
+mod round;
 mod scalbnf;
 mod sqrtf;
 
@@ -9,6 +10,7 @@ pub use self::fabs::fabs;
 pub use self::fabsf::fabsf;
 pub use self::fmodf::fmodf;
 pub use self::powf::powf;
+pub use self::round::round;
 pub use self::scalbnf::scalbnf;
 pub use self::sqrtf::sqrtf;
 
