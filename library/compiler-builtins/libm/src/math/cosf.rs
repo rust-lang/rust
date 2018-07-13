@@ -1,4 +1,4 @@
-use super::service::{cosdf, sindf, rem_pio2f};
+use super::{cosdf, sindf, rem_pio2f};
 
 use core::f64::consts::FRAC_PI_2;
 

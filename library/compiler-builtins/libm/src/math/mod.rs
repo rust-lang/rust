@@ -17,8 +17,6 @@ mod expf;
 mod floor;
 mod cosf;
 
-mod service;
-
 pub use self::{
     fabs::fabs,
     fabsf::fabsf,
@@ -32,6 +30,18 @@ pub use self::{
     expf::expf,
     floor::floor,
     cosf::cosf,
+};
+
+mod sindf;
+mod cosdf;
+mod rem_pio2f;
+mod rem_pio2_large;
+
+use self::{
+    sindf::sindf,
+    cosdf::cosdf,
+    rem_pio2f::rem_pio2f,
+    rem_pio2_large::rem_pio2_large,
 };
 
 fn isnanf(x: f32) -> bool {

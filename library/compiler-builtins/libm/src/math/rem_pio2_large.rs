@@ -1,5 +1,5 @@
-use ::scalbn;
-use ::F64Ext;
+use super::scalbn;
+use super::floor;
 
 /// double x[],y[]; int e0,nx,prec;
 ///
@@ -323,8 +323,8 @@ pub(crate) fn rem_pio2_large(x : &[f64], y : &mut [f64], e0 : i32, prec : usize)
         }
         
         /* compute n */
-        z  = scalbn(z, q0);         /* actual value of z */
-        z -= 8.0*(z*0.125).floor(); /* trim off integer >= 8 */
+        z  = scalbn(z, q0);      /* actual value of z */
+        z -= 8.0*floor(z*0.125); /* trim off integer >= 8 */
         n  = z as i32;
         z -= n as f64;
         ih = 0;
