@@ -286,13 +286,6 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         let sig = self.fn_sig(method.def_id);
 
-        let receiver_ty = sig.skip_binder().inputs()[0];
-
-        if !self.receiver_is_coercible(method, receiver_ty) {
-            return Some(MethodViolationCode::UncoercibleReceiver);
-        }
-
-
         for input_ty in &sig.skip_binder().inputs()[1..] {
             if self.contains_illegal_self_type_reference(trait_def_id, input_ty) {
                 return Some(MethodViolationCode::ReferencesSelf);
@@ -317,6 +310,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                 .visit_tys_shallow(|t| self.contains_illegal_self_type_reference(trait_def_id, t)) {
             let span = self.def_span(method.def_id);
             return Some(MethodViolationCode::WhereClauseReferencesSelf(span));
+        }
+
+        let receiver_ty = sig.skip_binder().inputs()[0];
+
+        if !self.receiver_is_coercible(method, receiver_ty) {
+            return Some(MethodViolationCode::UncoercibleReceiver);
         }
 
         None
