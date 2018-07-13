@@ -332,11 +332,11 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 pub struct RangeInclusive<Idx> {
     pub(crate) start: Idx,
     pub(crate) end: Idx,
-    pub(crate) is_iterating: Option<bool>,
+    pub(crate) is_empty: Option<bool>,
     // This field is:
     //  - `None` when next() or next_back() was never called
-    //  - `Some(true)` when `start <= end` assuming no overflow
-    //  - `Some(false)` otherwise
+    //  - `Some(false)` when `start <= end` assuming no overflow
+    //  - `Some(true)` otherwise
     // The field cannot be a simple `bool` because the `..=` constructor can
     // accept non-PartialOrd types, also we want the constructor to be const.
 }
@@ -347,7 +347,7 @@ trait RangeInclusiveEquality: Sized {
 impl<T> RangeInclusiveEquality for T {
     #[inline]
     default fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
-        !range.is_iterating.unwrap_or(false)
+        range.is_empty.unwrap_or_default()
     }
 }
 impl<T: PartialOrd> RangeInclusiveEquality for T {
@@ -392,7 +392,7 @@ impl<Idx> RangeInclusive<Idx> {
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     pub const fn new(start: Idx, end: Idx) -> Self {
-        Self { start, end, is_iterating: None }
+        Self { start, end, is_empty: None }
     }
 
     /// Returns the lower bound of the range (inclusive).
@@ -536,7 +536,15 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     #[inline]
     pub fn is_empty(&self) -> bool {
-        !self.is_iterating.unwrap_or_else(|| self.start <= self.end)
+        self.is_empty.unwrap_or_else(|| !(self.start <= self.end))
+    }
+
+    // If this range's `is_empty` is field is unknown (`None`), update it to be a concrete value.
+    #[inline]
+    pub(crate) fn compute_is_empty(&mut self) {
+        if self.is_empty.is_none() {
+            self.is_empty = Some(!(self.start <= self.end));
+        }
     }
 }
 

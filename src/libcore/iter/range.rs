@@ -330,18 +330,18 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if self.is_empty() {
-            self.is_iterating = Some(false);
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
             return None;
         }
-        if self.start < self.end {
+        let is_iterating = self.start < self.end;
+        self.is_empty = Some(!is_iterating);
+        Some(if is_iterating {
             let n = self.start.add_one();
-            self.is_iterating = Some(true);
-            Some(mem::replace(&mut self.start, n))
+            mem::replace(&mut self.start, n)
         } else {
-            self.is_iterating = Some(false);
-            Some(self.start.clone())
-        }
+            self.start.clone()
+        })
     }
 
     #[inline]
@@ -358,8 +358,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        if self.is_empty() {
-            self.is_iterating = Some(false);
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
             return None;
         }
 
@@ -368,19 +368,19 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
             match plus_n.partial_cmp(&self.end) {
                 Some(Less) => {
-                    self.is_iterating = Some(true);
+                    self.is_empty = Some(false);
                     self.start = plus_n.add_one();
                     return Some(plus_n)
                 }
                 Some(Equal) => {
-                    self.is_iterating = Some(false);
+                    self.is_empty = Some(true);
                     return Some(plus_n)
                 }
                 _ => {}
             }
         }
 
-        self.is_iterating = Some(false);
+        self.is_empty = Some(true);
         None
     }
 
@@ -404,18 +404,18 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        if self.is_empty() {
-            self.is_iterating = Some(false);
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
             return None;
         }
-        if self.start < self.end {
+        let is_iterating = self.start < self.end;
+        self.is_empty = Some(!is_iterating);
+        Some(if is_iterating {
             let n = self.end.sub_one();
-            self.is_iterating = Some(true);
-            Some(mem::replace(&mut self.end, n))
+            mem::replace(&mut self.end, n)
         } else {
-            self.is_iterating = Some(false);
-            Some(self.end.clone())
-        }
+            self.end.clone()
+        })
     }
 }
 

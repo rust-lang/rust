@@ -787,19 +787,19 @@ where
     #[inline]
     fn spec_next(&mut self) -> Option<Self::Item> {
         self.first_take = false;
-        if self.iter.is_empty() {
-            self.iter.is_iterating = Some(false);
+        self.iter.compute_is_empty();
+        if self.iter.is_empty.unwrap_or_default() {
             return None;
         }
         // add 1 to self.step to get original step size back
         // it was decremented for the general case on construction
         if let Some(n) = self.iter.start.add_usize(self.step+1) {
-            self.iter.is_iterating = Some(n <= self.iter.end);
+            self.iter.is_empty = Some(!(n <= self.iter.end));
             let next = mem::replace(&mut self.iter.start, n);
             Some(next)
         } else {
             let last = self.iter.start.clone();
-            self.iter.is_iterating = Some(false);
+            self.iter.is_empty = Some(true);
             Some(last)
         }
     }
