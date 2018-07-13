@@ -10,7 +10,7 @@ error[E0596]: cannot borrow immutable item `self.x` as mutable
   --> $DIR/issue-39544.rs:26:17
    |
 LL |     fn foo<'z>(&'z self) {
-   |                -------- help: consider changing this to be a mutable reference: `&mut Z`
+   |                -------- help: consider changing this to be a mutable reference: `&mut self`
 LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
@@ -18,7 +18,7 @@ error[E0596]: cannot borrow immutable item `self.x` as mutable
   --> $DIR/issue-39544.rs:30:17
    |
 LL |     fn foo1(&self, other: &Z) {
-   |             ----- help: consider changing this to be a mutable reference: `&mut Z`
+   |             ----- help: consider changing this to be a mutable reference: `&mut self`
 LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
@@ -35,7 +35,7 @@ error[E0596]: cannot borrow immutable item `self.x` as mutable
   --> $DIR/issue-39544.rs:35:17
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
-   |                 -------- help: consider changing this to be a mutable reference: `&mut Z`
+   |                 -------- help: consider changing this to be a mutable reference: `&mut self`
 LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 

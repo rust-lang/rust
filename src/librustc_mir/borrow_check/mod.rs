@@ -44,6 +44,7 @@ use dataflow::{EverInitializedPlaces, MovingOutStatements};
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 use util::collect_writes::FindAssignments;
+use util::suggest_ref_mut;
 
 use self::borrow_set::{BorrowData, BorrowSet};
 use self::flows::Flows;
@@ -1837,17 +1838,41 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Projection(box Projection {
                 base: Place::Local(local),
                 elem: ProjectionElem::Deref,
-            }) if self.mir.local_decls[*local].is_nonref_binding() =>
-            {
-                let (err_help_span, suggested_code) =
-                    find_place_to_suggest_ampmut(self.tcx, self.mir, *local);
-                err.span_suggestion(
-                    err_help_span,
-                    "consider changing this to be a mutable reference",
-                    suggested_code,
-                );
-
+            }) if self.mir.local_decls[*local].is_user_variable.is_some() => {
                 let local_decl = &self.mir.local_decls[*local];
+                let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
+                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
+                        Some(suggest_ampmut_self(local_decl))
+                    },
+
+                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
+                        binding_mode: ty::BindingMode::BindByValue(_),
+                        opt_ty_info,
+                        ..
+                    })) => Some(suggest_ampmut(
+                        self.tcx,
+                        self.mir,
+                        *local,
+                        local_decl,
+                        *opt_ty_info,
+                    )),
+
+                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
+                        binding_mode: ty::BindingMode::BindByReference(_),
+                        ..
+                    })) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
+
+                    ClearCrossCrate::Clear => bug!("saw cleared local state"),
+                };
+
+                if let Some((err_help_span, suggested_code)) = suggestion {
+                    err.span_suggestion(
+                        err_help_span,
+                        "consider changing this to be a mutable reference",
+                        suggested_code,
+                    );
+                }
+
                 if let Some(name) = local_decl.name {
                     err.span_label(
                         span,
@@ -1874,13 +1899,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.emit();
         return true;
 
-        // Returns the span to highlight and the associated text to
-        // present when suggesting that the user use an `&mut`.
-        //
+        fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
+            local_decl: &mir::LocalDecl<'tcx>,
+        ) -> (Span, String) {
+            (local_decl.source_info.span, "&mut self".to_string())
+        }
+
         // When we want to suggest a user change a local variable to be a `&mut`, there
         // are three potential "obvious" things to highlight:
         //
-        // let ident [: Type] [= RightHandSideExresssion];
+        // let ident [: Type] [= RightHandSideExpression];
         //     ^^^^^    ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^
         //     (1.)     (2.)              (3.)
         //
@@ -1889,48 +1917,44 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // for example, if the RHS is present and the Type is not, then the type is going to
         // be inferred *from* the RHS, which means we should highlight that (and suggest
         // that they borrow the RHS mutably).
-        fn find_place_to_suggest_ampmut<'cx, 'gcx, 'tcx>(
+        //
+        // This implementation attempts to emulate AST-borrowck prioritization
+        // by trying (3.), then (2.) and finally falling back on (1.).
+        fn suggest_ampmut<'cx, 'gcx, 'tcx>(
             tcx: TyCtxt<'cx, 'gcx, 'tcx>,
             mir: &Mir<'tcx>,
             local: Local,
+            local_decl: &mir::LocalDecl<'tcx>,
+            opt_ty_info: Option<Span>,
         ) -> (Span, String) {
-            // This implementation attempts to emulate AST-borrowck prioritization
-            // by trying (3.), then (2.) and finally falling back on (1.).
             let locations = mir.find_assignments(local);
             if locations.len() > 0 {
                 let assignment_rhs_span = mir.source_info(locations[0]).span;
                 let snippet = tcx.sess.codemap().span_to_snippet(assignment_rhs_span);
                 if let Ok(src) = snippet {
-                    // pnkfelix inherited code; believes intention is
-                    // highlighted text will always be `&<expr>` and
-                    // thus can transform to `&mut` by slicing off
-                    // first ASCII character and prepending "&mut ".
                     if src.starts_with('&') {
                         let borrowed_expr = src[1..].to_string();
-                        return (assignment_rhs_span, format!("&mut {}", borrowed_expr));
+                        return (
+                            assignment_rhs_span,
+                            format!("&mut {}", borrowed_expr),
+                        );
                     }
                 }
             }
 
-            let local_decl = &mir.local_decls[local];
-            let highlight_span = match local_decl.is_user_variable {
+            let highlight_span = match opt_ty_info {
                 // if this is a variable binding with an explicit type,
                 // try to highlight that for the suggestion.
-                Some(ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                    opt_ty_info: Some(ty_span),
-                    ..
-                }))) => ty_span,
-
-                Some(ClearCrossCrate::Clear) => bug!("saw cleared local state"),
+                Some(ty_span) => ty_span,
 
                 // otherwise, just highlight the span associated with
                 // the (MIR) LocalDecl.
-                _ => local_decl.source_info.span,
+                None => local_decl.source_info.span,
             };
 
             let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
             assert_eq!(ty_mut.mutbl, hir::MutImmutable);
-            return (highlight_span, format!("&mut {}", ty_mut.ty));
+            (highlight_span, format!("&mut {}", ty_mut.ty))
         }
     }
 
