@@ -31,7 +31,8 @@ $ TARGET=armv7-unknown-linux-gnueabihf bash ci/script.sh
 
 - Pick your favorite math function from the [issue tracker].
 - Look for the C implementation of the function in the [MUSL source code][src].
-- Copy paste the C code into a Rust file in the `src` directory and adjust `src/lib.rs` accordingly.
+- Copy paste the C code into a Rust file in the `src/math` directory and adjust `src/math/mod.rs`
+  accordingly.
 - Run `cargo watch check` and fix the compiler errors.
 - Tweak the bottom of `test-generator/src/main.rs` to add your function to the test suite.
 - If you can, run the test suite locally. If you can't, no problem! Your PR will be tested

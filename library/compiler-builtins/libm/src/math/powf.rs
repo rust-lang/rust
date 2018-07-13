@@ -1,4 +1,4 @@
-use {scalbnf, sqrtf};
+use super::{fabsf, scalbnf, sqrtf};
 
 const BP: [f32; 2] = [1.0, 1.5];
 const DP_H: [f32; 2] = [0.0, 5.84960938e-01]; /* 0x3f15c000 */
@@ -28,6 +28,7 @@ const IVLN2: f32 = 1.4426950216e+00;
 const IVLN2_H: f32 = 1.4426879883e+00;
 const IVLN2_L: f32 = 7.0526075433e-06;
 
+#[inline]
 pub fn powf(x: f32, y: f32) -> f32 {
     let mut z: f32;
     let mut ax: f32;
@@ -127,7 +128,7 @@ pub fn powf(x: f32, y: f32) -> f32 {
         }
     }
 
-    ax = ::fabsf(x);
+    ax = fabsf(x);
     /* special value of x */
     if ix == 0x7f800000 || ix == 0 || ix == 0x3f800000 {
         /* x is +-0,+-inf,+-1 */
