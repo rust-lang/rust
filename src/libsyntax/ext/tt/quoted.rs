@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast::NodeId;
+use early_buffered_lints::BufferedEarlyLintId;
 use ext::tt::macro_parser;
 use feature_gate::{self, emit_feature_err, Features, GateIssue};
 use parse::{token, ParseSess};
@@ -175,6 +177,7 @@ impl TokenTree {
 /// - `features`, `attrs`: language feature flags and attributes so that we know whether to use
 ///   unstable features or not.
 /// - `edition`: which edition are we in.
+/// - `macro_node_id`: the NodeId of the macro we are parsing.
 ///
 /// # Returns
 ///
@@ -186,6 +189,7 @@ pub fn parse(
     features: &Features,
     attrs: &[ast::Attribute],
     edition: Edition,
+    macro_node_id: NodeId,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
@@ -204,6 +208,7 @@ pub fn parse(
             features,
             attrs,
             edition,
+            macro_node_id,
         );
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
@@ -265,6 +270,7 @@ fn parse_tree<I>(
     features: &Features,
     attrs: &[ast::Attribute],
     edition: Edition,
+    macro_node_id: NodeId,
 ) -> TokenTree
 where
     I: Iterator<Item = tokenstream::TokenTree>,
@@ -290,10 +296,19 @@ where
                     features,
                     attrs,
                     edition,
+                    macro_node_id,
                 );
                 // Get the Kleene operator and optional separator
                 let (separator, op) =
-                    parse_sep_and_kleene_op(trees, span, sess, features, attrs, edition);
+                    parse_sep_and_kleene_op(
+                        trees,
+                        span,
+                        sess,
+                        features,
+                        attrs,
+                        edition,
+                        macro_node_id,
+                    );
                 // Count the number of captured "names" (i.e. named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(
@@ -350,6 +365,7 @@ where
                     features,
                     attrs,
                     edition,
+                    macro_node_id,
                 ),
             }),
         ),
@@ -413,12 +429,20 @@ fn parse_sep_and_kleene_op<I>(
     features: &Features,
     attrs: &[ast::Attribute],
     edition: Edition,
+    macro_node_id: NodeId,
 ) -> (Option<token::Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
     match edition {
-        Edition::Edition2015 => parse_sep_and_kleene_op_2015(input, span, sess, features, attrs),
+        Edition::Edition2015 => parse_sep_and_kleene_op_2015(
+            input,
+            span,
+            sess,
+            features,
+            attrs,
+            macro_node_id,
+        ),
         Edition::Edition2018 => parse_sep_and_kleene_op_2018(input, span, sess, features, attrs),
         _ => unimplemented!(),
     }
@@ -431,6 +455,7 @@ fn parse_sep_and_kleene_op_2015<I>(
     sess: &ParseSess,
     _features: &Features,
     _attrs: &[ast::Attribute],
+    macro_node_id: NodeId,
 ) -> (Option<token::Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
@@ -474,8 +499,10 @@ where
                     // #2 is a Kleene op, which is the the only valid option
                     Ok(Ok((op, _))) => {
                         // Warn that `?` as a separator will be deprecated
-                        sess.span_diagnostic.span_warn(
+                        sess.buffer_lint(
+                            BufferedEarlyLintId::QuestionMarkMacroSep,
                             op1_span,
+                            macro_node_id,
                             "using `?` as a separator is deprecated and will be \
                              a hard error in an upcoming edition",
                         );

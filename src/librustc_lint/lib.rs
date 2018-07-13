@@ -44,9 +44,13 @@ extern crate syntax_pos;
 
 use rustc::lint;
 use rustc::lint::{LateContext, LateLintPass, LintPass, LintArray};
-use rustc::lint::builtin::{BARE_TRAIT_OBJECTS, ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-                           ELIDED_LIFETIMES_IN_PATHS};
-use rustc::lint::builtin::MACRO_USE_EXTERN_CRATE;
+use rustc::lint::builtin::{
+    BARE_TRAIT_OBJECTS,
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+    MACRO_USE_EXTERN_CRATE,
+    ELIDED_LIFETIMES_IN_PATHS,
+    parser::QUESTION_MARK_MACRO_SEP
+};
 use rustc::session;
 use rustc::util;
 use rustc::hir;
@@ -321,6 +325,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #50504 <https://github.com/rust-lang/rust/issues/50504>",
             edition: None,
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(QUESTION_MARK_MACRO_SEP),
+            reference: "issue #48075 <https://github.com/rust-lang/rust/issues/48075>",
+            edition: Some(Edition::Edition2018),
+        }
         ]);
 
     // Register renamed and removed lints

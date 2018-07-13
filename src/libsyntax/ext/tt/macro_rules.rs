@@ -247,6 +247,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
                             features,
                             &def.attrs,
                             edition,
+                            def.id,
                         )
                         .pop()
                         .unwrap();
@@ -272,6 +273,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
                             features,
                             &def.attrs,
                             edition,
+                            def.id,
                         ).pop()
                          .unwrap();
                     }
