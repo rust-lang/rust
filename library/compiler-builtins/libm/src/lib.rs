@@ -44,7 +44,6 @@ pub trait F32Ext {
     #[cfg(todo)]
     fn round(self) -> Self;
 
-    #[cfg(todo)]
     fn trunc(self) -> Self;
 
     #[cfg(todo)]
@@ -163,7 +162,6 @@ impl F32Ext for f32 {
         roundf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn trunc(self) -> Self {
         truncf(self)
@@ -372,7 +370,6 @@ pub trait F64Ext {
 
     fn round(self) -> Self;
 
-    #[cfg(todo)]
     fn trunc(self) -> Self;
 
     #[cfg(todo)]
@@ -494,7 +491,6 @@ impl F64Ext for f64 {
         round(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn trunc(self) -> Self {
         trunc(self)
