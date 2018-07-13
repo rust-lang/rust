@@ -25,6 +25,9 @@ matrix:
     - env: TARGET=thumbv7em-linux-eabi
     - env: TARGET=thumbv7em-linux-eabihf
     - env: TARGET=thumbv7m-linux-eabi
+    - env: TARGET=wasm32-unknown-unknown
+      install: rustup target add $TARGET
+      script: cargo build --target $TARGET
     - env: TARGET=x86_64-apple-darwin
       os: osx
     - env: TARGET=x86_64-unknown-linux-gnu
