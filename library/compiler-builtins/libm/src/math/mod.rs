@@ -17,6 +17,7 @@ mod expf;
 mod floor;
 mod trunc;
 mod truncf;
+mod hypotf;
 
 //mod service;
 
@@ -34,6 +35,7 @@ pub use self::{
     floor::floor,
     trunc::trunc,
     truncf::truncf,
+    hypotf::hypotf,
 };
 
 fn isnanf(x: f32) -> bool {

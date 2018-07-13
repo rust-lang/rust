@@ -88,7 +88,6 @@ pub trait F32Ext {
     #[cfg(todo)]
     fn cbrt(self) -> Self;
 
-    #[cfg(todo)]
     fn hypot(self, other: Self) -> Self;
 
     #[cfg(todo)]
@@ -254,7 +253,6 @@ impl F32Ext for f32 {
         cbrtf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn hypot(self, other: Self) -> Self {
         hypotf(self, other)
