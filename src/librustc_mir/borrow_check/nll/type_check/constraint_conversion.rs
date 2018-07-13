@@ -9,12 +9,11 @@
 // except according to those terms.
 
 use borrow_check::location::LocationTable;
-use borrow_check::nll::constraint_set::OutlivesConstraint;
+use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::{RegionTest, TypeTest};
 use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::universal_regions::UniversalRegions;
-use borrow_check::nll::constraint_set::ConstraintSet;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
@@ -186,7 +185,6 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
             locations: self.locations,
             sub,
             sup,
-            next: None,
         });
     }
 

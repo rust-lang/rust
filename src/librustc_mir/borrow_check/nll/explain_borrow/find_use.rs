@@ -57,7 +57,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
 
         queue.push_back(self.start_point);
         while let Some(p) = queue.pop_front() {
-            if !self.regioncx.region_contains_point(self.region_vid, p) {
+            if !self.regioncx.region_contains(self.region_vid, p) {
                 continue;
             }
 

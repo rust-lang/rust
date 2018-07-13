@@ -9,11 +9,14 @@
 // except according to those terms.
 
 use rustc::ty::RegionVid;
+use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use borrow_check::nll::type_check::Locations;
 
 use std::fmt;
 use std::ops::Deref;
+
+crate mod graph;
 
 #[derive(Clone, Default)]
 crate struct ConstraintSet {
@@ -21,9 +24,9 @@ crate struct ConstraintSet {
 }
 
 impl ConstraintSet {
-    pub fn push(&mut self, constraint: OutlivesConstraint) {
+    crate fn push(&mut self, constraint: OutlivesConstraint) {
         debug!(
-            "add_outlives({:?}: {:?} @ {:?})",
+            "ConstraintSet::push({:?}: {:?} @ {:?}",
             constraint.sup, constraint.sub, constraint.locations
         );
         if constraint.sup == constraint.sub {
@@ -33,44 +36,32 @@ impl ConstraintSet {
         self.constraints.push(constraint);
     }
 
-    /// Once all constraints have been added, `link()` is used to thread together the constraints
-    /// based on which would be affected when a particular region changes. See the next field of
-    /// `OutlivesContraint` for more details.
-    /// link returns a map that is needed later by `each_affected_by_dirty`.
-    pub fn link(&mut self, len: usize) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
-        let mut map = IndexVec::from_elem_n(None, len);
-
-        for (idx, constraint) in self.constraints.iter_enumerated_mut().rev() {
-            let mut head = &mut map[constraint.sub];
-            debug_assert!(constraint.next.is_none());
-            constraint.next = *head;
-            *head = Some(idx);
-        }
-
-        map
+    /// Constructs a graph from the constraint set; the graph makes it
+    /// easy to find the constraints affecting a particular region
+    /// (you should not mutate the set once this graph is
+    /// constructed).
+    crate fn graph(&self, num_region_vars: usize) -> graph::ConstraintGraph {
+        graph::ConstraintGraph::new(self, num_region_vars)
     }
 
-    /// When a region R1 changes, we need to reprocess all constraints R2: R1 to take into account
-    /// any new elements that R1 now has. This method will quickly enumerate all such constraints
-    /// (that is, constraints where R1 is in the "subregion" position).
-    /// To use it, invoke with `map[R1]` where map is the map returned by `link`;
-    /// the callback op will be invoked for each affected constraint.
-    pub fn each_affected_by_dirty(
+    /// Compute cycles (SCCs) in the graph of regions. In particular,
+    /// find all regions R1, R2 such that R1: R2 and R2: R1 and group
+    /// them into an SCC, and find the relationships between SCCs.
+    crate fn compute_sccs(
         &self,
-        mut opt_dep_idx: Option<ConstraintIndex>,
-        mut op: impl FnMut(ConstraintIndex),
-    ) {
-        while let Some(dep_idx) = opt_dep_idx {
-            op(dep_idx);
-            opt_dep_idx = self.constraints[dep_idx].next;
-        }
+        constraint_graph: &graph::ConstraintGraph,
+    ) -> Sccs<RegionVid, ConstraintSccIndex> {
+        let region_graph = &graph::RegionGraph::new(self, constraint_graph);
+        Sccs::new(region_graph)
     }
 }
 
 impl Deref for ConstraintSet {
     type Target = IndexVec<ConstraintIndex, OutlivesConstraint>;
 
-    fn deref(&self) -> &Self::Target { &self.constraints }
+    fn deref(&self) -> &Self::Target {
+        &self.constraints
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -84,16 +75,6 @@ pub struct OutlivesConstraint {
 
     /// Region that must be outlived.
     pub sub: RegionVid,
-
-    /// Later on, we thread the constraints onto a linked list
-    /// grouped by their `sub` field. So if you had:
-    ///
-    /// Index | Constraint | Next Field
-    /// ----- | ---------- | ----------
-    /// 0     | `'a: 'b`   | Some(2)
-    /// 1     | `'b: 'c`   | None
-    /// 2     | `'c: 'b`   | None
-    pub next: Option<ConstraintIndex>,
 
     /// Where did this constraint arise?
     pub locations: Locations,
@@ -110,3 +91,5 @@ impl fmt::Debug for OutlivesConstraint {
 }
 
 newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
+
+newtype_index!(ConstraintSccIndex { DEBUG_FORMAT = "ConstraintSccIndex({})" });

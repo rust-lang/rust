@@ -49,7 +49,9 @@ use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::{Direction, INCOMING, OUTGOING, NodeIndex};
+use rustc_data_structures::graph::implementation::{
+    Direction, INCOMING, OUTGOING, NodeIndex
+};
 use rustc::hir;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::ich::{ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};

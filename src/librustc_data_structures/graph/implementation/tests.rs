@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use graph::*;
+use graph::implementation::*;
 use std::fmt::Debug;
 
 type TestGraph = Graph<&'static str, &'static str>;

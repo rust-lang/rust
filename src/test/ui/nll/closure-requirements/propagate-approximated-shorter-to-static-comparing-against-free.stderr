@@ -5,7 +5,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |     ^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:9
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:20
    |
 LL |     foo(cell, |cell_a, cell_x| {
    |                ------  ------ lifetime `'1` appears in this argument
@@ -13,7 +13,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |                lifetime `'2` appears in this argument
 LL |         //~^ WARNING not reporting region error due to nll
 LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |                    ^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:15

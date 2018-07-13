@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::graph;
 use cfg::*;
 use middle::region;
-use ty::{self, TyCtxt};
+use rustc_data_structures::graph::implementation as graph;
 use syntax::ptr::P;
+use ty::{self, TyCtxt};
 
 use hir::{self, PatKind};
 use hir::def_id::DefId;

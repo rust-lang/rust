@@ -13,7 +13,7 @@ use std::cmp::max;
 use std::slice;
 use std::iter;
 
-use super::{ControlFlowGraph, GraphPredecessors, GraphSuccessors};
+use super::*;
 
 pub struct TestGraph {
     num_nodes: usize,
@@ -44,23 +44,31 @@ impl TestGraph {
     }
 }
 
-impl ControlFlowGraph for TestGraph {
+impl DirectedGraph for TestGraph {
     type Node = usize;
+}
 
+impl WithStartNode for TestGraph {
     fn start_node(&self) -> usize {
         self.start_node
     }
+}
 
+impl WithNumNodes for TestGraph {
     fn num_nodes(&self) -> usize {
         self.num_nodes
     }
+}
 
+impl WithPredecessors for TestGraph {
     fn predecessors<'graph>(&'graph self,
                             node: usize)
                             -> <Self as GraphPredecessors<'graph>>::Iter {
         self.predecessors[&node].iter().cloned()
     }
+}
 
+impl WithSuccessors for TestGraph {
     fn successors<'graph>(&'graph self, node: usize) -> <Self as GraphSuccessors<'graph>>::Iter {
         self.successors[&node].iter().cloned()
     }

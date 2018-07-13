@@ -16,7 +16,7 @@ use dataflow::indexes::BorrowIndex;
 use rustc::mir::{BasicBlock, Location, Mir, Place};
 use rustc::mir::{ProjectionElem, BorrowKind};
 use rustc::ty::TyCtxt;
-use rustc_data_structures::control_flow_graph::dominators::Dominators;
+use rustc_data_structures::graph::dominators::Dominators;
 
 /// Returns true if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and

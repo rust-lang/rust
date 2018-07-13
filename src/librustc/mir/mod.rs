@@ -21,9 +21,8 @@ use mir::interpret::{EvalErrorKind, Scalar, Value};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
-use rustc_data_structures::control_flow_graph::dominators::{dominators, Dominators};
-use rustc_data_structures::control_flow_graph::ControlFlowGraph;
-use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
+use rustc_data_structures::graph::dominators::{dominators, Dominators};
+use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::sync::Lrc;
@@ -2289,23 +2288,32 @@ fn item_path_str(def_id: DefId) -> String {
     ty::tls::with(|tcx| tcx.item_path_str(def_id))
 }
 
-impl<'tcx> ControlFlowGraph for Mir<'tcx> {
+impl<'tcx> graph::DirectedGraph for Mir<'tcx> {
     type Node = BasicBlock;
+}
 
+impl<'tcx> graph::WithNumNodes for Mir<'tcx> {
     fn num_nodes(&self) -> usize {
         self.basic_blocks.len()
     }
+}
 
+impl<'tcx> graph::WithStartNode for Mir<'tcx> {
     fn start_node(&self) -> Self::Node {
         START_BLOCK
     }
+}
 
+impl<'tcx> graph::WithPredecessors for Mir<'tcx> {
     fn predecessors<'graph>(
         &'graph self,
         node: Self::Node,
     ) -> <Self as GraphPredecessors<'graph>>::Iter {
         self.predecessors_for(node).clone().into_iter()
     }
+}
+
+impl<'tcx> graph::WithSuccessors for Mir<'tcx> {
     fn successors<'graph>(
         &'graph self,
         node: Self::Node,
@@ -2314,12 +2322,12 @@ impl<'tcx> ControlFlowGraph for Mir<'tcx> {
     }
 }
 
-impl<'a, 'b> GraphPredecessors<'b> for Mir<'a> {
+impl<'a, 'b> graph::GraphPredecessors<'b> for Mir<'a> {
     type Item = BasicBlock;
     type Iter = IntoIter<BasicBlock>;
 }
 
-impl<'a, 'b> GraphSuccessors<'b> for Mir<'a> {
+impl<'a, 'b> graph::GraphSuccessors<'b> for Mir<'a> {
     type Item = BasicBlock;
     type Iter = iter::Cloned<Successors<'b>>;
 }

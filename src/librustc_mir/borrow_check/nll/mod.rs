@@ -45,7 +45,7 @@ mod renumber;
 crate mod type_check;
 mod universal_regions;
 
-crate mod constraint_set;
+mod constraints;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;
@@ -108,6 +108,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         def_id,
         &universal_regions,
         location_table,
+        borrow_set,
         &liveness,
         &mut all_facts,
         flow_inits,
@@ -294,8 +295,15 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     // Also dump the inference graph constraints as a graphviz file.
     let _: io::Result<()> = do catch {
         let mut file =
-            pretty::create_dump_file(infcx.tcx, "regioncx.dot", None, "nll", &0, source)?;
-        regioncx.dump_graphviz(&mut file)?;
+            pretty::create_dump_file(infcx.tcx, "regioncx.all.dot", None, "nll", &0, source)?;
+        regioncx.dump_graphviz_raw_constraints(&mut file)?;
+    };
+
+    // Also dump the inference graph constraints as a graphviz file.
+    let _: io::Result<()> = do catch {
+        let mut file =
+            pretty::create_dump_file(infcx.tcx, "regioncx.scc.dot", None, "nll", &0, source)?;
+        regioncx.dump_graphviz_scc_constraints(&mut file)?;
     };
 }
 
