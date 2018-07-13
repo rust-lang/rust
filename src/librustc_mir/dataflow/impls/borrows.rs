@@ -20,7 +20,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::{RegionKind, RegionVid};
 use rustc::ty::RegionKind::ReScope;
 
-use rustc_data_structures::bitslice::BitwiseOperator;
+use rustc_data_structures::bitslice::{BitwiseOperator, Word};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -370,7 +370,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
+    fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // union effects of preds when computing reservations
     }
 }

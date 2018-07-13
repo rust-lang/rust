@@ -79,7 +79,7 @@ fn bit_lookup(bit: usize) -> BitLookup {
 }
 
 
-fn bit_str(bit: Word) -> String {
+fn bit_str(bit: usize) -> String {
     let byte = bit >> 3;
     let lobits = 1 << (bit & 0b111);
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
@@ -116,8 +116,8 @@ pub fn bits_to_string(words: &[Word], bits: usize) -> String {
 }
 
 #[inline]
-pub fn bitwise<Op:BitwiseOperator>(out_vec: &mut [usize],
-                                   in_vec: &[usize],
+pub fn bitwise<Op:BitwiseOperator>(out_vec: &mut [Word],
+                                   in_vec: &[Word],
                                    op: &Op) -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
@@ -132,21 +132,21 @@ pub fn bitwise<Op:BitwiseOperator>(out_vec: &mut [usize],
 
 pub trait BitwiseOperator {
     /// Applies some bit-operation pointwise to each of the bits in the two inputs.
-    fn join(&self, pred1: usize, pred2: usize) -> usize;
+    fn join(&self, pred1: Word, pred2: Word) -> Word;
 }
 
 pub struct Intersect;
 impl BitwiseOperator for Intersect {
     #[inline]
-    fn join(&self, a: usize, b: usize) -> usize { a & b }
+    fn join(&self, a: Word, b: Word) -> Word { a & b }
 }
 pub struct Union;
 impl BitwiseOperator for Union {
     #[inline]
-    fn join(&self, a: usize, b: usize) -> usize { a | b }
+    fn join(&self, a: Word, b: Word) -> Word { a | b }
 }
 pub struct Subtract;
 impl BitwiseOperator for Subtract {
     #[inline]
-    fn join(&self, a: usize, b: usize) -> usize { a & !b }
+    fn join(&self, a: Word, b: Word) -> Word { a & !b }
 }
