@@ -1,0 +1,9 @@
+error[E0018]: raw pointers cannot be cast to integers in constants
+  --> $DIR/issue-52023-array-size-pointer-cast.rs:12:17
+   |
+LL |     let _ = [0; (&0 as *const i32) as usize]; //~ ERROR raw pointers cannot be cast
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0018`.
