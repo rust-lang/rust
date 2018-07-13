@@ -1853,18 +1853,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("assemble_candidates_from_object_ty(self_ty={:?})",
                obligation.self_ty().skip_binder());
 
-        // Object-safety candidates are only applicable to object-safe
-        // traits. Including this check is useful because it helps
-        // inference in cases of traits like `BorrowFrom`, which are
-        // not object-safe, and which rely on being able to infer the
-        // self-type from one of the other inputs. Without this check,
-        // these cases wind up being considered ambiguous due to a
-        // (spurious) ambiguity introduced here.
-        let predicate_trait_ref = obligation.predicate.to_poly_trait_ref();
-        if !self.tcx().is_object_safe(predicate_trait_ref.def_id()) {
-            return;
-        }
-
         self.probe(|this, _snapshot| {
             // the code below doesn't care about regions, and the
             // self-ty here doesn't escape this probe, so just erase
@@ -1885,6 +1873,17 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     }
                 }
                 ty::Infer(ty::TyVar(_)) => {
+                    // Object-safety candidates are only applicable to object-safe
+                    // traits. Including this check is useful because it helps
+                    // inference in cases of traits like `BorrowFrom`, which are
+                    // not object-safe, and which rely on being able to infer the
+                    // self-type from one of the other inputs. Without this check,
+                    // these cases wind up being considered ambiguous due to a
+                    // (spurious) ambiguity introduced here.
+                    let predicate_trait_ref = obligation.predicate.to_poly_trait_ref();
+                    if !this.tcx().is_object_safe(predicate_trait_ref.def_id()) {
+                        return;
+                    }
                     debug!("assemble_candidates_from_object_ty: ambiguous");
                     candidates.ambiguous = true; // could wind up being an object type
                     return;
