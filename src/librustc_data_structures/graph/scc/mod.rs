@@ -64,7 +64,7 @@ impl<N: Idx, S: Idx> Sccs<N, S> {
         self.scc_indices[r]
     }
 
-    /// Returns the successor of the given SCC.
+    /// Returns the successors of the given SCC.
     pub fn successors(&self, scc: S) -> &[S] {
         self.scc_data.successors(scc)
     }
@@ -76,7 +76,7 @@ impl<S: Idx> SccData<S> {
         self.ranges.len()
     }
 
-    /// Returns the successor of the given SCC.
+    /// Returns the successors of the given SCC.
     fn successors(&self, scc: S) -> &[S] {
         // Annoyingly, `range` does not implement `Copy`, so we have
         // to do `range.start..range.end`:
