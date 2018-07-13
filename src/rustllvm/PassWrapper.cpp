@@ -1099,6 +1099,30 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   return true;
 }
 
+extern "C" typedef void (*LLVMRustModuleNameCallback)(void*, // payload
+                                                      const char*, // importing module name
+                                                      const char*); // imported module name
+
+// Calls `module_name_callback` for each module import done by ThinLTO.
+// The callback is provided with regular null-terminated C strings.
+extern "C" void
+LLVMRustGetThinLTOModuleImports(const LLVMRustThinLTOData *data,
+                                LLVMRustModuleNameCallback module_name_callback,
+                                void* callback_payload) {
+  for (const auto& importing_module : data->ImportLists) {
+    const std::string importing_module_id = importing_module.getKey().str();
+
+    const auto& imports = importing_module.getValue();
+
+    for (const auto& imported_module : imports) {
+      const std::string imported_module_id = imported_module.getKey().str();
+      module_name_callback(callback_payload,
+                           importing_module_id.c_str(),
+                           imported_module_id.c_str());
+    }
+  }
+}
+
 // This struct and various functions are sort of a hack right now, but the
 // problem is that we've got in-memory LLVM modules after we generate and
 // optimize all codegen-units for one compilation in rustc. To be compatible
@@ -1277,6 +1301,11 @@ LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data, LLVMModuleRef
 
 extern "C" bool
 LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  report_fatal_error("ThinLTO not available");
+}
+
+extern "C" LLVMRustThinLTOModuleImports
+LLVMRustGetLLVMRustThinLTOModuleImports(const LLVMRustThinLTOData *Data) {
   report_fatal_error("ThinLTO not available");
 }
 

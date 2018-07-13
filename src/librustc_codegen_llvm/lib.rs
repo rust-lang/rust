@@ -90,7 +90,7 @@ mod back {
     mod command;
     pub mod linker;
     pub mod link;
-    mod lto;
+    pub mod lto;
     pub mod symbol_export;
     pub mod write;
     mod rpath;
@@ -258,8 +258,8 @@ struct ModuleCodegen {
     /// unique amongst **all** crates.  Therefore, it should contain
     /// something unique to this crate (e.g., a module path) as well
     /// as the crate name and disambiguator.
+    /// We currently generate these names via CodegenUnit::build_cgu_name().
     name: String,
-    llmod_id: String,
     source: ModuleSource,
     kind: ModuleKind,
 }
@@ -306,7 +306,6 @@ impl ModuleCodegen {
         };
 
         CompiledModule {
-            llmod_id: self.llmod_id,
             name: self.name.clone(),
             kind: self.kind,
             pre_existing,
@@ -320,7 +319,6 @@ impl ModuleCodegen {
 #[derive(Debug)]
 struct CompiledModule {
     name: String,
-    llmod_id: String,
     kind: ModuleKind,
     pre_existing: bool,
     object: Option<PathBuf>,

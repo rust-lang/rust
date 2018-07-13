@@ -29,7 +29,7 @@ use super::ModuleCodegen;
 use super::ModuleKind;
 
 use abi;
-use back::link;
+use back::{link, lto};
 use back::write::{self, OngoingCodegen, create_target_machine};
 use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
@@ -739,15 +739,18 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let link_meta = link::build_link_meta(crate_hash);
 
     // Codegen the metadata.
-    let llmod_id = "metadata";
+    let metadata_cgu_name = CodegenUnit::build_cgu_name(tcx,
+                                                        LOCAL_CRATE,
+                                                        &["crate"],
+                                                        Some("metadata")).as_str()
+                                                                         .to_string();
     let (metadata_llcx, metadata_llmod, metadata) =
         time(tcx.sess, "write metadata", || {
-            write_metadata(tcx, llmod_id, &link_meta)
+            write_metadata(tcx, &metadata_cgu_name, &link_meta)
         });
 
     let metadata_module = ModuleCodegen {
-        name: link::METADATA_MODULE_NAME.to_string(),
-        llmod_id: llmod_id.to_string(),
+        name: metadata_cgu_name,
         source: ModuleSource::Codegened(ModuleLlvm {
             llcx: metadata_llcx,
             llmod: metadata_llmod,
@@ -810,26 +813,30 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Codegen an allocator shim, if any
     let allocator_module = if let Some(kind) = *tcx.sess.allocator_kind.get() {
-        unsafe {
-            let llmod_id = "allocator";
-            let (llcx, llmod) =
-                context::create_context_and_module(tcx.sess, llmod_id);
-            let modules = ModuleLlvm {
-                llmod,
-                llcx,
-                tm: create_target_machine(tcx.sess, false),
-            };
-            time(tcx.sess, "write allocator module", || {
+        let llmod_id = CodegenUnit::build_cgu_name(tcx,
+                                                   LOCAL_CRATE,
+                                                   &["crate"],
+                                                   Some("allocator")).as_str()
+                                                                     .to_string();
+        let (llcx, llmod) = unsafe {
+            context::create_context_and_module(tcx.sess, &llmod_id)
+        };
+        let modules = ModuleLlvm {
+            llmod,
+            llcx,
+            tm: create_target_machine(tcx.sess, false),
+        };
+        time(tcx.sess, "write allocator module", || {
+            unsafe {
                 allocator::codegen(tcx, &modules, kind)
-            });
+            }
+        });
 
-            Some(ModuleCodegen {
-                name: link::ALLOCATOR_MODULE_NAME.to_string(),
-                llmod_id: llmod_id.to_string(),
-                source: ModuleSource::Codegened(modules),
-                kind: ModuleKind::Allocator,
-            })
-        }
+        Some(ModuleCodegen {
+            name: llmod_id,
+            source: ModuleSource::Codegened(modules),
+            kind: ModuleKind::Allocator,
+        })
     } else {
         None
     };
@@ -872,21 +879,10 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // succeed it means that none of the dependencies has changed
                 // and we can safely re-use.
                 if let Some(dep_node_index) = tcx.dep_graph.try_mark_green(tcx, dep_node) {
-                    // Append ".rs" to LLVM module identifier.
-                    //
-                    // LLVM code generator emits a ".file filename" directive
-                    // for ELF backends. Value of the "filename" is set as the
-                    // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
-                    // crashes if the module identifier is same as other symbols
-                    // such as a function name in the module.
-                    // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-                    let llmod_id = format!("{}.rs", cgu.name());
-
                     let module = ModuleCodegen {
                         name: cgu.name().to_string(),
                         source: ModuleSource::Preexisting(buf),
                         kind: ModuleKind::Regular,
-                        llmod_id,
                     };
                     tcx.dep_graph.mark_loaded_from_cache(dep_node_index, true);
                     write::submit_codegened_module_to_llvm(tcx, module, 0);
@@ -1195,21 +1191,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     {
         let cgu_name = cgu.name().to_string();
 
-        // Append ".rs" to LLVM module identifier.
-        //
-        // LLVM code generator emits a ".file filename" directive
-        // for ELF backends. Value of the "filename" is set as the
-        // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
-        // crashes if the module identifier is same as other symbols
-        // such as a function name in the module.
-        // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-        let llmod_id = format!("{}-{}.rs",
-                               cgu.name(),
-                               tcx.crate_disambiguator(LOCAL_CRATE)
-                                   .to_fingerprint().to_hex());
-
         // Instantiate monomorphizations without filling out definitions yet...
-        let cx = CodegenCx::new(tcx, cgu, &llmod_id);
+        let cx = CodegenCx::new(tcx, cgu);
         let module = {
             let mono_items = cx.codegen_unit
                                  .items_in_deterministic_order(cx.tcx);
@@ -1267,7 +1250,6 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 name: cgu_name,
                 source: ModuleSource::Codegened(llvm_module),
                 kind: ModuleKind::Regular,
-                llmod_id,
             }
         };
 
@@ -1370,6 +1352,27 @@ mod temp_stable_hash_impls {
     }
 }
 
+#[allow(unused)]
+fn load_thin_lto_imports(sess: &Session) -> lto::ThinLTOImports {
+    let path = rustc_incremental::in_incr_comp_dir_sess(
+        sess,
+        lto::THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME
+    );
+
+    if !path.exists() {
+        return lto::ThinLTOImports::new();
+    }
+
+    match lto::ThinLTOImports::load_from_file(&path) {
+        Ok(imports) => imports,
+        Err(e) => {
+            let msg = format!("Error while trying to load ThinLTO import data \
+                               for incremental compilation: {}", e);
+            sess.fatal(&msg)
+        }
+    }
+}
+
 pub fn define_custom_section(cx: &CodegenCx, def_id: DefId) {
     use rustc::mir::interpret::GlobalId;
 
@@ -1408,3 +1411,4 @@ pub fn define_custom_section(cx: &CodegenCx, def_id: DefId) {
         );
     }
 }
+

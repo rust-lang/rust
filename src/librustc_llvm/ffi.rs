@@ -350,6 +350,10 @@ pub enum ThinLTOData {}
 /// LLVMRustThinLTOBuffer
 pub enum ThinLTOBuffer {}
 
+// LLVMRustModuleNameCallback
+pub type ThinLTOModuleNameCallback =
+    unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
+
 /// LLVMRustThinLTOModule
 #[repr(C)]
 pub struct ThinLTOModule {
@@ -1778,6 +1782,11 @@ extern "C" {
         Data: *const ThinLTOData,
         Module: ModuleRef,
     ) -> bool;
+    pub fn LLVMRustGetThinLTOModuleImports(
+        Data: *const ThinLTOData,
+        ModuleNameCallback: ThinLTOModuleNameCallback,
+        CallbackPayload: *mut c_void,
+    );
     pub fn LLVMRustFreeThinLTOData(Data: *mut ThinLTOData);
     pub fn LLVMRustParseBitcodeForThinLTO(
         Context: ContextRef,

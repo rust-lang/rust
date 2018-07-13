@@ -26,6 +26,7 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
+use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{self, Lrc, Lock, LockCell, OneThread, Once, RwLock};
 
 use syntax::ast::NodeId;
@@ -1182,6 +1183,14 @@ pub struct CrateDisambiguator(Fingerprint);
 impl CrateDisambiguator {
     pub fn to_fingerprint(self) -> Fingerprint {
         self.0
+    }
+}
+
+impl fmt::Display for CrateDisambiguator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let (a, b) = self.0.as_value();
+        let as_u128 = a as u128 | ((b as u128) << 64);
+        f.write_str(&base_n::encode(as_u128, base_n::CASE_INSENSITIVE))
     }
 }
 
