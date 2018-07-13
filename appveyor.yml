@@ -2,10 +2,10 @@ environment:
     global:
         PROJECT_NAME: miri
     matrix:
-        - TARGET: i686-pc-windows-msvc
-          MSYS2_BITS: 32
         - TARGET: x86_64-pc-windows-msvc
           MSYS2_BITS: 64
+        - TARGET: i686-pc-windows-msvc
+          MSYS2_BITS: 32
 
 # branches to build
 branches:
