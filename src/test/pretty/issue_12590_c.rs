@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pp-exact:issue_12590_c.pp
+// pretty-compare-only
 // pretty-mode:expanded
+// pp-exact:issue_12590_c.pp
 
 // The next line should be expanded
 

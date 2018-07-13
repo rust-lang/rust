@@ -1268,13 +1268,14 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident)?;
 
                 if _mod.inline || self.is_expanded {
-                    println!("Going to print inline anyway");
                     self.nbsp()?;
                     self.bopen()?;
                     self.print_mod(_mod, &item.attrs)?;
                     self.bclose(item.span)?;
                 } else {
                     self.s.word(";")?;
+                    self.end()?; // end inner head-block
+                    self.end()?; // end outer head-block
                 }
 
             }
