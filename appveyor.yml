@@ -35,6 +35,8 @@ test_script:
     - set RUST_BACKTRACE=1
     - cargo build --release
     - cargo test --release
+    - set MIRI_SYSROOT=C:\Users\appveyor\.xargo\HOST
+    - cargo test --release
 
 notifications:
     - provider: Email
