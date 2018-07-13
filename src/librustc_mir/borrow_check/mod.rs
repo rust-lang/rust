@@ -34,7 +34,7 @@ use std::rc::Rc;
 use syntax_pos::Span;
 
 use dataflow::indexes::BorrowIndex;
-use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
+use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError, MovePathIndex};
 use dataflow::Borrows;
 use dataflow::DataflowResultsConsumer;
 use dataflow::FlowAtLocation;
@@ -148,13 +148,11 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let mir = &mir; // no further changes
     let location_table = &LocationTable::new(mir);
 
-    let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx) {
-        Ok(move_data) => move_data,
-        Err((move_data, move_errors)) => {
-            move_errors::report_move_errors(&mir, tcx, move_errors, &move_data);
-            move_data
-        }
-    };
+    let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<MoveError<'tcx>>>) =
+        match MoveData::gather_moves(mir, tcx) {
+            Ok(move_data) => (move_data, None),
+            Err((move_data, move_errors)) => (move_data, Some(move_errors)),
+        };
 
     let mdpe = MoveDataParamEnv {
         move_data: move_data,
@@ -271,6 +269,9 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         polonius_output,
     );
 
+    if let Some(errors) = move_errors {
+        mbcx.report_move_errors(errors);
+    }
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 
     // For each non-user used mutable variable, check if it's been assigned from
@@ -1975,7 +1976,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ProjectionElem::Field(field, _ty) => {
                     let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
 
-                    if  base_ty.is_closure() || base_ty.is_generator() {
+                    if base_ty.is_closure() || base_ty.is_generator() {
                         Some(field)
                     } else {
                         None
