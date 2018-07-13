@@ -142,8 +142,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     if source.name == keywords::SelfValue.name() {
                         type_ns_only = true;
 
-                        let last_segment = *module_path.last().unwrap();
-                        if last_segment.name == keywords::CrateRoot.name() {
+                        let empty_prefix = module_path.last().map_or(true, |ident| {
+                            ident.name == keywords::CrateRoot.name()
+                        });
+                        if empty_prefix {
                             resolve_error(
                                 self,
                                 use_tree.span,
@@ -154,10 +156,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         }
 
                         // Replace `use foo::self;` with `use foo;`
-                        let _ = module_path.pop();
-                        source = last_segment;
+                        source = module_path.pop().unwrap();
                         if rename.is_none() {
-                            ident = last_segment;
+                            ident = source;
                         }
                     }
                 } else {
@@ -169,7 +170,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
 
                     // Disallow `use $crate;`
-                    if source.name == keywords::DollarCrate.name() && path.segments.len() == 1 {
+                    if source.name == keywords::DollarCrate.name() && module_path.is_empty() {
                         let crate_root = self.resolve_crate_root(source);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
@@ -179,6 +180,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // in `source` breaks `src/test/compile-fail/import-crate-var.rs`,
                         // while the current crate doesn't have a valid `crate_name`.
                         if crate_name != keywords::Invalid.name() {
+                            // `crate_name` should not be interpreted as relative.
+                            module_path.push(Ident {
+                                name: keywords::CrateRoot.name(),
+                                span: source.span,
+                            });
                             source.name = crate_name;
                         }
                         if rename.is_none() {
@@ -283,9 +289,18 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         match item.node {
             ItemKind::Use(ref use_tree) => {
+                let uniform_paths =
+                    self.session.rust_2018() &&
+                    self.session.features_untracked().uniform_paths;
                 // Imports are resolved as global by default, add starting root segment.
+                let root = if !uniform_paths {
+                    use_tree.prefix.make_root()
+                } else {
+                    // Except when `#![feature(uniform_paths)]` is on.
+                    None
+                };
                 let prefix = ast::Path {
-                    segments: use_tree.prefix.make_root().into_iter().collect(),
+                    segments: root.into_iter().collect(),
                     span: use_tree.span,
                 };
 

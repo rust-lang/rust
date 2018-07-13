@@ -144,6 +144,50 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
             ModuleOrUniformRoot::UniformRoot(root) => {
+                // HACK(eddyb): `resolve_path` uses `keywords::Invalid` to indicate
+                // paths of length 0, and currently these are relative `use` paths.
+                let can_be_relative = !ident.is_path_segment_keyword() &&
+                    root == keywords::Invalid.name();
+                if can_be_relative {
+                    // Relative paths should only get here if the feature-gate is on.
+                    assert!(self.session.rust_2018() &&
+                            self.session.features_untracked().uniform_paths);
+
+                    // Try first to resolve relatively.
+                    let mut ctxt = ident.span.ctxt().modern();
+                    let self_module = self.resolve_self(&mut ctxt, self.current_module);
+
+                    let binding = self.resolve_ident_in_module_unadjusted(
+                        ModuleOrUniformRoot::Module(self_module),
+                        ident,
+                        ns,
+                        restricted_shadowing,
+                        record_used,
+                        path_span,
+                    );
+
+                    // FIXME(eddyb) This may give false negatives, specifically
+                    // if a crate with the same name is found in `extern_prelude`,
+                    // preventing the check below this one from returning `binding`
+                    // in all cases.
+                    //
+                    // That is, if there's no crate with the same name, `binding`
+                    // is always returned, which is the result of doing the exact
+                    // same lookup of `ident`, in the `self` module.
+                    // But when a crate does exist, it will get chosen even when
+                    // macro expansion could result in a success from the lookup
+                    // in the `self` module, later on.
+                    if binding.is_ok() {
+                        return binding;
+                    }
+
+                    // Fall back to resolving to an external crate.
+                    if !self.extern_prelude.contains(&ident.name) {
+                        // ... unless the crate name is not in the `extern_prelude`.
+                        return binding;
+                    }
+                }
+
                 let crate_root = if
                     root != keywords::Extern.name() &&
                     (
