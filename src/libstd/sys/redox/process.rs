@@ -51,7 +51,7 @@ pub struct Command {
     uid: Option<u32>,
     gid: Option<u32>,
     saw_nul: bool,
-    closures: Vec<Box<FnMut() -> io::Result<()> + Send + Sync>>,
+    closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
@@ -122,7 +122,7 @@ impl Command {
     }
 
     pub fn before_exec(&mut self,
-                       f: Box<FnMut() -> io::Result<()> + Send + Sync>) {
+                       f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
         self.closures.push(f);
     }
 
