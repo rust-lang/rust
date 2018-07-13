@@ -309,19 +309,19 @@ pub fn opts() -> Vec<RustcOptGroup> {
                        "disable-minification",
                        "Disable minification applied on JS files")
         }),
-        unstable("warn", |o| {
+        stable("warn", |o| {
             o.optmulti("W", "warn", "Set lint warnings", "OPT")
         }),
-        unstable("allow", |o| {
+        stable("allow", |o| {
             o.optmulti("A", "allow", "Set lint allowed", "OPT")
         }),
-        unstable("deny", |o| {
+        stable("deny", |o| {
             o.optmulti("D", "deny", "Set lint denied", "OPT")
         }),
-        unstable("forbid", |o| {
+        stable("forbid", |o| {
             o.optmulti("F", "forbid", "Set lint forbidden", "OPT")
         }),
-        unstable("cap-lints", |o| {
+        stable("cap-lints", |o| {
             o.optmulti(
                 "",
                 "cap-lints",
