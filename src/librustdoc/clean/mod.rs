@@ -497,8 +497,7 @@ impl Item {
 
     pub fn is_non_exhaustive(&self) -> bool {
         self.attrs.other_attrs.iter()
-            .filter(|a| a.name().as_str() == "non_exhaustive")
-            .count() > 0
+            .any(|a| a.name().as_str() == "non_exhaustive")
     }
 
     /// Returns a documentation-level item type from the item.
