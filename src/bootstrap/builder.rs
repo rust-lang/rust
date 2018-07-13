@@ -754,6 +754,7 @@ impl<'a> Builder<'a> {
             match mode {
                 Mode::Std => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
+                    self.clear_if_dirty(&my_out, &libstd_stamp);
                 },
                 Mode::Test => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
@@ -763,9 +764,19 @@ impl<'a> Builder<'a> {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);
                 },
-                Mode::Codegen => { },
-                Mode::ToolStd => { },
-                Mode::ToolTest => { },
+                Mode::Codegen => {
+                    self.clear_if_dirty(&my_out, &self.rustc(compiler));
+                    self.clear_if_dirty(&my_out, &libstd_stamp);
+                    self.clear_if_dirty(&my_out, &libtest_stamp);
+                },
+                Mode::ToolBootstrap => { },
+                Mode::ToolStd => {
+                    self.clear_if_dirty(&my_out, &libstd_stamp);
+                },
+                Mode::ToolTest => {
+                    self.clear_if_dirty(&my_out, &libstd_stamp);
+                    self.clear_if_dirty(&my_out, &libtest_stamp);
+                },
                 Mode::ToolRustc => {
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);

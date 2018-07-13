@@ -25,33 +25,6 @@ use channel::GitInfo;
 use cache::Interned;
 use toolstate::ToolState;
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct CleanTools {
-    pub compiler: Compiler,
-    pub target: Interned<String>,
-    pub cause: Mode,
-}
-
-impl Step for CleanTools {
-    type Output = ();
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        run.never()
-    }
-
-    fn run(self, _builder: &Builder) {
-        let cause = self.cause;
-
-        for &cur_mode in &[Mode::Std, Mode::Test, Mode::Rustc] {
-            // If we are a rustc tool, and std changed, we also need to clear ourselves out -- our
-            // dependencies depend on std. Therefore, we iterate up until our own mode.
-            if cause == cur_mode {
-                break;
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
     InTree,

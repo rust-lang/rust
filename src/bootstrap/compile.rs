@@ -32,7 +32,6 @@ use serde_json;
 use util::{exe, libdir, is_dylib, CiEnv};
 use {Compiler, Mode};
 use native;
-use tool;
 
 use cache::{INTERNER, Interned};
 use builder::{Step, RunConfig, ShouldRun, Builder};
@@ -244,11 +243,7 @@ impl Step for StdLink {
             copy_apple_sanitizer_dylibs(builder, &builder.native_dir(target), "osx", &libdir);
         }
 
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            cause: Mode::Std,
-        });
+        builder.cargo(target_compiler, Mode::ToolStd, target, "clean");
     }
 }
 
@@ -444,11 +439,8 @@ impl Step for TestLink {
                 target));
         add_to_sysroot(builder, &builder.sysroot_libdir(target_compiler, target),
                     &libtest_stamp(builder, compiler, target));
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            cause: Mode::Test,
-        });
+
+        builder.cargo(target_compiler, Mode::ToolTest, target, "clean");
     }
 }
 
@@ -606,11 +598,7 @@ impl Step for RustcLink {
                  target));
         add_to_sysroot(builder, &builder.sysroot_libdir(target_compiler, target),
                        &librustc_stamp(builder, compiler, target));
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            cause: Mode::Rustc,
-        });
+        builder.cargo(target_compiler, Mode::ToolRustc, target, "clean");
     }
 }
 
