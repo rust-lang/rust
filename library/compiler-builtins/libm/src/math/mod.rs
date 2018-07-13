@@ -11,12 +11,14 @@ mod powf;
 mod round;
 mod scalbn;
 mod scalbnf;
+mod sqrt;
 mod sqrtf;
 mod logf;
 mod expf;
 mod floor;
 mod trunc;
 mod truncf;
+mod hypot;
 mod hypotf;
 
 //mod service;
@@ -29,12 +31,14 @@ pub use self::{
     round::round,
     scalbn::scalbn,
     scalbnf::scalbnf,
+    sqrt::sqrt,
     sqrtf::sqrtf,
     logf::logf,
     expf::expf,
     floor::floor,
     trunc::trunc,
     truncf::truncf,
+    hypot::hypot,
     hypotf::hypotf,
 };
 
