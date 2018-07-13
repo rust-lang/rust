@@ -395,7 +395,7 @@ impl Class {
 
 fn write_header(class: Option<&str>,
                 id: Option<&str>,
-                out: &mut Write)
+                out: &mut dyn Write)
                 -> io::Result<()> {
     write!(out, "<pre ")?;
     if let Some(id) = id {
@@ -404,6 +404,6 @@ fn write_header(class: Option<&str>,
     write!(out, "class=\"rust {}\">\n", class.unwrap_or(""))
 }
 
-fn write_footer(out: &mut Write) -> io::Result<()> {
+fn write_footer(out: &mut dyn Write) -> io::Result<()> {
     write!(out, "</pre>\n")
 }

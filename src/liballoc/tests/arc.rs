@@ -18,7 +18,7 @@ fn uninhabited() {
     a = a.clone();
     assert!(a.upgrade().is_none());
 
-    let mut a: Weak<Any> = a;  // Unsizing
+    let mut a: Weak<dyn Any> = a;  // Unsizing
     a = a.clone();
     assert!(a.upgrade().is_none());
 }
@@ -39,7 +39,7 @@ fn slice() {
 #[test]
 fn trait_object() {
     let a: Arc<u32> = Arc::new(4);
-    let a: Arc<Any> = a;  // Unsizing
+    let a: Arc<dyn Any> = a;  // Unsizing
 
     // Exercise is_dangling() with a DST
     let mut a = Arc::downgrade(&a);
@@ -49,7 +49,7 @@ fn trait_object() {
     let mut b = Weak::<u32>::new();
     b = b.clone();
     assert!(b.upgrade().is_none());
-    let mut b: Weak<Any> = b;  // Unsizing
+    let mut b: Weak<dyn Any> = b;  // Unsizing
     b = b.clone();
     assert!(b.upgrade().is_none());
 }

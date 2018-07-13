@@ -375,7 +375,7 @@ impl fmt::Debug for Item {
 
         let fake = MAX_DEF_ID.with(|m| m.borrow().get(&self.def_id.krate)
                                    .map(|id| self.def_id >= *id).unwrap_or(false));
-        let def_id: &fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
+        let def_id: &dyn fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
             .field("source", &self.source)

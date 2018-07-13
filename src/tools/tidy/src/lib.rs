@@ -82,13 +82,13 @@ fn filter_dirs(path: &Path) -> bool {
     skip.iter().any(|p| path.ends_with(p))
 }
 
-fn walk_many(paths: &[&Path], skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
+fn walk_many(paths: &[&Path], skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&Path)) {
     for path in paths {
         walk(path, skip, f);
     }
 }
 
-fn walk(path: &Path, skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
+fn walk(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&Path)) {
     for entry in t!(fs::read_dir(path), path) {
         let entry = t!(entry);
         let kind = t!(entry.file_type());

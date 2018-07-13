@@ -44,18 +44,18 @@ impl OutputFormat {
 }
 
 trait Formatter {
-    fn header(&self, output: &mut Write) -> Result<(), Box<Error>>;
-    fn title(&self, output: &mut Write) -> Result<(), Box<Error>>;
-    fn error_code_block(&self, output: &mut Write, info: &ErrorMetadata,
-                        err_code: &str) -> Result<(), Box<Error>>;
-    fn footer(&self, output: &mut Write) -> Result<(), Box<Error>>;
+    fn header(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>>;
+    fn title(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>>;
+    fn error_code_block(&self, output: &mut dyn Write, info: &ErrorMetadata,
+                        err_code: &str) -> Result<(), Box<dyn Error>>;
+    fn footer(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>>;
 }
 
 struct HTMLFormatter;
 struct MarkdownFormatter;
 
 impl Formatter for HTMLFormatter {
-    fn header(&self, output: &mut Write) -> Result<(), Box<Error>> {
+    fn header(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>> {
         write!(output, r##"<!DOCTYPE html>
 <html>
 <head>
@@ -75,13 +75,13 @@ impl Formatter for HTMLFormatter {
         Ok(())
     }
 
-    fn title(&self, output: &mut Write) -> Result<(), Box<Error>> {
+    fn title(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>> {
         write!(output, "<h1>Rust Compiler Error Index</h1>\n")?;
         Ok(())
     }
 
-    fn error_code_block(&self, output: &mut Write, info: &ErrorMetadata,
-                        err_code: &str) -> Result<(), Box<Error>> {
+    fn error_code_block(&self, output: &mut dyn Write, info: &ErrorMetadata,
+                        err_code: &str) -> Result<(), Box<dyn Error>> {
         // Enclose each error in a div so they can be shown/hidden en masse.
         let desc_desc = match info.description {
             Some(_) => "error-described",
@@ -108,7 +108,7 @@ impl Formatter for HTMLFormatter {
         Ok(())
     }
 
-    fn footer(&self, output: &mut Write) -> Result<(), Box<Error>> {
+    fn footer(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>> {
         write!(output, r##"<script>
 function onEach(arr, func) {{
     if (arr && arr.length > 0 && func) {{
@@ -174,17 +174,17 @@ onEach(document.getElementsByClassName('rust-example-rendered'), function(e) {{
 
 impl Formatter for MarkdownFormatter {
     #[allow(unused_variables)]
-    fn header(&self, output: &mut Write) -> Result<(), Box<Error>> {
+    fn header(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>> {
         Ok(())
     }
 
-    fn title(&self, output: &mut Write) -> Result<(), Box<Error>> {
+    fn title(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>> {
         write!(output, "# Rust Compiler Error Index\n")?;
         Ok(())
     }
 
-    fn error_code_block(&self, output: &mut Write, info: &ErrorMetadata,
-                        err_code: &str) -> Result<(), Box<Error>> {
+    fn error_code_block(&self, output: &mut dyn Write, info: &ErrorMetadata,
+                        err_code: &str) -> Result<(), Box<dyn Error>> {
         Ok(match info.description {
             Some(ref desc) => write!(output, "## {}\n{}\n", err_code, desc)?,
             None => (),
@@ -192,13 +192,13 @@ impl Formatter for MarkdownFormatter {
     }
 
     #[allow(unused_variables)]
-    fn footer(&self, output: &mut Write) -> Result<(), Box<Error>> {
+    fn footer(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>> {
         Ok(())
     }
 }
 
 /// Load all the metadata files from `metadata_dir` into an in-memory map.
-fn load_all_errors(metadata_dir: &Path) -> Result<ErrorMetadataMap, Box<Error>> {
+fn load_all_errors(metadata_dir: &Path) -> Result<ErrorMetadataMap, Box<dyn Error>> {
     let mut all_errors = BTreeMap::new();
 
     for entry in read_dir(metadata_dir)? {
@@ -219,7 +219,7 @@ fn load_all_errors(metadata_dir: &Path) -> Result<ErrorMetadataMap, Box<Error>> 
 
 /// Output an HTML page for the errors in `err_map` to `output_path`.
 fn render_error_page<T: Formatter>(err_map: &ErrorMetadataMap, output_path: &Path,
-                                   formatter: T) -> Result<(), Box<Error>> {
+                                   formatter: T) -> Result<(), Box<dyn Error>> {
     let mut output_file = File::create(output_path)?;
 
     formatter.header(&mut output_file)?;
@@ -232,7 +232,7 @@ fn render_error_page<T: Formatter>(err_map: &ErrorMetadataMap, output_path: &Pat
     formatter.footer(&mut output_file)
 }
 
-fn main_with_result(format: OutputFormat, dst: &Path) -> Result<(), Box<Error>> {
+fn main_with_result(format: OutputFormat, dst: &Path) -> Result<(), Box<dyn Error>> {
     let build_arch = env::var("CFG_BUILD")?;
     let metadata_dir = get_metadata_dir(&build_arch);
     let err_map = load_all_errors(&metadata_dir)?;

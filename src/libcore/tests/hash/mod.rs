@@ -128,7 +128,7 @@ fn test_custom_state() {
 fn test_indirect_hasher() {
     let mut hasher = MyHasher { hash: 0 };
     {
-        let mut indirect_hasher: &mut Hasher = &mut hasher;
+        let mut indirect_hasher: &mut dyn Hasher = &mut hasher;
         5u32.hash(&mut indirect_hasher);
     }
     assert_eq!(hasher.hash, 5);

@@ -55,7 +55,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     /// The stack of module NodeIds up till this point
     pub mod_ids: RefCell<Vec<NodeId>>,
     pub crate_name: Option<String>,
-    pub cstore: Rc<CrateStore>,
+    pub cstore: Rc<dyn CrateStore>,
     pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
