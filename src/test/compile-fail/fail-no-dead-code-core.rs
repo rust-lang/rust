@@ -14,7 +14,7 @@
 #[macro_use]
 extern crate core;
 
-fn foo() { //~ ERROR function is never used
+fn foo() { //~ ERROR function is never called
 
     // none of these should have any dead_code exposed to the user
     panic!();

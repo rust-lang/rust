@@ -19,7 +19,7 @@
 pub use foo2::Bar2;
 
 mod foo {
-    pub struct Bar; //~ ERROR: struct is never used
+    pub struct Bar; //~ ERROR: struct is never constructed
 }
 
 mod foo2 {
@@ -42,7 +42,7 @@ const CONST_USED_IN_ENUM_DISCRIMINANT: isize = 11;
 
 pub type typ = *const UsedStruct4;
 pub struct PubStruct;
-struct PrivStruct; //~ ERROR: struct is never used
+struct PrivStruct; //~ ERROR: struct is never constructed
 struct UsedStruct1 {
     #[allow(dead_code)]
     x: isize
@@ -95,17 +95,17 @@ pub fn pub_fn() {
     }
     f::<StructUsedInGeneric>();
 }
-fn priv_fn() { //~ ERROR: function is never used
+fn priv_fn() { //~ ERROR: function is never called
     let unused_struct = PrivStruct;
 }
 fn used_fn() {}
 
-fn foo() { //~ ERROR: function is never used
+fn foo() { //~ ERROR: function is never called
     bar();
     let unused_enum = priv_enum::foo2;
 }
 
-fn bar() { //~ ERROR: function is never used
+fn bar() { //~ ERROR: function is never called
     foo();
 }
 

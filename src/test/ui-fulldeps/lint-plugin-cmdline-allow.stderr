@@ -1,4 +1,4 @@
-warning: function is never used: `lintme`
+warning: function is never called: `lintme`
   --> $DIR/lint-plugin-cmdline-allow.rs:20:1
    |
 LL | fn lintme() { }
