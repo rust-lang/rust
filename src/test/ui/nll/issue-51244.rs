@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![no_std]
-#![feature(profiler_runtime)]
-#![profiler_runtime]
-#![unstable(feature = "profiler_runtime_lib",
-            reason = "internal implementation detail of rustc right now",
-            issue = "0")]
-#![allow(unused_features)]
-#![deny(bare_trait_objects)]
-#![feature(staged_api)]
+#![feature(nll)]
+
+fn main() {
+    let ref my_ref @ _ = 0;
+    *my_ref = 0;
+    //~^ ERROR cannot assign to `*my_ref` which is behind a `&` reference [E0594]
+}

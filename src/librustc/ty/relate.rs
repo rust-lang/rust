@@ -20,6 +20,7 @@ use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
 use mir::interpret::GlobalId;
 use util::common::ErrorReported;
+use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -503,7 +504,11 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                             "array length could not be evaluated");
                         Err(ErrorReported)
                     }
-                    _ => bug!("arrays should not have {:?} as length", x)
+                    _ => {
+                        tcx.sess.delay_span_bug(DUMMY_SP,
+                            &format!("arrays should not have {:?} as length", x));
+                        Err(ErrorReported)
+                    }
                 }
             };
             match (to_u64(sz_a), to_u64(sz_b)) {

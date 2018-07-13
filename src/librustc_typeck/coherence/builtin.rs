@@ -212,7 +212,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
         let cause = ObligationCause::misc(span, impl_node_id);
         let check_mutbl = |mt_a: ty::TypeAndMut<'gcx>,
                            mt_b: ty::TypeAndMut<'gcx>,
-                           mk_ptr: &Fn(Ty<'gcx>) -> Ty<'gcx>| {
+                           mk_ptr: &dyn Fn(Ty<'gcx>) -> Ty<'gcx>| {
             if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
                 infcx.report_mismatched_types(&cause,
                                              mk_ptr(mt_b.ty),

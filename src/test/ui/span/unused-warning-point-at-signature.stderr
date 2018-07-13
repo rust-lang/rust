@@ -11,22 +11,22 @@ LL | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(dead_code)] implied by #[warn(unused)]
 
-warning: struct is never used: `Struct`
+warning: struct is never constructed: `Struct`
   --> $DIR/unused-warning-point-at-signature.rs:22:1
    |
-LL | struct Struct { //~ WARN struct is never used
+LL | struct Struct { //~ WARN struct is never constructed
    | ^^^^^^^^^^^^^
 
-warning: function is never used: `func`
+warning: function is never called: `func`
   --> $DIR/unused-warning-point-at-signature.rs:29:1
    |
-LL | fn func() -> usize { //~ WARN function is never used
+LL | fn func() -> usize { //~ WARN function is never called
    | ^^^^^^^^^^^^^^^^^^
 
-warning: function is never used: `func_complete_span`
+warning: function is never called: `func_complete_span`
   --> $DIR/unused-warning-point-at-signature.rs:33:1
    |
-LL | / fn //~ WARN function is never used
+LL | / fn //~ WARN function is never called
 LL | | func_complete_span()
 LL | | -> usize
 LL | | {

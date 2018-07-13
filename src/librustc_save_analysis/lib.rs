@@ -13,6 +13,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
+#![deny(bare_trait_objects)]
 
 #![recursion_limit="256"]
 
@@ -1088,7 +1089,7 @@ impl<'a> SaveHandler for DumpHandler<'a> {
 
 /// Call a callback with the results of save-analysis.
 pub struct CallbackHandler<'b> {
-    pub callback: &'b mut FnMut(&rls_data::Analysis),
+    pub callback: &'b mut dyn FnMut(&rls_data::Analysis),
 }
 
 impl<'b> SaveHandler for CallbackHandler<'b> {
