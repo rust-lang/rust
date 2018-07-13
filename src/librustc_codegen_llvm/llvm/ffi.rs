@@ -399,7 +399,6 @@ pub type SectionIteratorRef = *mut SectionIterator;
 extern { pub type Pass; }
 extern { pub type TargetMachine; }
 extern { pub type Archive; }
-pub type ArchiveRef = *mut Archive;
 extern { pub type ArchiveIterator; }
 pub type ArchiveIteratorRef = *mut ArchiveIterator;
 extern { pub type ArchiveChild; }
@@ -1471,14 +1470,14 @@ extern "C" {
     pub fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
     pub fn LLVMRustMarkAllFunctionsNounwind(M: &Module);
 
-    pub fn LLVMRustOpenArchive(path: *const c_char) -> ArchiveRef;
-    pub fn LLVMRustArchiveIteratorNew(AR: ArchiveRef) -> ArchiveIteratorRef;
+    pub fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
+    pub fn LLVMRustArchiveIteratorNew(AR: &Archive) -> ArchiveIteratorRef;
     pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
     pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
     pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
-    pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
+    pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
     pub fn LLVMRustGetSectionName(SI: SectionIteratorRef, data: *mut *const c_char) -> size_t;
 

@@ -10,8 +10,6 @@
 
 //! A wrapper around LLVM's archive (.a) code
 
-use super::ArchiveRef;
-
 use std::ffi::CString;
 use std::marker;
 use std::path::Path;
@@ -19,7 +17,7 @@ use std::slice;
 use std::str;
 
 pub struct ArchiveRO {
-    ptr: ArchiveRef,
+    raw: &'static mut super::Archive,
 }
 
 unsafe impl Send for ArchiveRO {}
@@ -44,12 +42,9 @@ impl ArchiveRO {
     pub fn open(dst: &Path) -> Result<ArchiveRO, String> {
         return unsafe {
             let s = path2cstr(dst);
-            let ar = super::LLVMRustOpenArchive(s.as_ptr());
-            if ar.is_null() {
-                Err(super::last_error().unwrap_or("failed to open archive".to_string()))
-            } else {
-                Ok(ArchiveRO { ptr: ar })
-            }
+            let ar = super::LLVMRustOpenArchive(s.as_ptr())
+                .ok_or_else(|| super::last_error().unwrap_or("failed to open archive".to_string()))?;
+            Ok(ArchiveRO { raw: ar })
         };
 
         #[cfg(unix)]
@@ -65,14 +60,14 @@ impl ArchiveRO {
         }
     }
 
-    pub fn raw(&self) -> ArchiveRef {
-        self.ptr
+    pub fn raw(&self) -> &super::Archive {
+        self.raw
     }
 
     pub fn iter(&self) -> Iter {
         unsafe {
             Iter {
-                ptr: super::LLVMRustArchiveIteratorNew(self.ptr),
+                ptr: super::LLVMRustArchiveIteratorNew(self.raw),
                 _data: marker::PhantomData,
             }
         }
@@ -82,7 +77,7 @@ impl ArchiveRO {
 impl Drop for ArchiveRO {
     fn drop(&mut self) {
         unsafe {
-            super::LLVMRustDestroyArchive(self.ptr);
+            super::LLVMRustDestroyArchive(&mut *(self.raw as *mut _));
         }
     }
 }
