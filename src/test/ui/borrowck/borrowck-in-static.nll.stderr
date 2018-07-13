@@ -1,8 +1,8 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/borrowck-in-static.rs:15:17
    |
 LL |     Box::new(|| x) //~ ERROR cannot move out of captured outer variable
-   |                 ^ cannot move out of borrowed content
+   |                 ^ cannot move out of captured variable in an `Fn` closure
 
 error: aborting due to previous error
 

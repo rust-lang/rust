@@ -11,6 +11,7 @@
 use rustc::hir;
 use rustc::mir::*;
 use rustc::ty;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -230,14 +231,43 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     IllegalMoveOriginKind::Static => {
                         self.tcx.cannot_move_out_of(span, "static item", origin)
                     }
-                    IllegalMoveOriginKind::BorrowedContent { target_ty: ty } => {
+                    IllegalMoveOriginKind::BorrowedContent { target_place: place } => {
                         // Inspect the type of the content behind the
                         // borrow to provide feedback about why this
                         // was a move rather than a copy.
+                        let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
                         match ty.sty {
                             ty::TyArray(..) | ty::TySlice(..) => self
                                 .tcx
                                 .cannot_move_out_of_interior_noncopy(span, ty, None, origin),
+                            ty::TyClosure(def_id, closure_substs)
+                                if !self.mir.upvar_decls.is_empty()
+                                    && {
+                                        match place {
+                                            Place::Projection(ref proj) => {
+                                                proj.base == Place::Local(Local::new(1))
+                                            }
+                                            Place::Local(_) | Place::Static(_) => unreachable!(),
+                                        }
+                                    } =>
+                            {
+                                let closure_kind_ty =
+                                    closure_substs.closure_kind_ty(def_id, self.tcx);
+                                let closure_kind = closure_kind_ty.to_opt_closure_kind();
+                                let place_description = match closure_kind {
+                                    Some(ty::ClosureKind::Fn) => {
+                                        "captured variable in an `Fn` closure"
+                                    }
+                                    Some(ty::ClosureKind::FnMut) => {
+                                        "captured variable in an `FnMut` closure"
+                                    }
+                                    Some(ty::ClosureKind::FnOnce) => {
+                                        bug!("closure kind does not match first argument type")
+                                    }
+                                    None => bug!("closure kind not inferred by borrowck"),
+                                };
+                                self.tcx.cannot_move_out_of(span, place_description, origin)
+                            }
                             _ => self
                                 .tcx
                                 .cannot_move_out_of(span, "borrowed content", origin),

@@ -1,8 +1,8 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/issue-4335.rs:16:20
    |
 LL |     id(Box::new(|| *v))
-   |                    ^^ cannot move out of borrowed content
+   |                    ^^ cannot move out of captured variable in an `FnMut` closure
 
 error[E0597]: `v` does not live long enough
   --> $DIR/issue-4335.rs:16:17

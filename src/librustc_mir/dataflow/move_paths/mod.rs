@@ -282,9 +282,9 @@ pub(crate) enum IllegalMoveOriginKind<'tcx> {
 
     /// Illegal move due to attempt to move from behind a reference.
     BorrowedContent {
-        /// The content's type: if erroneous code was trying to move
-        /// from `*x` where `x: &T`, then this will be `T`.
-        target_ty: ty::Ty<'tcx>,
+        /// The place the reference refers to: if erroneous code was trying to
+        /// move from `(*x).f` this will be `*x`.
+        target_place: Place<'tcx>,
     },
 
     /// Illegal move due to attempt to move from field of an ADT that
