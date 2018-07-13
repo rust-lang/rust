@@ -433,10 +433,6 @@ impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
 
     fn ty(&mut self) -> &mut Self {
         let ty = self.ev.tcx.type_of(self.item_def_id);
-        self.walk_ty(ty)
-    }
-
-    fn walk_ty(&mut self, ty: Ty<'tcx>) -> &mut Self {
         ty.visit_with(self);
         if let ty::TyFnDef(def_id, _) = ty.sty {
             if def_id == self.item_def_id {
@@ -1568,7 +1564,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 // where `X` is the `impl Iterator<Item=T>` itself,
                 // stored in `predicates_of`, not in the `Ty` itself.
 
-                self.check(item.id, self.inner_visibility).predicates();
+                self.check(item.id, item_visibility).predicates();
             }
             // Subitems of these items have inherited publicity
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
