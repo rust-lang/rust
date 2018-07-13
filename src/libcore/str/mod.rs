@@ -2004,31 +2004,31 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if self.end == usize::max_value() { None }
-            else { (self.start..self.end+1).get(slice) }
+            if *self.end() == usize::max_value() { None }
+            else { (*self.start()..self.end()+1).get(slice) }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if self.end == usize::max_value() { None }
-            else { (self.start..self.end+1).get_mut(slice) }
+            if *self.end() == usize::max_value() { None }
+            else { (*self.start()..self.end()+1).get_mut(slice) }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            (self.start..self.end+1).get_unchecked(slice)
+            (*self.start()..self.end()+1).get_unchecked(slice)
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            (self.start..self.end+1).get_unchecked_mut(slice)
+            (*self.start()..self.end()+1).get_unchecked_mut(slice)
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            if self.end == usize::max_value() { str_index_overflow_fail(); }
-            (self.start..self.end+1).index(slice)
+            if *self.end() == usize::max_value() { str_index_overflow_fail(); }
+            (*self.start()..self.end()+1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            if self.end == usize::max_value() { str_index_overflow_fail(); }
-            (self.start..self.end+1).index_mut(slice)
+            if *self.end() == usize::max_value() { str_index_overflow_fail(); }
+            (*self.start()..self.end()+1).index_mut(slice)
         }
     }
 

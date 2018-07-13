@@ -10,7 +10,7 @@
 
 use convert::TryFrom;
 use mem;
-use ops::{self, Add, Sub, Try};
+use ops::{self, Add, Sub};
 use usize;
 
 use super::{FusedIterator, TrustedLen};
@@ -330,23 +330,23 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if self.start <= self.end {
-            if self.start < self.end {
-                let n = self.start.add_one();
-                Some(mem::replace(&mut self.start, n))
-            } else {
-                let last = self.start.replace_one();
-                self.end.replace_zero();
-                Some(last)
-            }
-        } else {
-            None
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return None;
         }
+        let is_iterating = self.start < self.end;
+        self.is_empty = Some(!is_iterating);
+        Some(if is_iterating {
+            let n = self.start.add_one();
+            mem::replace(&mut self.start, n)
+        } else {
+            self.start.clone()
+        })
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if !(self.start <= self.end) {
+        if self.is_empty() {
             return (0, Some(0));
         }
 
@@ -358,25 +358,29 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return None;
+        }
+
         if let Some(plus_n) = self.start.add_usize(n) {
             use cmp::Ordering::*;
 
             match plus_n.partial_cmp(&self.end) {
                 Some(Less) => {
+                    self.is_empty = Some(false);
                     self.start = plus_n.add_one();
                     return Some(plus_n)
                 }
                 Some(Equal) => {
-                    self.start.replace_one();
-                    self.end.replace_zero();
+                    self.is_empty = Some(true);
                     return Some(plus_n)
                 }
                 _ => {}
             }
         }
 
-        self.start.replace_one();
-        self.end.replace_zero();
+        self.is_empty = Some(true);
         None
     }
 
@@ -394,68 +398,24 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     fn max(mut self) -> Option<A> {
         self.next_back()
     }
-
-    #[inline]
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
-    {
-        let mut accum = init;
-        if self.start <= self.end {
-            loop {
-                let (x, done) =
-                    if self.start < self.end {
-                        let n = self.start.add_one();
-                        (mem::replace(&mut self.start, n), false)
-                    } else {
-                        self.end.replace_zero();
-                        (self.start.replace_one(), true)
-                    };
-                accum = f(accum, x)?;
-                if done { break }
-            }
-        }
-        Try::from_ok(accum)
-    }
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        if self.start <= self.end {
-            if self.start < self.end {
-                let n = self.end.sub_one();
-                Some(mem::replace(&mut self.end, n))
-            } else {
-                let last = self.end.replace_zero();
-                self.start.replace_one();
-                Some(last)
-            }
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return None;
+        }
+        let is_iterating = self.start < self.end;
+        self.is_empty = Some(!is_iterating);
+        Some(if is_iterating {
+            let n = self.end.sub_one();
+            mem::replace(&mut self.end, n)
         } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
-        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
-    {
-        let mut accum = init;
-        if self.start <= self.end {
-            loop {
-                let (x, done) =
-                    if self.start < self.end {
-                        let n = self.end.sub_one();
-                        (mem::replace(&mut self.end, n), false)
-                    } else {
-                        self.start.replace_one();
-                        (self.end.replace_zero(), true)
-                    };
-                accum = f(accum, x)?;
-                if done { break }
-            }
-        }
-        Try::from_ok(accum)
+            self.end.clone()
+        })
     }
 }
 
