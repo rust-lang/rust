@@ -26,6 +26,9 @@
 // NB: this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
 // this crate, which relies on this attribute (rather than the value of `--crate-name` passed by
 // cargo) to detect this crate.
+
+#![deny(bare_trait_objects)]
+
 #![crate_name = "test"]
 #![unstable(feature = "test", issue = "27812")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -165,8 +168,8 @@ pub trait TDynBenchFn: Send {
 pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
-    DynTestFn(Box<FnBox() + Send>),
-    DynBenchFn(Box<TDynBenchFn + 'static>),
+    DynTestFn(Box<dyn FnBox() + Send>),
+    DynBenchFn(Box<dyn TDynBenchFn + 'static>),
 }
 
 impl TestFn {
@@ -840,7 +843,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     fn callback(
         event: &TestEvent,
         st: &mut ConsoleTestState,
-        out: &mut OutputFormatter,
+        out: &mut dyn OutputFormatter,
     ) -> io::Result<()> {
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => {
@@ -897,7 +900,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
 
     let is_multithreaded = opts.test_threads.unwrap_or_else(get_concurrency) > 1;
 
-    let mut out: Box<OutputFormatter> = match opts.format {
+    let mut out: Box<dyn OutputFormatter> = match opts.format {
         OutputFormat::Pretty => Box::new(PrettyFormatter::new(
             output,
             use_color(opts),
@@ -1386,7 +1389,7 @@ pub fn run_test(
         desc: TestDesc,
         monitor_ch: Sender<MonitorMsg>,
         nocapture: bool,
-        testfn: Box<FnBox() + Send>,
+        testfn: Box<dyn FnBox() + Send>,
     ) {
         // Buffer for capturing standard I/O
         let data = Arc::new(Mutex::new(Vec::new()));
@@ -1459,7 +1462,7 @@ fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
     f()
 }
 
-fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> TestResult {
+fn calc_result(desc: &TestDesc, task_result: Result<(), Box<dyn Any + Send>>) -> TestResult {
     match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TrOk,
         (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {

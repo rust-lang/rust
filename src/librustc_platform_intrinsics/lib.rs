@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(bad_style)]
+#![deny(bare_trait_objects)]
 
 pub struct Intrinsic {
     pub inputs: &'static [&'static Type],

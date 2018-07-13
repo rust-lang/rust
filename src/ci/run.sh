@@ -24,6 +24,11 @@ if [ "$NO_CHANGE_USER" = "" ]; then
   fi
 fi
 
+# only enable core dump on Linux
+if [ -f /proc/sys/kernel/core_pattern ]; then
+  ulimit -c unlimited
+fi
+
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"
 

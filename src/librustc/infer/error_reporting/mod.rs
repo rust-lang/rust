@@ -193,32 +193,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let scope = region.free_region_binding_scope(self);
         let node = self.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
-        let unknown;
         let tag = match self.hir.find(node) {
             Some(hir_map::NodeBlock(_)) | Some(hir_map::NodeExpr(_)) => "body",
             Some(hir_map::NodeItem(it)) => Self::item_scope_tag(&it),
             Some(hir_map::NodeTraitItem(it)) => Self::trait_item_scope_tag(&it),
             Some(hir_map::NodeImplItem(it)) => Self::impl_item_scope_tag(&it),
-
-            // this really should not happen, but it does:
-            // FIXME(#27942)
-            Some(_) => {
-                unknown = format!(
-                    "unexpected node ({}) for scope {:?}.  \
-                     Please report a bug.",
-                    self.hir.node_to_string(node),
-                    scope
-                );
-                &unknown
-            }
-            None => {
-                unknown = format!(
-                    "unknown node for scope {:?}.  \
-                     Please report a bug.",
-                    scope
-                );
-                &unknown
-            }
+            _ => unreachable!()
         };
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {

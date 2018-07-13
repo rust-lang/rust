@@ -371,7 +371,7 @@ impl From<fmt::Error> for EncoderError {
 pub type EncodeResult = Result<(), EncoderError>;
 pub type DecodeResult<T> = Result<T, DecoderError>;
 
-fn escape_str(wr: &mut fmt::Write, v: &str) -> EncodeResult {
+fn escape_str(wr: &mut dyn fmt::Write, v: &str) -> EncodeResult {
     wr.write_str("\"")?;
 
     let mut start = 0;
@@ -433,11 +433,11 @@ fn escape_str(wr: &mut fmt::Write, v: &str) -> EncodeResult {
     Ok(())
 }
 
-fn escape_char(writer: &mut fmt::Write, v: char) -> EncodeResult {
+fn escape_char(writer: &mut dyn fmt::Write, v: char) -> EncodeResult {
     escape_str(writer, v.encode_utf8(&mut [0; 4]))
 }
 
-fn spaces(wr: &mut fmt::Write, mut n: usize) -> EncodeResult {
+fn spaces(wr: &mut dyn fmt::Write, mut n: usize) -> EncodeResult {
     const BUF: &'static str = "                ";
 
     while n >= BUF.len() {
@@ -461,14 +461,14 @@ fn fmt_number_or_null(v: f64) -> string::String {
 
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
-    writer: &'a mut (fmt::Write+'a),
+    writer: &'a mut (dyn fmt::Write+'a),
     is_emitting_map_key: bool,
 }
 
 impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
-    pub fn new(writer: &'a mut fmt::Write) -> Encoder<'a> {
+    pub fn new(writer: &'a mut dyn fmt::Write) -> Encoder<'a> {
         Encoder { writer: writer, is_emitting_map_key: false, }
     }
 }
@@ -707,7 +707,7 @@ impl<'a> ::Encoder for Encoder<'a> {
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
 pub struct PrettyEncoder<'a> {
-    writer: &'a mut (fmt::Write+'a),
+    writer: &'a mut (dyn fmt::Write+'a),
     curr_indent: usize,
     indent: usize,
     is_emitting_map_key: bool,
@@ -715,7 +715,7 @@ pub struct PrettyEncoder<'a> {
 
 impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
-    pub fn new(writer: &'a mut fmt::Write) -> PrettyEncoder<'a> {
+    pub fn new(writer: &'a mut dyn fmt::Write) -> PrettyEncoder<'a> {
         PrettyEncoder {
             writer,
             curr_indent: 0,
@@ -2053,7 +2053,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
 }
 
 /// Decodes a json value from an `&mut io::Read`
-pub fn from_reader(rdr: &mut Read) -> Result<Json, BuilderError> {
+pub fn from_reader(rdr: &mut dyn Read) -> Result<Json, BuilderError> {
     let mut contents = Vec::new();
     match rdr.read_to_end(&mut contents) {
         Ok(c)  => c,

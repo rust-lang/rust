@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(bare_trait_objects)]
+
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 
