@@ -71,16 +71,13 @@ pub trait F32Ext {
 
     fn sqrt(self) -> Self;
 
-    #[cfg(todo)]
     fn exp(self) -> Self;
 
     #[cfg(todo)]
     fn exp2(self) -> Self;
 
-    #[cfg(todo)]
     fn ln(self) -> Self;
 
-    #[cfg(todo)]
     fn log(self, base: Self) -> Self;
 
     #[cfg(todo)]
@@ -220,7 +217,6 @@ impl F32Ext for f32 {
         sqrtf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn exp(self) -> Self {
         expf(self)
@@ -232,13 +228,11 @@ impl F32Ext for f32 {
         exp2f(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn ln(self) -> Self {
         logf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn log(self, base: Self) -> Self {
         self.ln() / base.ln()
