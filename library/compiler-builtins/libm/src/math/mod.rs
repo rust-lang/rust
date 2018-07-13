@@ -16,6 +16,8 @@ mod logf;
 mod expf;
 mod floor;
 mod cosf;
+mod trunc;
+mod truncf;
 
 mod service;
 
@@ -32,6 +34,8 @@ pub use self::{
     expf::expf,
     floor::floor,
     cosf::cosf,
+    trunc::trunc,
+    truncf::truncf,
 };
 
 fn isnanf(x: f32) -> bool {
