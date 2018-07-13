@@ -515,7 +515,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             if let Some(def) = base_ty.ty_adt_def() {
                                 if def.is_union() {
                                     match this.mode {
-                                        Mode::Fn => {},
+                                        Mode::Fn => this.not_const(),
                                         Mode::ConstFn => {
                                             if !this.tcx.sess.features_untracked().const_fn_union {
                                                 emit_feature_err(
