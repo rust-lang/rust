@@ -87,10 +87,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         let start_fn = this.start_fn;
         control.after_analysis.callback = Box::new(move |state| after_analysis(state, start_fn));
-        if sess.target.target != sess.host {
-            // only fully compile targets on the host. linking will fail for cross-compilation.
-            control.after_analysis.stop = Compilation::Stop;
-        }
+        control.after_analysis.stop = Compilation::Stop;
         control
     }
 }
@@ -138,13 +135,12 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bo
         );
     } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
-        let start_wrapper = tcx.lang_items().start_fn().and_then(|start_fn| {
-            if use_start_fn {
-                Some(start_fn)
-            } else {
-                None
-            }
-        });
+        // Use start_fn lang item if we have -Zmiri-start-fn set
+        let start_wrapper = if use_start_fn {
+            Some(tcx.lang_items().start_fn().unwrap())
+        } else {
+            None
+        };
         miri::eval_main(tcx, entry_def_id, start_wrapper);
 
         state.session.abort_if_errors();
@@ -231,9 +227,6 @@ fn main() {
             true
         }
     });
-
-    // Make sure we always have all the MIR (e.g. for auxilary builds in unit tests).
-    args.push("-Zalways-encode-mir".to_owned());
 
     rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
         default: Box::new(RustcDefaultCalls),

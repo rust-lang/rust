@@ -5,6 +5,8 @@
     inclusive_range_methods,
 )]
 
+#![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
+
 #[macro_use]
 extern crate log;
 
@@ -24,7 +26,6 @@ use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::ty::subst::Subst;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::middle::const_val;
 
 use rustc_data_structures::fx::FxHasher;
 
@@ -175,7 +176,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // Return value
         let size = ecx.tcx.data_layout.pointer_size;
         let align = ecx.tcx.data_layout.pointer_align;
-        let ret_ptr = ecx.memory_mut().allocate(size, align, Some(MemoryKind::Stack))?;
+        let ret_ptr = ecx.memory_mut().allocate(size, align, MemoryKind::Stack)?;
         cleanup_ptr = Some(ret_ptr);
 
         // Push our stack frame
@@ -214,7 +215,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         let foo = ecx.memory.allocate_bytes(b"foo\0");
         let ptr_size = ecx.memory.pointer_size();
         let ptr_align = ecx.tcx.data_layout.pointer_align;
-        let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, None)?;
+        let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, MemoryKind::Stack)?;
         ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo), ptr_size, false)?;
         ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
         ecx.write_ptr(dest, foo_ptr.into(), ty)?;
@@ -273,10 +274,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
                     block.terminator().source_info.span
                 };
 
-                let mut err = const_val::struct_error(ecx.tcx.tcx.at(span), "constant evaluation error");
+                let mut err = struct_error(ecx.tcx.tcx.at(span), "constant evaluation error");
                 let (frames, span) = ecx.generate_stacktrace(None);
                 err.span_label(span, e.to_string());
-                for const_val::FrameInfo { span, location, .. } in frames {
+                for FrameInfo { span, location, .. } in frames {
                     err.span_note(span, &format!("inside call to `{}`", location));
                 }
                 err.emit();
@@ -440,7 +441,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let ptr = ecx.memory.allocate(
             layout.size,
             layout.align,
-            None,
+            MemoryKind::Stack,
         )?;
 
         // Step 4: Cache allocation id for recursive statics
@@ -463,14 +464,11 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 let frame = ecx.frame_mut();
                 let bb = &frame.mir.basic_blocks()[frame.block];
                 if bb.statements.len() == frame.stmt && !bb.is_cleanup {
-                    match bb.terminator().kind {
-                        ::rustc::mir::TerminatorKind::Return => {
-                            for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
-                                // Don't deallocate locals, because the return value might reference them
-                                frame.storage_dead(local);
-                            }
+                    if let ::rustc::mir::TerminatorKind::Return = bb.terminator().kind {
+                        for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
+                            // Don't deallocate locals, because the return value might reference them
+                            frame.storage_dead(local);
                         }
-                        _ => {}
                     }
                 }
             }
@@ -514,7 +512,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 value: Value::Scalar(Scalar::from_u128(match layout.size.bytes() {
                     0 => 1 as u128,
                     size => size as u128,
-                }.into())),
+                })),
                 ty: usize,
             },
             dest,

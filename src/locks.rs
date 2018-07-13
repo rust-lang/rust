@@ -241,11 +241,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
                     // All is well
                     continue 'locks;
                 }
-            } else {
-                if !is_our_lock {
-                    // All is well.
-                    continue 'locks;
-                }
+            } else if !is_our_lock {
+                // All is well.
+                continue 'locks;
             }
             // If we get here, releasing this is an error except for NoLock.
             if lock.active != NoLock {
@@ -377,7 +375,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
             }
             // Clean up the map
             alloc_locks.retain(|lock| match lock.active {
-                NoLock => lock.suspended.len() > 0,
+                NoLock => !lock.suspended.is_empty(),
                 _ => true,
             });
         }

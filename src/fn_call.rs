@@ -199,7 +199,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     self.write_null(dest, dest_ty)?;
                 } else {
                     let align = self.tcx.data_layout.pointer_align;
-                    let ptr = self.memory.allocate(Size::from_bytes(size), align, Some(MemoryKind::C.into()))?;
+                    let ptr = self.memory.allocate(Size::from_bytes(size), align, MemoryKind::C.into())?;
                     self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
                 }
             }
@@ -268,7 +268,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 )?;
                 let mut args = self.frame().mir.args_iter();
 
-                let arg_local = args.next().ok_or(
+                let arg_local = args.next().ok_or_else(||
                     EvalErrorKind::AbiViolation(
                         "Argument to __rust_maybe_catch_panic does not take enough arguments."
                             .to_owned(),
@@ -395,7 +395,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     let value_copy = self.memory.allocate(
                         Size::from_bytes((value.len() + 1) as u64),
                         Align::from_bytes(1, 1).unwrap(),
-                        Some(MemoryKind::Env.into()),
+                        MemoryKind::Env.into(),
                     )?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(Size::from_bytes(value.len() as u64), &self)?.into();
@@ -504,7 +504,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
                 let key_type = args[0].ty.builtin_deref(true)
-                                   .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
+                                   .ok_or_else(|| EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
                 let key_size = self.layout_of(key_type)?.size;
 
                 // Create key and write it into the memory where key_ptr wants it
@@ -656,7 +656,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
-                                               Some(MemoryKind::Rust.into()))?;
+                                               MemoryKind::Rust.into())?;
                 self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
             }
             "alloc::alloc::::__rust_alloc_zeroed" => {
@@ -670,7 +670,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
-                                               Some(MemoryKind::Rust.into()))?;
+                                               MemoryKind::Rust.into())?;
                 self.memory.write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
                 self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
             }
@@ -747,7 +747,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         // current frame.
         self.dump_local(dest);
         self.goto_block(dest_block);
-        return Ok(());
+        Ok(())
     }
 
     fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {

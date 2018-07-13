@@ -8,7 +8,7 @@ use rustc::ty::subst::{Substs, Subst};
 use rustc::traits::{self, TraitEngine};
 use rustc::infer::InferCtxt;
 use rustc::middle::region;
-use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::{ConstValue};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_mir::interpret::HasMemory;
 
@@ -135,10 +135,10 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
     }
 
     fn abstract_place(&self, place: &mir::Place<'tcx>) -> EvalResult<'tcx, AbsPlace<'tcx>> {
-        Ok(match place {
-            &mir::Place::Local(l) => AbsPlace::Local(l),
-            &mir::Place::Static(ref s) => AbsPlace::Static(s.def_id),
-            &mir::Place::Projection(ref p) =>
+        Ok(match *place {
+            mir::Place::Local(l) => AbsPlace::Local(l),
+            mir::Place::Static(ref s) => AbsPlace::Static(s.def_id),
+            mir::Place::Projection(ref p) =>
                 AbsPlace::Projection(Box::new(self.abstract_place_projection(&*p)?)),
         })
     }
@@ -378,11 +378,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         mut layout: ty::layout::TyLayout<'tcx>,
         i: usize,
     ) -> EvalResult<'tcx, Ty<'tcx>> {
-        match base {
-            Place::Ptr { extra: PlaceExtra::DowncastVariant(variant_index), .. } => {
-                layout = layout.for_variant(&self, variant_index);
-            }
-            _ => {}
+        if let Place::Ptr { extra: PlaceExtra::DowncastVariant(variant_index), .. } = base {
+            layout = layout.for_variant(&self, variant_index);
         }
         let tcx = self.tcx.tcx;
         Ok(match layout.ty.sty {
@@ -667,12 +664,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     // Inner lifetimes *outlive* outer ones, so only if we have no lifetime restriction yet,
                     // we record the region of this borrow to the context.
                     if query.re == None {
-                        match *region {
-                            ReScope(scope) => query.re = Some(scope),
-                            // It is possible for us to encounter erased lifetimes here because the lifetimes in
-                            // this functions' Subst will be erased.
-                            _ => {}
+                        if let ReScope(scope) = *region {
+                            query.re = Some(scope);
                         }
+                        // It is possible for us to encounter erased lifetimes here because the lifetimes in
+                        // this functions' Subst will be erased.
                     }
                     self.validate_ptr(val, query.place.0, pointee_ty, query.re, query.mutbl, mode)?;
                 }
@@ -719,14 +715,14 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 TyArray(elem_ty, len) => {
                     let len = match len.val {
-                        ConstVal::Unevaluated(def_id, substs) => {
+                        ConstValue::Unevaluated(def_id, substs) => {
                             self.tcx.const_eval(self.tcx.param_env(def_id).and(GlobalId {
                                 instance: Instance::new(def_id, substs),
                                 promoted: None,
                             }))
                                 .map_err(|_err|EvalErrorKind::MachineError("<already reported>".to_string()))?
                         }
-                        ConstVal::Value(_) => len,
+                        _ => len,
                     };
                     let len = len.unwrap_usize(self.tcx.tcx);
                     for i in 0..len {
@@ -772,7 +768,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                             let variant_idx = self.read_discriminant_as_variant_index(query.place.1, query.ty)?;
                             let variant = &adt.variants[variant_idx];
 
-                            if variant.fields.len() > 0 {
+                            if !variant.fields.is_empty() {
                                 // Downcast to this variant, if needed
                                 let place = if adt.is_enum() {
                                     (

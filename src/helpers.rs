@@ -75,7 +75,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
-        return if let Some(offset) = offset.checked_mul(pointee_size) {
+         if let Some(offset) = offset.checked_mul(pointee_size) {
             let ptr = ptr.ptr_signed_offset(offset, self)?;
             // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.
             if let Scalar::Ptr(ptr) = ptr {
@@ -87,7 +87,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             Ok(ptr)
         } else {
             err!(Overflow(mir::BinOp::Mul))
-        };
+        }
     }
 
     fn value_to_isize(
