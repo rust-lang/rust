@@ -1117,7 +1117,7 @@ LLVMRustGetThinLTOModuleImports(const LLVMRustThinLTOData *Data) {
     new LLVMRustThinLTOModuleImports[Data->ImportLists.size() + 1];
   size_t module_index = 0;
 
-  for (const auto & module : Data->ImportLists) {
+  for (const auto& module : Data->ImportLists) {
     StringRef module_id = module.getKey();
     const auto& imports = module.getValue();
 
@@ -1130,7 +1130,8 @@ LLVMRustGetThinLTOModuleImports(const LLVMRustThinLTOData *Data) {
     imports_array[0] = strndup(module_id.data(), module_id.size());
 
     size_t imports_array_index = 1;
-    for (const auto imported_module_id : imports.keys()) {
+    for (const auto& imported_module : imports) {
+      StringRef imported_module_id = imported_module.getKey();
       // The following values are the names of the imported modules.
       imports_array[imports_array_index] = strndup(imported_module_id.data(),
                                                    imported_module_id.size());
