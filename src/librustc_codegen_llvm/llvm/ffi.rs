@@ -26,7 +26,7 @@ use libc::{c_ulonglong, c_void};
 
 use std::ptr::NonNull;
 
-use super::RustStringRef;
+use super::RustString;
 
 pub type Bool = c_uint;
 
@@ -1402,8 +1402,8 @@ extern "C" {
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
 
-    pub fn LLVMRustWriteTypeToString(Type: &Type, s: RustStringRef);
-    pub fn LLVMRustWriteValueToString(value_ref: &Value, s: RustStringRef);
+    pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
+    pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&Value>;
     pub fn LLVMIsAConstantFP(value_ref: &Value) -> Option<&Value>;
@@ -1478,32 +1478,32 @@ extern "C" {
 
     pub fn LLVMRustGetSectionName(SI: SectionIteratorRef, data: *mut *const c_char) -> size_t;
 
-    pub fn LLVMRustWriteTwineToString(T: &Twine, s: RustStringRef);
+    pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
     pub fn LLVMContextSetDiagnosticHandler(C: &Context,
                                            Handler: DiagnosticHandler,
                                            DiagnosticContext: *mut c_void);
 
     pub fn LLVMRustUnpackOptimizationDiagnostic(DI: &'a DiagnosticInfo,
-                                                pass_name_out: RustStringRef,
-                                                function_out: *mut Option<&'a Value>,
-                                                loc_line_out: *mut c_uint,
-                                                loc_column_out: *mut c_uint,
-                                                loc_filename_out: RustStringRef,
-                                                message_out: RustStringRef);
+                                                pass_name_out: &RustString,
+                                                function_out: &mut Option<&'a Value>,
+                                                loc_line_out: &mut c_uint,
+                                                loc_column_out: &mut c_uint,
+                                                loc_filename_out: &RustString,
+                                                message_out: &RustString);
     pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: &'a DiagnosticInfo,
                                              cookie_out: *mut c_uint,
                                              message_out: *mut Option<&'a Twine>,
                                              instruction_out: *mut Option<&'a Value>);
 
-    pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: RustStringRef);
+    pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: &RustString);
     pub fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: &Context,
                                                  H: InlineAsmDiagHandler,
                                                  CX: *mut c_void);
 
-    pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: RustStringRef);
+    pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: &RustString);
 
     pub fn LLVMRustWriteArchive(Dst: *const c_char,
                                 NumMembers: size_t,

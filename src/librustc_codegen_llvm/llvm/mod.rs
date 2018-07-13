@@ -22,6 +22,7 @@ pub use self::CallConv::*;
 pub use self::Linkage::*;
 
 use std::str::FromStr;
+use std::string::FromUtf8Error;
 use std::slice;
 use std::ffi::{CString, CStr};
 use std::cell::RefCell;
@@ -92,20 +93,19 @@ impl FromStr for ArchiveKind {
     }
 }
 
-#[allow(missing_copy_implementations)]
-extern { pub type RustString; }
-type RustStringRef = *mut RustString;
-type RustStringRepr = *mut RefCell<Vec<u8>>;
+#[repr(C)]
+pub struct RustString {
+    bytes: RefCell<Vec<u8>>,
+}
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
 #[no_mangle]
-pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: RustStringRef,
+pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: &RustString,
                                                  ptr: *const c_char,
                                                  size: size_t) {
     let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
 
-    let sr = sr as RustStringRepr;
-    (*sr).borrow_mut().extend_from_slice(slice);
+    sr.bytes.borrow_mut().extend_from_slice(slice);
 }
 
 pub fn SetInstructionCallConv(instr: &'a Value, cc: CallConv) {
@@ -229,16 +229,19 @@ pub fn get_param(llfn: &'a Value, index: c_uint) -> &'a Value {
     }
 }
 
-pub fn build_string<F>(f: F) -> Option<String>
-    where F: FnOnce(RustStringRef)
-{
-    let mut buf = RefCell::new(Vec::new());
-    f(&mut buf as RustStringRepr as RustStringRef);
-    String::from_utf8(buf.into_inner()).ok()
+pub fn build_string(f: impl FnOnce(&RustString)) -> Result<String, FromUtf8Error> {
+    let sr = RustString {
+        bytes: RefCell::new(Vec::new()),
+    };
+    f(&sr);
+    String::from_utf8(sr.bytes.into_inner())
 }
 
-pub unsafe fn twine_to_string(tr: &Twine) -> String {
-    build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")
+pub fn twine_to_string(tr: &Twine) -> String {
+    unsafe {
+        build_string(|s| LLVMRustWriteTwineToString(tr, s))
+            .expect("got a non-UTF8 Twine from LLVM")
+    }
 }
 
 pub fn last_error() -> Option<String> {

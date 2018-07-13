@@ -73,9 +73,9 @@ impl OptimizationDiagnostic<'ll> {
                                                                 &mut column,
                                                                 filename,
                                                                 message)
-                )
-            )
-        );
+                ).ok()
+            ).ok()
+        ).ok();
 
         let mut filename = filename.unwrap_or(String::new());
         if filename.is_empty() {
