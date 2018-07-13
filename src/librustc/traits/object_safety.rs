@@ -385,7 +385,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let obligation = {
             let predicate = Binder::bind(ty::TraitRef {
                 def_id: coerce_unsized_did,
-                substs: self.mk_substs_trait(self.mk_self_type(), &[target_receiver_ty.into()]),
+                substs: self.mk_substs_trait(receiver_ty, &[target_receiver_ty.into()]),
             }).to_predicate();
 
             Obligation::new(
