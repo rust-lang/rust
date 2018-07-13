@@ -861,23 +861,27 @@ impl Target {
             } );
             ($key_name:ident, link_args) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(obj) = obj.find(&name[..]).and_then(|o| o.as_object()) {
+                if let Some(val) = obj.find(&name[..]) {
+                    let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
+                        JSON object with fields per linker-flavor.", name))?;
                     let mut args = LinkArgs::new();
                     for (k, v) in obj {
-                        let k = LinkerFlavor::from_str(&k).ok_or_else(|| {
+                        let flavor = LinkerFlavor::from_str(&k).ok_or_else(|| {
                             format!("{}: '{}' is not a valid value for linker-flavor. \
                                      Use 'em', 'gcc', 'ld' or 'msvc'", name, k)
                         })?;
 
-                        let v = v.as_array().map(|a| {
-                            a
-                                .iter()
-                                .filter_map(|o| o.as_string())
-                                .map(|s| s.to_owned())
-                                .collect::<Vec<_>>()
-                        }).unwrap_or(vec![]);
+                        let v = v.as_array().ok_or_else(||
+                            format!("{}.{}: expected a JSON array", name, k)
+                        )?.iter().enumerate()
+                            .map(|(i,s)| {
+                                let s = s.as_string().ok_or_else(||
+                                    format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
+                                Ok(s.to_owned())
+                            })
+                            .collect::<Result<Vec<_>, String>>()?;
 
-                        args.insert(k, v);
+                        args.insert(flavor, v);
                     }
                     base.options.$key_name = args;
                 }
