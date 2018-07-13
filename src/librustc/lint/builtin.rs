@@ -322,6 +322,13 @@ declare_lint! {
     "detects proc macro derives using inaccessible names from parent modules"
 }
 
+declare_lint! {
+    pub MACRO_USE_EXTERN_CRATE,
+    Allow,
+    "the `#[macro_use]` attribute is now deprecated in favor of using macros \
+     via the module system"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -379,6 +386,7 @@ impl LintPass for HardwiredLints {
             INTRA_DOC_LINK_RESOLUTION_FAILURE,
             WHERE_CLAUSES_OBJECT_SAFETY,
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+            MACRO_USE_EXTERN_CRATE,
         )
     }
 }
