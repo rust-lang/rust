@@ -32,7 +32,7 @@ $ TARGET=armv7-unknown-linux-gnueabihf bash ci/script.sh
 - Pick your favorite math function from the [issue tracker].
 - Look for the C implementation of the function in the [MUSL source code][src].
 - Copy paste the C code into a Rust file in the `src/math` directory and adjust `src/math/mod.rs`
-  accordingly.
+  accordingly. Also, uncomment the corresponding trait method in `src/lib.rs`.
 - Run `cargo watch check` and fix the compiler errors.
 - Tweak the bottom of `test-generator/src/main.rs` to add your function to the test suite.
 - If you can, run the test suite locally. If you can't, no problem! Your PR will be tested
@@ -48,6 +48,9 @@ Check [PR #2] for an example.
 [PR #2]: https://github.com/japaric/libm/pull/2
 
 ### Notes
+
+- Only use relative imports within the `math` directory / module, e.g. `use self::fabs::fabs` or
+`use super::isnanf`. Absolute imports from core are OK, e.g. `use core::u64`.
 
 - To reinterpret a float as an integer use the `to_bits` method. The MUSL code uses the
   `GET_FLOAT_WORD` macro, or a union, to do this operation.
