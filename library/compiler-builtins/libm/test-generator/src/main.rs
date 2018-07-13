@@ -614,7 +614,7 @@ f64_f64! {
     // exp,
     // exp2,
     // expm1,
-    // floor,
+    floor,
     // log,
     // log10,
     // log1p,
@@ -645,5 +645,5 @@ f64f64f64_f64! {
 
 // With signature `fn(f64, i32) -> f64`
 f64i32_f64! {
-    // scalbn,
+    scalbn,
 }
