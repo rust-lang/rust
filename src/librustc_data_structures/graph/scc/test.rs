@@ -85,9 +85,30 @@ fn test_three_sccs() {
 #[test]
 fn test_find_state_2() {
     // The order in which things will be visited is important to this
-    // test. It tests part of the `find_state` behavior.
+    // test. It tests part of the `find_state` behavior. Here is the
+    // graph:
     //
-    // We will start in our DFS by visiting:
+    //
+    //       /----+
+    //     0 <--+ |
+    //     |    | |
+    //     v    | |
+    // +-> 1 -> 3 4
+    // |   |      |
+    // |   v      |
+    // +-- 2 <----+
+
+    let graph = TestGraph::new(0, &[
+        (0, 1),
+        (0, 4),
+        (1, 2),
+        (1, 3),
+        (2, 1),
+        (3, 0),
+        (4, 2),
+    ]);
+
+    // For this graph, we will start in our DFS by visiting:
     //
     // 0 -> 1 -> 2 -> 1
     //
@@ -114,25 +135,6 @@ fn test_find_state_2() {
     // 2 InCycleWith { 1 }
     // 3 InCycleWith { 0 }
 
-    /*
-      /----+
-    0 <--+ |
-    |    | |
-    v    | |
-+-> 1 -> 3 4
-|   |      |
-|   v      |
-+-- 2 <----+
-     */
-    let graph = TestGraph::new(0, &[
-        (0, 1),
-        (0, 4),
-        (1, 2),
-        (1, 3),
-        (2, 1),
-        (3, 0),
-        (4, 2),
-    ]);
     let sccs: Sccs<_, usize> = Sccs::new(&graph);
     assert_eq!(sccs.num_sccs(), 1);
     assert_eq!(sccs.scc(0), 0);
