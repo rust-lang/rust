@@ -44,6 +44,7 @@
 #![feature(reverse_bits)]
 #![feature(iterator_find_map)]
 #![feature(slice_internals)]
+#![feature(option_replace)]
 
 extern crate core;
 extern crate test;
