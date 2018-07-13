@@ -22,7 +22,7 @@ use super::elaborate_predicates;
 use hir::def_id::DefId;
 use lint;
 use traits::{self, Obligation, ObligationCause};
-use ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
+use ty::{self, Ty, TyCtxt, Binder, TypeFoldable, Predicate, ToPredicate};
 use ty::subst::{Subst};
 use std::borrow::Cow;
 use std::iter::{self};
@@ -361,10 +361,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let param_env = {
             let mut param_env = self.param_env(method.def_id);
 
-            let predicate = ty::TraitRef {
+            let predicate = Binder::bind(ty::TraitRef {
                 def_id: unsize_did,
                 substs: self.mk_substs_trait(self.mk_self_type(), &[target_self_ty.into()]),
-            }.to_predicate();
+            }).to_predicate();
 
             let caller_bounds: Vec<Predicate<'tcx>> = param_env.caller_bounds.iter().cloned()
                 .chain(iter::once(predicate))
@@ -383,10 +383,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         // Receiver: CoerceUnsized<Receiver<Self=U>>
         let obligation = {
-            let predicate = ty::TraitRef {
+            let predicate = Binder::bind(ty::TraitRef {
                 def_id: coerce_unsized_did,
                 substs: self.mk_substs_trait(self.mk_self_type(), &[target_receiver_ty.into()]),
-            }.to_predicate();
+            }).to_predicate();
 
             Obligation::new(
                 ObligationCause::dummy(),
