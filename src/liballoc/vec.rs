@@ -1734,6 +1734,7 @@ where
 impl<T> ops::Deref for Vec<T> {
     type Target = [T];
 
+    #[inline]
     fn deref(&self) -> &[T] {
         unsafe {
             let p = self.buf.ptr();
@@ -1745,6 +1746,7 @@ impl<T> ops::Deref for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::DerefMut for Vec<T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe {
             let ptr = self.buf.ptr();
