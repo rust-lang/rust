@@ -355,7 +355,7 @@ impl F32Ext for f32 {
     }
 }
 
-/// Math support for `f32`
+/// Math support for `f64`
 ///
 /// This trait is sealed and cannot be implemented outside of `libm`.
 pub trait F64Ext: private::Sealed {

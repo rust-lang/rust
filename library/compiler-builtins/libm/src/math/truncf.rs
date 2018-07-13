@@ -22,3 +22,11 @@ pub fn truncf(x: f32) -> f32 {
     i &= !m;
     f32::from_bits(i)
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn sanity_check() {
+        assert_eq!(super::truncf(1.1), 1.0);
+    }
+}
