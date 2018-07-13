@@ -102,7 +102,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 });
                 if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
-                    this.schedule_drop(expr_span, scope, &Place::Local(result), value.ty);
+                    this.schedule_drop_storage_and_value(
+                        expr_span, scope, &Place::Local(result), value.ty,
+                    );
                 }
 
                 // malloc some memory of suitable type (thus far, uninitialized):

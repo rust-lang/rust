@@ -62,7 +62,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // anything because no values with a destructor can be created in
         // a constant at this time, even if the type may need dropping.
         if let Some(temp_lifetime) = temp_lifetime {
-            this.schedule_drop(expr_span, temp_lifetime, &Place::Local(temp), expr_ty);
+            this.schedule_drop_storage_and_value(
+                expr_span, temp_lifetime, &Place::Local(temp), expr_ty,
+            );
         }
 
         block.and(temp)

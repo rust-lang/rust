@@ -16,6 +16,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
+use build::scope::{CachedBlock, DropKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::ty::{self, Ty};
@@ -367,7 +368,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             source_info,
             kind: StatementKind::StorageLive(local_id)
         });
-        Place::Local(local_id)
+        let place = Place::Local(local_id);
+        let var_ty = self.local_decls[local_id].ty;
+        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
+        self.schedule_drop(
+            span, region_scope, &place, var_ty,
+            DropKind::Storage,
+        );
+        place
     }
 
     pub fn schedule_drop_for_binding(&mut self,
@@ -378,7 +387,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let var_ty = self.local_decls[local_id].ty;
         let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
-        self.schedule_drop(span, region_scope, &Place::Local(local_id), var_ty);
+        self.schedule_drop(
+            span, region_scope, &Place::Local(local_id), var_ty,
+            DropKind::Value {
+                cached_block: CachedBlock::default(),
+            },
+        );
     }
 
     pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, f: &mut F)
