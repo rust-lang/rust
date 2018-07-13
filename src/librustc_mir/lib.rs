@@ -64,6 +64,7 @@ mod build;
 mod dataflow;
 mod hair;
 mod shim;
+pub mod ssa_analyze;
 pub mod transform;
 pub mod util;
 pub mod interpret;
