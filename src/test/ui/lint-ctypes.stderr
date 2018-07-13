@@ -126,7 +126,7 @@ error: `extern` block uses type `fn()` which is not FFI-safe: this function poin
 LL |     pub fn fn_type(p: RustFn); //~ ERROR function pointer has Rust-specific
    |                       ^^^^^^
    |
-   = help: consider using an `fn "extern"(...) -> ...` function pointer instead
+   = help: consider using an `extern fn(...) -> ...` function pointer instead
 
 error: `extern` block uses type `fn()` which is not FFI-safe: this function pointer has Rust-specific calling convention
   --> $DIR/lint-ctypes.rs:70:24
@@ -134,7 +134,7 @@ error: `extern` block uses type `fn()` which is not FFI-safe: this function poin
 LL |     pub fn fn_type2(p: fn()); //~ ERROR function pointer has Rust-specific
    |                        ^^^^
    |
-   = help: consider using an `fn "extern"(...) -> ...` function pointer instead
+   = help: consider using an `extern fn(...) -> ...` function pointer instead
 
 error: `extern` block uses type `std::boxed::Box<u32>` which is not FFI-safe: this struct has unspecified layout
   --> $DIR/lint-ctypes.rs:71:28
