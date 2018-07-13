@@ -273,7 +273,7 @@ pub fn const_get_real(v: &'ll Value) -> Option<(f64, bool)> {
     unsafe {
         if is_const_real(v) {
             let mut loses_info: llvm::Bool = ::std::mem::uninitialized();
-            let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info as *mut llvm::Bool);
+            let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info);
             let loses_info = if loses_info == 1 { true } else { false };
             Some((r, loses_info))
         } else {
@@ -311,7 +311,7 @@ pub fn const_to_opt_u128(v: &'ll Value, sign_ext: bool) -> Option<u128> {
         if is_const_integral(v) {
             let (mut lo, mut hi) = (0u64, 0u64);
             let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
-                                                       &mut hi as *mut u64, &mut lo as *mut u64);
+                                                       &mut hi, &mut lo);
             if success {
                 Some(hi_lo_to_u128(lo, hi))
             } else {

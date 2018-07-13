@@ -559,8 +559,8 @@ extern "C" {
     pub fn LLVMConstIntOfArbitraryPrecision(IntTy: &Type, Wn: c_uint, Ws: *const u64) -> &Value;
     pub fn LLVMConstIntGetZExtValue(ConstantVal: &Value) -> c_ulonglong;
     pub fn LLVMRustConstInt128Get(ConstantVal: &Value, SExt: bool,
-                                  high: *mut u64, low: *mut u64) -> bool;
-    pub fn LLVMConstRealGetDouble (ConstantVal: &Value, losesInfo: *mut Bool) -> f64;
+                                  high: &mut u64, low: &mut u64) -> bool;
+    pub fn LLVMConstRealGetDouble (ConstantVal: &Value, losesInfo: &mut Bool) -> f64;
 
 
     // Operations on composite constants
@@ -1470,13 +1470,13 @@ extern "C" {
     pub fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
     pub fn LLVMRustArchiveIteratorNew(AR: &Archive) -> ArchiveIteratorRef;
     pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
-    pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
-    pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: &mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: &mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
     pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
-    pub fn LLVMRustGetSectionName(SI: SectionIteratorRef, data: *mut *const c_char) -> size_t;
+    pub fn LLVMRustGetSectionName(SI: SectionIteratorRef, data: &mut *const c_char) -> size_t;
 
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
@@ -1492,9 +1492,9 @@ extern "C" {
                                                 loc_filename_out: &RustString,
                                                 message_out: &RustString);
     pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: &'a DiagnosticInfo,
-                                             cookie_out: *mut c_uint,
-                                             message_out: *mut Option<&'a Twine>,
-                                             instruction_out: *mut Option<&'a Value>);
+                                             cookie_out: &mut c_uint,
+                                             message_out: &mut Option<&'a Twine>,
+                                             instruction_out: &mut Option<&'a Value>);
 
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: &RustString);
     pub fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
@@ -1572,8 +1572,8 @@ extern "C" {
         Identifier: *const c_char,
     ) -> Option<&Module>;
     pub fn LLVMRustThinLTOGetDICompileUnit(M: &Module,
-                                           CU1: *mut *mut c_void,
-                                           CU2: *mut *mut c_void);
+                                           CU1: &mut *mut c_void,
+                                           CU2: &mut *mut c_void);
     pub fn LLVMRustThinLTOPatchDICompileUnit(M: &Module, CU: *mut c_void);
 
     pub fn LLVMRustLinkerNew(M: &Module) -> LinkerRef;
