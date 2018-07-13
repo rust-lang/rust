@@ -2266,20 +2266,22 @@ pub struct CodegenFnAttrs {
     pub export_name: Option<Symbol>,
     pub target_features: Vec<Symbol>,
     pub linkage: Option<Linkage>,
-    pub wasm_custom_section: Option<Symbol>,
+    pub link_section: Option<Symbol>,
 }
 
 bitflags! {
     #[derive(RustcEncodable, RustcDecodable)]
-    pub struct CodegenFnAttrFlags: u8 {
-        const COLD                      = 0b0000_0001;
-        const ALLOCATOR                 = 0b0000_0010;
-        const UNWIND                    = 0b0000_0100;
-        const RUSTC_ALLOCATOR_NOUNWIND  = 0b0000_1000;
-        const NAKED                     = 0b0001_0000;
-        const NO_MANGLE                 = 0b0010_0000;
-        const RUSTC_STD_INTERNAL_SYMBOL = 0b0100_0000;
-        const NO_DEBUG                  = 0b1000_0000;
+    pub struct CodegenFnAttrFlags: u32 {
+        const COLD                      = 1 << 0;
+        const ALLOCATOR                 = 1 << 1;
+        const UNWIND                    = 1 << 2;
+        const RUSTC_ALLOCATOR_NOUNWIND  = 1 << 3;
+        const NAKED                     = 1 << 4;
+        const NO_MANGLE                 = 1 << 5;
+        const RUSTC_STD_INTERNAL_SYMBOL = 1 << 6;
+        const NO_DEBUG                  = 1 << 7;
+        const THREAD_LOCAL              = 1 << 8;
+        const USED                      = 1 << 9;
     }
 }
 
@@ -2291,7 +2293,7 @@ impl CodegenFnAttrs {
             export_name: None,
             target_features: vec![],
             linkage: None,
-            wasm_custom_section: None,
+            link_section: None,
         }
     }
 

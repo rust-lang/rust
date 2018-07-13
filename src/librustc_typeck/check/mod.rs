@@ -1270,14 +1270,12 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
     match it.node {
       // Consts can play a role in type-checking, so they are included here.
       hir::ItemKind::Static(..) => {
-        tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
+        let def_id = tcx.hir.local_def_id(it.id);
+        tcx.typeck_tables_of(def_id);
+        maybe_check_static_with_link_section(tcx, def_id, it.span);
       }
       hir::ItemKind::Const(..) => {
         tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
-        if it.attrs.iter().any(|a| a.check_name("wasm_custom_section")) {
-            let def_id = tcx.hir.local_def_id(it.id);
-            check_const_is_u8_array(tcx, def_id, it.span);
-        }
       }
       hir::ItemKind::Enum(ref enum_definition, _) => {
         check_enum(tcx,
@@ -1350,19 +1348,38 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
     }
 }
 
-fn check_const_is_u8_array<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     def_id: DefId,
-                                     span: Span) {
-    match tcx.type_of(def_id).sty {
-        ty::TyArray(t, _) => {
-            match t.sty {
-                ty::TyUint(ast::UintTy::U8) => return,
-                _ => {}
-            }
-        }
-        _ => {}
+fn maybe_check_static_with_link_section(tcx: TyCtxt, id: DefId, span: Span) {
+    // Only restricted on wasm32 target for now
+    if !tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+        return
     }
-    tcx.sess.span_err(span, "must be an array of bytes like `[u8; N]`");
+
+    // If `#[link_section]` is missing, then nothing to verify
+    let attrs = tcx.codegen_fn_attrs(id);
+    if attrs.link_section.is_none() {
+        return
+    }
+
+    // For the wasm32 target statics with #[link_section] are placed into custom
+    // sections of the final output file, but this isn't link custom sections of
+    // other executable formats. Namely we can only embed a list of bytes,
+    // nothing with pointers to anything else or relocations. If any relocation
+    // show up, reject them here.
+    let instance = ty::Instance::mono(tcx, id);
+    let cid = GlobalId {
+        instance,
+        promoted: None
+    };
+    let param_env = ty::ParamEnv::reveal_all();
+    if let Ok(static_) = tcx.const_eval(param_env.and(cid)) {
+        let alloc = tcx.const_value_to_allocation(static_);
+        if alloc.relocations.len() != 0 {
+            let msg = "statics with a custom `#[link_section]` must be a \
+                       simple list of bytes on the wasm target with no \
+                       extra levels of indirection such as references";
+            tcx.sess.span_err(span, msg);
+        }
+    }
 }
 
 fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

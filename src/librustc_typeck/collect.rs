@@ -1867,6 +1867,10 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         } else if attr.check_name("no_debug") {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_DEBUG;
+        } else if attr.check_name("used") {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
+        } else if attr.check_name("thread_local") {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.check_name("inline") {
             codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
                 if attr.path != "inline" {
@@ -1929,12 +1933,14 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             if let Some(val) = attr.value_str() {
                 codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
             }
-        } else if attr.check_name("wasm_custom_section") {
-            match attr.value_str() {
-                Some(name) => codegen_fn_attrs.wasm_custom_section = Some(name),
-                None => {
-                    tcx.sess.span_err(attr.span, "must be of the form \
-                        #[wasm_custom_section = \"foo\"]");
+        } else if attr.check_name("link_section") {
+            if let Some(val) = attr.value_str() {
+                if val.as_str().bytes().any(|b| b == 0) {
+                    let msg = format!("illegal null byte in link_section \
+                                       value: `{}`", &val);
+                    tcx.sess.span_err(attr.span, &msg);
+                } else {
+                    codegen_fn_attrs.link_section = Some(val);
                 }
             }
         }

@@ -81,10 +81,6 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     self.tcx.sess.span_err(attr.span, "\
                         must only be attached to foreign modules");
                 }
-            } else if attr.check_name("wasm_custom_section") {
-                if target != Target::Const {
-                    self.tcx.sess.span_err(attr.span, "only allowed on consts");
-                }
             }
         }
 
