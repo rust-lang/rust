@@ -22,3 +22,11 @@ pub fn trunc(x: f64) -> f64 {
     i &= !m;
     f64::from_bits(i)
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn sanity_check() {
+        assert_eq!(super::trunc(1.1), 1.0);
+    }
+}
