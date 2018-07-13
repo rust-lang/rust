@@ -95,7 +95,6 @@ pub trait F32Ext {
     #[cfg(todo)]
     fn sin(self) -> Self;
 
-    #[cfg(todo)]
     fn cos(self) -> Self;
 
     #[cfg(todo)]
@@ -268,7 +267,6 @@ impl F32Ext for f32 {
         sinf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn cos(self) -> Self {
         cosf(self)
