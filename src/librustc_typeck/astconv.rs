@@ -98,7 +98,7 @@ struct ParamRange {
 /// This type must not appear anywhere in other converted types.
 const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::FreshTy(0));
 
-impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
+impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     pub fn ast_region_to_region(&self,
         lifetime: &hir::Lifetime,
         def: Option<&ty::GenericParamDef>)
