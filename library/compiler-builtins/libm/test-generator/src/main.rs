@@ -713,7 +713,7 @@ f64_f64! {
     round,
     // sin,
     // sinh,
-    // sqrt,
+    sqrt,
     // tan,
     // tanh,
     trunc,
@@ -725,7 +725,7 @@ f64f64_f64! {
     // atan2,
     // fdim,
     // fmod,
-    // hypot,
+    hypot,
     // pow,
 }
 

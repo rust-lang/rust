@@ -391,7 +391,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn powf(self, n: Self) -> Self;
 
-    #[cfg(todo)]
     fn sqrt(self) -> Self;
 
     #[cfg(todo)]
@@ -415,7 +414,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn cbrt(self) -> Self;
 
-    #[cfg(todo)]
     fn hypot(self, other: Self) -> Self;
 
     #[cfg(todo)]
@@ -536,7 +534,6 @@ impl F64Ext for f64 {
         pow(self, n)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn sqrt(self) -> Self {
         sqrt(self)
@@ -584,7 +581,6 @@ impl F64Ext for f64 {
         cbrt(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn hypot(self, other: Self) -> Self {
         hypot(self, other)
