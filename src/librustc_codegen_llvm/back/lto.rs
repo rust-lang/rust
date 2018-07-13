@@ -805,7 +805,7 @@ pub struct ThinLTOImports {
 
 impl ThinLTOImports {
 
-    pub fn new_empty() -> ThinLTOImports {
+    pub fn new() -> ThinLTOImports {
         ThinLTOImports {
             imports: FxHashMap(),
         }
@@ -813,58 +813,46 @@ impl ThinLTOImports {
 
     /// Load the ThinLTO import map from ThinLTOData.
     unsafe fn from_thin_lto_data(data: *const llvm::ThinLTOData) -> ThinLTOImports {
-        let raw_data: *const llvm::ThinLTOModuleImports =
-            llvm::LLVMRustGetThinLTOModuleImports(data);
 
-        assert!(!raw_data.is_null());
-
-        let mut imports = FxHashMap();
-        let mut module_ptr = raw_data;
-        let mut module_index = 0;
-
-        loop {
-            let mut entry_ptr: *const llvm::ThinLTOModuleName = *module_ptr;
-
-            if entry_ptr.is_null() {
-                break;
-            }
-
-            let importing_module_name = CStr::from_ptr(*entry_ptr)
-                .to_str()
-                .expect("Non-utf8 LLVM module name encountered")
-                .to_owned();
-
-            entry_ptr = entry_ptr.offset(1);
-
-            let mut imported_modules = vec![];
-
-            loop {
-                let imported_module_name = *entry_ptr;
-
-                if imported_module_name.is_null() {
-                    break
+        fn module_name_to_str(c_str: &CStr) -> &str {
+            match c_str.to_str() {
+                Ok(s) => s,
+                Err(e) => {
+                    bug!("Encountered non-utf8 LLVM module name `{}`: {}",
+                        c_str.to_string_lossy(),
+                        e)
                 }
+            }
+        }
 
-                let imported_module_name = CStr::from_ptr(imported_module_name)
-                    .to_str()
-                    .expect("Non-utf8 LLVM module name encountered")
-                    .to_owned();
+        unsafe extern "C" fn imported_module_callback(payload: *mut libc::c_void,
+                                                      importing_module_name: *const libc::c_char,
+                                                      imported_module_name: *const libc::c_char) {
+            let map = &mut* (payload as *mut ThinLTOImports);
 
-                imported_modules.push(imported_module_name);
-                entry_ptr = entry_ptr.offset(1);
+            let importing_module_name = CStr::from_ptr(importing_module_name);
+            let importing_module_name = module_name_to_str(&importing_module_name);
+            let imported_module_name = CStr::from_ptr(imported_module_name);
+            let imported_module_name = module_name_to_str(&imported_module_name);
+
+            if !map.imports.contains_key(importing_module_name) {
+                map.imports.insert(importing_module_name.to_owned(), vec![]);
             }
 
-            imports.insert(importing_module_name, imported_modules);
-
-            module_ptr = module_ptr.offset(1);
-            module_index += 1;
+            map.imports
+               .get_mut(importing_module_name)
+               .unwrap()
+               .push(imported_module_name.to_owned());
         }
 
-        assert_eq!(module_index, imports.len());
+        let mut map = ThinLTOImports {
+            imports: FxHashMap(),
+        };
 
-        ThinLTOImports {
-            imports
-        }
+        llvm::LLVMRustGetThinLTOModuleImports(data,
+                                              imported_module_callback,
+                                              &mut map as *mut _ as *mut libc::c_void);
+        map
     }
 
     pub fn save_to_file(&self, path: &Path) -> io::Result<()> {

@@ -1360,7 +1360,7 @@ fn load_thin_lto_imports(sess: &Session) -> lto::ThinLTOImports {
     );
 
     if !path.exists() {
-        return lto::ThinLTOImports::new_empty();
+        return lto::ThinLTOImports::new();
     }
 
     match lto::ThinLTOImports::load_from_file(&path) {
