@@ -1,7 +1,6 @@
 [package]
-name = "libm"
+name = "cb"
 version = "0.1.0"
 authors = ["Jorge Aparicio <jorge@japaric.io>"]
 
-[workspace]
-members = ["cb", "test-generator"]
+[dependencies]
