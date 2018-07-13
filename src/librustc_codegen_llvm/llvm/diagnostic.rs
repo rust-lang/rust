@@ -16,7 +16,7 @@ pub use self::Diagnostic::*;
 use libc::c_uint;
 use value::Value;
 
-use super::{DiagnosticInfoRef, TwineRef};
+use super::{DiagnosticInfo, Twine};
 
 #[derive(Copy, Clone)]
 pub enum OptimizationDiagnosticKind {
@@ -55,7 +55,7 @@ pub struct OptimizationDiagnostic<'ll> {
 impl OptimizationDiagnostic<'ll> {
     unsafe fn unpack(
         kind: OptimizationDiagnosticKind,
-        di: DiagnosticInfoRef,
+        di: &'ll DiagnosticInfo,
     ) -> Self {
         let mut function = None;
         let mut line = 0;
@@ -97,14 +97,14 @@ impl OptimizationDiagnostic<'ll> {
 #[derive(Copy, Clone)]
 pub struct InlineAsmDiagnostic<'ll> {
     pub cookie: c_uint,
-    pub message: TwineRef,
+    pub message: &'ll Twine,
     pub instruction: &'ll Value,
 }
 
 impl InlineAsmDiagnostic<'ll> {
-    unsafe fn unpack(di: DiagnosticInfoRef) -> Self {
+    unsafe fn unpack(di: &'ll DiagnosticInfo) -> Self {
         let mut cookie = 0;
-        let mut message = 0 as *mut _;
+        let mut message = None;
         let mut instruction = None;
 
         super::LLVMRustUnpackInlineAsmDiagnostic(
@@ -116,7 +116,7 @@ impl InlineAsmDiagnostic<'ll> {
 
         InlineAsmDiagnostic {
             cookie,
-            message,
+            message: message.unwrap(),
             instruction: instruction.unwrap(),
         }
     }
@@ -125,14 +125,14 @@ impl InlineAsmDiagnostic<'ll> {
 pub enum Diagnostic<'ll> {
     Optimization(OptimizationDiagnostic<'ll>),
     InlineAsm(InlineAsmDiagnostic<'ll>),
-    PGO(DiagnosticInfoRef),
+    PGO(&'ll DiagnosticInfo),
 
     /// LLVM has other types that we do not wrap here.
-    UnknownDiagnostic(DiagnosticInfoRef),
+    UnknownDiagnostic(&'ll DiagnosticInfo),
 }
 
 impl Diagnostic<'ll> {
-    pub unsafe fn unpack(di: DiagnosticInfoRef) -> Self {
+    pub unsafe fn unpack(di: &'ll DiagnosticInfo) -> Self {
         use super::DiagnosticKind as Dk;
         let kind = super::LLVMRustGetDiagInfoKind(di);
 

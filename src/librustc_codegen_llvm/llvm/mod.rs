@@ -237,7 +237,7 @@ pub fn build_string<F>(f: F) -> Option<String>
     String::from_utf8(buf.into_inner()).ok()
 }
 
-pub unsafe fn twine_to_string(tr: TwineRef) -> String {
+pub unsafe fn twine_to_string(tr: &Twine) -> String {
     build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")
 }
 

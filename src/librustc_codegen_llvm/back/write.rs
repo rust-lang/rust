@@ -25,9 +25,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePass
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
-use llvm;
-use llvm::{PassManagerRef, DiagnosticInfoRef};
-use llvm::SMDiagnosticRef;
+use llvm::{self, DiagnosticInfo, PassManagerRef, SMDiagnostic};
 use {CodegenResults, ModuleSource, ModuleCodegen, CompiledModule, ModuleKind};
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -431,7 +429,7 @@ unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext,
     cgcx.diag_emitter.inline_asm_error(cookie as u32, msg.to_string());
 }
 
-unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
+unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic,
                                         user: *const c_void,
                                         cookie: c_uint) {
     if user.is_null() {
@@ -445,7 +443,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
     report_inline_asm(cgcx, &msg, cookie);
 }
 
-unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
+unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
     if user.is_null() {
         return
     }

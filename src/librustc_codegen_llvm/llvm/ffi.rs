@@ -404,11 +404,8 @@ pub type ArchiveIteratorRef = *mut ArchiveIterator;
 extern { pub type ArchiveChild; }
 pub type ArchiveChildRef = *mut ArchiveChild;
 extern { pub type Twine; }
-pub type TwineRef = *mut Twine;
 extern { pub type DiagnosticInfo; }
-pub type DiagnosticInfoRef = *mut DiagnosticInfo;
 extern { pub type SMDiagnostic; }
-pub type SMDiagnosticRef = *mut SMDiagnostic;
 extern { pub type RustArchiveMember; }
 pub type RustArchiveMemberRef = *mut RustArchiveMember;
 extern { pub type OperandBundleDef; }
@@ -416,8 +413,8 @@ pub type OperandBundleDefRef = *mut OperandBundleDef;
 extern { pub type Linker; }
 pub type LinkerRef = *mut Linker;
 
-pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
-pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
+pub type DiagnosticHandler = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
+pub type InlineAsmDiagHandler = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
 
 pub mod debuginfo {
@@ -1481,32 +1478,32 @@ extern "C" {
 
     pub fn LLVMRustGetSectionName(SI: SectionIteratorRef, data: *mut *const c_char) -> size_t;
 
-    pub fn LLVMRustWriteTwineToString(T: TwineRef, s: RustStringRef);
+    pub fn LLVMRustWriteTwineToString(T: &Twine, s: RustStringRef);
 
     pub fn LLVMContextSetDiagnosticHandler(C: &Context,
                                            Handler: DiagnosticHandler,
                                            DiagnosticContext: *mut c_void);
 
-    pub fn LLVMRustUnpackOptimizationDiagnostic(DI: DiagnosticInfoRef,
+    pub fn LLVMRustUnpackOptimizationDiagnostic(DI: &'a DiagnosticInfo,
                                                 pass_name_out: RustStringRef,
-                                                function_out: *mut Option<&Value>,
+                                                function_out: *mut Option<&'a Value>,
                                                 loc_line_out: *mut c_uint,
                                                 loc_column_out: *mut c_uint,
                                                 loc_filename_out: RustStringRef,
                                                 message_out: RustStringRef);
-    pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: DiagnosticInfoRef,
+    pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: &'a DiagnosticInfo,
                                              cookie_out: *mut c_uint,
-                                             message_out: *mut TwineRef,
-                                             instruction_out: *mut Option<&Value>);
+                                             message_out: *mut Option<&'a Twine>,
+                                             instruction_out: *mut Option<&'a Value>);
 
-    pub fn LLVMRustWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
-    pub fn LLVMRustGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
+    pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: RustStringRef);
+    pub fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: &Context,
                                                  H: InlineAsmDiagHandler,
                                                  CX: *mut c_void);
 
-    pub fn LLVMRustWriteSMDiagnosticToString(d: SMDiagnosticRef, s: RustStringRef);
+    pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: RustStringRef);
 
     pub fn LLVMRustWriteArchive(Dst: *const c_char,
                                 NumMembers: size_t,
