@@ -229,7 +229,7 @@ macro_rules! supported_targets {
             }
         }
 
-        pub fn get_targets() -> Box<Iterator<Item=String>> {
+        pub fn get_targets() -> Box<dyn Iterator<Item=String>> {
             Box::new(TARGETS.iter().filter_map(|t| -> Option<String> {
                 load_specific(t)
                     .and(Ok(t.to_string()))
