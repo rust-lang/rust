@@ -2338,7 +2338,7 @@ Rust does not currently support this. A simple example that causes this error:
 
 ```compile_fail,E0225
 fn main() {
-    let _: Box<std::io::Read + std::io::Write>;
+    let _: Box<dyn std::io::Read + std::io::Write>;
 }
 ```
 
@@ -2348,7 +2348,7 @@ auto traits. For example, the following compiles correctly:
 
 ```
 fn main() {
-    let _: Box<std::io::Read + Send + Sync>;
+    let _: Box<dyn std::io::Read + Send + Sync>;
 }
 ```
 "##,
