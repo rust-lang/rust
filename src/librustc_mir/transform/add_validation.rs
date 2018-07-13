@@ -14,10 +14,13 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
+use std::mem;
+
 use rustc::ty::{self, TyCtxt, RegionKind};
 use rustc::hir;
 use rustc::mir::*;
 use rustc::middle::region;
+use rustc_data_structures::indexed_vec::IndexVec;
 use transform::{MirPass, MirSource};
 
 pub struct AddValidation;
@@ -196,12 +199,16 @@ impl MirPass for AddValidation {
             return;
         }
         let restricted_validation = emit_validate == 1 && fn_contains_unsafe(tcx, src);
-        let local_decls = mir.local_decls.clone(); // FIXME: Find a way to get rid of this clone.
+
+        // Replace the local_decls in mir with a dummy to avoid cloning them
+        let local_decls = mem::replace(&mut mir.local_decls, IndexVec::new());
 
         // Convert a place to a validation operand.
-        let place_to_operand = |place: Place<'tcx>| -> ValidationOperand<'tcx, Place<'tcx>> {
-            let (re, mutbl) = place_context(&place, &local_decls, tcx);
-            let ty = place.ty(&local_decls, tcx).to_ty(tcx);
+        let place_to_operand = |place: Place<'tcx>, local_decls: &IndexVec<Local, LocalDecl<'tcx>>|
+            -> ValidationOperand<'tcx, Place<'tcx>>
+        {
+            let (re, mutbl) = place_context(&place, local_decls, tcx);
+            let ty = place.ty(local_decls, tcx).to_ty(tcx);
             ValidationOperand { place, ty, re, mutbl }
         };
 
@@ -237,7 +244,7 @@ impl MirPass for AddValidation {
             };
             // Gather all arguments, skip return value.
             let operands = mir.local_decls.iter_enumerated().skip(1).take(mir.arg_count)
-                    .map(|(local, _)| place_to_operand(Place::Local(local))).collect();
+                .map(|(local, _)| place_to_operand(Place::Local(local), &local_decls)).collect();
             emit_acquire(&mut mir.basic_blocks_mut()[START_BLOCK], source_info, operands);
         }
 
@@ -256,13 +263,14 @@ impl MirPass for AddValidation {
                         let release_stmt = Statement {
                             source_info,
                             kind: StatementKind::Validate(ValidationOp::Release,
-                                destination.iter().map(|dest| place_to_operand(dest.0.clone()))
+                                destination.iter()
+                                .map(|dest| place_to_operand(dest.0.clone(), &local_decls))
                                 .chain(
                                     args.iter().filter_map(|op| {
                                         match op {
                                             &Operand::Copy(ref place) |
                                             &Operand::Move(ref place) =>
-                                                Some(place_to_operand(place.clone())),
+                                                Some(place_to_operand(place.clone(), &local_decls)),
                                             &Operand::Constant(..) => { None },
                                         }
                                     })
@@ -284,7 +292,7 @@ impl MirPass for AddValidation {
                         let release_stmt = Statement {
                             source_info,
                             kind: StatementKind::Validate(ValidationOp::Release,
-                                    vec![place_to_operand(place.clone())]),
+                                    vec![place_to_operand(place.clone(), &local_decls)]),
                         };
                         block_data.statements.push(release_stmt);
                     }
@@ -300,12 +308,13 @@ impl MirPass for AddValidation {
             emit_acquire(
                 &mut mir.basic_blocks_mut()[dest_block],
                 source_info,
-                vec![place_to_operand(dest_place)]
+                vec![place_to_operand(dest_place, &local_decls)]
             );
         }
 
         if restricted_validation {
             // No part 3 for us.
+            mem::replace(&mut mir.local_decls, local_decls);
             return;
         }
 
@@ -334,7 +343,7 @@ impl MirPass for AddValidation {
                         let acquire_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
                             kind: StatementKind::Validate(ValidationOp::Acquire,
-                                    vec![place_to_operand(dest_place.deref())]),
+                                    vec![place_to_operand(dest_place.deref(), &local_decls)]),
                         };
                         block_data.statements.insert(i+1, acquire_stmt);
 
@@ -347,7 +356,9 @@ impl MirPass for AddValidation {
                         };
                         let release_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
-                            kind: StatementKind::Validate(op, vec![place_to_operand(src_place)]),
+                            kind: StatementKind::Validate(
+                                op, vec![place_to_operand(src_place, &local_decls)]
+                            ),
                         };
                         block_data.statements.insert(i, release_stmt);
                     }
@@ -373,7 +384,7 @@ impl MirPass for AddValidation {
                         let acquire_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
                             kind: StatementKind::Validate(ValidationOp::Acquire,
-                                    vec![place_to_operand(dest_place)]),
+                                    vec![place_to_operand(dest_place, &local_decls)]),
                         };
                         block_data.statements.insert(i+1, acquire_stmt);
 
@@ -381,7 +392,7 @@ impl MirPass for AddValidation {
                         let release_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
                             kind: StatementKind::Validate(ValidationOp::Release,
-                                                            vec![place_to_operand(src_place)]),
+                                vec![place_to_operand(src_place, &local_decls)]),
                         };
                         block_data.statements.insert(i, release_stmt);
                     }
@@ -389,5 +400,6 @@ impl MirPass for AddValidation {
                 }
             }
         }
+        mem::replace(&mut mir.local_decls, local_decls);
     }
 }
