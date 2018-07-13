@@ -122,8 +122,8 @@ struct SccsConstruction<'c, G: DirectedGraph + WithNumNodes + WithSuccessors + '
 
     /// A set used to strip duplicates. As we accumulate successors
     /// into the successors_stack, we sometimes get duplicate entries.
-    /// We use this set to remove those -- we keep it around between
-    /// successors to amortize memory allocation costs.
+    /// We use this set to remove those -- we also keep its storage
+    /// around between successors to amortize memory allocation costs.
     duplicate_set: FxHashSet<S>,
 
     scc_data: SccData<S>,
