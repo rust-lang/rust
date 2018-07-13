@@ -1,5 +1,6 @@
 const TINY: f32 = 1.0e-30;
 
+#[inline]
 pub fn sqrtf(x: f32) -> f32 {
     let mut z: f32;
     let sign: i32 = 0x80000000u32 as i32;

@@ -1,7 +1,8 @@
 use core::u32;
 
-use isnanf;
+use super::isnanf;
 
+#[inline]
 pub fn fmodf(x: f32, y: f32) -> f32 {
     let mut uxi = x.to_bits();
     let mut uyi = y.to_bits();
