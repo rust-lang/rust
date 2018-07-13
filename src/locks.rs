@@ -7,7 +7,7 @@ use rustc::ty::layout::Size;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Information about a lock that is currently held.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LockInfo<'tcx> {
     /// Stores for which lifetimes (of the original write lock) we got
     /// which suspensions.

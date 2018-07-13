@@ -27,10 +27,13 @@ use rustc::ty::subst::Subst;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 
+use rustc_data_structures::fx::FxHasher;
+
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
 use std::collections::{HashMap, BTreeMap};
+use std::hash::{Hash, Hasher};
 
 pub use rustc::mir::interpret::*;
 pub use rustc_mir::interpret::*;
@@ -296,7 +299,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
@@ -306,15 +309,34 @@ pub struct Evaluator<'tcx> {
     pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 }
 
+impl<'tcx> Hash for Evaluator<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let Evaluator {
+            env_vars,
+            suspended: _,
+        } = self;
+
+        env_vars.iter()
+            .map(|(env, ptr)| {
+                let mut h = FxHasher::default();
+                env.hash(&mut h);
+                ptr.hash(&mut h);
+                h.finish()
+            })
+            .fold(0u64, |acc, hash| acc.wrapping_add(hash))
+            .hash(state);
+    }
+}
+
 pub type TlsKey = u128;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct TlsEntry<'tcx> {
     data: Scalar, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
     dtor: Option<ty::Instance<'tcx>>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct MemoryData<'tcx> {
     /// The Key to use for the next thread-local allocation.
     next_thread_local: TlsKey,
@@ -329,6 +351,19 @@ pub struct MemoryData<'tcx> {
     locks: HashMap<AllocId, RangeMap<LockInfo<'tcx>>>,
 
     statics: HashMap<GlobalId<'tcx>, AllocId>,
+}
+
+impl<'tcx> Hash for MemoryData<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let MemoryData {
+            next_thread_local: _,
+            thread_local,
+            locks: _,
+            statics: _,
+        } = self;
+
+        thread_local.hash(state);
+    }
 }
 
 impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {

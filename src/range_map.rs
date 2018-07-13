@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::ops;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RangeMap<T> {
     map: BTreeMap<Range, T>,
 }
