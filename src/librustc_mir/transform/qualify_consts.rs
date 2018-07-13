@@ -728,9 +728,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn &&
-                           !self.tcx.sess.features_untracked().const_raw_ptr_deref {
+                           !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
                             emit_feature_err(
-                                &self.tcx.sess.parse_sess, "const_raw_ptr_deref",
+                                &self.tcx.sess.parse_sess, "const_raw_ptr_to_usize_cast",
                                 self.span, GateIssue::Language,
                                 &format!(
                                     "casting pointers to integers in {}s is unstable",
