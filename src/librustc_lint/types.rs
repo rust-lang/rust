@@ -673,7 +673,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         return FfiUnsafe {
                             ty: ty,
                             reason: "this function pointer has Rust-specific calling convention",
-                            help: Some("consider using an `fn \"extern\"(...) -> ...` \
+                            help: Some("consider using an `extern fn(...) -> ...` \
                                         function pointer instead"),
                         }
                     }
