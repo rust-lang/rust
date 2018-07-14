@@ -1,6 +1,7 @@
 extern crate rustc_target;
 
 use std::borrow::Cow;
+use std::fmt;
 
 use syntax::ast::{IntTy, UintTy};
 use self::rustc_target::spec::{HasTargetSpec, Target};
@@ -187,8 +188,9 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>, from: CValue<'tcx>) {
         assert_eq!(
             self.layout().ty, from.layout().ty,
-            "Can't write value of incompatible type to place {:?} {:?}",
-            self.layout().ty.sty, from.layout().ty.sty
+            "Can't write value of incompatible type to place {:?} {:?}\n\n{:#?}",
+            self.layout().ty.sty, from.layout().ty.sty,
+            fx,
         );
 
         match self {
@@ -296,6 +298,24 @@ pub struct FunctionCx<'a, 'tcx: 'a> {
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
     pub comments: HashMap<Inst, String>,
+}
+
+impl<'a, 'tcx: 'a> fmt::Debug for FunctionCx<'a, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{:?}", self.def_id_fn_id_map)?;
+        writeln!(f, "{:?}", self.param_substs)?;
+        writeln!(f, "{:?}", self.local_map)?;
+
+        let mut clif = String::new();
+        let mut writer = ::pretty_clif::CommentWriter(self.comments.clone());
+        ::cranelift::codegen::write::decorate_function(
+            &mut writer,
+            &mut clif,
+            &self.bcx.func,
+            None,
+        ).unwrap();
+        writeln!(f, "\n{}", clif)
+    }
 }
 
 impl<'a, 'tcx: 'a> LayoutOf for &'a FunctionCx<'a, 'tcx> {

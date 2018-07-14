@@ -29,15 +29,15 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
 
                 let comments = ::base::trans_fn(cx, &mut f, inst);
 
+                let mut writer = ::pretty_clif::CommentWriter(comments);
                 let mut cton = String::new();
-                ::cranelift::codegen::write_function(&mut cton, &f, None).unwrap();
+                ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &f, None).unwrap();
                 tcx.sess.warn(&cton);
 
                 let flags = settings::Flags::new(settings::builder());
                 match ::cranelift::codegen::verify_function(&f, &flags) {
                     Ok(_) => {}
                     Err(err) => {
-                        let writer = ::pretty_clif::CommentWriter(comments);
                         let pretty_error = ::cranelift::codegen::print_errors::pretty_verifier_error(&f, None, Some(Box::new(writer)), &err);
                         tcx.sess.fatal(&format!("cretonne verify error:\n{}", pretty_error));
                     }

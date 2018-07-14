@@ -3,8 +3,7 @@ use std::fmt;
 
 use cranelift::codegen::{
     ir::{Function, Inst},
-    FuncWriter,
-    PlainWriter,
+    write::{FuncWriter, PlainWriter},
 };
 use cranelift::prelude::*;
 
@@ -19,7 +18,9 @@ impl FuncWriter for CommentWriter {
         inst: Inst,
         indent: usize,
     ) -> fmt::Result {
-
+        if let Some(comment) = self.0.get(&inst) {
+            writeln!(w, "; {}", comment.replace('\n', "\n; "))?;
+        }
         PlainWriter.write_instruction(w, func, isa, inst, indent)
     }
 
