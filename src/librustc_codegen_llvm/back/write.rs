@@ -399,6 +399,9 @@ impl CodegenContext {
 }
 
 struct DiagnosticHandlers<'a> {
+    #[allow(dead_code)]
+    // This value is not actually dead, llcx has pointers to it and needs these pointers to be alive
+    // until Drop is executed on this object
     inner: Box<(&'a CodegenContext, &'a Handler)>,
     llcx: ContextRef,
 }
