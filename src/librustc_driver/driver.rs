@@ -922,6 +922,10 @@ where
         return Err(CompileIncomplete::Stopped);
     }
 
+    time(sess, "pre ast expansion lint checks", || {
+        lint::check_ast_crate(sess, &krate, true)
+    });
+
     let mut resolver = Resolver::new(
         sess,
         cstore,
@@ -1134,7 +1138,7 @@ where
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(sess, &krate)
+        lint::check_ast_crate(sess, &krate, false)
     });
 
     // Discard hygiene data, which isn't required after lowering to HIR.

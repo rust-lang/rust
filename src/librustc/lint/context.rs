@@ -27,7 +27,7 @@
 use self::TargetLint::*;
 
 use std::slice;
-use rustc_data_structures::sync::{RwLock, ReadGuard};
+use rustc_data_structures::sync::ReadGuard;
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Level, Lint, LintId, LintPass, LintBuffer};
 use lint::builtin::BuiltinLintDiagnostics;
@@ -59,8 +59,8 @@ pub struct LintStore {
     lints: Vec<(&'static Lint, bool)>,
 
     /// Trait objects for each lint pass.
-    /// This is only `None` while performing a lint pass. See the definition
-    /// of `LintSession::new`.
+    /// This is only `None` while performing a lint pass.
+    pre_expansion_passes: Option<Vec<EarlyLintPassObject>>,
     early_passes: Option<Vec<EarlyLintPassObject>>,
     late_passes: Option<Vec<LateLintPassObject>>,
 
@@ -139,6 +139,7 @@ impl LintStore {
     pub fn new() -> LintStore {
         LintStore {
             lints: vec![],
+            pre_expansion_passes: Some(vec![]),
             early_passes: Some(vec![]),
             late_passes: Some(vec![]),
             by_name: FxHashMap(),
@@ -163,6 +164,15 @@ impl LintStore {
                                pass: EarlyLintPassObject) {
         self.push_pass(sess, from_plugin, &pass);
         self.early_passes.as_mut().unwrap().push(pass);
+    }
+
+    pub fn register_pre_expansion_pass(
+        &mut self,
+        sess: Option<&Session>,
+        pass: EarlyLintPassObject,
+    ) {
+        self.push_pass(sess, false, &pass);
+        self.pre_expansion_passes.as_mut().unwrap().push(pass);
     }
 
     pub fn register_late_pass(&mut self,
@@ -332,28 +342,6 @@ impl LintStore {
     }
 }
 
-impl<'a, PassObject: LintPassObject> LintSession<'a, PassObject> {
-    /// Creates a new `LintSession`, by moving out the `LintStore`'s initial
-    /// lint levels and pass objects. These can be restored using the `restore`
-    /// method.
-    fn new(store: &'a RwLock<LintStore>) -> LintSession<'a, PassObject> {
-        let mut s = store.borrow_mut();
-        let passes = PassObject::take_passes(&mut *s);
-        drop(s);
-        LintSession {
-            lints: store.borrow(),
-            passes,
-        }
-    }
-
-    /// Restores the levels back to the original lint store.
-    fn restore(self, store: &RwLock<LintStore>) {
-        drop(self.lints);
-        let mut s = store.borrow_mut();
-        PassObject::restore_passes(&mut *s, self.passes);
-    }
-}
-
 /// Context for lint checking after type checking.
 pub struct LateContext<'a, 'tcx: 'a> {
     /// Type context we're checking in.
@@ -405,30 +393,11 @@ macro_rules! run_lints { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.lint_sess_mut().passes = Some(passes);
 }) }
 
-pub trait LintPassObject: Sized {
-    fn take_passes(store: &mut LintStore) -> Option<Vec<Self>>;
-    fn restore_passes(store: &mut LintStore, passes: Option<Vec<Self>>);
-}
+pub trait LintPassObject: Sized {}
 
-impl LintPassObject for EarlyLintPassObject {
-    fn take_passes(store: &mut LintStore) -> Option<Vec<Self>> {
-        store.early_passes.take()
-    }
+impl LintPassObject for EarlyLintPassObject {}
 
-    fn restore_passes(store: &mut LintStore, passes: Option<Vec<Self>>) {
-        store.early_passes = passes;
-    }
-}
-
-impl LintPassObject for LateLintPassObject {
-    fn take_passes(store: &mut LintStore) -> Option<Vec<Self>> {
-        store.late_passes.take()
-    }
-
-    fn restore_passes(store: &mut LintStore, passes: Option<Vec<Self>>) {
-        store.late_passes = passes;
-    }
-}
+impl LintPassObject for LateLintPassObject {}
 
 
 pub trait LintContext<'tcx>: Sized {
@@ -515,14 +484,21 @@ pub trait LintContext<'tcx>: Sized {
 
 
 impl<'a> EarlyContext<'a> {
-    fn new(sess: &'a Session,
-           krate: &'a ast::Crate) -> EarlyContext<'a> {
+    fn new(
+        sess: &'a Session,
+        krate: &'a ast::Crate,
+        passes: Option<Vec<EarlyLintPassObject>>,
+        buffered: LintBuffer,
+    ) -> EarlyContext<'a> {
         EarlyContext {
             sess,
             krate,
-            lint_sess: LintSession::new(&sess.lint_store),
+            lint_sess: LintSession {
+                lints: sess.lint_store.borrow(),
+                passes,
+            },
             builder: LintLevelSets::builder(sess),
-            buffered: sess.buffered_lints.borrow_mut().take().unwrap(),
+            buffered,
         }
     }
 
@@ -1041,8 +1017,13 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         run_lints!(self, check_attribute, attr);
     }
 
-    fn visit_mac_def(&mut self, _mac: &'a ast::MacroDef, id: ast::NodeId) {
+    fn visit_mac_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
+        run_lints!(self, check_mac_def, mac, id);
         self.check_id(id);
+    }
+
+    fn visit_mac(&mut self, mac: &'ast ast::Mac) {
+        run_lints!(self, check_mac, mac);
     }
 }
 
@@ -1054,48 +1035,77 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
+    let passes = tcx.sess.lint_store.borrow_mut().late_passes.take();
 
-    let mut cx = LateContext {
-        tcx,
-        tables: &ty::TypeckTables::empty(None),
-        param_env: ty::ParamEnv::empty(),
-        access_levels,
-        lint_sess: LintSession::new(&tcx.sess.lint_store),
-        last_ast_node_with_lint_attrs: ast::CRATE_NODE_ID,
-        generics: None,
+    let passes = {
+        let mut cx = LateContext {
+            tcx,
+            tables: &ty::TypeckTables::empty(None),
+            param_env: ty::ParamEnv::empty(),
+            access_levels,
+            lint_sess: LintSession {
+                passes,
+                lints: tcx.sess.lint_store.borrow(),
+            },
+            last_ast_node_with_lint_attrs: ast::CRATE_NODE_ID,
+            generics: None,
+        };
+
+        // Visit the whole crate.
+        cx.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |cx| {
+            // since the root module isn't visited as an item (because it isn't an
+            // item), warn for it here.
+            run_lints!(cx, check_crate, krate);
+
+            hir_visit::walk_crate(cx, krate);
+
+            run_lints!(cx, check_crate_post, krate);
+        });
+        cx.lint_sess.passes
     };
 
-    // Visit the whole crate.
-    cx.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |cx| {
-        // since the root module isn't visited as an item (because it isn't an
-        // item), warn for it here.
-        run_lints!(cx, check_crate, krate);
-
-        hir_visit::walk_crate(cx, krate);
-
-        run_lints!(cx, check_crate_post, krate);
-    });
-
     // Put the lint store levels and passes back in the session.
-    cx.lint_sess.restore(&tcx.sess.lint_store);
+    tcx.sess.lint_store.borrow_mut().late_passes = passes;
 }
 
-pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
-    let mut cx = EarlyContext::new(sess, krate);
+pub fn check_ast_crate(
+    sess: &Session,
+    krate: &ast::Crate,
+    pre_expansion: bool,
+) {
+    let (passes, buffered) = if pre_expansion {
+        (
+            sess.lint_store.borrow_mut().pre_expansion_passes.take(),
+            LintBuffer::new(),
+        )
+    } else {
+        (
+            sess.lint_store.borrow_mut().early_passes.take(),
+            sess.buffered_lints.borrow_mut().take().unwrap(),
+        )
+    };
+    let (passes, buffered) = {
+        let mut cx = EarlyContext::new(sess, krate, passes, buffered);
 
-    // Visit the whole crate.
-    cx.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |cx| {
-        // since the root module isn't visited as an item (because it isn't an
-        // item), warn for it here.
-        run_lints!(cx, check_crate, krate);
+        // Visit the whole crate.
+        cx.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |cx| {
+            // since the root module isn't visited as an item (because it isn't an
+            // item), warn for it here.
+            run_lints!(cx, check_crate, krate);
 
-        ast_visit::walk_crate(cx, krate);
+            ast_visit::walk_crate(cx, krate);
 
-        run_lints!(cx, check_crate_post, krate);
-    });
+            run_lints!(cx, check_crate_post, krate);
+        });
+        (cx.lint_sess.passes, cx.buffered)
+    };
 
     // Put the lint store levels and passes back in the session.
-    cx.lint_sess.restore(&sess.lint_store);
+    if pre_expansion {
+        sess.lint_store.borrow_mut().pre_expansion_passes = passes;
+    } else {
+        sess.lint_store.borrow_mut().early_passes = passes;
+    }
 
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id
@@ -1107,7 +1117,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // unused_macro lint) anymore. So we only run this check
     // when we're not in rustdoc mode. (see issue #47639)
     if !sess.opts.actually_rustdoc {
-        for (_id, lints) in cx.buffered.map {
+        for (_id, lints) in buffered.map {
             for early_lint in lints {
                 sess.delay_span_bug(early_lint.span, "failed to process buffered lint here");
             }

@@ -1,0 +1,27 @@
+error: `async` is a keyword in the 2018 edition
+  --> $DIR/async-ident.rs:17:4
+   |
+LL | fn async() {} //~ ERROR async
+   |    ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
+   |
+note: lint level defined here
+  --> $DIR/async-ident.rs:12:9
+   |
+LL | #![deny(rust_2018_idioms)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: #[deny(async_idents)] implied by #[deny(rust_2018_idioms)]
+
+error: `async` is a keyword in the 2018 edition
+  --> $DIR/async-ident.rs:21:7
+   |
+LL |     ($async:expr, async) => {};
+   |       ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
+
+error: `async` is a keyword in the 2018 edition
+  --> $DIR/async-ident.rs:21:19
+   |
+LL |     ($async:expr, async) => {};
+   |                   ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
+
+error: aborting due to 3 previous errors
+
