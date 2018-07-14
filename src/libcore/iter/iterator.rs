@@ -1586,6 +1586,45 @@ pub trait Iterator {
         Try::from_ok(accum)
     }
 
+    /// The same as [`try_fold()`](#method.try_fold), but uses the first element
+    /// in the iterator as the initial value, folding every subsequent element
+    /// into it. If the iterator is empty, return None; otherwise, return the
+    /// result of the fold.
+    ///
+    /// # Examples
+    ///
+    /// Find the maximum value:
+    ///
+    /// ```
+    /// use std::cmp::Ordering;
+    /// fn find_max<I>(iter: I) -> Option<I::Item>
+    ///     where I: Iterator,
+    ///           I::Item: PartialCmp,
+    /// {
+    ///     iter.try_fold_self(|a, b| {
+    ///         a.partial_cmp(b).map(move |cmp| match cmp {
+    ///             Ordering::Greater | Ordering::Equal => a,
+    ///             Ordering::Less => b,
+    ///         })
+    ///     })
+    /// }
+    /// let a = [10, 20, 5, -23, 0];
+    /// let b = [10, 20, -23, std::f64::NAN, 12, 2.5];
+    /// let c = [];
+    ///
+    /// assert_eq!(find_max(a.iter()), Some(Some(20)));
+    /// assert_eq!(find_max(b.iter()), Some(None));
+    /// assert_eq!(find_max(c.iter()), None);
+    /// ```
+    #[inline]
+    fn try_fold_self<F, R>(&mut self, mut f: F) -> Option<R>
+        where Self: Sized,
+              F: FnMut(Self::Item, Self::Item) -> R,
+              R: Try<Ok=Self::Item>
+    {
+        self.next().map(move |first| self.try_fold(first, f))
+    }
+
     /// An iterator method that applies a fallible function to each item in the
     /// iterator, stopping at the first error and returning that error.
     ///
@@ -1694,6 +1733,40 @@ pub trait Iterator {
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
         self.try_fold(init, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
+    }
+
+    /// The same as [`fold()`](#method.fold), but uses the first element in the
+    /// iterator as the initial value, folding every subsequent element into it.
+    /// If the iterator is empty, return `None`; otherwise, return the result
+    /// of the fold.
+    ///
+    /// # Example
+    ///
+    /// Find the maximum value:
+    ///
+    /// ```
+    /// fn find_max<I>(iter: I) -> Option<I::Item>
+    ///     where I: Iterator,
+    ///           I::Item: Ord,
+    /// {
+    ///     iter.fold_self(|a, b| {
+    ///         a.partial_cmp(b).map(move |cmp| match cmp {
+    ///             Ordering::Greater | Ordering::Equal => a,
+    ///             Ordering::Less => b,
+    ///         })
+    ///     })
+    /// }
+    /// let a = [10, 20, 5, -23, 0];
+    /// let b = [];
+    ///
+    /// assert_eq!(find_max(a.iter()), Some(20));
+    /// assert_eq!(find_max(b.iter()), None));
+    /// ```
+    #[inline]
+    fn fold_self<F>(mut self, mut f: F) -> Option<Self::Item>
+        where Self: Sized, F: FnMut(Self::Item, Self::Item) -> Self::Item
+    {
+        self.next().map(move |first| self.fold(first, f))
     }
 
     /// Tests if every element of the iterator matches a predicate.
