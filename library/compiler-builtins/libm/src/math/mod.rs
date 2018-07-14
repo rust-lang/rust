@@ -6,10 +6,15 @@ macro_rules! force_eval {
     };
 }
 
+mod acos;
+mod cbrt;
+mod cbrtf;
 mod ceil;
 mod ceilf;
 mod cosf;
 mod exp;
+mod exp2;
+mod exp2f;
 mod expf;
 mod expm1;
 mod fabs;
@@ -18,6 +23,7 @@ mod fdim;
 mod fdimf;
 mod floor;
 mod floorf;
+mod fmod;
 mod fmodf;
 mod hypot;
 mod hypotf;
@@ -40,10 +46,15 @@ mod trunc;
 mod truncf;
 
 // Use separated imports instead of {}-grouped imports for easier merging.
+pub use self::acos::acos;
+pub use self::cbrt::cbrt;
+pub use self::cbrtf::cbrtf;
 pub use self::ceil::ceil;
 pub use self::ceilf::ceilf;
 pub use self::cosf::cosf;
 pub use self::exp::exp;
+pub use self::exp2::exp2;
+pub use self::exp2f::exp2f;
 pub use self::expf::expf;
 pub use self::expm1::expm1;
 pub use self::fabs::fabs;
@@ -52,6 +63,7 @@ pub use self::fdim::fdim;
 pub use self::fdimf::fdimf;
 pub use self::floor::floor;
 pub use self::floorf::floorf;
+pub use self::fmod::fmod;
 pub use self::fmodf::fmodf;
 pub use self::hypot::hypot;
 pub use self::hypotf::hypotf;

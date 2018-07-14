@@ -656,11 +656,11 @@ f32_f32! {
     truncf,
     // asinf,
     // atanf,
-    // cbrtf,
+    cbrtf,
     cosf,
     ceilf,
     // coshf,
-    // exp2f,
+    exp2f,
     expf,
     log10f,
     log1pf,
@@ -696,15 +696,15 @@ f32i32_f32! {
 
 // With signature `fn(f64) -> f64`
 f64_f64! {
-    // acos,
+    acos,
     // asin,
     // atan,
-    // cbrt,
+    cbrt,
     ceil,
     // cos,
     // cosh,
     exp,
-    // exp2,
+    exp2,
     expm1,
     floor,
     log,
@@ -725,7 +725,7 @@ f64_f64! {
 f64f64_f64! {
     // atan2,
     fdim,
-    // fmod,
+    fmod,
     hypot,
     // pow,
 }

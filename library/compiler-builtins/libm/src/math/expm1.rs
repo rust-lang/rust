@@ -11,6 +11,7 @@ const Q3: f64 = -7.93650757867487942473e-05; /* BF14CE19 9EAADBB7 */
 const Q4: f64 = 4.00821782732936239552e-06; /* 3ED0CFCA 86E65239 */
 const Q5: f64 = -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
+#[allow(warnings)]
 pub fn expm1(mut x: f64) -> f64 {
     let hi: f64;
     let lo: f64;
@@ -19,8 +20,8 @@ pub fn expm1(mut x: f64) -> f64 {
     let mut t: f64;
     let mut y: f64;
 
-    let mut ui = x.to_bits() >> 32;
-    let hx = ui & 0x7fffffff;
+    let mut ui = x.to_bits();
+    let hx = ((ui >> 32) & 0x7fffffff) as u32;
     let sign = (ui >> 63) as i32;
 
     /* filter out huge and non-finite argument */
@@ -63,7 +64,7 @@ pub fn expm1(mut x: f64) -> f64 {
     } else if hx < 0x3c900000 {
         /* |x| < 2**-54, return x */
         if hx < 0x00100000 {
-            force_eval!(x as f32);
+            force_eval!(x);
         }
         return x;
     } else {
