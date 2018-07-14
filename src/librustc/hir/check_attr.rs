@@ -269,7 +269,11 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 if attr.check_name("inline") {
                     self.check_inline(attr, &stmt.span, Target::Statement);
                 }
-                if attr.check_name("repr") {
+                if attr.check_name("repr")
+                    || attr.check_name("proc_macro")
+                    || attr.check_name("proc_macro_attribute")
+                    || attr.check_name("proc_macro_derive")
+                {
                     self.emit_repr_error(
                         attr.span,
                         stmt.span,
