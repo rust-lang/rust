@@ -236,6 +236,8 @@ pub mod token_stream {
 ///
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.
 /// To quote `$` itself, use `$$`.
+///
+/// This is a dummy macro, the actual implementation is in quote::Quoter
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[macro_export]
 macro_rules! quote { () => {} }

@@ -21,6 +21,9 @@ use syntax::parse::token;
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
 
+/// This is the actual quote!() proc macro
+///
+/// It is manually loaded in CStore::load_macro_untracked
 pub struct Quoter;
 
 pub fn unquote<T: Into<TokenStream> + Clone>(tokens: &T) -> TokenStream {
