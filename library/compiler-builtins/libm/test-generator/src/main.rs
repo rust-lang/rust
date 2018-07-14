@@ -698,7 +698,7 @@ f32i32_f32! {
 // With signature `fn(f64) -> f64`
 f64_f64! {
     acos,
-    // asin,
+    asin,
     // atan,
     cbrt,
     ceil,

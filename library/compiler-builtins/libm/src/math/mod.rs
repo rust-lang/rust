@@ -8,6 +8,7 @@ macro_rules! force_eval {
 
 mod acos;
 mod acosf;
+mod asin;
 mod asinf;
 mod atanf;
 mod cbrt;
@@ -55,6 +56,7 @@ mod truncf;
 // Use separated imports instead of {}-grouped imports for easier merging.
 pub use self::acos::acos;
 pub use self::acosf::acosf;
+pub use self::asin::asin;
 pub use self::asinf::asinf;
 pub use self::atanf::atanf;
 pub use self::cbrt::cbrt;
@@ -109,3 +111,29 @@ use self::{
     k_cosf::k_cosf, k_sinf::k_sinf, k_tanf::k_tanf, rem_pio2_large::rem_pio2_large,
     rem_pio2f::rem_pio2f,
 };
+
+#[inline]
+pub fn get_high_word(x: f64) -> u32 {
+    (x.to_bits() >> 32) as u32
+}
+
+#[inline]
+pub fn get_low_word(x: f64) -> u32 {
+    x.to_bits() as u32
+}
+
+#[inline]
+pub fn with_set_high_word(f: f64, hi: u32) -> f64 {
+    let mut tmp = f.to_bits();
+    tmp &= 0x00000000_ffffffff;
+    tmp |= (hi as u64) << 32;
+    f64::from_bits(tmp)
+}
+
+#[inline]
+pub fn with_set_low_word(f: f64, lo: u32) -> f64 {
+    let mut tmp = f.to_bits();
+    tmp &= 0xffffffff_00000000;
+    tmp |= lo as u64;
+    f64::from_bits(tmp)
+}
