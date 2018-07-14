@@ -6,6 +6,7 @@ macro_rules! force_eval {
     };
 }
 
+// Public modules
 mod acos;
 mod acosf;
 mod asin;
@@ -15,6 +16,7 @@ mod cbrt;
 mod cbrtf;
 mod ceil;
 mod ceilf;
+mod cos;
 mod cosf;
 mod exp;
 mod exp2;
@@ -46,6 +48,7 @@ mod round;
 mod roundf;
 mod scalbn;
 mod scalbnf;
+mod sin;
 mod sinf;
 mod sqrt;
 mod sqrtf;
@@ -63,6 +66,7 @@ pub use self::cbrt::cbrt;
 pub use self::cbrtf::cbrtf;
 pub use self::ceil::ceil;
 pub use self::ceilf::ceilf;
+pub use self::cos::cos;
 pub use self::cosf::cosf;
 pub use self::exp::exp;
 pub use self::exp2::exp2;
@@ -94,6 +98,7 @@ pub use self::round::round;
 pub use self::roundf::roundf;
 pub use self::scalbn::scalbn;
 pub use self::scalbnf::scalbnf;
+pub use self::sin::sin;
 pub use self::sinf::sinf;
 pub use self::sqrt::sqrt;
 pub use self::sqrtf::sqrtf;
@@ -101,16 +106,25 @@ pub use self::tanf::tanf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
+// Private modules
+mod k_cos;
 mod k_cosf;
+mod k_sin;
 mod k_sinf;
 mod k_tanf;
+mod rem_pio2;
 mod rem_pio2_large;
 mod rem_pio2f;
 
-use self::{
-    k_cosf::k_cosf, k_sinf::k_sinf, k_tanf::k_tanf, rem_pio2_large::rem_pio2_large,
-    rem_pio2f::rem_pio2f,
-};
+// Private re-imports
+use self::k_cos::k_cos;
+use self::k_cosf::k_cosf;
+use self::k_sin::k_sin;
+use self::k_sinf::k_sinf;
+use self::k_tanf::k_tanf;
+use self::rem_pio2::rem_pio2;
+use self::rem_pio2_large::rem_pio2_large;
+use self::rem_pio2f::rem_pio2f;
 
 #[inline]
 pub fn get_high_word(x: f64) -> u32 {
