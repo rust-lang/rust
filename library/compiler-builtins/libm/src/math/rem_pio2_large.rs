@@ -1,5 +1,5 @@
-use math::scalbn;
-use math::floor;
+use super::scalbn;
+use super::floor;
 
 // initial value for jk
 const INIT_JK : [usize; 4] = [3,4,4,6];
