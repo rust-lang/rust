@@ -335,7 +335,7 @@ declare_lint! {
 pub mod parser {
     declare_lint! {
         pub QUESTION_MARK_MACRO_SEP,
-        Warn,
+        Allow,
         "detects the use of `?` as a macro separator"
     }
 }

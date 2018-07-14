@@ -14,12 +14,16 @@
 // compile-flags: --edition=2015
 // compile-pass
 
+#![warn(rust_2018_compatibility)]
+
 macro_rules! bar {
     ($(a)?*) => {} //~WARN using `?` as a separator
+    //~^WARN this was previously accepted
 }
 
 macro_rules! baz {
     ($(a)?+) => {} //~WARN using `?` as a separator
+    //~^WARN this was previously accepted
 }
 
 fn main() {

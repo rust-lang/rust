@@ -1,12 +1,24 @@
 warning: using `?` as a separator is deprecated and will be a hard error in an upcoming edition
-  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:18:10
+  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:20:10
    |
 LL |     ($(a)?*) => {} //~WARN using `?` as a separator
    |          ^
+   |
+note: lint level defined here
+  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:17:9
+   |
+LL | #![warn(rust_2018_compatibility)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: #[warn(question_mark_macro_sep)] implied by #[warn(rust_2018_compatibility)]
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #48075 <https://github.com/rust-lang/rust/issues/48075>
 
 warning: using `?` as a separator is deprecated and will be a hard error in an upcoming edition
-  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:22:10
+  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:25:10
    |
 LL |     ($(a)?+) => {} //~WARN using `?` as a separator
    |          ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #48075 <https://github.com/rust-lang/rust/issues/48075>
 
