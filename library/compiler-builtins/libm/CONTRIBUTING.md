@@ -28,13 +28,20 @@ Check [PR #65] for an example.
   have any external dependencies (other than `core` itself).
 
 - Only use relative imports within the `math` directory / module, e.g. `use self::fabs::fabs` or
-`use super::isnanf`. Absolute imports from core are OK, e.g. `use core::u64`.
+`use super::k_cos`. Absolute imports from core are OK, e.g. `use core::u64`.
 
 - To reinterpret a float as an integer use the `to_bits` method. The MUSL code uses the
   `GET_FLOAT_WORD` macro, or a union, to do this operation.
 
 - To reinterpret an integer as a float use the `f32::from_bits` constructor. The MUSL code uses the
   `SET_FLOAT_WORD` macro, or a union, to do this operation.
+
+- You may use other methods from core like `f64::is_nan`, etc. as appropriate.
+
+- If you're implementing one of the private double-underscore functions, take a look at the
+  "source" name in the comment at the top for an idea for alternate naming. For example, `__sin`
+  was renamed to `k_sin` after the FreeBSD source code naming. Do `use` these private functions in
+  `mod.rs`.
 
 - You may encounter weird literals like `0x1p127f` in the MUSL code. These are hexadecimal floating
   point literals. Rust (the language) doesn't support these kind of literals. The best way I have
