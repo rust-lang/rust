@@ -15,8 +15,10 @@ main() {
     # generate tests
     cargo run --package test-generator --target x86_64-unknown-linux-musl
 
-    # nicer syntax error messages (if any)
-    cargo fmt
+    if cargo fmt --version >/dev/null 2>&1; then
+        # nicer syntax error messages (if any)
+        cargo fmt
+    fi
 
     # run tests
     cross test --target $TARGET --release
