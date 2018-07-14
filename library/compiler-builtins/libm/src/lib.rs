@@ -41,7 +41,6 @@ pub trait F32Ext {
     #[cfg(todo)]
     fn ceil(self) -> Self;
 
-    #[cfg(todo)]
     fn round(self) -> Self;
 
     #[cfg(todo)]
@@ -160,7 +159,6 @@ impl F32Ext for f32 {
         ceilf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn round(self) -> Self {
         roundf(self)
