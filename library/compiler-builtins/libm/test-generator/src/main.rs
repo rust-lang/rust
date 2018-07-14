@@ -662,7 +662,6 @@ f32_f32! {
     // coshf,
     // exp2f,
     expf,
-    // fdimf,
     log10f,
     log1pf,
     log2f,
@@ -679,6 +678,7 @@ f32_f32! {
 // With signature `fn(f32, f32) -> f32`
 f32f32_f32! {
     // atan2f,
+    fdimf,
     hypotf,
     fmodf,
     powf,
