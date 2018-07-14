@@ -268,3 +268,41 @@ For example,
 This defines the `nonstandard_style` group which turns on the listed lints. A
 user can turn on these lints with a `!#[warn(nonstandard_style)]` attribute in
 the source code, or by passing `-W nonstandard-style` on the command line.
+
+### Linting early in the compiler
+
+On occasion, you may need to define a lint that runs before the linting system
+has been initialized (e.g. during parsing or macro expansion). This is
+problematic because we need to have computed lint levels to know whether we
+should emit a warning or an error or nothing at all.
+
+To solve this problem, we buffer the lints until the linting system is
+processed. [`Session`][sessbl] and [`ParseSess`][parsebl] both have
+`buffer_lint` methods that allow you to buffer a lint for later. The linting
+system automatically takes care of handling buffered lints later.
+
+[sessbl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html#method.buffer_lint
+[parsebl]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/struct.ParseSess.html#method.buffer_lint
+
+Thus, to define a lint that runs early in the compilation, one defines a lint
+like normal but invokes the lint with `buffer_lint`.
+
+#### Linting even earlier in the compiler
+
+The parser (`libsyntax`) is interesting in that it cannot have dependencies on
+any of the other `librustc*` crates. In particular, it cannot depend on
+`librustc::lint` or `librustc_lint`, where all of the compiler linting
+infrastructure is defined. That's troublesome!
+
+To solve this, `libsyntax` defines its own buffered lint type, which
+`ParseSess::buffer_lint` uses. After macro expansion, these buffered lints are
+then dumped into the `Session::buffered_lints` used by the rest of the compiler.
+
+Usage for buffered lints in `libsyntax` is pretty much the same as the rest of
+the compiler with one exception because we cannot import the `LintId`s for
+lints we want to emit. Instead, the [`BufferedEarlyLintId`] type is used. If you
+are defining a new lint, you will want to add an entry to this enum. Then, add
+an appropriate mapping to the body of [`Lint::from_parser_lint_id`][fplid].
+
+[`BufferedEarlyLintId`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/early_buffered_lints/struct.BufferedEarlyLintId.html
+[fplid]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/struct.Lint.html#from_parser_lint_id
