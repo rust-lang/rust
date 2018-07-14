@@ -3,6 +3,7 @@
 #![warn(use_self)]
 #![allow(dead_code)]
 #![allow(should_implement_trait)]
+#![allow(boxed_local)]
 
 
 fn main() {}
@@ -63,6 +64,119 @@ mod lifetimes {
         // `Self` is applicable here
         fn clone(&self) -> Foo<'a> {
             Foo {foo_str: self.foo_str}
+        }
+    }
+}
+
+mod traits {
+
+    #![cfg_attr(feature = "cargo-clippy", allow(boxed_local))]
+
+    trait SelfTrait {
+        fn refs(p1: &Self) -> &Self;
+        fn ref_refs<'a>(p1: &'a &'a Self) -> &'a &'a Self;
+        fn mut_refs(p1: &mut Self) -> &mut Self;
+        fn nested(p1: Box<Self>, p2: (&u8, &Self));
+        fn vals(r: Self) -> Self;
+    }
+
+    #[derive(Default)]
+    struct Bad;
+
+    impl SelfTrait for Bad {
+        fn refs(p1: &Bad) -> &Bad {
+            p1
+        }
+
+        fn ref_refs<'a>(p1: &'a &'a Bad) -> &'a &'a Bad {
+            p1
+        }
+
+        fn mut_refs(p1: &mut Bad) -> &mut Bad {
+            p1
+        }
+
+        fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {
+        }
+
+        fn vals(_: Bad) -> Bad {
+            Bad::default()
+        }
+    }
+
+    #[derive(Default)]
+    struct Good;
+
+    impl SelfTrait for Good {
+        fn refs(p1: &Self) -> &Self {
+            p1
+        }
+
+        fn ref_refs<'a>(p1: &'a &'a Self) -> &'a &'a Self {
+            p1
+        }
+
+        fn mut_refs(p1: &mut Self) -> &mut Self {
+            p1
+        }
+
+        fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {
+        }
+
+        fn vals(_: Self) -> Self {
+            Self::default()
+        }
+    }
+
+    trait NameTrait {
+        fn refs(p1: &u8) -> &u8;
+        fn ref_refs<'a>(p1: &'a &'a u8) -> &'a &'a u8;
+        fn mut_refs(p1: &mut u8) -> &mut u8;
+        fn nested(p1: Box<u8>, p2: (&u8, &u8));
+        fn vals(p1: u8) -> u8;
+    }
+
+    // Using `Self` instead of the type name is OK
+    impl NameTrait for u8 {
+        fn refs(p1: &Self) -> &Self {
+            p1
+        }
+
+        fn ref_refs<'a>(p1: &'a &'a Self) -> &'a &'a Self {
+            p1
+        }
+
+        fn mut_refs(p1: &mut Self) -> &mut Self {
+            p1
+        }
+
+        fn nested(_p1: Box<Self>, _p2: (&Self, &Self)) {
+        }
+
+        fn vals(_: Self) -> Self {
+            Self::default()
+        }
+    }
+
+    // Check that self arg isn't linted
+    impl Clone for Good {
+        fn clone(&self) -> Self {
+            // Note: Not linted and it wouldn't be valid
+            // because "can't use `Self` as a constructor`
+            Good
+        }
+    }
+}
+
+mod issue2894 {
+    trait IntoBytes {
+        fn into_bytes(&self) -> Vec<u8>;
+    }
+
+    // This should not be linted
+    impl IntoBytes for u8 {
+        fn into_bytes(&self) -> Vec<u8> {
+            vec![*self]
         }
     }
 }

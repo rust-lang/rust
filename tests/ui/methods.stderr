@@ -1,47 +1,3 @@
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:21:29
-   |
-21 |     pub fn add(self, other: T) -> T { self }
-   |                             ^ help: use the applicable keyword: `Self`
-   |
-   = note: `-D use-self` implied by `-D warnings`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:21:35
-   |
-21 |     pub fn add(self, other: T) -> T { self }
-   |                                   ^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:25:25
-   |
-25 |     fn eq(&self, other: T) -> bool { true } // no error, private function
-   |                         ^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:27:26
-   |
-27 |     fn sub(&self, other: T) -> &T { self } // no error, self is a ref
-   |                          ^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:27:33
-   |
-27 |     fn sub(&self, other: T) -> &T { self } // no error, self is a ref
-   |                                 ^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:28:21
-   |
-28 |     fn div(self) -> T { self } // no error, different #arguments
-   |                     ^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:29:25
-   |
-29 |     fn rem(self, other: T) { } // no error, wrong return type
-   |                         ^ help: use the applicable keyword: `Self`
-
 error: defining a method called `add` on this type; consider implementing the `std::ops::Add` trait or choosing a less ambiguous name
   --> $DIR/methods.rs:21:5
    |
@@ -77,30 +33,6 @@ error: methods called `new` usually return `Self`
    |     ^^^^^^^^^^^^^^^
    |
    = note: `-D new-ret-no-self` implied by `-D warnings`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:80:24
-   |
-80 |     fn new() -> Option<V<T>> { None }
-   |                        ^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:84:19
-   |
-84 |     type Output = T;
-   |                   ^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:85:25
-   |
-85 |     fn mul(self, other: T) -> T { self } // no error, obviously
-   |                         ^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:85:31
-   |
-85 |     fn mul(self, other: T) -> T { self } // no error, obviously
-   |                               ^ help: use the applicable keyword: `Self`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
    --> $DIR/methods.rs:104:13
@@ -251,24 +183,6 @@ error: called `map(f).unwrap_or_else(g)` on a Result value. This can be done mor
 174 | |                 );
     | |_________________^
 
-error: unnecessary structure name repetition
-   --> $DIR/methods.rs:200:24
-    |
-200 |     fn filter(self) -> IteratorFalsePositives {
-    |                        ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-   --> $DIR/methods.rs:204:22
-    |
-204 |     fn next(self) -> IteratorFalsePositives {
-    |                      ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-   --> $DIR/methods.rs:224:32
-    |
-224 |     fn skip(self, _: usize) -> IteratorFalsePositives {
-    |                                ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
-
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
    --> $DIR/methods.rs:234:13
     |
@@ -342,12 +256,6 @@ error: called `is_some()` after searching an `Iterator` with rposition. This is 
 275 | |                                }
 276 | |                    ).is_some();
     | |______________________________^
-
-error: unnecessary structure name repetition
-   --> $DIR/methods.rs:290:21
-    |
-290 |         fn new() -> Foo { Foo }
-    |                     ^^^ help: use the applicable keyword: `Self`
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:308:22
@@ -527,5 +435,5 @@ error: used unwrap() on an Option value. If you don't want to handle the None ca
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 70 previous errors
+error: aborting due to 55 previous errors
 
