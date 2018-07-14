@@ -35,7 +35,7 @@ mod truncf;
 
 pub use self::{
     ceilf::ceilf, expf::expf, fabs::fabs, fabsf::fabsf, floor::floor, floorf::floorf, fmod::fmod,
-    fmodf::fmodf, hypot::hypot, hypotf::hypotf, log10::log10, log10f::log10f, log2::log2, 
-    log2f::log2f, logf::logf, powf::powf, round::round, roundf::roundf, scalbn::scalbn, 
+    fmodf::fmodf, hypot::hypot, hypotf::hypotf, log10::log10, log10f::log10f, log2::log2,
+    log2f::log2f, logf::logf, powf::powf, round::round, roundf::roundf, scalbn::scalbn,
     scalbnf::scalbnf, sqrt::sqrt, sqrtf::sqrtf, trunc::trunc, truncf::truncf,
 };
