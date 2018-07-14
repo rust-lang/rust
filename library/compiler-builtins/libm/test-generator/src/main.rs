@@ -703,7 +703,7 @@ f64_f64! {
     ceil,
     // cos,
     cosh,
-    exp,
+    // exp,
     // exp2,
     expm1,
     floor,

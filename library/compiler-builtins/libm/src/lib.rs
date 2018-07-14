@@ -378,6 +378,7 @@ pub trait F64Ext: private::Sealed {
 
     fn sqrt(self) -> Self;
 
+    #[cfg(todo)]
     fn exp(self) -> Self;
 
     #[cfg(todo)]
@@ -515,6 +516,7 @@ impl F64Ext for f64 {
         sqrt(self)
     }
 
+    #[cfg(todo)]
     #[inline]
     fn exp(self) -> Self {
         exp(self)
