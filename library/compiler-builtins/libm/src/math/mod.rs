@@ -1,16 +1,31 @@
 macro_rules! force_eval {
     ($e:expr) => {
-        unsafe { ::core::ptr::read_volatile(&$e); }
-    }
+        unsafe {
+            ::core::ptr::read_volatile(&$e);
+        }
+    };
 }
 
+mod ceilf;
+mod expf;
 mod fabs;
 mod fabsf;
+mod floor;
+mod floorf;
 mod fmodf;
+mod hypot;
+mod hypotf;
+mod log10;
+mod log10f;
+mod log2;
+mod log2f;
+mod logf;
 mod powf;
 mod round;
+mod roundf;
 mod scalbn;
 mod scalbnf;
+mod sqrt;
 mod sqrtf;
 mod logf;
 mod expf;
@@ -20,20 +35,10 @@ mod trunc;
 mod truncf;
 
 pub use self::{
-    fabs::fabs,
-    fabsf::fabsf,
-    fmodf::fmodf,
-    powf::powf,
-    round::round,
-    scalbn::scalbn,
-    scalbnf::scalbnf,
-    sqrtf::sqrtf,
-    logf::logf,
-    expf::expf,
-    floor::floor,
-    cosf::cosf,
-    trunc::trunc,
-    truncf::truncf,
+    ceilf::ceilf, expf::expf, fabs::fabs, fabsf::fabsf, floor::floor, floorf::floorf, fmodf::fmodf,
+    hypot::hypot, hypotf::hypotf, log10::log10, log10f::log10f, log2::log2, log2f::log2f,
+    logf::logf, powf::powf, round::round, roundf::roundf, scalbn::scalbn, scalbnf::scalbnf,
+    sqrt::sqrt, sqrtf::sqrtf, trunc::trunc, truncf::truncf, cosf::cosf,
 };
 
 mod k_cosf;

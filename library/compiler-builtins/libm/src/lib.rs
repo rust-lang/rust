@@ -32,16 +32,12 @@ pub fn _eq(a: u64, b: u64) -> bool {
 
 /// Math support for `f32`
 ///
-/// NOTE this meant to be a closed extension trait. The only stable way to use this trait is to
-/// import it to access its methods.
-pub trait F32Ext {
-    #[cfg(todo)]
+/// This trait is sealed and cannot be implemented outside of `libm`.
+pub trait F32Ext: private::Sealed {
     fn floor(self) -> Self;
 
-    #[cfg(todo)]
     fn ceil(self) -> Self;
 
-    #[cfg(todo)]
     fn round(self) -> Self;
 
     fn trunc(self) -> Self;
@@ -79,16 +75,13 @@ pub trait F32Ext {
 
     fn log(self, base: Self) -> Self;
 
-    #[cfg(todo)]
     fn log2(self) -> Self;
 
-    #[cfg(todo)]
     fn log10(self) -> Self;
 
     #[cfg(todo)]
     fn cbrt(self) -> Self;
 
-    #[cfg(todo)]
     fn hypot(self, other: Self) -> Self;
 
     #[cfg(todo)]
@@ -143,19 +136,16 @@ pub trait F32Ext {
 }
 
 impl F32Ext for f32 {
-    #[cfg(todo)]
     #[inline]
     fn floor(self) -> Self {
         floorf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn ceil(self) -> Self {
         ceilf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn round(self) -> Self {
         roundf(self)
@@ -235,13 +225,11 @@ impl F32Ext for f32 {
         self.ln() / base.ln()
     }
 
-    #[cfg(todo)]
     #[inline]
     fn log2(self) -> Self {
         log2f(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn log10(self) -> Self {
         log10f(self)
@@ -253,7 +241,6 @@ impl F32Ext for f32 {
         cbrtf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn hypot(self, other: Self) -> Self {
         hypotf(self, other)
@@ -356,11 +343,10 @@ impl F32Ext for f32 {
     }
 }
 
-/// Math support for `f32`
+/// Math support for `f64`
 ///
-/// NOTE this meant to be a closed extension trait. The only stable way to use this trait is to
-/// import it to access its methods.
-pub trait F64Ext {
+/// This trait is sealed and cannot be implemented outside of `libm`.
+pub trait F64Ext: private::Sealed {
     fn floor(self) -> Self;
 
     #[cfg(todo)]
@@ -393,7 +379,6 @@ pub trait F64Ext {
     #[cfg(todo)]
     fn powf(self, n: Self) -> Self;
 
-    #[cfg(todo)]
     fn sqrt(self) -> Self;
 
     #[cfg(todo)]
@@ -408,16 +393,13 @@ pub trait F64Ext {
     #[cfg(todo)]
     fn log(self, base: Self) -> Self;
 
-    #[cfg(todo)]
     fn log2(self) -> Self;
 
-    #[cfg(todo)]
     fn log10(self) -> Self;
 
     #[cfg(todo)]
     fn cbrt(self) -> Self;
 
-    #[cfg(todo)]
     fn hypot(self, other: Self) -> Self;
 
     #[cfg(todo)]
@@ -538,7 +520,6 @@ impl F64Ext for f64 {
         pow(self, n)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn sqrt(self) -> Self {
         sqrt(self)
@@ -568,13 +549,11 @@ impl F64Ext for f64 {
         self.ln() / base.ln()
     }
 
-    #[cfg(todo)]
     #[inline]
     fn log2(self) -> Self {
         log2(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn log10(self) -> Self {
         log10(self)
@@ -586,7 +565,6 @@ impl F64Ext for f64 {
         cbrt(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn hypot(self, other: Self) -> Self {
         hypot(self, other)
@@ -688,4 +666,11 @@ impl F64Ext for f64 {
     fn atanh(self) -> Self {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
+}
+
+mod private {
+    pub trait Sealed {}
+
+    impl Sealed for f32 {}
+    impl Sealed for f64 {}
 }

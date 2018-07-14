@@ -1,7 +1,13 @@
 [package]
-name = "libm"
-version = "0.1.0"
 authors = ["Jorge Aparicio <jorge@japaric.io>"]
+categories = ["no-std"]
+description = "libm in pure Rust"
+documentation = "https://docs.rs/libm"
+keywords = ["libm", "math"]
+license = "MIT OR Apache-2.0"
+name = "libm"
+repository = "https://github.com/japaric/libm"
+version = "0.1.0"
 
 [workspace]
 members = ["cb", "test-generator"]
