@@ -77,7 +77,6 @@ pub trait F32Ext: private::Sealed {
 
     fn log2(self) -> Self;
 
-    #[cfg(todo)]
     fn log10(self) -> Self;
 
     #[cfg(todo)]
@@ -232,7 +231,6 @@ impl F32Ext for f32 {
         log2f(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn log10(self) -> Self {
         log10f(self)
@@ -399,7 +397,6 @@ pub trait F64Ext: private::Sealed {
 
     fn log2(self) -> Self;
 
-    #[cfg(todo)]
     fn log10(self) -> Self;
 
     #[cfg(todo)]
@@ -559,7 +556,6 @@ impl F64Ext for f64 {
         log2(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn log10(self) -> Self {
         log10(self)
