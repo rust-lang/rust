@@ -42,6 +42,8 @@ pub use self::cosf::cosf;
 pub use self::expf::expf;
 pub use self::fabs::fabs;
 pub use self::fabsf::fabsf;
+pub use self::fdim::fdim;
+pub use self::fdimf::fdimf;
 pub use self::floor::floor;
 pub use self::floorf::floorf;
 pub use self::fmodf::fmodf;
@@ -65,20 +67,9 @@ pub use self::sqrtf::sqrtf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
-pub use self::{
-    ceilf::ceilf, expf::expf, fabs::fabs, fabsf::fabsf, fdim::fdim, fdimf::fdimf, floor::floor,
-    floorf::floorf, fmodf::fmodf, hypot::hypot, hypotf::hypotf, log::log, log10::log10,
-    log10f::log10f, log1p::log1p, log1pf::log1pf, log2::log2, log2f::log2f, logf::logf, powf::powf,
-    round::round, roundf::roundf, scalbn::scalbn, scalbnf::scalbnf, sqrt::sqrt, sqrtf::sqrtf,
-    trunc::trunc, truncf::truncf,
-};
 mod k_cosf;
 mod k_sinf;
 mod rem_pio2_large;
 mod rem_pio2f;
 
 use self::{k_cosf::k_cosf, k_sinf::k_sinf, rem_pio2_large::rem_pio2_large, rem_pio2f::rem_pio2f};
-
-fn isnanf(x: f32) -> bool {
-    x.to_bits() & 0x7fffffff > 0x7f800000
-}
