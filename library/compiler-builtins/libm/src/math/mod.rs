@@ -19,6 +19,8 @@ mod hypotf;
 mod log;
 mod log10;
 mod log10f;
+mod log1p;
+mod log1pf;
 mod log2;
 mod log2f;
 mod logf;
@@ -34,9 +36,10 @@ mod truncf;
 
 pub use self::{
     ceilf::ceilf, cosf::cosf, expf::expf, fabs::fabs, fabsf::fabsf, floor::floor, floorf::floorf,
-    fmodf::fmodf, hypot::hypot, hypotf::hypotf, log::log, log10::log10, log10f::log10f, log2::log2,
-    log2f::log2f, logf::logf, powf::powf, round::round, roundf::roundf, scalbn::scalbn,
-    scalbnf::scalbnf, sqrt::sqrt, sqrtf::sqrtf, trunc::trunc, truncf::truncf,
+    fmodf::fmodf, hypot::hypot, hypotf::hypotf, log::log, log10::log10, log10f::log10f,
+    log1p::log1p, log1pf::log1pf, log2::log2, log2f::log2f, logf::logf, powf::powf, round::round,
+    roundf::roundf, scalbn::scalbn, scalbnf::scalbnf, sqrt::sqrt, sqrtf::sqrtf, trunc::trunc,
+    truncf::truncf,
 };
 
 mod k_cosf;

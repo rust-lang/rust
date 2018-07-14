@@ -113,7 +113,6 @@ pub trait F32Ext: private::Sealed {
     #[cfg(todo)]
     fn exp_m1(self) -> Self;
 
-    #[cfg(todo)]
     fn ln_1p(self) -> Self;
 
     #[cfg(todo)]
@@ -293,7 +292,6 @@ impl F32Ext for f32 {
         expm1f(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn ln_1p(self) -> Self {
         log1pf(self)
@@ -430,7 +428,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn exp_m1(self) -> Self;
 
-    #[cfg(todo)]
     fn ln_1p(self) -> Self;
 
     #[cfg(todo)]
@@ -614,7 +611,6 @@ impl F64Ext for f64 {
         expm1(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn ln_1p(self) -> Self {
         log1p(self)
