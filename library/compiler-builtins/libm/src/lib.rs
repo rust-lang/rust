@@ -366,7 +366,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn signum(self) -> Self;
 
-    #[cfg(todo)]
     fn mul_add(self, a: Self, b: Self) -> Self;
 
     #[cfg(todo)]
@@ -425,7 +424,6 @@ pub trait F64Ext: private::Sealed {
         (self.sin(), self.cos())
     }
 
-    #[cfg(todo)]
     fn exp_m1(self) -> Self;
 
     fn ln_1p(self) -> Self;
@@ -485,7 +483,6 @@ impl F64Ext for f64 {
         fabs(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn mul_add(self, a: Self, b: Self) -> Self {
         fma(self, a, b)
@@ -604,7 +601,6 @@ impl F64Ext for f64 {
         atan2(self, other)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn exp_m1(self) -> Self {
         expm1(self)
