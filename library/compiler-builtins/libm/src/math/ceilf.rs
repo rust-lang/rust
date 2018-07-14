@@ -1,5 +1,6 @@
 use core::f32;
 
+#[inline]
 pub fn ceilf(x: f32) -> f32 {
     let mut ui = x.to_bits();
     let e = (((ui >> 23) & 0xff) - 0x7f) as i32;

@@ -1,5 +1,6 @@
 use core::f32;
 
+#[inline]
 pub fn fdimf(x: f32, y: f32) -> f32 {
     if x.is_nan() {
         x

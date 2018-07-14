@@ -2,6 +2,7 @@ use core::f64;
 
 const TOINT: f64 = 1.0 / f64::EPSILON;
 
+#[inline]
 pub fn round(mut x: f64) -> f64 {
     let (f, i) = (x, x.to_bits());
     let e: u64 = i >> 52 & 0x7ff;

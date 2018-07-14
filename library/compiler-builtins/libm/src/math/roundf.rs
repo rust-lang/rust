@@ -2,6 +2,7 @@ use core::f32;
 
 const TOINT: f32 = 1.0 / f32::EPSILON;
 
+#[inline]
 pub fn roundf(mut x: f32) -> f32 {
     let i = x.to_bits();
     let e: u32 = i >> 23 & 0xff;

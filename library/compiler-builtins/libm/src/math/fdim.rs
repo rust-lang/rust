@@ -1,5 +1,6 @@
 use core::f64;
 
+#[inline]
 pub fn fdim(x: f64, y: f64) -> f64 {
     if x.is_nan() {
         x
