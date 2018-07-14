@@ -96,14 +96,14 @@ impl ParseSess {
         id: NodeId,
         msg: &str,
     ) {
-        self.buffered_lints
-            .borrow_mut()
-            .push(BufferedEarlyLint{
+        self.buffered_lints.with_lock(|buffered_lints| {
+            buffered_lints.push(BufferedEarlyLint{
                 span: span.into(),
                 id,
                 msg: msg.into(),
                 lint_id,
             });
+        });
     }
 }
 

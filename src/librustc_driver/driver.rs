@@ -697,13 +697,6 @@ pub fn phase_1_parse_input<'a>(
         hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
     }
 
-    // Add all buffered lints from the `ParseSess` to the `Session`.
-    let mut parse_sess_buffered = sess.parse_sess.buffered_lints.borrow_mut();
-    for BufferedEarlyLint{id, span, msg, lint_id} in parse_sess_buffered.drain(..) {
-        let lint = lint::Lint::from_parser_lint_id(lint_id);
-        sess.buffer_lint(lint, id, span, &msg);
-    }
-
     Ok(krate)
 }
 
@@ -1072,6 +1065,15 @@ where
             crate_name.to_string(),
             sess.diagnostic(),
         )
+    });
+
+    // Add all buffered lints from the `ParseSess` to the `Session`.
+    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+        info!("{} parse sess buffered_lints", buffered_lints.len());
+        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
+            let lint = lint::Lint::from_parser_lint_id(lint_id);
+            sess.buffer_lint(lint, id, span, &msg);
+        }
     });
 
     // Done with macro expansion!
