@@ -50,7 +50,7 @@ git clone https://github.com/rust-lang/rust/ rustc
 cd rustc
 cp config.toml.example config.toml
 # Now edit `config.toml` and set `debug-assertions = true`
-./x.py build
+./x.py build src/rustc
 rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
 ```
 The `build` step can take 30 to 60 minutes.
