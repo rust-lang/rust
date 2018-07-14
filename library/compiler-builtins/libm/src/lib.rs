@@ -389,10 +389,8 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn exp2(self) -> Self;
 
-    #[cfg(todo)]
     fn ln(self) -> Self;
 
-    #[cfg(todo)]
     fn log(self, base: Self) -> Self;
 
     fn log2(self) -> Self;
@@ -539,13 +537,11 @@ impl F64Ext for f64 {
         exp2(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn ln(self) -> Self {
         log(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn log(self, base: Self) -> Self {
         self.ln() / base.ln()
