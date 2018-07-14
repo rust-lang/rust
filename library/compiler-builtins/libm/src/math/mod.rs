@@ -7,6 +7,7 @@ macro_rules! force_eval {
 }
 
 mod ceilf;
+mod cosf;
 mod expf;
 mod fabs;
 mod fabsf;
@@ -33,10 +34,9 @@ mod sqrtf;
 mod trunc;
 mod truncf;
 
-//mod service;
-
 // Use separated imports instead of {}-grouped imports for easier merging.
 pub use self::ceilf::ceilf;
+pub use self::cosf::cosf;
 pub use self::expf::expf;
 pub use self::fabs::fabs;
 pub use self::fabsf::fabsf;
@@ -62,6 +62,13 @@ pub use self::sqrt::sqrt;
 pub use self::sqrtf::sqrtf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
+
+mod k_cosf;
+mod k_sinf;
+mod rem_pio2_large;
+mod rem_pio2f;
+
+use self::{k_cosf::k_cosf, k_sinf::k_sinf, rem_pio2_large::rem_pio2_large, rem_pio2f::rem_pio2f};
 
 fn isnanf(x: f32) -> bool {
     x.to_bits() & 0x7fffffff > 0x7f800000

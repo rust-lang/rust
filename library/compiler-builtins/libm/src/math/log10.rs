@@ -1,3 +1,22 @@
+/* origin: FreeBSD /usr/src/lib/msun/src/e_log10.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/*
+ * Return the base 10 logarithm of x.  See log.c for most comments.
+ *
+ * Reduce x to 2^k (1+f) and calculate r = log(1+f) - f + f*f/2
+ * as in log.c, then combine and scale in extra precision:
+ *    log10(x) = (f - f*f/2 + r)/log(10) + k*log10(2)
+ */
+
 use core::f64;
 
 const IVLN10HI: f64 = 4.34294481878168880939e-01; /* 0x3fdbcb7b, 0x15200000 */

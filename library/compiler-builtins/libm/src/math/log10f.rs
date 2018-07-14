@@ -1,3 +1,18 @@
+/* origin: FreeBSD /usr/src/lib/msun/src/e_log10f.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/*
+ * See comments in log10.c.
+ */
+
 use core::f32;
 
 const IVLN10HI: f32 = 4.3432617188e-01; /* 0x3ede6000 */
