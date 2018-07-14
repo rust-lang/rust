@@ -40,6 +40,9 @@ use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::{Span, DUMMY_SP};
+use self::Promotability::*;
+use std::ops::{BitAnd, BitOr};
+
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -84,7 +87,6 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tables: &ty::TypeckTables::empty(None),
         in_fn: false,
         in_static: false,
-        promotable: false,
         mut_rvalue_borrows: NodeSet(),
         param_env: ty::ParamEnv::empty(),
         identity_substs: Substs::empty(),
@@ -95,7 +97,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node_id = tcx.hir.as_local_node_id(def_id)
         .expect("rvalue_promotable_map invoked with non-local def-id");
     let body_id = tcx.hir.body_owned_by(node_id);
-    visitor.visit_nested_body(body_id);
+    let _ = visitor.check_nested_body(body_id);
 
     Lrc::new(visitor.result)
 }
@@ -104,7 +106,6 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     in_fn: bool,
     in_static: bool,
-    promotable: bool,
     mut_rvalue_borrows: NodeSet,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: &'tcx Substs<'tcx>,
@@ -112,17 +113,59 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     result: ItemLocalSet,
 }
 
+#[must_use]
+#[derive(Debug, PartialEq)]
+enum Promotability {
+    Promotable,
+    NotPromotable
+}
+
+impl BitAnd for Promotability {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (Promotable, NotPromotable) => NotPromotable,
+            (NotPromotable, Promotable) => NotPromotable,
+            (NotPromotable, NotPromotable) => NotPromotable,
+            (Promotable, Promotable) => Promotable,
+        }
+    }
+}
+
+impl BitOr for Promotability {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (Promotable, NotPromotable) => Promotable,
+            (NotPromotable, Promotable) => Promotable,
+            (NotPromotable, NotPromotable) => NotPromotable,
+            (Promotable, Promotable) => Promotable,
+        }
+    }
+}
+
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     // Returns true iff all the values of the type are promotable.
-    fn type_has_only_promotable_values(&mut self, ty: Ty<'gcx>) -> bool {
-        ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
-            !ty.needs_drop(self.tcx, self.param_env)
+    fn type_promotability(&mut self, ty: Ty<'gcx>) -> Promotability {
+        debug!("type_promotability({})", ty);
+
+        if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
+            !ty.needs_drop(self.tcx, self.param_env) {
+            Promotable
+        } else {
+            NotPromotable
+        }
     }
 
-    fn handle_const_fn_call(&mut self, def_id: DefId, ret_ty: Ty<'gcx>, span: Span) {
-        self.promotable &= self.type_has_only_promotable_values(ret_ty);
+    fn handle_const_fn_call(&mut self, def_id: DefId,
+                            ret_ty: Ty<'gcx>, span: Span) -> Promotability {
+        if let NotPromotable = self.type_promotability(ret_ty) {
+            return NotPromotable;
+        }
 
-        self.promotable &= if let Some(fn_id) = self.tcx.hir.as_local_node_id(def_id) {
+        let node_check = if let Some(fn_id) = self.tcx.hir.as_local_node_id(def_id) {
             FnLikeNode::from_node(self.tcx.hir.get(fn_id)).map_or(false, |fn_like| {
                 fn_like.constness() == hir::Constness::Const
             })
@@ -130,12 +173,16 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             self.tcx.is_const_fn(def_id)
         };
 
+        if !node_check {
+            return NotPromotable
+        }
+
         if let Some(&attr::Stability {
             rustc_const_unstable: Some(attr::RustcConstUnstable {
                                            feature: ref feature_name
                                        }),
             .. }) = self.tcx.lookup_stability(def_id) {
-            self.promotable &=
+            let stable_check =
                 // feature-gate is enabled,
                 self.tcx.features()
                     .declared_lib_features
@@ -147,7 +194,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
                     // this comes from a macro that has #[allow_internal_unstable]
                     span.allows_unstable();
-        }
+            if !stable_check {
+                return NotPromotable
+            }
+        };
+        Promotable
     }
 
     /// While the `ExprUseVisitor` walks, we will identify which
@@ -169,7 +220,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 }
 
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
-    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+    fn check_nested_body(&mut self, body_id: hir::BodyId) -> Promotability {
         let item_id = self.tcx.hir.body_owner(body_id);
         let item_def_id = self.tcx.hir.local_def_id(item_id);
 
@@ -200,19 +251,19 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         euv::ExprUseVisitor::new(self, tcx, param_env, &region_scope_tree, self.tables, None)
             .consume_body(body);
 
-        self.visit_expr(&body.value);
+        let body_promotable = self.check_expr(&body.value);
         self.in_fn = outer_in_fn;
         self.tables = outer_tables;
         self.param_env = outer_param_env;
         self.identity_substs = outer_identity_substs;
+        body_promotable
     }
 
-    fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
+    fn check_stmt(&mut self, stmt: &'tcx hir::Stmt) -> Promotability {
         match stmt.node {
             hir::StmtDecl(ref decl, _node_id) => {
                 match &decl.node {
                     hir::DeclLocal(local) => {
-                        self.promotable = false;
                         if self.remove_mut_rvalue_borrow(&local.pat) {
                             if let Some(init) = &local.init {
                                 self.mut_rvalue_borrows.insert(init.id);
@@ -220,48 +271,47 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                         }
 
                         match local.init {
-                            Some(ref expr) => self.visit_expr(&expr),
+                            Some(ref expr) => { let _ = self.check_expr(&expr); },
                             None => {},
                         }
+                        NotPromotable
                     }
                     // Item statements are allowed
-                    hir::DeclItem(_) => {}
+                    hir::DeclItem(_) => Promotable
                 }
             }
             hir::StmtExpr(ref box_expr, _node_id) |
             hir::StmtSemi(ref box_expr, _node_id) => {
-                self.visit_expr(box_expr);
-                self.promotable = false;
+                let _ = self.check_expr(box_expr);
+                NotPromotable
             }
         }
     }
 
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
-        let outer = self.promotable;
-        self.promotable = true;
-
+    fn check_expr(&mut self, ex: &'tcx hir::Expr) -> Promotability {
         let node_ty = self.tables.node_id_to_type(ex.hir_id);
-        check_expr(self, ex, node_ty);
-        check_adjustments(self, ex);
+        let mut outer = check_expr_kind(self, ex, node_ty);
+        outer = outer & check_adjustments(self, ex);
 
         // Handle borrows on (or inside the autorefs of) this expression.
         if self.mut_rvalue_borrows.remove(&ex.id) {
-            self.promotable = false;
+            outer = NotPromotable
         }
 
-        if self.promotable {
+        if outer == Promotable {
             self.result.insert(ex.hir_id.local_id);
         }
-        self.promotable &= outer;
+        outer
     }
 
-    fn visit_block(&mut self, block: &'tcx hir::Block) {
+    fn check_block(&mut self, block: &'tcx hir::Block) -> Promotability {
+        let mut iter_result = Promotable;
         for index in block.stmts.iter() {
-            self.visit_stmt(index)
+            iter_result = iter_result & self.check_stmt(index);
         }
         match block.expr {
-            Some(ref box_expr) => { self.visit_expr(&*box_expr) },
-            None => {},
+            Some(ref box_expr) => iter_result & self.check_expr(&*box_expr),
+            None => iter_result,
         }
     }
 }
@@ -272,63 +322,68 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 /// every nested expression. If the expression is not part
 /// of a const/static item, it is qualified for promotion
 /// instead of producing errors.
-fn check_expr<'a, 'tcx>(
+fn check_expr_kind<'a, 'tcx>(
     v: &mut CheckCrateVisitor<'a, 'tcx>,
-    e: &'tcx hir::Expr, node_ty: Ty<'tcx>) {
-    match node_ty.sty {
-        ty::TyAdt(def, _) if def.has_dtor(v.tcx) => {
-            v.promotable = false;
-        }
-        _ => {}
-    }
+    e: &'tcx hir::Expr, node_ty: Ty<'tcx>) -> Promotability {
 
-    match e.node {
+    let ty_result = match node_ty.sty {
+        ty::TyAdt(def, _) if def.has_dtor(v.tcx) => {
+            NotPromotable
+        }
+        _ => Promotable
+    };
+
+    let node_result = match e.node {
         hir::ExprBox(ref expr) => {
-            v.visit_expr(&expr);
-            v.promotable = false;
+            let _ = v.check_expr(&expr);
+            NotPromotable
         }
         hir::ExprUnary(op, ref expr) => {
+            let expr_promotability = v.check_expr(expr);
             if v.tables.is_method_call(e) {
-                v.promotable = false;
+                return NotPromotable;
             }
             if op == hir::UnDeref {
-                v.promotable = false;
+                return NotPromotable;
             }
-            v.visit_expr(expr);
+            expr_promotability
         }
         hir::ExprBinary(op, ref lhs, ref rhs) => {
+            let lefty = v.check_expr(lhs);
+            let righty = v.check_expr(rhs);
             if v.tables.is_method_call(e) {
-                v.promotable = false;
+                return NotPromotable;
             }
-            v.visit_expr(lhs);
-            v.visit_expr(rhs);
             match v.tables.node_id_to_type(lhs.hir_id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op.node == hir::BiEq || op.node == hir::BiNe ||
                         op.node == hir::BiLe || op.node == hir::BiLt ||
                         op.node == hir::BiGe || op.node == hir::BiGt);
 
-                    v.promotable = false;
+                    NotPromotable
                 }
-                _ => {}
+                _ => lefty & righty
             }
         }
         hir::ExprCast(ref from, _) => {
-            v.visit_expr(from);
+            let expr_promotability = v.check_expr(from);
             debug!("Checking const cast(id={})", from.id);
             match v.tables.cast_kinds().get(from.hir_id) {
-                None => v.tcx.sess.delay_span_bug(e.span, "no kind for cast"),
+                None => {
+                    v.tcx.sess.delay_span_bug(e.span, "no kind for cast");
+                    NotPromotable
+                },
                 Some(&CastKind::PtrAddrCast) | Some(&CastKind::FnPtrAddrCast) => {
-                    v.promotable = false;
+                    NotPromotable
                 }
-                _ => {}
+                _ => expr_promotability
             }
         }
         hir::ExprPath(ref qpath) => {
             let def = v.tables.qpath_def(qpath, e.hir_id);
             match def {
                 Def::VariantCtor(..) | Def::StructCtor(..) |
-                Def::Fn(..) | Def::Method(..) =>  {}
+                Def::Fn(..) | Def::Method(..) => Promotable,
 
                 // References to a static that are themselves within a static
                 // are inherently promotable with the exception
@@ -337,25 +392,18 @@ fn check_expr<'a, 'tcx>(
                 Def::Static(did, _) => {
 
                     if v.in_static {
-                        let mut thread_local = false;
-
                         for attr in &v.tcx.get_attrs(did)[..] {
                             if attr.check_name("thread_local") {
                                 debug!("Reference to Static(id={:?}) is unpromotable \
                                        due to a #[thread_local] attribute", did);
-                                v.promotable = false;
-                                thread_local = true;
-                                break;
+                                return NotPromotable;
                             }
                         }
-
-                        if !thread_local {
-                            debug!("Allowing promotion of reference to Static(id={:?})", did);
-                        }
+                        Promotable
                     } else {
                         debug!("Reference to Static(id={:?}) is unpromotable as it is not \
                                referenced from a static", did);
-                        v.promotable = false;
+                        NotPromotable
 
                     }
                 }
@@ -364,26 +412,24 @@ fn check_expr<'a, 'tcx>(
                 Def::AssociatedConst(did) => {
                     let promotable = if v.tcx.trait_of_item(did).is_some() {
                         // Don't peek inside trait associated constants.
-                        false
+                        NotPromotable
+                    } else if v.tcx.at(e.span).const_is_rvalue_promotable_to_static(did) {
+                        Promotable
                     } else {
-                        v.tcx.at(e.span).const_is_rvalue_promotable_to_static(did)
+                        NotPromotable
                     };
-
                     // Just in case the type is more specific than the definition,
                     // e.g. impl associated const with type parameters, check it.
                     // Also, trait associated consts are relaxed by this.
-                    v.promotable &= promotable || v.type_has_only_promotable_values(node_ty);
+                    promotable | v.type_promotability(node_ty)
                 }
-
-                _ => {
-                    v.promotable = false;
-                }
+                _ => NotPromotable
             }
         }
         hir::ExprCall(ref callee, ref hirvec) => {
-            v.visit_expr(callee);
+            let mut call_result = v.check_expr(callee);
             for index in hirvec.iter() {
-                v.visit_expr(index)
+                call_result = call_result & v.check_expr(index);
             }
             let mut callee = &**callee;
             loop {
@@ -401,9 +447,9 @@ fn check_expr<'a, 'tcx>(
             } else {
                 Def::Err
             };
-            match def {
+            let def_result = match def {
                 Def::StructCtor(_, CtorKind::Fn) |
-                Def::VariantCtor(_, CtorKind::Fn) => {}
+                Def::VariantCtor(_, CtorKind::Fn) => Promotable,
                 Def::Fn(did) => {
                     v.handle_const_fn_call(did, node_ty, e.span)
                 }
@@ -412,94 +458,110 @@ fn check_expr<'a, 'tcx>(
                         ty::ImplContainer(_) => {
                             v.handle_const_fn_call(did, node_ty, e.span)
                         }
-                        ty::TraitContainer(_) => v.promotable = false
+                        ty::TraitContainer(_) => NotPromotable,
                     }
                 }
-                _ => v.promotable = false
-            }
+                _ => NotPromotable,
+            };
+            def_result & call_result
         }
         hir::ExprMethodCall(ref _pathsegment, ref _span, ref hirvec) => {
+            let mut method_call_result = Promotable;
             for index in hirvec.iter() {
-                v.visit_expr(index)
+                method_call_result = method_call_result & v.check_expr(index);
             }
             if let Some(def) = v.tables.type_dependent_defs().get(e.hir_id) {
                 let def_id = def.def_id();
                 match v.tcx.associated_item(def_id).container {
-                    ty::ImplContainer(_) => v.handle_const_fn_call(def_id, node_ty, e.span),
-                    ty::TraitContainer(_) => v.promotable = false
-                }
+                    ty::ImplContainer(_) => {
+                        method_call_result = method_call_result
+                            & v.handle_const_fn_call(def_id, node_ty, e.span);
+                    }
+                    ty::TraitContainer(_) => return NotPromotable,
+                };
             } else {
                 v.tcx.sess.delay_span_bug(e.span, "no type-dependent def for method call");
             }
+            method_call_result
         }
         hir::ExprStruct(ref _qpath, ref hirvec, ref option_expr) => {
+            let mut struct_result = Promotable;
             for index in hirvec.iter() {
-                v.visit_expr(&index.expr);
+                struct_result = struct_result & v.check_expr(&index.expr);
             }
             match *option_expr {
-                Some(ref expr) => { v.visit_expr(&expr) },
+                Some(ref expr) => { struct_result = struct_result & v.check_expr(&expr); },
                 None => {},
             }
             if let ty::TyAdt(adt, ..) = v.tables.expr_ty(e).sty {
                 // unsafe_cell_type doesn't necessarily exist with no_core
                 if Some(adt.did) == v.tcx.lang_items().unsafe_cell_type() {
-                    v.promotable = false;
+                    return NotPromotable;
                 }
             }
+            struct_result
         }
 
-        hir::ExprLit(_) => {}
+        hir::ExprLit(_) => Promotable,
 
         hir::ExprAddrOf(_, ref expr) |
         hir::ExprRepeat(ref expr, _) => {
-            v.visit_expr(expr);
+            v.check_expr(&expr)
         }
 
         hir::ExprClosure(_capture_clause, ref _box_fn_decl,
                          body_id, _span, _option_generator_movability) => {
-            v.visit_nested_body(body_id);
+            let nested_body_promotable = v.check_nested_body(body_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
             if v.tcx.with_freevars(e.id, |fv| !fv.is_empty()) {
-                v.promotable = false;
+                NotPromotable
+            } else {
+                nested_body_promotable
             }
         }
 
         hir::ExprField(ref expr, _ident) => {
-            v.visit_expr(expr);
+            let expr_promotability = v.check_expr(&expr);
             if let Some(def) = v.tables.expr_ty(expr).ty_adt_def() {
                 if def.is_union() {
-                    v.promotable = false
+                    return NotPromotable;
                 }
             }
+            expr_promotability
         }
 
         hir::ExprBlock(ref box_block, ref _option_label) => {
-            v.visit_block(box_block);
+            v.check_block(box_block)
         }
 
         hir::ExprIndex(ref lhs, ref rhs) => {
+            let lefty = v.check_expr(lhs);
+            let righty = v.check_expr(rhs);
             if v.tables.is_method_call(e) {
-                v.promotable = false;
+                return NotPromotable;
             }
-            v.visit_expr(lhs);
-            v.visit_expr(rhs);
+            lefty & righty
         }
 
         hir::ExprArray(ref hirvec) => {
+            let mut array_result = Promotable;
             for index in hirvec.iter() {
-                v.visit_expr(index)
+                array_result = array_result & v.check_expr(index);
             }
+            array_result
         }
 
         hir::ExprType(ref expr, ref _ty) => {
-            v.visit_expr(expr);
+            v.check_expr(&expr)
         }
 
         hir::ExprTup(ref hirvec) => {
+            let mut tup_result = Promotable;
             for index in hirvec.iter() {
-                v.visit_expr(index)
+                tup_result = tup_result & v.check_expr(index);
             }
+            tup_result
         }
 
 
@@ -515,79 +577,84 @@ fn check_expr<'a, 'tcx>(
                 v.mut_rvalue_borrows.insert(expr.id);
             }
 
-            v.visit_expr(expr);
+            let _ = v.check_expr(expr);
             for index in hirvec_arm.iter() {
-                v.visit_expr(&*index.body);
+                let _ = v.check_expr(&*index.body);
                 match index.guard {
-                    Some(ref expr) => v.visit_expr(&expr),
+                    Some(ref expr) => {
+                        let _ = v.check_expr(&expr);
+                    },
                     None => {},
-                }
+                };
             }
-            v.promotable = false;
+            NotPromotable
         }
 
         hir::ExprIf(ref lhs, ref rhs, ref option_expr) => {
-            v.visit_expr(lhs);
-            v.visit_expr(rhs);
+            let _ = v.check_expr(lhs);
+            let _ = v.check_expr(rhs);
             match option_expr {
-                Some(ref expr) => v.visit_expr(&expr),
+                Some(ref expr) => { let _ = v.check_expr(&expr); },
                 None => {},
-            }
-            v.promotable = false;
+            };
+            NotPromotable
         }
 
         // Loops (not very meaningful in constants).
         hir::ExprWhile(ref expr, ref box_block, ref _option_label) => {
-            v.visit_expr(expr);
-            v.visit_block(box_block);
-            v.promotable = false;
+            let _ = v.check_expr(expr);
+            let _ = v.check_block(box_block);
+            NotPromotable
         }
 
         hir::ExprLoop(ref box_block, ref _option_label, ref _loop_source) => {
-            v.visit_block(box_block);
-            v.promotable = false;
+            let _ = v.check_block(box_block);
+            NotPromotable
         }
 
         // More control flow (also not very meaningful).
         hir::ExprBreak(_, ref option_expr) | hir::ExprRet(ref option_expr) => {
             match *option_expr {
-                Some(ref expr) => { v.visit_expr(&expr) },
+                Some(ref expr) => { let _ = v.check_expr(&expr); },
                 None => {},
             }
-            v.promotable = false;
+            NotPromotable
         }
 
         hir::ExprContinue(_) => {
-            v.promotable = false;
+            NotPromotable
         }
 
         // Generator expressions
         hir::ExprYield(ref expr) => {
-            v.visit_expr(&expr);
-            v.promotable = false;
+            let _ = v.check_expr(&expr);
+            NotPromotable
         }
 
         // Expressions with side-effects.
         hir::ExprAssignOp(_, ref lhs, ref rhs) | hir::ExprAssign(ref lhs, ref rhs) => {
-            v.visit_expr(lhs);
-            v.visit_expr(rhs);
-            v.promotable = false;
+            let _ = v.check_expr(lhs);
+            let _ = v.check_expr(rhs);
+            NotPromotable
         }
 
         hir::ExprInlineAsm(ref _inline_asm, ref hirvec_lhs, ref hirvec_rhs) => {
             for index in hirvec_lhs.iter() {
-                v.visit_expr(index)
+                let _ = v.check_expr(index);
             }
             for index in hirvec_rhs.iter() {
-                v.visit_expr(index)
+                let _ = v.check_expr(index);
             }
-            v.promotable = false;
+            NotPromotable
         }
-    }
+    };
+    ty_result & node_result
 }
 
 /// Check the adjustments of an expression
-fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
+fn check_adjustments<'a, 'tcx>(
+    v: &mut CheckCrateVisitor<'a, 'tcx>,
+    e: &hir::Expr) -> Promotability {
     use rustc::ty::adjustment::*;
 
     let mut adjustments = v.tables.expr_adjustments(e).iter().peekable();
@@ -607,11 +674,11 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
                         continue;
                     }
                 }
-                v.promotable = false;
-                break;
+                return NotPromotable;
             }
         }
     }
+    Promotable
 }
 
 impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
