@@ -666,7 +666,7 @@ f32_f32! {
     // log10f,
     // log2f,
     logf,
-    // roundf,
+    roundf,
     // sinf,
     // sinhf,
     // tanf,

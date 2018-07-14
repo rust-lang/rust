@@ -40,7 +40,6 @@ pub trait F32Ext: private::Sealed {
     #[cfg(todo)]
     fn ceil(self) -> Self;
 
-    #[cfg(todo)]
     fn round(self) -> Self;
 
     fn trunc(self) -> Self;
@@ -154,7 +153,6 @@ impl F32Ext for f32 {
         ceilf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn round(self) -> Self {
         roundf(self)

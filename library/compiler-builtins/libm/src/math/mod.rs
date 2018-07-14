@@ -1,7 +1,9 @@
 macro_rules! force_eval {
     ($e:expr) => {
-        unsafe { ::core::ptr::read_volatile(&$e); }
-    }
+        unsafe {
+            ::core::ptr::read_volatile(&$e);
+        }
+    };
 }
 
 mod fabs;
@@ -9,6 +11,7 @@ mod fabsf;
 mod fmodf;
 mod powf;
 mod round;
+mod roundf;
 mod scalbn;
 mod scalbnf;
 mod sqrt;
@@ -29,6 +32,7 @@ pub use self::{
     fmodf::fmodf,
     powf::powf,
     round::round,
+    roundf::roundf,
     scalbn::scalbn,
     scalbnf::scalbnf,
     sqrt::sqrt,
