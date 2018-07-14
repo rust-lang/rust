@@ -1,6 +1,11 @@
 set -euxo pipefail
 
 main() {
+    if [ $TARGET = cargo-fmt ]; then
+        rustup component add rustfmt-preview
+        return
+    fi
+
     if ! hash cross >/dev/null 2>&1; then
         cargo install cross
     fi

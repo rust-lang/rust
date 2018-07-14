@@ -1,6 +1,11 @@
 set -euxo pipefail
 
 main() {
+    if [ $TARGET = cargo-fmt ]; then
+        cargo fmt -- --check
+        return
+    fi
+
     # quick check
     cargo check
 
