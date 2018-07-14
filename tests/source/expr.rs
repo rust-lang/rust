@@ -440,3 +440,10 @@ fn issue2704() {
 fn issue2782() {
     {let f={let f={{match f{F(f,_)=>{{loop{let f={match f{F(f,_)=>{{match f{F(f,_)=>{{loop{let f={let f={match f{'-'=>F(f,()),}};};}}}}}}}};}}}}}};};}
 }
+
+fn issue_2802() {
+    function_to_fill_this_line(some_arg, some_arg, some_arg)
+        * a_very_specific_length(specific_length_arg) * very_specific_length(Foo {
+        a: some_much_much_longer_value,
+    }) * some_value
+}

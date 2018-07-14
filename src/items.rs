@@ -1382,7 +1382,8 @@ fn format_tuple_struct(
         )?;
     }
 
-    if !where_clause_str.is_empty() && !where_clause_str.contains('\n')
+    if !where_clause_str.is_empty()
+        && !where_clause_str.contains('\n')
         && (result.contains('\n')
             || offset.block_indent + result.len() + where_clause_str.len() + 1
                 > context.config.max_width())
@@ -2527,7 +2528,8 @@ fn rewrite_where_clause_rfc_style(
         && comment_before.is_empty()
         && comment_after.is_empty()
         && !preds_str.contains('\n')
-        && 6 + preds_str.len() <= shape.width || where_single_line
+        && 6 + preds_str.len() <= shape.width
+        || where_single_line
     {
         Cow::from(" ")
     } else {
@@ -2737,7 +2739,8 @@ fn format_generics(
             false,
         )?;
         result.push_str(&where_clause_str);
-        brace_pos == BracePos::ForceSameLine || brace_style == BraceStyle::PreferSameLine
+        brace_pos == BracePos::ForceSameLine
+            || brace_style == BraceStyle::PreferSameLine
             || (generics.where_clause.predicates.is_empty()
                 && trimmed_last_line_width(&result) == 1)
     } else {

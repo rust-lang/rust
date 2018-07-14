@@ -31,6 +31,7 @@ use lists::{
 use macros::{rewrite_macro, MacroArg, MacroPosition};
 use matches::rewrite_match;
 use overflow;
+use pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
 use patterns::{can_be_overflowed_pat, is_short_pattern, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
@@ -88,11 +89,11 @@ pub fn format_expr(
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
         ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator
-            rewrite_simple_binaries(context, expr, shape, op).or_else(|| {
+            rewrite_all_pairs(expr, shape, context).or_else(|| {
                 rewrite_pair(
                     &**lhs,
                     &**rhs,
-                    PairParts::new("", &format!(" {} ", context.snippet(op.span)), ""),
+                    PairParts::infix(&format!(" {} ", context.snippet(op.span))),
                     context,
                     shape,
                     context.config.binop_separator(),
@@ -211,7 +212,7 @@ pub fn format_expr(
         ast::ExprKind::Cast(ref expr, ref ty) => rewrite_pair(
             &**expr,
             &**ty,
-            PairParts::new("", " as ", ""),
+            PairParts::infix(" as "),
             context,
             shape,
             SeparatorPlace::Front,
@@ -219,7 +220,7 @@ pub fn format_expr(
         ast::ExprKind::Type(ref expr, ref ty) => rewrite_pair(
             &**expr,
             &**ty,
-            PairParts::new("", ": ", ""),
+            PairParts::infix(": "),
             context,
             shape,
             SeparatorPlace::Back,
@@ -288,7 +289,7 @@ pub fn format_expr(
                     rewrite_pair(
                         &*lhs,
                         &*rhs,
-                        PairParts::new("", &sp_delim, ""),
+                        PairParts::infix(&sp_delim),
                         context,
                         shape,
                         context.config.binop_separator(),
@@ -359,172 +360,6 @@ pub fn format_expr(
             );
             combine_strs_with_missing_comments(context, &attrs_str, &expr_str, span, shape, false)
         })
-}
-
-/// Collect operands that appears in the given binary operator in the opposite order.
-/// e.g. `collect_binary_items(e, ||)` for `a && b || c || d` returns `[d, c, a && b]`.
-fn collect_binary_items<'a>(mut expr: &'a ast::Expr, binop: ast::BinOp) -> Vec<&'a ast::Expr> {
-    let mut result = vec![];
-    let mut prev_lhs = None;
-    loop {
-        match expr.node {
-            ast::ExprKind::Binary(inner_binop, ref lhs, ref rhs)
-                if inner_binop.node == binop.node =>
-            {
-                result.push(&**rhs);
-                expr = lhs;
-                prev_lhs = Some(lhs);
-            }
-            _ => {
-                if let Some(lhs) = prev_lhs {
-                    result.push(lhs);
-                }
-                break;
-            }
-        }
-    }
-    result
-}
-
-/// Rewrites a binary expression whose operands fits within a single line.
-fn rewrite_simple_binaries(
-    context: &RewriteContext,
-    expr: &ast::Expr,
-    shape: Shape,
-    op: ast::BinOp,
-) -> Option<String> {
-    let op_str = context.snippet(op.span);
-
-    // 2 = spaces around a binary operator.
-    let sep_overhead = op_str.len() + 2;
-    let nested_overhead = sep_overhead - 1;
-
-    let nested_shape = (match context.config.indent_style() {
-        IndentStyle::Visual => shape.visual_indent(0),
-        IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
-    }).with_max_width(context.config);
-    let nested_shape = match context.config.binop_separator() {
-        SeparatorPlace::Back => nested_shape.sub_width(nested_overhead)?,
-        SeparatorPlace::Front => nested_shape.offset_left(nested_overhead)?,
-    };
-
-    let opt_rewrites: Option<Vec<_>> = collect_binary_items(expr, op)
-        .iter()
-        .rev()
-        .map(|e| e.rewrite(context, nested_shape))
-        .collect();
-    if let Some(rewrites) = opt_rewrites {
-        if rewrites.iter().all(|e| ::utils::is_single_line(e)) {
-            let total_width = rewrites.iter().map(|s| s.len()).sum::<usize>()
-                + sep_overhead * (rewrites.len() - 1);
-
-            let sep_str = if total_width <= shape.width {
-                format!(" {} ", op_str)
-            } else {
-                let indent_str = nested_shape.indent.to_string_with_newline(context.config);
-                match context.config.binop_separator() {
-                    SeparatorPlace::Back => format!(" {}{}", op_str.trim_right(), indent_str),
-                    SeparatorPlace::Front => format!("{}{} ", indent_str, op_str.trim_left()),
-                }
-            };
-
-            return wrap_str(rewrites.join(&sep_str), context.config.max_width(), shape);
-        }
-    }
-
-    None
-}
-
-#[derive(new, Clone, Copy)]
-pub struct PairParts<'a> {
-    prefix: &'a str,
-    infix: &'a str,
-    suffix: &'a str,
-}
-
-pub fn rewrite_pair<LHS, RHS>(
-    lhs: &LHS,
-    rhs: &RHS,
-    pp: PairParts,
-    context: &RewriteContext,
-    shape: Shape,
-    separator_place: SeparatorPlace,
-) -> Option<String>
-where
-    LHS: Rewrite,
-    RHS: Rewrite,
-{
-    let lhs_overhead = match separator_place {
-        SeparatorPlace::Back => shape.used_width() + pp.prefix.len() + pp.infix.trim_right().len(),
-        SeparatorPlace::Front => shape.used_width(),
-    };
-    let lhs_shape = Shape {
-        width: context.budget(lhs_overhead),
-        ..shape
-    };
-    let lhs_result = lhs
-        .rewrite(context, lhs_shape)
-        .map(|lhs_str| format!("{}{}", pp.prefix, lhs_str))?;
-
-    // Try to put both lhs and rhs on the same line.
-    let rhs_orig_result = shape
-        .offset_left(last_line_width(&lhs_result) + pp.infix.len())
-        .and_then(|s| s.sub_width(pp.suffix.len()))
-        .and_then(|rhs_shape| rhs.rewrite(context, rhs_shape));
-    if let Some(ref rhs_result) = rhs_orig_result {
-        // If the length of the lhs is equal to or shorter than the tab width or
-        // the rhs looks like block expression, we put the rhs on the same
-        // line with the lhs even if the rhs is multi-lined.
-        let allow_same_line = lhs_result.len() <= context.config.tab_spaces()
-            || rhs_result
-                .lines()
-                .next()
-                .map(|first_line| first_line.ends_with('{'))
-                .unwrap_or(false);
-        if !rhs_result.contains('\n') || allow_same_line {
-            let one_line_width = last_line_width(&lhs_result)
-                + pp.infix.len()
-                + first_line_width(rhs_result)
-                + pp.suffix.len();
-            if one_line_width <= shape.width {
-                return Some(format!(
-                    "{}{}{}{}",
-                    lhs_result, pp.infix, rhs_result, pp.suffix
-                ));
-            }
-        }
-    }
-
-    // We have to use multiple lines.
-    // Re-evaluate the rhs because we have more space now:
-    let mut rhs_shape = match context.config.indent_style() {
-        IndentStyle::Visual => shape
-            .sub_width(pp.suffix.len() + pp.prefix.len())?
-            .visual_indent(pp.prefix.len()),
-        IndentStyle::Block => {
-            // Try to calculate the initial constraint on the right hand side.
-            let rhs_overhead = shape.rhs_overhead(context.config);
-            Shape::indented(shape.indent.block_indent(context.config), context.config)
-                .sub_width(rhs_overhead)?
-        }
-    };
-    let infix = match separator_place {
-        SeparatorPlace::Back => pp.infix.trim_right(),
-        SeparatorPlace::Front => pp.infix.trim_left(),
-    };
-    if separator_place == SeparatorPlace::Front {
-        rhs_shape = rhs_shape.offset_left(infix.len())?;
-    }
-    let rhs_result = rhs.rewrite(context, rhs_shape)?;
-    let indent_str = rhs_shape.indent.to_string_with_newline(context.config);
-    let infix_with_sep = match separator_place {
-        SeparatorPlace::Back => format!("{}{}", infix, indent_str),
-        SeparatorPlace::Front => format!("{}{}", indent_str, infix),
-    };
-    Some(format!(
-        "{}{}{}{}",
-        lhs_result, infix_with_sep, rhs_result, pp.suffix
-    ))
 }
 
 pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
@@ -1028,16 +863,16 @@ impl<'a> ControlFlow<'a> {
             && context
                 .config
                 .width_heuristics()
-                .single_line_if_else_max_width > 0
+                .single_line_if_else_max_width
+                > 0
         {
             let trial = self.rewrite_single_line(&pat_expr_string, context, shape.width);
 
             if let Some(cond_str) = trial {
-                if cond_str.len()
-                    <= context
-                        .config
-                        .width_heuristics()
-                        .single_line_if_else_max_width
+                if cond_str.len() <= context
+                    .config
+                    .width_heuristics()
+                    .single_line_if_else_max_width
                 {
                     return Some((cond_str, 0));
                 }
@@ -2095,7 +1930,7 @@ fn choose_rhs<R: Rewrite>(
                 }
                 (None, Some(ref new_rhs)) => Some(format!("{}{}", new_indent_str, new_rhs)),
                 (None, None) => None,
-                (Some(ref orig_rhs), _) => Some(format!(" {}", orig_rhs)),
+                (Some(orig_rhs), _) => Some(format!(" {}", orig_rhs)),
             }
         }
     }

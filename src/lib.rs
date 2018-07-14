@@ -86,6 +86,7 @@ mod matches;
 mod missed_spans;
 pub(crate) mod modules;
 mod overflow;
+mod pairs;
 mod patterns;
 mod reorder;
 mod rewrite;

@@ -320,15 +320,13 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                                     ListTactic::HorizontalVertical,
                                     Separator::Comma,
                                     self.nested_shape.width,
-                                )
-                                    == DefinitiveListTactic::Horizontal
+                                ) == DefinitiveListTactic::Horizontal
                                 && definitive_tactic(
                                     &list_items[num_args_before + 1..],
                                     ListTactic::HorizontalVertical,
                                     Separator::Comma,
                                     self.nested_shape.width,
-                                )
-                                    == DefinitiveListTactic::Horizontal;
+                                ) == DefinitiveListTactic::Horizontal;
 
                             if one_line {
                                 tactic = DefinitiveListTactic::SpecialMacro(num_args_before);

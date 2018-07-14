@@ -703,7 +703,8 @@ impl ConfigCodeBlock {
             .unwrap()
             .split('\n')
             .nth(0)
-            .unwrap_or("") == "#![rustfmt::skip]";
+            .unwrap_or("")
+            == "#![rustfmt::skip]";
 
         if self.config_name.is_none() && !fmt_skip {
             write_message(&format!(

@@ -97,11 +97,10 @@ impl ListItem {
     }
 
     pub fn is_different_group(&self) -> bool {
-        self.inner_as_ref().contains('\n') || self.pre_comment.is_some()
-            || self
-                .post_comment
-                .as_ref()
-                .map_or(false, |s| s.contains('\n'))
+        self.inner_as_ref().contains('\n') || self.pre_comment.is_some() || self
+            .post_comment
+            .as_ref()
+            .map_or(false, |s| s.contains('\n'))
     }
 
     pub fn is_multiline(&self) -> bool {
@@ -420,7 +419,8 @@ where
                 if first_line_width(&formatted_comment)
                     + last_line_width(&result)
                     + comment_alignment
-                    + 1 > formatting.config.max_width()
+                    + 1
+                    > formatting.config.max_width()
                 {
                     item_max_width = None;
                     formatted_comment = rewrite_post_comment(&mut item_max_width)?;

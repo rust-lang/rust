@@ -295,11 +295,10 @@ pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
 // Return true if the given span does not intersect with file lines.
 macro_rules! out_of_file_lines_range {
     ($self:ident, $span:expr) => {
-        !$self.config.file_lines().is_all()
-            && !$self
-                .config
-                .file_lines()
-                .intersects(&$self.codemap.lookup_line_range($span))
+        !$self.config.file_lines().is_all() && !$self
+            .config
+            .file_lines()
+            .intersects(&$self.codemap.lookup_line_range($span))
     };
 }
 
