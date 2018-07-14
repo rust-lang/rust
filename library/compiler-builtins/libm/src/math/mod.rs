@@ -6,6 +6,7 @@ macro_rules! force_eval {
     };
 }
 
+mod acos;
 mod cbrt;
 mod cbrtf;
 mod ceil;
@@ -42,6 +43,7 @@ mod trunc;
 mod truncf;
 
 // Use separated imports instead of {}-grouped imports for easier merging.
+pub use self::acos::acos;
 pub use self::cbrt::cbrt;
 pub use self::cbrtf::cbrtf;
 pub use self::ceil::ceil;
