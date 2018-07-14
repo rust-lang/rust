@@ -704,7 +704,7 @@ f64_f64! {
     // cos,
     // cosh,
     exp,
-    // exp2,
+    exp2,
     // expm1,
     floor,
     log,

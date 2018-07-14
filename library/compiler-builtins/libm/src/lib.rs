@@ -385,7 +385,6 @@ pub trait F64Ext: private::Sealed {
 
     fn exp(self) -> Self;
 
-    #[cfg(todo)]
     fn exp2(self) -> Self;
 
     fn ln(self) -> Self;
@@ -530,7 +529,6 @@ impl F64Ext for f64 {
         exp(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn exp2(self) -> Self {
         exp2(self)
