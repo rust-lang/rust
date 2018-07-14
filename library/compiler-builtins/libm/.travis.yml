@@ -15,6 +15,8 @@ matrix:
     - env: TARGET=powerpc64-unknown-linux-gnu
     - env: TARGET=powerpc64le-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-gnu
+    - env: TARGET=cargo-fmt
+      rust: beta
 
 before_install: set -e
 
@@ -22,8 +24,6 @@ install:
   - bash ci/install.sh
 
 script:
-  # code must be already formatted
-  - cargo fmt -- --check
   - bash ci/script.sh
 
 after_script: set +e
