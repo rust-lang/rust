@@ -234,21 +234,31 @@ pub fn codegen_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             memset_intrinsic(bx, true, substs.type_at(0),
                              args[0].immediate(), args[1].immediate(), args[2].immediate())
         }
-        "volatile_load" => {
+        "volatile_load" | "unaligned_volatile_load" => {
             let tp_ty = substs.type_at(0);
             let mut ptr = args[0].immediate();
             if let PassMode::Cast(ty) = fn_ty.ret.mode {
                 ptr = bx.pointercast(ptr, ty.llvm_type(cx).ptr_to());
             }
             let load = bx.volatile_load(ptr);
+            let align = if name == "unaligned_volatile_load" {
+                1
+            } else {
+                cx.align_of(tp_ty).abi() as u32
+            };
             unsafe {
-                llvm::LLVMSetAlignment(load, cx.align_of(tp_ty).abi() as u32);
+                llvm::LLVMSetAlignment(load, align);
             }
             to_immediate(bx, load, cx.layout_of(tp_ty))
         },
         "volatile_store" => {
             let dst = args[0].deref(bx.cx);
             args[1].val.volatile_store(bx, dst);
+            return;
+        },
+        "unaligned_volatile_store" => {
+            let dst = args[0].deref(bx.cx);
+            args[1].val.unaligned_volatile_store(bx, dst);
             return;
         },
         "prefetch_read_data" | "prefetch_write_data" |

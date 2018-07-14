@@ -270,9 +270,9 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "roundf32"     => (0, vec![ tcx.types.f32 ], tcx.types.f32),
             "roundf64"     => (0, vec![ tcx.types.f64 ], tcx.types.f64),
 
-            "volatile_load" =>
+            "volatile_load" | "unaligned_volatile_load" =>
                 (1, vec![ tcx.mk_imm_ptr(param(0)) ], param(0)),
-            "volatile_store" =>
+            "volatile_store" | "unaligned_volatile_store" =>
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil()),
 
             "ctpop" | "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" |
