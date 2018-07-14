@@ -12,7 +12,7 @@ use std::mem;
 
 use errors;
 
-use syntax::ast::{self, Ident, NodeId};
+use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::codemap::{ExpnInfo, MacroAttribute, hygiene, respan};
 use syntax::ext::base::ExtCtxt;
@@ -293,7 +293,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         let attr = match found_attr {
             None => {
                 self.check_not_pub_in_root(&item.vis, item.span);
-                return visit::walk_item(self, item);
+                let prev_in_root = mem::replace(&mut self.in_root, false);
+                visit::walk_item(self, item);
+                self.in_root = prev_in_root;
+                return;
             },
             Some(attr) => attr,
         };
@@ -326,15 +329,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             self.collect_bang_proc_macro(item, attr);
         };
 
+        let prev_in_root = mem::replace(&mut self.in_root, false);
         visit::walk_item(self, item);
-    }
-
-    fn visit_mod(&mut self, m: &'a ast::Mod, _s: Span, _a: &[ast::Attribute], id: NodeId) {
-        let mut prev_in_root = self.in_root;
-        if id != ast::CRATE_NODE_ID {
-            prev_in_root = mem::replace(&mut self.in_root, false);
-        }
-        visit::walk_mod(self, m);
         self.in_root = prev_in_root;
     }
 
