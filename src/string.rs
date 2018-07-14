@@ -51,7 +51,7 @@ impl<'a> StringFormat<'a> {
             self.shape
                 .width
                 .checked_sub(self.opener.len() + self.line_end.len() + 1)?
-                + 1;
+                + 1,
         )
     }
 
@@ -63,11 +63,7 @@ impl<'a> StringFormat<'a> {
     }
 }
 
-pub fn rewrite_string<'a>(
-    orig: &str,
-    fmt: &StringFormat<'a>,
-    max_width: Option<usize>,
-) -> Option<String> {
+pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> {
     let max_chars_with_indent = fmt.max_chars_with_indent()?;
     let max_chars_without_indent = fmt.max_chars_without_indent()?;
     let indent = fmt.shape.indent.to_string_with_newline(fmt.config);
@@ -235,7 +231,7 @@ mod test {
     fn issue343() {
         let config = Default::default();
         let fmt = StringFormat::new(Shape::legacy(2, Indent::empty()), &config);
-        rewrite_string("eq_", &fmt, None);
+        rewrite_string("eq_", &fmt);
     }
 
     #[test]
