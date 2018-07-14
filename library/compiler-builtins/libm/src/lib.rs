@@ -70,7 +70,6 @@ pub trait F32Ext: private::Sealed {
 
     fn exp(self) -> Self;
 
-    #[cfg(todo)]
     fn exp2(self) -> Self;
 
     fn ln(self) -> Self;
@@ -214,7 +213,6 @@ impl F32Ext for f32 {
         expf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn exp2(self) -> Self {
         exp2f(self)

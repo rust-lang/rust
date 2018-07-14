@@ -660,7 +660,7 @@ f32_f32! {
     cosf,
     ceilf,
     // coshf,
-    // exp2f,
+    exp2f,
     expf,
     log10f,
     log1pf,
