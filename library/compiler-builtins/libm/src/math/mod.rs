@@ -16,6 +16,8 @@ mod fmod;
 mod fmodf;
 mod hypot;
 mod hypotf;
+mod log2;
+mod log2f;
 mod logf;
 mod powf;
 mod round;
