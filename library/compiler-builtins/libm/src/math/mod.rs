@@ -9,7 +9,6 @@ macro_rules! force_eval {
 mod ceil;
 mod ceilf;
 mod cosf;
-mod cosh;
 mod exp;
 mod expf;
 mod expm1;
@@ -44,7 +43,6 @@ mod truncf;
 pub use self::ceil::ceil;
 pub use self::ceilf::ceilf;
 pub use self::cosf::cosf;
-pub use self::cosh::cosh;
 pub use self::exp::exp;
 pub use self::expf::expf;
 pub use self::expm1::expm1;
@@ -76,12 +74,10 @@ pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
 mod k_cosf;
-mod k_expo2;
 mod k_sinf;
 mod rem_pio2_large;
 mod rem_pio2f;
 
 use self::{
-    k_cosf::k_cosf, k_expo2::k_expo2, k_sinf::k_sinf, rem_pio2_large::rem_pio2_large,
-    rem_pio2f::rem_pio2f,
+    k_cosf::k_cosf, k_sinf::k_sinf, rem_pio2_large::rem_pio2_large, rem_pio2f::rem_pio2f,
 };

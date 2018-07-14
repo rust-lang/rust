@@ -702,7 +702,7 @@ f64_f64! {
     // cbrt,
     ceil,
     // cos,
-    cosh,
+    // cosh,
     exp,
     // exp2,
     expm1,
