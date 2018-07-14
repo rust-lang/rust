@@ -6,8 +6,13 @@ A port of [MUSL]'s libm to Rust.
 
 ## Goals
 
-The short term goal of this library is to enable math support (e.g. `sin`, `atan2`) for the
-`wasm32-unknown-unknown` target. The longer term goal is to enable math support in the `core` crate.
+The short term goal of this library is to [enable math support (e.g. `sin`, `atan2`) for the
+`wasm32-unknown-unknown` target][wasm] (cf. [rust-lang-nursery/compiler-builtins][pr]). The longer
+term goal is to enable [math support in the `core` crate][core].
+
+[wasm]: https://github.com/japaric/libm/milestone/1
+[pr]: https://github.com/rust-lang-nursery/compiler-builtins/pull/248
+[core]: https://github.com/japaric/libm/milestone/2
 
 ## Contributing
 
