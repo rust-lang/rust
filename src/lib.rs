@@ -9,10 +9,10 @@ extern crate rustc_codegen_utils;
 extern crate rustc_incremental;
 extern crate rustc_data_structures;
 
-extern crate cretonne;
-extern crate cretonne_module;
-extern crate cretonne_simplejit;
-extern crate cretonne_faerie;
+extern crate cranelift;
+extern crate cranelift_module;
+extern crate cranelift_simplejit;
+//extern crate cranelift_faerie;
 
 use syntax::symbol::Symbol;
 use rustc::session::{
@@ -35,6 +35,7 @@ use std::io::Write;
 
 mod base;
 mod common;
+mod pretty_clif;
 
 mod prelude {
     pub use std::any::Any;
@@ -52,13 +53,13 @@ mod prelude {
     pub use rustc_data_structures::{indexed_vec::Idx, sync::Lrc};
     pub use rustc_mir::monomorphize::{MonoItem, collector};
 
-    pub use cretonne::codegen::ir::{
-        condcodes::IntCC, function::Function, ExternalName, FuncRef, StackSlot,
+    pub use cranelift::codegen::ir::{
+        condcodes::IntCC, function::Function, ExternalName, FuncRef, StackSlot, Inst
     };
-    pub use cretonne::codegen::Context;
-    pub use cretonne::prelude::*;
-    pub use cretonne_module::{Module, Backend, FuncId, Linkage};
-    pub use cretonne_simplejit::{SimpleJITBuilder, SimpleJITBackend};
+    pub use cranelift::codegen::Context;
+    pub use cranelift::prelude::*;
+    pub use cranelift_module::{Module, Backend, FuncId, Linkage};
+    pub use cranelift_simplejit::{SimpleJITBuilder, SimpleJITBackend};
 
     pub use common::Variable;
     pub use common::*;
@@ -74,21 +75,21 @@ pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
 }
 
-struct CretonneCodegenBackend(());
+struct CraneliftCodegenBackend(());
 
 struct OngoingCodegen {
     metadata: EncodedMetadata,
-    //translated_module: Module<cretonne_faerie::FaerieBackend>,
+    //translated_module: Module<cranelift_faerie::FaerieBackend>,
     crate_name: Symbol,
 }
 
-impl CretonneCodegenBackend {
+impl CraneliftCodegenBackend {
     fn new() -> Box<CodegenBackend> {
-        Box::new(CretonneCodegenBackend(()))
+        Box::new(CraneliftCodegenBackend(()))
     }
 }
 
-impl CodegenBackend for CretonneCodegenBackend {
+impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
         for cty in sess.opts.crate_types.iter() {
             match *cty {
@@ -118,7 +119,6 @@ impl CodegenBackend for CretonneCodegenBackend {
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
-        providers.wasm_custom_sections = |_tcx, _crate| Lrc::new(Vec::new());
     }
     fn provide_extern(&self, providers: &mut Providers) {
         providers.is_reachable_non_generic = |_tcx, _defid| true;
@@ -213,7 +213,7 @@ impl CodegenBackend for CretonneCodegenBackend {
 
         Box::new(::OngoingCodegen {
             metadata: metadata,
-            //translated_module: Module::new(::cretonne_faerie::FaerieBuilder::new(,
+            //translated_module: Module::new(::cranelift_faerie::FaerieBuilder::new(,
             crate_name: tcx.crate_name(LOCAL_CRATE),
         })
     }
@@ -252,8 +252,8 @@ impl CodegenBackend for CretonneCodegenBackend {
     }
 }
 
-/// This is the entrypoint for a hot plugged rustc_codegen_cretonne
+/// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
-    CretonneCodegenBackend::new()
+    CraneliftCodegenBackend::new()
 }

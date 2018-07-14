@@ -27,17 +27,18 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
 
                 let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
 
-                ::base::trans_fn(cx, &mut f, inst);
+                let comments = ::base::trans_fn(cx, &mut f, inst);
 
                 let mut cton = String::new();
-                ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
+                ::cranelift::codegen::write_function(&mut cton, &f, None).unwrap();
                 tcx.sess.warn(&cton);
 
                 let flags = settings::Flags::new(settings::builder());
-                match ::cretonne::codegen::verify_function(&f, &flags) {
+                match ::cranelift::codegen::verify_function(&f, &flags) {
                     Ok(_) => {}
                     Err(err) => {
-                        let pretty_error = ::cretonne::codegen::print_errors::pretty_verifier_error(&f, None, &err);
+                        let writer = ::pretty_clif::CommentWriter(comments);
+                        let pretty_error = ::cranelift::codegen::print_errors::pretty_verifier_error(&f, None, Some(Box::new(writer)), &err);
                         tcx.sess.fatal(&format!("cretonne verify error:\n{}", pretty_error));
                     }
                 }
@@ -52,7 +53,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
     }
 }
 
-pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, instance: Instance<'tcx>) {
+pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, instance: Instance<'tcx>) -> HashMap<Inst, String> {
     let mir = cx.tcx.optimized_mir(instance.def_id());
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
@@ -77,6 +78,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
         },
         ebb_map,
         local_map: HashMap::new(),
+        comments: HashMap::new(),
     };
     let fx = &mut fx;
 
@@ -234,11 +236,13 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
 
         let mut terminator_head = "\n".to_string();
         bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
-        fx.bcx.func.comments[inst] = terminator_head;
+        fx.add_comment(inst, terminator_head);
     }
 
     fx.bcx.seal_all_blocks();
     fx.bcx.finalize();
+
+    fx.comments.clone()
 }
 
 fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) {
@@ -426,7 +430,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
 
     let inst = fx.bcx.func.layout.next_inst(nop_inst).unwrap();
     fx.bcx.func.layout.remove_inst(nop_inst);
-    fx.bcx.func.comments[inst] = format!("{:?}", stmt);
+    fx.add_comment(inst, format!("{:?}", stmt));
 }
 
 fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {

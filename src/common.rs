@@ -1,13 +1,15 @@
 extern crate rustc_target;
 
+use std::borrow::Cow;
+
 use syntax::ast::{IntTy, UintTy};
 use self::rustc_target::spec::{HasTargetSpec, Target};
 
-use cretonne_module::{Module, Linkage, FuncId};
+use cranelift_module::{Module, Linkage, FuncId};
 
 use prelude::*;
 
-pub type CurrentBackend = ::cretonne_simplejit::SimpleJITBackend;
+pub type CurrentBackend = ::cranelift_simplejit::SimpleJITBackend;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Variable(Local);
@@ -293,6 +295,7 @@ pub struct FunctionCx<'a, 'tcx: 'a> {
     pub bcx: FunctionBuilder<'a, Variable>,
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
+    pub comments: HashMap<Inst, String>,
 }
 
 impl<'a, 'tcx: 'a> LayoutOf for &'a FunctionCx<'a, 'tcx> {
@@ -354,5 +357,18 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
             module.declare_function(&tcx.absolute_item_path_str(inst.def_id()), Linkage::Local, &sig).unwrap()
         });
         module.declare_func_in_func(func_id, &mut self.bcx.func)
+    }
+
+    pub fn add_comment<'s, S: Into<Cow<'s, str>>>(&mut self, inst: Inst, comment: S) {
+        use std::collections::hash_map::Entry;
+        match self.comments.entry(inst) {
+            Entry::Occupied(mut occ) => {
+                occ.get_mut().push('\n');
+                occ.get_mut().push_str(comment.into().as_ref());
+            }
+            Entry::Vacant(vac) => {
+                vac.insert(comment.into().into_owned());
+            }
+        }
     }
 }
