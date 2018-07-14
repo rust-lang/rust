@@ -36,14 +36,14 @@ pub use self::{
     truncf::truncf,
 };
 
-mod sindf;
-mod cosdf;
+mod k_cosf;
+mod k_sinf;
 mod rem_pio2f;
 mod rem_pio2_large;
 
 use self::{
-    sindf::sindf,
-    cosdf::cosdf,
+    k_cosf::k_cosf,
+    k_sinf::k_sinf,
     rem_pio2f::rem_pio2f,
     rem_pio2_large::rem_pio2_large,
 };

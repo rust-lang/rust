@@ -1,5 +1,5 @@
-use super::scalbn;
-use super::floor;
+use math::scalbn;
+use math::floor;
 
 // initial value for jk
 const INIT_JK : [usize; 4] = [3,4,4,6];
@@ -263,7 +263,7 @@ pub(crate) fn rem_pio2_large(x : &[f64], y : &mut [f64], e0 : i32, prec : usize)
     let mut fw : f64;
     let mut n  : i32;
     let mut ih : i32;
-    let mut z = 0f64;
+    let mut z  : f64;
     let mut f  : [f64;20] = [0.;20];
     let mut fq : [f64;20] = [0.;20];
     let mut q  : [f64;20] = [0.;20];
@@ -308,7 +308,7 @@ pub(crate) fn rem_pio2_large(x : &[f64], y : &mut [f64], e0 : i32, prec : usize)
     'recompute: loop {
         /* distill q[] into iq[] reversingly */
         let mut i = 0i32;
-        let mut z = q[jz];
+        z = q[jz];
         for j in (1..=jz).rev() {
             fw    = (x1p_24*z) as i32 as f64;
             iq[i as usize] = (z - x1p24*fw) as i32;
