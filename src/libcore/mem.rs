@@ -957,7 +957,7 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[allow(unions_with_drop_fields)]
 #[derive(Copy)]
-pub union ManuallyDrop<T>{ value: T }
+pub union ManuallyDrop<T>{ value: T, dropped: () }
 
 impl<T> ManuallyDrop<T> {
     /// Wrap a value to be manually dropped.
