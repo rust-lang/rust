@@ -52,7 +52,6 @@ pub trait F32Ext: private::Sealed {
     #[cfg(todo)]
     fn signum(self) -> Self;
 
-    #[cfg(todo)]
     fn mul_add(self, a: Self, b: Self) -> Self;
 
     #[cfg(todo)]
@@ -161,7 +160,6 @@ impl F32Ext for f32 {
         fabsf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn mul_add(self, a: Self, b: Self) -> Self {
         fmaf(self, a, b)
