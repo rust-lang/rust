@@ -125,7 +125,7 @@ pub enum NativeLibraryKind {
     NativeUnknown,
 }
 
-#[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
     pub name: Symbol,

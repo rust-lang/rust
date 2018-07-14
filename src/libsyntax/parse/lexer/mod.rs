@@ -26,7 +26,7 @@ pub mod comments;
 mod tokentrees;
 mod unicode_chars;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct TokenAndSpan {
     pub tok: token::Token,
     pub sp: Span,
@@ -1842,7 +1842,8 @@ mod tests {
                 tok: token::Ident(id, false),
                 sp: Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
             };
-            assert_eq!(tok1, tok2);
+            assert_eq!(tok1.tok, tok2.tok);
+            assert_eq!(tok1.sp, tok2.sp);
             assert_eq!(string_reader.next_token().tok, token::Whitespace);
             // the 'main' id is already read:
             assert_eq!(string_reader.pos.clone(), BytePos(28));
@@ -1852,7 +1853,8 @@ mod tests {
                 tok: mk_ident("main"),
                 sp: Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
             };
-            assert_eq!(tok3, tok4);
+            assert_eq!(tok3.tok, tok4.tok);
+            assert_eq!(tok3.sp, tok4.sp);
             // the lparen is already read:
             assert_eq!(string_reader.pos.clone(), BytePos(29))
         })

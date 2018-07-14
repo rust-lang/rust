@@ -397,7 +397,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemUnion(..) => "a union",
             hir::ItemTrait(.., ref trait_item_refs) => {
                 // Issue #11592, traits are always considered exported, even when private.
-                if it.vis.node == hir::VisibilityKind::Inherited {
+                if let hir::VisibilityKind::Inherited = it.vis.node {
                     self.private_traits.insert(it.id);
                     for trait_item_ref in trait_item_refs {
                         self.private_traits.insert(trait_item_ref.id.node_id);
@@ -414,7 +414,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 if let Some(node_id) = cx.tcx.hir.as_local_node_id(real_trait) {
                     match cx.tcx.hir.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
-                            if item.vis.node == hir::VisibilityKind::Inherited {
+                            if let hir::VisibilityKind::Inherited = item.vis.node {
                                 for impl_item_ref in impl_item_refs {
                                     self.private_traits.insert(impl_item_ref.id.node_id);
                                 }

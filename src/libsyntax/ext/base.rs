@@ -725,7 +725,7 @@ pub trait Resolver {
     fn check_unused_macros(&self);
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Determinacy {
     Determined,
     Undetermined,

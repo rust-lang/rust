@@ -81,7 +81,7 @@ impl serialize::UseSpecializedDecodable for CrateNum {}
 /// Since the DefIndex is mostly treated as an opaque ID, you probably
 /// don't have to care about these address spaces.
 
-#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 pub struct DefIndex(u32);
 
 /// The crate root is always assigned index 0 by the AST Map code,
@@ -150,7 +150,7 @@ impl DefIndex {
 impl serialize::UseSpecializedEncodable for DefIndex {}
 impl serialize::UseSpecializedDecodable for DefIndex {}
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Hash)]
 pub enum DefIndexAddressSpace {
     Low = 0,
     High = 1,
@@ -165,7 +165,7 @@ impl DefIndexAddressSpace {
 
 /// A DefId identifies a particular *definition*, by combining a crate
 /// index and a def index.
-#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 pub struct DefId {
     pub krate: CrateNum,
     pub index: DefIndex,
@@ -216,7 +216,7 @@ impl serialize::UseSpecializedDecodable for DefId {}
 /// few cases where we know that only DefIds from the local crate are expected
 /// and a DefId from a different crate would signify a bug somewhere. This
 /// is when LocalDefId comes in handy.
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LocalDefId(DefIndex);
 
 impl LocalDefId {

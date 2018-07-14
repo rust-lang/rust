@@ -95,13 +95,13 @@ pub enum PathStyle {
     Mod,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum SemiColonMode {
     Break,
     Ignore,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum BlockMode {
     Break,
     Ignore,
@@ -376,7 +376,7 @@ impl TokenCursor {
     }
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(Clone, PartialEq)]
 crate enum TokenType {
     Token(token::Token),
     Keyword(keywords::Keyword),
@@ -522,7 +522,7 @@ fn dummy_arg(span: Span) -> Arg {
     Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug)]
 enum TokenExpectType {
     Expect,
     NoExpect,
@@ -6999,7 +6999,7 @@ impl<'a> Parser<'a> {
 
         // Verify whether we have encountered a struct or method definition where the user forgot to
         // add the `struct` or `fn` keyword after writing `pub`: `pub S {}`
-        if visibility.node == VisibilityKind::Public &&
+        if visibility.node.is_pub() &&
             self.check_ident() &&
             self.look_ahead(1, |t| *t != token::Not)
         {

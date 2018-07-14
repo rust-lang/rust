@@ -673,63 +673,45 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
     })
 }
 
+/// `SeqSep` : a sequence separator (token)
+/// and whether a trailing separator is allowed.
+pub struct SeqSep {
+    pub sep: Option<token::Token>,
+    pub trailing_sep_allowed: bool,
+}
+
+impl SeqSep {
+    pub fn trailing_allowed(t: token::Token) -> SeqSep {
+        SeqSep {
+            sep: Some(t),
+            trailing_sep_allowed: true,
+        }
+    }
+
+    pub fn none() -> SeqSep {
+        SeqSep {
+            sep: None,
+            trailing_sep_allowed: false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
-    use codemap::{respan, Spanned};
+    use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
     use ast::{self, Ident, PatKind};
-    use rustc_target::spec::abi::Abi;
     use attr::first_attr_value_str_by_name;
     use parse;
-    use parse::parser::Parser;
     use print::pprust::item_to_string;
-    use ptr::P;
     use tokenstream::{self, TokenTree};
-    use util::parser_testing::{string_to_stream, string_to_parser};
-    use util::parser_testing::{string_to_expr, string_to_item, string_to_stmt};
-    use util::ThinVec;
+    use util::parser_testing::string_to_stream;
+    use util::parser_testing::{string_to_expr, string_to_item};
     use with_globals;
 
     // produce a syntax_pos::span
     fn sp(a: u32, b: u32) -> Span {
         Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
-    }
-
-    fn str2seg(s: &str, lo: u32, hi: u32) -> ast::PathSegment {
-        ast::PathSegment::from_ident(Ident::new(Symbol::intern(s), sp(lo, hi)))
-    }
-
-    #[test] fn path_exprs_1() {
-        with_globals(|| {
-            assert!(string_to_expr("a".to_string()) ==
-                    P(ast::Expr{
-                        id: ast::DUMMY_NODE_ID,
-                        node: ast::ExprKind::Path(None, ast::Path {
-                            span: sp(0, 1),
-                            segments: vec![str2seg("a", 0, 1)],
-                        }),
-                        span: sp(0, 1),
-                        attrs: ThinVec::new(),
-                    }))
-        })
-    }
-
-    #[test] fn path_exprs_2 () {
-        with_globals(|| {
-            assert!(string_to_expr("::a::b".to_string()) ==
-                    P(ast::Expr {
-                        id: ast::DUMMY_NODE_ID,
-                        node: ast::ExprKind::Path(None, ast::Path {
-                            span: sp(0, 6),
-                            segments: vec![ast::PathSegment::crate_root(sp(0, 0)),
-                                        str2seg("a", 2, 3),
-                                        str2seg("b", 5, 6)]
-                        }),
-                        span: sp(0, 6),
-                        attrs: ThinVec::new(),
-                    }))
-        })
     }
 
     #[should_panic]
@@ -829,143 +811,6 @@ mod tests {
             ]);
 
             assert_eq!(tts, expected);
-        })
-    }
-
-    #[test] fn ret_expr() {
-        with_globals(|| {
-            assert!(string_to_expr("return d".to_string()) ==
-                    P(ast::Expr{
-                        id: ast::DUMMY_NODE_ID,
-                        node:ast::ExprKind::Ret(Some(P(ast::Expr{
-                            id: ast::DUMMY_NODE_ID,
-                            node:ast::ExprKind::Path(None, ast::Path{
-                                span: sp(7, 8),
-                                segments: vec![str2seg("d", 7, 8)],
-                            }),
-                            span:sp(7,8),
-                            attrs: ThinVec::new(),
-                        }))),
-                        span:sp(0,8),
-                        attrs: ThinVec::new(),
-                    }))
-        })
-    }
-
-    #[test] fn parse_stmt_1 () {
-        with_globals(|| {
-            assert!(string_to_stmt("b;".to_string()) ==
-                    Some(ast::Stmt {
-                        node: ast::StmtKind::Expr(P(ast::Expr {
-                            id: ast::DUMMY_NODE_ID,
-                            node: ast::ExprKind::Path(None, ast::Path {
-                                span:sp(0,1),
-                                segments: vec![str2seg("b", 0, 1)],
-                                }),
-                            span: sp(0,1),
-                            attrs: ThinVec::new()})),
-                        id: ast::DUMMY_NODE_ID,
-                        span: sp(0,1)}))
-        })
-    }
-
-    fn parser_done(p: Parser){
-        assert_eq!(p.token.clone(), token::Eof);
-    }
-
-    #[test] fn parse_ident_pat () {
-        with_globals(|| {
-            let sess = ParseSess::new(FilePathMapping::empty());
-            let mut parser = string_to_parser(&sess, "b".to_string());
-            assert!(panictry!(parser.parse_pat())
-                    == P(ast::Pat{
-                    id: ast::DUMMY_NODE_ID,
-                    node: PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Immutable),
-                                         Ident::new(Symbol::intern("b"), sp(0, 1)),
-                                         None),
-                    span: sp(0,1)}));
-            parser_done(parser);
-        })
-    }
-
-    // check the contents of the tt manually:
-    #[test] fn parse_fundecl () {
-        with_globals(|| {
-            // this test depends on the intern order of "fn" and "i32"
-            let item = string_to_item("fn a (b : i32) { b; }".to_string()).map(|m| {
-                m.map(|mut m| {
-                    m.tokens = None;
-                    m
-                })
-            });
-            assert_eq!(item,
-                    Some(
-                        P(ast::Item{ident:Ident::from_str("a"),
-                                attrs:Vec::new(),
-                                id: ast::DUMMY_NODE_ID,
-                                tokens: None,
-                                node: ast::ItemKind::Fn(P(ast::FnDecl {
-                                    inputs: vec![ast::Arg{
-                                        ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                    node: ast::TyKind::Path(None, ast::Path{
-                                            span:sp(10,13),
-                                            segments: vec![str2seg("i32", 10, 13)],
-                                            }),
-                                            span:sp(10,13)
-                                        }),
-                                        pat: P(ast::Pat {
-                                            id: ast::DUMMY_NODE_ID,
-                                            node: PatKind::Ident(
-                                                ast::BindingMode::ByValue(
-                                                    ast::Mutability::Immutable),
-                                                Ident::new(Symbol::intern("b"), sp(6, 7)),
-                                                None
-                                            ),
-                                            span: sp(6,7)
-                                        }),
-                                            id: ast::DUMMY_NODE_ID
-                                        }],
-                                    output: ast::FunctionRetTy::Default(sp(15, 15)),
-                                    variadic: false
-                                }),
-                                        ast::FnHeader {
-                                            unsafety: ast::Unsafety::Normal,
-                                            asyncness: ast::IsAsync::NotAsync,
-                                            constness: Spanned {
-                                                span: sp(0,2),
-                                                node: ast::Constness::NotConst,
-                                            },
-                                            abi: Abi::Rust,
-                                        },
-                                        ast::Generics{
-                                            params: Vec::new(),
-                                            where_clause: ast::WhereClause {
-                                                id: ast::DUMMY_NODE_ID,
-                                                predicates: Vec::new(),
-                                                span: syntax_pos::DUMMY_SP,
-                                            },
-                                            span: syntax_pos::DUMMY_SP,
-                                        },
-                                        P(ast::Block {
-                                            stmts: vec![ast::Stmt {
-                                                node: ast::StmtKind::Semi(P(ast::Expr{
-                                                    id: ast::DUMMY_NODE_ID,
-                                                    node: ast::ExprKind::Path(None,
-                                                        ast::Path{
-                                                            span:sp(17,18),
-                                                            segments: vec![str2seg("b", 17, 18)],
-                                                        }),
-                                                    span: sp(17,18),
-                                                    attrs: ThinVec::new()})),
-                                                id: ast::DUMMY_NODE_ID,
-                                                span: sp(17,19)}],
-                                            id: ast::DUMMY_NODE_ID,
-                                            rules: ast::BlockCheckMode::Default, // no idea
-                                            span: sp(15,21),
-                                            recovered: false,
-                                        })),
-                                vis: respan(sp(0, 0), ast::VisibilityKind::Inherited),
-                                span: sp(0,21)})));
         })
     }
 
@@ -1131,28 +976,5 @@ mod tests {
                 panic!();
             }
         });
-    }
-}
-
-/// `SeqSep` : a sequence separator (token)
-/// and whether a trailing separator is allowed.
-pub struct SeqSep {
-    pub sep: Option<token::Token>,
-    pub trailing_sep_allowed: bool,
-}
-
-impl SeqSep {
-    pub fn trailing_allowed(t: token::Token) -> SeqSep {
-        SeqSep {
-            sep: Some(t),
-            trailing_sep_allowed: true,
-        }
-    }
-
-    pub fn none() -> SeqSep {
-        SeqSep {
-            sep: None,
-            trailing_sep_allowed: false,
-        }
     }
 }

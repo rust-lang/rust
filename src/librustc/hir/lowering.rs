@@ -238,7 +238,7 @@ pub fn lower_crate(
     }.lower_crate(krate)
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq)]
 enum ParamMode {
     /// Any path in a type context.
     Explicit,
@@ -1927,7 +1927,7 @@ impl<'a> LoweringContext<'a> {
             variadic: decl.variadic,
             has_implicit_self: decl.inputs.get(0).map_or(false, |arg| match arg.ty.node {
                 TyKind::ImplicitSelf => true,
-                TyKind::Rptr(_, ref mt) => mt.ty.node == TyKind::ImplicitSelf,
+                TyKind::Rptr(_, ref mt) => mt.ty.node.is_implicit_self(),
                 _ => false,
             }),
         })

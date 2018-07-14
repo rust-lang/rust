@@ -632,7 +632,7 @@ declare_features! (
 // move that documentation into the relevant place in the other docs, and
 // remove the chapter on the flag.
 
-#[derive(PartialEq, Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum AttributeType {
     /// Normal, builtin attribute that is consumed
     /// by the compiler before the unused_attribute check
@@ -665,7 +665,7 @@ impl AttributeGate {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Stability {
     Unstable,
     // Argument is tracking issue link.
@@ -1113,7 +1113,7 @@ const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
 ];
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct GatedCfg {
     span: Span,
     index: usize,
@@ -1272,7 +1272,7 @@ pub enum GateIssue {
     Library(Option<u32>)
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GateStrength {
     /// A hard error. (Most feature gates should use this.)
     Hard,
@@ -1704,7 +1704,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
         if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            if output_ty.node != ast::TyKind::Never {
+            if let ast::TyKind::Never = output_ty.node {
+                // Do nothing
+            } else {
                 self.visit_ty(output_ty)
             }
         }
@@ -2046,7 +2048,7 @@ pub fn check_crate(krate: &ast::Crate,
     visit::walk_crate(visitor, krate);
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Hash)]
 pub enum UnstableFeatures {
     /// Hard errors for unstable features are active, as on
     /// beta/stable channels.

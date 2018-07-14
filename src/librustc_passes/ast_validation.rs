@@ -60,19 +60,21 @@ impl<'a> AstValidator<'a> {
     }
 
     fn invalid_visibility(&self, vis: &Visibility, note: Option<&str>) {
-        if vis.node != VisibilityKind::Inherited {
-            let mut err = struct_span_err!(self.session,
-                                           vis.span,
-                                           E0449,
-                                           "unnecessary visibility qualifier");
-            if vis.node == VisibilityKind::Public {
-                err.span_label(vis.span, "`pub` not permitted here because it's implied");
-            }
-            if let Some(note) = note {
-                err.note(note);
-            }
-            err.emit();
+        if let VisibilityKind::Inherited = vis.node {
+            return
         }
+
+        let mut err = struct_span_err!(self.session,
+                                        vis.span,
+                                        E0449,
+                                        "unnecessary visibility qualifier");
+        if vis.node.is_pub() {
+            err.span_label(vis.span, "`pub` not permitted here because it's implied");
+        }
+        if let Some(note) = note {
+            err.note(note);
+        }
+        err.emit();
     }
 
     fn check_decl_no_pat<ReportFn: Fn(Span, bool)>(&self, decl: &FnDecl, report_err: ReportFn) {
@@ -268,7 +270,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, None);
-                if ty.node == TyKind::Err {
+                if let TyKind::Err = ty.node {
                     self.err_handler()
                         .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
                         .help("use `auto trait Trait {}` instead").emit();

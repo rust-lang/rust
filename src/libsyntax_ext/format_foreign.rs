@@ -12,7 +12,7 @@ pub mod printf {
     use super::strcursor::StrCursor as Cur;
 
     /// Represents a single `printf`-style substitution.
-    #[derive(Clone, Eq, PartialEq, Debug)]
+    #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {
         /// A formatted output substitution.
         Format(Format<'a>),
@@ -40,7 +40,7 @@ pub mod printf {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq, Debug)]
+    #[derive(Clone, PartialEq, Debug)]
     /// A single `printf`-style formatting directive.
     pub struct Format<'a> {
         /// The entire original formatting directive.
@@ -213,7 +213,7 @@ pub mod printf {
     }
 
     /// A general number used in a `printf` formatting directive.
-    #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+    #[derive(Copy, Clone, PartialEq, Debug)]
     pub enum Num {
         // The range of these values is technically bounded by `NL_ARGMAX`... but, at least for GNU
         // libc, it apparently has no real fixed limit.  A `u16` is used here on the basis that it
@@ -739,7 +739,7 @@ pub mod printf {
 pub mod shell {
     use super::strcursor::StrCursor as Cur;
 
-    #[derive(Clone, Eq, PartialEq, Debug)]
+    #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {
         Ordinal(u8),
         Name(&'a str),

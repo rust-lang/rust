@@ -51,7 +51,7 @@ use super::itemlikevisit::DeepVisitor;
 use std::cmp;
 use std::u32;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone)]
 pub enum FnKind<'a> {
     /// #[xxx] pub async/const/extern "Abi" fn foo()
     ItemFn(Name, &'a Generics, FnHeader, &'a Visibility, &'a [Attribute]),
@@ -1115,7 +1115,7 @@ pub fn walk_defaultness<'v, V: Visitor<'v>>(_: &mut V, _: &'v Defaultness) {
     // would be to walk it.
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct IdRange {
     pub min: NodeId,
     pub max: NodeId,
