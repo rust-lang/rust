@@ -380,10 +380,8 @@ pub trait F64Ext: private::Sealed {
 
     fn hypot(self, other: Self) -> Self;
 
-    #[cfg(todo)]
     fn sin(self) -> Self;
 
-    #[cfg(todo)]
     fn cos(self) -> Self;
 
     #[cfg(todo)]
@@ -542,13 +540,11 @@ impl F64Ext for f64 {
         hypot(self, other)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn sin(self) -> Self {
         sin(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn cos(self) -> Self {
         cos(self)
