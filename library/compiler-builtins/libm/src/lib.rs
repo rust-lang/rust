@@ -34,10 +34,8 @@ pub fn _eq(a: u64, b: u64) -> bool {
 ///
 /// This trait is sealed and cannot be implemented outside of `libm`.
 pub trait F32Ext: private::Sealed {
-    #[cfg(todo)]
     fn floor(self) -> Self;
 
-    #[cfg(todo)]
     fn ceil(self) -> Self;
 
     fn round(self) -> Self;
@@ -141,13 +139,11 @@ pub trait F32Ext: private::Sealed {
 }
 
 impl F32Ext for f32 {
-    #[cfg(todo)]
     #[inline]
     fn floor(self) -> Self {
         floorf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn ceil(self) -> Self {
         ceilf(self)
