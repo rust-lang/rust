@@ -105,7 +105,10 @@ use rustc::hir::{self, PatKind};
 
 // a variation on try that just returns unit
 macro_rules! ignore_err {
-    ($e:expr) => (match $e { Ok(e) => e, Err(_) => return () })
+    ($e:expr) => (match $e { Ok(e) => e, Err(_) => {
+        debug!("ignoring mem-categorization error!");
+        return ()
+    }})
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1034,7 +1037,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",
                discr_cmt,
                root_pat);
-        let _ = self.with_mc(|mc| {
+        ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
                 match sub_pat.node {
                     // `ref x` pattern
@@ -1049,7 +1052,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     _ => {}
                 }
             })
-        });
+        }));
     }
 
     /// Link lifetime of borrowed pointer resulting from autoref to lifetimes in the value being
