@@ -12,8 +12,8 @@ fn sq(x: f64) -> (f64, f64) {
     xc = x * SPLIT;
     xh = x - xc + xc;
     xl = x - xh;
-    let hi = x*x;
-    let lo = xh*xh - hi + 2.*xh*xl + xl*xl;
+    let hi = x * x;
+    let lo = xh * xh - hi + 2. * xh * xl + xl * xl;
     (hi, lo)
 }
 
@@ -39,8 +39,8 @@ pub fn hypot(mut x: f64, mut y: f64) -> f64 {
     }
 
     /* special cases */
-    ex = (uxi>>52) as i64;
-    ey = (uyi>>52) as i64;
+    ex = (uxi >> 52) as i64;
+    ey = (uyi >> 52) as i64;
     x = f64::from_bits(uxi);
     y = f64::from_bits(uyi);
     /* note: hypot(inf,nan) == inf */
@@ -59,16 +59,16 @@ pub fn hypot(mut x: f64, mut y: f64) -> f64 {
     /* precise sqrt argument in nearest rounding mode without overflow */
     /* xh*xh must not overflow and xl*xl must not underflow in sq */
     z = 1.;
-    if ex > 0x3ff+510 {
+    if ex > 0x3ff + 510 {
         z = x1p700;
         x *= x1p_700;
         y *= x1p_700;
-    } else if ey < 0x3ff-450 {
+    } else if ey < 0x3ff - 450 {
         z = x1p_700;
         x *= x1p700;
         y *= x1p700;
     }
     let (hx, lx) = sq(x);
     let (hy, ly) = sq(y);
-    return z*sqrt(ly+lx+hy+hx);
+    return z * sqrt(ly + lx + hy + hx);
 }
