@@ -87,7 +87,6 @@ pub trait F32Ext: private::Sealed {
     #[cfg(todo)]
     fn sin(self) -> Self;
 
-    #[cfg(todo)]
     fn cos(self) -> Self;
 
     #[cfg(todo)]
@@ -252,7 +251,6 @@ impl F32Ext for f32 {
         sinf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn cos(self) -> Self {
         cosf(self)
@@ -349,7 +347,6 @@ impl F32Ext for f32 {
 pub trait F64Ext: private::Sealed {
     fn floor(self) -> Self;
 
-    #[cfg(todo)]
     fn ceil(self) -> Self;
 
     fn round(self) -> Self;
@@ -454,7 +451,6 @@ impl F64Ext for f64 {
         floor(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn ceil(self) -> Self {
         ceil(self)
