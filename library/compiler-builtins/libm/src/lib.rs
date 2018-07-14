@@ -412,7 +412,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn asin(self) -> Self;
 
-    #[cfg(todo)]
     fn acos(self) -> Self;
 
     #[cfg(todo)]
@@ -589,7 +588,6 @@ impl F64Ext for f64 {
         asin(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn acos(self) -> Self {
         acos(self)
