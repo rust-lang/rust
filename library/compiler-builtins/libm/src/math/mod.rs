@@ -10,12 +10,14 @@ mod acos;
 mod acosf;
 mod asin;
 mod asinf;
+mod atan2f;
 mod atanf;
 mod cbrt;
 mod cbrtf;
 mod ceil;
 mod ceilf;
 mod cosf;
+mod coshf;
 mod exp;
 mod exp2;
 mod exp2f;
@@ -50,6 +52,7 @@ mod sinf;
 mod sqrt;
 mod sqrtf;
 mod tanf;
+mod tanhf;
 mod trunc;
 mod truncf;
 
@@ -58,12 +61,14 @@ pub use self::acos::acos;
 pub use self::acosf::acosf;
 pub use self::asin::asin;
 pub use self::asinf::asinf;
+pub use self::atan2f::atan2f;
 pub use self::atanf::atanf;
 pub use self::cbrt::cbrt;
 pub use self::cbrtf::cbrtf;
 pub use self::ceil::ceil;
 pub use self::ceilf::ceilf;
 pub use self::cosf::cosf;
+pub use self::coshf::coshf;
 pub use self::exp::exp;
 pub use self::exp2::exp2;
 pub use self::exp2f::exp2f;
@@ -98,18 +103,20 @@ pub use self::sinf::sinf;
 pub use self::sqrt::sqrt;
 pub use self::sqrtf::sqrtf;
 pub use self::tanf::tanf;
+pub use self::tanhf::tanhf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
 mod k_cosf;
+mod k_expo2f;
 mod k_sinf;
 mod k_tanf;
 mod rem_pio2_large;
 mod rem_pio2f;
 
 use self::{
-    k_cosf::k_cosf, k_sinf::k_sinf, k_tanf::k_tanf, rem_pio2_large::rem_pio2_large,
-    rem_pio2f::rem_pio2f,
+    k_cosf::k_cosf, k_expo2f::k_expo2f, k_sinf::k_sinf, k_tanf::k_tanf,
+    rem_pio2_large::rem_pio2_large, rem_pio2f::rem_pio2f,
 };
 
 #[inline]
