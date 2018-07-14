@@ -229,7 +229,7 @@ impl F32Ext for f32 {
 
     #[inline]
     fn log2(self) -> Self {
-        log2f(self)
+        self.log2f(self)
     }
 
     #[cfg(todo)]
@@ -556,7 +556,7 @@ impl F64Ext for f64 {
 
     #[inline]
     fn log2(self) -> Self {
-        log2(self)
+        self.log2(self)
     }
 
     #[cfg(todo)]
