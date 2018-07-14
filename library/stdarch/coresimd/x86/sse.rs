@@ -979,7 +979,7 @@ pub unsafe fn _mm_setzero_ps() -> __m128 {
 /// A utility function for creating masks to use with Intel shuffle and permute intrinsics.
 #[inline]
 #[allow(non_snake_case)]
-#[stable(feature = "simd_x86", since = "1.28.0")]
+#[unstable(feature = "stdsimd", issue = "27731")]
 pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> u32 {
         (z << 6) | (y << 4) | (x << 2) | w
 }
