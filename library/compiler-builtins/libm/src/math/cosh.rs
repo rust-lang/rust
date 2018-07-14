@@ -2,6 +2,7 @@ use core::f64;
 
 use super::exp;
 use super::expm1;
+use super::k_expo2;
 
 pub fn cosh(mut x: f64) -> f64 {
     let t: f64;
@@ -31,18 +32,8 @@ pub fn cosh(mut x: f64) -> f64 {
 
     /* |x| > log(DBL_MAX) or nan */
     /* note: the result is stored to handle overflow */
-    t = __expo2(x);
+    t = k_expo2(x);
     return t;
-}
-
-const K: u32 = 2043;
-
-pub fn __expo2(x: f64) -> f64 {
-    let kln2 = f64::from_bits(0x40962066151add8b);
-    /* note that k is odd and scale*scale overflows */
-    let scale = f64::from_bits(((0x3ff + K / 2) << 20) as u64);
-    /* exp(x - k ln2) * 2**(k-1) */
-    return exp(x - kln2) * scale * scale;
 }
 
 #[cfg(test)]
