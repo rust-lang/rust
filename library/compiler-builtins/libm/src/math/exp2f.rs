@@ -26,6 +26,25 @@
 
 const TBLSIZE: usize = 16;
 
+static EXP2FT: [u64; TBLSIZE] = [
+    0x3fe6a09e667f3bcd,
+    0x3fe7a11473eb0187,
+    0x3fe8ace5422aa0db,
+    0x3fe9c49182a3f090,
+    0x3feae89f995ad3ad,
+    0x3fec199bdd85529c,
+    0x3fed5818dcfba487,
+    0x3feea4afa2a490da,
+    0x3ff0000000000000,
+    0x3ff0b5586cf9890f,
+    0x3ff172b83c7d517b,
+    0x3ff2387a6e756238,
+    0x3ff306fe0a31b715,
+    0x3ff3dea64c123422,
+    0x3ff4bfdad5362a27,
+    0x3ff5ab07dd485429,
+];
+
 // exp2f(x): compute the base 2 exponential of x
 //
 // Accuracy: Peak error < 0.501 ulp; location of peak: -0.030110927.
@@ -56,25 +75,6 @@ pub fn exp2f(mut x: f32) -> f32 {
     let p2 = f32::from_bits(0x3e75fdf0);
     let p3 = f32::from_bits(0x3d6359a4);
     let p4 = f32::from_bits(0x3c1d964e);
-
-    let exp2ft: [f64; TBLSIZE] = [
-        f64::from_bits(0x3fe6a09e667f3bcd),
-        f64::from_bits(0x3fe7a11473eb0187),
-        f64::from_bits(0x3fe8ace5422aa0db),
-        f64::from_bits(0x3fe9c49182a3f090),
-        f64::from_bits(0x3feae89f995ad3ad),
-        f64::from_bits(0x3fec199bdd85529c),
-        f64::from_bits(0x3fed5818dcfba487),
-        f64::from_bits(0x3feea4afa2a490da),
-        f64::from_bits(0x3ff0000000000000),
-        f64::from_bits(0x3ff0b5586cf9890f),
-        f64::from_bits(0x3ff172b83c7d517b),
-        f64::from_bits(0x3ff2387a6e756238),
-        f64::from_bits(0x3ff306fe0a31b715),
-        f64::from_bits(0x3ff3dea64c123422),
-        f64::from_bits(0x3ff4bfdad5362a27),
-        f64::from_bits(0x3ff5ab07dd485429),
-    ];
 
     // double_t t, r, z;
     // uint32_t ix, i0, k;
@@ -121,7 +121,7 @@ pub fn exp2f(mut x: f32) -> f32 {
     uf -= redux;
     let z: f64 = (x - uf) as f64;
     /* Compute r = exp2(y) = exp2ft[i0] * p(z). */
-    let r: f64 = exp2ft[i0 as usize];
+    let r: f64 = f64::from_bits(EXP2FT[i0 as usize]);
     let t: f64 = r as f64 * z;
     let r: f64 = r + t * (p1 as f64 + z * p2 as f64) + t * (z * z) * (p3 as f64 + z * p4 as f64);
 
