@@ -706,7 +706,7 @@ f64_f64! {
     // exp2,
     // expm1,
     floor,
-    // log,
+    log,
     log10,
     // log1p,
     log2,
