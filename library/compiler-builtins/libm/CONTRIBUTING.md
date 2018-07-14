@@ -10,7 +10,8 @@
   can't, no problem! Your PR will be fully tested automatically. Though you may still want to add
   and run some unit tests. See the bottom of [`src/math/truncf.rs`] for an example of such tests;
   you can run unit tests with the `cargo test --lib` command.
-- Send us a pull request!
+- Send us a pull request! Make sure to run `cargo fmt` on your code before sending the PR. Also
+  include "closes #42" in the PR description to close the corresponding issue.
 - :tada:
 
 [issue tracker]: https://github.com/japaric/libm/issues
