@@ -18,3 +18,4 @@ fn main() {
     #[proc_macro_derive]  //~ ERROR: attribute should not be applied to a statement
     let x = 12;
 }
+
