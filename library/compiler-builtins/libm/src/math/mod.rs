@@ -4,8 +4,10 @@ macro_rules! force_eval {
     }
 }
 
+mod ceilf;
 mod fabs;
 mod fabsf;
+mod floorf;
 mod fmodf;
 mod powf;
 mod round;
@@ -24,8 +26,10 @@ mod hypotf;
 //mod service;
 
 pub use self::{
+    ceilf::ceilf,
     fabs::fabs,
     fabsf::fabsf,
+    floorf::floorf,
     fmodf::fmodf,
     powf::powf,
     round::round,

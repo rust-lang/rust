@@ -652,12 +652,12 @@ fn main() -> Result<(), Box<Error>> {
 // With signature `fn(f32) -> f32`
 f32_f32! {
     // acosf,
-    // floorf,
+    floorf,
     truncf,
     // asinf,
     // atanf,
     // cbrtf,
-    // ceilf,
+    ceilf,
     // cosf,
     // coshf,
     // exp2f,
