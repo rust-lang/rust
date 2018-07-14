@@ -732,7 +732,7 @@ f64f64_f64! {
 
 // With signature `fn(f64, f64, f64) -> f64`
 f64f64f64_f64! {
-    // fma,
+    fma,
 }
 
 // With signature `fn(f64, i32) -> f64`

@@ -366,7 +366,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn signum(self) -> Self;
 
-    #[cfg(todo)]
     fn mul_add(self, a: Self, b: Self) -> Self;
 
     #[cfg(todo)]
@@ -485,7 +484,6 @@ impl F64Ext for f64 {
         fabs(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn mul_add(self, a: Self, b: Self) -> Self {
         fma(self, a, b)
