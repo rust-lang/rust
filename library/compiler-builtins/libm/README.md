@@ -14,6 +14,30 @@ term goal is to enable [math support in the `core` crate][core].
 [pr]: https://github.com/rust-lang-nursery/compiler-builtins/pull/248
 [core]: https://github.com/japaric/libm/milestone/2
 
+## Already usable
+
+This crate is [on crates.io] and can be used today in stable `#![no_std]` programs like this:
+
+[on crates.io]: https://crates.io/crates/libm
+
+``` rust
+#![no_std]
+
+extern crate libm;
+
+use libm::F32Ext; // adds methods to `f32`
+
+fn foo(x: f32) {
+    let y = x.sqrt();
+    let z = libm::truncf(x);
+}
+```
+
+Not all the math functions are available at the moment. Check the [API docs] to learn what's
+currently supported.
+
+[API docs]: https://docs.rs/libm
+
 ## Contributing
 
 Please check [CONTRIBUTING.md](CONTRIBUTING.md)
