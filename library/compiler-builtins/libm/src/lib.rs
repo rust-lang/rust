@@ -79,7 +79,6 @@ pub trait F32Ext: private::Sealed {
 
     fn log10(self) -> Self;
 
-    #[cfg(todo)]
     fn cbrt(self) -> Self;
 
     fn hypot(self, other: Self) -> Self;
@@ -234,7 +233,6 @@ impl F32Ext for f32 {
         log10f(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn cbrt(self) -> Self {
         cbrtf(self)
@@ -391,7 +389,6 @@ pub trait F64Ext: private::Sealed {
 
     fn log10(self) -> Self;
 
-    #[cfg(todo)]
     fn cbrt(self) -> Self;
 
     fn hypot(self, other: Self) -> Self;
@@ -548,7 +545,6 @@ impl F64Ext for f64 {
         log10(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn cbrt(self) -> Self {
         cbrt(self)
