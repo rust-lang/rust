@@ -1,3 +1,4 @@
+use core::f32;
 use core::u32;
 
 #[inline]
