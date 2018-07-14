@@ -23,6 +23,7 @@ const LG2: f32 = 0.40000972152; /* 0xccce13.0p-25 */
 const LG3: f32 = 0.28498786688; /* 0x91e9ee.0p-25 */
 const LG4: f32 = 0.24279078841; /* 0xf89e26.0p-26 */
 
+#[inline]
 pub fn log2f(mut x: f32) -> f32 {
     let x1p25f = f32::from_bits(0x4c000000); // 0x1p25f === 2 ^ 25
 

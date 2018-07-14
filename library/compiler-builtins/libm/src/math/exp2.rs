@@ -318,6 +318,7 @@ static TBL: [u64; TBLSIZE * 2] = [
 //
 //      Gal, S. and Bachelis, B.  An Accurate Elementary Mathematical Library
 //      for the IEEE Floating Point Standard.  TOMS 17(1), 26-46 (1991).
+#[inline]
 pub fn exp2(mut x: f64) -> f64 {
     let redux = f64::from_bits(0x4338000000000000) / TBLSIZE as f64;
     let p1 = f64::from_bits(0x3fe62e42fefa39ef);

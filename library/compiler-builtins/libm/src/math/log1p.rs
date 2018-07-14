@@ -65,6 +65,7 @@ const LG5: f64 = 1.818357216161805012e-01; /* 3FC74664 96CB03DE */
 const LG6: f64 = 1.531383769920937332e-01; /* 3FC39A09 D078C69F */
 const LG7: f64 = 1.479819860511658591e-01; /* 3FC2F112 DF3E5244 */
 
+#[inline]
 pub fn log1p(x: f64) -> f64 {
     let mut ui: u64 = x.to_bits();
     let hfsq: f64;
