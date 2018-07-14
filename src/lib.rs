@@ -34,6 +34,7 @@ use std::fs::File;
 use std::io::Write;
 
 mod base;
+mod constant;
 mod common;
 mod pretty_clif;
 
