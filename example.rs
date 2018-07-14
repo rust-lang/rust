@@ -76,3 +76,11 @@ fn option_unwrap_or(o: BoolOption, d: bool) -> bool {
 fn ret_42() -> u8 {
     42
 }
+
+fn return_str() -> &'static str {
+    "hello world"
+}
+
+fn promoted_val() -> &'static u8 {
+    &(1 * 2)
+}

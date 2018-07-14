@@ -41,14 +41,15 @@ mod prelude {
     pub use std::any::Any;
     pub use std::collections::HashMap;
 
+    pub use syntax::codemap::DUMMY_SP;
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
     pub use rustc::mir;
     pub use rustc::mir::*;
     pub use rustc::session::Session;
-    pub use rustc::ty::layout::{self, LayoutOf, TyLayout};
+    pub use rustc::ty::layout::{self, LayoutOf, TyLayout, Size};
     pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
-        TypeFoldable, TypeVariants,
+        TypeFoldable, TypeVariants, TypeAndMut,
     };
     pub use rustc_data_structures::{indexed_vec::Idx, sync::Lrc};
     pub use rustc_mir::monomorphize::{MonoItem, collector};

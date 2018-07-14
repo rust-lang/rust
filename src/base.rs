@@ -27,7 +27,13 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
 
                 let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
 
-                let comments = ::base::trans_fn(cx, &mut f, inst);
+                let comments = match ::base::trans_fn(cx, &mut f, inst){
+                    Ok(comments) => comments,
+                    Err(err) => {
+                        tcx.sess.err(&err);
+                        return;
+                    }
+                };
 
                 let mut writer = ::pretty_clif::CommentWriter(comments);
                 let mut cton = String::new();
@@ -53,7 +59,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
     }
 }
 
-pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, instance: Instance<'tcx>) -> HashMap<Inst, String> {
+pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, instance: Instance<'tcx>) -> Result<HashMap<Inst, String>, String> {
     let mir = cx.tcx.optimized_mir(instance.def_id());
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
@@ -133,7 +139,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
         fx.bcx.switch_to_block(ebb);
 
         for stmt in &bb_data.statements {
-            trans_stmt(fx, stmt);
+            trans_stmt(fx, stmt)?;
         }
 
         let inst = match &bb_data.terminator().kind {
@@ -242,10 +248,12 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
     fx.bcx.seal_all_blocks();
     fx.bcx.finalize();
 
-    fx.comments.clone()
+    Ok(fx.comments.clone())
 }
 
-fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) {
+fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) -> Result<(), String> {
+    fx.tcx.sess.warn(&format!("stmt {:?}", stmt));
+
     let nop_inst = fx.bcx.ins().nop();
 
     match &stmt.kind {
@@ -253,7 +261,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
             let place = trans_place(fx, place);
             let layout = place.layout();
             if layout.for_variant(&*fx, *variant_index).abi == layout::Abi::Uninhabited {
-                return;
+                return Ok(());
             }
             match layout.variants {
                 layout::Variants::Single { index } => {
@@ -309,10 +317,10 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
 
                     let res = match ty.sty {
                         TypeVariants::TyUint(_) => {
-                            trans_int_binop(fx, *bin_op, lhs, rhs, ty, false, false)
+                            trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false, false)
                         }
                         TypeVariants::TyInt(_) => {
-                            trans_int_binop(fx, *bin_op, lhs, rhs, ty, true, false)
+                            trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true, false)
                         }
                         _ => unimplemented!("bin op {:?} for {:?}", bin_op, ty),
                     };
@@ -332,7 +340,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         }
                         _ => unimplemented!("checked bin op {:?} for {:?}", bin_op, ty),
                     };
-                    unimplemented!("checked bin op {:?}", bin_op);
+                    return Err(format!("checked bin op {:?}", bin_op));
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::UnaryOp(un_op, operand) => {
@@ -373,7 +381,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                                 |def| def.discriminant_for_variant(fx.tcx, index).val);
                             let val = CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
                             lval.write_cvalue(fx, val);
-                            return;
+                            return Ok(());
                         }
                         layout::Variants::Tagged { .. } |
                         layout::Variants::NicheFilling { .. } => {},
@@ -431,6 +439,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
     let inst = fx.bcx.func.layout.next_inst(nop_inst).unwrap();
     fx.bcx.func.layout.remove_inst(nop_inst);
     fx.add_comment(inst, format!("{:?}", stmt));
+
+    Ok(())
 }
 
 fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
@@ -487,6 +497,8 @@ fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>)
 }
 
 fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<'tcx>) -> CValue<'tcx> {
+    use rustc::mir::interpret::{Scalar, ConstValue, GlobalId};
+
     match operand {
         Operand::Move(place) |
         Operand::Copy(place) => {
@@ -494,30 +506,36 @@ fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<'tcx
             cplace.to_cvalue(fx)
         },
         Operand::Constant(const_) => {
-            match const_.literal {
-                Literal::Value { value } => {
-                    let layout = fx.layout_of(const_.ty);
-                    match const_.ty.sty {
-                        TypeVariants::TyBool => {
-                            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
-                            CValue::const_val(fx, const_.ty, bits as u64 as i64)
-                        }
-                        TypeVariants::TyUint(_) => {
-                            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
-                            CValue::const_val(fx, const_.ty, bits as u64 as i64)
-                        }
-                        TypeVariants::TyInt(_) => {
-                            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
-                            CValue::const_val(fx, const_.ty, bits as i128 as i64)
-                        }
-                        TypeVariants::TyFnDef(def_id, substs) => {
-                            let func_ref = fx.get_function_ref(Instance::new(def_id, substs));
-                            CValue::Func(func_ref, fx.layout_of(const_.ty))
-                        }
-                        _ => unimplemented!("value {:?} ty {:?}", value, const_.ty),
-                    }
+            let value = match const_.literal {
+                Literal::Value { value } => value,
+                Literal::Promoted { index } => fx
+                    .tcx
+                    .const_eval(ParamEnv::reveal_all().and(GlobalId {
+                        instance: fx.instance,
+                        promoted: Some(index),
+                    }))
+                    .unwrap(),
+            };
+
+            let layout = fx.layout_of(const_.ty);
+            match const_.ty.sty {
+                TypeVariants::TyBool => {
+                    let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
+                    CValue::const_val(fx, const_.ty, bits as u64 as i64)
                 }
-                _ => unimplemented!()
+                TypeVariants::TyUint(_) => {
+                    let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
+                    CValue::const_val(fx, const_.ty, bits as u64 as i64)
+                }
+                TypeVariants::TyInt(_) => {
+                    let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
+                    CValue::const_val(fx, const_.ty, bits as i128 as i64)
+                }
+                TypeVariants::TyFnDef(def_id, substs) => {
+                    let func_ref = fx.get_function_ref(Instance::new(def_id, substs));
+                    CValue::Func(func_ref, fx.layout_of(const_.ty))
+                }
+                _ => unimplemented!("value {:?} ty {:?}", value, const_.ty),
             }
         }
     }

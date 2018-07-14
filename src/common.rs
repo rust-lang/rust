@@ -25,7 +25,7 @@ impl EntityRef for Variable {
     }
 }
 
-fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
+fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
     Some(match ty.sty {
         TypeVariants::TyBool => types::I8,
         TypeVariants::TyUint(size) => {
@@ -49,7 +49,13 @@ fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
             }
         }
         TypeVariants::TyFnPtr(_) => types::I64,
-        TypeVariants::TyRef(..) | TypeVariants::TyRawPtr(..) => types::I64,
+        TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) | TypeVariants::TyRef(_, ty, _) => {
+            if ty.is_sized(tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
+                types::I64
+            } else {
+                return None;
+            }
+        }
         TypeVariants::TyParam(_)  => bug!("{:?}", ty),
         _ => return None,
     })
@@ -205,10 +211,22 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                     let data = from.load_value(fx);
                     fx.bcx.ins().store(MemFlags::new(), data, addr, 0);
                 } else {
-                    for i in 0..size {
-                        let from = from.expect_byref();
-                        let byte = fx.bcx.ins().load(types::I8, MemFlags::new(), from.0, i);
-                        fx.bcx.ins().store(MemFlags::new(), byte, addr, i);
+                    let from = from.expect_byref();
+                    let mut offset = 0;
+                    while size - offset >= 8 {
+                        let byte = fx.bcx.ins().load(types::I64, MemFlags::new(), from.0, offset);
+                        fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
+                        offset += 8;
+                    }
+                    while size - offset >= 4 {
+                        let byte = fx.bcx.ins().load(types::I32, MemFlags::new(), from.0, offset);
+                        fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
+                        offset += 4;
+                    }
+                    while offset < size {
+                        let byte = fx.bcx.ins().load(types::I8, MemFlags::new(), from.0, offset);
+                        fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
+                        offset += 1;
                     }
                 }
             }
@@ -243,16 +261,18 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
 pub fn cton_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>, substs: &Substs<'tcx>) -> Signature {
     let sig = tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
-    cton_sig_from_mono_fn_sig(sig)
+    cton_sig_from_mono_fn_sig(tcx, sig)
 }
 
 pub fn cton_sig_from_instance<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, inst: Instance<'tcx>) -> Signature {
     let fn_ty = inst.ty(tcx);
     let sig = fn_ty.fn_sig(tcx);
-    cton_sig_from_mono_fn_sig(sig)
+    cton_sig_from_mono_fn_sig(tcx, sig)
 }
 
-pub fn cton_sig_from_mono_fn_sig<'a ,'tcx: 'a>(sig: PolyFnSig<'tcx>) -> Signature {
+pub fn cton_sig_from_mono_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>) -> Signature {
+    // TODO: monomorphize signature
+
     let sig = sig.skip_binder();
     let inputs = sig.inputs();
     let _output = sig.output();
@@ -262,7 +282,7 @@ pub fn cton_sig_from_mono_fn_sig<'a ,'tcx: 'a>(sig: PolyFnSig<'tcx>) -> Signatur
     };
     Signature {
         params: Some(types::I64).into_iter() // First param is place to put return val
-            .chain(inputs.into_iter().map(|ty| cton_type_from_ty(ty).unwrap_or(types::I64)))
+            .chain(inputs.into_iter().map(|ty| cton_type_from_ty(tcx, ty).unwrap_or(types::I64)))
             .map(AbiParam::new).collect(),
         returns: vec![],
         call_conv,
@@ -358,7 +378,7 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
     }
 
     pub fn cton_type(&self, ty: Ty<'tcx>) -> Option<Type> {
-        cton_type_from_ty(self.monomorphize(&ty))
+        cton_type_from_ty(self.tcx, self.monomorphize(&ty))
     }
 
     pub fn get_ebb(&self, bb: BasicBlock) -> Ebb {
