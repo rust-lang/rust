@@ -6,7 +6,7 @@ use rustc::ty;
 use syntax::codemap::{ExpnFormat, Span};
 use crate::utils::{get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal,
             iter_input_pats, last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint,
-            span_lint_and_then, walk_ptrs_ty};
+            span_lint_and_then, walk_ptrs_ty, SpanlessEq};
 use crate::utils::sugg::Sugg;
 use syntax::ast::{LitKind, CRATE_NODE_ID};
 use crate::consts::{constant, Constant};
@@ -418,7 +418,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
         if let PatKind::Binding(_, _, ident, Some(ref right)) = pat.node {
-            if right.node == PatKind::Wild {
+            if let PatKind::Wild = right.node {
                 span_lint(
                     cx,
                     REDUNDANT_PATTERN,
@@ -542,7 +542,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
 fn is_used(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         match parent.node {
-            ExprAssign(_, ref rhs) | ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
+            ExprAssign(_, ref rhs) | ExprAssignOp(_, _, ref rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
             _ => is_used(cx, parent),
         }
     } else {

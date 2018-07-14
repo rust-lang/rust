@@ -120,12 +120,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
         if let ItemStatic(ref ty, MutImmutable, body_id) = item.node {
             if is_lint_ref_type(ty) {
                 self.declared_lints.insert(item.name, item.span);
-            } else if is_lint_array_type(ty) && item.vis.node == VisibilityKind::Inherited && item.name == "ARRAY" {
-                let mut collector = LintCollector {
-                    output: &mut self.registered_lints,
-                    cx,
-                };
-                collector.visit_expr(&cx.tcx.hir.body(body_id).value);
+            } else if is_lint_array_type(ty) && item.name == "ARRAY" {
+                if let VisibilityKind::Inherited = item.vis.node {
+                    let mut collector = LintCollector {
+                        output: &mut self.registered_lints,
+                        cx,
+                    };
+                    collector.visit_expr(&cx.tcx.hir.body(body_id).value);
+                }
             }
         }
     }

@@ -10,7 +10,7 @@ use syntax::codemap::{Span, BytePos};
 use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_expn_of, is_self,
             is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
             match_type, method_chain_args, match_var, return_ty, remove_blocks, same_tys, single_segment_path, snippet,
-            span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
+            span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq};
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::consts::{constant, Constant};
@@ -820,8 +820,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if name == method_name &&
                         sig.decl.inputs.len() == n_args &&
-                        out_type.matches(&sig.decl.output) &&
-                        self_kind.matches(first_arg_ty, first_arg, self_ty, false, &implitem.generics) {
+                        out_type.matches(cx, &sig.decl.output) &&
+                        self_kind.matches(cx, first_arg_ty, first_arg, self_ty, false, &implitem.generics) {
                             span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                                 "defining a method called `{}` on this type; consider implementing \
                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -838,9 +838,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         if conv.check(&name.as_str());
                         if !self_kinds
                             .iter()
-                            .any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics));
+                            .any(|k| k.matches(cx, first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics));
                         then {
-                            let lint = if item.vis.node == hir::VisibilityKind::Public {
+                            let lint = if item.vis.node.is_pub() {
                                 WRONG_PUB_SELF_CONVENTION
                             } else {
                                 WRONG_SELF_CONVENTION
@@ -2030,6 +2030,7 @@ enum SelfKind {
 impl SelfKind {
     fn matches(
         self,
+        cx: &LateContext,
         ty: &hir::Ty,
         arg: &hir::Arg,
         self_ty: &hir::Ty,
@@ -2047,7 +2048,7 @@ impl SelfKind {
         // `Self`, `&mut Self`,
         // and `Box<Self>`, including the equivalent types with `Foo`.
 
-        let is_actually_self = |ty| is_self_ty(ty) || ty == self_ty;
+        let is_actually_self = |ty| is_self_ty(ty) || SpanlessEq::new(cx).eq_ty(ty, self_ty);
         if is_self(arg) {
             match self {
                 SelfKind::Value => is_actually_self(ty),
@@ -2173,12 +2174,13 @@ enum OutType {
 }
 
 impl OutType {
-    fn matches(self, ty: &hir::FunctionRetTy) -> bool {
+    fn matches(self, cx: &LateContext, ty: &hir::FunctionRetTy) -> bool {
+        let is_unit = |ty: &hir::Ty| SpanlessEq::new(cx).eq_ty_kind(&ty.node, &hir::TyTup(vec![].into()));
         match (self, ty) {
             (OutType::Unit, &hir::DefaultReturn(_)) => true,
-            (OutType::Unit, &hir::Return(ref ty)) if ty.node == hir::TyTup(vec![].into()) => true,
+            (OutType::Unit, &hir::Return(ref ty)) if is_unit(ty) => true,
             (OutType::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
-            (OutType::Any, &hir::Return(ref ty)) if ty.node != hir::TyTup(vec![].into()) => true,
+            (OutType::Any, &hir::Return(ref ty)) if !is_unit(ty) => true,
             (OutType::Ref, &hir::Return(ref ty)) => matches!(ty.node, hir::TyRptr(_, _)),
             _ => false,
         }

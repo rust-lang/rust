@@ -48,13 +48,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let ExprMatch(ref op, ref arms, MatchSource::IfLetDesugar { .. }) = expr.node {
             if arms[0].pats.len() == 1 {
                 let good_method = match arms[0].pats[0].node {
-                    PatKind::TupleStruct(ref path, ref pats, _) if pats.len() == 1 && pats[0].node == PatKind::Wild => {
-                        if match_qpath(path, &paths::RESULT_OK) {
-                            "is_ok()"
-                        } else if match_qpath(path, &paths::RESULT_ERR) {
-                            "is_err()"
-                        } else if match_qpath(path, &paths::OPTION_SOME) {
-                            "is_some()"
+                    PatKind::TupleStruct(ref path, ref pats, _) if pats.len() == 1 => {
+                        if let PatKind::Wild = pats[0].node {
+                            if match_qpath(path, &paths::RESULT_OK) {
+                                "is_ok()"
+                            } else if match_qpath(path, &paths::RESULT_ERR) {
+                                "is_err()"
+                            } else if match_qpath(path, &paths::OPTION_SOME) {
+                                "is_some()"
+                            } else {
+                                return;
+                            }
                         } else {
                             return;
                         }

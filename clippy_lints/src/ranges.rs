@@ -3,7 +3,7 @@ use rustc::hir::*;
 use syntax::ast::RangeLimits;
 use syntax::codemap::Spanned;
 use crate::utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then};
-use crate::utils::{get_trait_def_id, higher, implements_trait};
+use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
 use crate::utils::sugg::Sugg;
 
 /// **What it does:** Checks for calling `.step_by(0)` on iterators,
@@ -118,7 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     // .iter() and .len() called on same Path
                     if let ExprPath(QPath::Resolved(_, ref iter_path)) = iter_args[0].node;
                     if let ExprPath(QPath::Resolved(_, ref len_path)) = len_args[0].node;
-                    if iter_path.segments == len_path.segments;
+                    if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
                      then {
                          span_lint(cx,
                                    RANGE_ZIP_WITH_LEN,
