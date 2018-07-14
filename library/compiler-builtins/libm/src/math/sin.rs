@@ -1,26 +1,23 @@
-/* origin: FreeBSD /usr/src/lib/msun/src/s_sin.c */
-/*
- * ====================================================
- * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
- *
- * Developed at SunPro, a Sun Microsystems, Inc. business.
- * Permission to use, copy, modify, and distribute this
- * software is freely granted, provided that this notice
- * is preserved.
- * ====================================================
- */
+// origin: FreeBSD /usr/src/lib/msun/src/s_sin.c */
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 
-use core::f64;
-
-use math::trig_common::{_cos, _sin, rem_pio2};
+use super::{k_cos, k_sin, rem_pio2};
 
 // sin(x)
 // Return sine function of x.
 //
 // kernel function:
-//      __sin            ... sine function on [-pi/4,pi/4]
-//      __cos            ... cose function on [-pi/4,pi/4]
-//      __rem_pio2       ... argument reduction routine
+//      k_sin            ... sine function on [-pi/4,pi/4]
+//      k_cos            ... cose function on [-pi/4,pi/4]
+//      rem_pio2         ... argument reduction routine
 //
 // Method.
 //      Let S,C and T denote the sin, cos and tan respectively on
@@ -61,7 +58,7 @@ pub fn sin(x: f64) -> f64 {
             }
             return x;
         }
-        return _sin(x, 0.0, 0);
+        return k_sin(x, 0.0, 0);
     }
 
     /* sin(Inf or NaN) is NaN */
@@ -72,9 +69,9 @@ pub fn sin(x: f64) -> f64 {
     /* argument reduction needed */
     let (n, y0, y1) = rem_pio2(x);
     match n & 3 {
-        0 => _sin(y0, y1, 1),
-        1 => _cos(y0, y1),
-        2 => -_sin(y0, y1, 1),
-        _ => -_cos(y0, y1),
+        0 => k_sin(y0, y1, 1),
+        1 => k_cos(y0, y1),
+        2 => -k_sin(y0, y1, 1),
+        _ => -k_cos(y0, y1),
     }
 }

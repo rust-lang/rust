@@ -6,6 +6,7 @@ macro_rules! force_eval {
     };
 }
 
+// Public modules
 mod acos;
 mod acosf;
 mod asin;
@@ -105,16 +106,23 @@ pub use self::tanf::tanf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
+// Private modules
+mod k_cos;
 mod k_cosf;
+mod k_sin;
 mod k_sinf;
 mod k_tanf;
+mod rem_pio2;
 mod rem_pio2_large;
 mod rem_pio2f;
-mod trig_common;
 
+// Private re-imports
+use self::k_cos::k_cos;
 use self::k_cosf::k_cosf;
+use self::k_sin::k_sin;
 use self::k_sinf::k_sinf;
 use self::k_tanf::k_tanf;
+use self::rem_pio2::rem_pio2;
 use self::rem_pio2_large::rem_pio2_large;
 use self::rem_pio2f::rem_pio2f;
 
