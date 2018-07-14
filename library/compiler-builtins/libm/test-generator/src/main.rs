@@ -62,6 +62,8 @@ macro_rules! f32_f32 {
 
                     extern crate libm;
 
+                    use std::panic;
+
                     #[test]
                     fn {0}() {{
                         const CASES: &[(u32, u32)] = &[
@@ -71,16 +73,23 @@ macro_rules! f32_f32 {
                         for case in CASES {{
                             let (inp, expected) = *case;
 
-                            let outf = libm::{0}(f32::from_bits(inp));
-                            let outi = outf.to_bits();
+                            if let Ok(outf) =
+                                panic::catch_unwind(|| libm::{0}(f32::from_bits(inp)))
+                            {{
+                                let outi = outf.to_bits();
 
-                            if !((outf.is_nan() && f32::from_bits(expected).is_nan()) ||
-                                 libm::_eqf(outi, expected)) {{
+                                if !((outf.is_nan() && f32::from_bits(expected).is_nan())
+                                    || libm::_eqf(outi, expected))
+                                {{
+                                    panic!(
+                                        \"input: {{}}, output: {{}}, expected: {{}}\",
+                                        inp, outi, expected,
+                                    );
+                                }}
+                            }} else {{
                                 panic!(
-                                    \"input: {{}}, output: {{}}, expected: {{}}\",
-                                    inp,
-                                    outi,
-                                    expected,
+                                    \"input: {{}}, output: PANIC, expected: {{}}\",
+                                    inp, expected,
                                 );
                             }}
                         }}
@@ -124,6 +133,8 @@ macro_rules! f32f32_f32 {
 
                     extern crate libm;
 
+                    use std::panic;
+
                     #[test]
                     fn {0}() {{
                         const CASES: &[((u32, u32), u32)] = &[
@@ -133,15 +144,25 @@ macro_rules! f32f32_f32 {
                         for case in CASES {{
                             let ((i1, i2), expected) = *case;
 
-                            let outf = libm::{0}(f32::from_bits(i1), f32::from_bits(i2));
-                            let outi = outf.to_bits();
+                            if let Ok(outf) = panic::catch_unwind(|| {{
+                                libm::{0}(f32::from_bits(i1), f32::from_bits(i2))
+                            }}) {{
+                                let outi = outf.to_bits();
 
-                            if !((outf.is_nan() && f32::from_bits(expected).is_nan()) ||
-                                 libm::_eqf(outi, expected)) {{
+                                if !((outf.is_nan() && f32::from_bits(expected).is_nan())
+                                    || libm::_eqf(outi, expected))
+                                {{
+                                    panic!(
+                                        \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                        (i1, i2),
+                                        outi,
+                                        expected,
+                                    );
+                                }}
+                            }} else {{
                                 panic!(
-                                    \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                    \"input: {{:?}}, output: PANIC, expected: {{}}\",
                                     (i1, i2),
-                                    outi,
                                     expected,
                                 );
                             }}
@@ -188,6 +209,8 @@ macro_rules! f32f32f32_f32 {
 
                     extern crate libm;
 
+                    use std::panic;
+
                     #[test]
                     fn {0}() {{
                         const CASES: &[((u32, u32, u32), u32)] = &[
@@ -197,19 +220,29 @@ macro_rules! f32f32f32_f32 {
                         for case in CASES {{
                             let ((i1, i2, i3), expected) = *case;
 
-                            let outf = libm::{0}(
-                                f32::from_bits(i1),
-                                f32::from_bits(i2),
-                                f32::from_bits(i3),
-                            );
-                            let outi = outf.to_bits();
+                            if let Ok(outf) = panic::catch_unwind(|| {{
+                                libm::{0}(
+                                    f32::from_bits(i1),
+                                    f32::from_bits(i2),
+                                    f32::from_bits(i3),
+                                )
+                            }}) {{
+                                let outi = outf.to_bits();
 
-                            if !((outf.is_nan() && f32::from_bits(expected).is_nan()) ||
-                                 libm::_eqf(outi, expected)) {{
+                                if !((outf.is_nan() && f32::from_bits(expected).is_nan())
+                                    || libm::_eqf(outi, expected))
+                                {{
+                                    panic!(
+                                        \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                        (i1, i2, i3),
+                                        outi,
+                                        expected,
+                                    );
+                                }}
+                            }} else {{
                                 panic!(
-                                    \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                    \"input: {{:?}}, output: PANIC, expected: {{}}\",
                                     (i1, i2, i3),
-                                    outi,
                                     expected,
                                 );
                             }}
@@ -253,6 +286,8 @@ macro_rules! f32i32_f32 {
 
                     extern crate libm;
 
+                    use std::panic;
+
                     #[test]
                     fn {0}() {{
                         const CASES: &[((u32, i16), u32)] = &[
@@ -262,15 +297,25 @@ macro_rules! f32i32_f32 {
                         for case in CASES {{
                             let ((i1, i2), expected) = *case;
 
-                            let outf = libm::{0}(f32::from_bits(i1), i2 as i32);
-                            let outi = outf.to_bits();
+                            if let Ok(outf) = panic::catch_unwind(|| {{
+                                libm::{0}(f32::from_bits(i1), i2 as i32)
+                            }}) {{
+                                let outi = outf.to_bits();
 
-                            if !((outf.is_nan() && f32::from_bits(expected).is_nan()) ||
-                                 libm::_eqf(outi, expected)) {{
+                                if !((outf.is_nan() && f32::from_bits(expected).is_nan())
+                                    || libm::_eqf(outi, expected))
+                                {{
+                                    panic!(
+                                        \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                        (i1, i2),
+                                        outi,
+                                        expected,
+                                    );
+                                }}
+                            }} else {{
                                 panic!(
-                                    \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                    \"input: {{:?}}, output: PANIC, expected: {{}}\",
                                     (i1, i2),
-                                    outi,
                                     expected,
                                 );
                             }}
@@ -314,6 +359,8 @@ macro_rules! f64_f64 {
 
                     extern crate libm;
 
+                    use std::panic;
+
                     #[test]
                     fn {0}() {{
                         const CASES: &[(u64, u64)] = &[
@@ -323,15 +370,25 @@ macro_rules! f64_f64 {
                         for case in CASES {{
                             let (inp, expected) = *case;
 
-                            let outf = libm::{0}(f64::from_bits(inp));
-                            let outi = outf.to_bits();
+                            if let Ok(outf) = panic::catch_unwind(|| {{
+                                libm::{0}(f64::from_bits(inp))
+                            }}) {{
+                                let outi = outf.to_bits();
 
-                            if !((outf.is_nan() && f64::from_bits(expected).is_nan()) ||
-                                 libm::_eq(outi, expected)) {{
+                                if !((outf.is_nan() && f64::from_bits(expected).is_nan())
+                                    || libm::_eq(outi, expected))
+                                {{
+                                    panic!(
+                                        \"input: {{}}, output: {{}}, expected: {{}}\",
+                                        inp,
+                                        outi,
+                                        expected,
+                                    );
+                                }}
+                            }} else {{
                                 panic!(
-                                    \"input: {{}}, output: {{}}, expected: {{}}\",
+                                    \"input: {{}}, output: PANIC, expected: {{}}\",
                                     inp,
-                                    outi,
                                     expected,
                                 );
                             }}
@@ -376,6 +433,8 @@ macro_rules! f64f64_f64 {
 
                     extern crate libm;
 
+                    use std::panic;
+
                     #[test]
                     fn {0}() {{
                         const CASES: &[((u64, u64), u64)] = &[
@@ -385,15 +444,24 @@ macro_rules! f64f64_f64 {
                         for case in CASES {{
                             let ((i1, i2), expected) = *case;
 
-                            let outf = libm::{0}(f64::from_bits(i1), f64::from_bits(i2));
-                            let outi = outf.to_bits();
+                            if let Ok(outf) = panic::catch_unwind(|| {{
+                                libm::{0}(f64::from_bits(i1), f64::from_bits(i2))
+                            }}) {{
+                                let outi = outf.to_bits();
 
-                            if !((outf.is_nan() && f64::from_bits(expected).is_nan()) ||
-                                 libm::_eq(outi, expected)) {{
+                                if !((outf.is_nan() && f64::from_bits(expected).is_nan()) ||
+                                    libm::_eq(outi, expected)) {{
+                                    panic!(
+                                        \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                        (i1, i2),
+                                        outi,
+                                        expected,
+                                    );
+                                }}
+                            }} else {{
                                 panic!(
-                                    \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                    \"input: {{:?}}, output: PANIC, expected: {{}}\",
                                     (i1, i2),
-                                    outi,
                                     expected,
                                 );
                             }}
@@ -440,6 +508,8 @@ macro_rules! f64f64f64_f64 {
 
                     extern crate libm;
 
+                    use std::panic;
+
                     #[test]
                     fn {0}() {{
                         const CASES: &[((u64, u64, u64), u64)] = &[
@@ -449,19 +519,29 @@ macro_rules! f64f64f64_f64 {
                         for case in CASES {{
                             let ((i1, i2, i3), expected) = *case;
 
-                            let outf = libm::{0}(
-                                f64::from_bits(i1),
-                                f64::from_bits(i2),
-                                f64::from_bits(i3),
-                            );
-                            let outi = outf.to_bits();
+                            if let Ok(outf) = panic::catch_unwind(|| {{
+                                libm::{0}(
+                                    f64::from_bits(i1),
+                                    f64::from_bits(i2),
+                                    f64::from_bits(i3),
+                                )
+                            }}) {{
+                                let outi = outf.to_bits();
 
-                            if !((outf.is_nan() && f64::from_bits(expected).is_nan()) ||
-                                 libm::_eq(outi, expected)) {{
+                                if !((outf.is_nan() && f64::from_bits(expected).is_nan())
+                                    || libm::_eq(outi, expected))
+                                {{
+                                    panic!(
+                                        \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                        (i1, i2, i3),
+                                        outi,
+                                        expected,
+                                    );
+                                }}
+                            }} else {{
                                 panic!(
-                                    \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                    \"input: {{:?}}, output: PANIC, expected: {{}}\",
                                     (i1, i2, i3),
-                                    outi,
                                     expected,
                                 );
                             }}
@@ -505,6 +585,8 @@ macro_rules! f64i32_f64 {
 
                     extern crate libm;
 
+                    use std::panic;
+
                     #[test]
                     fn {0}() {{
                         const CASES: &[((u64, i16), u64)] = &[
@@ -514,15 +596,24 @@ macro_rules! f64i32_f64 {
                         for case in CASES {{
                             let ((i1, i2), expected) = *case;
 
-                            let outf = libm::{0}(f64::from_bits(i1), i2 as i32);
-                            let outi = outf.to_bits();
+                            if let Ok(outf) = panic::catch_unwind(|| {{
+                                libm::{0}(f64::from_bits(i1), i2 as i32)
+                            }}) {{
+                                let outi = outf.to_bits();
 
-                            if !((outf.is_nan() && f64::from_bits(expected).is_nan()) ||
-                                 libm::_eq(outi, expected)) {{
+                                if !((outf.is_nan() && f64::from_bits(expected).is_nan()) ||
+                                    libm::_eq(outi, expected)) {{
+                                    panic!(
+                                        \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                        (i1, i2),
+                                        outi,
+                                        expected,
+                                    );
+                                }}
+                            }} else {{
                                 panic!(
-                                    \"input: {{:?}}, output: {{}}, expected: {{}}\",
+                                    \"input: {{:?}}, output: PANIC, expected: {{}}\",
                                     (i1, i2),
-                                    outi,
                                     expected,
                                 );
                             }}
@@ -562,7 +653,7 @@ fn main() -> Result<(), Box<Error>> {
 f32_f32! {
     // acosf,
     // floorf,
-    // truncf
+    truncf,
     // asinf,
     // atanf,
     // cbrtf,
@@ -570,10 +661,11 @@ f32_f32! {
     // cosf,
     // coshf,
     // exp2f,
-    // expf,
+    expf,
     // fdimf,
     // log10f,
     // log2f,
+    logf,
     roundf,
     // sinf,
     // sinhf,
@@ -586,7 +678,7 @@ f32_f32! {
 // With signature `fn(f32, f32) -> f32`
 f32f32_f32! {
     // atan2f,
-    // hypotf,
+    hypotf,
     fmodf,
     powf,
 }
@@ -613,7 +705,7 @@ f64_f64! {
     // exp,
     // exp2,
     // expm1,
-    // floor,
+    floor,
     // log,
     // log10,
     // log1p,
@@ -621,10 +713,10 @@ f64_f64! {
     round,
     // sin,
     // sinh,
-    // sqrt,
+    sqrt,
     // tan,
     // tanh,
-    // trunc,
+    trunc,
     fabs,
 }
 
@@ -633,7 +725,7 @@ f64f64_f64! {
     // atan2,
     // fdim,
     // fmod,
-    // hypot,
+    hypot,
     // pow,
 }
 
@@ -644,5 +736,5 @@ f64f64f64_f64! {
 
 // With signature `fn(f64, i32) -> f64`
 f64i32_f64! {
-    // scalbn,
+    scalbn,
 }

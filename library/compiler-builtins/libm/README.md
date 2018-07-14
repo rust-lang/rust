@@ -6,62 +6,41 @@ A port of [MUSL]'s libm to Rust.
 
 ## Goals
 
-The short term goal of this library is to enable math support (e.g. `sin`, `atan2`) for the
-`wasm32-unknown-unknown` target. The longer term goal is to enable math support in the `core` crate.
+The short term goal of this library is to [enable math support (e.g. `sin`, `atan2`) for the
+`wasm32-unknown-unknown` target][wasm] (cf. [rust-lang-nursery/compiler-builtins][pr]). The longer
+term goal is to enable [math support in the `core` crate][core].
 
-## Testing
+[wasm]: https://github.com/japaric/libm/milestone/1
+[pr]: https://github.com/rust-lang-nursery/compiler-builtins/pull/248
+[core]: https://github.com/japaric/libm/milestone/2
 
-The test suite of this crate can only be run on x86_64 Linux systems.
+## Already usable
 
+This crate is [on crates.io] and can be used today in stable `#![no_std]` programs like this:
+
+[on crates.io]: https://crates.io/crates/libm
+
+``` rust
+#![no_std]
+
+extern crate libm;
+
+use libm::F32Ext; // adds methods to `f32`
+
+fn foo(x: f32) {
+    let y = x.sqrt();
+    let z = libm::truncf(x);
+}
 ```
-$ # The test suite depends on the `cross` tool so install it if you don't have it
-$ cargo install cross
 
-$ # and the `cross` tool requires docker to be running
-$ systemctl start docker
+Not all the math functions are available at the moment. Check the [API docs] to learn what's
+currently supported.
 
-$ # execute the test suite for the x86_64 target
-$ TARGET=x86_64-unknown-linux-gnu bash ci/script.sh
-
-$ # execute the test suite for the ARMv7 target
-$ TARGET=armv7-unknown-linux-gnueabihf bash ci/script.sh
-```
+[API docs]: https://docs.rs/libm
 
 ## Contributing
 
-- Pick your favorite math function from the [issue tracker].
-- Look for the C implementation of the function in the [MUSL source code][src].
-- Copy paste the C code into a Rust file in the `src/math` directory and adjust `src/math/mod.rs`
-  accordingly. Also, uncomment the corresponding trait method in `src/lib.rs`.
-- Run `cargo watch check` and fix the compiler errors.
-- Tweak the bottom of `test-generator/src/main.rs` to add your function to the test suite.
-- If you can, run the test suite locally. If you can't, no problem! Your PR will be tested
-  automatically.
-- Send us a pull request!
-- :tada:
-
-[issue tracker]: https://github.com/japaric/libm/issues
-[src]: https://git.musl-libc.org/cgit/musl/tree/src/math
-
-Check [PR #2] for an example.
-
-[PR #2]: https://github.com/japaric/libm/pull/2
-
-### Notes
-
-- Only use relative imports within the `math` directory / module, e.g. `use self::fabs::fabs` or
-`use super::isnanf`. Absolute imports from core are OK, e.g. `use core::u64`.
-
-- To reinterpret a float as an integer use the `to_bits` method. The MUSL code uses the
-  `GET_FLOAT_WORD` macro, or a union, to do this operation.
-
-- To reinterpret an integer as a float use the `f32::from_bits` constructor. The MUSL code uses the
-  `SET_FLOAT_WORD` macro, or a union, to do this operation.
-
-- Rust code panics on arithmetic overflows when not optimized. You may need to use the [`Wrapping`]
-  newtype to avoid this problem.
-
-[`Wrapping`]: https://doc.rust-lang.org/std/num/struct.Wrapping.html
+Please check [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
