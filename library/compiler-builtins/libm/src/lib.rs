@@ -363,6 +363,8 @@ pub trait F64Ext: private::Sealed {
 
     fn trunc(self) -> Self;
 
+    fn fdim(self, rhs: Self) -> Self;
+
     #[cfg(todo)]
     fn fract(self) -> Self;
 
@@ -480,6 +482,10 @@ impl F64Ext for f64 {
         trunc(self)
     }
 
+    #[inline]
+    fn fdim(self, rhs: Self) -> Self {
+        fdim(self, rhs)
+    }
     #[cfg(todo)]
     #[inline]
     fn fract(self) -> Self {

@@ -1,6 +1,6 @@
-use core::f32;
+use core::f64;
 
-pub fn fdimf(x: f32, y: f32) -> f32 {
+pub fn fdim(x: f64, y: f64) -> f64 {
     if x.is_nan() {
         x
     } else if y.is_nan() {

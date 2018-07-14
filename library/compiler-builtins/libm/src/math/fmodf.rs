@@ -1,6 +1,5 @@
+use core::f32;
 use core::u32;
-
-use super::isnanf;
 
 #[inline]
 pub fn fmodf(x: f32, y: f32) -> f32 {
@@ -11,7 +10,7 @@ pub fn fmodf(x: f32, y: f32) -> f32 {
     let sx = uxi & 0x80000000;
     let mut i;
 
-    if uyi << 1 == 0 || isnanf(y) || ex == 0xff {
+    if uyi << 1 == 0 || y.is_nan() || ex == 0xff {
         return (x * y) / (x * y);
     }
 
