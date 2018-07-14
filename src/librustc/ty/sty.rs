@@ -1767,17 +1767,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn ty_to_def_id(&self) -> Option<DefId> {
-        match self.sty {
-            TyDynamic(ref tt, ..) => tt.principal().map(|p| p.def_id()),
-            TyAdt(def, _) => Some(def.did),
-            TyForeign(did) => Some(did),
-            TyClosure(id, _) => Some(id),
-            TyFnDef(id, _) => Some(id),
-            _ => None,
-        }
-    }
-
     pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
         match self.sty {
             TyAdt(adt, _) => Some(adt),

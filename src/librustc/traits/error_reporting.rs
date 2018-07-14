@@ -391,7 +391,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             flags.push((name, Some(value)));
         }
 
-        if let Some(true) = self_ty.ty_to_def_id().map(|def_id| def_id.is_local()) {
+        if let Some(true) = self_ty.ty_adt_def().map(|def| def.did.is_local()) {
             flags.push(("crate_local".to_string(), None));
         }
 
@@ -775,7 +775,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
                 let found_trait_ty = found_trait_ref.self_ty();
 
-                let found_did = found_trait_ty.ty_to_def_id();
+                let found_did = match found_trait_ty.sty {
+                    ty::TyClosure(did, _) |
+                    ty::TyForeign(did) |
+                    ty::TyFnDef(did, _) => Some(did),
+                    ty::TyAdt(def, _) => Some(def.did),
+                    _ => None,
+                };
                 let found_span = found_did.and_then(|did| {
                     self.tcx.hir.span_if_local(did)
                 }).map(|sp| self.tcx.sess.codemap().def_span(sp)); // the sp could be an fn def

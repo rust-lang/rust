@@ -469,13 +469,9 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
         let field_type = self.tcx.type_of(self.tcx.hir.local_def_id(field.id));
-        let is_marker_field = match field_type.ty_to_def_id() {
-            Some(def_id) => self.tcx.lang_items().items().iter().any(|item| *item == Some(def_id)),
-            _ => false
-        };
         !field.is_positional()
             && !self.symbol_is_live(field.id, None)
-            && !is_marker_field
+            && !field_type.is_phantom_data()
             && !has_allow_dead_code_or_lang_attr(self.tcx, field.id, &field.attrs)
     }
 
