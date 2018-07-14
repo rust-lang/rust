@@ -1,8 +1,19 @@
-#![allow(non_snake_case)]
+//! CMSIS: Cortex Microcontroller Software Interface Standard
+//!
+//! The version 5 of the standard can be found at:
+//!
+//! http://arm-software.github.io/CMSIS_5/Core/html/index.html
+//!
+//! The API reference of the standard can be found at:
+//!
+//! - Core function access -- http://arm-software.github.io/CMSIS_5/Core/html/group__Core__Register__gr.html
+//! - Intrinsic functions for CPU instructions -- http://arm-software.github.io/CMSIS_5/Core/html/group__intrinsic__CPU__gr.html
+//!
+//! The reference C implementation used as the base of this Rust port can be found at
+//!
+//! https://github.com/ARM-software/CMSIS_5/blob/5.3.0/CMSIS/Core/Include/cmsis_gcc.h
 
-/// Extracted from [CMSIS 5]'s CMSIS/Core/Include/cmsis_gcc.h
-///
-/// [CMSIS 5]: https://github.com/ARM-software/CMSIS_5
+#![allow(non_snake_case)]
 
 /* Core function access */
 
