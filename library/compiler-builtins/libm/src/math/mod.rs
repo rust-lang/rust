@@ -9,6 +9,7 @@ macro_rules! force_eval {
 mod ceil;
 mod ceilf;
 mod cosf;
+mod exp;
 mod expf;
 mod fabs;
 mod fabsf;
@@ -39,6 +40,7 @@ mod truncf;
 pub use self::ceil::ceil;
 pub use self::ceilf::ceilf;
 pub use self::cosf::cosf;
+pub use self::exp::exp;
 pub use self::expf::expf;
 pub use self::fabs::fabs;
 pub use self::fabsf::fabsf;
