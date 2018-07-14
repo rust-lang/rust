@@ -567,7 +567,7 @@ f32_f32! {
     // atanf,
     // cbrtf,
     // ceilf,
-    // cosf,
+    cosf,
     // coshf,
     // exp2f,
     expf,
