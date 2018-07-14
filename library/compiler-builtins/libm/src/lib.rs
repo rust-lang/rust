@@ -381,7 +381,6 @@ pub trait F64Ext: private::Sealed {
 
     fn sqrt(self) -> Self;
 
-    #[cfg(todo)]
     fn exp(self) -> Self;
 
     #[cfg(todo)]
@@ -427,7 +426,6 @@ pub trait F64Ext: private::Sealed {
         (self.sin(), self.cos())
     }
 
-    #[cfg(todo)]
     fn exp_m1(self) -> Self;
 
     fn ln_1p(self) -> Self;
@@ -435,7 +433,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn sinh(self) -> Self;
 
-    #[cfg(todo)]
     fn cosh(self) -> Self;
 
     #[cfg(todo)]
@@ -522,7 +519,6 @@ impl F64Ext for f64 {
         sqrt(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn exp(self) -> Self {
         exp(self)
@@ -607,7 +603,6 @@ impl F64Ext for f64 {
         atan2(self, other)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn exp_m1(self) -> Self {
         expm1(self)
@@ -624,7 +619,6 @@ impl F64Ext for f64 {
         sinh(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn cosh(self) -> Self {
         cosh(self)
