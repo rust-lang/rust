@@ -6,6 +6,7 @@ macro_rules! force_eval {
     };
 }
 
+mod ceil;
 mod ceilf;
 mod expf;
 mod fabs;
@@ -36,10 +37,11 @@ mod truncf;
 //mod service;
 
 pub use self::{
-    ceilf::ceilf, expf::expf, fabs::fabs, fabsf::fabsf, floor::floor, floorf::floorf, fmodf::fmodf,
-    hypot::hypot, hypotf::hypotf, log::log, log10::log10, log10f::log10f, log1p::log1p,
-    log1pf::log1pf, log2::log2, log2f::log2f, logf::logf, powf::powf, round::round, roundf::roundf,
-    scalbn::scalbn, scalbnf::scalbnf, sqrt::sqrt, sqrtf::sqrtf, trunc::trunc, truncf::truncf,
+    ceil::ceil, ceilf::ceilf, expf::expf, fabs::fabs, fabsf::fabsf, floor::floor, floorf::floorf,
+    fmodf::fmodf, hypot::hypot, hypotf::hypotf, log::log, log10::log10, log10f::log10f,
+    log1p::log1p, log1pf::log1pf, log2::log2, log2f::log2f, logf::logf, powf::powf, round::round,
+    roundf::roundf, scalbn::scalbn, scalbnf::scalbnf, sqrt::sqrt, sqrtf::sqrtf, trunc::trunc,
+    truncf::truncf,
 };
 
 fn isnanf(x: f32) -> bool {
