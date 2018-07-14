@@ -660,6 +660,16 @@ impl Step for CodegenBackend {
 
         builder.ensure(Rustc { compiler, target });
 
+        if let Some(keep_stage) = builder.config.keep_stage {
+            if keep_stage <= compiler.stage {
+                println!("Warning: Using a potentially old codegen backend. \
+                    This may not behave well.");
+                // Codegen backends are linked separately from this step today, so we don't do
+                // anything here.
+                return;
+            }
+        }
+
         if builder.force_use_stage1(compiler, target) {
             builder.ensure(CodegenBackend {
                 compiler: builder.compiler(1, builder.config.build),
