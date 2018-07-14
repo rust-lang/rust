@@ -940,7 +940,7 @@ impl Mutability {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, Hash)]
 pub enum BinOp_ {
     /// The `+` operator (addition)
     BiAdd,
@@ -1069,7 +1069,7 @@ impl Into<ast::BinOpKind> for BinOp_ {
 
 pub type BinOp = Spanned<BinOp_>;
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, Hash)]
 pub enum UnOp {
     /// The `*` operator for dereferencing
     UnDeref,
