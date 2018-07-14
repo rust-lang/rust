@@ -22,22 +22,22 @@ pub fn hypotf(mut x: f32, mut y: f32) -> f32 {
 
     x = f32::from_bits(uxi);
     y = f32::from_bits(uyi);
-    if uyi == 0xff<<23 {
+    if uyi == 0xff << 23 {
         return y;
     }
-    if uxi >= 0xff<<23 || uyi == 0 || uxi - uyi >= 25<<23 {
+    if uxi >= 0xff << 23 || uyi == 0 || uxi - uyi >= 25 << 23 {
         return x + y;
     }
 
     z = 1.;
-    if uxi >= (0x7f+60)<<23 {
+    if uxi >= (0x7f + 60) << 23 {
         z = x1p90;
         x *= x1p_90;
         y *= x1p_90;
-    } else if uyi < (0x7f-60)<<23 {
+    } else if uyi < (0x7f - 60) << 23 {
         z = x1p_90;
         x *= x1p90;
         y *= x1p90;
     }
-    z*sqrtf((x as f64 * x as f64 + y as f64 * y as f64) as f32)
+    z * sqrtf((x as f64 * x as f64 + y as f64 * y as f64) as f32)
 }

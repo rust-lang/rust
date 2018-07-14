@@ -26,7 +26,7 @@ pub fn round(mut x: f64) -> f64 {
     } else {
         y = y + x;
     }
-    
+
     if i >> 63 != 0 {
         -y
     } else {
