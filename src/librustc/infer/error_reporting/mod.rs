@@ -60,13 +60,13 @@ use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePa
 use super::region_constraints::GenericKind;
 use super::lexical_region_resolve::RegionResolutionError;
 
-use std::fmt;
+use std::{cmp, fmt};
 use hir;
 use hir::map as hir_map;
 use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, Region, Ty, TyCtxt, TypeFoldable, TypeVariants};
+use ty::{self, subst::Subst, Region, Ty, TyCtxt, TypeFoldable, TypeVariants};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
@@ -652,6 +652,43 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// For generic types with parameters with defaults, remove the parameters corresponding to
+    /// the defaults. This repeats a lot of the logic found in `PrintContext::parameterized`.
+    fn strip_generic_default_params(
+        &self,
+        def_id: DefId,
+        substs: &ty::subst::Substs<'tcx>
+    ) -> &'tcx ty::subst::Substs<'tcx> {
+        let generics = self.tcx.generics_of(def_id);
+        let mut num_supplied_defaults = 0;
+        let mut type_params = generics.params.iter().rev().filter_map(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime => None,
+            ty::GenericParamDefKind::Type { has_default, .. } => {
+                Some((param.def_id, has_default))
+            }
+        }).peekable();
+        let has_default = {
+            let has_default = type_params.peek().map(|(_, has_default)| has_default);
+            *has_default.unwrap_or(&false)
+        };
+        if has_default {
+            let types = substs.types().rev();
+            for ((def_id, has_default), actual) in type_params.zip(types) {
+                if !has_default {
+                    break;
+                }
+                if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
+                    break;
+                }
+                num_supplied_defaults += 1;
+            }
+        }
+        let len = generics.params.len();
+        let mut generics = generics.clone();
+        generics.params.truncate(len - num_supplied_defaults);
+        substs.truncate_to(self.tcx, &generics)
+    }
+
     /// Compare two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
@@ -693,6 +730,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         match (&t1.sty, &t2.sty) {
             (&ty::TyAdt(def1, sub1), &ty::TyAdt(def2, sub2)) => {
+                let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
+                let sub_no_defaults_2 = self.strip_generic_default_params(def2.did, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 let path1 = self.tcx.item_path_str(def1.did.clone());
                 let path2 = self.tcx.item_path_str(def2.did.clone());
@@ -708,8 +747,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     values.0.push_normal(path1);
                     values.1.push_normal(path2);
 
+                    // Avoid printing out default generic parameters that are common to both
+                    // types.
+                    let len1 = sub_no_defaults_1.len();
+                    let len2 = sub_no_defaults_2.len();
+                    let common_len = cmp::min(len1, len2);
+                    let remainder1: Vec<_> = sub1.types().skip(common_len).collect();
+                    let remainder2: Vec<_> = sub2.types().skip(common_len).collect();
+                    let common_default_params =
+                        remainder1.iter().rev().zip(remainder2.iter().rev())
+                                               .filter(|(a, b)| a == b).count();
+                    let len = sub1.len() - common_default_params;
+
                     // Only draw `<...>` if there're lifetime/type arguments.
-                    let len = sub1.len();
                     if len > 0 {
                         values.0.push_normal("<");
                         values.1.push_normal("<");
@@ -754,7 +804,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     //         ^ elided type as this type argument was the same in both sides
                     let type_arguments = sub1.types().zip(sub2.types());
                     let regions_len = sub1.regions().collect::<Vec<_>>().len();
-                    for (i, (ta1, ta2)) in type_arguments.enumerate() {
+                    for (i, (ta1, ta2)) in type_arguments.take(len).enumerate() {
                         let i = i + regions_len;
                         if ta1 == ta2 {
                             values.0.push_normal("_");
@@ -784,7 +834,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         &mut values.0,
                         &mut values.1,
                         path1.clone(),
-                        sub1,
+                        sub_no_defaults_1,
                         path2.clone(),
                         &t2,
                     ).is_some()
@@ -796,8 +846,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     //     Bar<Qux>
                     //     Foo<Bar<Qux>>
                     //         ------- this type argument is exactly the same as the other type
-                    if self.cmp_type_arg(&mut values.1, &mut values.0, path2, sub2, path1, &t1)
-                        .is_some()
+                    if self.cmp_type_arg(
+                        &mut values.1,
+                        &mut values.0,
+                        path2,
+                        sub_no_defaults_2,
+                        path1,
+                        &t1,
+                    ).is_some()
                     {
                         return values;
                     }
