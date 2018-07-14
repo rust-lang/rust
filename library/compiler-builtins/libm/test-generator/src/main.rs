@@ -724,7 +724,7 @@ f64_f64! {
 f64f64_f64! {
     // atan2,
     // fdim,
-    // fmod,
+    fmod,
     hypot,
     // pow,
 }

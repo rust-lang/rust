@@ -1,88 +1,80 @@
-use core::u32;
+use core::u64;
 
 #[inline]
-pub fn fmodf(x: f32, y: f32) -> f32 {
+pub fn fmod(x: f64, y: f64) -> f64 {
     let mut uxi = x.to_bits();
     let mut uyi = y.to_bits();
-    let mut ex = (uxi >> 23 & 0xff) as i32;
-    let mut ey = (uyi >> 23 & 0xff) as i32;
-    let sx = uxi & 0x80000000;
+    let mut ex = (uxi >> 52 & 0x7ff) as i64;
+    let mut ey = (uyi >> 52 & 0x7ff) as i64;
+    let sx = uxi >> 63;
     let mut i;
 
-    if uyi << 1 == 0 || y.is_nan() || ex == 0xff {
+    if uyi << 1 == 0 || y.is_nan() || ex == 0x7ff {
         return (x * y) / (x * y);
     }
-
     if uxi << 1 <= uyi << 1 {
         if uxi << 1 == uyi << 1 {
             return 0.0 * x;
         }
-
         return x;
     }
 
     /* normalize x and y */
     if ex == 0 {
-        i = uxi << 9;
-        while i >> 31 == 0 {
+        i = uxi << 12;
+        while i >> 63 == 0 {
             ex -= 1;
             i <<= 1;
         }
-
         uxi <<= -ex + 1;
     } else {
-        uxi &= u32::MAX >> 9;
-        uxi |= 1 << 23;
+        uxi &= u64::MAX >> 12;
+        uxi |= 1 << 52;
     }
-
     if ey == 0 {
-        i = uyi << 9;
-        while i >> 31 == 0 {
+        i = uyi << 12;
+        while i >> 63 == 0 {
             ey -= 1;
             i <<= 1;
         }
-
         uyi <<= -ey + 1;
     } else {
-        uyi &= u32::MAX >> 9;
-        uyi |= 1 << 23;
+        uyi &= u64::MAX >> 12;
+        uyi |= 1 << 52;
     }
 
     /* x mod y */
     while ex > ey {
         i = uxi - uyi;
-        if i >> 31 == 0 {
+        if i >> 63 == 0 {
             if i == 0 {
                 return 0.0 * x;
             }
             uxi = i;
         }
         uxi <<= 1;
-
         ex -= 1;
     }
-
     i = uxi - uyi;
-    if i >> 31 == 0 {
+    if i >> 63 == 0 {
         if i == 0 {
             return 0.0 * x;
         }
         uxi = i;
     }
-
-    while uxi >> 23 == 0 {
+    while uxi >> 52 == 0 {
         uxi <<= 1;
         ex -= 1;
     }
 
-    /* scale result up */
+    /* scale result */
     if ex > 0 {
-        uxi -= 1 << 23;
-        uxi |= (ex as u32) << 23;
+        uxi -= 1 << 52;
+        uxi |= (ex as u64) << 52;
     } else {
         uxi >>= -ex + 1;
     }
-    uxi |= sx;
+    uxi |= (sx as u64) << 63;
 
-    f32::from_bits(uxi)
+    f64::from_bits(uxi)
 }
