@@ -22,6 +22,8 @@ install:
   - bash ci/install.sh
 
 script:
+  # code must be already formatted
+  - cargo fmt -- --check
   - bash ci/script.sh
 
 after_script: set +e

@@ -5,6 +5,8 @@ main() {
         cargo install cross
     fi
 
+    rustup component add rustfmt-preview
+
     rustup target add x86_64-unknown-linux-musl
 
     if [ $TARGET != x86_64-unknown-linux-gnu ]; then
