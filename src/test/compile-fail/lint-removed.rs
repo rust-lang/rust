@@ -13,6 +13,6 @@
 // default, and allowed in cargo dependency builds.
 // cc #30346
 
-#[deny(raw_pointer_derive)] //~ WARN raw_pointer_derive has been removed
+#[deny(raw_pointer_derive)] //~ WARN `raw_pointer_derive` has been removed
 #[deny(unused_variables)]
 fn main() { let unused = (); } //~ ERROR unused

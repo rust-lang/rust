@@ -131,8 +131,8 @@ pub enum CheckLintNameResult<'a> {
     /// Lint doesn't exist
     NoLint,
     /// The lint is either renamed or removed. This is the warning
-    /// message.
-    Warning(String),
+    /// message, and an optional new name (`None` if removed).
+    Warning(String, Option<String>),
 }
 
 impl LintStore {
@@ -280,7 +280,7 @@ impl LintStore {
                                    level: Level) {
         let db = match self.check_lint_name(lint_name) {
             CheckLintNameResult::Ok(_) => None,
-            CheckLintNameResult::Warning(ref msg) => {
+            CheckLintNameResult::Warning(ref msg, _) => {
                 Some(sess.struct_warn(msg))
             },
             CheckLintNameResult::NoLint => {
@@ -313,12 +313,14 @@ impl LintStore {
         match self.by_name.get(lint_name) {
             Some(&Renamed(ref new_name, _)) => {
                 CheckLintNameResult::Warning(
-                    format!("lint {} has been renamed to {}", lint_name, new_name)
+                    format!("lint `{}` has been renamed to `{}`", lint_name, new_name),
+                    Some(new_name.to_owned())
                 )
             },
             Some(&Removed(ref reason)) => {
                 CheckLintNameResult::Warning(
-                    format!("lint {} has been removed: {}", lint_name, reason)
+                    format!("lint `{}` has been removed: `{}`", lint_name, reason),
+                    None
                 )
             },
             None => {
