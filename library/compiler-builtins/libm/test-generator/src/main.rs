@@ -669,7 +669,7 @@ f32_f32! {
     logf,
     roundf,
     sinf,
-    // sinhf,
+    sinhf,
     tanf,
     tanhf,
     fabsf,
