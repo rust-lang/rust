@@ -66,7 +66,7 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty};
 use rustc::ty::subst::Substs;
 use util::dump_mir;
-use util::liveness::{self, LivenessMode};
+use util::liveness::{self, IdentityMap, LivenessMode};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use std::collections::HashMap;
@@ -334,7 +334,7 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
 
 struct BorrowedLocals(liveness::LocalSet<Local>);
 
-fn mark_as_borrowed<'tcx, V: Idx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
+fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
     match *place {
         Place::Local(l) => { locals.0.add(&l); },
         Place::Static(..) => (),
@@ -397,11 +397,22 @@ fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut set = liveness::LocalSet::new_empty(mir.local_decls.len());
-    let mut liveness = liveness::liveness_of_locals(mir, LivenessMode {
-        include_regular_use: true,
-        include_drops: true,
-    });
-    liveness::dump_mir(tcx, "generator_liveness", source, mir, &liveness);
+    let mut liveness = liveness::liveness_of_locals(
+        mir,
+        LivenessMode {
+            include_regular_use: true,
+            include_drops: true,
+        },
+        &IdentityMap::new(mir),
+    );
+    liveness::dump_mir(
+        tcx,
+        "generator_liveness",
+        source,
+        mir,
+        &IdentityMap::new(mir),
+        &liveness,
+    );
 
     let mut storage_liveness_map = HashMap::new();
 

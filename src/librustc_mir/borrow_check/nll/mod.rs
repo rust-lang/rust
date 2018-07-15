@@ -22,7 +22,6 @@ use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir, Local};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::env;
@@ -31,7 +30,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 use transform::MirSource;
-use util::liveness::{LivenessResults, LocalSet};
+use util::liveness::{IdentityMap, LivenessResults, LocalSet};
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
@@ -104,7 +103,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let elements = &Rc::new(RegionValueElements::new(mir, universal_regions.len()));
 
     // Run the MIR type-checker.
-    let liveness = &LivenessResults::compute(mir);
+    let liveness = &LivenessResults::compute(mir, &IdentityMap::new(mir));
     let constraint_sets = type_check::type_check(
         infcx,
         param_env,
@@ -220,6 +219,8 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         return;
     }
 
+    let map = &IdentityMap::new(mir);
+
     let regular_liveness_per_location: FxHashMap<_, _> = mir
         .basic_blocks()
         .indices()
@@ -227,7 +228,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             let mut results = vec![];
             liveness
                 .regular
-                .simulate_block(&mir, bb, |location, local_set| {
+                .simulate_block(&mir, bb, map, |location, local_set| {
                     results.push((location, local_set.clone()));
                 });
             results
@@ -241,7 +242,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             let mut results = vec![];
             liveness
                 .drop
-                .simulate_block(&mir, bb, |location, local_set| {
+                .simulate_block(&mir, bb, map, |location, local_set| {
                     results.push((location, local_set.clone()));
                 });
             results
