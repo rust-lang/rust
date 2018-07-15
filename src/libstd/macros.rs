@@ -155,14 +155,7 @@ macro_rules! print {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! println {
     () => (print!("\n"));
-    ($fmt:expr) => ({
-        print!($fmt);
-        print!("\n");
-    });
-    ($fmt:expr, $($arg:tt)*) => ({
-        print!($fmt, $($arg)*);
-        print!("\n");
-    });
+    ($($arg:tt)*) => (print!("{}\n", format_args!($($arg)*)));
 }
 
 /// Macro for printing to the standard error.

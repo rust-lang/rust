@@ -58,7 +58,7 @@ pub fn expand_syntax_ext(
     }
     if missing_literal.len() > 0 {
         let mut err = cx.struct_span_err(missing_literal, "expected a literal");
-        err.note("only `&str` literals can be passed to `concat!()`");
+        err.note("only literals (like `\"foo\"`, `42` and `3.14`) can be passed to `concat!()`");
         err.emit();
     }
     let sp = sp.apply_mark(cx.current_expansion.mark);
