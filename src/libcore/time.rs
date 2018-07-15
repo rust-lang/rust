@@ -208,7 +208,7 @@ impl Duration {
     #[inline]
     pub const fn as_secs(&self) -> u64 { self.secs }
 
-    /// Returns the fractional part of this `Duration`, in milliseconds.
+    /// Returns the fractional part of this `Duration`, in whole milliseconds.
     ///
     /// This method does **not** return the length of the duration when
     /// represented by milliseconds. The returned number always represents a
@@ -228,7 +228,7 @@ impl Duration {
     #[inline]
     pub const fn subsec_millis(&self) -> u32 { self.nanos / NANOS_PER_MILLI }
 
-    /// Returns the fractional part of this `Duration`, in microseconds.
+    /// Returns the fractional part of this `Duration`, in whole microseconds.
     ///
     /// This method does **not** return the length of the duration when
     /// represented by microseconds. The returned number always represents a
@@ -268,7 +268,7 @@ impl Duration {
     #[inline]
     pub const fn subsec_nanos(&self) -> u32 { self.nanos }
 
-    /// Returns the total number of milliseconds contained by this `Duration`.
+    /// Returns the total number of whole milliseconds contained by this `Duration`.
     ///
     /// # Examples
     ///
@@ -285,7 +285,7 @@ impl Duration {
         self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
     }
 
-    /// Returns the total number of microseconds contained by this `Duration`.
+    /// Returns the total number of whole microseconds contained by this `Duration`.
     ///
     /// # Examples
     ///
