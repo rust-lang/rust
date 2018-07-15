@@ -659,7 +659,7 @@ f32_f32! {
     cbrtf,
     cosf,
     ceilf,
-    // coshf,
+    coshf,
     exp2f,
     expf,
     expm1f,
@@ -669,16 +669,16 @@ f32_f32! {
     logf,
     roundf,
     sinf,
-    // sinhf,
+    sinhf,
     tanf,
-    // tanhf,
+    tanhf,
     fabsf,
     sqrtf,
 }
 
 // With signature `fn(f32, f32) -> f32`
 f32f32_f32! {
-    // atan2f,
+    atan2f,
     fdimf,
     hypotf,
     fmodf,

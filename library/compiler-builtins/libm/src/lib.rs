@@ -96,7 +96,6 @@ pub trait F32Ext: private::Sealed {
 
     fn atan(self) -> Self;
 
-    #[cfg(todo)]
     fn atan2(self, other: Self) -> Self;
 
     #[cfg(todo)]
@@ -109,13 +108,10 @@ pub trait F32Ext: private::Sealed {
 
     fn ln_1p(self) -> Self;
 
-    #[cfg(todo)]
     fn sinh(self) -> Self;
 
-    #[cfg(todo)]
     fn cosh(self) -> Self;
 
-    #[cfg(todo)]
     fn tanh(self) -> Self;
 
     #[cfg(todo)]
@@ -272,7 +268,6 @@ impl F32Ext for f32 {
         atanf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn atan2(self, other: Self) -> Self {
         atan2f(self, other)
@@ -288,19 +283,16 @@ impl F32Ext for f32 {
         log1pf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn sinh(self) -> Self {
         sinhf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn cosh(self) -> Self {
         coshf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn tanh(self) -> Self {
         tanhf(self)
