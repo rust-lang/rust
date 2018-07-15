@@ -286,6 +286,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
     var_indices: NodeMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+    upvar_decls: Vec<UpvarDecl>,
     unit_temp: Option<Place<'tcx>>,
 
     /// cached block with the RESUME terminator; this is created
@@ -472,11 +473,52 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
 
     let tcx = hir.tcx();
     let span = tcx.hir.span(fn_id);
+
+    // Gather the upvars of a closure, if any.
+    let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
+        freevars.iter().map(|fv| {
+            let var_id = fv.var_id();
+            let var_hir_id = tcx.hir.node_to_hir_id(var_id);
+            let closure_expr_id = tcx.hir.local_def_id(fn_id);
+            let capture = hir.tables().upvar_capture(ty::UpvarId {
+                var_id: var_hir_id,
+                closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
+            });
+            let by_ref = match capture {
+                ty::UpvarCapture::ByValue => false,
+                ty::UpvarCapture::ByRef(..) => true
+            };
+            let mut decl = UpvarDecl {
+                debug_name: keywords::Invalid.name(),
+                var_hir_id: ClearCrossCrate::Set(var_hir_id),
+                by_ref,
+                mutability: Mutability::Not,
+            };
+            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
+                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                    decl.debug_name = ident.name;
+
+                    if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
+                        if bm == ty::BindByValue(hir::MutMutable) {
+                            decl.mutability = Mutability::Mut;
+                        } else {
+                            decl.mutability = Mutability::Not;
+                        }
+                    } else {
+                        tcx.sess.delay_span_bug(pat.span, "missing binding mode");
+                    }
+                }
+            }
+            decl
+        }).collect()
+    });
+
     let mut builder = Builder::new(hir.clone(),
         span,
         arguments.len(),
         safety,
-        return_ty);
+        return_ty,
+        upvar_decls);
 
     let fn_def_id = tcx.hir.local_def_id(fn_id);
     let call_site_scope = region::Scope::CallSite(body.value.hir_id.local_id);
@@ -519,46 +561,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     info!("fn_id {:?} has attrs {:?}", closure_expr_id,
           tcx.get_attrs(closure_expr_id));
 
-    // Gather the upvars of a closure, if any.
-    let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
-        freevars.iter().map(|fv| {
-            let var_id = fv.var_id();
-            let var_hir_id = tcx.hir.node_to_hir_id(var_id);
-            let closure_expr_id = tcx.hir.local_def_id(fn_id);
-            let capture = hir.tables().upvar_capture(ty::UpvarId {
-                var_id: var_hir_id,
-                closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
-            });
-            let by_ref = match capture {
-                ty::UpvarCapture::ByValue => false,
-                ty::UpvarCapture::ByRef(..) => true
-            };
-            let mut decl = UpvarDecl {
-                debug_name: keywords::Invalid.name(),
-                var_hir_id: ClearCrossCrate::Set(var_hir_id),
-                by_ref,
-                mutability: Mutability::Not,
-            };
-            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
-                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
-                    decl.debug_name = ident.name;
-
-                    if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
-                        if bm == ty::BindByValue(hir::MutMutable) {
-                            decl.mutability = Mutability::Mut;
-                        } else {
-                            decl.mutability = Mutability::Not;
-                        }
-                    } else {
-                        tcx.sess.delay_span_bug(pat.span, "missing binding mode");
-                    }
-                }
-            }
-            decl
-        }).collect()
-    });
-
-    let mut mir = builder.finish(upvar_decls, yield_ty);
+    let mut mir = builder.finish(yield_ty);
     mir.spread_arg = spread_arg;
     mir
 }
@@ -571,7 +574,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
     let owner_id = tcx.hir.body_owner(body_id);
     let span = tcx.hir.span(owner_id);
-    let mut builder = Builder::new(hir.clone(), span, 0, Safety::Safe, ty);
+    let mut builder = Builder::new(hir.clone(), span, 0, Safety::Safe, ty, vec![]);
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
@@ -590,7 +593,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                               TerminatorKind::Unreachable);
     }
 
-    builder.finish(vec![], None)
+    builder.finish(None)
 }
 
 fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
@@ -599,10 +602,10 @@ fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let owner_id = hir.tcx().hir.body_owner(body_id);
     let span = hir.tcx().hir.span(owner_id);
     let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty);
+    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, vec![]);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
-    builder.finish(vec![], None)
+    builder.finish(None)
 }
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -610,7 +613,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
            span: Span,
            arg_count: usize,
            safety: Safety,
-           return_ty: Ty<'tcx>)
+           return_ty: Ty<'tcx>,
+           upvar_decls: Vec<UpvarDecl>)
            -> Builder<'a, 'gcx, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
@@ -628,6 +632,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             breakable_scopes: vec![],
             local_decls: IndexVec::from_elem_n(LocalDecl::new_return_place(return_ty,
                                                                              span), 1),
+            upvar_decls,
             var_indices: NodeMap(),
             unit_temp: None,
             cached_resume_block: None,
@@ -645,7 +650,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn finish(self,
-              upvar_decls: Vec<UpvarDecl>,
               yield_ty: Option<Ty<'tcx>>)
               -> Mir<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
@@ -661,7 +665,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                  yield_ty,
                  self.local_decls,
                  self.arg_count,
-                 upvar_decls,
+                 self.upvar_decls,
                  self.fn_span
         )
     }

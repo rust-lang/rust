@@ -742,6 +742,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     autoderef,
                                     &including_downcast,
                                 )?;
+                            } else if let Place::Local(local) = proj.base {
+                                if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
+                                    = self.mir.local_decls[local].is_user_variable {
+                                    self.append_place_to_string(
+                                        &proj.base,
+                                        buf,
+                                        autoderef,
+                                        &including_downcast,
+                                    )?;
+                                } else {
+                                    buf.push_str(&"*");
+                                    self.append_place_to_string(
+                                        &proj.base,
+                                        buf,
+                                        autoderef,
+                                        &including_downcast,
+                                    )?;
+                                }
                             } else {
                                 buf.push_str(&"*");
                                 self.append_place_to_string(

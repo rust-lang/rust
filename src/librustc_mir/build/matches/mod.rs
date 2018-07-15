@@ -1198,7 +1198,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 visibility_scope,
                 // FIXME: should these secretly injected ref_for_guard's be marked as `internal`?
                 internal: false,
-                is_user_variable: None,
+                is_user_variable: Some(ClearCrossCrate::Set(BindingForm::RefForGuard)),
             });
             LocalsForNode::Three { val_for_guard, ref_for_guard, for_arm_body }
         } else {

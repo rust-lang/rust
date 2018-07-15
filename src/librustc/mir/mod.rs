@@ -531,6 +531,8 @@ pub enum BindingForm<'tcx> {
     Var(VarBindingForm<'tcx>),
     /// Binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
     ImplicitSelf,
+    /// Reference used in a guard expression to ensure immutability.
+    RefForGuard,
 }
 
 CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
@@ -555,6 +557,7 @@ mod binding_form_impl {
             match self {
                 Var(binding) => binding.hash_stable(hcx, hasher),
                 ImplicitSelf => (),
+                RefForGuard => (),
             }
         }
     }
