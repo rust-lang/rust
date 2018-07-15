@@ -1907,6 +1907,14 @@ impl Step for LlvmTools {
         let target = self.target;
         assert!(builder.config.extended);
 
+        /* run only if llvm-config isn't used */
+        if let Some(config) = builder.config.target_config.get(&target) {
+            if let Some(ref _s) = config.llvm_config {
+                builder.info(&format!("Skipping LlvmTools stage{} ({}): external LLVM", stage, target));
+                return None;
+            }
+        }
+
         builder.info(&format!("Dist LlvmTools stage{} ({})", stage, target));
         let src = builder.src.join("src/llvm");
         let name = pkgname(builder, "llvm-tools");
