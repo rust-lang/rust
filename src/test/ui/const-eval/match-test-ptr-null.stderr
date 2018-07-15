@@ -1,17 +1,17 @@
 error[E0018]: raw pointers cannot be cast to integers in constants
-  --> $DIR/match-test-ptr-null.rs:6:15
+  --> $DIR/match-test-ptr-null.rs:16:15
    |
 LL |         match &1 as *const i32 as usize { //~ ERROR raw pointers cannot be cast to integers
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/match-test-ptr-null.rs:7:13
+  --> $DIR/match-test-ptr-null.rs:17:13
    |
 LL |             0 => 42, //~ ERROR constant contains unimplemented expression type
    |             ^
 
 error[E0080]: could not evaluate repeat length
-  --> $DIR/match-test-ptr-null.rs:5:26
+  --> $DIR/match-test-ptr-null.rs:15:26
    |
 LL |       let _: [u8; 0] = [4; { //~ ERROR could not evaluate repeat length
    |  __________________________^
