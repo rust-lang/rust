@@ -1,3 +1,18 @@
+/* origin: FreeBSD /usr/src/lib/msun/src/s_expm1f.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
 const O_THRESHOLD: f32 = 8.8721679688e+01; /* 0x42b17180 */
 const LN2_HI: f32 = 6.9313812256e-01; /* 0x3f317180 */
 const LN2_LO: f32 = 9.0580006145e-06; /* 0x3717f7d1 */
