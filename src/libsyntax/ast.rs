@@ -1248,7 +1248,7 @@ impl MacroDef {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`
     Cooked,
@@ -1261,7 +1261,7 @@ pub enum StrStyle {
 /// A literal
 pub type Lit = Spanned<LitKind>;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
 pub enum LitIntType {
     Signed(IntTy),
     Unsigned(UintTy),
@@ -1271,7 +1271,7 @@ pub enum LitIntType {
 /// Literal kind.
 ///
 /// E.g. `"foo"`, `42`, `12.34` or `bool`
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
 pub enum LitKind {
     /// A string literal (`"foo"`)
     Str(Symbol, StrStyle),
