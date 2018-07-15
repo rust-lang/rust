@@ -63,7 +63,7 @@ pub struct Config {
 
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
-    pub keep_stage: Option<u32>,
+    pub keep_stage: Vec<u32>,
     pub src: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,

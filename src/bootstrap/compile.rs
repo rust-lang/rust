@@ -67,16 +67,14 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
-        if let Some(keep_stage) = builder.config.keep_stage {
-            if keep_stage <= compiler.stage {
-                println!("Warning: Using a potentially old libstd. This may not behave well.");
-                builder.ensure(StdLink {
-                    compiler: compiler,
-                    target_compiler: compiler,
-                    target,
-                });
-                return;
-            }
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info("Warning: Using a potentially old libstd. This may not behave well.");
+            builder.ensure(StdLink {
+                compiler: compiler,
+                target_compiler: compiler,
+                target,
+            });
+            return;
         }
 
         builder.ensure(StartupObjects { compiler, target });
@@ -362,19 +360,17 @@ impl Step for Test {
         let target = self.target;
         let compiler = self.compiler;
 
-        if let Some(keep_stage) = builder.config.keep_stage {
-            if keep_stage <= compiler.stage {
-                println!("Warning: Using a potentially old libtest. This may not behave well.");
-                builder.ensure(TestLink {
-                    compiler: compiler,
-                    target_compiler: compiler,
-                    target,
-                });
-                return;
-            }
-        }
-
         builder.ensure(Std { compiler, target });
+
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info("Warning: Using a potentially old libtest. This may not behave well.");
+            builder.ensure(TestLink {
+                compiler: compiler,
+                target_compiler: compiler,
+                target,
+            });
+            return;
+        }
 
         if builder.force_use_stage1(compiler, target) {
             builder.ensure(Test {
@@ -490,19 +486,17 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let target = self.target;
 
-        if let Some(keep_stage) = builder.config.keep_stage {
-            if keep_stage <= compiler.stage {
-                println!("Warning: Using a potentially old librustc. This may not behave well.");
-                builder.ensure(RustcLink {
-                    compiler: compiler,
-                    target_compiler: compiler,
-                    target,
-                });
-                return;
-            }
-        }
-
         builder.ensure(Test { compiler, target });
+
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info("Warning: Using a potentially old librustc. This may not behave well.");
+            builder.ensure(RustcLink {
+                compiler: compiler,
+                target_compiler: compiler,
+                target,
+            });
+            return;
+        }
 
         if builder.force_use_stage1(compiler, target) {
             builder.ensure(Rustc {
@@ -659,6 +653,14 @@ impl Step for CodegenBackend {
         let backend = self.backend;
 
         builder.ensure(Rustc { compiler, target });
+
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info("Warning: Using a potentially old codegen backend. \
+                This may not behave well.");
+            // Codegen backends are linked separately from this step today, so we don't do
+            // anything here.
+            return;
+        }
 
         if builder.force_use_stage1(compiler, target) {
             builder.ensure(CodegenBackend {

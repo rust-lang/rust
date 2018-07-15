@@ -31,7 +31,7 @@ pub struct Flags {
     pub verbose: usize, // number of -v args; each extra -v after the first is passed to Cargo
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
-    pub keep_stage: Option<u32>,
+    pub keep_stage: Vec<u32>,
 
     pub host: Vec<Interned<String>>,
     pub target: Vec<Interned<String>>,
@@ -122,7 +122,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
         opts.optflag("", "dry-run", "dry run; don't build anything");
         opts.optopt("", "stage", "stage to build", "N");
-        opts.optopt("", "keep-stage", "stage to keep without recompiling", "N");
+        opts.optmulti("", "keep-stage", "stage(s) to keep without recompiling", "N");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
@@ -402,7 +402,9 @@ Arguments:
             dry_run: matches.opt_present("dry-run"),
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
-            keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
+            keep_stage: matches.opt_strs("keep-stage")
+                .into_iter().map(|j| j.parse().unwrap())
+                .collect(),
             host: split(matches.opt_strs("host"))
                 .into_iter()
                 .map(|x| INTERNER.intern_string(x))
