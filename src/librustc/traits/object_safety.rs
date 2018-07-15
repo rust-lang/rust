@@ -315,8 +315,14 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         let receiver_ty = sig.skip_binder().inputs()[0];
 
-        if !self.receiver_is_coercible(method, receiver_ty) {
-            return Some(MethodViolationCode::UncoercibleReceiver);
+        // until we get by-value DST, `self: Self` can't be coerced
+        // but we allow this as a special case.
+        // maybe instead we should also check for
+        // for (U) { if (Self: Unsize<U>) { Receiver: Unsize<Receiver<Self=Self>>}}
+        if receiver_ty != self.mk_self_type() {
+            if !self.receiver_is_coercible(method, receiver_ty) {
+                return Some(MethodViolationCode::UncoercibleReceiver);
+            }
         }
 
         None
