@@ -3087,7 +3087,7 @@ Language
   [RFC 1513](https://github.com/rust-lang/rfcs/blob/master/text/1513-less-unwinding.md).
 * [Add a new crate type, 'cdylib'](https://github.com/rust-lang/rust/pull/33553).
   cdylibs are dynamic libraries suitable for loading by non-Rust hosts.
-  [RFC 1510](https://github.com/rust-lang/rfcs/blob/master/text/1510-rdylib.md).
+  [RFC 1510](https://github.com/rust-lang/rfcs/blob/master/text/1510-cdylib.md).
   Note that Cargo does not yet directly support cdylibs.
 
 Stabilized APIs
