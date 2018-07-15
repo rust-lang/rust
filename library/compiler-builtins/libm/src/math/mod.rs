@@ -33,6 +33,7 @@ mod fdimf;
 mod floor;
 mod floorf;
 mod fma;
+mod fmaf;
 mod fmod;
 mod fmodf;
 mod hypot;
@@ -90,6 +91,7 @@ pub use self::fdimf::fdimf;
 pub use self::floor::floor;
 pub use self::floorf::floorf;
 pub use self::fma::fma;
+pub use self::fmaf::fmaf;
 pub use self::fmod::fmod;
 pub use self::fmodf::fmodf;
 pub use self::hypot::hypot;
@@ -122,6 +124,7 @@ pub use self::truncf::truncf;
 
 // Private modules
 mod expo2;
+mod fenv;
 mod k_cos;
 mod k_cosf;
 mod k_expo2f;

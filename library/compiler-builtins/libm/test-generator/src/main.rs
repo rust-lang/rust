@@ -687,7 +687,7 @@ f32f32_f32! {
 
 // With signature `fn(f32, f32, f32) -> f32`
 f32f32f32_f32! {
-    // fmaf,
+    fmaf,
 }
 
 // With signature `fn(f32, i32) -> f32`
