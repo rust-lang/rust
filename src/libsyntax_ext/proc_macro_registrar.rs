@@ -146,11 +146,6 @@ impl<'a> CollectProcMacros<'a> {
                                   "cannot override a built-in #[derive] mode");
         }
 
-        if self.derives.iter().any(|d| d.trait_name == trait_name) {
-            self.handler.span_err(trait_attr.span(),
-                                  "derive mode defined twice in this crate");
-        }
-
         let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
             if !attr.check_name("attributes") {
                 self.handler.span_err(attr.span(), "second argument must be `attributes`")

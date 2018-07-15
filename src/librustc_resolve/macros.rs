@@ -321,6 +321,10 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { attr: None, .. } => return Ok(None),
             _ => self.resolve_invoc_to_def(invoc, scope, force)?,
         };
+        if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
+            self.report_proc_macro_stub(invoc.span());
+            return Err(Determinacy::Determined);
+        }
         let def_id = def.def_id();
 
         self.macro_defs.insert(invoc.expansion_data.mark, def_id);
@@ -338,9 +342,13 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Lrc<SyntaxExtension>, Determinacy> {
-        self.resolve_macro_to_def(scope, path, kind, force).map(|def| {
+        self.resolve_macro_to_def(scope, path, kind, force).and_then(|def| {
+            if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
+                self.report_proc_macro_stub(path.span);
+                return Err(Determinacy::Determined);
+            }
             self.unused_macros.remove(&def.def_id());
-            self.get_macro(def)
+            Ok(self.get_macro(def))
         })
     }
 
@@ -363,6 +371,11 @@ impl<'a> base::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
+    fn report_proc_macro_stub(&self, span: Span) {
+        self.session.span_err(span,
+                              "can't use a procedural macro from the same crate that defines it");
+    }
+
     fn resolve_invoc_to_def(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
                             -> Result<Def, Determinacy> {
         let (attr, traits, item) = match invoc.kind {
