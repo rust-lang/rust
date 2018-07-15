@@ -1,0 +1,13 @@
+error: repetition matches empty token tree
+  --> $DIR/issue-42755.rs:14:7
+   |
+LL |     ($($p:vis)*) => {} //~ ERROR repetition matches empty token tree
+   |       ^^^^^^^^
+
+error[E0601]: `main` function not found in crate `issue_42755`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-42755.rs`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

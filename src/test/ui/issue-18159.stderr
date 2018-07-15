@@ -1,0 +1,12 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-18159.rs:12:9
+   |
+LL |     let x; //~ ERROR type annotations needed
+   |         ^
+   |         |
+   |         cannot infer type for `_`
+   |         consider giving `x` a type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

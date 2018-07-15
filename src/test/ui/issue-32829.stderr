@@ -1,0 +1,11 @@
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-32829.rs:13:22
+   |
+LL | static S : u64 = { { panic!("foo"); 0 } };
+   |                      ^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

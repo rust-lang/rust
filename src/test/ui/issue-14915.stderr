@@ -1,0 +1,11 @@
+error[E0369]: binary operation `+` cannot be applied to type `std::boxed::Box<isize>`
+  --> $DIR/issue-14915.rs:16:20
+   |
+LL |     println!("{}", x + 1);
+   |                    ^^^^^
+   |
+   = note: an implementation of `std::ops::Add` might be missing for `std::boxed::Box<isize>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

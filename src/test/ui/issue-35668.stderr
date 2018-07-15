@@ -1,0 +1,11 @@
+error[E0369]: binary operation `*` cannot be applied to type `&T`
+  --> $DIR/issue-35668.rs:12:22
+   |
+LL |     a.iter().map(|a| a*a)
+   |                      ^^^
+   |
+   = note: an implementation of `std::ops::Mul` might be missing for `&T`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

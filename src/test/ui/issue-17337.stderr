@@ -1,0 +1,14 @@
+error: use of deprecated item 'Foo::foo': text
+  --> $DIR/issue-17337.rs:26:6
+   |
+LL |     .foo(); //~ ERROR use of deprecated item
+   |      ^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-17337.rs:12:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+
+error: aborting due to previous error
+

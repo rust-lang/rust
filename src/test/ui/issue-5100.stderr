@@ -1,0 +1,63 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:18:9
+   |
+LL |         A::B => (),
+   |         ^^^^ expected tuple, found enum `A`
+   |
+   = note: expected type `(bool, bool)`
+              found type `A`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:27:9
+   |
+LL |         (true, false, false) => ()
+   |         ^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
+   |
+   = note: expected type `(bool, bool)`
+              found type `(_, _, _)`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:35:9
+   |
+LL |         (true, false, false) => ()
+   |         ^^^^^^^^^^^^^^^^^^^^ expected a tuple with 2 elements, found one with 3 elements
+   |
+   = note: expected type `(bool, bool)`
+              found type `(_, _, _)`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:43:9
+   |
+LL |         box (true, false) => ()
+   |         ^^^^^^^^^^^^^^^^^ expected tuple, found struct `std::boxed::Box`
+   |
+   = note: expected type `(bool, bool)`
+              found type `std::boxed::Box<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:50:9
+   |
+LL |         &(true, false) => ()
+   |         ^^^^^^^^^^^^^^ expected tuple, found reference
+   |
+   = note: expected type `(bool, bool)`
+              found type `&_`
+
+error[E0618]: expected function, found `(char, char)`
+  --> $DIR/issue-5100.rs:58:14
+   |
+LL |       let v = [('a', 'b')   //~ ERROR expected function, found `(char, char)`
+   |  ______________^
+LL | |              ('c', 'd'),
+   | |_______________________^ not a function
+
+error[E0308]: mismatched types
+  --> $DIR/issue-5100.rs:65:19
+   |
+LL |     let x: char = true; //~  ERROR mismatched types
+   |                   ^^^^ expected char, found bool
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0308, E0618.
+For more information about an error, try `rustc --explain E0308`.

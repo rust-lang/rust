@@ -1,0 +1,9 @@
+error[E0004]: non-exhaustive patterns: `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
+  --> $DIR/issue-39362.rs:20:11
+   |
+LL |     match f {
+   |           ^ patterns `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

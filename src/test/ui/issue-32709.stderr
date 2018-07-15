@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `(): std::convert::From<{integer}>` is not satisfied
+  --> $DIR/issue-32709.rs:14:5
+   |
+LL |     Err(5)?; //~ ERROR 14:5: 14:12
+   |     ^^^^^^^ the trait `std::convert::From<{integer}>` is not implemented for `()`
+   |
+   = note: required by `std::convert::From::from`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

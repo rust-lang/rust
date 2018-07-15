@@ -1,0 +1,17 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/issue-40510-1.rs:18:9
+   |
+LL |        || {
+   |   _____-
+   |  |_____|
+   | ||
+LL | ||         &mut x
+   | ||         ^^^^^^ free region requires that `'1` must outlive `'2`
+LL | ||     };
+   | ||     -
+   | ||_____|
+   | |______lifetime `'1` represents the closure body
+   |        lifetime `'2` appears in return type
+
+error: aborting due to previous error
+

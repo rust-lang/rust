@@ -1,0 +1,16 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `&str`
+  --> $DIR/issue-10401.rs:13:5
+   |
+LL |     a += { "b" };
+   |     -^^^^^^^^^^^
+   |     |
+   |     cannot use `+=` on type `&str`
+   |     `+` can't be used to concatenate two `&str` strings
+help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   |
+LL |     a.to_owned() += { "b" };
+   |     ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0368`.

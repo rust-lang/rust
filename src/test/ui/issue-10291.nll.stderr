@@ -1,0 +1,14 @@
+warning: not reporting region error due to nll
+  --> $DIR/issue-10291.rs:13:9
+   |
+LL |         x //~ ERROR E0312
+   |         ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/issue-10291.rs:12:5
+   |
+LL |     drop::<Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ free region requires that `'x` must outlive `'static`
+
+error: aborting due to previous error
+

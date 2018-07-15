@@ -1,0 +1,77 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/issue-17385.rs:28:5
+   |
+LL |       drop(foo);
+   |            --- value moved here
+LL | /     match foo { //~ ERROR use of moved value
+LL | |         X(1) => (),
+LL | |         _ => unreachable!()
+LL | |     }
+   | |_____^ value used here after move
+   |
+   = note: move occurs because `foo` has type `X`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `foo`
+  --> $DIR/issue-17385.rs:28:5
+   |
+LL |       drop(foo);
+   |            --- value moved here
+LL | /     match foo { //~ ERROR use of moved value
+LL | |         X(1) => (),
+LL | |         _ => unreachable!()
+LL | |     }
+   | |_____^ value borrowed here after move
+   |
+   = note: move occurs because `foo` has type `X`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `foo.0`
+  --> $DIR/issue-17385.rs:29:11
+   |
+LL |     drop(foo);
+   |          --- value moved here
+LL |     match foo { //~ ERROR use of moved value
+LL |         X(1) => (),
+   |           ^ value used here after move
+   |
+   = note: move occurs because `foo` has type `X`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `e`
+  --> $DIR/issue-17385.rs:35:5
+   |
+LL |       drop(e);
+   |            - value moved here
+LL | /     match e { //~ ERROR use of moved value
+LL | |         Enum::Variant1 => unreachable!(),
+LL | |         Enum::Variant2 => ()
+LL | |     }
+   | |_____^ value used here after move
+   |
+   = note: move occurs because `e` has type `Enum`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `e`
+  --> $DIR/issue-17385.rs:35:5
+   |
+LL |       drop(e);
+   |            - value moved here
+LL | /     match e { //~ ERROR use of moved value
+LL | |         Enum::Variant1 => unreachable!(),
+LL | |         Enum::Variant2 => ()
+LL | |     }
+   | |_____^ value borrowed here after move
+   |
+   = note: move occurs because `e` has type `Enum`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `e`
+  --> $DIR/issue-17385.rs:36:9
+   |
+LL |     drop(e);
+   |          - value moved here
+LL |     match e { //~ ERROR use of moved value
+LL |         Enum::Variant1 => unreachable!(),
+   |         ^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `e` has type `Enum`, which does not implement the `Copy` trait
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

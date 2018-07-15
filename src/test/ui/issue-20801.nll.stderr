@@ -1,0 +1,8 @@
+error: internal compiler error: Accessing `(*_8)` with the kind `Write(Move)` shouldn't be possible
+  --> $DIR/issue-20801.rs:45:22
+   |
+LL |     let d = unsafe { *const_ptr() };
+   |                      ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

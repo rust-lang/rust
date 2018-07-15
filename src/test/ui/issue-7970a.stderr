@@ -1,0 +1,8 @@
+error: unexpected end of macro invocation
+  --> $DIR/issue-7970a.rs:16:5
+   |
+LL |     one_arg_macro!();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
