@@ -202,7 +202,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// the local assigned at `location`.
     /// This is done by searching in statements succeeding `location`
     /// and originating from `maybe_closure_span`.
-    fn find_closure_span(
+    pub(super) fn find_closure_span(
         &self,
         maybe_closure_span: Span,
         location: Location,
