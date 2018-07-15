@@ -14,5 +14,5 @@ fn main() {
         Foo::C => {},
         Foo::D => {},
     }
-} //~ ERROR constant evaluation error [E0080]
+} //~ ERROR constant evaluation error
 //~^ NOTE entered unreachable code

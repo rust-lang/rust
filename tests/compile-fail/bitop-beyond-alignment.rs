@@ -28,7 +28,7 @@ fn mk_rec() -> Rec {
 fn is_u64_aligned(u: &Tag<u64>) -> bool {
     let p: usize = unsafe { mem::transmute(u) };
     let u64_align = std::mem::align_of::<u64>();
-    return (p & (u64_align + 1)) == 0; //~ ERROR constant evaluation error [E0080]
+    return (p & (u64_align + 1)) == 0; //~ ERROR constant evaluation error
     //~^ NOTE a raw memory access tried to access part of a pointer value as raw bytes
 }
 
