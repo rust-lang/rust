@@ -399,7 +399,7 @@ impl CodegenContext {
 }
 
 struct DiagnosticHandlers<'a> {
-    inner: Box<(&'a CodegenContext, &'a Handler)>,
+    data: *mut (&'a CodegenContext, &'a Handler),
     llcx: ContextRef,
 }
 
@@ -407,24 +407,22 @@ impl<'a> DiagnosticHandlers<'a> {
     fn new(cgcx: &'a CodegenContext,
            handler: &'a Handler,
            llcx: ContextRef) -> DiagnosticHandlers<'a> {
-        let data = Box::new((cgcx, handler));
+        let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
-            let arg = &*data as &(_, _) as *const _ as *mut _;
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, arg);
-            llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, arg);
+            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data as *mut _);
+            llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, data as *mut _);
         }
-        DiagnosticHandlers {
-            inner: data,
-            llcx: llcx,
-        }
+        DiagnosticHandlers { data, llcx }
     }
 }
 
 impl<'a> Drop for DiagnosticHandlers<'a> {
     fn drop(&mut self) {
+        use std::ptr::null_mut;
         unsafe {
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, 0 as *mut _);
-            llvm::LLVMContextSetDiagnosticHandler(self.llcx, diagnostic_handler, 0 as *mut _);
+            llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, null_mut());
+            llvm::LLVMContextSetDiagnosticHandler(self.llcx, diagnostic_handler, null_mut());
+            drop(Box::from_raw(self.data));
         }
     }
 }
