@@ -623,11 +623,24 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
 
             // Windows API subs
-            "AddVectoredExceptionHandler" |
-            "SetThreadStackGuarantee" => {
-                let usize = self.tcx.types.usize;
+            "AddVectoredExceptionHandler" => {
                 // any non zero value works for the stdlib. This is just used for stackoverflows anyway
-                self.write_scalar(dest, Scalar::from_u128(1), usize)?;
+                self.write_scalar(dest, Scalar::from_u128(1), dest_ty)?;
+            },
+            "GetModuleHandleW" |
+            "GetProcAddress" |
+            "InitializeCriticalSection" |
+            "EnterCriticalSection" |
+            "TryEnterCriticalSection" |
+            "LeaveCriticalSection" |
+            "DeleteCriticalSection" |
+            "SetLastError" => {
+                // pretend these do not exist/nothing happened, by returning zero
+                self.write_scalar(dest, Scalar::from_u128(0), dest_ty)?;
+            },
+            "GetLastError" => {
+                // this is c::ERROR_CALL_NOT_IMPLEMENTED
+                self.write_scalar(dest, Scalar::from_u128(120), dest_ty)?;
             },
 
             // We can't execute anything else
