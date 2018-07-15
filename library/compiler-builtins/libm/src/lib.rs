@@ -14,18 +14,19 @@
 
 mod math;
 
-#[cfg(todo)]
 use core::{f32, f64};
 
 pub use math::*;
 
 /// Approximate equality with 1 ULP of tolerance
 #[doc(hidden)]
+#[inline]
 pub fn _eqf(a: u32, b: u32) -> bool {
     (a as i32).wrapping_sub(b as i32).abs() <= 1
 }
 
 #[doc(hidden)]
+#[inline]
 pub fn _eq(a: u64, b: u64) -> bool {
     (a as i64).wrapping_sub(b as i64).abs() <= 1
 }
@@ -33,7 +34,7 @@ pub fn _eq(a: u64, b: u64) -> bool {
 /// Math support for `f32`
 ///
 /// This trait is sealed and cannot be implemented outside of `libm`.
-pub trait F32Ext: private::Sealed {
+pub trait F32Ext: private::Sealed + Sized {
     fn floor(self) -> Self;
 
     fn ceil(self) -> Self;
@@ -44,20 +45,17 @@ pub trait F32Ext: private::Sealed {
 
     fn fdim(self, rhs: Self) -> Self;
 
-    #[cfg(todo)]
     fn fract(self) -> Self;
 
     fn abs(self) -> Self;
 
-    #[cfg(todo)]
-    fn signum(self) -> Self;
+    // NOTE depends on unstable intrinsics::copysignf32
+    // fn signum(self) -> Self;
 
     fn mul_add(self, a: Self, b: Self) -> Self;
 
-    #[cfg(todo)]
     fn div_euc(self, rhs: Self) -> Self;
 
-    #[cfg(todo)]
     fn mod_euc(self, rhs: Self) -> Self;
 
     // NOTE depends on unstable intrinsics::powif32
@@ -97,9 +95,11 @@ pub trait F32Ext: private::Sealed {
 
     fn atan2(self, other: Self) -> Self;
 
-    #[cfg(todo)]
     #[inline]
-    fn sin_cos(self) -> (Self, Self) {
+    fn sin_cos(self) -> (Self, Self)
+    where
+        Self: Copy,
+    {
         (self.sin(), self.cos())
     }
 
@@ -113,13 +113,10 @@ pub trait F32Ext: private::Sealed {
 
     fn tanh(self) -> Self;
 
-    #[cfg(todo)]
     fn asinh(self) -> Self;
 
-    #[cfg(todo)]
     fn acosh(self) -> Self;
 
-    #[cfg(todo)]
     fn atanh(self) -> Self;
 }
 
@@ -149,7 +146,6 @@ impl F32Ext for f32 {
         fdimf(self, rhs)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn fract(self) -> Self {
         self - self.trunc()
@@ -165,7 +161,6 @@ impl F32Ext for f32 {
         fmaf(self, a, b)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn div_euc(self, rhs: Self) -> Self {
         let q = (self / rhs).trunc();
@@ -175,7 +170,6 @@ impl F32Ext for f32 {
         q
     }
 
-    #[cfg(todo)]
     #[inline]
     fn mod_euc(self, rhs: f32) -> f32 {
         let r = self % rhs;
@@ -296,7 +290,6 @@ impl F32Ext for f32 {
         tanhf(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn asinh(self) -> Self {
         if self == f32::NEG_INFINITY {
@@ -306,7 +299,6 @@ impl F32Ext for f32 {
         }
     }
 
-    #[cfg(todo)]
     #[inline]
     fn acosh(self) -> Self {
         match self {
@@ -315,7 +307,6 @@ impl F32Ext for f32 {
         }
     }
 
-    #[cfg(todo)]
     #[inline]
     fn atanh(self) -> Self {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
@@ -325,7 +316,7 @@ impl F32Ext for f32 {
 /// Math support for `f64`
 ///
 /// This trait is sealed and cannot be implemented outside of `libm`.
-pub trait F64Ext: private::Sealed {
+pub trait F64Ext: private::Sealed + Sized {
     fn floor(self) -> Self;
 
     fn ceil(self) -> Self;
@@ -336,20 +327,17 @@ pub trait F64Ext: private::Sealed {
 
     fn fdim(self, rhs: Self) -> Self;
 
-    #[cfg(todo)]
     fn fract(self) -> Self;
 
     fn abs(self) -> Self;
 
-    #[cfg(todo)]
-    fn signum(self) -> Self;
+    // NOTE depends on unstable intrinsics::copysignf64
+    // fn signum(self) -> Self;
 
     fn mul_add(self, a: Self, b: Self) -> Self;
 
-    #[cfg(todo)]
     fn div_euc(self, rhs: Self) -> Self;
 
-    #[cfg(todo)]
     fn mod_euc(self, rhs: Self) -> Self;
 
     // NOTE depends on unstable intrinsics::powif64
@@ -382,7 +370,6 @@ pub trait F64Ext: private::Sealed {
 
     fn tan(self) -> Self;
 
-    #[cfg(todo)]
     fn asin(self) -> Self;
 
     fn acos(self) -> Self;
@@ -393,9 +380,11 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn atan2(self, other: Self) -> Self;
 
-    #[cfg(todo)]
     #[inline]
-    fn sin_cos(self) -> (Self, Self) {
+    fn sin_cos(self) -> (Self, Self)
+    where
+        Self: Copy,
+    {
         (self.sin(), self.cos())
     }
 
@@ -410,13 +399,10 @@ pub trait F64Ext: private::Sealed {
 
     fn tanh(self) -> Self;
 
-    #[cfg(todo)]
     fn asinh(self) -> Self;
 
-    #[cfg(todo)]
     fn acosh(self) -> Self;
 
-    #[cfg(todo)]
     fn atanh(self) -> Self;
 }
 
@@ -445,7 +431,7 @@ impl F64Ext for f64 {
     fn fdim(self, rhs: Self) -> Self {
         fdim(self, rhs)
     }
-    #[cfg(todo)]
+
     #[inline]
     fn fract(self) -> Self {
         self - self.trunc()
@@ -461,7 +447,6 @@ impl F64Ext for f64 {
         fma(self, a, b)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn div_euc(self, rhs: Self) -> Self {
         let q = (self / rhs).trunc();
@@ -471,9 +456,8 @@ impl F64Ext for f64 {
         q
     }
 
-    #[cfg(todo)]
     #[inline]
-    fn mod_euc(self, rhs: f32) -> f32 {
+    fn mod_euc(self, rhs: f64) -> f64 {
         let r = self % rhs;
         if r < 0.0 {
             r + rhs.abs()
@@ -548,7 +532,6 @@ impl F64Ext for f64 {
         tan(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn asin(self) -> Self {
         asin(self)
@@ -597,7 +580,6 @@ impl F64Ext for f64 {
         tanh(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn asinh(self) -> Self {
         if self == f64::NEG_INFINITY {
@@ -607,7 +589,6 @@ impl F64Ext for f64 {
         }
     }
 
-    #[cfg(todo)]
     #[inline]
     fn acosh(self) -> Self {
         match self {
@@ -616,7 +597,6 @@ impl F64Ext for f64 {
         }
     }
 
-    #[cfg(todo)]
     #[inline]
     fn atanh(self) -> Self {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()

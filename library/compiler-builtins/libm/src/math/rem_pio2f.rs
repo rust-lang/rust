@@ -32,7 +32,7 @@ const PIO2_1T: f64 = 1.58932547735281966916e-08; /* 0x3E5110b4, 0x611A6263 */
 /// use double precision for everything except passing x
 /// use __rem_pio2_large() for large x
 #[inline]
-pub(crate) fn rem_pio2f(x: f32) -> (i32, f64) {
+pub fn rem_pio2f(x: f32) -> (i32, f64) {
     let x64 = x as f64;
 
     let mut tx: [f64; 1] = [0.];

@@ -24,6 +24,7 @@ const P_S1: f32 = -4.2743422091e-02;
 const P_S2: f32 = -8.6563630030e-03;
 const Q_S1: f32 = -7.0662963390e-01;
 
+#[inline]
 fn r(z: f32) -> f32 {
     let p = z * (P_S0 + z * (P_S1 + z * P_S2));
     let q = 1. + z * Q_S1;

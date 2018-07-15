@@ -21,7 +21,7 @@ const C2: f64 = -0.00138867637746099294692; /* -0x16c087e80f1e27.0p-62 */
 const C3: f64 = 0.0000243904487962774090654; /*  0x199342e0ee5069.0p-68 */
 
 #[inline]
-pub(crate) fn k_cosf(x: f64) -> f32 {
+pub fn k_cosf(x: f64) -> f32 {
     let z = x * x;
     let w = z * z;
     let r = C2 + z * C3;

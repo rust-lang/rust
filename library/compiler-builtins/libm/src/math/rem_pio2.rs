@@ -42,12 +42,14 @@ const PIO2_3T: f64 = 8.47842766036889956997e-32; /* 0x397B839A, 0x252049C1 */
 // use rem_pio2_large() for large x
 //
 // caller must handle the case when reduction is not needed: |x| ~<= pi/4 */
+#[inline]
 pub fn rem_pio2(x: f64) -> (i32, f64, f64) {
     let x1p24 = f64::from_bits(0x4170000000000000);
 
     let sign = (f64::to_bits(x) >> 63) as i32;
     let ix = (f64::to_bits(x) >> 32) as u32 & 0x7fffffff;
 
+    #[inline]
     fn medium(x: f64, ix: u32) -> (i32, f64, f64) {
         /* rint(x/(pi/2)), Assume round-to-nearest. */
         let f_n = x as f64 * INV_PIO2 + TO_INT - TO_INT;
