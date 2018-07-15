@@ -313,13 +313,13 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return Some(MethodViolationCode::WhereClauseReferencesSelf(span));
         }
 
-        let receiver_ty = sig.skip_binder().inputs()[0];
+        let receiver_ty = sig.map_bound(|sig| sig.inputs()[0]);
 
         // until we get by-value DST, `self: Self` can't be coerced
         // but we allow this as a special case.
         // maybe instead we should also check for
         // for (U) { if (Self: Unsize<U>) { Receiver: Unsize<Receiver<Self=Self>>}}
-        if receiver_ty != self.mk_self_type() {
+        if *receiver_ty.skip_binder() != self.mk_self_type() {
             if !self.receiver_is_coercible(method, receiver_ty) {
                 return Some(MethodViolationCode::UncoercibleReceiver);
             }
@@ -339,7 +339,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     fn receiver_is_coercible(
         self,
         method: &ty::AssociatedItem,
-        receiver_ty: Ty<'tcx>
+        receiver_ty: Binder<Ty<'tcx>>,
     ) -> bool
     {
         debug!("receiver_is_coercible: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
@@ -367,10 +367,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let param_env = {
             let mut param_env = self.param_env(method.def_id);
 
-            let predicate = Binder::bind(ty::TraitRef {
+            let predicate = ty::TraitRef {
                 def_id: unsize_did,
                 substs: self.mk_substs_trait(self.mk_self_type(), &[target_self_ty.into()]),
-            }).to_predicate();
+            }.to_predicate();
 
             let caller_bounds: Vec<Predicate<'tcx>> = param_env.caller_bounds.iter().cloned()
                 .chain(iter::once(predicate))
@@ -389,9 +389,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         // Receiver: CoerceUnsized<Receiver<Self=U>>
         let obligation = {
-            let predicate = Binder::bind(ty::TraitRef {
-                def_id: coerce_unsized_did,
-                substs: self.mk_substs_trait(receiver_ty, &[target_receiver_ty.into()]),
+            let predicate = receiver_ty.fuse(target_receiver_ty, |receiver_ty, target_receiver_ty| {
+                ty::TraitRef {
+                    def_id: coerce_unsized_did,
+                    substs: self.mk_substs_trait(receiver_ty, &[target_receiver_ty.into()]),
+                }
             }).to_predicate();
 
             Obligation::new(
