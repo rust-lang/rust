@@ -49,6 +49,7 @@ pub mod features;
 pub mod cargo;
 pub mod pal;
 pub mod deps;
+pub mod extdeps;
 pub mod ui_tests;
 pub mod unstable_book;
 pub mod libcoretest;
