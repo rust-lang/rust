@@ -717,7 +717,7 @@ f64_f64! {
     sinh,
     sqrt,
     tan,
-    // tanh,
+    tanh,
     trunc,
     fabs,
 }

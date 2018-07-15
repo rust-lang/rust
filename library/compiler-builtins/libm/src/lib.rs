@@ -410,7 +410,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn cosh(self) -> Self;
 
-    #[cfg(todo)]
     fn tanh(self) -> Self;
 
     #[cfg(todo)]
@@ -595,7 +594,6 @@ impl F64Ext for f64 {
         cosh(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn tanh(self) -> Self {
         tanh(self)
