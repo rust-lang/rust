@@ -211,8 +211,7 @@ macro_rules! eprint {
 #[stable(feature = "eprint", since = "1.19.0")]
 macro_rules! eprintln {
     () => (eprint!("\n"));
-    ($fmt:expr) => (eprint!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (eprint!(concat!($fmt, "\n"), $($arg)*));
+    ($($arg:tt)*) => (eprint!("{}\n", format_args!($($arg)*)));
 }
 
 #[macro_export]
