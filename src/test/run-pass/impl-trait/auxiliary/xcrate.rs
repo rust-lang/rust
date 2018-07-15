@@ -17,6 +17,10 @@ fn some_internal_fn() -> u32 {
     1
 }
 
+fn other_internal_fn() -> u32 {
+    1
+}
+
 // See #40839
 pub fn return_closure_accessing_internal_fn() -> impl Fn() -> u32 {
     || {
@@ -25,5 +29,5 @@ pub fn return_closure_accessing_internal_fn() -> impl Fn() -> u32 {
 }
 
 pub fn return_internal_fn() -> impl Fn() -> u32 {
-    some_internal_fn
+    other_internal_fn
 }
