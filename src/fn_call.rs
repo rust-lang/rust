@@ -3,7 +3,6 @@ use rustc::ty::layout::{self, Align, LayoutOf, Size};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::codemap::Span;
 
@@ -60,7 +59,7 @@ fn write_discriminant_value<'a, 'mir, 'tcx: 'a + 'mir>(
     }
 
 pub trait EvalContextExt<'tcx> {
-    fn call_c_abi(
+    fn call_foreign_item(
         &mut self,
         def_id: DefId,
         args: &[ValTy<'tcx>],
@@ -105,9 +104,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
         let def_id = instance.def_id();
         let item_path = self.tcx.absolute_item_path_str(def_id);
-        if item_path.starts_with("std::") {
-            //println!("{}", item_path);
-        }
         match &*item_path {
             "std::sys::unix::thread::guard::init" | "std::sys::unix::thread::guard::current" => {
                 // Return None, as it doesn't make sense to return Some, because miri detects stack overflow itself.
@@ -178,7 +174,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         Ok(false)
     }
 
-    fn call_c_abi(
+    fn call_foreign_item(
         &mut self,
         def_id: DefId,
         args: &[ValTy<'tcx>],
@@ -213,6 +209,73 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                         MemoryKind::C.into(),
                     )?;
                 }
+            }
+
+            "__rust_alloc" => {
+                let size = self.value_to_scalar(args[0])?.to_usize(self)?;
+                let align = self.value_to_scalar(args[1])?.to_usize(self)?;
+                if size == 0 {
+                    return err!(HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                let ptr = self.memory.allocate(Size::from_bytes(size),
+                                               Align::from_bytes(align, align).unwrap(),
+                                               MemoryKind::Rust.into())?;
+                self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
+            }
+            "__rust_alloc_zeroed" => {
+                let size = self.value_to_scalar(args[0])?.to_usize(self)?;
+                let align = self.value_to_scalar(args[1])?.to_usize(self)?;
+                if size == 0 {
+                    return err!(HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                let ptr = self.memory.allocate(Size::from_bytes(size),
+                                               Align::from_bytes(align, align).unwrap(),
+                                               MemoryKind::Rust.into())?;
+                self.memory.write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
+                self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
+            }
+            "__rust_dealloc" => {
+                let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
+                let old_size = self.value_to_scalar(args[1])?.to_usize(self)?;
+                let align = self.value_to_scalar(args[2])?.to_usize(self)?;
+                if old_size == 0 {
+                    return err!(HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                self.memory.deallocate(
+                    ptr,
+                    Some((Size::from_bytes(old_size), Align::from_bytes(align, align).unwrap())),
+                    MemoryKind::Rust.into(),
+                )?;
+            }
+            "__rust_realloc" => {
+                let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
+                let old_size = self.value_to_scalar(args[1])?.to_usize(self)?;
+                let align = self.value_to_scalar(args[2])?.to_usize(self)?;
+                let new_size = self.value_to_scalar(args[3])?.to_usize(self)?;
+                if old_size == 0 || new_size == 0 {
+                    return err!(HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                let new_ptr = self.memory.reallocate(
+                    ptr,
+                    Size::from_bytes(old_size),
+                    Align::from_bytes(align, align).unwrap(),
+                    Size::from_bytes(new_size),
+                    Align::from_bytes(align, align).unwrap(),
+                    MemoryKind::Rust.into(),
+                )?;
+                self.write_scalar(dest, Scalar::Ptr(new_ptr), dest_ty)?;
             }
 
             "syscall" => {
@@ -559,9 +622,18 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 self.write_ptr(dest, addr, dest_ty)?;
             }
 
+            // Windows API subs
+            "AddVectoredExceptionHandler" |
+            "SetThreadStackGuarantee" => {
+                let usize = self.tcx.types.usize;
+                // any non zero value works for the stdlib. This is just used for stackoverflows anyway
+                self.write_scalar(dest, Scalar::from_u128(1), usize)?;
+            },
+
+            // We can't execute anything else
             _ => {
                 return err!(Unimplemented(
-                    format!("can't call C ABI function: {}", link_name),
+                    format!("can't call foreign function: {}", link_name),
                 ));
             }
         }
@@ -629,11 +701,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             || EvalErrorKind::NoMirFor(path.clone()),
         )?;
 
-        if sig.abi == Abi::C {
-            // An external C function
+        if self.tcx.is_foreign_item(instance.def_id()) {
+            // An external function
             // TODO: That functions actually has a similar preamble to what follows here.  May make sense to
             // unify these two mechanisms for "hooking into missing functions".
-            self.call_c_abi(
+            self.call_foreign_item(
                 instance.def_id(),
                 args,
                 dest,
@@ -644,74 +716,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         }
 
         match &path[..] {
-            // Allocators are magic.  They have no MIR, even when the rest of libstd does.
-            "alloc::alloc::::__rust_alloc" => {
-                let size = self.value_to_scalar(args[0])?.to_usize(self)?;
-                let align = self.value_to_scalar(args[1])?.to_usize(self)?;
-                if size == 0 {
-                    return err!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                let ptr = self.memory.allocate(Size::from_bytes(size),
-                                               Align::from_bytes(align, align).unwrap(),
-                                               MemoryKind::Rust.into())?;
-                self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
-            }
-            "alloc::alloc::::__rust_alloc_zeroed" => {
-                let size = self.value_to_scalar(args[0])?.to_usize(self)?;
-                let align = self.value_to_scalar(args[1])?.to_usize(self)?;
-                if size == 0 {
-                    return err!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                let ptr = self.memory.allocate(Size::from_bytes(size),
-                                               Align::from_bytes(align, align).unwrap(),
-                                               MemoryKind::Rust.into())?;
-                self.memory.write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
-                self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
-            }
-            "alloc::alloc::::__rust_dealloc" => {
-                let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
-                let old_size = self.value_to_scalar(args[1])?.to_usize(self)?;
-                let align = self.value_to_scalar(args[2])?.to_usize(self)?;
-                if old_size == 0 {
-                    return err!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                self.memory.deallocate(
-                    ptr,
-                    Some((Size::from_bytes(old_size), Align::from_bytes(align, align).unwrap())),
-                    MemoryKind::Rust.into(),
-                )?;
-            }
-            "alloc::alloc::::__rust_realloc" => {
-                let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
-                let old_size = self.value_to_scalar(args[1])?.to_usize(self)?;
-                let align = self.value_to_scalar(args[2])?.to_usize(self)?;
-                let new_size = self.value_to_scalar(args[3])?.to_usize(self)?;
-                if old_size == 0 || new_size == 0 {
-                    return err!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                let new_ptr = self.memory.reallocate(
-                    ptr,
-                    Size::from_bytes(old_size),
-                    Align::from_bytes(align, align).unwrap(),
-                    Size::from_bytes(new_size),
-                    Align::from_bytes(align, align).unwrap(),
-                    MemoryKind::Rust.into(),
-                )?;
-                self.write_scalar(dest, Scalar::Ptr(new_ptr), dest_ty)?;
-            }
-
             // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
             // Still, we can make many things mostly work by "emulating" or ignoring some functions.
             "std::io::_print" => {
@@ -733,12 +737,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 let bool = self.tcx.types.bool;
                 self.write_scalar(dest, Scalar::from_bool(false), bool)?;
             }
-            "std::sys::imp::c::::AddVectoredExceptionHandler" |
-            "std::sys::imp::c::::SetThreadStackGuarantee" => {
-                let usize = self.tcx.types.usize;
-                // any non zero value works for the stdlib. This is just used for stackoverflows anyway
-                self.write_scalar(dest, Scalar::from_u128(1), usize)?;
-            },
+
             _ => return err!(NoMirFor(path)),
         }
 
