@@ -384,7 +384,6 @@ pub trait F64Ext: private::Sealed {
 
     fn cos(self) -> Self;
 
-    #[cfg(todo)]
     fn tan(self) -> Self;
 
     #[cfg(todo)]
@@ -408,7 +407,6 @@ pub trait F64Ext: private::Sealed {
 
     fn ln_1p(self) -> Self;
 
-    #[cfg(todo)]
     fn sinh(self) -> Self;
 
     #[cfg(todo)]
@@ -550,7 +548,6 @@ impl F64Ext for f64 {
         cos(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn tan(self) -> Self {
         tan(self)
@@ -589,7 +586,6 @@ impl F64Ext for f64 {
         log1p(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn sinh(self) -> Self {
         sinh(self)

@@ -52,8 +52,10 @@ mod scalbn;
 mod scalbnf;
 mod sin;
 mod sinf;
+mod sinh;
 mod sqrt;
 mod sqrtf;
+mod tan;
 mod tanf;
 mod tanhf;
 mod trunc;
@@ -105,29 +107,36 @@ pub use self::scalbn::scalbn;
 pub use self::scalbnf::scalbnf;
 pub use self::sin::sin;
 pub use self::sinf::sinf;
+pub use self::sinh::sinh;
 pub use self::sqrt::sqrt;
 pub use self::sqrtf::sqrtf;
+pub use self::tan::tan;
 pub use self::tanf::tanf;
 pub use self::tanhf::tanhf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
 // Private modules
+mod expo2;
 mod k_cos;
 mod k_cosf;
 mod k_expo2f;
 mod k_sin;
 mod k_sinf;
+mod k_tan;
 mod k_tanf;
 mod rem_pio2;
 mod rem_pio2_large;
 mod rem_pio2f;
 
+// Private re-imports
+use self::expo2::expo2;
 use self::k_cos::k_cos;
 use self::k_cosf::k_cosf;
 use self::k_expo2f::k_expo2f;
 use self::k_sin::k_sin;
 use self::k_sinf::k_sinf;
+use self::k_tan::k_tan;
 use self::k_tanf::k_tanf;
 use self::rem_pio2::rem_pio2;
 use self::rem_pio2_large::rem_pio2_large;
@@ -157,4 +166,9 @@ pub fn with_set_low_word(f: f64, lo: u32) -> f64 {
     tmp &= 0xffffffff_00000000;
     tmp |= lo as u64;
     f64::from_bits(tmp)
+}
+
+#[inline]
+fn combine_words(hi: u32, lo: u32) -> f64 {
+    f64::from_bits((hi as u64) << 32 | lo as u64)
 }
