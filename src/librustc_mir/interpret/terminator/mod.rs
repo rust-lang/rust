@@ -1,10 +1,10 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{LayoutOf, Size};
 use syntax::codemap::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::EvalResult;
+use rustc::mir::interpret::{EvalResult, Scalar};
 use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -41,13 +41,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let discr_prim = self.value_to_scalar(discr_val)?;
                 let discr_layout = self.layout_of(discr_val.ty).unwrap();
                 trace!("SwitchInt({:?}, {:#?})", discr_prim, discr_layout);
-                let discr_prim = discr_prim.to_bits(discr_layout.size)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
-                    if discr_prim == const_int {
+                    // Compare using binary_op
+                    let const_int = Scalar::Bits { bits: const_int, defined: 128 };
+                    let res = self.binary_op(mir::BinOp::Eq,
+                        discr_prim, discr_val.ty,
+                        const_int, discr_val.ty
+                    )?;
+                    if res.0.to_bits(Size::from_bytes(1))? != 0 {
                         target_block = targets[index];
                         break;
                     }
