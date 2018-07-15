@@ -40,25 +40,6 @@ how to fix it, you could send a PR. :smile:
 cargo run --bin miri tests/run-pass-fullmir/vecs.rs # Or whatever test you like.
 ```
 
-## Debugging
-
-Since the heart of miri (the main interpreter engine) lives in rustc, tracing
-the interpreter requires a version of rustc compiled with tracing.  To this
-end, you will have to compile your own rustc:
-```
-git clone https://github.com/rust-lang/rust/ rustc
-cd rustc
-cp config.toml.example config.toml
-# Now edit `config.toml` and set `debug-assertions = true`
-./x.py build src/rustc
-rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
-```
-The `build` step can take 30 to 60 minutes.
-
-Now, in the miri directory, you can `rustup override set custom` and re-build
-everything.  Finally, if you now set `RUST_LOG=rustc_mir::interpret=trace` as
-environment variable, you will get detailed step-by-step tracing information.
-
 ## Running miri on your own project('s test suite)
 
 Install miri as a cargo subcommand with `cargo install --debug`.
@@ -68,8 +49,8 @@ through miri.
 
 ## Running miri with full libstd
 
-Per default libstd does not contain the MIR of non-polymorphic functions.  When
-miri hits a call to such a function, execution terminates.  To fix this, it is
+Per default libstd does not contain the MIR of non-polymorphic functions. When
+miri hits a call to such a function, execution terminates. To fix this, it is
 possible to compile libstd with full MIR:
 
 ```sh
@@ -90,6 +71,37 @@ your toolchain changes (e.g., when you update the nightly).
 
 You can also set `-Zmiri-start-fn` to make miri start evaluation with the
 `start_fn` lang item, instead of starting at the `main` function.
+
+## Development and Debugging
+
+Since the heart of miri (the main interpreter engine) lives in rustc, working on
+miri will often require using a locally built rustc. This includes getting a
+trace of the execution, as distributed rustc has `trace!` disabled.
+
+The first-time setup for a local rustc looks as follows:
+```
+git clone https://github.com/rust-lang/rust/ rustc
+cd rustc
+cp config.toml.example config.toml
+# Now edit `config.toml` and set `debug-assertions = true`
+./x.py build src/rustc
+# You may have to change the architecture in the next command
+rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
+# Now cd to your miri directory
+rustup override set custom
+```
+The `build` step can take 30 minutes and more.
+
+Now you can `cargo build` miri, and you can `cargo test --tests`.  (`--tests`
+is needed to skip doctests because we have not built rustdoc for your custom
+toolchain.) You can also set `RUST_LOG=rustc_mir::interpret=trace` as
+environment variable to get a step-by-step trace.
+
+If you changed something in rustc and want to re-build, run
+```
+./x.py build src/rustc --keep-stage 0
+```
+This avoids rebuilding the entire stage 0, which can save a lot of time.
 
 ## Contributing and getting help
 
