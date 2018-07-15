@@ -3,6 +3,11 @@
 Code generation or "codegen" is the part of the compiler that actually
 generates an executable binary. rustc uses LLVM for code generation.
 
+> NOTE: If you are looking for hints on how to debug code generation bugs,
+> please see [this section of the debugging chapter][debug].
+
+[debug]: compiler-debugging.html#debugging-llvm
+
 ## What is LLVM?
 
 All of the preceeding chapters of this guide have one thing in common: we never
