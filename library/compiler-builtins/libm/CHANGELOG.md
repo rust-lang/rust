@@ -5,6 +5,19 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- atan2f
+- cos
+- coshf
+- fmaf
+- sin
+- sinh
+- sinhf
+- tan
+- tanh
+- tanhf
+
 ## [v0.1.1] - 2018-07-14
 
 ### Added
