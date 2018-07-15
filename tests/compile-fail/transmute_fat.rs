@@ -10,6 +10,6 @@ fn main() {
     let bad = unsafe {
         std::mem::transmute::<&[u8], u64>(&[1u8])
     };
-    let _ = bad + 1; //~ ERROR constant evaluation error [E0080]
+    let _ = bad + 1; //~ ERROR constant evaluation error
     //~^ NOTE a raw memory access tried to access part of a pointer value as raw bytes
 }

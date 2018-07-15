@@ -7,7 +7,7 @@ use std::mem::transmute;
 fn main() {
     unsafe {
         let s = "this is a test";
-        transmute::<&[u8], &mut [u8]>(s.as_bytes())[4] = 42; //~ ERROR constant evaluation error [E0080]
+        transmute::<&[u8], &mut [u8]>(s.as_bytes())[4] = 42; //~ ERROR constant evaluation error
         //~^ NOTE tried to modify constant memory
     }
 }

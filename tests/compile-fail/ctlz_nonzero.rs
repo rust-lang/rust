@@ -10,7 +10,6 @@ pub fn main() {
     unsafe {
         use rusti::*;
 
-        ctlz_nonzero(0u8); //~ ERROR constant evaluation error [E0080]
-        //~^ NOTE ctlz_nonzero called on 0
+        ctlz_nonzero(0u8); //~ ERROR constant evaluation error: ctlz_nonzero called on 0
     }
 }

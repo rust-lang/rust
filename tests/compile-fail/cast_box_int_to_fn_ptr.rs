@@ -7,6 +7,6 @@ fn main() {
         std::mem::transmute::<&usize, &fn(i32)>(&b)
     };
 
-    (*g)(42) //~ ERROR constant evaluation error [E0080]
+    (*g)(42) //~ ERROR constant evaluation error
     //~^ NOTE a memory access tried to interpret some bytes as a pointer
 }

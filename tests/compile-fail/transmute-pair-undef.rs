@@ -16,6 +16,6 @@ fn main() {
         assert_eq!(byte, 0);
     }
     let v = unsafe { *z.offset(first_undef) };
-    if v == 0 {} //~ ERROR constant evaluation error [E0080]
+    if v == 0 {} //~ ERROR constant evaluation error
     //~^ NOTE attempted to read undefined bytes
 }

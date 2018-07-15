@@ -274,9 +274,11 @@ pub fn eval_main<'a, 'tcx: 'a>(
                     block.terminator().source_info.span
                 };
 
-                let mut err = struct_error(ecx.tcx.tcx.at(span), "constant evaluation error");
+                let e = e.to_string();
+                let msg = format!("constant evaluation error: {}", e);
+                let mut err = struct_error(ecx.tcx.tcx.at(span), msg.as_str());
                 let (frames, span) = ecx.generate_stacktrace(None);
-                err.span_label(span, e.to_string());
+                err.span_label(span, e);
                 for FrameInfo { span, location, .. } in frames {
                     err.span_note(span, &format!("inside call to `{}`", location));
                 }

@@ -7,6 +7,6 @@ fn main() {
     let bad = unsafe {
         std::mem::transmute::<u64, &[u8]>(42)
     };
-    bad[0]; //~ ERROR constant evaluation error [E0080]
+    bad[0]; //~ ERROR constant evaluation error
     //~^ NOTE index out of bounds: the len is 0 but the index is 0
 }
