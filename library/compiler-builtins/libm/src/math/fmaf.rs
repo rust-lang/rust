@@ -28,6 +28,11 @@
 use core::f32;
 use core::ptr::read_volatile;
 
+use super::fenv::{
+    feclearexcept, fegetround, feraiseexcept, fesetround, fetestexcept, FE_INEXACT, FE_TONEAREST,
+    FE_TOWARDZERO, FE_UNDERFLOW,
+};
+
 /*
  * Fused multiply-add: Compute x * y + z with a single rounding error.
  *
@@ -61,12 +66,12 @@ pub fn fmaf(x: f32, y: f32, mut z: f32) -> f32 {
             underflow may not be raised correctly, example:
             fmaf(0x1p-120f, 0x1p-120f, 0x1p-149f)
         */
-        if e < 0x3ff - 126 && e >= 0x3ff - 149 && fetestexcept(FE_INEXACT) {
+        if e < 0x3ff - 126 && e >= 0x3ff - 149 && fetestexcept(FE_INEXACT) != 0 {
             feclearexcept(FE_INEXACT);
-            /* TODO: gcc and clang bug workaround */
+            // prevent `xy + vz` from being CSE'd with `xy + z` above
             let vz: f32 = unsafe { read_volatile(&z) };
             result = xy + vz as f64;
-            if fetestexcept(FE_INEXACT) {
+            if fetestexcept(FE_INEXACT) != 0 {
                 feraiseexcept(FE_UNDERFLOW);
             } else {
                 feraiseexcept(FE_INEXACT);
@@ -81,7 +86,8 @@ pub fn fmaf(x: f32, y: f32, mut z: f32) -> f32 {
      * we need to adjust the low-order bit in the direction of the error.
      */
     fesetround(FE_TOWARDZERO);
-    let vxy: f64 = unsafe { read_volatile(&xy) }; /* XXX work around gcc CSE bug */
+    // prevent `vxy + z` from being CSE'd with `xy + z` above
+    let vxy: f64 = unsafe { read_volatile(&xy) };
     let mut adjusted_result: f64 = vxy + z as f64;
     fesetround(FE_TONEAREST);
     if result == adjusted_result {
