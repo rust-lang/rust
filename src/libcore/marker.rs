@@ -95,7 +95,7 @@ impl<T: ?Sized> !Send for *mut T { }
     message="the size for values of type `{Self}` cannot be known at compilation time",
     label="doesn't have a size known at compile-time",
     note="to learn more, visit <https://doc.rust-lang.org/book/second-edition/\
-          ch19-04-advanced-types.html#dynamically-sized-types--sized>",
+          ch19-04-advanced-types.html#dynamically-sized-types-and-sized>",
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 pub trait Sized {

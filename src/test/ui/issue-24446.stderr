@@ -24,7 +24,7 @@ LL | |     };
    | |_____^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::ops::Fn() -> u32 + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-sized>
    = note: constant expressions must have a statically known size
 
 error: aborting due to 2 previous errors
