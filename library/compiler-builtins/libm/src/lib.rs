@@ -390,7 +390,6 @@ pub trait F64Ext: private::Sealed {
 
     fn cos(self) -> Self;
 
-    #[cfg(todo)]
     fn tan(self) -> Self;
 
     #[cfg(todo)]
@@ -555,7 +554,6 @@ impl F64Ext for f64 {
         cos(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn tan(self) -> Self {
         tan(self)

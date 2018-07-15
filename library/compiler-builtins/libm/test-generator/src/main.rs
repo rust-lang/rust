@@ -716,7 +716,7 @@ f64_f64! {
     sin,
     sinh,
     sqrt,
-    // tan,
+    tan,
     // tanh,
     trunc,
     fabs,
