@@ -703,10 +703,24 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let mut macsp = ecx.call_site();
     macsp = macsp.apply_mark(ecx.current_expansion.mark);
-    let msg = "format argument must be a string literal.";
+    let msg = "format argument must be a string literal";
+    let fmt_sp = efmt.span;
     let fmt = match expr_to_spanned_string(ecx, efmt, msg) {
-        Some(fmt) => fmt,
-        None => return DummyResult::raw_expr(sp),
+        Ok(fmt) => fmt,
+        Err(mut err) => {
+            let sugg_fmt = match args.len() {
+                0 => "{}".to_string(),
+                _ => format!("{}{{}}", "{}, ".repeat(args.len())),
+
+            };
+            err.span_suggestion(
+                fmt_sp.shrink_to_lo(),
+                "you might be missing a string literal to format with",
+                format!("\"{}\", ", sugg_fmt),
+            );
+            err.emit();
+            return DummyResult::raw_expr(sp);
+        },
     };
 
     let mut cx = Context {
@@ -818,7 +832,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                     errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
                     "multiple unused formatting arguments"
                 );
-                diag.span_label(cx.fmtsp, "multiple unused arguments in this statement");
+                diag.span_label(cx.fmtsp, "multiple missing formatting arguments");
                 diag
             }
         };
@@ -861,8 +875,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                     }
 
                     if show_doc_note {
-                        diag.note(concat!(stringify!($kind), " formatting not supported; see \
-                                the documentation for `std::fmt`"));
+                        diag.note(concat!(
+                            stringify!($kind),
+                            " formatting not supported; see the documentation for `std::fmt`",
+                        ));
                     }
                 }};
             }
