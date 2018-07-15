@@ -714,7 +714,7 @@ f64_f64! {
     log2,
     round,
     sin,
-    // sinh,
+    sinh,
     sqrt,
     // tan,
     // tanh,

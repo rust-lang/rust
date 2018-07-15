@@ -414,7 +414,6 @@ pub trait F64Ext: private::Sealed {
 
     fn ln_1p(self) -> Self;
 
-    #[cfg(todo)]
     fn sinh(self) -> Self;
 
     #[cfg(todo)]
@@ -595,7 +594,6 @@ impl F64Ext for f64 {
         log1p(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn sinh(self) -> Self {
         sinh(self)
