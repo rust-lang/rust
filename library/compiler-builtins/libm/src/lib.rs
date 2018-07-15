@@ -392,7 +392,6 @@ pub trait F64Ext: private::Sealed {
     #[cfg(todo)]
     fn atan(self) -> Self;
 
-    #[cfg(todo)]
     fn atan2(self, other: Self) -> Self;
 
     #[cfg(todo)]
@@ -568,7 +567,6 @@ impl F64Ext for f64 {
         atan(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn atan2(self, other: Self) -> Self {
         atan2(self, other)
