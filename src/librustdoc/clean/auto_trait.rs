@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::traits::auto_trait as auto;
-use rustc::ty::TypeFoldable;
-use rustc::hir;
+use rustc::{self, hir};
+use rustc::traits::{self, auto_trait as auto};
+use rustc::ty::{ToPredicate, TypeFoldable};
 use std::fmt::Debug;
 
 use super::*;
@@ -82,6 +82,27 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         name: Option<String>,
     ) -> Vec<Item>
     where F: Fn(DefId) -> Def {
+
+        if ::std::env::var("LOL").is_ok() {
+            let ty = self.cx.tcx.type_of(def_id);
+            if let ty::TyAdt(_adt, _) = ty.sty {
+                let subts = ty::subst::Substs::identity_for_item(self.cx.tcx.clone(), def_id);
+                self.cx.tcx.infer_ctxt().enter(|infcx| {
+                    for impl_ in infcx.tcx.all_trait_implementations(LOCAL_CRATE).iter() {
+                        let trait_ref = rustc::ty::TraitRef::new(*impl_, subts);
+                        let pred = trait_ref.to_predicate();
+                        let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
+                                                                 rustc::ty::ParamEnv::empty(),
+                                                                 pred);
+                        println!("{} => {}",
+                                 infcx.tcx.item_name(*impl_).to_string(),
+                                 infcx.predicate_may_hold(&obligation));
+                    }
+                });
+            }
+        }
+        //let res = self.cx.tcx.trait_impls_of(def_id);
+        //println!("=> {:?} {:?}", res.blanket_impls.len(), res.non_blanket_impls.len());
         if self.cx
             .tcx
             .get_attrs(def_id)
