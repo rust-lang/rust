@@ -1,0 +1,10 @@
+error: no rules expected the token `a`
+  --> $DIR/missing-comma.rs:12:19
+   |
+LL |     println!("{}" a);
+   |                  -^
+   |                  |
+   |                  help: missing comma here
+
+error: aborting due to previous error
+
