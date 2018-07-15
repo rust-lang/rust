@@ -16,7 +16,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::lint::builtin::UNUSED_MUT;
-use rustc::mir::{self, AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
+use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{ClearCrossCrate, Local, Location, Mir, Mutability, Operand, Place};
 use rustc::mir::{Field, Projection, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
@@ -43,14 +43,13 @@ use dataflow::{do_dataflow, DebugFormatted};
 use dataflow::{EverInitializedPlaces, MovingOutStatements};
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use util::borrowck_errors::{BorrowckErrors, Origin};
-use util::collect_writes::FindAssignments;
-use util::suggest_ref_mut;
 
 use self::borrow_set::{BorrowData, BorrowSet};
 use self::flows::Flows;
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
+use self::mutability_errors::AccessKind;
 
 use self::path_utils::*;
 
@@ -58,12 +57,13 @@ crate mod borrow_set;
 mod error_reporting;
 mod flows;
 mod location;
+mod move_errors;
+mod mutability_errors;
 mod path_utils;
 crate mod place_ext;
 mod places_conflict;
 mod prefixes;
 mod used_muts;
-mod move_errors;
 
 pub(crate) mod nll;
 
@@ -922,7 +922,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         let mutability_error =
-            self.check_access_permissions(place_span, rw, is_local_mutation_allowed, flow_state);
+            self.check_access_permissions(
+                place_span,
+                rw,
+                is_local_mutation_allowed,
+                flow_state,
+                context.loc,
+            );
         let conflict_error =
             self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
 
@@ -1668,6 +1674,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
+
     /// Check the permissions for the given place and read or write kind
     ///
     /// Returns true if an error is reported, false otherwise.
@@ -1677,17 +1684,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         kind: ReadOrWrite,
         is_local_mutation_allowed: LocalMutationIsAllowed,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
+        location: Location,
     ) -> bool {
         debug!(
             "check_access_permissions({:?}, {:?}, {:?})",
             place, kind, is_local_mutation_allowed
         );
 
-        #[derive(Copy, Clone, Debug)]
-        enum AccessKind {
-            MutableBorrow,
-            Mutate,
-        }
         let error_access;
         let the_place_err;
 
@@ -1756,206 +1759,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // at this point, we have set up the error reporting state.
-
-        let mut err;
-        let item_msg = match self.describe_place(place) {
-            Some(name) => format!("immutable item `{}`", name),
-            None => "immutable item".to_owned(),
-        };
-
-        // `act` and `acted_on` are strings that let us abstract over
-        // the verbs used in some diagnostic messages.
-        let act;
-        let acted_on;
-
-        match error_access {
-            AccessKind::Mutate => {
-                let item_msg = match the_place_err {
-                    Place::Projection(box Projection {
-                        base: _,
-                        elem: ProjectionElem::Deref,
-                    }) => match self.describe_place(place) {
-                        Some(description) => {
-                            format!("`{}` which is behind a `&` reference", description)
-                        }
-                        None => format!("data in a `&` reference"),
-                    },
-                    _ => item_msg,
-                };
-                err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
-                act = "assign";
-                acted_on = "written";
-            }
-            AccessKind::MutableBorrow => {
-                err = self
-                    .tcx
-                    .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
-                act = "borrow as mutable";
-                acted_on = "borrowed as mutable";
-            }
-        }
-
-        match the_place_err {
-            // We want to suggest users use `let mut` for local (user
-            // variable) mutations...
-            Place::Local(local) if self.mir.local_decls[*local].can_be_made_mutable() => {
-                // ... but it doesn't make sense to suggest it on
-                // variables that are `ref x`, `ref mut x`, `&self`,
-                // or `&mut self` (such variables are simply not
-                // mutable)..
-                let local_decl = &self.mir.local_decls[*local];
-                assert_eq!(local_decl.mutability, Mutability::Not);
-
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_suggestion(
-                    local_decl.source_info.span,
-                    "consider changing this to be mutable",
-                    format!("mut {}", local_decl.name.unwrap()),
-                );
-            }
-
-            // complete hack to approximate old AST-borrowck
-            // diagnostic: if the span starts with a mutable borrow of
-            // a local variable, then just suggest the user remove it.
-            Place::Local(_)
-                if {
-                    if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                        snippet.starts_with("&mut ")
-                    } else {
-                        false
-                    }
-                } =>
-            {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_label(span, "try removing `&mut` here");
-            }
-
-            // We want to point out when a `&` can be readily replaced
-            // with an `&mut`.
-            //
-            // FIXME: can this case be generalized to work for an
-            // arbitrary base for the projection?
-            Place::Projection(box Projection {
-                base: Place::Local(local),
-                elem: ProjectionElem::Deref,
-            }) if self.mir.local_decls[*local].is_user_variable.is_some() => {
-                let local_decl = &self.mir.local_decls[*local];
-                let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
-                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
-                        Some(suggest_ampmut_self(local_decl))
-                    },
-
-                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                        binding_mode: ty::BindingMode::BindByValue(_),
-                        opt_ty_info,
-                        ..
-                    })) => Some(suggest_ampmut(
-                        self.tcx,
-                        self.mir,
-                        *local,
-                        local_decl,
-                        *opt_ty_info,
-                    )),
-
-                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                        binding_mode: ty::BindingMode::BindByReference(_),
-                        ..
-                    })) => suggest_ref_mut(self.tcx, local_decl.source_info.span),
-
-                    ClearCrossCrate::Clear => bug!("saw cleared local state"),
-                };
-
-                if let Some((err_help_span, suggested_code)) = suggestion {
-                    err.span_suggestion(
-                        err_help_span,
-                        "consider changing this to be a mutable reference",
-                        suggested_code,
-                    );
-                }
-
-                if let Some(name) = local_decl.name {
-                    err.span_label(
-                        span,
-                        format!(
-                            "`{NAME}` is a `&` reference, \
-                             so the data it refers to cannot be {ACTED_ON}",
-                            NAME = name,
-                            ACTED_ON = acted_on
-                        ),
-                    );
-                } else {
-                    err.span_label(
-                        span,
-                        format!("cannot {ACT} through `&`-reference", ACT = act),
-                    );
-                }
-            }
-
-            _ => {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
-            }
-        }
-
-        err.emit();
+        self.report_mutability_error(
+            place,
+            span,
+            the_place_err,
+            error_access,
+            location,
+        );
         return true;
-
-        fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
-            local_decl: &mir::LocalDecl<'tcx>,
-        ) -> (Span, String) {
-            (local_decl.source_info.span, "&mut self".to_string())
-        }
-
-        // When we want to suggest a user change a local variable to be a `&mut`, there
-        // are three potential "obvious" things to highlight:
-        //
-        // let ident [: Type] [= RightHandSideExpression];
-        //     ^^^^^    ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^
-        //     (1.)     (2.)              (3.)
-        //
-        // We can always fallback on highlighting the first. But chances are good that
-        // the user experience will be better if we highlight one of the others if possible;
-        // for example, if the RHS is present and the Type is not, then the type is going to
-        // be inferred *from* the RHS, which means we should highlight that (and suggest
-        // that they borrow the RHS mutably).
-        //
-        // This implementation attempts to emulate AST-borrowck prioritization
-        // by trying (3.), then (2.) and finally falling back on (1.).
-        fn suggest_ampmut<'cx, 'gcx, 'tcx>(
-            tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-            mir: &Mir<'tcx>,
-            local: Local,
-            local_decl: &mir::LocalDecl<'tcx>,
-            opt_ty_info: Option<Span>,
-        ) -> (Span, String) {
-            let locations = mir.find_assignments(local);
-            if locations.len() > 0 {
-                let assignment_rhs_span = mir.source_info(locations[0]).span;
-                let snippet = tcx.sess.codemap().span_to_snippet(assignment_rhs_span);
-                if let Ok(src) = snippet {
-                    if src.starts_with('&') {
-                        let borrowed_expr = src[1..].to_string();
-                        return (
-                            assignment_rhs_span,
-                            format!("&mut {}", borrowed_expr),
-                        );
-                    }
-                }
-            }
-
-            let highlight_span = match opt_ty_info {
-                // if this is a variable binding with an explicit type,
-                // try to highlight that for the suggestion.
-                Some(ty_span) => ty_span,
-
-                // otherwise, just highlight the span associated with
-                // the (MIR) LocalDecl.
-                None => local_decl.source_info.span,
-            };
-
-            let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
-            assert_eq!(ty_mut.mutbl, hir::MutImmutable);
-            (highlight_span, format!("&mut {}", ty_mut.ty))
-        }
     }
 
     /// Adds the place into the used mutable variables set
