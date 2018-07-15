@@ -104,7 +104,11 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
         // separately
         Def::Macro(did, MacroKind::Bang) => {
             record_extern_fqn(cx, did, clean::TypeKind::Macro);
-            clean::MacroItem(build_macro(cx, did, name))
+            if let Some(mac) = build_macro(cx, did, name) {
+                clean::MacroItem(mac)
+            } else {
+                return None;
+            }
         }
         _ => return None,
     };
@@ -466,12 +470,12 @@ fn build_static(cx: &DocContext, did: DefId, mutable: bool) -> clean::Static {
     }
 }
 
-fn build_macro(cx: &DocContext, did: DefId, name: ast::Name) -> clean::Macro {
+fn build_macro(cx: &DocContext, did: DefId, name: ast::Name) -> Option<clean::Macro> {
     let imported_from = cx.tcx.original_crate_name(did.krate);
     let def = match cx.cstore.load_macro_untracked(did, cx.sess()) {
         LoadedMacro::MacroDef(macro_def) => macro_def,
         // FIXME(jseyfried): document proc macro re-exports
-        LoadedMacro::ProcMacro(..) => panic!("attempting to document proc-macro re-export"),
+        LoadedMacro::ProcMacro(..) => return None,
     };
 
     let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.node {
@@ -487,10 +491,10 @@ fn build_macro(cx: &DocContext, did: DefId, name: ast::Name) -> clean::Macro {
                              format!("    {} => {{ ... }};\n", span.to_src(cx))
                          }).collect::<String>());
 
-    clean::Macro {
+    Some(clean::Macro {
         source,
         imported_from: Some(imported_from).clean(cx),
-    }
+    })
 }
 
 /// A trait's generics clause actually contains all of the predicates for all of
