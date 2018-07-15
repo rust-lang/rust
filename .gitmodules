@@ -1,0 +1,3 @@
+[submodule "cranelift"]
+	path = cranelift
+	url = https://github.com/CraneStation/cranelift.git

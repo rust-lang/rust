@@ -7,7 +7,12 @@ authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
 crate-type = ["dylib"]
 
 [dependencies]
-cranelift = "0.14.0"
-cranelift-module = "0.14.0"
-cranelift-simplejit = "0.14.0"
+#cranelift = "0.14.0"
+#cranelift-module = "0.14.0"
+#cranelift-simplejit = "0.14.0"
 #cranelift-faerie = "0.14.0"
+
+cranelift = { path = "./cranelift/lib/umbrella" }
+cranelift-module = { path = "./cranelift/lib/module" }
+cranelift-simplejit = { path = "./cranelift/lib/simplejit" }
+#cranelift-faerie = { path = "./cranelift/lib/faerie" }
