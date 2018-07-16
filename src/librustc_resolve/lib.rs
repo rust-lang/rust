@@ -4268,7 +4268,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
                             if graph_root {
-                                segms.insert(0, ast::PathSegment::from_ident(keywords::Crate.ident()));
+                                segms.insert(
+                                    0, ast::PathSegment::from_ident(keywords::Crate.ident())
+                                );
                             }
                         }
 
@@ -4324,7 +4326,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
     {
-        self.lookup_import_candidates_from_module(lookup_name, namespace, self.graph_root, true, filter_fn)
+        self.lookup_import_candidates_from_module(
+            lookup_name, namespace, self.graph_root, true, filter_fn
+        )
     }
 
     fn find_module(&mut self,
