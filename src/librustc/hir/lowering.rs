@@ -4011,8 +4011,10 @@ impl<'a> LoweringContext<'a> {
                 let iter = self.str_to_ident("iter");
 
                 let next_ident = self.str_to_ident("__next");
+                let sp = self.allow_internal_unstable(CompilerDesugaringKind::ForLoop,
+                                                      pat.span);
                 let next_pat = self.pat_ident_binding_mode(
-                    pat.span,
+                    sp,
                     next_ident,
                     hir::BindingAnnotation::Mutable,
                 );

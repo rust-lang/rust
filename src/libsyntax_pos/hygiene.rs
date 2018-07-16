@@ -602,6 +602,7 @@ pub enum CompilerDesugaringKind {
     /// `impl Trait` with `Foo`.
     ExistentialReturnType,
     Async,
+    ForLoop,
 }
 
 impl CompilerDesugaringKind {
@@ -612,6 +613,7 @@ impl CompilerDesugaringKind {
             CompilerDesugaringKind::QuestionMark => "?",
             CompilerDesugaringKind::Catch => "do catch",
             CompilerDesugaringKind::ExistentialReturnType => "existential type",
+            CompilerDesugaringKind::ForLoop => "for loop",
         })
     }
 }

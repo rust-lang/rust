@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-51116.rs:16:13
+   |
+LL |         for tile in row {
+   |             ---- consider giving this a type
+LL |             //~^ NOTE consider giving this a type
+LL |             *tile = 0;
+   |             ^^^^^ cannot infer type for `_`
+   |
+   = note: type must be known at this point
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

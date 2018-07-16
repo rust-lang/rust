@@ -412,6 +412,7 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
     DotFill,
     QuestionMark,
     ExistentialReturnType,
+    ForLoop,
     Catch
 });
 

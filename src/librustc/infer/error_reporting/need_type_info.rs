@@ -132,7 +132,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             labels.push((pattern.span, format!("consider giving this closure parameter a type")));
         } else if let Some(pattern) = local_visitor.found_local_pattern {
             if let Some(simple_ident) = pattern.simple_ident() {
-                labels.push((pattern.span, format!("consider giving `{}` a type", simple_ident)));
+                labels.push((
+                    pattern.span,
+                    match pattern.span.compiler_desugaring_kind() {
+                        None => format!("consider giving `{}` a type", simple_ident),
+                        _ => "consider giving this a type".to_string(),
+                    }));
             } else {
                 labels.push((pattern.span, format!("consider giving the pattern a type")));
             }
