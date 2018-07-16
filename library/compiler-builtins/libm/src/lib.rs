@@ -394,7 +394,6 @@ pub trait F64Ext: private::Sealed + Sized {
 
     fn sinh(self) -> Self;
 
-    #[cfg(todo)]
     fn cosh(self) -> Self;
 
     fn tanh(self) -> Self;
@@ -569,7 +568,6 @@ impl F64Ext for f64 {
         sinh(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn cosh(self) -> Self {
         cosh(self)
