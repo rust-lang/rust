@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::ops;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RangeMap<T> {
     map: BTreeMap<Range, T>,
 }
@@ -19,7 +19,7 @@ pub struct RangeMap<T> {
 // At the same time the `end` is irrelevant for the sorting and range searching, but used for the check.
 // This kind of search breaks, if `end < start`, so don't do that!
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-struct Range {
+pub struct Range {
     start: u64,
     end: u64, // Invariant: end > start
 }
@@ -189,7 +189,7 @@ impl<T> RangeMap<T> {
         F: FnMut(&T) -> bool,
     {
         let mut remove = Vec::new();
-        for (range, data) in self.map.iter() {
+        for (range, data) in &self.map {
             if !f(data) {
                 remove.push(*range);
             }

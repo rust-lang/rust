@@ -1,5 +1,3 @@
-#![feature(i128_type)]
-
 fn main() {
     #[cfg(target_pointer_width="64")]
     let bad = unsafe {
@@ -9,5 +7,6 @@ fn main() {
     let bad = unsafe {
         std::mem::transmute::<u64, &[u8]>(42)
     };
-    bad[0]; //~ ERROR index out of bounds: the len is 0 but the index is 0
+    bad[0]; //~ ERROR constant evaluation error
+    //~^ NOTE index out of bounds: the len is 0 but the index is 0
 }

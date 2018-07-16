@@ -1,3 +1,5 @@
+// ignore-test validation_op is disabled
+
 #![allow(unused_variables)]
 
 // For some reason, the error location is different when using fullmir

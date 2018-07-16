@@ -6,6 +6,7 @@ fn main() {
         // "attempted to interpret some raw bytes as a pointer address" instead of
         // "attempted to read undefined bytes"
     }
-    let x = *p; //~ ERROR: attempted to read undefined bytes
+    let x = *p; //~ ERROR constant evaluation error
+    //~^ NOTE attempted to read undefined bytes
     panic!("this should never print: {}", x);
 }

@@ -1,4 +1,5 @@
 //ignore-msvc
+//ignore-macos
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 fn main() {

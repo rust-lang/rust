@@ -1,13 +1,23 @@
 language: rust
+cache: cargo
+
+os:
+- osx
+- linux
+
 rust:
 - nightly
 before_script:
+# mac os weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
+- curl -sSL https://rvm.io/mpapis.asc | gpg --import -
+- rvm get stable
+# actual travis code
 - export PATH=$HOME/.local/bin:$PATH
 - rustup target add i686-unknown-linux-gnu
 - rustup target add i686-pc-windows-gnu
 - rustup target add i686-pc-windows-msvc
 - rustup component add rust-src
-- cargo install --git https://github.com/japaric/xargo.git
+- cargo install xargo || echo "skipping xargo install"
 - export RUST_SYSROOT=$HOME/rust
 script:
 - set -e
@@ -17,13 +27,13 @@ script:
 - |
   # Test plain miri
   cargo build --release --all-features &&
-  cargo test --release --all-features --all &&
-  cargo install --all-features
+  RUST_BACKTRACE=1 cargo test --release --all-features --all &&
+  cargo install --all-features --force
 - |
   # Test cargo miri
   cd cargo-miri-test &&
   cargo miri &&
-  cargo miri test &&
+  #cargo miri test &&
   cd ..
 - |
   # and run all tests with full mir

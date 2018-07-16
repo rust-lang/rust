@@ -1,12 +1,13 @@
 use super::*;
 use rustc::middle::region;
+use rustc::ty::layout::Size;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Locks
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Information about a lock that is currently held.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LockInfo<'tcx> {
     /// Stores for which lifetimes (of the original write lock) we got
     /// which suspensions.
@@ -69,27 +70,27 @@ impl<'tcx> LockInfo<'tcx> {
 pub trait MemoryExt<'tcx> {
     fn check_locks(
         &self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         access: AccessKind,
     ) -> EvalResult<'tcx>;
     fn acquire_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         region: Option<region::Scope>,
         kind: AccessKind,
     ) -> EvalResult<'tcx>;
     fn suspend_write_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         lock_path: &AbsPlace<'tcx>,
         suspend: Option<region::Scope>,
     ) -> EvalResult<'tcx>;
     fn recover_write_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         lock_path: &AbsPlace<'tcx>,
         lock_region: Option<region::Scope>,
@@ -99,24 +100,24 @@ pub trait MemoryExt<'tcx> {
 }
 
 
-impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn check_locks(
         &self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         access: AccessKind,
     ) -> EvalResult<'tcx> {
         if len == 0 {
             return Ok(());
         }
-        let locks = match self.data.locks.get(&ptr.alloc_id.0) {
+        let locks = match self.data.locks.get(&ptr.alloc_id) {
             Some(locks) => locks,
             // immutable static or other constant memory
             None => return Ok(()),
         };
         let frame = self.cur_frame;
         locks
-            .check(Some(frame), ptr.offset, len, access)
+            .check(Some(frame), ptr.offset.bytes(), len, access)
             .map_err(|lock| {
                 EvalErrorKind::MemoryLockViolation {
                     ptr,
@@ -131,7 +132,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
     /// Acquire the lock for the given lifetime
     fn acquire_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         region: Option<region::Scope>,
         kind: AccessKind,
@@ -146,9 +147,9 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
             len,
             region
         );
-        self.check_bounds(ptr.offset(len, &*self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds(ptr.offset(Size::from_bytes(len), &*self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
 
-        let locks = match self.data.locks.get_mut(&ptr.alloc_id.0) {
+        let locks = match self.data.locks.get_mut(&ptr.alloc_id) {
             Some(locks) => locks,
             // immutable static or other constant memory
             None => return Ok(()),
@@ -157,7 +158,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
         // Iterate over our range and acquire the lock.  If the range is already split into pieces,
         // we have to manipulate all of them.
         let lifetime = DynamicLifetime { frame, region };
-        for lock in locks.iter_mut(ptr.offset, len) {
+        for lock in locks.iter_mut(ptr.offset.bytes(), len) {
             if !lock.access_permitted(None, kind) {
                 return err!(MemoryAcquireConflict {
                     ptr,
@@ -190,20 +191,20 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
     /// When suspending, the same cases are fine; we just register an additional suspension.
     fn suspend_write_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         lock_path: &AbsPlace<'tcx>,
         suspend: Option<region::Scope>,
     ) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
-        let locks = match self.data.locks.get_mut(&ptr.alloc_id.0) {
+        let locks = match self.data.locks.get_mut(&ptr.alloc_id) {
             Some(locks) => locks,
             // immutable static or other constant memory
             None => return Ok(()),
         };
 
-        'locks: for lock in locks.iter_mut(ptr.offset, len) {
+        'locks: for lock in locks.iter_mut(ptr.offset.bytes(), len) {
             let is_our_lock = match lock.active {
                 WriteLock(lft) =>
                     // Double-check that we are holding the lock.
@@ -240,11 +241,9 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
                     // All is well
                     continue 'locks;
                 }
-            } else {
-                if !is_our_lock {
-                    // All is well.
-                    continue 'locks;
-                }
+            } else if !is_our_lock {
+                // All is well.
+                continue 'locks;
             }
             // If we get here, releasing this is an error except for NoLock.
             if lock.active != NoLock {
@@ -263,7 +262,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
     /// Release a suspension from the write lock.  If this is the last suspension or if there is no suspension, acquire the lock.
     fn recover_write_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         lock_path: &AbsPlace<'tcx>,
         lock_region: Option<region::Scope>,
@@ -275,13 +274,13 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
             frame: cur_frame,
             path: lock_path.clone(),
         };
-        let locks = match self.data.locks.get_mut(&ptr.alloc_id.0) {
+        let locks = match self.data.locks.get_mut(&ptr.alloc_id) {
             Some(locks) => locks,
             // immutable static or other constant memory
             None => return Ok(()),
         };
 
-        for lock in locks.iter_mut(ptr.offset, len) {
+        for lock in locks.iter_mut(ptr.offset.bytes(), len) {
             // Check if we have a suspension here
             let (got_the_lock, remove_suspension) = match lock.suspended.get_mut(&lock_id) {
                 None => {
@@ -376,7 +375,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
             }
             // Clean up the map
             alloc_locks.retain(|lock| match lock.active {
-                NoLock => lock.suspended.len() > 0,
+                NoLock => !lock.suspended.is_empty(),
                 _ => true,
             });
         }

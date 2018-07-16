@@ -1,67 +1,67 @@
 use rustc::{ty, mir};
 
-use super::{TlsKey, TlsEntry, EvalResult, EvalErrorKind, Pointer, Memory, Evaluator, Place,
-            StackPopCleanup, EvalContext};
+use super::{TlsKey, TlsEntry, EvalResult, EvalErrorKind, Scalar, ScalarExt, Memory, Evaluator,
+            Place, StackPopCleanup, EvalContext};
 
 pub trait MemoryExt<'tcx> {
     fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey;
     fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx>;
-    fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer>;
-    fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx>;
+    fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar>;
+    fn store_tls(&mut self, key: TlsKey, new_data: Scalar) -> EvalResult<'tcx>;
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
-    ) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>>;
+    ) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Scalar, TlsKey)>>;
 }
 
 pub trait EvalContextExt<'tcx> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.data.next_thread_local;
         self.data.next_thread_local += 1;
         self.data.thread_local.insert(
             new_key,
             TlsEntry {
-                data: Pointer::null(),
+                data: Scalar::null(),
                 dtor,
             },
         );
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
-        return new_key;
+        new_key
     }
 
     fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx> {
-        return match self.data.thread_local.remove(&key) {
+        match self.data.thread_local.remove(&key) {
             Some(_) => {
                 trace!("TLS key {} removed", key);
                 Ok(())
             }
             None => err!(TlsOutOfBounds),
-        };
+        }
     }
 
-    fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer> {
-        return match self.data.thread_local.get(&key) {
+    fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar> {
+        match self.data.thread_local.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
                 Ok(data)
             }
             None => err!(TlsOutOfBounds),
-        };
+        }
     }
 
-    fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx> {
-        return match self.data.thread_local.get_mut(&key) {
+    fn store_tls(&mut self, key: TlsKey, new_data: Scalar) -> EvalResult<'tcx> {
+        match self.data.thread_local.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
                 *data = new_data;
                 Ok(())
             }
             None => err!(TlsOutOfBounds),
-        };
+        }
     }
 
     /// Returns a dtor, its argument and its index, if one is supposed to run
@@ -85,28 +85,30 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
-    ) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>> {
+    ) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Scalar, TlsKey)>> {
         use std::collections::Bound::*;
+
+        let thread_local = &mut self.data.thread_local;
         let start = match key {
             Some(key) => Excluded(key),
             None => Unbounded,
         };
         for (&key, &mut TlsEntry { ref mut data, dtor }) in
-            self.data.thread_local.range_mut((start, Unbounded))
+            thread_local.range_mut((start, Unbounded))
         {
             if !data.is_null()? {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
-                    *data = Pointer::null();
+                    *data = Scalar::null();
                     return Ok(ret);
                 }
             }
         }
-        return Ok(None);
+        Ok(None)
     }
 }
 
-impl<'a, 'tcx: 'a> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
         let mut dtor = self.memory.fetch_tls_dtor(None)?;
         // FIXME: replace loop by some structure that works with stepping
@@ -122,8 +124,8 @@ impl<'a, 'tcx: 'a> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, Evaluator<'tcx
                 Place::undef(),
                 StackPopCleanup::None,
             )?;
-            let arg_local = self.frame().mir.args_iter().next().ok_or(
-                EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
+            let arg_local = self.frame().mir.args_iter().next().ok_or_else(
+                || EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
             let dest = self.eval_place(&mir::Place::Local(arg_local))?;
             let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);

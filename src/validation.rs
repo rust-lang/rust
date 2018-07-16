@@ -1,17 +1,18 @@
 use rustc::hir::{self, Mutability};
 use rustc::hir::Mutability::*;
 use rustc::mir::{self, ValidationOp, ValidationOperand};
-use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
-use rustc::ty::layout::LayoutOf;
+use rustc::mir::interpret::GlobalId;
+use rustc::ty::{self, Ty, TypeFoldable, TyCtxt, Instance};
+use rustc::ty::layout::{LayoutOf, PrimitiveExt};
 use rustc::ty::subst::{Substs, Subst};
-use rustc::traits;
+use rustc::traits::{self, TraitEngine};
 use rustc::infer::InferCtxt;
-use rustc::traits::Reveal;
 use rustc::middle::region;
+use rustc::mir::interpret::{ConstValue};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_mir::interpret::HasMemory;
 
-use super::{EvalContext, Place, PlaceExtra, ValTy};
+use super::{EvalContext, Place, PlaceExtra, ValTy, ScalarExt};
 use rustc::mir::interpret::{DynamicLifetime, AccessKind, EvalErrorKind, Value, EvalError, EvalResult};
 use locks::MemoryExt;
 
@@ -108,7 +109,7 @@ pub(crate) trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn abstract_place_projection(&self, proj: &mir::PlaceProjection<'tcx>) -> EvalResult<'tcx, AbsPlaceProjection<'tcx>> {
         use self::mir::ProjectionElem::*;
 
@@ -117,8 +118,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             Field(f, _) => Field(f, ()),
             Index(v) => {
                 let value = self.frame().get_local(v)?;
-                let ty = self.tcx.types.usize;
-                let n = self.value_to_primval(ValTy { value, ty })?.to_u64()?;
+                let ty = self.tcx.tcx.types.usize;
+                let n = self.value_to_scalar(ValTy { value, ty })?.to_usize(self)?;
                 Index(n)
             },
             ConstantIndex { offset, min_length, from_end } =>
@@ -134,10 +135,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
     }
 
     fn abstract_place(&self, place: &mir::Place<'tcx>) -> EvalResult<'tcx, AbsPlace<'tcx>> {
-        Ok(match place {
-            &mir::Place::Local(l) => AbsPlace::Local(l),
-            &mir::Place::Static(ref s) => AbsPlace::Static(s.def_id),
-            &mir::Place::Projection(ref p) =>
+        Ok(match *place {
+            mir::Place::Local(l) => AbsPlace::Local(l),
+            mir::Place::Static(ref s) => AbsPlace::Static(s.def_id),
+            mir::Place::Projection(ref p) =>
                 AbsPlace::Projection(Box::new(self.abstract_place_projection(&*p)?)),
         })
     }
@@ -152,7 +153,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
         // because other crates may have been compiled with mir-emit-validate > 0.  Ignore those
         // commands.  This makes mir-emit-validate also a flag to control whether miri will do
         // validation or not.
-        if self.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
+        if self.tcx.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
             return Ok(());
         }
         debug_assert!(self.memory.cur_frame == self.cur_frame());
@@ -187,7 +188,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
         // We need to monomorphize ty *without* erasing lifetimes
         trace!("validation_op1: {:?}", operand.ty.sty);
-        let ty = operand.ty.subst(self.tcx, self.substs());
+        let ty = operand.ty.subst(self.tcx.tcx, self.substs());
         trace!("validation_op2: {:?}", operand.ty.sty);
         let place = self.eval_place(&operand.place)?;
         let abs_place = self.abstract_place(&operand.place)?;
@@ -250,7 +251,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
     }
 
     fn normalize_type_unerased(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        return normalize_associated_type(self.tcx, &ty);
+        return normalize_associated_type(self.tcx.tcx, &ty);
 
         use syntax::codemap::{Span, DUMMY_SP};
 
@@ -356,7 +357,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
         where
             T: MyTransNormalize<'tcx>,
         {
-            let param_env = ty::ParamEnv::empty(Reveal::All);
+            let param_env = ty::ParamEnv::reveal_all();
 
             if !value.has_projections() {
                 return value.clone();
@@ -377,13 +378,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
         mut layout: ty::layout::TyLayout<'tcx>,
         i: usize,
     ) -> EvalResult<'tcx, Ty<'tcx>> {
-        match base {
-            Place::Ptr { extra: PlaceExtra::DowncastVariant(variant_index), .. } => {
-                layout = layout.for_variant(&self, variant_index);
-            }
-            _ => {}
+        if let Place::Ptr { extra: PlaceExtra::DowncastVariant(variant_index), .. } = base {
+            layout = layout.for_variant(&self, variant_index);
         }
-        let tcx = self.tcx;
+        let tcx = self.tcx.tcx;
         Ok(match layout.ty.sty {
             ty::TyBool |
             ty::TyChar |
@@ -393,13 +391,14 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             ty::TyFnPtr(_) |
             ty::TyNever |
             ty::TyFnDef(..) |
+            ty::TyGeneratorWitness(..) |
             ty::TyDynamic(..) |
             ty::TyForeign(..) => {
                 bug!("TyLayout::field_type({:?}): not applicable", layout)
             }
 
             // Potentially-fat pointers.
-            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRef(_, pointee, _) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 assert!(i < 2);
 
@@ -437,7 +436,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 substs.field_tys(def_id, tcx).nth(i).unwrap()
             }
 
-            ty::TyTuple(tys, _) => tys[i],
+            ty::TyTuple(tys) => tys[i],
 
             // SIMD vector types.
             ty::TyAdt(def, ..) if def.repr.simd() => {
@@ -453,7 +452,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     }
 
                     // Discriminant field for enums (where applicable).
-                    Variants::Tagged { ref discr, .. } |
+                    Variants::Tagged { tag: ref discr, .. } |
                     Variants::NicheFilling { niche: ref discr, .. } => {
                         assert_eq!(i, 0);
                         return Ok(discr.value.to_ty(tcx))
@@ -509,7 +508,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = self.into_ptr(val)?;
-        self.memory.check_align(ptr, align.abi(), None)?;
+        self.memory.check_align(ptr, align)?;
 
         // Recurse
         let pointee_place = self.val_to_place(val, pointee_ty)?;
@@ -558,6 +557,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             TyAdt(adt, _) if adt.is_box() => true,
             TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) |
             TyDynamic(..) | TyGenerator(..) | TyForeign(_) => false,
+            TyGeneratorWitness(..) => unreachable!("TyGeneratorWitness in validate"),
             TyParam(_) | TyInfer(_) | TyProjection(_) | TyAnon(..) | TyError => {
                 bug!("I got an incomplete/unnormalized type for validation")
             }
@@ -567,7 +567,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             // Tracking the same state for locals not backed by memory would just duplicate too
             // much machinery.
             // FIXME: We ignore alignment.
-            let (ptr, extra) = self.force_allocation(query.place.1)?.to_ptr_extra_aligned();
+            let (ptr, _, extra) = self.force_allocation(query.place.1)?.to_ptr_align_extra();
             // Determine the size
             // FIXME: Can we reuse size_and_align_of_dst for Places?
             let layout = self.layout_of(query.ty)?;
@@ -635,7 +635,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             }
         }
 
-        let res = do catch {
+        let res: EvalResult<'tcx> = do catch {
             match query.ty.sty {
                 TyInt(_) | TyUint(_) | TyRawPtr(_) => {
                     if mode.acquiring() {
@@ -645,23 +645,17 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                         // FIXME: It would be great to rule out Undef here, but that doesn't actually work.
                         // Passing around undef data is a thing that e.g. Vec::extend_with does.
                     }
-                    Ok(())
                 }
                 TyBool | TyFloat(_) | TyChar => {
                     if mode.acquiring() {
                         let val = self.read_place(query.place.1)?;
-                        let val = self.value_to_primval(ValTy { value: val, ty: query.ty })?;
+                        let val = self.value_to_scalar(ValTy { value: val, ty: query.ty })?;
                         val.to_bytes()?;
                         // TODO: Check if these are valid bool/float/codepoint/UTF-8
                     }
-                    Ok(())
                 }
-                TyNever => err!(ValidationFailure(format!("The empty type is never valid."))),
-                TyRef(region,
-                    ty::TypeAndMut {
-                        ty: pointee_ty,
-                        mutbl,
-                    }) => {
+                TyNever => return err!(ValidationFailure(format!("The empty type is never valid."))),
+                TyRef(region, pointee_ty, mutbl) => {
                     let val = self.read_place(query.place.1)?;
                     // Sharing restricts our context
                     if mutbl == MutImmutable {
@@ -670,36 +664,32 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     // Inner lifetimes *outlive* outer ones, so only if we have no lifetime restriction yet,
                     // we record the region of this borrow to the context.
                     if query.re == None {
-                        match *region {
-                            ReScope(scope) => query.re = Some(scope),
-                            // It is possible for us to encounter erased lifetimes here because the lifetimes in
-                            // this functions' Subst will be erased.
-                            _ => {}
+                        if let ReScope(scope) = *region {
+                            query.re = Some(scope);
                         }
+                        // It is possible for us to encounter erased lifetimes here because the lifetimes in
+                        // this functions' Subst will be erased.
                     }
-                    self.validate_ptr(val, query.place.0, pointee_ty, query.re, query.mutbl, mode)
+                    self.validate_ptr(val, query.place.0, pointee_ty, query.re, query.mutbl, mode)?;
                 }
                 TyAdt(adt, _) if adt.is_box() => {
                     let val = self.read_place(query.place.1)?;
-                    self.validate_ptr(val, query.place.0, query.ty.boxed_ty(), query.re, query.mutbl, mode)
+                    self.validate_ptr(val, query.place.0, query.ty.boxed_ty(), query.re, query.mutbl, mode)?;
                 }
                 TyFnPtr(_sig) => {
                     let ptr = self.read_place(query.place.1)?;
                     let ptr = self.into_ptr(ptr)?.to_ptr()?;
                     self.memory.get_fn(ptr)?;
                     // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
-                    Ok(())
                 }
                 TyFnDef(..) => {
                     // This is a zero-sized type with all relevant data sitting in the type.
                     // There is nothing to validate.
-                    Ok(())
                 }
 
                 // Compound types
                 TyStr => {
                     // TODO: Validate strings
-                    Ok(())
                 }
                 TySlice(elem_ty) => {
                     let len = match query.place.1 {
@@ -722,10 +712,19 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                             mode,
                         )?;
                     }
-                    Ok(())
                 }
                 TyArray(elem_ty, len) => {
-                    let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+                    let len = match len.val {
+                        ConstValue::Unevaluated(def_id, substs) => {
+                            self.tcx.const_eval(self.tcx.param_env(def_id).and(GlobalId {
+                                instance: Instance::new(def_id, substs),
+                                promoted: None,
+                            }))
+                                .map_err(|_err|EvalErrorKind::MachineError("<already reported>".to_string()))?
+                        }
+                        _ => len,
+                    };
+                    let len = len.unwrap_usize(self.tcx.tcx);
                     for i in 0..len {
                         let inner_place = self.place_index(query.place.1, query.ty, i as u64)?;
                         self.validate(
@@ -737,7 +736,6 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                             mode,
                         )?;
                     }
-                    Ok(())
                 }
                 TyDynamic(_data, _region) => {
                     // Check that this is a valid vtable
@@ -756,10 +754,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     // on them directly.  We cannot, in general, even acquire any locks as the trait object *could*
                     // contain an UnsafeCell.  If we call functions to get access to data, we will validate
                     // their return values.  So, it doesn't seem like there's anything else to do.
-                    Ok(())
                 }
                 TyAdt(adt, _) => {
-                    if Some(adt.did) == self.tcx.lang_items().unsafe_cell_type() &&
+                    if Some(adt.did) == self.tcx.tcx.lang_items().unsafe_cell_type() &&
                         query.mutbl == MutImmutable
                     {
                         // No locks for shared unsafe cells.  Also no other validation, the only field is private anyway.
@@ -768,19 +765,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
                     match adt.adt_kind() {
                         AdtKind::Enum => {
-                            let discr = self.read_discriminant_value(query.place.1, query.ty)?;
-
-                            // Get variant index for discriminant
-                            let variant_idx = adt.discriminants(self.tcx).position(|variant_discr| {
-                                variant_discr.to_u128_unchecked() == discr
-                            });
-                            let variant_idx = match variant_idx {
-                                Some(val) => val,
-                                None => return err!(InvalidDiscriminant),
-                            };
+                            let variant_idx = self.read_discriminant_as_variant_index(query.place.1, query.ty)?;
                             let variant = &adt.variants[variant_idx];
 
-                            if variant.fields.len() > 0 {
+                            if !variant.fields.is_empty() {
                                 // Downcast to this variant, if needed
                                 let place = if adt.is_enum() {
                                     (
@@ -799,19 +787,17 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                                 self.validate_fields(
                                     ValidationQuery { place, ..query },
                                     mode,
-                                )
+                                )?;
                             } else {
                                 // No fields, nothing left to check.  Downcasting may fail, e.g. in case of a CEnum.
-                                Ok(())
                             }
                         }
                         AdtKind::Struct => {
-                            self.validate_fields(query, mode)
+                            self.validate_fields(query, mode)?;
                         }
                         AdtKind::Union => {
                             // No guarantees are provided for union types.
                             // TODO: Make sure that all access to union fields is unsafe; otherwise, we may have some checking to do (but what exactly?)
-                            Ok(())
                         }
                     }
                 }
@@ -820,10 +806,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     // TODO: Check if the signature matches for `TyClosure`
                     // (should be the same check as what terminator/mod.rs already does on call?).
                     // Is there other things we can/should check?  Like vtable pointers?
-                    self.validate_fields(query, mode)
+                    self.validate_fields(query, mode)?;
                 }
                 // FIXME: generators aren't validated right now
-                TyGenerator(..) => Ok(()),
+                TyGenerator(..) => {},
                 _ => bug!("We already established that this is a type we support. ({})", query.ty),
             }
         };
@@ -835,7 +821,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             // release if it is.  But of course that can't even always be statically determined.
             Err(EvalError { kind: EvalErrorKind::ReadUndefBytes, .. })
                 if mode == ValidationMode::ReleaseUntil(None) => {
-                return Ok(());
+                Ok(())
             }
             res => res,
         }

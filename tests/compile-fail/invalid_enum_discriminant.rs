@@ -9,9 +9,10 @@ pub enum Foo {
 fn main() {
     let f = unsafe { std::mem::transmute::<i32, Foo>(42) };
     match f {
-        Foo::A => {}, //~ ERROR invalid enum discriminant value read
+        Foo::A => {},
         Foo::B => {},
         Foo::C => {},
         Foo::D => {},
     }
-}
+} //~ ERROR constant evaluation error
+//~^ NOTE entered unreachable code

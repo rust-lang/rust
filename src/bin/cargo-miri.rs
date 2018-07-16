@@ -121,7 +121,9 @@ fn main() {
 
         let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
         let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-        let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
+        let sys_root = if let Ok(sysroot) = ::std::env::var("MIRI_SYSROOT") {
+            sysroot
+        } else if let (Some(home), Some(toolchain)) = (home, toolchain) {
             format!("{}/toolchains/{}", home, toolchain)
         } else {
             option_env!("RUST_SYSROOT")
@@ -152,7 +154,7 @@ fn main() {
 
         // this check ensures that dependencies are built but not interpreted and the final crate is
         // interpreted but not built
-        let miri_enabled = std::env::args().any(|s| s == "-Zno-trans");
+        let miri_enabled = std::env::args().any(|s| s == "--emit=dep-info,metadata");
 
         let mut command = if miri_enabled {
             let mut path = std::env::current_exe().expect("current executable path invalid");
@@ -191,7 +193,7 @@ where
     if !found_dashes {
         args.push("--".to_owned());
     }
-    args.push("-Zno-trans".to_owned());
+    args.push("--emit=dep-info,metadata".to_owned());
     args.push("--cfg".to_owned());
     args.push(r#"feature="cargo-miri""#.to_owned());
 

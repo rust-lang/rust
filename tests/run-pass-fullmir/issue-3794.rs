@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //ignore-msvc
+//ignore-macos
 #![feature(box_syntax)]
 
 trait T {

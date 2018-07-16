@@ -1,3 +1,5 @@
+// ignore-test validation_op is disabled
+
 #![allow(unused_variables)]
 
 #[repr(u32)]

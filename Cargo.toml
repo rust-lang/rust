@@ -10,25 +10,25 @@ build = "build.rs"
 [[bin]]
 doc = false
 name = "miri"
-path = "miri/bin/miri.rs"
+path = "src/bin/miri.rs"
 
 [[bin]]
 doc = false
 name = "cargo-miri"
-path = "miri/bin/cargo-miri.rs"
+path = "src/bin/cargo-miri.rs"
 required-features = ["cargo_miri"]
-
-[lib]
-path = "miri/lib.rs"
 
 [dependencies]
 byteorder = { version = "1.1", features = ["i128"]}
-cargo_metadata = { version = "0.2", optional = true }
-regex = "0.2.2"
+cargo_metadata = { version = "0.6", optional = true }
+regex = "1.0"
 lazy_static = "1.0"
+env_logger = "0.5.0-rc.1"
+log = "0.4"
 
 [features]
 cargo_miri = ["cargo_metadata"]
 
 [dev-dependencies]
-compiletest_rs = { version = "0.3.7", features = ["tmp"] }
+compiletest_rs = { version = "0.3.4", features = ["tmp"] }
+colored = "1.6"

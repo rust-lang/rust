@@ -1,10 +1,11 @@
-#![feature(rustc_private, i128_type)]
+#![feature(rustc_private)]
 
 extern crate getopts;
 extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
+extern crate rustc_codegen_utils;
 extern crate env_logger;
 extern crate log_settings;
 extern crate syntax;
@@ -17,11 +18,16 @@ use rustc_driver::driver::{CompileState, CompileController};
 use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc::hir::{self, itemlikevisit};
 use rustc::ty::TyCtxt;
-use syntax::ast::{self, MetaItemKind, NestedMetaItemKind};
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use syntax::ast;
 use std::path::PathBuf;
 
 struct MiriCompilerCalls {
-    default: RustcDefaultCalls,
+    default: Box<RustcDefaultCalls>,
+    /// Whether to begin interpretation at the start_fn lang item or not
+    ///
+    /// If false, the interpretation begins at the `main` function
+    start_fn: bool,
 }
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
@@ -61,6 +67,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     }
     fn late_callback(
         &mut self,
+        codegen_backend: &CodegenBackend,
         matches: &getopts::Matches,
         sess: &Session,
         cstore: &CrateStore,
@@ -68,20 +75,19 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
-        self.default.late_callback(matches, sess, cstore, input, odir, ofile)
+        self.default.late_callback(codegen_backend, matches, sess, cstore, input, odir, ofile)
     }
     fn build_controller(
-        &mut self,
+        self: Box<Self>,
         sess: &Session,
         matches: &getopts::Matches,
     ) -> CompileController<'a> {
-        let mut control = self.default.build_controller(sess, matches);
+        let this = *self;
+        let mut control = this.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
-        control.after_analysis.callback = Box::new(after_analysis);
-        if sess.target.target != sess.host {
-            // only fully compile targets on the host. linking will fail for cross-compilation.
-            control.after_analysis.stop = Compilation::Stop;
-        }
+        let start_fn = this.start_fn;
+        control.after_analysis.callback = Box::new(move |state| after_analysis(state, start_fn));
+        control.after_analysis.stop = Compilation::Stop;
         control
     }
 }
@@ -94,32 +100,30 @@ fn after_hir_lowering(state: &mut CompileState) {
     state.session.plugin_attributes.borrow_mut().push(attr);
 }
 
-fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
+fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bool) {
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
-    let limits = resource_limits_from_attributes(state);
 
     if std::env::args().any(|arg| arg == "--test") {
         struct Visitor<'a, 'tcx: 'a>(
-            miri::ResourceLimits,
             TyCtxt<'a, 'tcx, 'tcx>,
             &'a CompileState<'a, 'tcx>
         );
         impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'hir hir::Item) {
-                if let hir::Item_::ItemFn(_, _, _, _, _, body_id) = i.node {
+                if let hir::Item_::ItemFn(.., body_id) = i.node {
                     if i.attrs.iter().any(|attr| {
-                        attr.name().map_or(false, |n| n == "test")
+                        attr.name() == "test"
                     })
                     {
-                        let did = self.1.hir.body_owner_def_id(body_id);
+                        let did = self.0.hir.body_owner_def_id(body_id);
                         println!(
                             "running test: {}",
-                            self.1.def_path_debug_str(did),
+                            self.0.def_path_debug_str(did),
                         );
-                        miri::eval_main(self.1, did, None, self.0);
-                        self.2.session.abort_if_errors();
+                        miri::eval_main(self.0, did, None);
+                        self.1.session.abort_if_errors();
                     }
                 }
             }
@@ -127,18 +131,17 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
             fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
         }
         state.hir_crate.unwrap().visit_all_item_likes(
-            &mut Visitor(limits, tcx, state),
+            &mut Visitor(tcx, state),
         );
-    } else if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
+    } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
-        let start_wrapper = tcx.lang_items().start_fn().and_then(|start_fn| {
-            if tcx.is_mir_available(start_fn) {
-                Some(start_fn)
-            } else {
-                None
-            }
-        });
-        miri::eval_main(tcx, entry_def_id, start_wrapper, limits);
+        // Use start_fn lang item if we have -Zmiri-start-fn set
+        let start_wrapper = if use_start_fn {
+            Some(tcx.lang_items().start_fn().unwrap())
+        } else {
+            None
+        };
+        miri::eval_main(tcx, entry_def_id, start_wrapper);
 
         state.session.abort_if_errors();
     } else {
@@ -146,83 +149,42 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
     }
 }
 
-fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits {
-    let mut limits = miri::ResourceLimits::default();
-    let krate = state.hir_crate.as_ref().unwrap();
-    let err_msg = "miri attributes need to be in the form `miri(key = value)`";
-    let extract_int = |lit: &syntax::ast::Lit| -> u128 {
-        match lit.node {
-            syntax::ast::LitKind::Int(i, _) => i,
-            _ => {
-                state.session.span_fatal(
-                    lit.span,
-                    "expected an integer literal",
-                )
-            }
-        }
-    };
-
-    for attr in krate.attrs.iter().filter(|a| {
-        a.name().map_or(false, |n| n == "miri")
-    })
-    {
-        if let Some(items) = attr.meta_item_list() {
-            for item in items {
-                if let NestedMetaItemKind::MetaItem(ref inner) = item.node {
-                    if let MetaItemKind::NameValue(ref value) = inner.node {
-                        match &inner.name().as_str()[..] {
-                            "memory_size" => limits.memory_size = extract_int(value) as u64,
-                            "step_limit" => limits.step_limit = extract_int(value) as u64,
-                            "stack_limit" => limits.stack_limit = extract_int(value) as usize,
-                            _ => state.session.span_err(item.span, "unknown miri attribute"),
-                        }
-                    } else {
-                        state.session.span_err(inner.span, err_msg);
-                    }
-                } else {
-                    state.session.span_err(item.span, err_msg);
-                }
-            }
-        } else {
-            state.session.span_err(attr.span, err_msg);
-        }
-    }
-    limits
-}
-
 fn init_logger() {
-    let format = |record: &log::LogRecord| {
-        if record.level() == log::LogLevel::Trace {
+    let format = |formatter: &mut env_logger::fmt::Formatter, record: &log::Record| {
+        use std::io::Write;
+        if record.level() == log::Level::Trace {
             // prepend frame number
             let indentation = log_settings::settings().indentation;
-            format!(
+            writeln!(
+                formatter,
                 "{indentation}:{lvl}:{module}: {text}",
                 lvl = record.level(),
-                module = record.location().module_path(),
+                module = record.module_path().unwrap_or("<unknown module>"),
                 indentation = indentation,
                 text = record.args(),
             )
         } else {
-            format!(
+            writeln!(
+                formatter,
                 "{lvl}:{module}: {text}",
                 lvl = record.level(),
-                module = record.location().module_path(),
+                module = record.module_path().unwrap_or("<unknown_module>"),
                 text = record.args(),
             )
         }
     };
 
-    let mut builder = env_logger::LogBuilder::new();
+    let mut builder = env_logger::Builder::new();
     builder.format(format).filter(
         None,
-        log::LogLevelFilter::Info,
+        log::LevelFilter::Info,
     );
 
     if std::env::var("MIRI_LOG").is_ok() {
         builder.parse(&std::env::var("MIRI_LOG").unwrap());
     }
 
-    builder.init().unwrap();
+    builder.init();
 }
 
 fn find_sysroot() -> String {
@@ -246,6 +208,7 @@ fn find_sysroot() -> String {
 }
 
 fn main() {
+    rustc_driver::init_rustc_env_logger();
     init_logger();
     let mut args: Vec<String> = std::env::args().collect();
 
@@ -255,10 +218,18 @@ fn main() {
         args.push(find_sysroot());
     }
 
-    // Make sure we always have all the MIR (e.g. for auxilary builds in unit tests).
-    args.push("-Zalways-encode-mir".to_owned());
+    let mut start_fn = false;
+    args.retain(|arg| {
+        if arg == "-Zmiri-start-fn" {
+            start_fn = true;
+            false
+        } else {
+            true
+        }
+    });
 
-    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls {
-        default: RustcDefaultCalls,
-    }, None, None);
+    rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
+        default: Box::new(RustcDefaultCalls),
+        start_fn,
+    }), None, None);
 }

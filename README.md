@@ -42,10 +42,22 @@ cargo run --bin miri tests/run-pass-fullmir/vecs.rs # Or whatever test you like.
 
 ## Debugging
 
-You can get detailed, statement-by-statement traces by setting the `MIRI_LOG`
-environment variable to `trace`. These traces are indented based on call stack
-depth. You can get a much less verbose set of information with other logging
-levels such as `warn`.
+Since the heart of miri (the main interpreter engine) lives in rustc, tracing
+the interpreter requires a version of rustc compiled with tracing.  To this
+end, you will have to compile your own rustc:
+```
+git clone https://github.com/rust-lang/rust/ rustc
+cd rustc
+cp config.toml.example config.toml
+# Now edit `config.toml` and set `debug-assertions = true`
+./x.py build src/rustc
+rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
+```
+The `build` step can take 30 to 60 minutes.
+
+Now, in the miri directory, you can `rustup override set custom` and re-build
+everything.  Finally, if you now set `RUST_LOG=rustc_mir::interpret=trace` as
+environment variable, you will get detailed step-by-step tracing information.
 
 ## Running miri on your own project('s test suite)
 
@@ -70,11 +82,14 @@ RUSTFLAGS='-Zalways-encode-mir' xargo build
 Now you can run miri against the libstd compiled by xargo:
 
 ```sh
-MIRI_SYSROOT=~/.xargo/HOST cargo run --bin miri tests/run-pass-fullmir/vecs.rs
+MIRI_SYSROOT=~/.xargo/HOST cargo run --bin miri tests/run-pass-fullmir/hashmap.rs
 ```
 
 Notice that you will have to re-run the last step of the preparations above when
 your toolchain changes (e.g., when you update the nightly).
+
+You can also set `-Zmiri-start-fn` to make miri start evaluation with the
+`start_fn` lang item, instead of starting at the `main` function.
 
 ## Contributing and getting help
 
