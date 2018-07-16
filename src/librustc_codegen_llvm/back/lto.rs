@@ -20,22 +20,15 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
-use rustc_data_structures::fx::FxHashMap;
 use time_graph::Timeline;
 use {ModuleCodegen, ModuleLlvm, ModuleKind, ModuleSource};
 
 use libc;
 
-use std::ffi::{CString, CStr};
-use std::fs::File;
-use std::io;
-use std::mem;
-use std::path::Path;
+use std::ffi::CString;
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
-
-pub const THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME: &str = "thin-lto-imports.bin";
 
 pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {
@@ -200,7 +193,7 @@ pub(crate) fn run(cgcx: &CodegenContext,
         }
         Lto::Thin |
         Lto::ThinLocal => {
-            thin_lto(cgcx, &diag_handler, modules, upstream_modules, &arr, timeline)
+            thin_lto(&diag_handler, modules, upstream_modules, &arr, timeline)
         }
         Lto::No => unreachable!(),
     }
@@ -238,7 +231,7 @@ fn fat_lto(cgcx: &CodegenContext,
         .expect("must be codegen'ing at least one module");
     let module = modules.remove(costliest_module);
     let llmod = module.llvm().expect("can't lto pre-codegened modules").llmod;
-    info!("using {:?} as a base module", module.name);
+    info!("using {:?} as a base module", module.llmod_id);
 
     // For all other modules we codegened we'll need to link them into our own
     // bitcode. All modules were codegened in their own LLVM context, however,
@@ -248,7 +241,7 @@ fn fat_lto(cgcx: &CodegenContext,
     for module in modules {
         let llvm = module.llvm().expect("can't lto pre-codegened modules");
         let buffer = ModuleBuffer::new(llvm.llmod);
-        let llmod_id = CString::new(&module.name[..]).unwrap();
+        let llmod_id = CString::new(&module.llmod_id[..]).unwrap();
         serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
     }
 
@@ -353,8 +346,7 @@ impl Drop for Linker {
 /// calculating the *index* for ThinLTO. This index will then be shared amongst
 /// all of the `LtoModuleCodegen` units returned below and destroyed once
 /// they all go out of scope.
-fn thin_lto(cgcx: &CodegenContext,
-            diag_handler: &Handler,
+fn thin_lto(diag_handler: &Handler,
             modules: Vec<ModuleCodegen>,
             serialized_modules: Vec<(SerializedModule, CString)>,
             symbol_white_list: &[*const libc::c_char],
@@ -376,9 +368,9 @@ fn thin_lto(cgcx: &CodegenContext,
         //        the most expensive portion of this small bit of global
         //        analysis!
         for (i, module) in modules.iter().enumerate() {
-            info!("local module: {} - {}", i, module.name);
+            info!("local module: {} - {}", i, module.llmod_id);
             let llvm = module.llvm().expect("can't lto precodegened module");
-            let name = CString::new(module.name.clone()).unwrap();
+            let name = CString::new(module.llmod_id.clone()).unwrap();
             let buffer = ThinBuffer::new(llvm.llmod);
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: name.as_ptr(),
@@ -387,7 +379,7 @@ fn thin_lto(cgcx: &CodegenContext,
             });
             thin_buffers.push(buffer);
             module_names.push(name);
-            timeline.record(&module.name);
+            timeline.record(&module.llmod_id);
         }
 
         // FIXME: All upstream crates are deserialized internally in the
@@ -432,18 +424,6 @@ fn thin_lto(cgcx: &CodegenContext,
             let msg = format!("failed to prepare thin LTO context");
             return Err(write::llvm_err(&diag_handler, msg))
         }
-
-        // Save the ThinLTO import information for incremental compilation.
-        if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir {
-            let path = incr_comp_session_dir.join(THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME);
-            let imports = ThinLTOImports::from_thin_lto_data(data);
-            if let Err(err) = imports.save_to_file(&path) {
-                let msg = format!("Error while writing ThinLTO import data: {}",
-                                  err);
-                return Err(write::llvm_err(&diag_handler, msg));
-            }
-        }
-
         let data = ThinData(data);
         info!("thin LTO data created");
         timeline.record("data");
@@ -676,6 +656,7 @@ impl ThinModule {
                 llcx,
                 tm,
             }),
+            llmod_id: self.name().to_string(),
             name: self.name().to_string(),
             kind: ModuleKind::Regular,
         };
@@ -793,119 +774,5 @@ impl ThinModule {
         timeline.record("no-ae");
 
         Ok(module)
-    }
-}
-
-
-#[derive(Debug)]
-pub struct ThinLTOImports {
-    // key = llvm name of importing module, value = list of modules it imports from
-    imports: FxHashMap<String, Vec<String>>,
-}
-
-impl ThinLTOImports {
-
-    pub fn new() -> ThinLTOImports {
-        ThinLTOImports {
-            imports: FxHashMap(),
-        }
-    }
-
-    /// Load the ThinLTO import map from ThinLTOData.
-    unsafe fn from_thin_lto_data(data: *const llvm::ThinLTOData) -> ThinLTOImports {
-
-        fn module_name_to_str(c_str: &CStr) -> &str {
-            match c_str.to_str() {
-                Ok(s) => s,
-                Err(e) => {
-                    bug!("Encountered non-utf8 LLVM module name `{}`: {}",
-                        c_str.to_string_lossy(),
-                        e)
-                }
-            }
-        }
-
-        unsafe extern "C" fn imported_module_callback(payload: *mut libc::c_void,
-                                                      importing_module_name: *const libc::c_char,
-                                                      imported_module_name: *const libc::c_char) {
-            let map = &mut* (payload as *mut ThinLTOImports);
-
-            let importing_module_name = CStr::from_ptr(importing_module_name);
-            let importing_module_name = module_name_to_str(&importing_module_name);
-            let imported_module_name = CStr::from_ptr(imported_module_name);
-            let imported_module_name = module_name_to_str(&imported_module_name);
-
-            if !map.imports.contains_key(importing_module_name) {
-                map.imports.insert(importing_module_name.to_owned(), vec![]);
-            }
-
-            map.imports
-               .get_mut(importing_module_name)
-               .unwrap()
-               .push(imported_module_name.to_owned());
-        }
-
-        let mut map = ThinLTOImports {
-            imports: FxHashMap(),
-        };
-
-        llvm::LLVMRustGetThinLTOModuleImports(data,
-                                              imported_module_callback,
-                                              &mut map as *mut _ as *mut libc::c_void);
-        map
-    }
-
-    pub fn save_to_file(&self, path: &Path) -> io::Result<()> {
-        use std::io::Write;
-
-        let file = File::create(path)?;
-        let mut writer = io::BufWriter::new(file);
-
-        for (importing_module_name, imported_modules) in &self.imports {
-            writeln!(writer, "{}", importing_module_name)?;
-
-            for imported_module in imported_modules {
-                writeln!(writer, "  {}", imported_module)?;
-            }
-
-            writeln!(writer)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn load_from_file(path: &Path) -> io::Result<ThinLTOImports> {
-        use std::io::BufRead;
-
-        let mut imports = FxHashMap();
-        let mut current_module = None;
-        let mut current_imports = vec![];
-
-        let file = File::open(path)?;
-
-        for line in io::BufReader::new(file).lines() {
-            let line = line?;
-
-            if line.is_empty() {
-                let importing_module = current_module
-                    .take()
-                    .expect("Importing module not set");
-
-                imports.insert(importing_module,
-                               mem::replace(&mut current_imports, vec![]));
-            } else if line.starts_with(" ") {
-                // This is an imported module
-                assert_ne!(current_module, None);
-                current_imports.push(line.trim().to_string());
-            } else {
-                // This is the beginning of a new module
-                assert_eq!(current_module, None);
-                current_module = Some(line.trim().to_string());
-            }
-        }
-
-        Ok(ThinLTOImports {
-            imports
-        })
     }
 }
