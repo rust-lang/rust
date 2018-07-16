@@ -9,7 +9,6 @@ pub fn cosh(mut x: f64) -> f64 {
     ix &= 0x7fffffffffffffff;
     x = f64::from_bits(ix);
     let w = ix >> 32;
-    let w = w as u32;
 
     /* |x| < log(2) */
     if w < 0x3fe62e42 {
