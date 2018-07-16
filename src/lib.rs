@@ -141,7 +141,12 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     main_id: DefId,
     start_wrapper: Option<DefId>,
 ) -> EvalResult<'tcx, (EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>, Option<Pointer>)> {
-    let mut ecx = EvalContext::new(tcx.at(syntax::codemap::DUMMY_SP), ty::ParamEnv::reveal_all(), Default::default(), Default::default());
+    let mut ecx = EvalContext::new(
+        tcx.at(syntax::codemap::DUMMY_SP),
+        ty::ParamEnv::reveal_all(),
+        Default::default(),
+        MemoryData::new()
+    );
 
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
@@ -338,7 +343,7 @@ pub struct TlsEntry<'tcx> {
     dtor: Option<ty::Instance<'tcx>>,
 }
 
-#[derive(Clone, Default, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct MemoryData<'tcx> {
     /// The Key to use for the next thread-local allocation.
     next_thread_local: TlsKey,
@@ -353,6 +358,17 @@ pub struct MemoryData<'tcx> {
     locks: HashMap<AllocId, RangeMap<LockInfo<'tcx>>>,
 
     statics: HashMap<GlobalId<'tcx>, AllocId>,
+}
+
+impl<'tcx> MemoryData<'tcx> {
+    fn new() -> Self {
+        MemoryData {
+            next_thread_local: 1, // start with 1 as we must not use 0 on Windows
+            thread_local: BTreeMap::new(),
+            locks: HashMap::new(),
+            statics: HashMap::new(),
+        }
+    }
 }
 
 impl<'tcx> Hash for MemoryData<'tcx> {
