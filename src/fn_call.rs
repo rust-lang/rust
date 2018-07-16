@@ -607,7 +607,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
 
             "_tlv_atexit" => {
-                return err!(Unimplemented("can't interpret with full mir for osx target".to_owned()));
+                return err!(Unimplemented("Thread-local store is not fully supported on macOS".to_owned()));
             },
 
             // Stub out all the other pthread calls to just return 0
@@ -642,6 +642,34 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 // this is c::ERROR_CALL_NOT_IMPLEMENTED
                 self.write_scalar(dest, Scalar::from_u128(120), dest_ty)?;
             },
+
+            // Windows TLS
+            "TlsAlloc" => {
+                // This just creates a key; Windows does not natively support TLS dtors.
+
+                // Figure out how large a TLS key actually is. This is c::DWORD.
+                let key_size = self.layout_of(dest_ty)?.size;
+
+                // Create key and return it
+                let key = self.memory.create_tls_key(None) as u128;
+                if key_size.bits() < 128 && key >= (1u128 << key_size.bits() as u128) {
+                    return err!(OutOfTls);
+                }
+                self.write_scalar(dest, Scalar::from_u128(key), dest_ty)?;
+            }
+            "TlsGetValue" => {
+                let key = self.value_to_scalar(args[0])?.to_bytes()?;
+                let ptr = self.memory.load_tls(key)?;
+                self.write_ptr(dest, ptr, dest_ty)?;
+            }
+            "TlsSetValue" => {
+                let key = self.value_to_scalar(args[0])?.to_bytes()?;
+                let new_ptr = self.into_ptr(args[1].value)?;
+                self.memory.store_tls(key, new_ptr)?;
+
+                // Return success (1)
+                self.write_scalar(dest, Scalar::from_u128(1), dest_ty)?;
+            }
 
             // We can't execute anything else
             _ => {

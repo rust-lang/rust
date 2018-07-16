@@ -139,6 +139,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 None => self.memory.fetch_tls_dtor(None)?,
             };
         }
+        // FIXME: On a windows target, call `unsafe extern "system" fn on_tls_callback`.
         Ok(())
     }
 }
