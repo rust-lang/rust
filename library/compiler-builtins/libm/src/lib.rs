@@ -374,7 +374,6 @@ pub trait F64Ext: private::Sealed + Sized {
 
     fn acos(self) -> Self;
 
-    #[cfg(todo)]
     fn atan(self) -> Self;
 
     #[cfg(todo)]
@@ -541,7 +540,6 @@ impl F64Ext for f64 {
         acos(self)
     }
 
-    #[cfg(todo)]
     #[inline]
     fn atan(self) -> Self {
         atan(self)
