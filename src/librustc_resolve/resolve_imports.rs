@@ -244,7 +244,7 @@ impl<'a> Resolver<'a> {
                 SingleImport { source, .. } => source,
                 _ => unreachable!(),
             };
-            match this.resolve_ident_in_module(module, ident, ns, false, false, path_span) {
+            match this.resolve_ident_in_module(module, ident, ns, false, path_span) {
                 Err(Determined) => {}
                 _ => return false,
             }
@@ -630,7 +630,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                                             source,
                                                             ns,
                                                             false,
-                                                            false,
                                                             directive.span));
             } else {
                 return
@@ -803,7 +802,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                match this.resolve_ident_in_module(module, ident, ns, false, true, span) {
+                match this.resolve_ident_in_module(module, ident, ns, true, span) {
                     Ok(_) => all_ns_failed = false,
                     _ => {}
                 }
