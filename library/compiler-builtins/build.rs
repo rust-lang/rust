@@ -415,11 +415,14 @@ mod c {
                     "floatsitf.c",
                     "floatunditf.c",
                     "floatunsitf.c",
-                    "multc3.c",
                     "trunctfdf2.c",
                     "trunctfsf2.c",
                 ],
             );
+
+            if target_os != "windows" {
+                sources.extend(&["multc3.c"]);
+            }
         }
 
         // Remove the assembly implementations that won't compile for the target
