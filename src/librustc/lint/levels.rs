@@ -260,19 +260,27 @@ impl<'a> LintLevelsBuilder<'a> {
 
                     _ if !self.warn_about_weird_lints => {}
 
-                    CheckLintNameResult::Warning(ref msg) => {
+                    CheckLintNameResult::Warning(msg, renamed) => {
                         let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                         let (level, src) = self.sets.get_lint_level(lint,
                                                                     self.cur,
                                                                     Some(&specs),
                                                                     &sess);
-                        lint::struct_lint_level(self.sess,
-                                                lint,
-                                                level,
-                                                src,
-                                                Some(li.span.into()),
-                                                msg)
-                            .emit();
+                        let mut err = lint::struct_lint_level(self.sess,
+                                                              lint,
+                                                              level,
+                                                              src,
+                                                              Some(li.span.into()),
+                                                              &msg);
+                        if let Some(new_name) = renamed {
+                            err.span_suggestion_with_applicability(
+                                li.span,
+                                "use the new name",
+                                new_name,
+                                Applicability::MachineApplicable
+                            );
+                        }
+                        err.emit();
                     }
                     CheckLintNameResult::NoLint => {
                         let lint = builtin::UNKNOWN_LINTS;
