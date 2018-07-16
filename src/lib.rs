@@ -40,12 +40,13 @@ mod pretty_clif;
 
 mod prelude {
     pub use std::any::Any;
-    pub use std::collections::HashMap;
+    pub use std::collections::{HashMap, HashSet};
 
     pub use syntax::codemap::DUMMY_SP;
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
     pub use rustc::mir;
     pub use rustc::mir::*;
+    pub use rustc::mir::interpret::AllocId;
     pub use rustc::session::Session;
     pub use rustc::ty::layout::{self, LayoutOf, TyLayout, Size};
     pub use rustc::ty::{
@@ -60,7 +61,7 @@ mod prelude {
     };
     pub use cranelift::codegen::Context;
     pub use cranelift::prelude::*;
-    pub use cranelift_module::{Module, Backend, FuncId, Linkage};
+    pub use cranelift_module::{Module, Backend, FuncId, DataId, Linkage};
     pub use cranelift_simplejit::{SimpleJITBuilder, SimpleJITBackend};
 
     pub use common::Variable;
@@ -75,6 +76,7 @@ pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub module: &'a mut Module<B>,
     pub def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
+    pub constants: HashMap<AllocId, DataId>,
 }
 
 struct CraneliftCodegenBackend(());
@@ -176,6 +178,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 tcx,
                 module: &mut module,
                 def_id_fn_id_map: &mut def_id_fn_id_map,
+                constants: HashMap::new(),
             };
 
             for mono_item in

@@ -85,6 +85,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
         ebb_map,
         local_map: HashMap::new(),
         comments: HashMap::new(),
+        constants: &mut cx.constants,
     };
     let fx = &mut fx;
 
@@ -458,6 +459,8 @@ fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, l
         (BinOp::Shl, _) => fx.bcx.ins().ishl(lhs, rhs),
         (BinOp::Shr, false) => fx.bcx.ins().ushr(lhs, rhs),
         (BinOp::Shr, true) => fx.bcx.ins().sshr(lhs, rhs),
+
+        // TODO: cast b1 to u8
         (BinOp::Eq, _) => fx.bcx.ins().icmp(IntCC::Equal , lhs, rhs),
         (BinOp::Lt, false) => fx.bcx.ins().icmp(IntCC::UnsignedLessThan , lhs, rhs),
         (BinOp::Lt, true) => fx.bcx.ins().icmp(IntCC::SignedLessThan , lhs, rhs),
@@ -468,6 +471,7 @@ fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, l
         (BinOp::Ge, true) => fx.bcx.ins().icmp(IntCC::SignedGreaterThanOrEqual , lhs, rhs),
         (BinOp::Gt, false) => fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan , lhs, rhs),
         (BinOp::Gt, true) => fx.bcx.ins().icmp(IntCC::SignedGreaterThan , lhs, rhs),
+
         (BinOp::Offset, _) => bug!("bin op Offset on non ptr lhs: {:?} rhs: {:?}", lhs, rhs),
     };
     // TODO: return correct value for checked binops

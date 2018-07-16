@@ -6,7 +6,7 @@ use std::fmt;
 use syntax::ast::{IntTy, UintTy};
 use self::rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift_module::{Module, Linkage, FuncId};
+use cranelift_module::{Module, Linkage, FuncId, DataId};
 
 use prelude::*;
 
@@ -56,7 +56,7 @@ fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) ->
                 return None;
             }
         }
-        TypeVariants::TyParam(_)  => bug!("{:?}", ty),
+        TypeVariants::TyParam(_)  => bug!("{:?}: {:?}", ty, ty.sty),
         _ => return None,
     })
 }
@@ -288,6 +288,7 @@ pub fn cton_sig_from_instance<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, inst: I
 
 pub fn cton_sig_from_mono_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>) -> Signature {
     // TODO: monomorphize signature
+    // TODO: this should likely not use skip_binder()
 
     let sig = sig.skip_binder();
     let inputs = sig.inputs();
@@ -334,6 +335,7 @@ pub struct FunctionCx<'a, 'tcx: 'a> {
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
     pub comments: HashMap<Inst, String>,
+    pub constants: &'a mut HashMap<AllocId, DataId>,
 }
 
 impl<'a, 'tcx: 'a> fmt::Debug for FunctionCx<'a, 'tcx> {
