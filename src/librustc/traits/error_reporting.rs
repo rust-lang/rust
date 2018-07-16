@@ -858,7 +858,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let parent_node = self.tcx.hir.get_parent_node(node_id);
             if let Some(hir::map::NodeLocal(ref local)) = self.tcx.hir.find(parent_node) {
                 if let Some(ref expr) = local.init {
-                    if let hir::ExprIndex(_, _) = expr.node {
+                    if let hir::ExprKind::Index(_, _) = expr.node {
                         if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                             err.span_suggestion_with_applicability(
                                 expr.span,
@@ -927,7 +927,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn get_fn_like_arguments(&self, node: hir::map::Node) -> (Span, Vec<ArgKind>) {
         match node {
             hir::map::NodeExpr(&hir::Expr {
-                node: hir::ExprClosure(_, ref _decl, id, span, _),
+                node: hir::ExprKind::Closure(_, ref _decl, id, span, _),
                 ..
             }) => {
                 (self.tcx.sess.codemap().def_span(span), self.tcx.hir.body(id).arguments.iter()
@@ -955,7 +955,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             hir::map::NodeItem(&hir::Item {
                 span,
-                node: hir::ItemFn(ref decl, ..),
+                node: hir::ItemKind::Fn(ref decl, ..),
                 ..
             }) |
             hir::map::NodeImplItem(&hir::ImplItem {
@@ -970,7 +970,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }) => {
                 (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
                         .map(|arg| match arg.clone().node {
-                    hir::TyTup(ref tys) => ArgKind::Tuple(
+                    hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
                         tys.iter()
                             .map(|_| ("_".to_owned(), "_".to_owned()))
@@ -981,7 +981,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             hir::map::NodeVariant(&hir::Variant {
                 span,
-                node: hir::Variant_ {
+                node: hir::VariantKind {
                     data: hir::VariantData::Tuple(ref fields, _),
                     ..
                 },

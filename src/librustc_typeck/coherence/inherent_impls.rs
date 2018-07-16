@@ -94,7 +94,7 @@ struct InherentCollect<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let ty = match item.node {
-            hir::ItemImpl(.., None, ref ty, _) => ty,
+            hir::ItemKind::Impl(.., None, ref ty, _) => ty,
             _ => return
         };
 

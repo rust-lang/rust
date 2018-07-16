@@ -429,8 +429,8 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
 
                 impl_m_iter.zip(trait_m_iter).find(|&(ref impl_arg, ref trait_arg)| {
                     match (&impl_arg.node, &trait_arg.node) {
-                        (&hir::TyRptr(_, ref impl_mt), &hir::TyRptr(_, ref trait_mt)) |
-                        (&hir::TyPtr(ref impl_mt), &hir::TyPtr(ref trait_mt)) => {
+                        (&hir::TyKind::Rptr(_, ref impl_mt), &hir::TyKind::Rptr(_, ref trait_mt)) |
+                        (&hir::TyKind::Ptr(ref impl_mt), &hir::TyKind::Ptr(ref trait_mt)) => {
                             impl_mt.mutbl != trait_mt.mutbl
                         }
                         _ => false,
@@ -822,7 +822,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             fn visit_ty(&mut self, ty: &'v hir::Ty) {
                                 hir::intravisit::walk_ty(self, ty);
                                 match ty.node {
-                                    hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+                                    hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                                         if let hir::def::Def::TyParam(def_id) = path.def {
                                             if def_id == self.1 {
                                                 self.0 = Some(ty.span);

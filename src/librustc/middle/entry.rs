@@ -16,7 +16,7 @@ use syntax::ast::NodeId;
 use syntax::attr;
 use syntax::entry::EntryPointType;
 use syntax_pos::Span;
-use hir::{Item, ItemFn, ImplItem, TraitItem};
+use hir::{Item, ItemKind, ImplItem, TraitItem};
 use hir::itemlikevisit::ItemLikeVisitor;
 
 struct EntryContext<'a, 'tcx: 'a> {
@@ -91,7 +91,7 @@ pub fn find_entry_point(session: &Session,
 // them in sync.
 fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
     match item.node {
-        ItemFn(..) => {
+        ItemKind::Fn(..) => {
             if attr::contains_name(&item.attrs, "start") {
                 EntryPointType::Start
             } else if attr::contains_name(&item.attrs, "main") {

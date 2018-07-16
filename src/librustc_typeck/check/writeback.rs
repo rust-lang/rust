@@ -117,7 +117,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr) {
         match e.node {
-            hir::ExprUnary(hir::UnNeg, ref inner) | hir::ExprUnary(hir::UnNot, ref inner) => {
+            hir::ExprKind::Unary(hir::UnNeg, ref inner) |
+            hir::ExprKind::Unary(hir::UnNot, ref inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
                 let inner_ty = self.fcx.resolve_type_vars_if_possible(&inner_ty);
 
@@ -127,8 +128,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     tables.node_substs_mut().remove(e.hir_id);
                 }
             }
-            hir::ExprBinary(ref op, ref lhs, ref rhs)
-            | hir::ExprAssignOp(ref op, ref lhs, ref rhs) => {
+            hir::ExprKind::Binary(ref op, ref lhs, ref rhs)
+            | hir::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
                 let lhs_ty = self.fcx.node_ty(lhs.hir_id);
                 let lhs_ty = self.fcx.resolve_type_vars_if_possible(&lhs_ty);
 
@@ -141,14 +142,14 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     tables.node_substs_mut().remove(e.hir_id);
 
                     match e.node {
-                        hir::ExprBinary(..) => {
+                        hir::ExprKind::Binary(..) => {
                             if !op.node.is_by_value() {
                                 let mut adjustments = tables.adjustments_mut();
                                 adjustments.get_mut(lhs.hir_id).map(|a| a.pop());
                                 adjustments.get_mut(rhs.hir_id).map(|a| a.pop());
                             }
                         }
-                        hir::ExprAssignOp(..) => {
+                        hir::ExprKind::AssignOp(..) => {
                             tables
                                 .adjustments_mut()
                                 .get_mut(lhs.hir_id)
@@ -167,7 +168,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     // to use builtin indexing because the index type is known to be
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr) {
-        if let hir::ExprIndex(ref base, ref index) = e.node {
+        if let hir::ExprKind::Index(ref base, ref index) = e.node {
             let mut tables = self.fcx.tables.borrow_mut();
 
             match tables.expr_ty_adjusted(&base).sty {
@@ -227,7 +228,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         self.visit_node_id(e.span, e.hir_id);
 
         match e.node {
-            hir::ExprClosure(_, _, body, _, _) => {
+            hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir.body(body);
                 for arg in &body.arguments {
                     self.visit_node_id(e.span, arg.hir_id);
@@ -235,12 +236,12 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
                 self.visit_body(body);
             }
-            hir::ExprStruct(_, ref fields, _) => {
+            hir::ExprKind::Struct(_, ref fields, _) => {
                 for field in fields {
                     self.visit_field_id(field.id);
                 }
             }
-            hir::ExprField(..) => {
+            hir::ExprKind::Field(..) => {
                 self.visit_field_id(e.id);
             }
             _ => {}

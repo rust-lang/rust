@@ -124,16 +124,16 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     }
 }
 
-pub fn bin_op_to_icmp_predicate(op: hir::BinOp_,
+pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind,
                                 signed: bool)
                                 -> llvm::IntPredicate {
     match op {
-        hir::BiEq => llvm::IntEQ,
-        hir::BiNe => llvm::IntNE,
-        hir::BiLt => if signed { llvm::IntSLT } else { llvm::IntULT },
-        hir::BiLe => if signed { llvm::IntSLE } else { llvm::IntULE },
-        hir::BiGt => if signed { llvm::IntSGT } else { llvm::IntUGT },
-        hir::BiGe => if signed { llvm::IntSGE } else { llvm::IntUGE },
+        hir::BinOpKind::Eq => llvm::IntEQ,
+        hir::BinOpKind::Ne => llvm::IntNE,
+        hir::BinOpKind::Lt => if signed { llvm::IntSLT } else { llvm::IntULT },
+        hir::BinOpKind::Le => if signed { llvm::IntSLE } else { llvm::IntULE },
+        hir::BinOpKind::Gt => if signed { llvm::IntSGT } else { llvm::IntUGT },
+        hir::BinOpKind::Ge => if signed { llvm::IntSGE } else { llvm::IntUGE },
         op => {
             bug!("comparison_op_to_icmp_predicate: expected comparison operator, \
                   found {:?}",
@@ -142,14 +142,14 @@ pub fn bin_op_to_icmp_predicate(op: hir::BinOp_,
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
+pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> llvm::RealPredicate {
     match op {
-        hir::BiEq => llvm::RealOEQ,
-        hir::BiNe => llvm::RealUNE,
-        hir::BiLt => llvm::RealOLT,
-        hir::BiLe => llvm::RealOLE,
-        hir::BiGt => llvm::RealOGT,
-        hir::BiGe => llvm::RealOGE,
+        hir::BinOpKind::Eq => llvm::RealOEQ,
+        hir::BinOpKind::Ne => llvm::RealUNE,
+        hir::BinOpKind::Lt => llvm::RealOLT,
+        hir::BinOpKind::Le => llvm::RealOLE,
+        hir::BinOpKind::Gt => llvm::RealOGT,
+        hir::BinOpKind::Ge => llvm::RealOGE,
         op => {
             bug!("comparison_op_to_fcmp_predicate: expected comparison operator, \
                   found {:?}",
@@ -164,7 +164,7 @@ pub fn compare_simd_types<'a, 'tcx>(
     rhs: ValueRef,
     t: Ty<'tcx>,
     ret_ty: Type,
-    op: hir::BinOp_
+    op: hir::BinOpKind
 ) -> ValueRef {
     let signed = match t.sty {
         ty::TyFloat(_) => {
@@ -332,12 +332,12 @@ pub fn coerce_unsized_into<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 }
 
 pub fn cast_shift_expr_rhs(
-    cx: &Builder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef
+    cx: &Builder, op: hir::BinOpKind, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
 
-fn cast_shift_rhs<F, G>(op: hir::BinOp_,
+fn cast_shift_rhs<F, G>(op: hir::BinOpKind,
                         lhs: ValueRef,
                         rhs: ValueRef,
                         trunc: F,

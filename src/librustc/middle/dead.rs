@@ -153,21 +153,21 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         match *node {
             hir_map::NodeItem(item) => {
                 match item.node {
-                    hir::ItemStruct(..) | hir::ItemUnion(..) => {
+                    hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
                         let def = self.tcx.adt_def(def_id);
                         self.repr_has_repr_c = def.repr.c();
 
                         intravisit::walk_item(self, &item);
                     }
-                    hir::ItemEnum(..) => {
+                    hir::ItemKind::Enum(..) => {
                         self.inherited_pub_visibility = item.vis.node.is_pub();
                         intravisit::walk_item(self, &item);
                     }
-                    hir::ItemFn(..)
-                    | hir::ItemTy(..)
-                    | hir::ItemStatic(..)
-                    | hir::ItemConst(..) => {
+                    hir::ItemKind::Fn(..)
+                    | hir::ItemKind::Ty(..)
+                    | hir::ItemKind::Static(..)
+                    | hir::ItemKind::Const(..) => {
                         intravisit::walk_item(self, &item);
                     }
                     _ => ()
@@ -225,17 +225,17 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
+            hir::ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let def = self.tables.qpath_def(qpath, expr.hir_id);
                 self.handle_definition(def);
             }
-            hir::ExprMethodCall(..) => {
+            hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
             }
-            hir::ExprField(ref lhs, ..) => {
+            hir::ExprKind::Field(ref lhs, ..) => {
                 self.handle_field_access(&lhs, expr.id);
             }
-            hir::ExprStruct(_, ref fields, _) => {
+            hir::ExprKind::Struct(_, ref fields, _) => {
                 if let ty::TypeVariants::TyAdt(ref adt, _) = self.tables.expr_ty(expr).sty {
                     self.mark_as_used_if_union(adt, fields);
                 }
@@ -349,11 +349,11 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
             self.worklist.push(item.id);
         }
         match item.node {
-            hir::ItemEnum(ref enum_def, _) if allow_dead_code => {
+            hir::ItemKind::Enum(ref enum_def, _) if allow_dead_code => {
                 self.worklist.extend(enum_def.variants.iter()
                                                       .map(|variant| variant.node.data.id()));
             }
-            hir::ItemTrait(.., ref trait_item_refs) => {
+            hir::ItemKind::Trait(.., ref trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
                     let trait_item = self.krate.trait_item(trait_item_ref.id);
                     match trait_item.node {
@@ -369,7 +369,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     }
                 }
             }
-            hir::ItemImpl(.., ref opt_trait, _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., ref opt_trait, _, ref impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if opt_trait.is_some() ||
@@ -439,7 +439,7 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
     match item.node {
-        hir::ItemStruct(ref struct_def, _) if !struct_def.is_struct() => {
+        hir::ItemKind::Struct(ref struct_def, _) if !struct_def.is_struct() => {
             Some(struct_def.id())
         }
         _ => None
@@ -454,13 +454,13 @@ struct DeadVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     fn should_warn_about_item(&mut self, item: &hir::Item) -> bool {
         let should_warn = match item.node {
-            hir::ItemStatic(..)
-            | hir::ItemConst(..)
-            | hir::ItemFn(..)
-            | hir::ItemTy(..)
-            | hir::ItemEnum(..)
-            | hir::ItemStruct(..)
-            | hir::ItemUnion(..) => true,
+            hir::ItemKind::Static(..)
+            | hir::ItemKind::Const(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::Ty(..)
+            | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..) => true,
             _ => false
         };
         let ctor_id = get_struct_ctor_id(item);
@@ -475,7 +475,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             && !has_allow_dead_code_or_lang_attr(self.tcx, field.id, &field.attrs)
     }
 
-    fn should_warn_about_variant(&mut self, variant: &hir::Variant_) -> bool {
+    fn should_warn_about_variant(&mut self, variant: &hir::VariantKind) -> bool {
         !self.symbol_is_live(variant.data.id(), None)
             && !has_allow_dead_code_or_lang_attr(self.tcx,
                                                  variant.data.id(),
@@ -492,7 +492,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     //            `None` otherwise.
     // If the item is a struct_ctor, then either its `id` or
     // `ctor_id` (unwrapped) is in the live_symbols set. More specifically,
-    // DefMap maps the ExprPath of a struct_ctor to the node referred by
+    // DefMap maps the ExprKind::Path of a struct_ctor to the node referred by
     // `ctor_id`. On the other hand, in a statement like
     // `type <ident> <generics> = <ty>;` where <ty> refers to a struct_ctor,
     // DefMap maps <ty> to `id` instead.
@@ -554,13 +554,13 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
             // For items that have a definition with a signature followed by a
             // block, point only at the signature.
             let span = match item.node {
-                hir::ItemFn(..) |
-                hir::ItemMod(..) |
-                hir::ItemEnum(..) |
-                hir::ItemStruct(..) |
-                hir::ItemUnion(..) |
-                hir::ItemTrait(..) |
-                hir::ItemImpl(..) => self.tcx.sess.codemap().def_span(item.span),
+                hir::ItemKind::Fn(..) |
+                hir::ItemKind::Mod(..) |
+                hir::ItemKind::Enum(..) |
+                hir::ItemKind::Struct(..) |
+                hir::ItemKind::Union(..) |
+                hir::ItemKind::Trait(..) |
+                hir::ItemKind::Impl(..) => self.tcx.sess.codemap().def_span(item.span),
                 _ => item.span,
             };
             self.warn_dead_code(

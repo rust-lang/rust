@@ -38,13 +38,13 @@ enum Target {
 impl Target {
     fn from_item(item: &hir::Item) -> Target {
         match item.node {
-            hir::ItemFn(..) => Target::Fn,
-            hir::ItemStruct(..) => Target::Struct,
-            hir::ItemUnion(..) => Target::Union,
-            hir::ItemEnum(..) => Target::Enum,
-            hir::ItemConst(..) => Target::Const,
-            hir::ItemForeignMod(..) => Target::ForeignMod,
-            hir::ItemStatic(..) => Target::Static,
+            hir::ItemKind::Fn(..) => Target::Fn,
+            hir::ItemKind::Struct(..) => Target::Struct,
+            hir::ItemKind::Union(..) => Target::Union,
+            hir::ItemKind::Enum(..) => Target::Enum,
+            hir::ItemKind::Const(..) => Target::Const,
+            hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
+            hir::ItemKind::Static(..) => Target::Static,
             _ => Target::Other,
         }
     }
@@ -264,7 +264,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_stmt_attributes(&self, stmt: &hir::Stmt) {
         // When checking statements ignore expressions, they will be checked later
-        if let hir::Stmt_::StmtDecl(_, _) = stmt.node {
+        if let hir::StmtKind::Decl(_, _) = stmt.node {
             for attr in stmt.node.attrs() {
                 if attr.check_name("inline") {
                     self.check_inline(attr, &stmt.span, Target::Statement);
@@ -283,7 +283,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_expr_attributes(&self, expr: &hir::Expr) {
         let target = match expr.node {
-            hir::ExprClosure(..) => Target::Closure,
+            hir::ExprKind::Closure(..) => Target::Closure,
             _ => Target::Expression,
         };
         for attr in expr.attrs.iter() {
@@ -340,7 +340,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 fn is_c_like_enum(item: &hir::Item) -> bool {
-    if let hir::ItemEnum(ref def, _) = item.node {
+    if let hir::ItemKind::Enum(ref def, _) = item.node {
         for variant in &def.variants {
             match variant.node.data {
                 hir::VariantData::Unit(_) => { /* continue */ }

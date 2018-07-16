@@ -207,7 +207,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         maybe_closure_span: Span,
         location: Location,
     ) -> Option<(Span, Span)> {
-        use rustc::hir::ExprClosure;
+        use rustc::hir::ExprKind::Closure;
         use rustc::mir::AggregateKind;
 
         let local = match self.mir[location.block]
@@ -231,7 +231,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     debug!("find_closure_span: found closure {:?}", places);
 
                     return if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                        let args_span = if let ExprClosure(_, _, _, span, _) =
+                        let args_span = if let Closure(_, _, _, span, _) =
                             self.tcx.hir.expect_expr(node_id).node
                         {
                             span

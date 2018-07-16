@@ -141,7 +141,7 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
             }
             // Check if this is an unsafe block, or an item
             match node {
-                Node::NodeExpr(&hir::Expr { node: hir::ExprBlock(ref block, _), ..}) => {
+                Node::NodeExpr(&hir::Expr { node: hir::ExprKind::Block(ref block, _), ..}) => {
                     if block_is_unsafe(&*block) {
                         // Found an unsafe block, we can bail out here.
                         return true;

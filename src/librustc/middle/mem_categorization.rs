@@ -639,7 +639,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let expr_ty = self.expr_ty(expr)?;
         match expr.node {
-          hir::ExprUnary(hir::UnDeref, ref e_base) => {
+          hir::ExprKind::Unary(hir::UnDeref, ref e_base) => {
             if self.tables.is_method_call(expr) {
                 self.cat_overloaded_place(expr, e_base, NoteNone)
             } else {
@@ -648,7 +648,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          hir::ExprField(ref base, f_ident) => {
+          hir::ExprKind::Field(ref base, f_ident) => {
             let base_cmt = Rc::new(self.cat_expr(&base)?);
             debug!("cat_expr(cat_field): id={} expr={:?} base={:?}",
                    expr.id,
@@ -658,7 +658,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             Ok(self.cat_field(expr, base_cmt, f_index, f_ident, expr_ty))
           }
 
-          hir::ExprIndex(ref base, _) => {
+          hir::ExprKind::Index(ref base, _) => {
             if self.tables.is_method_call(expr) {
                 // If this is an index implemented by a method call, then it
                 // will include an implicit deref of the result.
@@ -672,26 +672,26 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          hir::ExprPath(ref qpath) => {
+          hir::ExprKind::Path(ref qpath) => {
               let def = self.tables.qpath_def(qpath, expr.hir_id);
               self.cat_def(expr.hir_id, expr.span, expr_ty, def)
           }
 
-          hir::ExprType(ref e, _) => {
+          hir::ExprKind::Type(ref e, _) => {
             self.cat_expr(&e)
           }
 
-          hir::ExprAddrOf(..) | hir::ExprCall(..) |
-          hir::ExprAssign(..) | hir::ExprAssignOp(..) |
-          hir::ExprClosure(..) | hir::ExprRet(..) |
-          hir::ExprUnary(..) | hir::ExprYield(..) |
-          hir::ExprMethodCall(..) | hir::ExprCast(..) |
-          hir::ExprArray(..) | hir::ExprTup(..) | hir::ExprIf(..) |
-          hir::ExprBinary(..) | hir::ExprWhile(..) |
-          hir::ExprBlock(..) | hir::ExprLoop(..) | hir::ExprMatch(..) |
-          hir::ExprLit(..) | hir::ExprBreak(..) |
-          hir::ExprContinue(..) | hir::ExprStruct(..) | hir::ExprRepeat(..) |
-          hir::ExprInlineAsm(..) | hir::ExprBox(..) => {
+          hir::ExprKind::AddrOf(..) | hir::ExprKind::Call(..) |
+          hir::ExprKind::Assign(..) | hir::ExprKind::AssignOp(..) |
+          hir::ExprKind::Closure(..) | hir::ExprKind::Ret(..) |
+          hir::ExprKind::Unary(..) | hir::ExprKind::Yield(..) |
+          hir::ExprKind::MethodCall(..) | hir::ExprKind::Cast(..) |
+          hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::If(..) |
+          hir::ExprKind::Binary(..) | hir::ExprKind::While(..) |
+          hir::ExprKind::Block(..) | hir::ExprKind::Loop(..) | hir::ExprKind::Match(..) |
+          hir::ExprKind::Lit(..) | hir::ExprKind::Break(..) |
+          hir::ExprKind::Continue(..) | hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
+          hir::ExprKind::InlineAsm(..) | hir::ExprKind::Box(..) => {
             Ok(self.cat_rvalue_node(expr.hir_id, expr.span, expr_ty))
           }
         }

@@ -329,7 +329,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             this.insert(i.id, NodeItem(i));
             this.with_parent(i.id, |this| {
                 match i.node {
-                    ItemStruct(ref struct_def, _) => {
+                    ItemKind::Struct(ref struct_def, _) => {
                         // If this is a tuple-like struct, register the constructor.
                         if !struct_def.is_struct() {
                             this.insert(struct_def.id(), NodeStructCtor(struct_def));

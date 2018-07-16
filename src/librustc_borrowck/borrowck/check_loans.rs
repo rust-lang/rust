@@ -203,7 +203,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let node_id = bccx.tcx.hir.as_local_node_id(def_id).unwrap();
     let movable_generator = !match bccx.tcx.hir.get(node_id) {
         hir::map::Node::NodeExpr(&hir::Expr {
-            node: hir::ExprClosure(.., Some(hir::GeneratorMovability::Static)),
+            node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..
         }) => true,
         _ => false,

@@ -733,7 +733,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     /// afterwards.
     fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
         match expr.node {
-            hir::ExprLit(ref lit) => {
+            hir::ExprKind::Lit(ref lit) => {
                 let ty = self.tables.expr_ty(expr);
                 match lit_to_const(&lit.node, self.tcx, ty, false) {
                     Ok(val) => {
@@ -751,11 +751,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     },
                 }
             },
-            hir::ExprPath(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
-            hir::ExprUnary(hir::UnNeg, ref expr) => {
+            hir::ExprKind::Path(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
+            hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 let ty = self.tables.expr_ty(expr);
                 let lit = match expr.node {
-                    hir::ExprLit(ref lit) => lit,
+                    hir::ExprKind::Lit(ref lit) => lit,
                     _ => span_bug!(expr.span, "not a literal: {:?}", expr),
                 };
                 match lit_to_const(&lit.node, self.tcx, ty, true) {

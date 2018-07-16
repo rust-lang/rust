@@ -214,7 +214,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut unit_variant = None;
                 if let &ty::TyAdt(adt_def, ..) = t {
                     if adt_def.is_enum() {
-                        if let hir::ExprCall(ref expr, _) = call_expr.node {
+                        if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
                             unit_variant = Some(self.tcx.hir.node_to_pretty_string(expr.id))
                         }
                     }
@@ -240,8 +240,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         path.to_string());
                 }
 
-                if let hir::ExprCall(ref expr, _) = call_expr.node {
-                    let def = if let hir::ExprPath(ref qpath) = expr.node {
+                if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
+                    let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
                         self.tables.borrow().qpath_def(qpath, expr.hir_id)
                     } else {
                         Def::Err

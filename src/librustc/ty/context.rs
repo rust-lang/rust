@@ -627,7 +627,7 @@ impl<'tcx> TypeckTables<'tcx> {
     pub fn is_method_call(&self, expr: &hir::Expr) -> bool {
         // Only paths and method calls/overloaded operators have
         // entries in type_dependent_defs, ignore the former here.
-        if let hir::ExprPath(_) = expr.node {
+        if let hir::ExprKind::Path(_) = expr.node {
             return false;
         }
 
