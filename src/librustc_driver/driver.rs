@@ -100,7 +100,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
             // the thread local rustc uses. syntax_globals and syntax_pos_globals are
             // captured and set on the new threads. ty::tls::with_thread_locals sets up
             // thread local callbacks from libsyntax
-            let main_handler = move |worker: &mut FnMut()| {
+            let main_handler = move |worker: &mut dyn FnMut()| {
                 syntax::GLOBALS.set(syntax_globals, || {
                     syntax_pos::GLOBALS.set(syntax_pos_globals, || {
                         ty::tls::with_thread_locals(|| {
@@ -118,7 +118,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
 }
 
 pub fn compile_input(
-    codegen_backend: Box<CodegenBackend>,
+    codegen_backend: Box<dyn CodegenBackend>,
     sess: &Session,
     cstore: &CStore,
     input_path: &Option<PathBuf>,
@@ -399,10 +399,10 @@ pub struct CompileController<'a> {
 
     /// Allows overriding default rustc query providers,
     /// after `default_provide` has installed them.
-    pub provide: Box<Fn(&mut ty::query::Providers) + 'a>,
+    pub provide: Box<dyn Fn(&mut ty::query::Providers) + 'a>,
     /// Same as `provide`, but only for non-local crates,
     /// applied after `default_provide_extern`.
-    pub provide_extern: Box<Fn(&mut ty::query::Providers) + 'a>,
+    pub provide_extern: Box<dyn Fn(&mut ty::query::Providers) + 'a>,
 }
 
 impl<'a> CompileController<'a> {
@@ -471,10 +471,10 @@ impl<'a> ::CompilerCalls<'a> for CompileController<'a> {
     }
     fn late_callback(
         &mut self,
-        codegen_backend: &::CodegenBackend,
+        codegen_backend: &dyn (::CodegenBackend),
         matches: &::getopts::Matches,
         sess: &Session,
-        cstore: &::CrateStore,
+        cstore: &dyn (::CrateStore),
         input: &Input,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
@@ -496,7 +496,7 @@ pub struct PhaseController<'a> {
     // If true then the compiler will try to run the callback even if the phase
     // ends with an error. Note that this is not always possible.
     pub run_callback_on_error: bool,
-    pub callback: Box<Fn(&mut CompileState) + 'a>,
+    pub callback: Box<dyn Fn(&mut CompileState) + 'a>,
 }
 
 impl<'a> PhaseController<'a> {
@@ -1175,7 +1175,7 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers) {
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(
-    codegen_backend: &CodegenBackend,
+    codegen_backend: &dyn CodegenBackend,
     control: &CompileController,
     sess: &'tcx Session,
     cstore: &'tcx CrateStoreDyn,
@@ -1191,7 +1191,7 @@ where
     F: for<'a> FnOnce(
         TyCtxt<'a, 'tcx, 'tcx>,
         ty::CrateAnalysis,
-        mpsc::Receiver<Box<Any + Send>>,
+        mpsc::Receiver<Box<dyn Any + Send>>,
         CompileResult,
     ) -> R,
 {
@@ -1324,10 +1324,10 @@ where
 /// Run the codegen backend, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_codegen<'a, 'tcx>(
-    codegen_backend: &CodegenBackend,
+    codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    rx: mpsc::Receiver<Box<Any + Send>>,
-) -> Box<Any> {
+    rx: mpsc::Receiver<Box<dyn Any + Send>>,
+) -> Box<dyn Any> {
     time(tcx.sess, "resolving dependency formats", || {
         ::rustc::middle::dependency_format::calculate(tcx)
     });
