@@ -23,7 +23,6 @@ use std::borrow::Cow;
 use std::ffi::CString;
 use std::ops::Range;
 use std::ptr;
-use std::ptr::NonNull;
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -176,7 +175,7 @@ impl Builder<'a, 'll, 'tcx> {
                   args: &[&'ll Value],
                   then: &'ll BasicBlock,
                   catch: &'ll BasicBlock,
-                  bundle: Option<&OperandBundleDef>) -> &'ll Value {
+                  bundle: Option<&OperandBundleDef<'ll>>) -> &'ll Value {
         self.count_insn("invoke");
 
         debug!("Invoke {:?} with args ({:?})",
@@ -184,7 +183,7 @@ impl Builder<'a, 'll, 'tcx> {
                args);
 
         let args = self.check_call("invoke", llfn, args);
-        let bundle = bundle.as_ref().and_then(|b| NonNull::new(b.raw()));
+        let bundle = bundle.map(|b| &*b.raw);
 
         unsafe {
             llvm::LLVMRustBuildInvoke(self.llbuilder,
@@ -724,7 +723,7 @@ impl Builder<'a, 'll, 'tcx> {
     }
 
     pub fn call(&self, llfn: &'ll Value, args: &[&'ll Value],
-                bundle: Option<&OperandBundleDef>) -> &'ll Value {
+                bundle: Option<&OperandBundleDef<'ll>>) -> &'ll Value {
         self.count_insn("call");
 
         debug!("Call {:?} with args ({:?})",
@@ -732,7 +731,7 @@ impl Builder<'a, 'll, 'tcx> {
                args);
 
         let args = self.check_call("call", llfn, args);
-        let bundle = bundle.as_ref().and_then(|b| NonNull::new(b.raw()));
+        let bundle = bundle.map(|b| &*b.raw);
 
         unsafe {
             llvm::LLVMRustBuildCall(self.llbuilder, llfn, args.as_ptr(),

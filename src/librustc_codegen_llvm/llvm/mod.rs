@@ -258,28 +258,24 @@ pub fn last_error() -> Option<String> {
     }
 }
 
-pub struct OperandBundleDef {
-    inner: OperandBundleDefRef,
+pub struct OperandBundleDef<'a> {
+    pub raw: &'a mut ffi::OperandBundleDef<'a>,
 }
 
-impl OperandBundleDef {
-    pub fn new(name: &str, vals: &[&'a Value]) -> OperandBundleDef {
+impl OperandBundleDef<'a> {
+    pub fn new(name: &str, vals: &[&'a Value]) -> Self {
         let name = CString::new(name).unwrap();
         let def = unsafe {
             LLVMRustBuildOperandBundleDef(name.as_ptr(), vals.as_ptr(), vals.len() as c_uint)
         };
-        OperandBundleDef { inner: def }
-    }
-
-    pub fn raw(&self) -> OperandBundleDefRef {
-        self.inner
+        OperandBundleDef { raw: def }
     }
 }
 
-impl Drop for OperandBundleDef {
+impl Drop for OperandBundleDef<'a> {
     fn drop(&mut self) {
         unsafe {
-            LLVMRustFreeOperandBundleDef(self.inner);
+            LLVMRustFreeOperandBundleDef(&mut *(self.raw as *mut _));
         }
     }
 }

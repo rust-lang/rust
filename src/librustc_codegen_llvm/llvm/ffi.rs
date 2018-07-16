@@ -24,6 +24,7 @@ use super::debuginfo::{
 use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_ulonglong, c_void};
 
+use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use super::RustString;
@@ -381,6 +382,12 @@ pub enum ThreadLocalMode {
   LocalExec
 }
 
+extern { type Opaque; }
+struct InvariantOpaque<'a> {
+    _marker: PhantomData<&'a mut &'a ()>,
+    _opaque: Opaque,
+}
+
 // Opaque pointer types
 extern { pub type Module; }
 extern { pub type Context; }
@@ -408,8 +415,7 @@ extern { pub type DiagnosticInfo; }
 extern { pub type SMDiagnostic; }
 extern { pub type RustArchiveMember; }
 pub type RustArchiveMemberRef = *mut RustArchiveMember;
-extern { pub type OperandBundleDef; }
-pub type OperandBundleDefRef = *mut OperandBundleDef;
+pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
 extern { pub type Linker; }
 pub type LinkerRef = *mut Linker;
 
@@ -706,7 +712,7 @@ extern "C" {
                                NumArgs: c_uint,
                                Then: &'a BasicBlock,
                                Catch: &'a BasicBlock,
-                               Bundle: Option<NonNull<OperandBundleDef>>,
+                               Bundle: Option<&OperandBundleDef<'a>>,
                                Name: *const c_char)
                                -> &'a Value;
     pub fn LLVMBuildLandingPad(B: &'a Builder,
@@ -975,7 +981,7 @@ extern "C" {
                              Fn: &'a Value,
                              Args: *const &'a Value,
                              NumArgs: c_uint,
-                             Bundle: Option<NonNull<OperandBundleDef>>,
+                             Bundle: Option<&OperandBundleDef<'a>>,
                              Name: *const c_char)
                              -> &'a Value;
     pub fn LLVMBuildSelect(B: &'a Builder,
@@ -1520,10 +1526,10 @@ extern "C" {
     pub fn LLVMRustSetDataLayoutFromTargetMachine(M: &'a Module, TM: &'a TargetMachine);
 
     pub fn LLVMRustBuildOperandBundleDef(Name: *const c_char,
-                                         Inputs: *const &Value,
+                                         Inputs: *const &'a Value,
                                          NumInputs: c_uint)
-                                         -> OperandBundleDefRef;
-    pub fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
+                                         -> &'a mut OperandBundleDef<'a>;
+    pub fn LLVMRustFreeOperandBundleDef(Bundle: &'a mut OperandBundleDef<'a>);
 
     pub fn LLVMRustPositionBuilderAtStart(B: &'a Builder, BB: &'a BasicBlock);
 

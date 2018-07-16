@@ -92,7 +92,7 @@ pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bo
 /// the `OperandBundleDef` value created for MSVC landing pads.
 pub struct Funclet<'ll> {
     cleanuppad: &'ll Value,
-    operand: OperandBundleDef,
+    operand: OperandBundleDef<'ll>,
 }
 
 impl Funclet<'ll> {
@@ -107,7 +107,7 @@ impl Funclet<'ll> {
         self.cleanuppad
     }
 
-    pub fn bundle(&self) -> &OperandBundleDef {
+    pub fn bundle(&self) -> &OperandBundleDef<'ll> {
         &self.operand
     }
 }
