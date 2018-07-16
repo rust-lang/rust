@@ -1250,6 +1250,7 @@ fn find_existential_constraints<'a, 'tcx>(
         match tcx.hir.get(parent) {
             NodeItem(ref it) => intravisit::walk_item(&mut locator, it),
             NodeImplItem(ref it) => intravisit::walk_impl_item(&mut locator, it),
+            NodeTraitItem(ref it) => intravisit::walk_trait_item(&mut locator, it),
             other => bug!("{:?} is not a valid parent of an existential type item", other),
         }
     }
