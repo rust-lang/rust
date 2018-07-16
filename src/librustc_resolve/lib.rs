@@ -4236,6 +4236,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                           lookup_name: Name,
                                           namespace: Namespace,
                                           start_module: &'a ModuleData<'a>,
+                                          graph_root: bool,
                                           filter_fn: FilterFn)
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
@@ -4262,17 +4263,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 if ident.name == lookup_name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
-                        let mut segms = if self.session.rust_2018() && !in_module_is_extern {
+                        let mut segms = path_segments.clone();
+                        if self.session.rust_2018() && !in_module_is_extern {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
-                            let mut full_segms = vec![
-                                ast::PathSegment::from_ident(keywords::Crate.ident())
-                            ];
-                            full_segms.extend(path_segments.clone());
-                            full_segms
-                        } else {
-                            path_segments.clone()
-                        };
+                            if graph_root {
+                                segms.insert(0, ast::PathSegment::from_ident(keywords::Crate.ident()));
+                            }
+                        }
 
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path {
@@ -4326,7 +4324,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
     {
-        self.lookup_import_candidates_from_module(lookup_name, namespace, self.graph_root, filter_fn)
+        self.lookup_import_candidates_from_module(lookup_name, namespace, self.graph_root, true, filter_fn)
     }
 
     fn find_module(&mut self,
