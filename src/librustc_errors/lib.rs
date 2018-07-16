@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(bare_trait_objects)]
+
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -110,7 +112,7 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
-pub type CodeMapperDyn = CodeMapper + sync::Send + sync::Sync;
+pub type CodeMapperDyn = dyn CodeMapper + sync::Send + sync::Sync;
 
 pub trait CodeMapper {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc;
@@ -270,7 +272,7 @@ pub struct Handler {
     pub flags: HandlerFlags,
 
     err_count: AtomicUsize,
-    emitter: Lock<Box<Emitter + sync::Send>>,
+    emitter: Lock<Box<dyn Emitter + sync::Send>>,
     continue_after_error: LockCell<bool>,
     delayed_span_bug: Lock<Option<Diagnostic>>,
 
@@ -326,7 +328,7 @@ impl Handler {
 
     pub fn with_emitter(can_emit_warnings: bool,
                         treat_err_as_bug: bool,
-                        e: Box<Emitter + sync::Send>)
+                        e: Box<dyn Emitter + sync::Send>)
                         -> Handler {
         Handler::with_emitter_and_flags(
             e,
@@ -337,7 +339,8 @@ impl Handler {
             })
     }
 
-    pub fn with_emitter_and_flags(e: Box<Emitter + sync::Send>, flags: HandlerFlags) -> Handler {
+    pub fn with_emitter_and_flags(e: Box<dyn Emitter + sync::Send>, flags: HandlerFlags) -> Handler
+    {
         Handler {
             flags,
             err_count: AtomicUsize::new(0),

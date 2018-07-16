@@ -148,7 +148,7 @@ impl EmitterWriter {
         }
     }
 
-    pub fn new(dst: Box<Write + Send>,
+    pub fn new(dst: Box<dyn Write + Send>,
                code_map: Option<Lrc<CodeMapperDyn>>,
                short_message: bool,
                teach: bool)
@@ -1469,13 +1469,13 @@ fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
 pub enum Destination {
     Terminal(StandardStream),
     Buffered(BufferWriter),
-    Raw(Box<Write + Send>),
+    Raw(Box<dyn Write + Send>),
 }
 
 pub enum WritableDst<'a> {
     Terminal(&'a mut StandardStream),
     Buffered(&'a mut BufferWriter, Buffer),
-    Raw(&'a mut Box<Write + Send>),
+    Raw(&'a mut Box<dyn Write + Send>),
 }
 
 impl Destination {
