@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(crate_visibility_modifier)]
-#![feature(crate_in_paths)]
+// edition:2018
+
+#![feature(edition_2018_preview)]
 
 mod bar {
     crate struct Foo;
