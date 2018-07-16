@@ -34,6 +34,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         right: Scalar,
         right_ty: ty::Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
+        trace!("ptr_op: {:?} {:?} {:?}", left, bin_op, right);
+
         use rustc::mir::BinOp::*;
         use rustc::ty::layout::Integer::*;
         let usize = Primitive::Int(match self.memory.pointer_size().bytes() {
@@ -81,7 +83,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     (Scalar::Bits { .. }, Scalar::Bits { .. }) => {
                         left.to_bits(left_layout.size)? == right.to_bits(right_layout.size)?
                     },
+                    // FIXME: Test if both allocations are still live *or* if they are in the same allocation? (same for Ne below)
                     (Scalar::Ptr(left), Scalar::Ptr(right)) => left == right,
+                    // FIXME: We should probably error out when comparing anything but NULL with a pointer (same for Ne below)
                     _ => false,
                 };
                 Ok(Some((Scalar::from_bool(result), false)))
