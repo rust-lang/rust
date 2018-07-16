@@ -26,7 +26,7 @@ use mir::interpret::ConstEvalErr;
 use ty::subst::Substs;
 use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
-use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
+use ty::fold::{TypeFolder, TypeFoldable, TypeHasher, TypeVisitor};
 use infer::{InferCtxt};
 
 use rustc_data_structures::sync::Lrc;
@@ -1027,6 +1027,11 @@ where
         ex_clause: &chalk_engine::ExClause<Self>,
         visitor: &mut V,
     ) -> bool;
+
+    fn hash_ex_clause_with<'gcx: 'tcx, H: TypeHasher<'tcx>>(
+        ex_clause: &chalk_engine::ExClause<Self>,
+        hasher: &mut H,
+    ) -> u64;
 }
 
 pub trait ExClauseLift<'tcx>
