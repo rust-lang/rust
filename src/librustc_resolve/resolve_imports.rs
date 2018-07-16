@@ -108,7 +108,7 @@ pub struct NameResolution<'a> {
     single_imports: SingleImports<'a>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
-    shadows_glob: Option<&'a NameBinding<'a>>,
+    shadowed_glob: Option<&'a NameBinding<'a>>,
 }
 
 #[derive(Clone, Debug)]
@@ -194,7 +194,7 @@ impl<'a> Resolver<'a> {
 
         if record_used {
             if let Some(binding) = resolution.binding {
-                if let Some(shadowed_glob) = resolution.shadows_glob {
+                if let Some(shadowed_glob) = resolution.shadowed_glob {
                     let name = ident.name;
                     // Forbid expanded shadowing to avoid time travel.
                     if restricted_shadowing &&
@@ -401,7 +401,7 @@ impl<'a> Resolver<'a> {
                 if binding.is_glob_import() {
                     if !old_binding.is_glob_import() &&
                        !(ns == MacroNS && old_binding.expansion != Mark::root()) {
-                        resolution.shadows_glob = Some(binding);
+                        resolution.shadowed_glob = Some(binding);
                     } else if binding.def() != old_binding.def() {
                         resolution.binding = Some(this.ambiguity(old_binding, binding));
                     } else if !old_binding.vis.is_at_least(binding.vis, &*this) {
@@ -414,7 +414,7 @@ impl<'a> Resolver<'a> {
                         resolution.binding = Some(this.ambiguity(binding, old_binding));
                     } else {
                         resolution.binding = Some(binding);
-                        resolution.shadows_glob = Some(old_binding);
+                        resolution.shadowed_glob = Some(old_binding);
                     }
                 } else {
                     return Err(old_binding);

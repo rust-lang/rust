@@ -651,7 +651,7 @@ impl<'a> Resolver<'a> {
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
-        if self.global_macros.insert(name, binding).is_some() && !allow_shadowing {
+        if self.macro_prelude.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";

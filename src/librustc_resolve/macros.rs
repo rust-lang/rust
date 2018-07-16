@@ -220,7 +220,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             vis: ty::Visibility::Invisible,
             expansion: Mark::root(),
         });
-        self.global_macros.insert(ident.name, binding);
+        self.macro_prelude.insert(ident.name, binding);
     }
 
     fn resolve_imports(&mut self) {
@@ -238,7 +238,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 attr::mark_known(&attrs[i]);
             }
 
-            match self.global_macros.get(&name).cloned() {
+            match self.macro_prelude.get(&name).cloned() {
                 Some(binding) => match *binding.get_macro(self) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
@@ -274,7 +274,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                     }
                     let trait_name = traits[j].segments[0].ident.name;
                     let legacy_name = Symbol::intern(&format!("derive_{}", trait_name));
-                    if !self.global_macros.contains_key(&legacy_name) {
+                    if !self.macro_prelude.contains_key(&legacy_name) {
                         continue
                     }
                     let span = traits.remove(j).span;
@@ -565,7 +565,7 @@ impl<'a> Resolver<'a> {
                     module, ident, ns, true, record_used, path_span,
                 ).map(MacroBinding::Modern)
             } else {
-                self.global_macros.get(&ident.name).cloned().ok_or(determinacy)
+                self.macro_prelude.get(&ident.name).cloned().ok_or(determinacy)
                     .map(MacroBinding::Global)
             };
             self.current_module = orig_current_module;
@@ -652,7 +652,7 @@ impl<'a> Resolver<'a> {
 
         let binding = if let Some(binding) = binding {
             MacroBinding::Legacy(binding)
-        } else if let Some(binding) = self.global_macros.get(&ident.name).cloned() {
+        } else if let Some(binding) = self.macro_prelude.get(&ident.name).cloned() {
             if !self.use_extern_macros {
                 self.record_use(ident, MacroNS, binding, DUMMY_SP);
             }
@@ -762,8 +762,8 @@ impl<'a> Resolver<'a> {
         // Then check global macros.
         }.or_else(|| {
             // FIXME: get_macro needs an &mut Resolver, can we do it without cloning?
-            let global_macros = self.global_macros.clone();
-            let names = global_macros.iter().filter_map(|(name, binding)| {
+            let macro_prelude = self.macro_prelude.clone();
+            let names = macro_prelude.iter().filter_map(|(name, binding)| {
                 if binding.get_macro(self).kind() == kind {
                     Some(name)
                 } else {

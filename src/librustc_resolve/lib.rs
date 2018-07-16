@@ -1393,7 +1393,7 @@ pub struct Resolver<'a> {
 
     crate_loader: &'a mut dyn CrateLoader,
     macro_names: FxHashSet<Ident>,
-    global_macros: FxHashMap<Name, &'a NameBinding<'a>>,
+    macro_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Def>,
     lexical_macro_resolutions: Vec<(Ident, &'a Cell<LegacyScope<'a>>)>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
@@ -1715,7 +1715,7 @@ impl<'a> Resolver<'a> {
 
             crate_loader,
             macro_names: FxHashSet(),
-            global_macros: FxHashMap(),
+            macro_prelude: FxHashMap(),
             all_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             macro_map: FxHashMap(),
@@ -3224,7 +3224,7 @@ impl<'a> Resolver<'a> {
                 };
             }
         }
-        let is_global = self.global_macros.get(&path[0].name).cloned()
+        let is_global = self.macro_prelude.get(&path[0].name).cloned()
             .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
         if primary_ns != MacroNS && (is_global ||
                                      self.macro_names.contains(&path[0].modern())) {
