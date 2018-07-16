@@ -177,6 +177,11 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
 pub(crate) unsafe fn box_free<T: ?Sized, A: Alloc>(ptr: Unique<T>, mut a: A) {
+    box_free_worker(ptr, &mut a)
+}
+
+#[inline]
+pub(crate) unsafe fn box_free_worker<T: ?Sized, A: Alloc>(ptr: Unique<T>, a: &mut A) {
     let ptr = ptr.as_ptr();
     let size = size_of_val(&*ptr);
     let align = min_align_of_val(&*ptr);
