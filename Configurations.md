@@ -1250,7 +1250,7 @@ fn main() {
 
 Unix or Windows line endings
 
-- **Default value**: `"Unix"`
+- **Default value**: `"Native"`
 - **Possible values**: `"Native"`, `"Unix"`, `"Windows"`
 - **Stable**: Yes
 

@@ -247,7 +247,10 @@ fn stdin_formatting_smoke_test() {
     let (error_summary, _) = format_input(input, &config, Some(&mut buf)).unwrap();
     assert!(error_summary.has_no_errors());
     //eprintln!("{:?}", );
+    #[cfg(not(windows))]
     assert_eq!(buf, "fn main() {}\n".as_bytes());
+    #[cfg(windows)]
+    assert_eq!(buf, "fn main() {}\r\n".as_bytes());
 }
 
 // FIXME(#1990) restore this test
