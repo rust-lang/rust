@@ -56,7 +56,7 @@ rustup update
 
 #### Step 2: Install nightly toolchain
 
-As a general rule Clippy will only work with the *latest* Rust nightly for now.
+Rustup integration is still new, you will need a relatively new nightly (2018-07-15 or later).
 
 To install Rust nightly with [rustup](https://rustup.rs/):
 
@@ -72,7 +72,8 @@ Once you have rustup and the nightly toolchain installed, run the following comm
 rustup component add clippy-preview --toolchain=nightly
 ```
 
-Now you can run Clippy by invoking `cargo +nightly clippy`.
+Now you can run Clippy by invoking `cargo +nightly clippy`. If nightly is your
+default toolchain in rustup, `cargo clippy` will work fine.
 
 ### Running Clippy from the command line without installing it
 
