@@ -448,7 +448,7 @@ fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(NodeImplItem(item)) = map.find(map.get_parent(expr.id)) {
         // `Debug` impl
         if let Some(NodeItem(item)) = map.find(map.get_parent(item.id)) {
-            if let ItemImpl(_, _, _, _, Some(ref tr), _, _) = item.node {
+            if let ItemKind::Impl(_, _, _, _, Some(ref tr), _, _) = item.node {
                 return match_path(&tr.path, &["Debug"]);
             }
         }

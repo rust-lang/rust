@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
             if_chain! {
                 if let Some(expr) = it.peek();
                 if let hir::StmtKind::Decl(ref decl, _) = stmt.node;
-                if let hir::DeclLocal(ref decl) = decl.node;
+                if let hir::DeclKind::Local(ref decl) = decl.node;
                 if let hir::PatKind::Binding(mode, canonical_id, ident, None) = decl.pat.node;
                 if let hir::StmtKind::Expr(ref if_, _) = expr.node;
                 if let hir::ExprKind::If(ref cond, ref then, ref else_) = if_.node;

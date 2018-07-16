@@ -127,7 +127,7 @@ fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: 
     if higher::is_from_for_desugar(decl) {
         return;
     }
-    if let DeclLocal(ref local) = decl.node {
+    if let DeclKind::Local(ref local) = decl.node {
         let Local {
             ref pat,
             ref ty,

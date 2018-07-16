@@ -813,7 +813,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let hir::ImplItemKind::Method(ref sig, id) = implitem.node;
             if let Some(first_arg_ty) = sig.decl.inputs.get(0);
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir.body(id)).next();
-            if let hir::ItemImpl(_, _, _, _, None, ref self_ty, _) = item.node;
+            if let hir::ItemKind::Impl(_, _, _, _, None, ref self_ty, _) = item.node;
             then {
                 if cx.access_levels.is_exported(implitem.id) {
                 // check missing trait implementations
@@ -1140,7 +1140,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
                     }
                     hir::map::NodeStmt(stmt) => {
                         if let hir::StmtKind::Decl(ref decl, _) = stmt.node {
-                            if let hir::DeclLocal(ref loc) = decl.node {
+                            if let hir::DeclKind::Local(ref loc) = decl.node {
                                 if let hir::PatKind::Ref(..) = loc.pat.node {
                                     // let ref y = *x borrows x, let ref y = x.clone() does not
                                     return;
@@ -1338,7 +1338,7 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
                     cx, fold_args, hir::BinOpKind::And, "all", true
                 ),
                 ast::LitKind::Int(0, _) => check_fold_with_op(
-                    cx, fold_args, hir::BinOpKindAdd, "sum", false
+                    cx, fold_args, hir::BinOpKind::Add, "sum", false
                 ),
                 ast::LitKind::Int(1, _) => check_fold_with_op(
                     cx, fold_args, hir::BinOpKind::Mul, "product", false
@@ -2175,7 +2175,7 @@ enum OutType {
 
 impl OutType {
     fn matches(self, cx: &LateContext, ty: &hir::FunctionRetTy) -> bool {
-        let is_unit = |ty: &hir::Ty| SpanlessEq::new(cx).eq_ty_kind(&ty.node, &hir::TyTup(vec![].into()));
+        let is_unit = |ty: &hir::Ty| SpanlessEq::new(cx).eq_ty_kind(&ty.node, &hir::TyKind::Tup(vec![].into()));
         match (self, ty) {
             (OutType::Unit, &hir::DefaultReturn(_)) => true,
             (OutType::Unit, &hir::Return(ref ty)) if is_unit(ty) => true,

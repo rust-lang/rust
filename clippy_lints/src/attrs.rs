@@ -154,7 +154,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             check_attrs(cx, item.span, item.name, &item.attrs)
         }
         match item.node {
-            ItemExternCrate(_) | ItemUse(_, _) => {
+            ItemKind::ExternCrate(_) | ItemKind::Use(_, _) => {
                 for attr in &item.attrs {
                     if let Some(ref lint_list) = attr.meta_item_list() {
                         match &*attr.name().as_str() {
@@ -162,7 +162,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                 // whitelist `unused_imports` and `deprecated`
                                 for lint in lint_list {
                                     if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
-                                        if let ItemUse(_, _) = item.node {
+                                        if let ItemKind::Use(_, _) = item.node {
                                             return;
                                         }
                                     }
@@ -207,7 +207,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
 }
 
 fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
-    if let ItemFn(_, _, _, eid) = item.node {
+    if let ItemKind::Fn(_, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
     } else {
         true

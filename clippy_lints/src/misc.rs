@@ -270,7 +270,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, s: &'tcx Stmt) {
         if_chain! {
             if let StmtKind::Decl(ref d, _) = s.node;
-            if let DeclLocal(ref l) = d.node;
+            if let DeclKind::Local(ref l) = d.node;
             if let PatKind::Binding(an, _, i, None) = l.pat.node;
             if let Some(ref init) = l.init;
             then {
@@ -520,7 +520,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
             let parent_impl = cx.tcx.hir.get_parent(parent_fn);
             if parent_impl != CRATE_NODE_ID {
                 if let map::NodeItem(item) = cx.tcx.hir.get(parent_impl) {
-                    if let ItemImpl(.., Some(ref trait_ref), _, _) = item.node {
+                    if let ItemKind::Impl(.., Some(ref trait_ref), _, _) = item.node {
                         if trait_ref.path.def.def_id() == partial_eq_trait_id {
                             // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise
                             // we go into

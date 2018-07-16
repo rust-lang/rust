@@ -86,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         use rustc::hir::map::Node::*;
 
         let is_impl = if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(nodeid)) {
-            matches!(item.node, hir::ItemImpl(_, _, _, _, Some(_), _, _))
+            matches!(item.node, hir::ItemKind::Impl(_, _, _, _, Some(_), _, _))
         } else {
             false
         };

@@ -43,7 +43,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
             if cx.tables.expr_ty(ident2).is_integral();
             then {
                 if let BinOpKind::Lt = op.node {
-                    if let BinOpKindAdd = op2.node {
+                    if let BinOpKind::Add = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
                             "You are trying to use classic C overflow conditions that will fail in Rust.");
                     }
@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
             if cx.tables.expr_ty(ident2).is_integral();
             then {
                 if let BinOpKind::Gt = op.node {
-                    if let BinOpKindAdd = op2.node {
+                    if let BinOpKind::Add = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
                             "You are trying to use classic C overflow conditions that will fail in Rust.");
                     }

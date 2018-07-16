@@ -139,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
     fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
         // skip trait implementations, see #605
         if let Some(map::NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(id)) {
-            if let ItemImpl(_, _, _, _, Some(..), _, _) = item.node {
+            if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
                 return;
             }
         }
@@ -343,7 +343,7 @@ fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifeti
 // Returns true if given type is `Any` trait.
 fn is_any_trait(t: &hir::Ty) -> bool {
     if_chain! {
-        if let TyTraitObject(ref traits, _) = t.node;
+        if let TyKind::TraitObject(ref traits, _) = t.node;
         if traits.len() >= 1;
         // Only Send/Sync can be used as additional traits, so it is enough to
         // check only the first trait.
@@ -377,7 +377,7 @@ declare_clippy_lint! {
 }
 
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
-    if let DeclLocal(ref local) = decl.node {
+    if let DeclKind::Local(ref local) = decl.node {
         if is_unit(cx.tables.pat_ty(&local.pat)) {
             if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
                 return;
@@ -1141,7 +1141,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         match item.node {
-            ItemStatic(ref ty, _, _) | ItemConst(ref ty, _) => self.check_type(cx, ty),
+            ItemKind::Static(ref ty, _, _) | ItemKind::Const(ref ty, _) => self.check_type(cx, ty),
             // functions, enums, structs, impls and traits are covered
             _ => (),
         }
@@ -1222,7 +1222,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             // function types bring a lot of overhead
             TyKind::BareFn(..) => (50 * self.nest, 1),
 
-            TyTraitObject(ref param_bounds, _) => {
+            TyKind::TraitObject(ref param_bounds, _) => {
                 let has_lifetime_parameters = param_bounds
                     .iter()
                     .any(|bound| bound.bound_generic_params.iter().any(|gen| match gen.kind {
@@ -1797,7 +1797,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
         }
 
         match item.node {
-            ItemImpl(_, _, _, ref generics, _, ref ty, ref items) => {
+            ItemKind::Impl(_, _, _, ref generics, _, ref ty, ref items) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
                 vis.visit_ty(ty);
 
@@ -1829,7 +1829,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                     );
                 }
             },
-            ItemFn(ref decl, .., ref generics, body_id) => {
+            ItemKind::Fn(ref decl, .., ref generics, body_id) => {
                 let body = cx.tcx.hir.body(body_id);
 
                 for ty in &decl.inputs {

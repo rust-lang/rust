@@ -100,8 +100,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
 
         // Exclude non-inherent impls
         if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(node_id)) {
-            if matches!(item.node, ItemImpl(_, _, _, _, Some(_), _, _) |
-                ItemTrait(..))
+            if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
+                ItemKind::Trait(..))
             {
                 return;
             }

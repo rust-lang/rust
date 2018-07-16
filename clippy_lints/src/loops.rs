@@ -591,7 +591,7 @@ fn stmt_to_expr(stmt: &Stmt) -> Option<&Expr> {
 
 fn decl_to_expr(decl: &Decl) -> Option<&Expr> {
     match decl.node {
-        DeclLocal(ref local) => local.init.as_ref().map(|p| &**p),
+        DeclKind::Local(ref local) => local.init.as_ref().map(|p| &**p),
         _ => None,
     }
 }
@@ -771,7 +771,7 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
 
         let offset = match idx.node {
             ExprKind::Binary(op, ref lhs, ref rhs) => match op.node {
-                BinOpKindAdd => {
+                BinOpKind::Add => {
                     let offset_opt = if same_var(cx, lhs, var) {
                         extract_offset(cx, rhs, var)
                     } else if same_var(cx, rhs, var) {
@@ -1810,7 +1810,7 @@ fn extract_expr_from_first_stmt(block: &Block) -> Option<&Expr> {
         return None;
     }
     if let StmtKind::Decl(ref decl, _) = block.stmts[0].node {
-        if let DeclLocal(ref local) = decl.node {
+        if let DeclKind::Local(ref local) = decl.node {
             if let Some(ref expr) = local.init {
                 Some(expr)
             } else {
@@ -1931,7 +1931,7 @@ struct InitializeVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     fn visit_decl(&mut self, decl: &'tcx Decl) {
         // Look for declarations of the variable
-        if let DeclLocal(ref local) = decl.node {
+        if let DeclKind::Local(ref local) = decl.node {
             if local.pat.id == self.var_id {
                 if let PatKind::Binding(_, _, ident, _) = local.pat.node {
                     self.name = Some(ident.name);

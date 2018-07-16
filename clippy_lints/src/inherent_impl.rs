@@ -56,7 +56,7 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let Item_::ItemImpl(_, _, _, ref generics, None, _, _) = item.node {
+        if let ItemKind::Impl(_, _, _, ref generics, None, _, _) = item.node {
             // Remember for each inherent implementation encoutered its span and generics
             self.impls
                 .insert(item.hir_id.owner_def_id(), (item.span, generics.clone()));

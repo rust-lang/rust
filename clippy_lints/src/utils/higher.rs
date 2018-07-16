@@ -154,7 +154,7 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
     // }
     // ```
     if_chain! {
-        if let hir::DeclLocal(ref loc) = decl.node;
+        if let hir::DeclKind::Local(ref loc) = decl.node;
         if let Some(ref expr) = loc.init;
         if let hir::ExprKind::Match(_, _, hir::MatchSource::ForLoopDesugar) = expr.node;
         then {
@@ -171,7 +171,7 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
     // }
     // ```
     if_chain! {
-        if let hir::DeclLocal(ref loc) = decl.node;
+        if let hir::DeclKind::Local(ref loc) = decl.node;
         if let hir::LocalSource::ForLoopDesugar = loc.source;
         then {
             return true;
@@ -192,7 +192,7 @@ pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)>
         if block.expr.is_none();
         if let [ _, _, ref let_stmt, ref body ] = *block.stmts;
         if let hir::StmtKind::Decl(ref decl, _) = let_stmt.node;
-        if let hir::DeclLocal(ref decl) = decl.node;
+        if let hir::DeclKind::Local(ref decl) = decl.node;
         if let hir::StmtKind::Expr(ref expr, _) = body.node;
         then {
             return Some((&*decl.pat, &iterargs[0], expr));

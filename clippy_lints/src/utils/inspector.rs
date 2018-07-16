@@ -141,7 +141,7 @@ fn has_attr(attrs: &[Attribute]) -> bool {
 
 fn print_decl(cx: &LateContext, decl: &hir::Decl) {
     match decl.node {
-        hir::DeclLocal(ref local) => {
+        hir::DeclKind::Local(ref local) => {
             println!("local variable of type {}", cx.tables.node_id_to_type(local.hir_id));
             println!("pattern:");
             print_pat(cx, &local.pat, 0);
@@ -150,7 +150,7 @@ fn print_decl(cx: &LateContext, decl: &hir::Decl) {
                 print_expr(cx, e, 0);
             }
         },
-        hir::DeclItem(_) => println!("item decl"),
+        hir::DeclKind::Item(_) => println!("item decl"),
     }
 }
 
@@ -353,7 +353,7 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
         hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
     }
     match item.node {
-        hir::ItemExternCrate(ref _renamed_from) => {
+        hir::ItemKind::ExternCrate(ref _renamed_from) => {
             let def_id = cx.tcx.hir.local_def_id(item.id);
             if let Some(crate_id) = cx.tcx.extern_mod_stmt_cnum(def_id) {
                 let source = cx.tcx.used_crate_source(crate_id);
@@ -367,32 +367,32 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
                 println!("weird extern crate without a crate id");
             }
         },
-        hir::ItemUse(ref path, ref kind) => println!("{:?}, {:?}", path, kind),
-        hir::ItemStatic(..) => println!("static item of type {:#?}", cx.tcx.type_of(did)),
-        hir::ItemConst(..) => println!("const item of type {:#?}", cx.tcx.type_of(did)),
-        hir::ItemFn(..) => {
+        hir::ItemKind::Use(ref path, ref kind) => println!("{:?}, {:?}", path, kind),
+        hir::ItemKind::Static(..) => println!("static item of type {:#?}", cx.tcx.type_of(did)),
+        hir::ItemKind::Const(..) => println!("const item of type {:#?}", cx.tcx.type_of(did)),
+        hir::ItemKind::Fn(..) => {
             let item_ty = cx.tcx.type_of(did);
             println!("function of type {:#?}", item_ty);
         },
-        hir::ItemMod(..) => println!("module"),
-        hir::ItemForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
-        hir::ItemGlobalAsm(ref asm) => println!("global asm: {:?}", asm),
-        hir::ItemTy(..) => {
+        hir::ItemKind::Mod(..) => println!("module"),
+        hir::ItemKind::ForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
+        hir::ItemKind::GlobalAsm(ref asm) => println!("global asm: {:?}", asm),
+        hir::ItemKind::Ty(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
         },
-        hir::ItemExistential(..) => {
+        hir::ItemKind::Existential(..) => {
             println!("existential type with real type {:?}", cx.tcx.type_of(did));
         },
-        hir::ItemEnum(..) => {
+        hir::ItemKind::Enum(..) => {
             println!("enum definition of type {:?}", cx.tcx.type_of(did));
         },
-        hir::ItemStruct(..) => {
+        hir::ItemKind::Struct(..) => {
             println!("struct definition of type {:?}", cx.tcx.type_of(did));
         },
-        hir::ItemUnion(..) => {
+        hir::ItemKind::Union(..) => {
             println!("union definition of type {:?}", cx.tcx.type_of(did));
         },
-        hir::ItemTrait(..) => {
+        hir::ItemKind::Trait(..) => {
             println!("trait decl");
             if cx.tcx.trait_is_auto(did) {
                 println!("trait is auto");
@@ -400,13 +400,13 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
                 println!("trait is not auto");
             }
         },
-        hir::ItemTraitAlias(..) => {
+        hir::ItemKind::TraitAlias(..) => {
             println!("trait alias");
         }
-        hir::ItemImpl(_, _, _, _, Some(ref _trait_ref), _, _) => {
+        hir::ItemKind::Impl(_, _, _, _, Some(ref _trait_ref), _, _) => {
             println!("trait impl");
         },
-        hir::ItemImpl(_, _, _, _, None, _, _) => {
+        hir::ItemKind::Impl(_, _, _, _, None, _, _) => {
             println!("impl");
         },
     }

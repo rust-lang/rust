@@ -524,7 +524,7 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
         match node {
             Node::NodeBlock(block) => Some(block),
             Node::NodeItem(&Item {
-                node: ItemFn(_, _, _, eid),
+                node: ItemKind::Fn(_, _, _, eid),
                 ..
             }) | Node::NodeImplItem(&ImplItem {
                 node: ImplItemKind::Method(_, eid),

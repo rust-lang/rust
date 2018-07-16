@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
             return;
         }
         if_chain! {
-            if let ItemImpl(.., ref item_type, ref refs) = item.node;
+            if let ItemKind::Impl(.., ref item_type, ref refs) = item.node;
             if let TyKind::Path(QPath::Resolved(_, ref item_path)) = item_type.node;
             then {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;

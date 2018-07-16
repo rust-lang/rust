@@ -59,7 +59,7 @@ impl LintPass for LifetimePass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemFn(ref decl, _, ref generics, id) = item.node {
+        if let ItemKind::Fn(ref decl, _, ref generics, id) = item.node {
             check_fn_inner(cx, decl, Some(id), generics, item.span);
         }
     }
@@ -345,7 +345,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 if let QPath::Resolved(_, ref path) = *path {
                     if let Def::Existential(def_id) = path.def {
                         let node_id = self.cx.tcx.hir.as_local_node_id(def_id).unwrap();
-                        if let ItemExistential(ref exist_ty) = self.cx.tcx.hir.expect_item(node_id).node {
+                        if let ItemKind::Existential(ref exist_ty) = self.cx.tcx.hir.expect_item(node_id).node {
                             for bound in &exist_ty.bounds {
                                 if let GenericBound::Outlives(_) = *bound {
                                     self.record(&None);
@@ -360,7 +360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 }
                 self.collect_anonymous_lifetimes(path, ty);
             }
-            TyTraitObject(ref bounds, ref lt) => {
+            TyKind::TraitObject(ref bounds, ref lt) => {
                 if !lt.is_elided() {
                     self.abort = true;
                 }

@@ -142,9 +142,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                              $cx:expr,
                              $ty:expr,
                              $rty:expr,
-                             $($trait_name:ident:$full_trait_name:ident),+) => {
+                             $($trait_name:ident),+) => {
                                 match $op {
-                                    $(hir::$full_trait_name => {
+                                    $(hir::BinOpKind::$trait_name => {
                                         let [krate, module] = crate::utils::paths::OPS_MODULE;
                                         let path = [krate, module, concat!(stringify!($trait_name), "Assign")];
                                         let trait_id = if let Some(trait_id) = get_trait_def_id($cx, &path) {
@@ -159,7 +159,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         if_chain! {
                                             if parent_impl != ast::CRATE_NODE_ID;
                                             if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
-                                            if let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) =
+                                            if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) =
                                                 item.node;
                                             if trait_ref.path.def.def_id() == trait_id;
                                             then { return; }
@@ -175,18 +175,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                             cx,
                             ty,
                             rty.into(),
-                            Add: BinOpKind::Add,
-                            Sub: BinOpKind::Sub,
-                            Mul: BinOpKind::Mul,
-                            Div: BinOpKind::Div,
-                            Rem: BinOpKind::Rem,
-                            And: BinOpKind::And,
-                            Or: BinOpKind::Or,
-                            BitAnd: BinOpKind::BitAnd,
-                            BitOr: BinOpKind::BitOr,
-                            BitXor: BinOpKind::BitXor,
-                            Shr: BinOpKind::Shr,
-                            Shl: BinOpKind::Shl
+                            Add,
+                            Sub,
+                            Mul,
+                            Div,
+                            Rem,
+                            And,
+                            Or,
+                            BitAnd,
+                            BitOr,
+                            BitXor,
+                            Shr,
+                            Shl
                         ) {
                             span_lint_and_then(
                                 cx,

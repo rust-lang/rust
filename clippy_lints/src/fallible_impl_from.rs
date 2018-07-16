@@ -39,7 +39,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
         // check for `impl From<???> for ..`
         let impl_def_id = cx.tcx.hir.local_def_id(item.id);
         if_chain! {
-            if let hir::ItemImpl(.., ref impl_items) = item.node;
+            if let hir::ItemKind::Impl(.., ref impl_items) = item.node;
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
             if match_def_path(cx.tcx, impl_trait_ref.def_id, &FROM_TRAIT);
             then {

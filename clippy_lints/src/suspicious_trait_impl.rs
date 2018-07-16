@@ -59,10 +59,15 @@ impl LintPass for SuspiciousImpl {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        use rustc::hir::BinOpKind::*;
         if let hir::ExprKind::Binary(binop, _, _) = expr.node {
             match binop.node {
-                BinOpKind::Eq | BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ne | BinOpKind::Ge | BinOpKind::Gt => return,
+                | hir::BinOpKind::Eq
+                | hir::BinOpKind::Lt
+                | hir::BinOpKind::Le
+                | hir::BinOpKind::Ne
+                | hir::BinOpKind::Ge
+                | hir::BinOpKind::Gt
+                => return,
                 _ => {},
             }
             // Check if the binary expression is part of another bi/unary expression
@@ -94,7 +99,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                 expr,
                 binop.node,
                 &["Add", "Sub", "Mul", "Div"],
-                &[BinOpKind::Add, BinOpKind::Sub, BinOpKind::Mul, BinOpKind::Div],
+                &[
+                    hir::BinOpKind::Add,
+                    hir::BinOpKind::Sub,
+                    hir::BinOpKind::Mul,
+                    hir::BinOpKind::Div,
+                ],
             ) {
                 span_lint(
                     cx,
@@ -124,7 +134,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                     "ShrAssign",
                 ],
                 &[
-                    BinOpKind::Add, BinOpKind::Sub, BinOpKind::Mul, BinOpKind::Div, BinOpKind::BitAnd, BinOpKind::BitOr, BinOpKind::BitXor, BinOpKind::Rem, BinOpKind::Shl, BinOpKind::Shr
+                    hir::BinOpKind::Add,
+                    hir::BinOpKind::Sub,
+                    hir::BinOpKind::Mul,
+                    hir::BinOpKind::Div,
+                    hir::BinOpKind::BitAnd,
+                    hir::BinOpKind::BitOr,
+                    hir::BinOpKind::BitXor,
+                    hir::BinOpKind::Rem,
+                    hir::BinOpKind::Shl,
+                    hir::BinOpKind::Shr,
                 ],
             ) {
                 span_lint(
@@ -167,7 +186,7 @@ fn check_binop<'a>(
     if_chain! {
         if parent_impl != ast::CRATE_NODE_ID;
         if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
-        if let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
+        if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
         if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.def.def_id());
         if binop != expected_ops[idx];
         then{

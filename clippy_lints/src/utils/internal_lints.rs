@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
+use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use crate::utils::{match_qpath, paths, span_lint};
 use syntax::symbol::LocalInternedString;
@@ -117,7 +118,7 @@ impl LintPass for LintWithoutLintPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemStatic(ref ty, MutImmutable, body_id) = item.node {
+        if let hir::ItemKind::Static(ref ty, MutImmutable, body_id) = item.node {
             if is_lint_ref_type(ty) {
                 self.declared_lints.insert(item.name, item.span);
             } else if is_lint_array_type(ty) && item.name == "ARRAY" {
