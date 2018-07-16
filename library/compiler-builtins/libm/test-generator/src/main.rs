@@ -4,13 +4,15 @@
 // NOTE usually the only thing you need to do to test a new math function is to add it to one of the
 // macro invocations found in the bottom of this file.
 
+#[macro_use]
+extern crate itertools;
 extern crate rand;
 
 use std::error::Error;
 use std::fmt::Write as _0;
 use std::fs::{self, File};
 use std::io::Write as _1;
-use std::{i16, u16, u32, u64, u8};
+use std::{f32, f64, i16, u16, u32, u64, u8};
 
 use rand::{Rng, SeedableRng, XorShiftRng};
 
@@ -34,6 +36,30 @@ fn f64(rng: &mut XorShiftRng) -> f64 {
     f64::from_bits(sign + exponent + mantissa)
 }
 
+const EDGE_CASES32: &[f32] = &[
+    -0.,
+    0.,
+    f32::EPSILON,
+    f32::INFINITY,
+    f32::MAX,
+    f32::MIN,
+    f32::MIN_POSITIVE,
+    f32::NAN,
+    f32::NEG_INFINITY,
+];
+
+const EDGE_CASES64: &[f64] = &[
+    -0.,
+    0.,
+    f64::EPSILON,
+    f64::INFINITY,
+    f64::MAX,
+    f64::MIN,
+    f64::MIN_POSITIVE,
+    f64::NAN,
+    f64::NEG_INFINITY,
+];
+
 // fn(f32) -> f32
 macro_rules! f32_f32 {
     ($($intr:ident,)*) => {
@@ -45,8 +71,9 @@ macro_rules! f32_f32 {
 
             $(
                 let mut cases = String::new();
-                for _ in 0..NTESTS {
-                    let inp = f32(rng);
+
+                // random inputs
+                for inp in EDGE_CASES32.iter().cloned().chain((0..NTESTS).map(|_| f32(rng))) {
                     let out = unsafe { $intr(inp) };
 
                     let inp = inp.to_bits();
@@ -112,11 +139,17 @@ macro_rules! f32f32_f32 {
                 $(fn $intr(_: f32, _: f32) -> f32;)*
             }
 
+            let mut rng2 = rng.clone();
+            let mut rng3 = rng.clone();
             $(
                 let mut cases = String::new();
-                for _ in 0..NTESTS {
-                    let i1 = f32(rng);
-                    let i2 = f32(rng);
+                for (i1, i2) in iproduct!(
+                    EDGE_CASES32.iter().cloned(),
+                    EDGE_CASES32.iter().cloned()
+                ).chain(EDGE_CASES32.iter().map(|i1| (*i1, f32(rng))))
+                    .chain(EDGE_CASES32.iter().map(|i2| (f32(&mut rng2), *i2)))
+                    .chain((0..NTESTS).map(|_| (f32(&mut rng3), f32(&mut rng3))))
+                {
                     let out = unsafe { $intr(i1, i2) };
 
                     let i1 = i1.to_bits();
@@ -186,12 +219,16 @@ macro_rules! f32f32f32_f32 {
                 $(fn $intr(_: f32, _: f32, _: f32) -> f32;)*
             }
 
+            let mut rng2 = rng.clone();
             $(
                 let mut cases = String::new();
-                for _ in 0..NTESTS {
-                    let i1 = f32(rng);
-                    let i2 = f32(rng);
-                    let i3 = f32(rng);
+                for (i1, i2, i3) in iproduct!(
+                    EDGE_CASES32.iter().cloned(),
+                    EDGE_CASES32.iter().cloned(),
+                    EDGE_CASES32.iter().cloned()
+                ).chain(EDGE_CASES32.iter().map(|i1| (*i1, f32(rng), f32(rng))))
+                    .chain((0..NTESTS).map(|_| (f32(&mut rng2), f32(&mut rng2), f32(&mut rng2))))
+                {
                     let out = unsafe { $intr(i1, i2, i3) };
 
                     let i1 = i1.to_bits();
@@ -266,10 +303,10 @@ macro_rules! f32i32_f32 {
                 $(fn $intr(_: f32, _: i32) -> f32;)*
             }
 
+            let mut rng2 = rng.clone();
             $(
                 let mut cases = String::new();
-                for _ in 0..NTESTS {
-                    let i1 = f32(rng);
+                for i1 in EDGE_CASES32.iter().cloned().chain((0..NTESTS).map(|_| f32(&mut rng2))) {
                     let i2 = rng.gen_range(i16::MIN, i16::MAX);
                     let out = unsafe { $intr(i1, i2 as i32) };
 
@@ -342,8 +379,7 @@ macro_rules! f64_f64 {
 
             $(
                 let mut cases = String::new();
-                for _ in 0..NTESTS {
-                    let inp = f64(rng);
+                for inp in EDGE_CASES64.iter().cloned().chain((0..NTESTS).map(|_| f64(rng))) {
                     let out = unsafe { $intr(inp) };
 
                     let inp = inp.to_bits();
@@ -412,11 +448,17 @@ macro_rules! f64f64_f64 {
                 $(fn $intr(_: f64, _: f64) -> f64;)*
             }
 
+            let mut rng2 = rng.clone();
+            let mut rng3 = rng.clone();
             $(
                 let mut cases = String::new();
-                for _ in 0..NTESTS {
-                    let i1 = f64(rng);
-                    let i2 = f64(rng);
+                for (i1, i2) in iproduct!(
+                    EDGE_CASES64.iter().cloned(),
+                    EDGE_CASES64.iter().cloned()
+                ).chain(EDGE_CASES64.iter().map(|i1| (*i1, f64(rng))))
+                    .chain(EDGE_CASES64.iter().map(|i2| (f64(&mut rng2), *i2)))
+                    .chain((0..NTESTS).map(|_| (f64(&mut rng3), f64(&mut rng3))))
+                {
                     let out = unsafe { $intr(i1, i2) };
 
                     let i1 = i1.to_bits();
@@ -485,12 +527,16 @@ macro_rules! f64f64f64_f64 {
                 $(fn $intr(_: f64, _: f64, _: f64) -> f64;)*
             }
 
+            let mut rng2 = rng.clone();
             $(
                 let mut cases = String::new();
-                for _ in 0..NTESTS {
-                    let i1 = f64(rng);
-                    let i2 = f64(rng);
-                    let i3 = f64(rng);
+                for (i1, i2, i3) in iproduct!(
+                    EDGE_CASES64.iter().cloned(),
+                    EDGE_CASES64.iter().cloned(),
+                    EDGE_CASES64.iter().cloned()
+                ).chain(EDGE_CASES64.iter().map(|i1| (*i1, f64(rng), f64(rng))))
+                    .chain((0..NTESTS).map(|_| (f64(&mut rng2), f64(&mut rng2), f64(&mut rng2))))
+                {
                     let out = unsafe { $intr(i1, i2, i3) };
 
                     let i1 = i1.to_bits();
@@ -565,10 +611,10 @@ macro_rules! f64i32_f64 {
                 $(fn $intr(_: f64, _: i32) -> f64;)*
             }
 
+            let mut rng2 = rng.clone();
             $(
                 let mut cases = String::new();
-                for _ in 0..NTESTS {
-                    let i1 = f64(rng);
+                for i1 in EDGE_CASES64.iter().cloned().chain((0..NTESTS).map(|_| f64(&mut rng2))) {
                     let i2 = rng.gen_range(i16::MIN, i16::MAX);
                     let out = unsafe { $intr(i1, i2 as i32) };
 
@@ -687,7 +733,7 @@ f32f32_f32! {
 
 // With signature `fn(f32, f32, f32) -> f32`
 f32f32f32_f32! {
-    // fmaf,
+    fmaf,
 }
 
 // With signature `fn(f32, i32) -> f32`
@@ -699,11 +745,11 @@ f32i32_f32! {
 f64_f64! {
     acos,
     asin,
-    // atan,
+    atan,
     cbrt,
     ceil,
     cos,
-    // cosh,
+    cosh,
     exp,
     exp2,
     expm1,
@@ -717,7 +763,7 @@ f64_f64! {
     sinh,
     sqrt,
     tan,
-    // tanh,
+    tanh,
     trunc,
     fabs,
 }

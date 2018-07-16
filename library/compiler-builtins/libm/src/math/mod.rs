@@ -10,7 +10,6 @@ macro_rules! force_eval {
 mod acos;
 mod acosf;
 mod asin;
-mod asinf;
 mod atan2;
 mod atan2f;
 mod atanf;
@@ -20,6 +19,7 @@ mod ceil;
 mod ceilf;
 mod cos;
 mod cosf;
+mod cosh;
 mod coshf;
 mod exp;
 mod exp2;
@@ -34,6 +34,7 @@ mod fdimf;
 mod floor;
 mod floorf;
 mod fma;
+mod fmaf;
 mod fmod;
 mod fmodf;
 mod hypot;
@@ -59,6 +60,7 @@ mod sqrt;
 mod sqrtf;
 mod tan;
 mod tanf;
+mod tanh;
 mod tanhf;
 mod trunc;
 mod truncf;
@@ -69,6 +71,7 @@ pub use self::acosf::acosf;
 pub use self::asin::asin;
 pub use self::asinf::asinf;
 pub use self::atan2::atan2;
+pub use self::atan::atan;
 pub use self::atan2f::atan2f;
 pub use self::atanf::atanf;
 pub use self::cbrt::cbrt;
@@ -77,6 +80,7 @@ pub use self::ceil::ceil;
 pub use self::ceilf::ceilf;
 pub use self::cos::cos;
 pub use self::cosf::cosf;
+pub use self::cosh::cosh;
 pub use self::coshf::coshf;
 pub use self::exp::exp;
 pub use self::exp2::exp2;
@@ -91,6 +95,7 @@ pub use self::fdimf::fdimf;
 pub use self::floor::floor;
 pub use self::floorf::floorf;
 pub use self::fma::fma;
+pub use self::fmaf::fmaf;
 pub use self::fmod::fmod;
 pub use self::fmodf::fmodf;
 pub use self::hypot::hypot;
@@ -116,14 +121,17 @@ pub use self::sqrt::sqrt;
 pub use self::sqrtf::sqrtf;
 pub use self::tan::tan;
 pub use self::tanf::tanf;
+pub use self::tanh::tanh;
 pub use self::tanhf::tanhf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
 // Private modules
 mod expo2;
+mod fenv;
 mod k_cos;
 mod k_cosf;
+mod k_expo2;
 mod k_expo2f;
 mod k_sin;
 mod k_sinf;
@@ -137,6 +145,7 @@ mod rem_pio2f;
 use self::expo2::expo2;
 use self::k_cos::k_cos;
 use self::k_cosf::k_cosf;
+use self::k_expo2::k_expo2;
 use self::k_expo2f::k_expo2f;
 use self::k_sin::k_sin;
 use self::k_sinf::k_sinf;
@@ -147,17 +156,18 @@ use self::rem_pio2_large::rem_pio2_large;
 use self::rem_pio2f::rem_pio2f;
 
 #[inline]
-pub fn get_high_word(x: f64) -> u32 {
+fn get_high_word(x: f64) -> u32 {
     (x.to_bits() >> 32) as u32
 }
 
 #[inline]
-pub fn get_low_word(x: f64) -> u32 {
+fn get_low_word(x: f64) -> u32 {
     x.to_bits() as u32
 }
 
+#[allow(dead_code)]
 #[inline]
-pub fn with_set_high_word(f: f64, hi: u32) -> f64 {
+fn with_set_high_word(f: f64, hi: u32) -> f64 {
     let mut tmp = f.to_bits();
     tmp &= 0x00000000_ffffffff;
     tmp |= (hi as u64) << 32;
@@ -165,7 +175,7 @@ pub fn with_set_high_word(f: f64, hi: u32) -> f64 {
 }
 
 #[inline]
-pub fn with_set_low_word(f: f64, lo: u32) -> f64 {
+fn with_set_low_word(f: f64, lo: u32) -> f64 {
     let mut tmp = f.to_bits();
     tmp &= 0xffffffff_00000000;
     tmp |= lo as u64;

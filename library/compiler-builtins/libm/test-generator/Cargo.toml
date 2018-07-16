@@ -6,3 +6,4 @@ publish = false
 
 [dependencies]
 rand = "0.5.3"
+itertools = "0.7.8"

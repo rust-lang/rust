@@ -1,3 +1,19 @@
+/* origin: FreeBSD /usr/src/lib/msun/src/e_rem_pio2f.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Debugged and optimized by Bruce D. Evans.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
 use super::rem_pio2_large;
 
 use core::f64;
@@ -16,7 +32,7 @@ const PIO2_1T: f64 = 1.58932547735281966916e-08; /* 0x3E5110b4, 0x611A6263 */
 /// use double precision for everything except passing x
 /// use __rem_pio2_large() for large x
 #[inline]
-pub(crate) fn rem_pio2f(x: f32) -> (i32, f64) {
+pub fn rem_pio2f(x: f32) -> (i32, f64) {
     let x64 = x as f64;
 
     let mut tx: [f64; 1] = [0.];

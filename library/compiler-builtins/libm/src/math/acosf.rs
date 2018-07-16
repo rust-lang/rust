@@ -1,3 +1,18 @@
+/* origin: FreeBSD /usr/src/lib/msun/src/e_acosf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
 use super::sqrtf::sqrtf;
 
 const PIO2_HI: f32 = 1.5707962513e+00; /* 0x3fc90fda */
@@ -7,6 +22,7 @@ const P_S1: f32 = -4.2743422091e-02;
 const P_S2: f32 = -8.6563630030e-03;
 const Q_S1: f32 = -7.0662963390e-01;
 
+#[inline]
 fn r(z: f32) -> f32 {
     let p = z * (P_S0 + z * (P_S1 + z * P_S2));
     let q = 1. + z * Q_S1;

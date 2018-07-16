@@ -1,3 +1,14 @@
+/* origin: FreeBSD /usr/src/lib/msun/src/k_tan.c */
+/*
+ * ====================================================
+ * Copyright 2004 Sun Microsystems, Inc.  All Rights Reserved.
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
 /* |tan(x)/x - t(x)| < 2**-25.5 (~[-2e-08, 2e-08]). */
 const T: [f64; 6] = [
     0.333331395030791399758,   /* 0x15554d3418c99f.0p-54 */
@@ -9,7 +20,7 @@ const T: [f64; 6] = [
 ];
 
 #[inline]
-pub(crate) fn k_tanf(x: f64, odd: bool) -> f32 {
+pub fn k_tanf(x: f64, odd: bool) -> f32 {
     let z = x * x;
     /*
      * Split up the polynomial into small independent terms to give

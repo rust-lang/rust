@@ -1,3 +1,15 @@
+/* origin: FreeBSD /usr/src/lib/msun/src/s_expm1.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
 use core::f64;
 
 const O_THRESHOLD: f64 = 7.09782712893383973096e+02; /* 0x40862E42, 0xFEFA39EF */
@@ -11,7 +23,7 @@ const Q3: f64 = -7.93650757867487942473e-05; /* BF14CE19 9EAADBB7 */
 const Q4: f64 = 4.00821782732936239552e-06; /* 3ED0CFCA 86E65239 */
 const Q5: f64 = -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
-#[allow(warnings)]
+#[inline]
 pub fn expm1(mut x: f64) -> f64 {
     let hi: f64;
     let lo: f64;
