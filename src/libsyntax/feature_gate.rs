@@ -420,9 +420,6 @@ declare_features! (
     // The #[wasm_custom_section] attribute
     (active, wasm_custom_section, "1.26.0", Some(51088), None),
 
-    // The #![wasm_import_module] attribute
-    (active, wasm_import_module, "1.26.0", Some(52090), None),
-
     // Allows keywords to be escaped for use as identifiers
     (active, raw_identifiers, "1.26.0", Some(48589), None),
 
@@ -626,6 +623,8 @@ declare_features! (
     (accepted, global_allocator, "1.28.0", Some(27389), None),
     // Allows `#[repr(transparent)]` attribute on newtype structs
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
+    // The #![wasm_import_module] attribute
+    (accepted, wasm_import_module, "1.29.0", Some(52090), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -980,10 +979,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
         "the `#[no_debug]` attribute was an experimental feature that has been \
          deprecated due to lack of demand",
         cfg_fn!(no_debug))),
-    ("wasm_import_module", Normal, Gated(Stability::Unstable,
-                                 "wasm_import_module",
-                                 "experimental attribute",
-                                 cfg_fn!(wasm_import_module))),
+    ("wasm_import_module", Normal, Ungated),
     ("omit_gdb_pretty_printer_section", Whitelisted, Gated(Stability::Unstable,
                                                        "omit_gdb_pretty_printer_section",
                                                        "the `#[omit_gdb_pretty_printer_section]` \

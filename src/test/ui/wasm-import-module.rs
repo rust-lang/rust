@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(wasm_import_module)]
+
 
 #[wasm_import_module] //~ ERROR: must be of the form
 extern {}
