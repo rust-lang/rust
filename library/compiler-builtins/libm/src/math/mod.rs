@@ -10,6 +10,7 @@ macro_rules! force_eval {
 mod acos;
 mod acosf;
 mod asin;
+mod asinf;
 mod atan2;
 mod atan2f;
 mod atanf;
