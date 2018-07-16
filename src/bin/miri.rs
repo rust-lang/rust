@@ -112,7 +112,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bo
         );
         impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'hir hir::Item) {
-                if let hir::Item_::ItemFn(.., body_id) = i.node {
+                if let hir::ItemKind::Fn(.., body_id) = i.node {
                     if i.attrs.iter().any(|attr| {
                         attr.name() == "test"
                     })
