@@ -62,28 +62,12 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
         config.compile_lib_path = rustc_lib_path();
     }
     flags.push(format!("--sysroot {}", sysroot.display()));
+    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     config.src_base = PathBuf::from(path.to_string());
     flags.push("-Zmir-emit-validate=1".to_owned());
     config.target_rustcflags = Some(flags.join(" "));
     config.target = target.to_owned();
     config.host = host.to_owned();
-    compiletest::run_tests(&config);
-}
-
-fn rustc_pass(sysroot: &Path, path: &str) {
-    eprintln!("{}", format!("## Running run-pass tests in {} against rustc", path).green().bold());
-    let mut config = compiletest::Config::default().tempdir();
-    config.mode = "run-pass".parse().expect("Invalid mode");
-    config.src_base = PathBuf::from(path);
-    if let Some(rustc_path) = rustc_test_suite() {
-        config.rustc_path = rustc_path;
-        config.run_lib_path = rustc_lib_path();
-        config.compile_lib_path = rustc_lib_path();
-        config.target_rustcflags = Some(format!("-Dwarnings --sysroot {}", sysroot.display()));
-    } else {
-        config.target_rustcflags = Some("-Dwarnings".to_owned());
-    }
-    config.host_rustcflags = Some("-Dwarnings".to_string());
     compiletest::run_tests(&config);
 }
 
@@ -116,6 +100,7 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     }
     let mut flags = Vec::new();
     flags.push(format!("--sysroot {}", sysroot.display()));
+    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     if have_fullmir() {
         flags.push("-Zmiri-start-fn".to_owned());
     }
@@ -190,12 +175,6 @@ fn run_pass_miri(opt: bool) {
     miri_pass(&sysroot, "tests/run-pass-fullmir", &host, &host, true, opt);
 }
 
-fn run_pass_rustc() {
-    let sysroot = get_sysroot();
-    rustc_pass(&sysroot, "tests/run-pass");
-    rustc_pass(&sysroot, "tests/run-pass-fullmir");
-}
-
 fn compile_fail_miri() {
     let sysroot = get_sysroot();
     let host = get_host();
@@ -211,10 +190,7 @@ fn test() {
     // introduces.  We still get parallelism within our tests because `compiletest`
     // uses `libtest` which runs jobs in parallel.
 
-    run_pass_rustc();
-
     run_pass_miri(false);
-
     // FIXME: Disabled for now, as the optimizer is pretty broken and crashes...
     // See https://github.com/rust-lang/rust/issues/50411
     //run_pass_miri(true);

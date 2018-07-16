@@ -13,7 +13,9 @@ impl Drop for DroppableStruct {
 trait MyTrait { fn dummy(&self) { } }
 impl MyTrait for Box<DroppableStruct> {}
 
+#[allow(dead_code)]
 struct Whatever { w: Box<MyTrait+'static> }
+
 impl  Whatever {
     fn new(w: Box<MyTrait+'static>) -> Whatever {
         Whatever { w: w }
