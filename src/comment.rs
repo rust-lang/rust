@@ -438,7 +438,7 @@ fn rewrite_comment_inner(
         }
 
         if config.wrap_comments() && line.len() > fmt.shape.width && !has_url(line) {
-            match rewrite_string(line, &fmt, Some(max_chars)) {
+            match rewrite_string(line, &fmt) {
                 Some(ref s) => {
                     is_prev_line_multi_line = s.contains('\n');
                     result.push_str(s);
@@ -449,7 +449,7 @@ fn rewrite_comment_inner(
                     result.pop();
                     result.push_str(&comment_line_separator);
                     fmt.shape = Shape::legacy(max_chars, fmt_indent);
-                    match rewrite_string(line, &fmt, Some(max_chars)) {
+                    match rewrite_string(line, &fmt) {
                         Some(ref s) => {
                             is_prev_line_multi_line = s.contains('\n');
                             result.push_str(s);
