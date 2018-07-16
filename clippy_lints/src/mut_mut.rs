@@ -62,8 +62,8 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             // Let's ignore the generated code.
             intravisit::walk_expr(self, arg);
             intravisit::walk_expr(self, body);
-        } else if let hir::ExprAddrOf(hir::MutMutable, ref e) = expr.node {
-            if let hir::ExprAddrOf(hir::MutMutable, _) = e.node {
+        } else if let hir::ExprKind::AddrOf(hir::MutMutable, ref e) = expr.node {
+            if let hir::ExprKind::AddrOf(hir::MutMutable, _) = e.node {
                 span_lint(
                     self.cx,
                     MUT_MUT,
@@ -87,7 +87,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyRptr(
+        if let hir::TyKind::Rptr(
             _,
             hir::MutTy {
                 ty: ref pty,
@@ -95,7 +95,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             },
         ) = ty.node
         {
-            if let hir::TyRptr(
+            if let hir::TyKind::Rptr(
                 _,
                 hir::MutTy {
                     mutbl: hir::MutMutable,

@@ -38,20 +38,20 @@ impl LintPass for ByteCount {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_chain! {
-            if let ExprMethodCall(ref count, _, ref count_args) = expr.node;
+            if let ExprKind::MethodCall(ref count, _, ref count_args) = expr.node;
             if count.ident.name == "count";
             if count_args.len() == 1;
-            if let ExprMethodCall(ref filter, _, ref filter_args) = count_args[0].node;
+            if let ExprKind::MethodCall(ref filter, _, ref filter_args) = count_args[0].node;
             if filter.ident.name == "filter";
             if filter_args.len() == 2;
-            if let ExprClosure(_, _, body_id, _, _) = filter_args[1].node;
+            if let ExprKind::Closure(_, _, body_id, _, _) = filter_args[1].node;
             then {
                 let body = cx.tcx.hir.body(body_id);
                 if_chain! {
                     if body.arguments.len() == 1;
                     if let Some(argname) = get_pat_name(&body.arguments[0].pat);
-                    if let ExprBinary(ref op, ref l, ref r) = body.value.node;
-                    if op.node == BiEq;
+                    if let ExprKind::Binary(ref op, ref l, ref r) = body.value.node;
+                    if op.node == BinOpKind::Eq;
                     if match_type(cx,
                                walk_ptrs_ty(cx.tables.expr_ty(&filter_args[0])),
                                &paths::SLICE_ITER);
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                         if ty::TyUint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).sty {
                             return;
                         }
-                        let haystack = if let ExprMethodCall(ref path, _, ref args) =
+                        let haystack = if let ExprKind::MethodCall(ref path, _, ref args) =
                                 filter_args[0].node {
                             let p = path.ident.name;
                             if (p == "iter" || p == "iter_mut") && args.len() == 1 {
@@ -98,13 +98,13 @@ fn check_arg(name: Name, arg: Name, needle: &Expr) -> bool {
 
 fn get_path_name(expr: &Expr) -> Option<Name> {
     match expr.node {
-        ExprBox(ref e) | ExprAddrOf(_, ref e) | ExprUnary(UnOp::UnDeref, ref e) => get_path_name(e),
-        ExprBlock(ref b, _) => if b.stmts.is_empty() {
+        ExprKind::Box(ref e) | ExprKind::AddrOf(_, ref e) | ExprKind::Unary(UnOp::UnDeref, ref e) => get_path_name(e),
+        ExprKind::Block(ref b, _) => if b.stmts.is_empty() {
             b.expr.as_ref().and_then(|p| get_path_name(p))
         } else {
             None
         },
-        ExprPath(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
+        ExprKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
         _ => None,
     }
 }

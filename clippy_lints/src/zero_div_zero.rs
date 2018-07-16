@@ -32,8 +32,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // check for instances of 0.0/0.0
         if_chain! {
-            if let ExprBinary(ref op, ref left, ref right) = expr.node;
-            if let BinOp_::BiDiv = op.node;
+            if let ExprKind::Binary(ref op, ref left, ref right) = expr.node;
+            if let BinOpKind::Div = op.node;
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.

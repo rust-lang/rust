@@ -37,7 +37,7 @@ impl LintPass for EtaPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
-            ExprCall(_, ref args) | ExprMethodCall(_, _, ref args) => for arg in args {
+            ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => for arg in args {
                 check_closure(cx, arg)
             },
             _ => (),
@@ -46,10 +46,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
 }
 
 fn check_closure(cx: &LateContext, expr: &Expr) {
-    if let ExprClosure(_, ref decl, eid, _, _) = expr.node {
+    if let ExprKind::Closure(_, ref decl, eid, _, _) = expr.node {
         let body = cx.tcx.hir.body(eid);
         let ex = &body.value;
-        if let ExprCall(ref caller, ref args) = ex.node {
+        if let ExprKind::Call(ref caller, ref args) = ex.node {
             if args.len() != decl.inputs.len() {
                 // Not the same number of arguments, there
                 // is no way the closure is the same as the function
@@ -73,7 +73,7 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
             for (a1, a2) in iter_input_pats(decl, body).zip(args) {
                 if let PatKind::Binding(_, _, ident, _) = a1.pat.node {
                     // XXXManishearth Should I be checking the binding mode here?
-                    if let ExprPath(QPath::Resolved(None, ref p)) = a2.node {
+                    if let ExprKind::Path(QPath::Resolved(None, ref p)) = a2.node {
                         if p.segments.len() != 1 {
                             // If it's a proper path, it can't be a local variable
                             return;

@@ -33,23 +33,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let eq = |l, r| SpanlessEq::new(cx).eq_path_segment(l, r);
         if_chain! {
-            if let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node;
-            if let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = first.node;
-            if let Expr_::ExprPath(QPath::Resolved(_, ref path1)) = ident1.node;
-            if let Expr_::ExprPath(QPath::Resolved(_, ref path2)) = ident2.node;
-            if let Expr_::ExprPath(QPath::Resolved(_, ref path3)) = second.node;
+            if let ExprKind::Binary(ref op, ref first, ref second) = expr.node;
+            if let ExprKind::Binary(ref op2, ref ident1, ref ident2) = first.node;
+            if let ExprKind::Path(QPath::Resolved(_, ref path1)) = ident1.node;
+            if let ExprKind::Path(QPath::Resolved(_, ref path2)) = ident2.node;
+            if let ExprKind::Path(QPath::Resolved(_, ref path3)) = second.node;
             if eq(&path1.segments[0], &path3.segments[0]) || eq(&path2.segments[0], &path3.segments[0]);
             if cx.tables.expr_ty(ident1).is_integral();
             if cx.tables.expr_ty(ident2).is_integral();
             then {
-                if let BinOp_::BiLt = op.node {
-                    if let BinOp_::BiAdd = op2.node {
+                if let BinOpKind::Lt = op.node {
+                    if let BinOpKind::Add = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
                             "You are trying to use classic C overflow conditions that will fail in Rust.");
                     }
                 }
-                if let BinOp_::BiGt = op.node {
-                    if let BinOp_::BiSub = op2.node {
+                if let BinOpKind::Gt = op.node {
+                    if let BinOpKind::Sub = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
                             "You are trying to use classic C underflow conditions that will fail in Rust.");
                     }
@@ -58,23 +58,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
         }
 
         if_chain! {
-            if let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node;
-            if let Expr_::ExprBinary(ref op2, ref ident1, ref ident2) = second.node;
-            if let Expr_::ExprPath(QPath::Resolved(_, ref path1)) = ident1.node;
-            if let Expr_::ExprPath(QPath::Resolved(_, ref path2)) = ident2.node;
-            if let Expr_::ExprPath(QPath::Resolved(_, ref path3)) = first.node;
+            if let ExprKind::Binary(ref op, ref first, ref second) = expr.node;
+            if let ExprKind::Binary(ref op2, ref ident1, ref ident2) = second.node;
+            if let ExprKind::Path(QPath::Resolved(_, ref path1)) = ident1.node;
+            if let ExprKind::Path(QPath::Resolved(_, ref path2)) = ident2.node;
+            if let ExprKind::Path(QPath::Resolved(_, ref path3)) = first.node;
             if eq(&path1.segments[0], &path3.segments[0]) || eq(&path2.segments[0], &path3.segments[0]);
             if cx.tables.expr_ty(ident1).is_integral();
             if cx.tables.expr_ty(ident2).is_integral();
             then {
-                if let BinOp_::BiGt = op.node {
-                    if let BinOp_::BiAdd = op2.node {
+                if let BinOpKind::Gt = op.node {
+                    if let BinOpKind::Add = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
                             "You are trying to use classic C overflow conditions that will fail in Rust.");
                     }
                 }
-                if let BinOp_::BiLt = op.node {
-                    if let BinOp_::BiSub = op2.node {
+                if let BinOpKind::Lt = op.node {
+                    if let BinOpKind::Sub = op2.node {
                         span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span,
                             "You are trying to use classic C underflow conditions that will fail in Rust.");
                     }

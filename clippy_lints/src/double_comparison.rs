@@ -41,13 +41,13 @@ impl<'a, 'tcx> DoubleComparisonPass {
     fn check_binop(
         &self,
         cx: &LateContext<'a, 'tcx>,
-        op: BinOp_,
+        op: BinOpKind,
         lhs: &'tcx Expr,
         rhs: &'tcx Expr,
         span: Span,
     ) {
         let (lkind, llhs, lrhs, rkind, rlhs, rrhs) = match (lhs.node.clone(), rhs.node.clone()) {
-            (ExprBinary(lb, llhs, lrhs), ExprBinary(rb, rlhs, rrhs)) => {
+            (ExprKind::Binary(lb, llhs, lrhs), ExprKind::Binary(rb, rlhs, rrhs)) => {
                 (lb.node, llhs, lrhs, rb.node, rlhs, rrhs)
             }
             _ => return,
@@ -67,10 +67,10 @@ impl<'a, 'tcx> DoubleComparisonPass {
             }}
         }
         match (op, lkind, rkind) {
-            (BiOr, BiEq, BiLt) | (BiOr, BiLt, BiEq) => lint_double_comparison!(<=),
-            (BiOr, BiEq, BiGt) | (BiOr, BiGt, BiEq) => lint_double_comparison!(>=),
-            (BiOr, BiLt, BiGt) | (BiOr, BiGt, BiLt) => lint_double_comparison!(!=),
-            (BiAnd, BiLe, BiGe) | (BiAnd, BiGe, BiLe) => lint_double_comparison!(==),
+            (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Lt) | (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Eq) => lint_double_comparison!(<=),
+            (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Gt) | (BinOpKind::Or, BinOpKind::Gt, BinOpKind::Eq) => lint_double_comparison!(>=),
+            (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Gt) | (BinOpKind::Or, BinOpKind::Gt, BinOpKind::Lt) => lint_double_comparison!(!=),
+            (BinOpKind::And, BinOpKind::Le, BinOpKind::Ge) | (BinOpKind::And, BinOpKind::Ge, BinOpKind::Le) => lint_double_comparison!(==),
             _ => (),
         };
     }
@@ -78,7 +78,7 @@ impl<'a, 'tcx> DoubleComparisonPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DoubleComparisonPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprBinary(ref kind, ref lhs, ref rhs) = expr.node {
+        if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = expr.node {
             self.check_binop(cx, kind.node, lhs, rhs, expr.span);
         }
     }

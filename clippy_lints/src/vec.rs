@@ -37,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if_chain! {
             if let ty::TyRef(_, ty, _) = cx.tables.expr_ty_adjusted(expr).sty;
             if let ty::TySlice(..) = ty.sty;
-            if let ExprAddrOf(_, ref addressee) = expr.node;
+            if let ExprKind::AddrOf(_, ref addressee) = expr.node;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
             then {
                 check_vec_macro(cx, &vec_args, expr.span);

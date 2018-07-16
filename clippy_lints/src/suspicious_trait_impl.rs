@@ -59,10 +59,15 @@ impl LintPass for SuspiciousImpl {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        use rustc::hir::BinOp_::*;
-        if let hir::ExprBinary(binop, _, _) = expr.node {
+        if let hir::ExprKind::Binary(binop, _, _) = expr.node {
             match binop.node {
-                BiEq | BiLt | BiLe | BiNe | BiGe | BiGt => return,
+                | hir::BinOpKind::Eq
+                | hir::BinOpKind::Lt
+                | hir::BinOpKind::Le
+                | hir::BinOpKind::Ne
+                | hir::BinOpKind::Ge
+                | hir::BinOpKind::Gt
+                => return,
                 _ => {},
             }
             // Check if the binary expression is part of another bi/unary expression
@@ -71,9 +76,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             while parent_expr != ast::CRATE_NODE_ID {
                 if let hir::map::Node::NodeExpr(e) = cx.tcx.hir.get(parent_expr) {
                     match e.node {
-                        hir::ExprBinary(..)
-                        | hir::ExprUnary(hir::UnOp::UnNot, _)
-                        | hir::ExprUnary(hir::UnOp::UnNeg, _) => return,
+                        hir::ExprKind::Binary(..)
+                        | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
+                        | hir::ExprKind::Unary(hir::UnOp::UnNeg, _) => return,
                         _ => {},
                     }
                 }
@@ -94,7 +99,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                 expr,
                 binop.node,
                 &["Add", "Sub", "Mul", "Div"],
-                &[BiAdd, BiSub, BiMul, BiDiv],
+                &[
+                    hir::BinOpKind::Add,
+                    hir::BinOpKind::Sub,
+                    hir::BinOpKind::Mul,
+                    hir::BinOpKind::Div,
+                ],
             ) {
                 span_lint(
                     cx,
@@ -124,7 +134,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                     "ShrAssign",
                 ],
                 &[
-                    BiAdd, BiSub, BiMul, BiDiv, BiBitAnd, BiBitOr, BiBitXor, BiRem, BiShl, BiShr
+                    hir::BinOpKind::Add,
+                    hir::BinOpKind::Sub,
+                    hir::BinOpKind::Mul,
+                    hir::BinOpKind::Div,
+                    hir::BinOpKind::BitAnd,
+                    hir::BinOpKind::BitOr,
+                    hir::BinOpKind::BitXor,
+                    hir::BinOpKind::Rem,
+                    hir::BinOpKind::Shl,
+                    hir::BinOpKind::Shr,
                 ],
             ) {
                 span_lint(
@@ -144,9 +163,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
 fn check_binop<'a>(
     cx: &LateContext,
     expr: &hir::Expr,
-    binop: hir::BinOp_,
+    binop: hir::BinOpKind,
     traits: &[&'a str],
-    expected_ops: &[hir::BinOp_],
+    expected_ops: &[hir::BinOpKind],
 ) -> Option<&'a str> {
     let mut trait_ids = vec![];
     let [krate, module] = crate::utils::paths::OPS_MODULE;
@@ -167,7 +186,7 @@ fn check_binop<'a>(
     if_chain! {
         if parent_impl != ast::CRATE_NODE_ID;
         if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
-        if let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
+        if let hir::ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
         if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.def.def_id());
         if binop != expected_ops[idx];
         then{
@@ -185,9 +204,9 @@ struct BinaryExprVisitor {
 impl<'a, 'tcx: 'a> Visitor<'tcx> for BinaryExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprBinary(..)
-            | hir::ExprUnary(hir::UnOp::UnNot, _)
-            | hir::ExprUnary(hir::UnOp::UnNeg, _) => {
+            hir::ExprKind::Binary(..)
+            | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
+            | hir::ExprKind::Unary(hir::UnOp::UnNeg, _) => {
                 self.in_binary_expr = true
             },
             _ => {},

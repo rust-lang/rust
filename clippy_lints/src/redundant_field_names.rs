@@ -43,7 +43,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
             return;
         }
 
-        if let ExprStruct(_, ref fields, _) = expr.node {
+        if let ExprKind::Struct(_, ref fields, _) = expr.node {
             for field in fields {
                 let name = field.ident.name;
 

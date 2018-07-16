@@ -82,12 +82,12 @@ impl LintPass for StringAdd {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) = e.node {
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref left, _) = e.node {
             if is_string(cx, left) {
                 if !is_allowed(cx, STRING_ADD_ASSIGN, e.id) {
                     let parent = get_parent_expr(cx, e);
                     if let Some(p) = parent {
-                        if let ExprAssign(ref target, _) = p.node {
+                        if let ExprKind::Assign(ref target, _) = p.node {
                             // avoid duplicate matches
                             if SpanlessEq::new(cx).eq_expr(target, left) {
                                 return;
@@ -102,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
                     "you added something to a string. Consider using `String::push_str()` instead",
                 );
             }
-        } else if let ExprAssign(ref target, ref src) = e.node {
+        } else if let ExprKind::Assign(ref target, ref src) = e.node {
             if is_string(cx, target) && is_add(cx, src, target) {
                 span_lint(
                     cx,
@@ -122,8 +122,8 @@ fn is_string(cx: &LateContext, e: &Expr) -> bool {
 
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
     match src.node {
-        ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
-        ExprBlock(ref block, _) => {
+        ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
+        ExprKind::Block(ref block, _) => {
             block.stmts.is_empty()
                 && block
                     .expr
@@ -148,9 +148,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
         use syntax::ast::LitKind;
         use crate::utils::{in_macro, snippet};
 
-        if let ExprMethodCall(ref path, _, ref args) = e.node {
+        if let ExprKind::MethodCall(ref path, _, ref args) = e.node {
             if path.ident.name == "as_bytes" {
-                if let ExprLit(ref lit) = args[0].node {
+                if let ExprKind::Lit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, _) = lit.node {
                         if lit_content.as_str().chars().all(|c| c.is_ascii()) && !in_macro(args[0].span) {
                             span_lint_and_sugg(

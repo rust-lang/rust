@@ -94,7 +94,7 @@ impl LintPass for IndexingSlicing {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprIndex(ref array, ref index) = &expr.node {
+        if let ExprKind::Index(ref array, ref index) = &expr.node {
             let ty = cx.tables.expr_ty(array);
             if let Some(range) = higher::range(cx, index) {
                 // Ranged indexes, i.e. &x[n..m], &x[n..], &x[..n] and &x[..]

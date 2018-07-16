@@ -62,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Find a write to a local variable.
         match expr.node {
-            ExprAssign(ref lhs, _) | ExprAssignOp(_, ref lhs, _) => if let ExprPath(ref qpath) = lhs.node {
+            ExprKind::Assign(ref lhs, _) | ExprKind::AssignOp(_, ref lhs, _) => if let ExprKind::Path(ref qpath) = lhs.node {
                 if let QPath::Resolved(_, ref path) = *qpath {
                     if path.segments.len() == 1 {
                         if let def::Def::Local(var) = cx.tables.qpath_def(qpath, lhs.hir_id) {
@@ -82,8 +82,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     }
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         match stmt.node {
-            StmtExpr(ref e, _) | StmtSemi(ref e, _) => DivergenceVisitor { cx }.maybe_walk_expr(e),
-            StmtDecl(ref d, _) => if let DeclLocal(ref local) = d.node {
+            StmtKind::Expr(ref e, _) | StmtKind::Semi(ref e, _) => DivergenceVisitor { cx }.maybe_walk_expr(e),
+            StmtKind::Decl(ref d, _) => if let DeclKind::Local(ref local) = d.node {
                 if let Local {
                     init: Some(ref e), ..
                 } = **local
@@ -102,8 +102,8 @@ struct DivergenceVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr) {
         match e.node {
-            ExprClosure(.., _) => {},
-            ExprMatch(ref e, ref arms, _) => {
+            ExprKind::Closure(.., _) => {},
+            ExprKind::Match(ref e, ref arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
                     if let Some(ref guard) = arm.guard {
@@ -124,8 +124,8 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr) {
         match e.node {
-            ExprContinue(_) | ExprBreak(_, _) | ExprRet(_) => self.report_diverging_sub_expr(e),
-            ExprCall(ref func, _) => {
+            ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
+            ExprKind::Call(ref func, _) => {
                 let typ = self.cx.tables.expr_ty(func);
                 match typ.sty {
                     ty::TyFnDef(..) | ty::TyFnPtr(_) => {
@@ -137,7 +137,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
                     _ => {},
                 }
             },
-            ExprMethodCall(..) => {
+            ExprKind::MethodCall(..) => {
                 let borrowed_table = self.cx.tables;
                 if borrowed_table.expr_ty(e).is_never() {
                     self.report_diverging_sub_expr(e);
@@ -218,25 +218,25 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
     }
 
     match expr.node {
-        ExprArray(_) |
-        ExprTup(_) |
-        ExprMethodCall(..) |
-        ExprCall(_, _) |
-        ExprAssign(_, _) |
-        ExprIndex(_, _) |
-        ExprRepeat(_, _) |
-        ExprStruct(_, _, _) => {
+        ExprKind::Array(_) |
+        ExprKind::Tup(_) |
+        ExprKind::MethodCall(..) |
+        ExprKind::Call(_, _) |
+        ExprKind::Assign(_, _) |
+        ExprKind::Index(_, _) |
+        ExprKind::Repeat(_, _) |
+        ExprKind::Struct(_, _, _) => {
             walk_expr(vis, expr);
         },
-        ExprBinary(op, _, _) | ExprAssignOp(op, _, _) => {
-            if op.node == BiAnd || op.node == BiOr {
+        ExprKind::Binary(op, _, _) | ExprKind::AssignOp(op, _, _) => {
+            if op.node == BinOpKind::And || op.node == BinOpKind::Or {
                 // x && y and x || y always evaluate x first, so these are
                 // strictly sequenced.
             } else {
                 walk_expr(vis, expr);
             }
         },
-        ExprClosure(_, _, _, _, _) => {
+        ExprKind::Closure(_, _, _, _, _) => {
             // Either
             //
             // * `var` is defined in the closure body, in which case we've
@@ -262,12 +262,12 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
 
 fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> StopEarly {
     match stmt.node {
-        StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => check_expr(vis, expr),
-        StmtDecl(ref decl, _) => {
+        StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => check_expr(vis, expr),
+        StmtKind::Decl(ref decl, _) => {
             // If the declaration is of a local variable, check its initializer
             // expression if it has one. Otherwise, keep going.
             let local = match decl.node {
-                DeclLocal(ref local) => Some(local),
+                DeclKind::Local(ref local) => Some(local),
                 _ => None,
             };
             local
@@ -297,7 +297,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
         }
 
         match expr.node {
-            ExprPath(ref qpath) => {
+            ExprKind::Path(ref qpath) => {
                 if_chain! {
                     if let QPath::Resolved(None, ref path) = *qpath;
                     if path.segments.len() == 1;
@@ -320,7 +320,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             // We're about to descend a closure. Since we don't know when (or
             // if) the closure will be evaluated, any reads in it might not
             // occur here (or ever). Like above, bail to avoid false positives.
-            ExprClosure(_, _, _, _, _) |
+            ExprKind::Closure(_, _, _, _, _) |
 
             // We want to avoid a false positive when a variable name occurs
             // only to have its address taken, so we stop here. Technically,
@@ -332,7 +332,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             // ```
             //
             // TODO: fix this
-            ExprAddrOf(_, _) => {
+            ExprKind::AddrOf(_, _) => {
                 return;
             }
             _ => {}
@@ -348,7 +348,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 /// Returns true if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
-        if let ExprAssign(ref lhs, _) = parent.node {
+        if let ExprKind::Assign(ref lhs, _) = parent.node {
             return lhs.id == expr.id;
         }
     }
