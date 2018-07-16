@@ -1019,24 +1019,24 @@ See also: [`tab_spaces`](#tab_spaces).
 
 Indent style of imports
 
-- **Default Value**: `"Visual"`
+- **Default Value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 - **Stable**: No
 
-#### `"Visual"` (default):
-
-```rust
-use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
-          zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz};
-```
-
-#### `"Block"`:
+#### `"Block"` (default):
 
 ```rust
 use foo::{
     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz,
 };
+```
+
+#### `"Visual"`:
+
+```rust
+use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+          zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz};
 ```
 
 See also: [`imports_layout`](#imports_layout).
