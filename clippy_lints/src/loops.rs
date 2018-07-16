@@ -23,7 +23,7 @@ use crate::consts::{constant, Constant};
 
 use crate::utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
             last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt,
-            span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then};
+            span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq};
 use crate::utils::paths;
 
 /// **What it does:** Checks for for-loops that manually copy items between
@@ -1955,7 +1955,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         if self.state == VarState::DontWarn {
             return;
         }
-        if expr == self.end_expr {
+        if SpanlessEq::new(self.cx).eq_expr(&expr, self.end_expr) {
             self.past_loop = true;
             return;
         }

@@ -3,7 +3,7 @@ use rustc::hir::*;
 use rustc::ty;
 use syntax::ast;
 use crate::utils::{get_arg_ident, is_adjusted, iter_input_pats, match_qpath, match_trait_method, match_type,
-            paths, remove_blocks, snippet, span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
+            paths, remove_blocks, snippet, span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq};
 
 /// **What it does:** Checks for mapping `clone()` over an iterator.
 ///
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     if clone_call.ident.name == "clone" &&
                                         clone_args.len() == 1 &&
                                         match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
-                                        expr_eq_name(&clone_args[0], arg_ident)
+                                        expr_eq_name(cx, &clone_args[0], arg_ident)
                                     {
                                         span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
                                             "you seem to be using .map() to clone the contents of an {}, consider \
@@ -98,7 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn expr_eq_name(expr: &Expr, id: ast::Ident) -> bool {
+fn expr_eq_name(cx: &LateContext, expr: &Expr, id: ast::Ident) -> bool {
     match expr.node {
         ExprPath(QPath::Resolved(None, ref path)) => {
             let arg_segment = [
@@ -108,7 +108,7 @@ fn expr_eq_name(expr: &Expr, id: ast::Ident) -> bool {
                     infer_types: true,
                 },
             ];
-            !path.is_global() && path.segments[..] == arg_segment
+            !path.is_global() && SpanlessEq::new(cx).eq_path_segments(&path.segments[..], &arg_segment)
         },
         _ => false,
     }
@@ -127,7 +127,7 @@ fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static s
 fn only_derefs(cx: &LateContext, expr: &Expr, id: ast::Ident) -> bool {
     match expr.node {
         ExprUnary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => only_derefs(cx, subexpr, id),
-        _ => expr_eq_name(expr, id),
+        _ => expr_eq_name(cx, expr, id),
     }
 }
 

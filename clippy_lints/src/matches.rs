@@ -221,7 +221,7 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 }
 
 fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
-    if arms[1].pats[0].node == PatKind::Wild {
+    if is_wild(&arms[1].pats[0]) {
         report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
 }
@@ -265,7 +265,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
     let path = match arms[1].pats[0].node {
         PatKind::TupleStruct(ref path, ref inner, _) => {
             // contains any non wildcard patterns? e.g. Err(err)
-            if inner.iter().any(|pat| pat.node != PatKind::Wild) {
+            if !inner.iter().all(is_wild) {
                 return;
             }
             print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
@@ -356,6 +356,13 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr, 
     }
 }
 
+fn is_wild(pat: &impl std::ops::Deref<Target = Pat>) -> bool {
+    match pat.node {
+        PatKind::Wild => true,
+        _ => false,
+    }
+}
+
 fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
     if match_type(cx, ex_ty, &paths::RESULT) {
@@ -364,7 +371,7 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
                 if_chain! {
                     if path_str == "Err";
-                    if inner.iter().any(|pat| pat.node == PatKind::Wild);
+                    if inner.iter().any(is_wild);
                     if let ExprBlock(ref block, _) = arm.body.node;
                     if is_panic_block(block);
                     then {

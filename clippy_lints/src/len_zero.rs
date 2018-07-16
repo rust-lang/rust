@@ -258,11 +258,10 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
     match ty.sty {
-        ty::TyDynamic(..) => cx.tcx
-            .associated_items(ty.ty_to_def_id().expect("trait impl not found"))
+        ty::TyDynamic(ref tt, ..) => cx.tcx
+            .associated_items(tt.principal().expect("trait impl not found").def_id())
             .any(|item| is_is_empty(cx, &item)),
-        ty::TyProjection(_) => ty.ty_to_def_id()
-            .map_or(false, |id| has_is_empty_impl(cx, id)),
+        ty::TyProjection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
         ty::TyAdt(id, _) => has_is_empty_impl(cx, id.did),
         ty::TyArray(..) | ty::TySlice(..) | ty::TyStr => true,
         _ => false,

@@ -118,7 +118,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 })
             },
             (&ExprMethodCall(ref l_path, _, ref l_args), &ExprMethodCall(ref r_path, _, ref r_args)) => {
-                !self.ignore_fn && l_path == r_path && self.eq_exprs(l_args, r_args)
+                !self.ignore_fn && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprRepeat(ref le, ref ll_id), &ExprRepeat(ref re, ref rl_id)) => {
                 let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
@@ -225,7 +225,11 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_path_segment(&mut self, left: &PathSegment, right: &PathSegment) -> bool {
+    pub fn eq_path_segments(&mut self, left: &[PathSegment], right: &[PathSegment]) -> bool {
+        left.len() == right.len() && left.iter().zip(right).all(|(l, r)| self.eq_path_segment(l, r))
+    }
+
+    pub fn eq_path_segment(&mut self, left: &PathSegment, right: &PathSegment) -> bool {
         // The == of idents doesn't work with different contexts,
         // we have to be explicit about hygiene
         if left.ident.as_str() != right.ident.as_str() {
@@ -238,8 +242,12 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_ty(&mut self, left: &Ty, right: &Ty) -> bool {
-        match (&left.node, &right.node) {
+    pub fn eq_ty(&mut self, left: &Ty, right: &Ty) -> bool {
+        self.eq_ty_kind(&left.node, &right.node)
+    }
+
+    pub fn eq_ty_kind(&mut self, left: &Ty_, right: &Ty_) -> bool {
+        match (left, right) {
             (&TySlice(ref l_vec), &TySlice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyArray(ref lt, ref ll_id), &TyArray(ref rt, ref rl_id)) => {
                 let full_table = self.tables;
@@ -336,7 +344,12 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
             self.hash_expr(e);
         }
 
-        b.rules.hash(&mut self.s);
+        match b.rules {
+            BlockCheckMode::DefaultBlock => 0,
+            BlockCheckMode::UnsafeBlock(_) => 1,
+            BlockCheckMode::PushUnsafeBlock(_) => 2,
+            BlockCheckMode::PopUnsafeBlock(_) => 3,
+        }.hash(&mut self.s);
     }
 
     #[allow(many_single_char_names)]
@@ -419,7 +432,10 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
             ExprClosure(cap, _, eid, _, _) => {
                 let c: fn(_, _, _, _, _) -> _ = ExprClosure;
                 c.hash(&mut self.s);
-                cap.hash(&mut self.s);
+                match cap {
+                    CaptureClause::CaptureByValue => 0,
+                    CaptureClause::CaptureByRef => 1,
+                }.hash(&mut self.s);
                 self.hash_expr(&self.cx.tcx.hir.body(eid).value);
             },
             ExprField(ref e, ref f) => {
