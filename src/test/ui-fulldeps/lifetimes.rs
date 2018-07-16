@@ -10,7 +10,7 @@
 
 // aux-build:lifetimes.rs
 
-#![feature(proc_macro, proc_macro_non_items)]
+#![feature(use_extern_macros, proc_macro_non_items)]
 
 extern crate lifetimes;
 

@@ -10,7 +10,7 @@
 
 // aux-build:gen-lifetime-token.rs
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 
 extern crate gen_lifetime_token as bar;
 

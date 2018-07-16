@@ -16,7 +16,7 @@
 // gate-test-proc_macro_mod
 // gate-test-proc_macro_gen
 
-#![feature(proc_macro, stmt_expr_attributes)]
+#![feature(use_extern_macros, stmt_expr_attributes)]
 
 extern crate proc_macro_gates as foo;
 

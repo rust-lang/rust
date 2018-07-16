@@ -12,7 +12,7 @@
 // ignore-stage1
 // revisions: foo bar
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 
 extern crate attr_cfg;
 use attr_cfg::attr_cfg;

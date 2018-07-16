@@ -57,19 +57,19 @@ declare_lint!(CRATE_NOT_GREEN, Warn, "crate not marked with #![crate_green]");
 fake_lint_pass! {
     PassOkay,
     lint_array!(CRATE_NOT_OKAY), // Single lint
-    "crate_okay"
+    "rustc_crate_okay"
 }
 
 fake_lint_pass! {
     PassRedBlue,
     lint_array!(CRATE_NOT_RED, CRATE_NOT_BLUE), // Multiple lints
-    "crate_red", "crate_blue"
+    "rustc_crate_red", "rustc_crate_blue"
 }
 
 fake_lint_pass! {
     PassGreyGreen,
     lint_array!(CRATE_NOT_GREY, CRATE_NOT_GREEN, ), // Trailing comma
-    "crate_grey", "crate_green"
+    "rustc_crate_grey", "rustc_crate_green"
 }
 
 #[plugin_registrar]

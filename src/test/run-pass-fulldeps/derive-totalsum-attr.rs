@@ -11,7 +11,7 @@
 // aux-build:custom_derive_plugin_attr.rs
 // ignore-stage1
 
-#![feature(plugin, custom_derive, custom_attribute)]
+#![feature(plugin, custom_derive, rustc_attrs)]
 #![plugin(custom_derive_plugin_attr)]
 
 trait TotalSum {
@@ -32,7 +32,7 @@ impl TotalSum for Seven {
     }
 }
 
-#[derive(TotalSum)]
+#[rustc_derive_TotalSum]
 struct Foo {
     seven: Seven,
     bar: Bar,
@@ -41,7 +41,7 @@ struct Foo {
     nan: NaN,
 }
 
-#[derive(TotalSum)]
+#[rustc_derive_TotalSum]
 struct Bar {
     quux: isize,
     bleh: isize,
