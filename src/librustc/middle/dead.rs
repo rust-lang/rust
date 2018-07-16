@@ -396,16 +396,12 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
 fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       access_levels: &privacy::AccessLevels,
                                       krate: &hir::Crate)
-                                      -> Vec<ast::NodeId> {
-    let mut worklist = Vec::new();
-    for (id, _) in &access_levels.map {
-        worklist.push(*id);
-    }
-
-    // Seed entry point
-    if let Some((id, _, _)) = *tcx.sess.entry_fn.borrow() {
-        worklist.push(id);
-    }
+                                      -> Vec<ast::NodeId>
+{
+    let worklist = access_levels.map.iter().map(|(&id, _)| id).chain(
+        // Seed entry point
+        tcx.sess.entry_fn.borrow().map(|(id, _, _)| id)
+    ).collect::<Vec<_>>();
 
     // Seed implemented trait items
     let mut life_seeder = LifeSeeder {

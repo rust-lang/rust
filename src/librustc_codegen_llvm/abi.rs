@@ -565,7 +565,13 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
     }
 
     fn llvm_type(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
-        let mut llargument_tys = Vec::new();
+        let args_capacity: usize = self.args.iter().map(|arg|
+            if arg.pad.is_some() { 1 } else { 0 } +
+            if let PassMode::Pair(_, _) = arg.mode { 2 } else { 1 }
+        ).sum();
+        let mut llargument_tys = Vec::with_capacity(
+            if let PassMode::Indirect(_) = self.ret.mode { 1 } else { 0 } + args_capacity
+        );
 
         let llreturn_ty = match self.ret.mode {
             PassMode::Ignore => Type::void(cx),
