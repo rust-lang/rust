@@ -222,9 +222,14 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
 pub(crate) unsafe fn box_free<T: ?Sized, A: Alloc>(ptr: Unique<T>, mut a: A) {
+    box_free_worker(ptr, &mut a)
+}
+
+#[inline]
+pub(crate) unsafe fn box_free_worker<T: ?Sized, A: Alloc>(ptr: Unique<T>, a: &mut A) {
     let size = size_of_val(&*ptr.as_ptr());
     let align = min_align_of_val(&*ptr.as_ptr());
-    // We do not allocate for Box<T, A> when T is ZST, so deallocation is also not necessary.
+    // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
         a.dealloc(NonNull::from(ptr).cast(), layout);
