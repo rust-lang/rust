@@ -51,7 +51,7 @@ pub fn build(build: &mut Build) {
     build_krate("", build, &mut resolves, "src/libtest");
     build_krate(&build.rustc_features(), build, &mut resolves, "src/rustc");
 
-    let mut id2name = HashMap::new();
+    let mut id2name = HashMap::with_capacity(build.crates.len());
     for (name, krate) in build.crates.iter() {
         id2name.insert(krate.id.clone(), name.clone());
     }
