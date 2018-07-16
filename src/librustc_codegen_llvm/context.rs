@@ -214,7 +214,8 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               codegen_unit: Arc<CodegenUnit<'tcx>>)
+               codegen_unit: Arc<CodegenUnit<'tcx>>,
+               llmod_id: &str)
                -> CodegenCx<'a, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -267,7 +268,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 
         unsafe {
             let (llcx, llmod) = create_context_and_module(&tcx.sess,
-                                                          &codegen_unit.name().as_str());
+                                                          &llmod_id[..]);
 
             let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
                 let dctx = debuginfo::CrateDebugContext::new(llmod);
