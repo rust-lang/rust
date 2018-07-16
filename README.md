@@ -35,43 +35,44 @@ Table of contents:
 Since this is a tool for helping the developer of a library or application
 write better code, it is recommended not to include Clippy as a hard dependency.
 Options include using it as an optional dependency, as a cargo subcommand, or
-as an included feature during build. All of these options are detailed below.
+as an included feature during build. These options are detailed below.
+
+### As a cargo subcommand (`cargo clippy`)
+
+One way to use Clippy is by installing Clippy through rustup as a cargo
+subcommand.
+
+#### Step 1: Install rustup
+
+You can install [rustup](http://rustup.rs/) on supported platforms. This will help
+us install clippy and its dependencies.
+
+If you already have rustup installed, update to ensure you have the latest
+rustup and compiler:
+
+```terminal
+rustup update
+```
+
+#### Step 2: Install nightly toolchain
 
 As a general rule Clippy will only work with the *latest* Rust nightly for now.
 
-To install Rust nightly, the recommended way is to use [rustup](https://rustup.rs/):
+To install Rust nightly with [rustup](https://rustup.rs/):
 
 ```terminal
 rustup install nightly
 ```
 
-### As a cargo subcommand (`cargo clippy`)
+#### Step 3: Install clippy
 
-One way to use Clippy is by installing Clippy through cargo as a cargo
-subcommand.
+Once you have rustup and the nightly toolchain installed, run the following command:
 
 ```terminal
-cargo +nightly install clippy
+rustup component add clippy-preview --toolchain=nightly
 ```
-
-(The `+nightly` is not necessary if your default `rustup` install is nightly)
 
 Now you can run Clippy by invoking `cargo +nightly clippy`.
-
-To update the subcommand together with the latest nightly use the [rust-update](rust-update) script or run:
-
-```terminal
-rustup update nightly
-cargo +nightly install --force clippy
-```
-
-In case you are not using rustup, you need to set the environment flag
-`SYSROOT` during installation so Clippy knows where to find `librustc` and
-similar crates.
-
-```terminal
-SYSROOT=/path/to/rustc/sysroot cargo install clippy
-```
 
 ### Running Clippy from the command line without installing it
 
