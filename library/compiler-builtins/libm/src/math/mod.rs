@@ -11,6 +11,7 @@ mod acos;
 mod acosf;
 mod asin;
 mod asinf;
+mod atan;
 mod atan2;
 mod atan2f;
 mod atanf;
