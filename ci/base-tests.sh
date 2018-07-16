@@ -6,6 +6,7 @@ cargo test --features debugging
 mkdir -p ~/rust/cargo/bin
 cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
 cp target/debug/clippy-driver ~/rust/cargo/bin/clippy-driver
+rm ~/.cargo/bin/cargo-clippy
 PATH=$PATH:~/rust/cargo/bin cargo clippy --all -- -D clippy
 cd clippy_workspace_tests && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
 cd clippy_workspace_tests/src && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ../..
