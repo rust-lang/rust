@@ -407,9 +407,6 @@ declare_features! (
     // `use path as _;` and `extern crate c as _;`
     (active, underscore_imports, "1.26.0", Some(48216), None),
 
-    // The #![wasm_import_module] attribute
-    (active, wasm_import_module, "1.26.0", Some(52090), None),
-
     // Allows keywords to be escaped for use as identifiers
     (active, raw_identifiers, "1.26.0", Some(48589), None),
 
@@ -969,10 +966,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
         "the `#[no_debug]` attribute was an experimental feature that has been \
          deprecated due to lack of demand",
         cfg_fn!(no_debug))),
-    ("wasm_import_module", Normal, Gated(Stability::Unstable,
-                                 "wasm_import_module",
-                                 "experimental attribute",
-                                 cfg_fn!(wasm_import_module))),
     ("omit_gdb_pretty_printer_section", Whitelisted, Gated(Stability::Unstable,
                                                        "omit_gdb_pretty_printer_section",
                                                        "the `#[omit_gdb_pretty_printer_section]` \

@@ -226,13 +226,22 @@ pub fn provide(providers: &mut Providers) {
 
 pub fn provide_extern(providers: &mut Providers) {
     providers.wasm_import_module_map = |tcx, cnum| {
+        // Build up a map from DefId to a `NativeLibrary` structure, where
+        // `NativeLibrary` internally contains information about
+        // `#[link(wasm_import_module = "...")]` for example.
+        let native_libs = tcx.native_libraries(cnum);
+        let mut def_id_to_native_lib = FxHashMap();
+        for lib in native_libs.iter() {
+            if let Some(id) = lib.foreign_module {
+                def_id_to_native_lib.insert(id, lib);
+            }
+        }
+
         let mut ret = FxHashMap();
         for lib in tcx.foreign_modules(cnum).iter() {
-            let attrs = tcx.get_attrs(lib.def_id);
-            let mut module = None;
-            for attr in attrs.iter().filter(|a| a.check_name("wasm_import_module")) {
-                module = attr.value_str();
-            }
+            let module = def_id_to_native_lib
+                .get(&lib.def_id)
+                .and_then(|s| s.wasm_import_module);
             let module = match module {
                 Some(s) => s,
                 None => continue,
@@ -244,7 +253,7 @@ pub fn provide_extern(providers: &mut Providers) {
         }
 
         Lrc::new(ret)
-    }
+    };
 }
 
 fn wasm_import_module(tcx: TyCtxt, id: DefId) -> Option<CString> {

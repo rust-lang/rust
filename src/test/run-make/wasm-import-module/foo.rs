@@ -9,10 +9,9 @@
 // except according to those terms.
 
 #![crate_type = "rlib"]
-#![feature(wasm_import_module)]
 #![deny(warnings)]
 
-#[wasm_import_module = "./dep"]
+#[link(wasm_import_module = "./dep")]
 extern {
     pub fn dep();
 }

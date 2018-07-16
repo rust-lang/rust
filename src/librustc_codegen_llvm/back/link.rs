@@ -449,7 +449,9 @@ fn link_rlib<'a>(sess: &'a Session,
             NativeLibraryKind::NativeFramework |
             NativeLibraryKind::NativeUnknown => continue,
         }
-        ab.add_native_library(&lib.name.as_str());
+        if let Some(name) = lib.name {
+            ab.add_native_library(&name.as_str());
+        }
     }
 
     // After adding all files to the archive, we need to update the
@@ -583,21 +585,24 @@ fn link_staticlib(sess: &Session,
 fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
     let lib_args: Vec<_> = all_native_libs.iter()
         .filter(|l| relevant_lib(sess, l))
-        .filter_map(|lib| match lib.kind {
-            NativeLibraryKind::NativeStaticNobundle |
-            NativeLibraryKind::NativeUnknown => {
-                if sess.target.target.options.is_like_msvc {
-                    Some(format!("{}.lib", lib.name))
-                } else {
-                    Some(format!("-l{}", lib.name))
-                }
-            },
-            NativeLibraryKind::NativeFramework => {
-                // ld-only syntax, since there are no frameworks in MSVC
-                Some(format!("-framework {}", lib.name))
-            },
-            // These are included, no need to print them
-            NativeLibraryKind::NativeStatic => None,
+        .filter_map(|lib| {
+            let name = lib.name?;
+            match lib.kind {
+                NativeLibraryKind::NativeStaticNobundle |
+                NativeLibraryKind::NativeUnknown => {
+                    if sess.target.target.options.is_like_msvc {
+                        Some(format!("{}.lib", name))
+                    } else {
+                        Some(format!("-l{}", name))
+                    }
+                },
+                NativeLibraryKind::NativeFramework => {
+                    // ld-only syntax, since there are no frameworks in MSVC
+                    Some(format!("-framework {}", name))
+                },
+                // These are included, no need to print them
+                NativeLibraryKind::NativeStatic => None,
+            }
         })
         .collect();
     if !lib_args.is_empty() {
@@ -1211,11 +1216,15 @@ fn add_local_native_libraries(cmd: &mut dyn Linker,
 
     let search_path = archive_search_paths(sess);
     for lib in relevant_libs {
+        let name = match lib.name {
+            Some(ref l) => l,
+            None => continue,
+        };
         match lib.kind {
-            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
-            NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
-            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
-            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(&lib.name.as_str(),
+            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&name.as_str()),
+            NativeLibraryKind::NativeFramework => cmd.link_framework(&name.as_str()),
+            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&name.as_str()),
+            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(&name.as_str(),
                                                                         &search_path)
         }
     }
@@ -1578,19 +1587,23 @@ fn add_upstream_native_libraries(cmd: &mut dyn Linker,
     let crates = &codegen_results.crate_info.used_crates_static;
     for &(cnum, _) in crates {
         for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
+            let name = match lib.name {
+                Some(ref l) => l,
+                None => continue,
+            };
             if !relevant_lib(sess, &lib) {
                 continue
             }
             match lib.kind {
-                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
-                NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
+                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&name.as_str()),
+                NativeLibraryKind::NativeFramework => cmd.link_framework(&name.as_str()),
                 NativeLibraryKind::NativeStaticNobundle => {
                     // Link "static-nobundle" native libs only if the crate they originate from
                     // is being linked statically to the current crate.  If it's linked dynamically
                     // or is an rlib already included via some other dylib crate, the symbols from
                     // native libs will have already been included in that dylib.
                     if data[cnum.as_usize() - 1] == Linkage::Static {
-                        cmd.link_staticlib(&lib.name.as_str())
+                        cmd.link_staticlib(&name.as_str())
                     }
                 },
                 // ignore statically included native libraries here as we've
