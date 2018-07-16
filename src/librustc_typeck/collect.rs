@@ -1185,8 +1185,7 @@ fn find_existential_constraints<'a, 'tcx>(
         found: Option<(Span, ty::Ty<'tcx>)>,
     }
     impl<'a, 'tcx> ConstraintLocator<'a, 'tcx> {
-        fn check(&mut self, node_id: ast::NodeId) {
-            let def_id = self.tcx.hir.local_def_id(node_id);
+        fn check(&mut self, def_id: DefId) {
             // don't try to check items that cannot possibly constrain the type
             if !self.tcx.has_typeck_tables(def_id) {
                 return;
@@ -1221,21 +1220,24 @@ fn find_existential_constraints<'a, 'tcx>(
             intravisit::NestedVisitorMap::All(&self.tcx.hir)
         }
         fn visit_item(&mut self, it: &'tcx Item) {
+            let def_id = self.tcx.hir.local_def_id(it.id);
             // the existential type itself or its children are not within its reveal scope
-            if self.tcx.hir.local_def_id(it.id) != self.def_id {
-                self.check(it.id);
+            if def_id != self.def_id {
+                self.check(def_id);
                 intravisit::walk_item(self, it);
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
+            let def_id = self.tcx.hir.local_def_id(it.id);
             // the existential type itself or its children are not within its reveal scope
-            if self.tcx.hir.local_def_id(it.id) != self.def_id {
-                self.check(it.id);
+            if def_id != self.def_id {
+                self.check(def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem) {
-            self.check(it.id);
+            let def_id = self.tcx.hir.local_def_id(it.id);
+            self.check(def_id);
             intravisit::walk_trait_item(self, it);
         }
     }
