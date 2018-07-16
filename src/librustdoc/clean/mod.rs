@@ -1551,7 +1551,6 @@ impl GenericBound {
     }
 
     fn get_trait_type(&self) -> Option<Type> {
-
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
             return Some(trait_.clone());
         }

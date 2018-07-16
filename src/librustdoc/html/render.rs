@@ -2082,6 +2082,7 @@ where F: Fn(&mut fmt::Formatter) -> fmt::Result {
 impl<'a> fmt::Display for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         debug_assert!(!self.item.is_stripped());
+        println!("=> {:?}", self.item.name);
         // Write the breadcrumb trail header for the top
         write!(fmt, "<h1 class='fqn'><span class='in-band'>")?;
         match self.item.inner {
