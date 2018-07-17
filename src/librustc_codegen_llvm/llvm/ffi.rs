@@ -413,8 +413,8 @@ pub struct ArchiveChild<'a>(InvariantOpaque<'a>);
 extern { pub type Twine; }
 extern { pub type DiagnosticInfo; }
 extern { pub type SMDiagnostic; }
-extern { pub type RustArchiveMember; }
-pub type RustArchiveMemberRef = *mut RustArchiveMember;
+#[repr(C)]
+pub struct RustArchiveMember<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
 #[repr(C)]
@@ -1540,15 +1540,15 @@ extern "C" {
 extern "C" {
     pub fn LLVMRustWriteArchive(Dst: *const c_char,
                                 NumMembers: size_t,
-                                Members: *const RustArchiveMemberRef,
+                                Members: *const &RustArchiveMember,
                                 WriteSymbtab: bool,
                                 Kind: ArchiveKind)
                                 -> LLVMRustResult;
     pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
                                     Name: *const c_char,
-                                    Child: Option<&ArchiveChild>)
-                                    -> RustArchiveMemberRef;
-    pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
+                                    Child: Option<&'a ArchiveChild>)
+                                    -> &'a mut RustArchiveMember<'a>;
+    pub fn LLVMRustArchiveMemberFree(Member: &'a mut RustArchiveMember<'a>);
 
     pub fn LLVMRustSetDataLayoutFromTargetMachine(M: &'a Module, TM: &'a TargetMachine);
 
