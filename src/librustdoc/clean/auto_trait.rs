@@ -92,7 +92,11 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         let mut traits = FxHashMap();
         if let ty::TyAdt(_adt, _) = ty.sty {
             let param_env = self.cx.tcx.param_env(def_id);
-            for &trait_def_id in self.cx.tcx.all_traits(LOCAL_CRATE).iter() {
+            match _adt.adt_kind() {
+                AdtKind::Struct => println!("|||||> {}", self.cx.tcx.item_name(def_id).to_string()),
+                _ => {}
+            }
+            for &trait_def_id in self.cx.all_traits.iter() {
                 self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
                     self.cx.tcx.infer_ctxt().enter(|infcx| {
                         let trait_ref = infcx.tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -120,6 +124,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                 // FIXME: add crate's id before the name to avoid removing a
                                 // trait which doesn't exist.
                                 if traits.get(&trait_def_id).is_none() {
+                                    println!("=> {}", infcx.tcx.item_name(trait_def_id).to_string());
                                     /*let generics = (infcx.tcx.generics_of(trait_def_id), &predicates).clean(cx);
                                     get_path_for_type(self.cx.tcx, trait_def_id, hir::def::Def::Trait)*/
                                     /*if let Some(i) = self.get_auto_trait_impl_for(
@@ -221,11 +226,11 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             "get_auto_traits: type {:?} auto_traits {:?}",
             def_id, auto_traits
         );
-        if ::std::env::var("LOL").is_ok() {
+        /*if ::std::env::var("LOL").is_ok() {
             for x in &auto_traits {
                 println!("\n=> {:?}", x);
             }
-        }
+        }*/
         auto_traits
     }
 

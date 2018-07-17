@@ -3585,11 +3585,11 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         None => return Ok(()),
     };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| {
-        if ::std::env::var("LOL").is_ok() {
+        /*if ::std::env::var("LOL").is_ok() {
             if let Some(ref t) = i.inner_impl().trait_ {
                 println!("==> {:?}", t);
             }
-        }
+        }*/
         i.inner_impl().trait_.is_none()
     });
     if !non_trait.is_empty() {
@@ -3632,7 +3632,16 @@ fn render_assoc_items(w: &mut fmt::Formatter,
 
         let (synthetic, concrete) = traits
             .iter()
-            .partition::<Vec<_>, _>(|t| t.inner_impl().synthetic);
+            .partition::<Vec<&&Impl>, _>(|t| t.inner_impl().synthetic);
+
+        // ugly hacks to remove duplicates.
+        let synthetic = synthetic.into_iter()
+                                 .filter(|t| {
+            !concrete.iter()
+                     .any(|tt| {
+                         tt.inner_impl().trait_.def_id() == t.inner_impl().trait_.def_id()
+                     })
+        }).collect::<Vec<_>>();
 
         struct RendererStruct<'a, 'b, 'c>(&'a Context, Vec<&'b &'b Impl>, &'c clean::Item);
 

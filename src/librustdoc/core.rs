@@ -11,7 +11,7 @@
 use rustc_lint;
 use rustc_driver::{self, driver, target_features, abort_on_err};
 use rustc::session::{self, config};
-use rustc::hir::def_id::{DefId, CrateNum};
+use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::hir::def::Def;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
@@ -84,6 +84,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     /// Maps (type_id, trait_id) -> auto trait impl
     pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>,
     pub current_item_name: RefCell<Option<Name>>,
+    pub all_traits: Lrc<Vec<DefId>>,
 }
 
 impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
@@ -385,6 +386,7 @@ pub fn run_core(search_paths: SearchPaths,
                 all_fake_def_ids: RefCell::new(FxHashSet()),
                 generated_synthetics: RefCell::new(FxHashSet()),
                 current_item_name: RefCell::new(None),
+                all_traits: tcx.all_traits(LOCAL_CRATE),
             };
             debug!("crate: {:?}", tcx.hir.krate());
 
