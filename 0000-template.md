@@ -43,7 +43,7 @@ The section should return to the examples given in the previous section, and exp
 Why should we *not* do this?
 
 # Rationale and alternatives
-[alternatives]: #alternatives
+[rationale-and-alternatives]: #rationale-and-alternatives
 
 - Why is this design the best in the space of possible designs?
 - What other designs have been considered and what is the rationale for not choosing them?
@@ -67,7 +67,7 @@ Note that while precedent set by other languages is some motivation, it does not
 Please also take into consideration that rust sometimes intentionally diverges from common language features.
 
 # Unresolved questions
-[unresolved]: #unresolved-questions
+[unresolved-questions]: #unresolved-questions
 
 - What parts of the design do you expect to resolve through the RFC process before this gets merged?
 - What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
