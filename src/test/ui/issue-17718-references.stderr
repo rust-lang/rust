@@ -1,0 +1,21 @@
+error[E0013]: constants cannot refer to statics, use a constant instead
+  --> $DIR/issue-17718-references.rs:19:28
+   |
+LL | const T2: &'static usize = &S; //~ ERROR: constants cannot refer to statics
+   |                            ^^
+
+error[E0013]: constants cannot refer to statics, use a constant instead
+  --> $DIR/issue-17718-references.rs:24:19
+   |
+LL | const T6: usize = S; //~ ERROR: constants cannot refer to statics
+   |                   ^
+
+error[E0013]: constants cannot refer to statics, use a constant instead
+  --> $DIR/issue-17718-references.rs:29:33
+   |
+LL | const T10: Struct = Struct { a: S };
+   |                                 ^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0013`.

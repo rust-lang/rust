@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//~^^^^^^^^^^ ERROR cycle detected when computing layout of
-//~| NOTE ...which requires computing layout of
-//~| NOTE ...which again requires computing layout of
-//~| NOTE cycle used when compile_codegen_unit
+#![feature(macro_rules)]
 
-trait Mirror { type It: ?Sized; }
-impl<T: ?Sized> Mirror for T { type It = Self; }
-struct S(Option<<S as Mirror>::It>);
+macro_rules! g {
+    ($inp:ident) => (
+        { $inp $nonexistent }
+        //~^ ERROR unknown macro variable `nonexistent`
+        //~| ERROR expected one of
+    );
+}
 
 fn main() {
-    let _s = S(None);
+    g!(foo);
 }

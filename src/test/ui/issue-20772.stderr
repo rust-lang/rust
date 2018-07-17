@@ -1,0 +1,21 @@
+error[E0391]: cycle detected when computing the supertraits of `T`
+  --> $DIR/issue-20772.rs:11:1
+   |
+LL | / trait T : Iterator<Item=Self::Item>
+LL | | //~^ ERROR cycle detected
+LL | | //~| ERROR associated type `Item` not found for `Self`
+LL | | {}
+   | |__^
+   |
+   = note: ...which again requires computing the supertraits of `T`, completing the cycle
+
+error[E0220]: associated type `Item` not found for `Self`
+  --> $DIR/issue-20772.rs:11:25
+   |
+LL | trait T : Iterator<Item=Self::Item>
+   |                         ^^^^^^^^^^ associated type `Item` not found
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0220, E0391.
+For more information about an error, try `rustc --explain E0220`.

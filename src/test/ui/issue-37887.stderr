@@ -1,0 +1,18 @@
+error[E0432]: unresolved import `libc`
+  --> $DIR/issue-37887.rs:13:9
+   |
+LL |     use libc::*; //~ ERROR unresolved import
+   |         ^^^^ Maybe a missing `extern crate libc;`?
+
+error[E0658]: use of unstable library feature 'libc': use `libc` from crates.io (see issue #27783)
+  --> $DIR/issue-37887.rs:12:5
+   |
+LL |     extern crate libc; //~ ERROR use of unstable
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(libc)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0432, E0658.
+For more information about an error, try `rustc --explain E0432`.

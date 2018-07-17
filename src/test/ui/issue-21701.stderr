@@ -1,0 +1,20 @@
+error[E0618]: expected function, found `U`
+  --> $DIR/issue-21701.rs:12:13
+   |
+LL | fn foo<U>(t: U) {
+   |           - `U` defined here
+LL |     let y = t();
+   |             ^^^ not a function
+
+error[E0618]: expected function, found `Bar`
+  --> $DIR/issue-21701.rs:19:13
+   |
+LL | struct Bar;
+   | ----------- `Bar` defined here
+...
+LL |     let f = Bar();
+   |             ^^^^^ not a function
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0618`.

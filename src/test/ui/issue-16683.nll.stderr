@@ -1,0 +1,22 @@
+warning: not reporting region error due to nll
+  --> $DIR/issue-16683.rs:14:9
+   |
+LL |         self.a(); //~ ERROR cannot infer
+   |         ^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/issue-16683.rs:14:14
+   |
+LL |         self.a(); //~ ERROR cannot infer
+   |              ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/issue-16683.rs:14:9
+   |
+LL |     fn b(&self) {
+   |          - let's call the lifetime of this reference `'1`
+LL |         self.a(); //~ ERROR cannot infer
+   |         ^^^^^^^^ argument requires that `'1` must outlive `'a`
+
+error: aborting due to previous error
+

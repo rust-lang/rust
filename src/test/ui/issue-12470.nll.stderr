@@ -1,0 +1,18 @@
+error[E0597]: `*b` does not live long enough
+  --> $DIR/issue-12470.rs:38:18
+   |
+LL |     let bb: &B = &*b;    //~ ERROR does not live long enough
+   |                  ^^^ borrowed value does not live long enough
+LL |     make_a(bb)
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 36:16...
+  --> $DIR/issue-12470.rs:36:16
+   |
+LL | fn make_make_a<'a>() -> A<'a> {
+   |                ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

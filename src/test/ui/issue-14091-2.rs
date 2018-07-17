@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//~^^^^^^^^^^ ERROR cycle detected when computing layout of
-//~| NOTE ...which requires computing layout of
-//~| NOTE ...which again requires computing layout of
-//~| NOTE cycle used when compile_codegen_unit
+//
 
-trait Mirror { type It: ?Sized; }
-impl<T: ?Sized> Mirror for T { type It = Self; }
-struct S(Option<<S as Mirror>::It>);
+// Very
+
+// sensitive
+pub struct BytePos(pub u32);
+
+// to particular
+
+// line numberings / offsets
 
 fn main() {
-    let _s = S(None);
+    let x = BytePos(1);
+
+    assert!(x, x);
+    //~^ ERROR cannot apply unary operator `!` to type `BytePos`
 }
