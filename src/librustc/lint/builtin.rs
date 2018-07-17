@@ -254,7 +254,7 @@ declare_lint! {
 declare_lint! {
     pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
-    "hidden lifetime parameters are deprecated, try `Foo<'_>`"
+    "hidden lifetime parameters in types are deprecated"
 }
 
 declare_lint! {
@@ -402,6 +402,7 @@ pub enum BuiltinLintDiagnostics {
     AbsPathWithModule(Span),
     DuplicatedMacroExports(ast::Ident, Span, Span),
     ProcMacroDeriveResolutionFallback(Span),
+    ElidedLifetimesInPaths(usize, Span, bool, Span, String),
 }
 
 impl BuiltinLintDiagnostics {
@@ -441,6 +442,41 @@ impl BuiltinLintDiagnostics {
             BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
                 db.span_label(span, "names from parent modules are not \
                                      accessible without an explicit import");
+            }
+            BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                n, path_span, incl_angl_brckt, insertion_span, anon_lts
+            ) => {
+                let (replace_span, suggestion) = if incl_angl_brckt {
+                    (insertion_span, anon_lts)
+                } else {
+                    // When possible, prefer a suggestion that replaces the whole
+                    // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
+                    // at a point (which makes for an ugly/confusing label)
+                    if let Ok(snippet) = sess.codemap().span_to_snippet(path_span) {
+                        // But our spans can get out of whack due to macros; if the place we think
+                        // we want to insert `'_` isn't even within the path expression's span, we
+                        // should bail out of making any suggestion rather than panicking on a
+                        // subtract-with-overflow or string-slice-out-out-bounds (!)
+                        // FIXME: can we do better?
+                        if insertion_span.lo().0 < path_span.lo().0 {
+                            return;
+                        }
+                        let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
+                        if insertion_index > snippet.len() {
+                            return;
+                        }
+                        let (before, after) = snippet.split_at(insertion_index);
+                        (path_span, format!("{}{}{}", before, anon_lts, after))
+                    } else {
+                        (insertion_span, anon_lts)
+                    }
+                };
+                db.span_suggestion_with_applicability(
+                    replace_span,
+                    &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
+                    suggestion,
+                    Applicability::MachineApplicable
+                );
             }
         }
     }
