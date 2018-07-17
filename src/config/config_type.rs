@@ -403,6 +403,9 @@ macro_rules! create_config {
                 if self.use_small_heuristics.2 == Heuristics::Default {
                     let max_width = self.max_width.2;
                     self.set().width_heuristics(WidthHeuristics::scaled(max_width));
+                } else if self.use_small_heuristics.2 == Heuristics::Max {
+                    let max_width = self.max_width.2;
+                    self.set().width_heuristics(WidthHeuristics::set(max_width));
                 } else {
                     self.set().width_heuristics(WidthHeuristics::null());
                 }

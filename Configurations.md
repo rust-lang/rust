@@ -276,7 +276,7 @@ fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
 Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.
 
 - **Default value**: `Default`
-- **Possible values**: `Default`, `Off`
+- **Possible values**: `Default`, `Off`, `Max`
 - **Stable**: Yes
 
 #### `Default` (default):
@@ -334,6 +334,24 @@ fn main() {
     } else {
         sit
     };
+}
+```
+
+#### `Max`:
+
+```rust
+enum Lorem {
+    Ipsum,
+    Dolor(bool),
+    Sit { amet: Consectetur, adipiscing: Elit },
+}
+
+fn main() {
+    lorem("lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing");
+
+    let lorem = Lorem { ipsum: dolor, sit: amet };
+
+    let lorem = if ipsum { dolor } else { sit };
 }
 ```
 

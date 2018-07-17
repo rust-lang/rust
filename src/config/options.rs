@@ -154,6 +154,8 @@ configuration_option_enum! { TypeDensity:
 configuration_option_enum! { Heuristics:
     // Turn off any heuristics
     Off,
+    // Turn on max heuristics
+    Max,
     // Use Rustfmt's defaults
     Default,
 }
@@ -254,6 +256,17 @@ impl WidthHeuristics {
             array_width: usize::max_value(),
             chain_width: usize::max_value(),
             single_line_if_else_max_width: 0,
+        }
+    }
+
+    pub fn set(max_width: usize) -> WidthHeuristics {
+        WidthHeuristics {
+            fn_call_width: max_width,
+            struct_lit_width: max_width,
+            struct_variant_width: max_width,
+            array_width: max_width,
+            chain_width: max_width,
+            single_line_if_else_max_width: max_width,
         }
     }
 
