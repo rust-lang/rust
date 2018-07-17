@@ -162,6 +162,8 @@ matrix:
       if: branch = auto
     - env: IMAGE=wasm32-unknown
       if: branch = auto
+    - env: IMAGE=thumb-none
+      if: branch = auto
     - env: IMAGE=x86_64-gnu
       if: branch = auto
     - env: IMAGE=x86_64-gnu-full-bootstrap
