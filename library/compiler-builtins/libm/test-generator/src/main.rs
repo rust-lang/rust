@@ -774,7 +774,7 @@ f64f64_f64! {
     fdim,
     fmod,
     hypot,
-    // pow,
+    pow,
 }
 
 // With signature `fn(f64, f64, f64) -> f64`
