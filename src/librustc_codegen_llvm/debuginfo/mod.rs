@@ -69,7 +69,7 @@ const DW_TAG_arg_variable: c_uint = 0x101;
 pub struct CrateDebugContext<'a, 'tcx> {
     llcontext: &'a llvm::Context,
     llmod: &'a llvm::Module,
-    builder: &'a DIBuilder,
+    builder: &'a mut DIBuilder<'a>,
     created_files: RefCell<FxHashMap<(Symbol, Symbol), &'a DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), &'a DIType>>,
 
@@ -79,6 +79,14 @@ pub struct CrateDebugContext<'a, 'tcx> {
     // This collection is used to assert that composite types (structs, enums,
     // ...) have their members only set once:
     composite_types_completed: RefCell<FxHashSet<&'a DIType>>,
+}
+
+impl Drop for CrateDebugContext<'a, 'tcx> {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMRustDIBuilderDispose(&mut *(self.builder as *mut _));
+        }
+    }
 }
 
 impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
@@ -166,7 +174,6 @@ pub fn finalize(cx: &CodegenCx) {
 
     unsafe {
         llvm::LLVMRustDIBuilderFinalize(DIB(cx));
-        llvm::LLVMRustDIBuilderDispose(DIB(cx));
         // Debuginfo generation in LLVM by default uses a higher
         // version of dwarf than macOS currently understands. We can
         // instruct LLVM to emit an older version of dwarf, however,

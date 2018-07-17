@@ -36,7 +36,10 @@ pub fn is_node_local_to_unit(cx: &CodegenCx, def_id: DefId) -> bool
 }
 
 #[allow(non_snake_case)]
-pub fn create_DIArray(builder: &'ll DIBuilder, arr: &[Option<&'ll DIDescriptor>]) -> &'ll DIArray {
+pub fn create_DIArray(
+    builder: &DIBuilder<'ll>,
+    arr: &[Option<&'ll DIDescriptor>],
+) -> &'ll DIArray {
     return unsafe {
         llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
     };
@@ -54,7 +57,7 @@ pub fn debug_context(cx: &'a CodegenCx<'ll, 'tcx>) -> &'a CrateDebugContext<'ll,
 
 #[inline]
 #[allow(non_snake_case)]
-pub fn DIB(cx: &CodegenCx<'ll, '_>) -> &'ll DIBuilder {
+pub fn DIB(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
     cx.dbg_cx.as_ref().unwrap().builder
 }
 
