@@ -1563,10 +1563,10 @@ extern "C" {
     pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: &Value);
     pub fn LLVMRustSetModulePIELevel(M: &Module);
-    pub fn LLVMRustModuleBufferCreate(M: &Module) -> *mut ModuleBuffer;
-    pub fn LLVMRustModuleBufferPtr(p: *const ModuleBuffer) -> *const u8;
-    pub fn LLVMRustModuleBufferLen(p: *const ModuleBuffer) -> usize;
-    pub fn LLVMRustModuleBufferFree(p: *mut ModuleBuffer);
+    pub fn LLVMRustModuleBufferCreate(M: &Module) -> &'static mut ModuleBuffer;
+    pub fn LLVMRustModuleBufferPtr(p: &ModuleBuffer) -> *const u8;
+    pub fn LLVMRustModuleBufferLen(p: &ModuleBuffer) -> usize;
+    pub fn LLVMRustModuleBufferFree(p: &'static mut ModuleBuffer);
     pub fn LLVMRustModuleCost(M: &Module) -> u64;
 
     pub fn LLVMRustThinLTOAvailable() -> bool;

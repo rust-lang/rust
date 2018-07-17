@@ -527,7 +527,7 @@ impl SerializedModule {
     }
 }
 
-pub struct ModuleBuffer(*mut llvm::ModuleBuffer);
+pub struct ModuleBuffer(&'static mut llvm::ModuleBuffer);
 
 unsafe impl Send for ModuleBuffer {}
 unsafe impl Sync for ModuleBuffer {}
@@ -550,7 +550,7 @@ impl ModuleBuffer {
 
 impl Drop for ModuleBuffer {
     fn drop(&mut self) {
-        unsafe { llvm::LLVMRustModuleBufferFree(self.0); }
+        unsafe { llvm::LLVMRustModuleBufferFree(&mut *(self.0 as *mut _)); }
     }
 }
 
