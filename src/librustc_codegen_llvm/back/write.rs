@@ -25,7 +25,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePass
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
-use llvm::{self, DiagnosticInfo, PassManagerRef, SMDiagnostic};
+use llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use {CodegenResults, ModuleSource, ModuleCodegen, CompiledModule, ModuleKind};
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -92,9 +92,9 @@ pub fn llvm_err(handler: &errors::Handler, msg: String) -> FatalError {
 
 pub fn write_output_file(
         handler: &errors::Handler,
-        target: &llvm::TargetMachine,
-        pm: llvm::PassManagerRef,
-        m: &llvm::Module,
+        target: &'ll llvm::TargetMachine,
+        pm: &llvm::PassManager<'ll>,
+        m: &'ll llvm::Module,
         output: &Path,
         file_type: llvm::FileType) -> Result<(), FatalError> {
     unsafe {
@@ -516,50 +516,52 @@ unsafe fn optimize(cgcx: &CodegenContext,
         let fpm = llvm::LLVMCreateFunctionPassManagerForModule(llmod);
         let mpm = llvm::LLVMCreatePassManager();
 
-        // If we're verifying or linting, add them to the function pass
-        // manager.
-        let addpass = |pass_name: &str| {
-            let pass_name = CString::new(pass_name).unwrap();
-            let pass = match llvm::LLVMRustFindAndCreatePass(pass_name.as_ptr()) {
-                Some(pass) => pass,
-                None => return false,
+        {
+            // If we're verifying or linting, add them to the function pass
+            // manager.
+            let addpass = |pass_name: &str| {
+                let pass_name = CString::new(pass_name).unwrap();
+                let pass = match llvm::LLVMRustFindAndCreatePass(pass_name.as_ptr()) {
+                    Some(pass) => pass,
+                    None => return false,
+                };
+                let pass_manager = match llvm::LLVMRustPassKind(pass) {
+                    llvm::PassKind::Function => &*fpm,
+                    llvm::PassKind::Module => &*mpm,
+                    llvm::PassKind::Other => {
+                        diag_handler.err("Encountered LLVM pass kind we can't handle");
+                        return true
+                    },
+                };
+                llvm::LLVMRustAddPass(pass_manager, pass);
+                true
             };
-            let pass_manager = match llvm::LLVMRustPassKind(pass) {
-                llvm::PassKind::Function => fpm,
-                llvm::PassKind::Module => mpm,
-                llvm::PassKind::Other => {
-                    diag_handler.err("Encountered LLVM pass kind we can't handle");
-                    return true
-                },
-            };
-            llvm::LLVMRustAddPass(pass_manager, pass);
-            true
-        };
 
-        if config.verify_llvm_ir { assert!(addpass("verify")); }
-        if !config.no_prepopulate_passes {
-            llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
-            llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-            let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
-            let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal;
-            with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
-                llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
-                llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
-            })
-        }
-
-        for pass in &config.passes {
-            if !addpass(pass) {
-                diag_handler.warn(&format!("unknown pass `{}`, ignoring",
-                                           pass));
+            if config.verify_llvm_ir { assert!(addpass("verify")); }
+            if !config.no_prepopulate_passes {
+                llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
+                llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
+                let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
+                let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal;
+                with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
+                    llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
+                    llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
+                })
             }
-        }
 
-        for pass in &cgcx.plugin_passes {
-            if !addpass(pass) {
-                diag_handler.err(&format!("a plugin asked for LLVM pass \
-                                           `{}` but LLVM does not \
-                                           recognize it", pass));
+            for pass in &config.passes {
+                if !addpass(pass) {
+                    diag_handler.warn(&format!("unknown pass `{}`, ignoring",
+                                            pass));
+                }
+            }
+
+            for pass in &cgcx.plugin_passes {
+                if !addpass(pass) {
+                    diag_handler.err(&format!("a plugin asked for LLVM pass \
+                                            `{}` but LLVM does not \
+                                            recognize it", pass));
+                }
             }
         }
 
@@ -636,11 +638,11 @@ unsafe fn codegen(cgcx: &CodegenContext,
         // pass manager passed to the closure should be ensured to not
         // escape the closure itself, and the manager should only be
         // used once.
-        unsafe fn with_codegen<F, R>(tm: &llvm::TargetMachine,
-                                    llmod: &llvm::Module,
+        unsafe fn with_codegen<'ll, F, R>(tm: &'ll llvm::TargetMachine,
+                                    llmod: &'ll llvm::Module,
                                     no_builtins: bool,
                                     f: F) -> R
-            where F: FnOnce(PassManagerRef) -> R,
+            where F: FnOnce(&'ll mut PassManager<'ll>) -> R,
         {
             let cpm = llvm::LLVMCreatePassManager();
             llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);

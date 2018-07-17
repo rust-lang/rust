@@ -397,8 +397,7 @@ extern { pub type Metadata; }
 extern { pub type BasicBlock; }
 extern { pub type Builder; }
 extern { pub type MemoryBuffer; }
-extern { pub type PassManager; }
-pub type PassManagerRef = *mut PassManager;
+pub struct PassManager<'a>(InvariantOpaque<'a>);
 extern { pub type PassManagerBuilder; }
 extern { pub type ObjectFile; }
 extern { pub type SectionIterator; }
@@ -1105,16 +1104,16 @@ extern "C" {
     pub fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
 
     /// Creates a pass manager.
-    pub fn LLVMCreatePassManager() -> PassManagerRef;
+    pub fn LLVMCreatePassManager() -> &'a mut PassManager<'a>;
 
     /// Creates a function-by-function pass manager
-    pub fn LLVMCreateFunctionPassManagerForModule(M: &Module) -> PassManagerRef;
+    pub fn LLVMCreateFunctionPassManagerForModule(M: &'a Module) -> &'a mut PassManager<'a>;
 
     /// Disposes a pass manager.
-    pub fn LLVMDisposePassManager(PM: PassManagerRef);
+    pub fn LLVMDisposePassManager(PM: &'a mut PassManager<'a>);
 
     /// Runs a pass manager on a module.
-    pub fn LLVMRunPassManager(PM: PassManagerRef, M: &Module) -> Bool;
+    pub fn LLVMRunPassManager(PM: &PassManager<'a>, M: &'a Module) -> Bool;
 
     pub fn LLVMInitializePasses();
 
@@ -1125,17 +1124,17 @@ extern "C" {
     pub fn LLVMPassManagerBuilderUseInlinerWithThreshold(PMB: &PassManagerBuilder,
                                                          threshold: c_uint);
     pub fn LLVMPassManagerBuilderPopulateModulePassManager(PMB: &PassManagerBuilder,
-                                                           PM: PassManagerRef);
+                                                           PM: &PassManager);
 
     pub fn LLVMPassManagerBuilderPopulateFunctionPassManager(PMB: &PassManagerBuilder,
-                                                             PM: PassManagerRef);
+                                                             PM: &PassManager);
     pub fn LLVMPassManagerBuilderPopulateLTOPassManager(PMB: &PassManagerBuilder,
-                                                        PM: PassManagerRef,
+                                                        PM: &PassManager,
                                                         Internalize: Bool,
                                                         RunInliner: Bool);
     pub fn LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
         PMB: &PassManagerBuilder,
-        PM: PassManagerRef) -> bool;
+        PM: &PassManager) -> bool;
 
     // Stuff that's in rustllvm/ because it's not upstream yet.
 
@@ -1416,7 +1415,7 @@ extern "C" {
 
     pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
-    pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: &'static mut Pass);
+    pub fn LLVMRustAddPass(PM: &PassManager, Pass: &'static mut Pass);
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
@@ -1437,7 +1436,7 @@ extern "C" {
                                        Singlethread: bool)
                                        -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
-    pub fn LLVMRustAddAnalysisPasses(T: &TargetMachine, PM: PassManagerRef, M: &Module);
+    pub fn LLVMRustAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>, M: &'a Module);
     pub fn LLVMRustAddBuilderLibraryInfo(PMB: &'a PassManagerBuilder,
                                          M: &'a Module,
                                          DisableSimplifyLibCalls: bool);
@@ -1449,18 +1448,18 @@ extern "C" {
                                                PrepareForThinLTO: bool,
                                                PGOGenPath: *const c_char,
                                                PGOUsePath: *const c_char);
-    pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef,
-                                  M: &Module,
+    pub fn LLVMRustAddLibraryInfo(PM: &PassManager<'a>,
+                                  M: &'a Module,
                                   DisableSimplifyLibCalls: bool);
-    pub fn LLVMRustRunFunctionPassManager(PM: PassManagerRef, M: &Module);
+    pub fn LLVMRustRunFunctionPassManager(PM: &PassManager<'a>, M: &'a Module);
     pub fn LLVMRustWriteOutputFile(T: &'a TargetMachine,
-                                   PM: PassManagerRef,
+                                   PM: &PassManager<'a>,
                                    M: &'a Module,
                                    Output: *const c_char,
                                    FileType: FileType)
                                    -> LLVMRustResult;
-    pub fn LLVMRustPrintModule(PM: PassManagerRef,
-                               M: &Module,
+    pub fn LLVMRustPrintModule(PM: &PassManager<'a>,
+                               M: &'a Module,
                                Output: *const c_char,
                                Demangle: extern fn(*const c_char,
                                                    size_t,
