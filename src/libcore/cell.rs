@@ -200,8 +200,9 @@ use cmp::Ordering;
 use fmt::{self, Debug, Display};
 use marker::Unsize;
 use mem;
-use ops::{Deref, DerefMut, CoerceUnsized};
+use ops::{Deref, DerefMut, CoerceUnsized, Index};
 use ptr;
+use slice::SliceIndex;
 
 /// A mutable memory location.
 ///
@@ -510,7 +511,7 @@ impl<T: ?Sized> Cell<T> {
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
     /// let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
-    /// assert_eq!(cell_slice.len(), 3);
+    /// assert_eq!(cell_slice[..].len(), 3);
     ///
     /// let slice_cell: &[Cell<i32>] = &cell_slice[..];
     /// assert_eq!(slice_cell.len(), 3);
@@ -548,23 +549,14 @@ impl<T: Default> Cell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 
 #[unstable(feature = "as_cell", issue="43038")]
-impl<T> Deref for Cell<[T]> {
-    type Target = [Cell<T>];
+impl<T, I> Index<I> for Cell<[T]>
+    where I: SliceIndex<[Cell<T>]>
+{
+    type Output = I::Output;
 
-    #[inline]
-    fn deref(&self) -> &[Cell<T>] {
+    fn index(&self, index: I) -> &Self::Output {
         unsafe {
-            &*(self as *const Cell<[T]> as *const [Cell<T>])
-        }
-    }
-}
-
-#[unstable(feature = "as_cell", issue="43038")]
-impl<T> DerefMut for Cell<[T]> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut [Cell<T>] {
-        unsafe {
-            &mut *(self as *mut Cell<[T]> as *mut [Cell<T>])
+            Index::index(&*(self as *const Cell<[T]> as *const [Cell<T>]), index)
         }
     }
 }
