@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
+use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use crate::utils::{match_qpath, paths, span_lint};
 use syntax::symbol::LocalInternedString;
@@ -117,15 +118,17 @@ impl LintPass for LintWithoutLintPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemStatic(ref ty, MutImmutable, body_id) = item.node {
+        if let hir::ItemKind::Static(ref ty, MutImmutable, body_id) = item.node {
             if is_lint_ref_type(ty) {
                 self.declared_lints.insert(item.name, item.span);
-            } else if is_lint_array_type(ty) && item.vis.node == VisibilityKind::Inherited && item.name == "ARRAY" {
-                let mut collector = LintCollector {
-                    output: &mut self.registered_lints,
-                    cx,
-                };
-                collector.visit_expr(&cx.tcx.hir.body(body_id).value);
+            } else if is_lint_array_type(ty) && item.name == "ARRAY" {
+                if let VisibilityKind::Inherited = item.vis.node {
+                    let mut collector = LintCollector {
+                        output: &mut self.registered_lints,
+                        cx,
+                    };
+                    collector.visit_expr(&cx.tcx.hir.body(body_id).value);
+                }
             }
         }
     }
@@ -160,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
 
 
 fn is_lint_ref_type(ty: &Ty) -> bool {
-    if let TyRptr(
+    if let TyKind::Rptr(
         _,
         MutTy {
             ty: ref inner,
@@ -168,7 +171,7 @@ fn is_lint_ref_type(ty: &Ty) -> bool {
         },
     ) = ty.node
     {
-        if let TyPath(ref path) = inner.node {
+        if let TyKind::Path(ref path) = inner.node {
             return match_qpath(path, &paths::LINT);
         }
     }
@@ -177,7 +180,7 @@ fn is_lint_ref_type(ty: &Ty) -> bool {
 
 
 fn is_lint_array_type(ty: &Ty) -> bool {
-    if let TyPath(ref path) = ty.node {
+    if let TyKind::Path(ref path) = ty.node {
         match_qpath(path, &paths::LINT_ARRAY)
     } else {
         false

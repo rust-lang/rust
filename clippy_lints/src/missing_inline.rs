@@ -108,11 +108,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             return;
         }
         match it.node {
-            hir::ItemFn(..) => {
+            hir::ItemKind::Fn(..) => {
                 let desc = "a function";
                 check_missing_inline_attrs(cx, &it.attrs, it.span, desc);
             },
-            hir::ItemTrait(ref _is_auto, ref _unsafe, ref _generics,
+            hir::ItemKind::Trait(ref _is_auto, ref _unsafe, ref _generics,
                            ref _bounds, ref trait_items)  => {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
@@ -134,20 +134,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                     }
                 }
             }
-            hir::ItemConst(..) |
-            hir::ItemEnum(..) |
-            hir::ItemMod(..) |
-            hir::ItemStatic(..) |
-            hir::ItemStruct(..) |
-            hir::ItemTraitAlias(..) |
-            hir::ItemGlobalAsm(..) |
-            hir::ItemTy(..) |
-            hir::ItemUnion(..) |
-            hir::ItemExistential(..) |
-            hir::ItemExternCrate(..) |
-            hir::ItemForeignMod(..) |
-            hir::ItemImpl(..) |
-            hir::ItemUse(..) => {},
+            hir::ItemKind::Const(..) |
+            hir::ItemKind::Enum(..) |
+            hir::ItemKind::Mod(..) |
+            hir::ItemKind::Static(..) |
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::TraitAlias(..) |
+            hir::ItemKind::GlobalAsm(..) |
+            hir::ItemKind::Ty(..) |
+            hir::ItemKind::Union(..) |
+            hir::ItemKind::Existential(..) |
+            hir::ItemKind::ExternCrate(..) |
+            hir::ItemKind::ForeignMod(..) |
+            hir::ItemKind::Impl(..) |
+            hir::ItemKind::Use(..) => {},
         };
     }
 

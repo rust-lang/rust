@@ -154,7 +154,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             check_attrs(cx, item.span, item.name, &item.attrs)
         }
         match item.node {
-            ItemExternCrate(_) | ItemUse(_, _) => {
+            ItemKind::ExternCrate(_) | ItemKind::Use(_, _) => {
                 for attr in &item.attrs {
                     if let Some(ref lint_list) = attr.meta_item_list() {
                         match &*attr.name().as_str() {
@@ -162,7 +162,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                 // whitelist `unused_imports` and `deprecated`
                                 for lint in lint_list {
                                     if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
-                                        if let ItemUse(_, _) = item.node {
+                                        if let ItemKind::Use(_, _) = item.node {
                                             return;
                                         }
                                     }
@@ -207,7 +207,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
 }
 
 fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
-    if let ItemFn(_, _, _, eid) = item.node {
+    if let ItemKind::Fn(_, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
     } else {
         true
@@ -234,8 +234,8 @@ fn is_relevant_trait(tcx: TyCtxt, item: &TraitItem) -> bool {
 fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match stmt.node {
-            StmtDecl(_, _) => true,
-            StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => is_relevant_expr(tcx, tables, expr),
+            StmtKind::Decl(_, _) => true,
+            StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => is_relevant_expr(tcx, tables, expr),
         }
     } else {
         block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
@@ -244,10 +244,10 @@ fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> b
 
 fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool {
     match expr.node {
-        ExprBlock(ref block, _) => is_relevant_block(tcx, tables, block),
-        ExprRet(Some(ref e)) => is_relevant_expr(tcx, tables, e),
-        ExprRet(None) | ExprBreak(_, None) => false,
-        ExprCall(ref path_expr, _) => if let ExprPath(ref qpath) = path_expr.node {
+        ExprKind::Block(ref block, _) => is_relevant_block(tcx, tables, block),
+        ExprKind::Ret(Some(ref e)) => is_relevant_expr(tcx, tables, e),
+        ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
+        ExprKind::Call(ref path_expr, _) => if let ExprKind::Path(ref qpath) = path_expr.node {
             if let Some(fun_id) = opt_def_id(tables.qpath_def(qpath, path_expr.hir_id)) {
                 !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
             } else {

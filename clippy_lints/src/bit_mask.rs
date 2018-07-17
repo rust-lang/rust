@@ -109,7 +109,7 @@ impl LintPass for BitMask {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprBinary(ref cmp, ref left, ref right) = e.node {
+        if let ExprKind::Binary(ref cmp, ref left, ref right) = e.node {
             if cmp.node.is_comparison() {
                 if let Some(cmp_opt) = fetch_int_literal(cx, right) {
                     check_compare(cx, left, cmp.node, cmp_opt, e.span)
@@ -119,13 +119,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
             }
         }
         if_chain! {
-            if let Expr_::ExprBinary(ref op, ref left, ref right) = e.node;
-            if BinOp_::BiEq == op.node;
-            if let Expr_::ExprBinary(ref op1, ref left1, ref right1) = left.node;
-            if BinOp_::BiBitAnd == op1.node;
-            if let Expr_::ExprLit(ref lit) = right1.node;
+            if let ExprKind::Binary(ref op, ref left, ref right) = e.node;
+            if BinOpKind::Eq == op.node;
+            if let ExprKind::Binary(ref op1, ref left1, ref right1) = left.node;
+            if BinOpKind::BitAnd == op1.node;
+            if let ExprKind::Lit(ref lit) = right1.node;
             if let LitKind::Int(n, _) = lit.node;
-            if let Expr_::ExprLit(ref lit1) = right.node;
+            if let ExprKind::Lit(ref lit1) = right.node;
             if let LitKind::Int(0, _) = lit1.node;
             if n.leading_zeros() == n.count_zeros();
             if n > u128::from(self.verbose_bit_mask_threshold);
@@ -143,22 +143,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
     }
 }
 
-fn invert_cmp(cmp: BinOp_) -> BinOp_ {
+fn invert_cmp(cmp: BinOpKind) -> BinOpKind {
     match cmp {
-        BiEq => BiEq,
-        BiNe => BiNe,
-        BiLt => BiGt,
-        BiGt => BiLt,
-        BiLe => BiGe,
-        BiGe => BiLe,
-        _ => BiOr, // Dummy
+        BinOpKind::Eq => BinOpKind::Eq,
+        BinOpKind::Ne => BinOpKind::Ne,
+        BinOpKind::Lt => BinOpKind::Gt,
+        BinOpKind::Gt => BinOpKind::Lt,
+        BinOpKind::Le => BinOpKind::Ge,
+        BinOpKind::Ge => BinOpKind::Le,
+        _ => BinOpKind::Or, // Dummy
     }
 }
 
 
-fn check_compare(cx: &LateContext, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u128, span: Span) {
-    if let ExprBinary(ref op, ref left, ref right) = bit_op.node {
-        if op.node != BiBitAnd && op.node != BiBitOr {
+fn check_compare(cx: &LateContext, bit_op: &Expr, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
+    if let ExprKind::Binary(ref op, ref left, ref right) = bit_op.node {
+        if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr {
             return;
         }
         fetch_int_literal(cx, right)
@@ -167,10 +167,10 @@ fn check_compare(cx: &LateContext, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u12
     }
 }
 
-fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: u128, cmp_value: u128, span: Span) {
+fn check_bit_mask(cx: &LateContext, bit_op: BinOpKind, cmp_op: BinOpKind, mask_value: u128, cmp_value: u128, span: Span) {
     match cmp_op {
-        BiEq | BiNe => match bit_op {
-            BiBitAnd => if mask_value & cmp_value != cmp_value {
+        BinOpKind::Eq | BinOpKind::Ne => match bit_op {
+            BinOpKind::BitAnd => if mask_value & cmp_value != cmp_value {
                 if cmp_value != 0 {
                     span_lint(
                         cx,
@@ -186,7 +186,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
             } else if mask_value == 0 {
                 span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
             },
-            BiBitOr => if mask_value | cmp_value != cmp_value {
+            BinOpKind::BitOr => if mask_value | cmp_value != cmp_value {
                 span_lint(
                     cx,
                     BAD_BIT_MASK,
@@ -200,8 +200,8 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
             },
             _ => (),
         },
-        BiLt | BiGe => match bit_op {
-            BiBitAnd => if mask_value < cmp_value {
+        BinOpKind::Lt | BinOpKind::Ge => match bit_op {
+            BinOpKind::BitAnd => if mask_value < cmp_value {
                 span_lint(
                     cx,
                     BAD_BIT_MASK,
@@ -215,7 +215,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
             } else if mask_value == 0 {
                 span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
             },
-            BiBitOr => if mask_value >= cmp_value {
+            BinOpKind::BitOr => if mask_value >= cmp_value {
                 span_lint(
                     cx,
                     BAD_BIT_MASK,
@@ -229,11 +229,11 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
             } else {
                 check_ineffective_lt(cx, span, mask_value, cmp_value, "|");
             },
-            BiBitXor => check_ineffective_lt(cx, span, mask_value, cmp_value, "^"),
+            BinOpKind::BitXor => check_ineffective_lt(cx, span, mask_value, cmp_value, "^"),
             _ => (),
         },
-        BiLe | BiGt => match bit_op {
-            BiBitAnd => if mask_value <= cmp_value {
+        BinOpKind::Le | BinOpKind::Gt => match bit_op {
+            BinOpKind::BitAnd => if mask_value <= cmp_value {
                 span_lint(
                     cx,
                     BAD_BIT_MASK,
@@ -247,7 +247,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
             } else if mask_value == 0 {
                 span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
             },
-            BiBitOr => if mask_value > cmp_value {
+            BinOpKind::BitOr => if mask_value > cmp_value {
                 span_lint(
                     cx,
                     BAD_BIT_MASK,
@@ -261,7 +261,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
             } else {
                 check_ineffective_gt(cx, span, mask_value, cmp_value, "|");
             },
-            BiBitXor => check_ineffective_gt(cx, span, mask_value, cmp_value, "^"),
+            BinOpKind::BitXor => check_ineffective_gt(cx, span, mask_value, cmp_value, "^"),
             _ => (),
         },
         _ => (),

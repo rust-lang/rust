@@ -9,26 +9,26 @@ use syntax::ast;
 use crate::utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
 
 /// Convert a hir binary operator to the corresponding `ast` type.
-pub fn binop(op: hir::BinOp_) -> ast::BinOpKind {
+pub fn binop(op: hir::BinOpKind) -> ast::BinOpKind {
     match op {
-        hir::BiEq => ast::BinOpKind::Eq,
-        hir::BiGe => ast::BinOpKind::Ge,
-        hir::BiGt => ast::BinOpKind::Gt,
-        hir::BiLe => ast::BinOpKind::Le,
-        hir::BiLt => ast::BinOpKind::Lt,
-        hir::BiNe => ast::BinOpKind::Ne,
-        hir::BiOr => ast::BinOpKind::Or,
-        hir::BiAdd => ast::BinOpKind::Add,
-        hir::BiAnd => ast::BinOpKind::And,
-        hir::BiBitAnd => ast::BinOpKind::BitAnd,
-        hir::BiBitOr => ast::BinOpKind::BitOr,
-        hir::BiBitXor => ast::BinOpKind::BitXor,
-        hir::BiDiv => ast::BinOpKind::Div,
-        hir::BiMul => ast::BinOpKind::Mul,
-        hir::BiRem => ast::BinOpKind::Rem,
-        hir::BiShl => ast::BinOpKind::Shl,
-        hir::BiShr => ast::BinOpKind::Shr,
-        hir::BiSub => ast::BinOpKind::Sub,
+        hir::BinOpKind::Eq => ast::BinOpKind::Eq,
+        hir::BinOpKind::Ge => ast::BinOpKind::Ge,
+        hir::BinOpKind::Gt => ast::BinOpKind::Gt,
+        hir::BinOpKind::Le => ast::BinOpKind::Le,
+        hir::BinOpKind::Lt => ast::BinOpKind::Lt,
+        hir::BinOpKind::Ne => ast::BinOpKind::Ne,
+        hir::BinOpKind::Or => ast::BinOpKind::Or,
+        hir::BinOpKind::Add => ast::BinOpKind::Add,
+        hir::BinOpKind::And => ast::BinOpKind::And,
+        hir::BinOpKind::BitAnd => ast::BinOpKind::BitAnd,
+        hir::BinOpKind::BitOr => ast::BinOpKind::BitOr,
+        hir::BinOpKind::BitXor => ast::BinOpKind::BitXor,
+        hir::BinOpKind::Div => ast::BinOpKind::Div,
+        hir::BinOpKind::Mul => ast::BinOpKind::Mul,
+        hir::BinOpKind::Rem => ast::BinOpKind::Rem,
+        hir::BinOpKind::Shl => ast::BinOpKind::Shl,
+        hir::BinOpKind::Shr => ast::BinOpKind::Shr,
+        hir::BinOpKind::Sub => ast::BinOpKind::Sub,
     }
 }
 
@@ -87,7 +87,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
     // `#[no_std]`. Testing both instead of resolving the paths.
 
     match expr.node {
-        hir::ExprPath(ref path) => {
+        hir::ExprKind::Path(ref path) => {
             if match_qpath(path, &paths::RANGE_FULL_STD) || match_qpath(path, &paths::RANGE_FULL) {
                 Some(Range {
                     start: None,
@@ -98,7 +98,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
                 None
             }
         },
-        hir::ExprCall(ref path, ref args) => if let hir::ExprPath(ref path) = path.node {
+        hir::ExprKind::Call(ref path, ref args) => if let hir::ExprKind::Path(ref path) = path.node {
             if match_qpath(path, &paths::RANGE_INCLUSIVE_STD_NEW) || match_qpath(path, &paths::RANGE_INCLUSIVE_NEW) {
                 Some(Range {
                     start: Some(&args[0]),
@@ -111,7 +111,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
         } else {
             None
         },
-        hir::ExprStruct(ref path, ref fields, None) => if match_qpath(path, &paths::RANGE_FROM_STD)
+        hir::ExprKind::Struct(ref path, ref fields, None) => if match_qpath(path, &paths::RANGE_FROM_STD)
             || match_qpath(path, &paths::RANGE_FROM)
         {
             Some(Range {
@@ -154,9 +154,9 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
     // }
     // ```
     if_chain! {
-        if let hir::DeclLocal(ref loc) = decl.node;
+        if let hir::DeclKind::Local(ref loc) = decl.node;
         if let Some(ref expr) = loc.init;
-        if let hir::ExprMatch(_, _, hir::MatchSource::ForLoopDesugar) = expr.node;
+        if let hir::ExprKind::Match(_, _, hir::MatchSource::ForLoopDesugar) = expr.node;
         then {
             return true;
         }
@@ -171,7 +171,7 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
     // }
     // ```
     if_chain! {
-        if let hir::DeclLocal(ref loc) = decl.node;
+        if let hir::DeclKind::Local(ref loc) = decl.node;
         if let hir::LocalSource::ForLoopDesugar = loc.source;
         then {
             return true;
@@ -185,15 +185,15 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
 /// `for pat in arg { body }` becomes `(pat, arg, body)`.
 pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)> {
     if_chain! {
-        if let hir::ExprMatch(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.node;
-        if let hir::ExprCall(_, ref iterargs) = iterexpr.node;
+        if let hir::ExprKind::Match(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.node;
+        if let hir::ExprKind::Call(_, ref iterargs) = iterexpr.node;
         if iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none();
-        if let hir::ExprLoop(ref block, _, _) = arms[0].body.node;
+        if let hir::ExprKind::Loop(ref block, _, _) = arms[0].body.node;
         if block.expr.is_none();
         if let [ _, _, ref let_stmt, ref body ] = *block.stmts;
-        if let hir::StmtDecl(ref decl, _) = let_stmt.node;
-        if let hir::DeclLocal(ref decl) = decl.node;
-        if let hir::StmtExpr(ref expr, _) = body.node;
+        if let hir::StmtKind::Decl(ref decl, _) = let_stmt.node;
+        if let hir::DeclKind::Local(ref decl) = decl.node;
+        if let hir::StmtKind::Expr(ref expr, _) = body.node;
         then {
             return Some((&*decl.pat, &iterargs[0], expr));
         }
@@ -213,8 +213,8 @@ pub enum VecArgs<'a> {
 /// from `vec!`.
 pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e>> {
     if_chain! {
-        if let hir::ExprCall(ref fun, ref args) = expr.node;
-        if let hir::ExprPath(ref path) = fun.node;
+        if let hir::ExprKind::Call(ref fun, ref args) = expr.node;
+        if let hir::ExprKind::Path(ref path) = fun.node;
         if is_expn_of(fun.span, "vec").is_some();
         if let Some(fun_def_id) = opt_def_id(resolve_node(cx, path, fun.hir_id));
         then {
@@ -225,8 +225,8 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
             else if match_def_path(cx.tcx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                 // `vec![a, b, c]` case
                 if_chain! {
-                    if let hir::ExprBox(ref boxed) = args[0].node;
-                    if let hir::ExprArray(ref args) = boxed.node;
+                    if let hir::ExprKind::Box(ref boxed) = args[0].node;
+                    if let hir::ExprKind::Array(ref args) = boxed.node;
                     then {
                         return Some(VecArgs::Vec(&*args));
                     }

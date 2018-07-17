@@ -184,14 +184,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
         if in_external_macro(cx, expr.span) {
             return;
         }
-        if let ExprMatch(ref ex, ref arms, MatchSource::Normal) = expr.node {
+        if let ExprKind::Match(ref ex, ref arms, MatchSource::Normal) = expr.node {
             check_single_match(cx, ex, arms, expr);
             check_match_bool(cx, ex, arms, expr);
             check_overlapping_arms(cx, ex, arms);
             check_wild_err_arm(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
         }
-        if let ExprMatch(ref ex, ref arms, _) = expr.node {
+        if let ExprKind::Match(ref ex, ref arms, _) = expr.node {
             check_match_ref_pats(cx, ex, arms, expr);
         }
     }
@@ -205,7 +205,7 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
         let els = remove_blocks(&arms[1].body);
         let els = if is_unit_expr(els) {
             None
-        } else if let ExprBlock(_, _) = els.node {
+        } else if let ExprKind::Block(_, _) = els.node {
             // matches with blocks that contain statements are prettier as `if let + else`
             Some(els)
         } else {
@@ -221,7 +221,7 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 }
 
 fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
-    if arms[1].pats[0].node == PatKind::Wild {
+    if is_wild(&arms[1].pats[0]) {
         report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
 }
@@ -265,7 +265,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
     let path = match arms[1].pats[0].node {
         PatKind::TupleStruct(ref path, ref inner, _) => {
             // contains any non wildcard patterns? e.g. Err(err)
-            if inner.iter().any(|pat| pat.node != PatKind::Wild) {
+            if !inner.iter().all(is_wild) {
                 return;
             }
             print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
@@ -294,7 +294,7 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
                 if arms.len() == 2 && arms[0].pats.len() == 1 {
                     // no guards
                     let exprs = if let PatKind::Lit(ref arm_bool) = arms[0].pats[0].node {
-                        if let ExprLit(ref lit) = arm_bool.node {
+                        if let ExprKind::Lit(ref lit) = arm_bool.node {
                             match lit.node {
                                 LitKind::Bool(true) => Some((&*arms[0].body, &*arms[1].body)),
                                 LitKind::Bool(false) => Some((&*arms[1].body, &*arms[0].body)),
@@ -356,6 +356,13 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr, 
     }
 }
 
+fn is_wild(pat: &impl std::ops::Deref<Target = Pat>) -> bool {
+    match pat.node {
+        PatKind::Wild => true,
+        _ => false,
+    }
+}
+
 fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
     if match_type(cx, ex_ty, &paths::RESULT) {
@@ -364,8 +371,8 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
                 if_chain! {
                     if path_str == "Err";
-                    if inner.iter().any(|pat| pat.node == PatKind::Wild);
-                    if let ExprBlock(ref block, _) = arm.body.node;
+                    if inner.iter().any(is_wild);
+                    if let ExprKind::Block(ref block, _) = arm.body.node;
                     if is_panic_block(block);
                     then {
                         // `Err(_)` arm with `panic!` found
@@ -399,7 +406,7 @@ fn is_panic_block(block: &Block) -> bool {
 fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if has_only_ref_pats(arms) {
         let mut suggs = Vec::new();
-        let (title, msg) = if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
+        let (title, msg) = if let ExprKind::AddrOf(Mutability::MutImmutable, ref inner) = ex.node {
             suggs.push((ex.span, Sugg::hir(cx, inner, "..").to_string()));
             (
                 "you don't need to add `&` to both the expression and the patterns",
@@ -533,8 +540,8 @@ fn type_ranges(ranges: &[SpannedRange<Constant>]) -> TypedRanges {
 
 fn is_unit_expr(expr: &Expr) -> bool {
     match expr.node {
-        ExprTup(ref v) if v.is_empty() => true,
-        ExprBlock(ref b, _) if b.stmts.is_empty() && b.expr.is_none() => true,
+        ExprKind::Tup(ref v) if v.is_empty() => true,
+        ExprKind::Block(ref b, _) if b.stmts.is_empty() && b.expr.is_none() => true,
         _ => false,
     }
 }
@@ -554,10 +561,10 @@ fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
         if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
         if let PatKind::Binding(rb, _, ident, _) = pats[0].node;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
-        if let ExprCall(ref e, ref args) = remove_blocks(&arm.body).node;
-        if let ExprPath(ref some_path) = e.node;
+        if let ExprKind::Call(ref e, ref args) = remove_blocks(&arm.body).node;
+        if let ExprKind::Path(ref some_path) = e.node;
         if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
-        if let ExprPath(ref qpath) = args[0].node;
+        if let ExprKind::Path(ref qpath) = args[0].node;
         if let &QPath::Resolved(_, ref path2) = qpath;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {

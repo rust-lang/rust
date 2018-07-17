@@ -88,8 +88,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         // Exclude non-inherent impls
         if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(node_id)) {
-            if matches!(item.node, ItemImpl(_, _, _, _, Some(_), _, _) |
-                ItemTrait(..))
+            if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
+                ItemKind::Trait(..))
             {
                 return;
             }
@@ -215,7 +215,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             if match_type(cx, ty, &paths::VEC);
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
-                            if let TyPath(QPath::Resolved(_, ref path)) = input.node;
+                            if let TyKind::Path(QPath::Resolved(_, ref path)) = input.node;
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.ident.name == "Vec")
                                 .and_then(|ps| ps.args.as_ref())
@@ -339,7 +339,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                     match node {
                         map::Node::NodeExpr(e) => {
                             // `match` and `if let`
-                            if let ExprMatch(ref c, ..) = e.node {
+                            if let ExprKind::Match(ref c, ..) = e.node {
                                 self.spans_need_deref
                                     .entry(vid)
                                     .or_insert_with(HashSet::new)
@@ -350,8 +350,8 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                         map::Node::NodeStmt(s) => {
                             // `let <pat> = x;`
                             if_chain! {
-                                if let StmtDecl(ref decl, _) = s.node;
-                                if let DeclLocal(ref local) = decl.node;
+                                if let StmtKind::Decl(ref decl, _) = s.node;
+                                if let DeclKind::Local(ref local) = decl.node;
                                 then {
                                     self.spans_need_deref
                                         .entry(vid)

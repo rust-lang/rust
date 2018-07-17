@@ -52,7 +52,7 @@ impl LintPass for EqOp {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprBinary(op, ref left, ref right) = e.node {
+        if let ExprKind::Binary(op, ref left, ref right) = e.node {
             if in_macro(e.span) {
                 return;
             }
@@ -66,28 +66,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 return;
             }
             let (trait_id, requires_ref) = match op.node {
-                BiAdd => (cx.tcx.lang_items().add_trait(), false),
-                BiSub => (cx.tcx.lang_items().sub_trait(), false),
-                BiMul => (cx.tcx.lang_items().mul_trait(), false),
-                BiDiv => (cx.tcx.lang_items().div_trait(), false),
-                BiRem => (cx.tcx.lang_items().rem_trait(), false),
+                BinOpKind::Add => (cx.tcx.lang_items().add_trait(), false),
+                BinOpKind::Sub => (cx.tcx.lang_items().sub_trait(), false),
+                BinOpKind::Mul => (cx.tcx.lang_items().mul_trait(), false),
+                BinOpKind::Div => (cx.tcx.lang_items().div_trait(), false),
+                BinOpKind::Rem => (cx.tcx.lang_items().rem_trait(), false),
                 // don't lint short circuiting ops
-                BiAnd | BiOr => return,
-                BiBitXor => (cx.tcx.lang_items().bitxor_trait(), false),
-                BiBitAnd => (cx.tcx.lang_items().bitand_trait(), false),
-                BiBitOr => (cx.tcx.lang_items().bitor_trait(), false),
-                BiShl => (cx.tcx.lang_items().shl_trait(), false),
-                BiShr => (cx.tcx.lang_items().shr_trait(), false),
-                BiNe | BiEq => (cx.tcx.lang_items().eq_trait(), true),
-                BiLt | BiLe | BiGe | BiGt => (cx.tcx.lang_items().ord_trait(), true),
+                BinOpKind::And | BinOpKind::Or => return,
+                BinOpKind::BitXor => (cx.tcx.lang_items().bitxor_trait(), false),
+                BinOpKind::BitAnd => (cx.tcx.lang_items().bitand_trait(), false),
+                BinOpKind::BitOr => (cx.tcx.lang_items().bitor_trait(), false),
+                BinOpKind::Shl => (cx.tcx.lang_items().shl_trait(), false),
+                BinOpKind::Shr => (cx.tcx.lang_items().shr_trait(), false),
+                BinOpKind::Ne | BinOpKind::Eq => (cx.tcx.lang_items().eq_trait(), true),
+                BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => (cx.tcx.lang_items().ord_trait(), true),
             };
             if let Some(trait_id) = trait_id {
                 #[allow(match_same_arms)]
                 match (&left.node, &right.node) {
                     // do not suggest to dereference literals
-                    (&ExprLit(..), _) | (_, &ExprLit(..)) => {},
+                    (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},
                     // &foo == &bar
-                    (&ExprAddrOf(_, ref l), &ExprAddrOf(_, ref r)) => {
+                    (&ExprKind::AddrOf(_, ref l), &ExprKind::AddrOf(_, ref r)) => {
                         let lty = cx.tables.expr_ty(l);
                         let rty = cx.tables.expr_ty(r);
                         let lcpy = is_copy(cx, lty);
@@ -128,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         }
                     },
                     // &foo == bar
-                    (&ExprAddrOf(_, ref l), _) => {
+                    (&ExprKind::AddrOf(_, ref l), _) => {
                         let lty = cx.tables.expr_ty(l);
                         let lcpy = is_copy(cx, lty);
                         if (requires_ref || lcpy) && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right).into()]) {
@@ -139,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         }
                     },
                     // foo == &bar
-                    (_, &ExprAddrOf(_, ref r)) => {
+                    (_, &ExprKind::AddrOf(_, ref r)) => {
                         let rty = cx.tables.expr_ty(r);
                         let rcpy = is_copy(cx, rty);
                         if (requires_ref || rcpy) && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()]) {
@@ -159,7 +159,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
 
 fn is_valid_operator(op: BinOp) -> bool {
     match op.node {
-        BiSub | BiDiv | BiEq | BiLt | BiLe | BiGt | BiGe | BiNe | BiAnd | BiOr | BiBitXor | BiBitAnd | BiBitOr => true,
+        BinOpKind::Sub | BinOpKind::Div | BinOpKind::Eq | BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge | BinOpKind::Ne | BinOpKind::And | BinOpKind::Or | BinOpKind::BitXor | BinOpKind::BitAnd | BinOpKind::BitOr => true,
         _ => false,
     }
 }

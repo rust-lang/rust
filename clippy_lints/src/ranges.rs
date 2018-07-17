@@ -3,7 +3,7 @@ use rustc::hir::*;
 use syntax::ast::RangeLimits;
 use syntax::codemap::Spanned;
 use crate::utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then};
-use crate::utils::{get_trait_def_id, higher, implements_trait};
+use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
 use crate::utils::sugg::Sugg;
 
 /// **What it does:** Checks for calling `.step_by(0)` on iterators,
@@ -88,7 +88,7 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprMethodCall(ref path, _, ref args) = expr.node {
+        if let ExprKind::MethodCall(ref path, _, ref args) = expr.node {
             let name = path.ident.as_str();
 
             // Range with step_by(0).
@@ -107,18 +107,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let zip_arg = &args[1];
                 if_chain! {
                     // .iter() call
-                    if let ExprMethodCall(ref iter_path, _, ref iter_args ) = *iter;
+                    if let ExprKind::MethodCall(ref iter_path, _, ref iter_args ) = *iter;
                     if iter_path.ident.name == "iter";
                     // range expression in .zip() call: 0..x.len()
                     if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(cx, zip_arg);
                     if is_integer_literal(start, 0);
                     // .len() call
-                    if let ExprMethodCall(ref len_path, _, ref len_args) = end.node;
+                    if let ExprKind::MethodCall(ref len_path, _, ref len_args) = end.node;
                     if len_path.ident.name == "len" && len_args.len() == 1;
                     // .iter() and .len() called on same Path
-                    if let ExprPath(QPath::Resolved(_, ref iter_path)) = iter_args[0].node;
-                    if let ExprPath(QPath::Resolved(_, ref len_path)) = len_args[0].node;
-                    if iter_path.segments == len_path.segments;
+                    if let ExprKind::Path(QPath::Resolved(_, ref iter_path)) = iter_args[0].node;
+                    if let ExprKind::Path(QPath::Resolved(_, ref len_path)) = len_args[0].node;
+                    if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
                      then {
                          span_lint(cx,
                                    RANGE_ZIP_WITH_LEN,
@@ -184,7 +184,7 @@ fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
 
 fn y_plus_one(expr: &Expr) -> Option<&Expr> {
     match expr.node {
-        ExprBinary(Spanned { node: BiAdd, .. }, ref lhs, ref rhs) => if is_integer_literal(lhs, 1) {
+        ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref lhs, ref rhs) => if is_integer_literal(lhs, 1) {
             Some(rhs)
         } else if is_integer_literal(rhs, 1) {
             Some(lhs)
@@ -197,7 +197,7 @@ fn y_plus_one(expr: &Expr) -> Option<&Expr> {
 
 fn y_minus_one(expr: &Expr) -> Option<&Expr> {
     match expr.node {
-        ExprBinary(Spanned { node: BiSub, .. }, ref lhs, ref rhs) if is_integer_literal(rhs, 1) => Some(lhs),
+        ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, ref lhs, ref rhs) if is_integer_literal(rhs, 1) => Some(lhs),
         _ => None,
     }
 }

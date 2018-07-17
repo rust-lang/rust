@@ -147,14 +147,14 @@ struct CCHelper<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr) {
         match e.node {
-            ExprMatch(_, ref arms, _) => {
+            ExprKind::Match(_, ref arms, _) => {
                 walk_expr(self, e);
                 let arms_n: u64 = arms.iter().map(|arm| arm.pats.len() as u64).sum();
                 if arms_n > 1 {
                     self.match_arms += arms_n - 2;
                 }
             },
-            ExprCall(ref callee, _) => {
+            ExprKind::Call(ref callee, _) => {
                 walk_expr(self, e);
                 let ty = self.cx.tables.node_id_to_type(callee.hir_id);
                 match ty.sty {
@@ -167,15 +167,15 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
                     _ => (),
                 }
             },
-            ExprClosure(.., _) => (),
-            ExprBinary(op, _, _) => {
+            ExprKind::Closure(.., _) => (),
+            ExprKind::Binary(op, _, _) => {
                 walk_expr(self, e);
                 match op.node {
-                    BiAnd | BiOr => self.short_circuits += 1,
+                    BinOpKind::And | BinOpKind::Or => self.short_circuits += 1,
                     _ => (),
                 }
             },
-            ExprRet(_) => self.returns += 1,
+            ExprKind::Ret(_) => self.returns += 1,
             _ => walk_expr(self, e),
         }
     }

@@ -44,10 +44,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
 
 impl EnumGlobUse {
     fn lint_item(&self, cx: &LateContext, item: &Item) {
-        if item.vis.node == VisibilityKind::Public {
+        if item.vis.node.is_pub() {
             return; // re-exports are fine
         }
-        if let ItemUse(ref path, UseKind::Glob) = item.node {
+        if let ItemKind::Use(ref path, UseKind::Glob) = item.node {
             if let Def::Enum(_) = path.def {
                 span_lint(
                     cx,

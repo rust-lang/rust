@@ -68,8 +68,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
         }
 
         match item.node {
-            ItemTrait(_, _, _, _, ref trait_items) => check_trait_items(cx, item, trait_items),
-            ItemImpl(_, _, _, _, None, _, ref impl_items) => check_impl_items(cx, item, impl_items),
+            ItemKind::Trait(_, _, _, _, ref trait_items) => check_trait_items(cx, item, trait_items),
+            ItemKind::Impl(_, _, _, _, None, _, ref impl_items) => check_impl_items(cx, item, impl_items),
             _ => (),
         }
     }
@@ -79,26 +79,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
             return;
         }
 
-        if let ExprBinary(Spanned { node: cmp, .. }, ref left, ref right) = expr.node {
+        if let ExprKind::Binary(Spanned { node: cmp, .. }, ref left, ref right) = expr.node {
             match cmp {
-                BiEq => {
+                BinOpKind::Eq => {
                     check_cmp(cx, expr.span, left, right, "", 0); // len == 0
                     check_cmp(cx, expr.span, right, left, "", 0); // 0 == len
                 },
-                BiNe => {
+                BinOpKind::Ne => {
                     check_cmp(cx, expr.span, left, right, "!", 0); // len != 0
                     check_cmp(cx, expr.span, right, left, "!", 0); // 0 != len
                 },
-                BiGt => {
+                BinOpKind::Gt => {
                     check_cmp(cx, expr.span, left, right, "!", 0); // len > 0
                     check_cmp(cx, expr.span, right, left, "", 1); // 1 > len
                 },
-                BiLt => {
+                BinOpKind::Lt => {
                     check_cmp(cx, expr.span, left, right, "", 1); // len < 1
                     check_cmp(cx, expr.span, right, left, "!", 0); // 0 < len
                 },
-                BiGe => check_cmp(cx, expr.span, left, right, "!", 1), // len <= 1
-                BiLe => check_cmp(cx, expr.span, right, left, "!", 1), // 1 >= len
+                BinOpKind::Ge => check_cmp(cx, expr.span, left, right, "!", 1), // len <= 1
+                BinOpKind::Le => check_cmp(cx, expr.span, right, left, "!", 1), // 1 >= len
                 _ => (),
             }
         }
@@ -194,7 +194,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
 }
 
 fn check_cmp(cx: &LateContext, span: Span, method: &Expr, lit: &Expr, op: &str, compare_to: u32) {
-    if let (&ExprMethodCall(ref method_path, _, ref args), &ExprLit(ref lit)) = (&method.node, &lit.node) {
+    if let (&ExprKind::MethodCall(ref method_path, _, ref args), &ExprKind::Lit(ref lit)) = (&method.node, &lit.node) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
             if name == "is_empty" {
@@ -258,11 +258,10 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
     match ty.sty {
-        ty::TyDynamic(..) => cx.tcx
-            .associated_items(ty.ty_to_def_id().expect("trait impl not found"))
+        ty::TyDynamic(ref tt, ..) => cx.tcx
+            .associated_items(tt.principal().expect("trait impl not found").def_id())
             .any(|item| is_is_empty(cx, &item)),
-        ty::TyProjection(_) => ty.ty_to_def_id()
-            .map_or(false, |id| has_is_empty_impl(cx, id)),
+        ty::TyProjection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
         ty::TyAdt(id, _) => has_is_empty_impl(cx, id.did),
         ty::TyArray(..) | ty::TySlice(..) | ty::TyStr => true,
         _ => false,

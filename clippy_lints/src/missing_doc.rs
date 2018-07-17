@@ -122,9 +122,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
         let desc = match it.node {
-            hir::ItemConst(..) => "a constant",
-            hir::ItemEnum(..) => "an enum",
-            hir::ItemFn(..) => {
+            hir::ItemKind::Const(..) => "a constant",
+            hir::ItemKind::Enum(..) => "an enum",
+            hir::ItemKind::Fn(..) => {
                 // ignore main()
                 if it.name == "main" {
                     let def_id = cx.tcx.hir.local_def_id(it.id);
@@ -135,19 +135,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 }
                 "a function"
             },
-            hir::ItemMod(..) => "a module",
-            hir::ItemStatic(..) => "a static",
-            hir::ItemStruct(..) => "a struct",
-            hir::ItemTrait(..) => "a trait",
-            hir::ItemTraitAlias(..) => "a trait alias",
-            hir::ItemGlobalAsm(..) => "an assembly blob",
-            hir::ItemTy(..) => "a type alias",
-            hir::ItemUnion(..) => "a union",
-            hir::ItemExistential(..) => "an existential type",
-            hir::ItemExternCrate(..) |
-            hir::ItemForeignMod(..) |
-            hir::ItemImpl(..) |
-            hir::ItemUse(..) => return,
+            hir::ItemKind::Mod(..) => "a module",
+            hir::ItemKind::Static(..) => "a static",
+            hir::ItemKind::Struct(..) => "a struct",
+            hir::ItemKind::Trait(..) => "a trait",
+            hir::ItemKind::TraitAlias(..) => "a trait alias",
+            hir::ItemKind::GlobalAsm(..) => "an assembly blob",
+            hir::ItemKind::Ty(..) => "a type alias",
+            hir::ItemKind::Union(..) => "a union",
+            hir::ItemKind::Existential(..) => "an existential type",
+            hir::ItemKind::ExternCrate(..) |
+            hir::ItemKind::ForeignMod(..) |
+            hir::ItemKind::Impl(..) |
+            hir::ItemKind::Use(..) => return,
         };
 
         self.check_missing_docs_attrs(cx, &it.attrs, it.span, desc);

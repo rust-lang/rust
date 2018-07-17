@@ -1,7 +1,7 @@
 use rustc::hir;
 use rustc::lint::*;
 use rustc::ty;
-use rustc_errors::{Applicability};
+use rustc_errors::Applicability;
 use syntax::codemap::Span;
 use crate::utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use crate::utils::paths;
@@ -115,12 +115,12 @@ fn reduce_unit_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<S
     }
 
     match expr.node {
-        hir::ExprCall(_, _) |
-        hir::ExprMethodCall(_, _, _) => {
+        hir::ExprKind::Call(_, _) |
+        hir::ExprKind::MethodCall(_, _, _) => {
             // Calls can't be reduced any more
             Some(expr.span)
         },
-        hir::ExprBlock(ref block, _) => {
+        hir::ExprKind::Block(ref block, _) => {
             match (&block.stmts[..], block.expr.as_ref()) {
                 (&[], Some(inner_expr)) => {
                     // If block only contains an expression,
@@ -131,9 +131,9 @@ fn reduce_unit_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<S
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.node {
-                        hir::StmtDecl(ref d, _) => Some(d.span),
-                        hir::StmtExpr(ref e, _) => Some(e.span),
-                        hir::StmtSemi(_, _) => Some(inner_stmt.span),
+                        hir::StmtKind::Decl(ref d, _) => Some(d.span),
+                        hir::StmtKind::Expr(ref e, _) => Some(e.span),
+                        hir::StmtKind::Semi(_, _) => Some(inner_stmt.span),
                     }
                 },
                 _ => {
@@ -151,7 +151,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<S
 }
 
 fn unit_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Option<(&'tcx hir::Arg, &'a hir::Expr)> {
-    if let hir::ExprClosure(_, ref decl, inner_expr_id, _, _) = expr.node {
+    if let hir::ExprKind::Closure(_, ref decl, inner_expr_id, _, _) = expr.node {
         let body = cx.tcx.hir.body(inner_expr_id);
         let body_expr = &body.value;
 
@@ -175,8 +175,8 @@ fn unit_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Op
 /// Anything else will return `_`.
 fn let_binding_name(cx: &LateContext, var_arg: &hir::Expr) -> String {
     match &var_arg.node {
-        hir::ExprField(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
-        hir::ExprPath(_) => format!("_{}", snippet(cx, var_arg.span, "")),
+        hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
+        hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
         _ => "_".to_string()
     }
 }
@@ -247,8 +247,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
 
-        if let hir::StmtSemi(ref expr, _) = stmt.node {
-            if let hir::ExprMethodCall(_, _, _) = expr.node {
+        if let hir::StmtKind::Semi(ref expr, _) = stmt.node {
+            if let hir::ExprKind::MethodCall(_, _, _) = expr.node {
                 if let Some(arglists) = method_chain_args(expr, &["map"]) {
                     lint_map_unit_fn(cx, stmt, expr, arglists[0]);
                 }

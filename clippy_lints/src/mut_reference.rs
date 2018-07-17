@@ -36,7 +36,7 @@ impl LintPass for UnnecessaryMutPassed {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         match e.node {
-            ExprCall(ref fn_expr, ref arguments) => if let ExprPath(ref path) = fn_expr.node {
+            ExprKind::Call(ref fn_expr, ref arguments) => if let ExprKind::Path(ref path) = fn_expr.node {
                 check_arguments(
                     cx,
                     arguments,
@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
                     &print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)),
                 );
             },
-            ExprMethodCall(ref path, _, ref arguments) => {
+            ExprKind::MethodCall(ref path, _, ref arguments) => {
                 let def_id = cx.tables.type_dependent_defs()[e.hir_id].def_id();
                 let substs = cx.tables.node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
@@ -69,7 +69,7 @@ fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], typ
                     ty::TyRawPtr(ty::TypeAndMut {
                         mutbl: MutImmutable,
                         ..
-                    }) => if let ExprAddrOf(MutMutable, _) = argument.node {
+                    }) => if let ExprKind::AddrOf(MutMutable, _) = argument.node {
                         span_lint(
                             cx,
                             UNNECESSARY_MUT_PASSED,

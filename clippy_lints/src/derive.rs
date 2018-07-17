@@ -70,7 +70,7 @@ impl LintPass for Derive {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) = item.node {
+        if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, _) = item.node {
             let ty = cx.tcx.type_of(cx.tcx.hir.local_def_id(item.id));
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 

@@ -84,9 +84,9 @@ struct Hir2Qmm<'a, 'tcx: 'a, 'v> {
 }
 
 impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
-    fn extract(&mut self, op: BinOp_, a: &[&'v Expr], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
+    fn extract(&mut self, op: BinOpKind, a: &[&'v Expr], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
-            if let ExprBinary(binop, ref lhs, ref rhs) = a.node {
+            if let ExprKind::Binary(binop, ref lhs, ref rhs) = a.node {
                 if binop.node == op {
                     v = self.extract(op, &[lhs, rhs], v)?;
                     continue;
@@ -101,13 +101,13 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         // prevent folding of `cfg!` macros and the like
         if !in_macro(e.span) {
             match e.node {
-                ExprUnary(UnNot, ref inner) => return Ok(Bool::Not(box self.run(inner)?)),
-                ExprBinary(binop, ref lhs, ref rhs) => match binop.node {
-                    BiOr => return Ok(Bool::Or(self.extract(BiOr, &[lhs, rhs], Vec::new())?)),
-                    BiAnd => return Ok(Bool::And(self.extract(BiAnd, &[lhs, rhs], Vec::new())?)),
+                ExprKind::Unary(UnNot, ref inner) => return Ok(Bool::Not(box self.run(inner)?)),
+                ExprKind::Binary(binop, ref lhs, ref rhs) => match binop.node {
+                    BinOpKind::Or => return Ok(Bool::Or(self.extract(BinOpKind::Or, &[lhs, rhs], Vec::new())?)),
+                    BinOpKind::And => return Ok(Bool::And(self.extract(BinOpKind::And, &[lhs, rhs], Vec::new())?)),
                     _ => (),
                 },
-                ExprLit(ref lit) => match lit.node {
+                ExprKind::Lit(ref lit) => match lit.node {
                     LitKind::Bool(true) => return Ok(Bool::True),
                     LitKind::Bool(false) => return Ok(Bool::False),
                     _ => (),
@@ -121,8 +121,8 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 return Ok(Bool::Term(n as u8));
             }
             let negated = match e.node {
-                ExprBinary(binop, ref lhs, ref rhs) => {
- 
+                ExprKind::Binary(binop, ref lhs, ref rhs) => {
+
                     if !implements_ord(self.cx, lhs) {
                         continue;
                     }
@@ -133,16 +133,16 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                             hir_id: DUMMY_HIR_ID,
                             span: DUMMY_SP,
                             attrs: ThinVec::new(),
-                            node: ExprBinary(dummy_spanned(op), lhs.clone(), rhs.clone()),
+                            node: ExprKind::Binary(dummy_spanned(op), lhs.clone(), rhs.clone()),
                         }
                     };
                     match binop.node {
-                        BiEq => mk_expr(BiNe),
-                        BiNe => mk_expr(BiEq),
-                        BiGt => mk_expr(BiLe),
-                        BiGe => mk_expr(BiLt),
-                        BiLt => mk_expr(BiGe),
-                        BiLe => mk_expr(BiGt),
+                        BinOpKind::Eq => mk_expr(BinOpKind::Ne),
+                        BinOpKind::Ne => mk_expr(BinOpKind::Eq),
+                        BinOpKind::Gt => mk_expr(BinOpKind::Le),
+                        BinOpKind::Ge => mk_expr(BinOpKind::Lt),
+                        BinOpKind::Lt => mk_expr(BinOpKind::Ge),
+                        BinOpKind::Le => mk_expr(BinOpKind::Gt),
                         _ => continue,
                     }
                 },
@@ -178,23 +178,23 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
 
     fn simplify_not(&self, expr: &Expr) -> Option<String> {
         match expr.node {
-            ExprBinary(binop, ref lhs, ref rhs) => {
+            ExprKind::Binary(binop, ref lhs, ref rhs) => {
 
                 if !implements_ord(self.cx, lhs) {
                     return None;
                 }
 
                 match binop.node {
-                    BiEq => Some(" != "),
-                    BiNe => Some(" == "),
-                    BiLt => Some(" >= "),
-                    BiGt => Some(" <= "),
-                    BiLe => Some(" > "),
-                    BiGe => Some(" < "),
+                    BinOpKind::Eq => Some(" != "),
+                    BinOpKind::Ne => Some(" == "),
+                    BinOpKind::Lt => Some(" >= "),
+                    BinOpKind::Gt => Some(" <= "),
+                    BinOpKind::Le => Some(" > "),
+                    BinOpKind::Ge => Some(" < "),
                     _ => None,
                 }.and_then(|op| Some(format!("{}{}{}", self.snip(lhs)?, op, self.snip(rhs)?)))
             },
-            ExprMethodCall(ref path, _, ref args) if args.len() == 1 => {
+            ExprKind::MethodCall(ref path, _, ref args) if args.len() == 1 => {
                 let type_of_receiver = self.cx.tables.expr_ty(&args[0]);
                 if !match_type(self.cx, type_of_receiver, &paths::OPTION) &&
                     !match_type(self.cx, type_of_receiver, &paths::RESULT) {
@@ -441,8 +441,8 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
             return;
         }
         match e.node {
-            ExprBinary(binop, _, _) if binop.node == BiOr || binop.node == BiAnd => self.bool_expr(e),
-            ExprUnary(UnNot, ref inner) => if self.cx.tables.node_types()[inner.hir_id].is_bool() {
+            ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => self.bool_expr(e),
+            ExprKind::Unary(UnNot, ref inner) => if self.cx.tables.node_types()[inner.hir_id].is_bool() {
                 self.bool_expr(e);
             } else {
                 walk_expr(self, e);

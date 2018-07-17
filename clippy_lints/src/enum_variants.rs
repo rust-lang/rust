@@ -262,7 +262,7 @@ impl EarlyLintPass for EnumVariantNames {
                             );
                         }
                     }
-                    if item.vis.node == VisibilityKind::Public {
+                    if item.vis.node.is_pub() {
                         let matching = partial_match(mod_camel, &item_camel);
                         let rmatching = partial_rmatch(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();

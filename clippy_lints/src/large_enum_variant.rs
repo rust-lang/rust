@@ -49,7 +49,7 @@ impl LintPass for LargeEnumVariant {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         let did = cx.tcx.hir.local_def_id(item.id);
-        if let ItemEnum(ref def, _) = item.node {
+        if let ItemKind::Enum(ref def, _) = item.node {
             let ty = cx.tcx.type_of(did);
             let adt = ty.ty_adt_def()
                 .expect("already checked whether this is an enum");

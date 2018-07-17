@@ -18,20 +18,20 @@ use crate::utils::{self, paths, span_lint, in_external_macro};
 ///
 /// ```rust
 /// use core::cmp::Ordering;
-/// 
+///
 /// // Bad
 /// let a = 1.0;
 /// let b = std::f64::NAN;
-/// 
+///
 /// let _not_less_or_equal = !(a <= b);
 ///
 /// // Good
 /// let a = 1.0;
 /// let b = std::f64::NAN;
-/// 
+///
 /// let _not_less_or_equal = match a.partial_cmp(&b) {
 ///     None | Some(Ordering::Greater) => true,
-///     _ => false, 
+///     _ => false,
 /// };
 /// ```
 declare_clippy_lint! {
@@ -54,9 +54,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
         if_chain! {
 
             if !in_external_macro(cx, expr.span);
-            if let Expr_::ExprUnary(UnOp::UnNot, ref inner) = expr.node;
-            if let Expr_::ExprBinary(ref op, ref left, _) = inner.node;
-            if let BinOp_::BiLe | BinOp_::BiGe | BinOp_::BiLt | BinOp_::BiGt = op.node;
+            if let ExprKind::Unary(UnOp::UnNot, ref inner) = expr.node;
+            if let ExprKind::Binary(ref op, ref left, _) = inner.node;
+            if let BinOpKind::Le | BinOpKind::Ge | BinOpKind::Lt | BinOpKind::Gt = op.node;
 
             then {
 

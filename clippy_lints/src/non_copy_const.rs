@@ -164,7 +164,7 @@ impl LintPass for NonCopyConst {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx Item) {
-        if let ItemConst(hir_ty, ..) = &it.node {
+        if let ItemKind::Const(hir_ty, ..) = &it.node {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             verify_ty_bound(cx, ty, Source::Item { item: it.span });
         }
@@ -182,7 +182,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
             let item_node_id = cx.tcx.hir.get_parent_node(impl_item.id);
             let item = cx.tcx.hir.expect_item(item_node_id);
             // ensure the impl is an inherent impl.
-            if let ItemImpl(_, _, _, _, None, _, _) = item.node {
+            if let ItemKind::Impl(_, _, _, _, None, _, _) = item.node {
                 let ty = hir_ty_to_ty(cx.tcx, hir_ty);
                 verify_ty_bound(cx, ty, Source::Assoc { ty: hir_ty.span, item: impl_item.span });
             }
@@ -190,7 +190,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprPath(qpath) = &expr.node {
+        if let ExprKind::Path(qpath) = &expr.node {
             // Only lint if we use the const item inside a function.
             if in_constant(cx, expr.id) {
                 return;
@@ -213,22 +213,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                 }
                 if let Some(map::NodeExpr(parent_expr)) = cx.tcx.hir.find(parent_id) {
                     match &parent_expr.node {
-                        ExprAddrOf(..) => {
+                        ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced
                             needs_check_adjustment = false;
                         }
-                        ExprField(..) => {
+                        ExprKind::Field(..) => {
                             dereferenced_expr = parent_expr;
                             needs_check_adjustment = true;
                         }
-                        ExprIndex(e, _) if ptr::eq(&**e, cur_expr) => {
+                        ExprKind::Index(e, _) if ptr::eq(&**e, cur_expr) => {
                             // `e[i]` => desugared to `*Index::index(&e, i)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.
                             needs_check_adjustment = false;
                             break;
                         }
-                        ExprUnary(UnDeref, _) => {
+                        ExprKind::Unary(UnDeref, _) => {
                             // `*e` => desugared to `*Deref::deref(&e)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.

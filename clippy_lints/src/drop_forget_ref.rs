@@ -116,8 +116,8 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
-            if let ExprCall(ref path, ref args) = expr.node;
-            if let ExprPath(ref qpath) = path.node;
+            if let ExprKind::Call(ref path, ref args) = expr.node;
+            if let ExprKind::Path(ref qpath) = path.node;
             if args.len() == 1;
             if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id));
             then {

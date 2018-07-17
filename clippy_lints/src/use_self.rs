@@ -65,7 +65,7 @@ struct TraitImplTyVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx Ty) {
         let trait_ty = self.type_walker.next();
-        if let TyPath(QPath::Resolved(_, path)) = &t.node {
+        if let TyKind::Path(QPath::Resolved(_, path)) = &t.node {
             let impl_is_self_ty = if let def::Def::SelfTy(..) = path.def {
                 true
             } else {
@@ -137,8 +137,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
             return;
         }
         if_chain! {
-            if let ItemImpl(.., item_type, refs) = &item.node;
-            if let Ty_::TyPath(QPath::Resolved(_, ref item_path)) = item_type.node;
+            if let ItemKind::Impl(.., ref item_type, ref refs) = item.node;
+            if let TyKind::Path(QPath::Resolved(_, ref item_path)) = item_type.node;
             then {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                 let should_check = if let Some(ref params) = *parameters {
