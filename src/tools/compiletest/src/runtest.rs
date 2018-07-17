@@ -240,6 +240,11 @@ struct DebuggerCommands {
     breakpoint_lines: Vec<usize>,
 }
 
+enum ReadFrom {
+    Path,
+    Stdin,
+}
+
 impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
@@ -421,7 +426,10 @@ impl<'test> TestCx<'test> {
                     round, self.revision
                 ),
             );
-            let proc_res = self.print_source(srcs[round].to_owned(), &self.props.pretty_mode);
+            let read_from = if round == 0 { ReadFrom::Path } else { ReadFrom::Stdin };
+            let proc_res = self.print_source(srcs[round].to_owned(),
+                                             &self.props.pretty_mode,
+                                             read_from);
 
             if !proc_res.status.success() {
                 self.fatal_proc_rec(
@@ -477,7 +485,7 @@ impl<'test> TestCx<'test> {
         }
 
         // additionally, run `--pretty expanded` and try to build it.
-        let proc_res = self.print_source(srcs[round].clone(), "expanded");
+        let proc_res = self.print_source(srcs[round].clone(), "expanded", ReadFrom::Path);
         if !proc_res.status.success() {
             self.fatal_proc_rec("pretty-printing (expanded) failed", &proc_res);
         }
@@ -495,12 +503,16 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn print_source(&self, src: String, pretty_type: &str) -> ProcRes {
+    fn print_source(&self, src: String, pretty_type: &str, read_from: ReadFrom) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
+        let input: &str = match read_from {
+            ReadFrom::Stdin => "-",
+            ReadFrom::Path => self.testpaths.file.to_str().unwrap(),
+        };
 
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc
-            .arg("-")
+            .arg(input)
             .args(&["-Z", &format!("unpretty={}", pretty_type)])
             .args(&["--target", &self.config.target])
             .arg("-L")
