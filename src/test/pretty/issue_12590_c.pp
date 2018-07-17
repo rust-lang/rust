@@ -1,3 +1,9 @@
+#![feature(prelude_import)]
+#![no_std]
+#[prelude_import]
+use std::prelude::v1::*;
+#[macro_use]
+extern crate std;
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -8,17 +14,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pp-exact:issue_12590_c.pp
+// pretty-compare-only
 // pretty-mode:expanded
+// pp-exact:issue_12590_c.pp
 
 // The next line should be expanded
 
 mod issue_12590_b {
 
-
-  fn b() { }
-
-  fn main() { }
+    fn b() { }
+    fn main() { }
 }
-
 fn main() { }
