@@ -459,6 +459,7 @@ impl<'a> Builder<'a> {
                 dist::Cargo,
                 dist::Rls,
                 dist::Rustfmt,
+                dist::Clippy,
                 dist::LlvmTools,
                 dist::Extended,
                 dist::HashSign
@@ -469,6 +470,7 @@ impl<'a> Builder<'a> {
                 install::Cargo,
                 install::Rls,
                 install::Rustfmt,
+                install::Clippy,
                 install::Analysis,
                 install::Src,
                 install::Rustc
