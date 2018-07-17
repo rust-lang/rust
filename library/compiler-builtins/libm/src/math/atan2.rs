@@ -70,3 +70,14 @@ pub fn atan2(y: f64, x: f64) -> f64 {
         _ => (z - PI_LO) - PI, /* atan(-,-) */
     }
 }
+
+#[test]
+fn sanity_check() {
+    assert_eq!(atan2(0.0, 1.0), 0.0);
+    assert_eq!(atan2(0.0, -1.0), PI);
+    assert_eq!(atan2(-0.0, -1.0), -PI);
+    assert_eq!(atan2(3.0, 2.0), atan(3.0/2.0));
+    assert_eq!(atan2(2.0, -1.0), atan(2.0/-1.0) + PI);
+    assert_eq!(atan2(-2.0, -1.0), atan(-2.0/-1.0) - PI);
+}
+
