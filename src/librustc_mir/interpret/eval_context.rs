@@ -771,16 +771,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             Cast(kind, ref operand, cast_ty) => {
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
                 use rustc::mir::CastKind::*;
+                let src = self.eval_operand(operand)?;
                 match kind {
                     Unsize => {
-                        let src = self.eval_operand(operand)?;
                         let src_layout = self.layout_of(src.ty)?;
                         let dst_layout = self.layout_of(dest_ty)?;
                         self.unsize_into(src.value, src_layout, dest, dst_layout)?;
                     }
 
                     Misc => {
-                        let src = self.eval_operand(operand)?;
                         if self.type_is_fat_ptr(src.ty) {
                             match (src.value, self.type_is_fat_ptr(dest_ty)) {
                                 (Value::ByRef { .. }, _) |
@@ -840,7 +839,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     }
 
                     ReifyFnPointer => {
-                        match self.eval_operand(operand)?.ty.sty {
+                        match src.ty.sty {
                             ty::TyFnDef(def_id, substs) => {
                                 if self.tcx.has_attr(def_id, "rustc_args_required_const") {
                                     bug!("reifying a fn ptr that requires \
@@ -866,7 +865,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     UnsafeFnPointer => {
                         match dest_ty.sty {
                             ty::TyFnPtr(_) => {
-                                let mut src = self.eval_operand(operand)?;
+                                let mut src = src;
                                 src.ty = dest_ty;
                                 self.write_value(src, dest)?;
                             }
@@ -875,7 +874,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     }
 
                     ClosureFnPointer => {
-                        match self.eval_operand(operand)?.ty.sty {
+                        match src.ty.sty {
                             ty::TyClosure(def_id, substs) => {
                                 let substs = self.tcx.subst_and_normalize_erasing_regions(
                                     self.substs(),
