@@ -14,6 +14,8 @@
 //!
 //! This API is completely unstable and subject to change.
 
+#![deny(bare_trait_objects)]
+
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -131,7 +133,7 @@ pub mod target_features {
     /// features is available on the target machine, by querying LLVM.
     pub fn add_configuration(cfg: &mut ast::CrateConfig,
                              sess: &Session,
-                             codegen_backend: &CodegenBackend) {
+                             codegen_backend: &dyn CodegenBackend) {
         let tf = Symbol::intern("target_feature");
 
         for feat in codegen_backend.target_features(sess) {
@@ -202,7 +204,7 @@ pub fn run<F>(run_compiler: F) -> isize
     0
 }
 
-fn load_backend_from_dylib(path: &Path) -> fn() -> Box<CodegenBackend> {
+fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
     // Note that we're specifically using `open_global_now` here rather than
     // `open`, namely we want the behavior on Unix of RTLD_GLOBAL and RTLD_NOW,
     // where NOW means "bind everything right now" because we don't want
@@ -235,12 +237,12 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<CodegenBackend> {
     }
 }
 
-pub fn get_codegen_backend(sess: &Session) -> Box<CodegenBackend> {
+pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
     static INIT: Once = ONCE_INIT;
 
     #[allow(deprecated)]
     #[no_debug]
-    static mut LOAD: fn() -> Box<CodegenBackend> = || unreachable!();
+    static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
 
     INIT.call_once(|| {
         let codegen_name = sess.opts.debugging_opts.codegen_backend.as_ref()
@@ -264,7 +266,7 @@ pub fn get_codegen_backend(sess: &Session) -> Box<CodegenBackend> {
     backend
 }
 
-fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<CodegenBackend> {
+fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
     // For now we only allow this function to be called once as it'll dlopen a
     // few things, which seems to work best if we only do that once. In
     // general this assertion never trips due to the once guard in `get_codegen_backend`,
@@ -454,9 +456,9 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<CodegenBackend> {
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler<'a>(args: &[String],
-                        callbacks: Box<CompilerCalls<'a> + sync::Send + 'a>,
-                        file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
-                        emitter_dest: Option<Box<Write + Send>>)
+                        callbacks: Box<dyn CompilerCalls<'a> + sync::Send + 'a>,
+                        file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
+                        emitter_dest: Option<Box<dyn Write + Send>>)
                         -> (CompileResult, Option<Session>)
 {
     syntax::with_globals(|| {
@@ -478,9 +480,9 @@ fn run_compiler_with_pool<'a>(
     matches: getopts::Matches,
     sopts: config::Options,
     cfg: ast::CrateConfig,
-    mut callbacks: Box<CompilerCalls<'a> + sync::Send + 'a>,
-    file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
-    emitter_dest: Option<Box<Write + Send>>
+    mut callbacks: Box<dyn CompilerCalls<'a> + sync::Send + 'a>,
+    file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
+    emitter_dest: Option<Box<dyn Write + Send>>
 ) -> (CompileResult, Option<Session>) {
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
@@ -662,10 +664,10 @@ pub trait CompilerCalls<'a> {
     /// be called just before actual compilation starts (and before build_controller
     /// is called), after all arguments etc. have been completely handled.
     fn late_callback(&mut self,
-                     _: &CodegenBackend,
+                     _: &dyn CodegenBackend,
                      _: &getopts::Matches,
                      _: &Session,
-                     _: &CrateStore,
+                     _: &dyn CrateStore,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
@@ -870,10 +872,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     }
 
     fn late_callback(&mut self,
-                     codegen_backend: &CodegenBackend,
+                     codegen_backend: &dyn CodegenBackend,
                      matches: &getopts::Matches,
                      sess: &Session,
-                     cstore: &CrateStore,
+                     cstore: &dyn CrateStore,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
@@ -979,7 +981,7 @@ pub fn enable_save_analysis(control: &mut CompileController) {
 
 impl RustcDefaultCalls {
     pub fn list_metadata(sess: &Session,
-                         cstore: &CrateStore,
+                         cstore: &dyn CrateStore,
                          matches: &getopts::Matches,
                          input: &Input)
                          -> Compilation {
@@ -1007,7 +1009,7 @@ impl RustcDefaultCalls {
     }
 
 
-    fn print_crate_info(codegen_backend: &CodegenBackend,
+    fn print_crate_info(codegen_backend: &dyn CodegenBackend,
                         sess: &Session,
                         input: Option<&Input>,
                         odir: &Option<PathBuf>,
@@ -1486,7 +1488,7 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
 /// Runs `f` in a suitable thread for running `rustc`; returns a
 /// `Result` with either the return value of `f` or -- if a panic
 /// occurs -- the panic value.
-pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
+pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
     where F: FnOnce() -> R + Send + 'static,
           R: Send + 'static,
 {

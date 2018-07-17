@@ -170,7 +170,7 @@ impl PpSourceMode {
                                            hir_map: Option<&hir_map::Map<'tcx>>,
                                            f: F)
                                            -> A
-        where F: FnOnce(&PrinterSupport) -> A
+        where F: FnOnce(&dyn PrinterSupport) -> A
     {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
@@ -208,7 +208,7 @@ impl PpSourceMode {
                                                id: &str,
                                                f: F)
                                                -> A
-        where F: FnOnce(&HirPrinterSupport, &hir::Crate) -> A
+        where F: FnOnce(&dyn HirPrinterSupport, &hir::Crate) -> A
     {
         match *self {
             PpmNormal => {
@@ -265,7 +265,7 @@ trait PrinterSupport: pprust::PpAnn {
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn;
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn;
 }
 
 trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
@@ -281,7 +281,7 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn;
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn;
 
     /// Computes an user-readable representation of a path, if possible.
     fn node_path(&self, id: ast::NodeId) -> Option<String> {
@@ -305,7 +305,7 @@ impl<'hir> PrinterSupport for NoAnn<'hir> {
         self.sess
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn {
         self
     }
 }
@@ -319,7 +319,7 @@ impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
         self.hir_map.as_ref()
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
         self
     }
 }
@@ -346,7 +346,7 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
         self.sess
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn {
         self
     }
 }
@@ -397,7 +397,7 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
         self.hir_map.as_ref()
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
         self
     }
 }
@@ -458,7 +458,7 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
         self.sess
     }
 
-    fn pp_ann(&self) -> &pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust::PpAnn {
         self
     }
 }
@@ -496,7 +496,7 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
         Some(&self.tcx.hir)
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn {
+    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
         self
     }
 
@@ -896,7 +896,7 @@ pub fn print_after_parsing(sess: &Session,
 
     if let PpmSource(s) = ppm {
         // Silently ignores an identified node.
-        let out: &mut Write = &mut out;
+        let out: &mut dyn Write = &mut out;
         s.call_with_pp_support(sess, None, move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
@@ -953,7 +953,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
     match (ppm, opt_uii) {
             (PpmSource(s), _) => {
                 // Silently ignores an identified node.
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support(sess, Some(hir_map), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -969,7 +969,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
 
             (PpmHir(s), None) => {
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
@@ -993,7 +993,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
 
             (PpmHirTree(s), None) => {
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
@@ -1009,7 +1009,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
 
             (PpmHir(s), Some(uii)) => {
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
@@ -1043,7 +1043,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             }
 
             (PpmHirTree(s), Some(uii)) => {
-                let out: &mut Write = &mut out;
+                let out: &mut dyn Write = &mut out;
                 s.call_with_pp_support_hir(sess,
                                            cstore,
                                            hir_map,
@@ -1137,7 +1137,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                     Some(code) => {
                         let variants = gather_flowgraph_variants(tcx.sess);
 
-                        let out: &mut Write = &mut out;
+                        let out: &mut dyn Write = &mut out;
 
                         print_flowgraph(variants, tcx, code, mode, out)
                     }
