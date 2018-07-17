@@ -41,7 +41,7 @@ use lint::builtin::BuiltinLintDiagnostics;
 use session::{Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
-use syntax::codemap::MultiSpan;
+use syntax::codemap::{MultiSpan, ExpnFormat};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax::visit as ast_visit;
@@ -53,8 +53,6 @@ use util::nodemap::NodeMap;
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate,
                         FutureIncompatibleInfo, BufferedEarlyLint};
-
-use codemap::{ExpnFormat, ExpnInfo, Span };
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -570,6 +568,22 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                                future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
+
+    // If this lint is *not* a future incompatibility warning then we want to be
+    // sure to not be too noisy in some situations. If this code originates in a
+    // foreign macro, aka something that this crate did not itself author, then
+    // it's likely that there's nothing this crate can do about it. We probably
+    // want to skip the lint entirely.
+    //
+    // For some lints though (like unreachable code) there's clear actionable
+    // items to take care of (delete the macro invocation). As a result we have
+    // a few lints we whitelist here for allowing a lint even though it's in a
+    // foreign macro invocation.
+    } else if lint_id != LintId::of(builtin::UNREACHABLE_CODE) &&
+        lint_id != LintId::of(builtin::DEPRECATED) {
+        if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
+            err.cancel();
+        }
     }
 
     return err
@@ -672,29 +686,31 @@ pub fn provide(providers: &mut Providers) {
     providers.lint_levels = lint_levels;
 }
 
-pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
-    /// Invokes `in_macro` with the expansion info of the given span slightly
-    /// heavy, try to use
-    /// this after other checks have already happened.
-    fn in_macro_ext<'a, T: LintContext<'a>>(cx: &T, info: &ExpnInfo) -> bool {
-        // no ExpnInfo = no macro
-        if let ExpnFormat::MacroAttribute(..) = info.callee.format {
-            // these are all plugins
-            return true;
-        }
-        // no span for the callee = external macro
-        info.callee.span.map_or(true, |span| {
-            // no snippet = external macro or compiler-builtin expansion
-            cx.sess()
-                .codemap()
-                .span_to_snippet(span)
-                .ok()
-                .map_or(true, |code| !code.starts_with("macro_rules"))
-        })
+/// Returns whether `span` originates in a foreign crate's external macro.
+///
+/// This is used to test whether a lint should be entirely aborted above.
+pub fn in_external_macro(sess: &Session, span: Span) -> bool {
+    let info = match span.ctxt().outer().expn_info() {
+        Some(info) => info,
+        // no ExpnInfo means this span doesn't come from a macro
+        None => return false,
+    };
+
+    match info.format {
+        ExpnFormat::MacroAttribute(..) => return true, // definitely a plugin
+        ExpnFormat::CompilerDesugaring(_) => return true, // well, it's "external"
+        ExpnFormat::MacroBang(..) => {} // check below
     }
 
-    span.ctxt()
-        .outer()
-        .expn_info()
-        .map_or(false, |info| in_macro_ext(cx, &info))
+    let def_site = match info.def_site {
+        Some(span) => span,
+        // no span for the def_site means it's an external macro
+        None => return true,
+    };
+
+    match sess.codemap().span_to_snippet(def_site) {
+        Ok(code) => !code.starts_with("macro_rules"),
+        // no snippet = external macro or compiler-builtin expansion
+        Err(_) => true,
+    }
 }

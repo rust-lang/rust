@@ -29,7 +29,7 @@ use self::TargetLint::*;
 use std::slice;
 use rustc_data_structures::sync::{RwLock, ReadGuard};
 use lint::{EarlyLintPassObject, LateLintPassObject};
-use lint::{self, Level, Lint, LintId, LintPass, LintBuffer};
+use lint::{Level, Lint, LintId, LintPass, LintBuffer};
 use lint::builtin::BuiltinLintDiagnostics;
 use lint::levels::{LintLevelSets, LintLevelsBuilder};
 use middle::privacy::AccessLevels;
@@ -468,14 +468,7 @@ pub trait LintContext<'tcx>: Sized {
 
     /// Emit a lint at the appropriate level, for a particular span.
     fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
-        match self.lints().future_incompatible(LintId::of(lint)) {
-            Some(_) => self.lookup_and_emit(lint, Some(span), msg),
-            None => {
-                if !lint::in_external_macro(lint, span) {
-                    self.lookup_and_emit(lint, Some(span), msg);
-                }
-            }
-        }
+        self.lookup_and_emit(lint, Some(span), msg);
     }
 
     fn struct_span_lint<S: Into<MultiSpan>>(&self,
