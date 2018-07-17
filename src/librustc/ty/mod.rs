@@ -2856,22 +2856,26 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
         })
 }
 
+/// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition
+pub fn is_impl_trait_defn(tcx: TyCtxt, def_id: DefId) -> Option<DefId> {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+        if let hir::map::NodeItem(item) = tcx.hir.get(node_id) {
+            if let hir::ItemKind::Existential(ref exist_ty) = item.node {
+                return exist_ty.impl_trait_fn;
+            }
+        }
+    }
+    None
+}
+
 /// See `ParamEnv` struct def'n for details.
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
                        -> ParamEnv<'tcx> {
 
     // The param_env of an impl Trait type is its defining function's param_env
-    if let Some(Def::Existential(_)) = tcx.describe_def(def_id) {
-        if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-            if let hir::map::NodeItem(item) = tcx.hir.get(node_id) {
-                if let hir::ItemKind::Existential(ref exist_ty) = item.node {
-                    if let Some(parent) = exist_ty.impl_trait_fn {
-                        return param_env(tcx, parent);
-                    }
-                }
-            }
-        }
+    if let Some(parent) = is_impl_trait_defn(tcx, def_id) {
+        return param_env(tcx, parent);
     }
     // Compute the bounds on Self and the type parameters.
 

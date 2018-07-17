@@ -1037,15 +1037,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         match path.def {
             Def::Existential(did) => {
                 // check for desugared impl trait
-                if let Some(node_id) = tcx.hir.as_local_node_id(did) {
-                    if let hir::map::NodeItem(item) = tcx.hir.get(node_id) {
-                        if let hir::ItemKind::Existential(ref exist_ty) = item.node {
-                            if exist_ty.impl_trait_fn.is_some() {
-                                let lifetimes = &path.segments[0].args.as_ref().unwrap().args;
-                                return self.impl_trait_ty_to_ty(did, lifetimes);
-                            }
-                        }
-                    }
+                if ty::is_impl_trait_defn(tcx, did).is_some() {
+                    let lifetimes = &path.segments[0].args.as_ref().unwrap().args;
+                    return self.impl_trait_ty_to_ty(did, lifetimes);
                 }
                 let item_segment = path.segments.split_last().unwrap();
                 self.prohibit_generics(item_segment.1);

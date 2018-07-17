@@ -360,10 +360,16 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // types appearing in the fn signature
                 }
 
-                ty::TyAnon(..) => {
+                ty::TyAnon(did, substs) => {
                     // all of the requirements on type parameters
                     // should've been checked by the instantiation
                     // of whatever returned this exact `impl Trait`.
+
+                    // for named existential types we still need to check them
+                    if super::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
+                        let obligations = self.nominal_obligations(did, substs);
+                        self.out.extend(obligations);
+                    }
                 }
 
                 ty::TyDynamic(data, r) => {
