@@ -90,7 +90,7 @@ impl LinkerInfo {
                     cmd,
                     sess,
                     hinted_static: false,
-                }) as Box<Linker>
+                }) as Box<dyn Linker>
             },
             LinkerFlavor::Lld(LldFlavor::Wasm) => {
                 Box::new(WasmLd {
@@ -1206,6 +1206,9 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn group_start(&mut self) { self.cmd.arg("--start-group"); }
     fn group_end(&mut self) { self.cmd.arg("--end-group"); }
+    fn cross_lang_lto(&mut self) {
+        // do nothing
+    }
 }
 
 impl<'a> L4Bender<'a> {
