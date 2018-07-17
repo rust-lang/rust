@@ -1,10 +1,6 @@
-
-
 #![warn(use_self)]
 #![allow(dead_code)]
 #![allow(should_implement_trait)]
-#![allow(boxed_local)]
-
 
 fn main() {}
 
@@ -68,9 +64,10 @@ mod lifetimes {
     }
 }
 
+#[allow(boxed_local)]
 mod traits {
 
-    #![cfg_attr(feature = "cargo-clippy", allow(boxed_local))]
+    use std::ops::Mul;
 
     trait SelfTrait {
         fn refs(p1: &Self) -> &Self;
@@ -104,6 +101,14 @@ mod traits {
         }
     }
 
+    impl Mul for Bad {
+        type Output = Bad;
+
+        fn mul(self, rhs: Bad) -> Bad {
+            rhs
+        }
+    }
+
     #[derive(Default)]
     struct Good;
 
@@ -125,6 +130,14 @@ mod traits {
 
         fn vals(_: Self) -> Self {
             Self::default()
+        }
+    }
+
+    impl Mul for Good {
+        type Output = Self;
+
+        fn mul(self, rhs: Self) -> Self {
+            rhs
         }
     }
 
@@ -162,7 +175,7 @@ mod traits {
     impl Clone for Good {
         fn clone(&self) -> Self {
             // Note: Not linted and it wouldn't be valid
-            // because "can't use `Self` as a constructor`
+            // because "can't use `Self` as a constructor`"
             Good
         }
     }

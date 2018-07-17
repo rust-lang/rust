@@ -4,7 +4,6 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use syntax::ast::NodeId;
-use syntax::symbol::keywords;
 use syntax_pos::symbol::keywords::SelfType;
 
 /// **What it does:** Checks for unnecessary repetition of structure name when a
@@ -58,26 +57,29 @@ fn span_use_self_lint(cx: &LateContext, path: &Path) {
 }
 
 struct TraitImplTyVisitor<'a, 'tcx: 'a> {
+    item_path: &'a Path,
     cx: &'a LateContext<'a, 'tcx>,
-    type_walker: ty::walk::TypeWalker<'tcx>,
+    trait_type_walker: ty::walk::TypeWalker<'tcx>,
+    impl_type_walker: ty::walk::TypeWalker<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx Ty) {
-        let trait_ty = self.type_walker.next();
+        let trait_ty = self.trait_type_walker.next();
+        let impl_ty = self.impl_type_walker.next();
+
         if let TyKind::Path(QPath::Resolved(_, path)) = &t.node {
-            let impl_is_self_ty = if let def::Def::SelfTy(..) = path.def {
-                true
-            } else {
-                false
-            };
-            if !impl_is_self_ty {
-                let trait_is_self_ty = if let Some(ty::TyParam(ty::ParamTy { name, .. })) = trait_ty.map(|ty| &ty.sty) {
-                    *name == keywords::SelfType.name().as_str()
+            if self.item_path.def == path.def {
+                let is_self_ty = if let def::Def::SelfTy(..) = path.def {
+                    true
                 } else {
                     false
                 };
-                if trait_is_self_ty {
+
+                if !is_self_ty && impl_ty != trait_ty {
+                    // The implementation and trait types don't match which means that
+                    // the concrete type was specified by the implementation but
+                    // it didn't use `Self`
                     span_use_self_lint(self.cx, path);
                 }
             }
@@ -92,6 +94,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
 
 fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     cx: &'a LateContext<'a, 'tcx>,
+    item_path: &'a Path,
     impl_item: &ImplItem,
     impl_decl: &'tcx FnDecl,
     impl_trait_ref: &ty::TraitRef,
@@ -110,24 +113,30 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     let trait_method_sig = cx.tcx.fn_sig(trait_method.def_id);
     let trait_method_sig = cx.tcx.erase_late_bound_regions(&trait_method_sig);
 
+    let impl_method_def_id = cx.tcx.hir.local_def_id(impl_item.id);
+    let impl_method_sig = cx.tcx.fn_sig(impl_method_def_id);
+    let impl_method_sig = cx.tcx.erase_late_bound_regions(&impl_method_sig);
+
     let output_ty = if let FunctionRetTy::Return(ty) = &impl_decl.output {
         Some(&**ty)
     } else {
         None
     };
 
-    for (impl_ty, trait_ty) in impl_decl
-        .inputs
-        .iter()
-        .chain(output_ty)
-        .zip(trait_method_sig.inputs_and_output)
-    {
+    for (impl_decl_ty, (impl_ty, trait_ty)) in impl_decl.inputs.iter().chain(output_ty).zip(
+        impl_method_sig
+            .inputs_and_output
+            .iter()
+            .zip(trait_method_sig.inputs_and_output),
+    ) {
         let mut visitor = TraitImplTyVisitor {
             cx,
-            type_walker: trait_ty.walk(),
+            item_path,
+            trait_type_walker: trait_ty.walk(),
+            impl_type_walker: impl_ty.walk(),
         };
 
-        visitor.visit_ty(&impl_ty);
+        visitor.visit_ty(&impl_decl_ty);
     }
 }
 
@@ -163,7 +172,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                             let impl_item = cx.tcx.hir.impl_item(impl_item_ref.id);
                             if let ImplItemKind::Method(MethodSig{ decl: impl_decl, .. }, impl_body_id)
                                     = &impl_item.node {
-                                check_trait_method_impl_decl(cx, impl_item, impl_decl, &impl_trait_ref);
+                                check_trait_method_impl_decl(cx, item_path, impl_item, impl_decl, &impl_trait_ref);
                                 let body = cx.tcx.hir.body(*impl_body_id);
                                 visitor.visit_body(body);
                             } else {
