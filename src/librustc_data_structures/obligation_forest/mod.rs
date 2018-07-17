@@ -496,9 +496,14 @@ impl<O: ForestObligation> ObligationForest<O> {
                     }
                 }
                 NodeState::Done => {
-                    self.waiting_cache.remove(self.nodes[i].obligation.as_predicate());
-                    // FIXME(HashMap): why can't I get my key back?
-                    self.done_cache.insert(self.nodes[i].obligation.as_predicate().clone());
+                    // Avoid cloning the key (predicate) in case it exists in the waiting cache
+                    if let Some((predicate, _)) = self.waiting_cache
+                        .remove_entry(self.nodes[i].obligation.as_predicate())
+                    {
+                        self.done_cache.insert(predicate);
+                    } else {
+                        self.done_cache.insert(self.nodes[i].obligation.as_predicate().clone());
+                    }
                     node_rewrites[i] = nodes_len;
                     dead_nodes += 1;
                 }

@@ -148,17 +148,17 @@ impl<'a> DiagnosticBuilder<'a> {
     }
 
     forward!(pub fn note_expected_found(&mut self,
-                                        label: &fmt::Display,
+                                        label: &dyn fmt::Display,
                                         expected: DiagnosticStyledString,
                                         found: DiagnosticStyledString)
                                         -> &mut Self);
 
     forward!(pub fn note_expected_found_extra(&mut self,
-                                              label: &fmt::Display,
+                                              label: &dyn fmt::Display,
                                               expected: DiagnosticStyledString,
                                               found: DiagnosticStyledString,
-                                              expected_extra: &fmt::Display,
-                                              found_extra: &fmt::Display)
+                                              expected_extra: &dyn fmt::Display,
+                                              found_extra: &dyn fmt::Display)
                                               -> &mut Self);
 
     forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
