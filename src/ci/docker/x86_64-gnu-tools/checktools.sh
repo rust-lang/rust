@@ -81,8 +81,8 @@ status_check() {
     check_dispatch $1 beta rust-by-example src/doc/rust-by-example
     check_dispatch $1 beta rls src/tools/rls
     check_dispatch $1 beta rustfmt src/tools/rustfmt
+    check_dispatch $1 beta clippy-driver src/tools/clippy
     # these tools are not required for beta to successfully branch
-    check_dispatch $1 nightly clippy-driver src/tools/clippy
     check_dispatch $1 nightly miri src/tools/miri
 }
 
@@ -106,12 +106,14 @@ $COMMIT\t$(cat "$TOOLSTATE_FILE")
     fi
 }
 
-if [ "$RUST_RELEASE_CHANNEL" = nightly -a -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_set}" ]; then
-    . "$(dirname $0)/repo.sh"
-    MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
-    echo "($OS CI update)" > "$MESSAGE_FILE"
-    commit_toolstate_change "$MESSAGE_FILE" change_toolstate
-    rm -f "$MESSAGE_FILE"
+if [ "$RUST_RELEASE_CHANNEL" = nightly ]; then
+    if [ -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_set}" ]; then
+        . "$(dirname $0)/repo.sh"
+        MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
+        echo "($OS CI update)" > "$MESSAGE_FILE"
+        commit_toolstate_change "$MESSAGE_FILE" change_toolstate
+        rm -f "$MESSAGE_FILE"
+    fi
     exit 0
 fi
 
