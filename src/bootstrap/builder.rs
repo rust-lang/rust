@@ -903,10 +903,7 @@ impl<'a> Builder<'a> {
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
         }
 
-        // Ignore incremental modes except for stage0, since we're
-        // not guaranteeing correctness across builds if the compiler
-        // is changing under your feet.`
-        if self.config.incremental && compiler.stage == 0 {
+        if self.config.incremental {
             cargo.env("CARGO_INCREMENTAL", "1");
         }
 
