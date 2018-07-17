@@ -23,6 +23,7 @@ use hir::def_id::DefId;
 use lint;
 use traits::{self, Obligation, ObligationCause};
 use ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
+use ty::subst::{Subst, Substs};
 use std::borrow::Cow;
 use std::iter::{self};
 use syntax::ast::{self, Name};
@@ -340,6 +341,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     #[allow(dead_code)]
     fn receiver_is_coercible(
         self,
+        trait_def_id: DefId,
         method: &ty::AssociatedItem,
         receiver_ty: Ty<'tcx>,
     ) -> bool
@@ -383,11 +385,16 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             param_env
         };
 
+        let receiver_substs = Substs::for_item(self, trait_def_id, |param, _| {
+            if param.index == 0 {
+                target_self_ty.into()
+            } else {
+                self.mk_param_from_def(param)
+            }
+        });
+
         // the type `Receiver<Self=U>` in the query
-        let target_receiver_ty = receiver_ty.subst(
-            self,
-            self.mk_substs_trait(target_self_ty, &[]),
-        );
+        let target_receiver_ty = receiver_ty.subst(self, receiver_substs);
 
         // Receiver: CoerceUnsized<Receiver<Self=U>>
         let obligation = {
