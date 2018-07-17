@@ -294,10 +294,10 @@ fn fat_lto(cgcx: &CodegenContext,
     }])
 }
 
-struct Linker(llvm::LinkerRef);
+struct Linker<'a>(&'a mut llvm::Linker<'a>);
 
-impl Linker {
-    fn new(llmod: &llvm::Module) -> Linker {
+impl Linker<'a> {
+    fn new(llmod: &'a llvm::Module) -> Self {
         unsafe { Linker(llvm::LLVMRustLinkerNew(llmod)) }
     }
 
@@ -314,9 +314,9 @@ impl Linker {
     }
 }
 
-impl Drop for Linker {
+impl Drop for Linker<'a> {
     fn drop(&mut self) {
-        unsafe { llvm::LLVMRustLinkerFree(self.0); }
+        unsafe { llvm::LLVMRustLinkerFree(&mut *(self.0 as *mut _)); }
     }
 }
 

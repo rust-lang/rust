@@ -414,8 +414,7 @@ extern { pub type SMDiagnostic; }
 extern { pub type RustArchiveMember; }
 pub type RustArchiveMemberRef = *mut RustArchiveMember;
 pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
-extern { pub type Linker; }
-pub type LinkerRef = *mut Linker;
+pub struct Linker<'a>(InvariantOpaque<'a>);
 
 pub type DiagnosticHandler = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
@@ -1580,9 +1579,9 @@ extern "C" {
                                            CU2: &mut *mut c_void);
     pub fn LLVMRustThinLTOPatchDICompileUnit(M: &Module, CU: *mut c_void);
 
-    pub fn LLVMRustLinkerNew(M: &Module) -> LinkerRef;
-    pub fn LLVMRustLinkerAdd(linker: LinkerRef,
+    pub fn LLVMRustLinkerNew(M: &'a Module) -> &'a mut Linker<'a>;
+    pub fn LLVMRustLinkerAdd(linker: &Linker,
                              bytecode: *const c_char,
                              bytecode_len: usize) -> bool;
-    pub fn LLVMRustLinkerFree(linker: LinkerRef);
+    pub fn LLVMRustLinkerFree(linker: &'a mut Linker<'a>);
 }
