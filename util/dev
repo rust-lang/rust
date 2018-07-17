@@ -1,0 +1,3 @@
+#!/bin/sh
+
+cd clippy_dev && cargo run -- $@

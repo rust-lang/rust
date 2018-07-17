@@ -7,6 +7,7 @@
 import os
 import re
 import sys
+from subprocess import call
 
 declare_deprecated_lint_re = re.compile(r'''
     declare_deprecated_lint! \s* [{(] \s*
@@ -166,19 +167,7 @@ def main(print_only=False, check=False):
         all_lints += value
 
     if print_only:
-        print_clippy_lint_groups = [
-            "correctness",
-            "style",
-            "complexity",
-            "perf",
-            "pedantic",
-            "nursery",
-            "restriction"
-        ]
-        for group in print_clippy_lint_groups:
-            sys.stdout.write('\n## ' + group + '\n')
-            for (_, name, _, descr) in sorted(clippy_lints[group]):
-                sys.stdout.write('* [' + name + '](https://rust-lang-nursery.github.io/rust-clippy/master/index.html#' + name + ') (' + descr + ')\n')
+        call(["./util/dev", "update_lints", "--print-only"])
         return
 
     # update the lint counter in README.md
