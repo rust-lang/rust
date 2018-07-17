@@ -579,7 +579,7 @@ impl Drop for ThinData {
     }
 }
 
-pub struct ThinBuffer(*mut llvm::ThinLTOBuffer);
+pub struct ThinBuffer(&'static mut llvm::ThinLTOBuffer);
 
 unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
@@ -604,7 +604,7 @@ impl ThinBuffer {
 impl Drop for ThinBuffer {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMRustThinLTOBufferFree(self.0);
+            llvm::LLVMRustThinLTOBufferFree(&mut *(self.0 as *mut _));
         }
     }
 }

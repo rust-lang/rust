@@ -1571,10 +1571,10 @@ extern "C" {
 
     pub fn LLVMRustThinLTOAvailable() -> bool;
     pub fn LLVMRustPGOAvailable() -> bool;
-    pub fn LLVMRustThinLTOBufferCreate(M: &Module) -> *mut ThinLTOBuffer;
-    pub fn LLVMRustThinLTOBufferFree(M: *mut ThinLTOBuffer);
-    pub fn LLVMRustThinLTOBufferPtr(M: *const ThinLTOBuffer) -> *const c_char;
-    pub fn LLVMRustThinLTOBufferLen(M: *const ThinLTOBuffer) -> size_t;
+    pub fn LLVMRustThinLTOBufferCreate(M: &Module) -> &'static mut ThinLTOBuffer;
+    pub fn LLVMRustThinLTOBufferFree(M: &'static mut ThinLTOBuffer);
+    pub fn LLVMRustThinLTOBufferPtr(M: &ThinLTOBuffer) -> *const c_char;
+    pub fn LLVMRustThinLTOBufferLen(M: &ThinLTOBuffer) -> size_t;
     pub fn LLVMRustCreateThinLTOData(
         Modules: *const ThinLTOModule,
         NumModules: c_uint,
