@@ -189,7 +189,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     add_lint_group!(sess,
                     "rust_2018_idioms",
                     BARE_TRAIT_OBJECTS,
-                    ASYNC_IDENTS,
                     UNREACHABLE_PUB,
                     UNUSED_EXTERN_CRATES,
                     ELLIPSIS_INCLUSIVE_RANGE_PATTERNS);
@@ -222,6 +221,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(DUPLICATE_MACRO_EXPORTS),
             reference: "issue #35896 <https://github.com/rust-lang/rust/issues/35896>",
+            edition: Some(Edition::Edition2018),
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(ASYNC_IDENTS),
+            reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
             edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {

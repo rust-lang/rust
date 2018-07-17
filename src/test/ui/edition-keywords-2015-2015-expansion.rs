@@ -13,6 +13,7 @@
 // compile-pass
 
 #![feature(raw_identifiers)]
+#![allow(async_idents)]
 
 #[macro_use]
 extern crate edition_kw_macro_2015;

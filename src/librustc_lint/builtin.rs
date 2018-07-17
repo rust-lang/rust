@@ -1788,7 +1788,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
 
 declare_lint! {
     pub ASYNC_IDENTS,
-    Allow,
+    Deny,
     "detects `async` being used as an identifier"
 }
 
@@ -1798,7 +1798,7 @@ pub struct Async2018;
 
 impl LintPass for Async2018 {
     fn get_lints(&self) -> LintArray {
-        lint_array!()
+        lint_array!(ASYNC_IDENTS)
     }
 }
 
