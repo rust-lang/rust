@@ -183,7 +183,11 @@ pub fn C_u8(cx: &CodegenCx<'ll, '_>, i: u8) -> &'ll Value {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: &CodegenCx<'ll, '_>, s: LocalInternedString, null_terminated: bool) -> &'ll Value {
+pub fn C_cstr(
+    cx: &CodegenCx<'ll, '_>,
+    s: LocalInternedString,
+    null_terminated: bool,
+) -> &'ll Value {
     unsafe {
         if let Some(&llval) = cx.const_cstr_cache.borrow().get(&s) {
             return llval;
@@ -225,7 +229,11 @@ pub fn C_struct(cx: &CodegenCx<'ll, '_>, elts: &[&'ll Value], packed: bool) -> &
     C_struct_in_context(cx.llcx, elts, packed)
 }
 
-pub fn C_struct_in_context(llcx: &'ll llvm::Context, elts: &[&'ll Value], packed: bool) -> &'ll Value {
+pub fn C_struct_in_context(
+    llcx: &'ll llvm::Context,
+    elts: &[&'ll Value],
+    packed: bool,
+) -> &'ll Value {
     unsafe {
         llvm::LLVMConstStructInContext(llcx,
                                        elts.as_ptr(), elts.len() as c_uint,

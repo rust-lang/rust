@@ -155,7 +155,11 @@ pub fn is_pie_binary(sess: &Session) -> bool {
     !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
-pub unsafe fn create_module(sess: &Session, llcx: &'ll llvm::Context, mod_name: &str) -> &'ll llvm::Module {
+pub unsafe fn create_module(
+    sess: &Session,
+    llcx: &'ll llvm::Context,
+    mod_name: &str,
+) -> &'ll llvm::Module {
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 

@@ -43,8 +43,11 @@ impl MirDebugScope<'ll> {
 
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
-pub fn create_mir_scopes(cx: &CodegenCx<'ll, '_>, mir: &Mir, debug_context: &FunctionDebugContext<'ll>)
-    -> IndexVec<SourceScope, MirDebugScope<'ll>> {
+pub fn create_mir_scopes(
+    cx: &CodegenCx<'ll, '_>,
+    mir: &Mir,
+    debug_context: &FunctionDebugContext<'ll>,
+) -> IndexVec<SourceScope, MirDebugScope<'ll>> {
     let null_scope = MirDebugScope {
         scope_metadata: None,
         file_start_pos: BytePos(0),

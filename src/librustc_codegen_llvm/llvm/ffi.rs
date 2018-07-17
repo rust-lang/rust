@@ -740,7 +740,11 @@ extern "C" {
                                  Args: *const &'a Value,
                                  Name: *const c_char)
                                  -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchRet(B: &'a Builder, Pad: &'a Value, BB: &'a BasicBlock) -> Option<&'a Value>;
+    pub fn LLVMRustBuildCatchRet(
+        B: &'a Builder,
+        Pad: &'a Value,
+        BB: &'a BasicBlock,
+    ) -> Option<&'a Value>;
     pub fn LLVMRustBuildCatchSwitch(Builder: &'a Builder,
                                     ParentPad: Option<&'a Value>,
                                     BB: Option<&'a BasicBlock>,
@@ -1480,7 +1484,9 @@ extern "C" {
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
     pub fn LLVMRustArchiveIteratorNew(AR: &'a Archive) -> &'a mut ArchiveIterator<'a>;
-    pub fn LLVMRustArchiveIteratorNext(AIR: &ArchiveIterator<'a>) -> Option<&'a mut ArchiveChild<'a>>;
+    pub fn LLVMRustArchiveIteratorNext(
+        AIR: &ArchiveIterator<'a>,
+    ) -> Option<&'a mut ArchiveChild<'a>>;
     pub fn LLVMRustArchiveChildName(ACR: &ArchiveChild, size: &mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildData(ACR: &ArchiveChild, size: &mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildFree(ACR: &'a mut ArchiveChild<'a>);

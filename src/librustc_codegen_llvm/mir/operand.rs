@@ -266,7 +266,12 @@ impl OperandValue<'ll> {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
 
-    fn store_with_flags(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'ll, 'tcx>, flags: MemFlags) {
+    fn store_with_flags(
+        self,
+        bx: &Builder<'a, 'll, 'tcx>,
+        dest: PlaceRef<'ll, 'tcx>,
+        flags: MemFlags,
+    ) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.

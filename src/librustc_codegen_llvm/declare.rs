@@ -55,7 +55,12 @@ pub fn declare_global(cx: &CodegenCx<'ll, '_>, name: &str, ty: &'ll Type) -> &'l
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-fn declare_raw_fn(cx: &CodegenCx<'ll, '_>, name: &str, callconv: llvm::CallConv, ty: &'ll Type) -> &'ll Value {
+fn declare_raw_fn(
+    cx: &CodegenCx<'ll, '_>,
+    name: &str,
+    callconv: llvm::CallConv,
+    ty: &'ll Type,
+) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)

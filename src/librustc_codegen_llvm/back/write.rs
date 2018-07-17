@@ -128,7 +128,10 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
     }
 }
 
-pub fn create_target_machine(sess: &Session, find_features: bool) -> &'static mut llvm::TargetMachine {
+pub fn create_target_machine(
+    sess: &Session,
+    find_features: bool,
+) -> &'static mut llvm::TargetMachine {
     target_machine_factory(sess, find_features)().unwrap_or_else(|err| {
         llvm_err(sess.diagnostic(), err).raise()
     })

@@ -157,14 +157,24 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn cond_br(&self, cond: &'ll Value, then_llbb: &'ll BasicBlock, else_llbb: &'ll BasicBlock) {
+    pub fn cond_br(
+        &self,
+        cond: &'ll Value,
+        then_llbb: &'ll BasicBlock,
+        else_llbb: &'ll BasicBlock,
+    ) {
         self.count_insn("condbr");
         unsafe {
             llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
         }
     }
 
-    pub fn switch(&self, v: &'ll Value, else_llbb: &'ll BasicBlock, num_cases: usize) -> &'ll Value {
+    pub fn switch(
+        &self,
+        v: &'ll Value,
+        else_llbb: &'ll BasicBlock,
+        num_cases: usize,
+    ) -> &'ll Value {
         unsafe {
             llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
         }
@@ -814,8 +824,8 @@ impl Builder<'a, 'll, 'tcx> {
             // FIXME: add a non-fast math version once
             // https://bugs.llvm.org/show_bug.cgi?id=36732
             // is fixed.
-            let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
-            let instr = instr.expect("LLVMRustBuildVectorReduceFAdd is not available in LLVM version < 5.0");
+            let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src)
+                .expect("LLVMRustBuildVectorReduceFAdd is not available in LLVM version < 5.0");
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
         }
@@ -826,8 +836,8 @@ impl Builder<'a, 'll, 'tcx> {
             // FIXME: add a non-fast math version once
             // https://bugs.llvm.org/show_bug.cgi?id=36732
             // is fixed.
-            let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
-            let instr = instr.expect("LLVMRustBuildVectorReduceFMul is not available in LLVM version < 5.0");
+            let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src)
+                .expect("LLVMRustBuildVectorReduceFMul is not available in LLVM version < 5.0");
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
         }
@@ -884,8 +894,8 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fmin_fast(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.fmin_fast");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
-            let instr = instr.expect("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true)
+                .expect("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
         }
@@ -893,8 +903,8 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fmax_fast(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.fmax_fast");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
-            let instr = instr.expect("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true)
+                .expect("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
         }

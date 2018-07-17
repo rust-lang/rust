@@ -395,14 +395,22 @@ pub fn from_immediate(bx: &Builder<'_, 'll, '_>, val: &'ll Value) -> &'ll Value 
     }
 }
 
-pub fn to_immediate(bx: &Builder<'_, 'll, '_>, val: &'ll Value, layout: layout::TyLayout) -> &'ll Value {
+pub fn to_immediate(
+    bx: &Builder<'_, 'll, '_>,
+    val: &'ll Value,
+    layout: layout::TyLayout,
+) -> &'ll Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
     val
 }
 
-pub fn to_immediate_scalar(bx: &Builder<'_, 'll, '_>, val: &'ll Value, scalar: &layout::Scalar) -> &'ll Value {
+pub fn to_immediate_scalar(
+    bx: &Builder<'_, 'll, '_>,
+    val: &'ll Value,
+    scalar: &layout::Scalar,
+) -> &'ll Value {
     if scalar.is_bool() {
         return bx.trunc(val, Type::i1(bx.cx));
     }

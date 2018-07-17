@@ -39,8 +39,9 @@ impl ArchiveRO {
     pub fn open(dst: &Path) -> Result<ArchiveRO, String> {
         return unsafe {
             let s = path2cstr(dst);
-            let ar = super::LLVMRustOpenArchive(s.as_ptr())
-                .ok_or_else(|| super::last_error().unwrap_or("failed to open archive".to_string()))?;
+            let ar = super::LLVMRustOpenArchive(s.as_ptr()).ok_or_else(|| {
+                super::last_error().unwrap_or("failed to open archive".to_string())
+            })?;
             Ok(ArchiveRO { raw: ar })
         };
 
