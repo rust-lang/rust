@@ -33,7 +33,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
 use std::cell::{Cell, RefCell};
-use std::{mem, ptr};
+use std::mem;
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
@@ -104,67 +104,20 @@ impl<'a> ImportDirective<'a> {
 #[derive(Clone, Default, Debug)]
 /// Records information about the resolution of a name in a namespace of a module.
 pub struct NameResolution<'a> {
-    /// The single imports that define the name in the namespace.
-    single_imports: SingleImports<'a>,
+    /// Single imports that may define the name in the namespace.
+    /// Import directives are arena-allocated, so it's ok to use pointers as keys, they are stable.
+    single_imports: FxHashSet<*const ImportDirective<'a>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
     shadowed_glob: Option<&'a NameBinding<'a>>,
 }
 
-#[derive(Clone, Debug)]
-enum SingleImports<'a> {
-    /// No single imports can define the name in the namespace.
-    None,
-    /// Only the given single import can define the name in the namespace.
-    MaybeOne(&'a ImportDirective<'a>),
-    /// Only one of these two single imports can define the name in the namespace.
-    MaybeTwo(&'a ImportDirective<'a>, &'a ImportDirective<'a>),
-    /// At least one single import will define the name in the namespace.
-    AtLeastOne,
-}
-
-impl<'a> Default for SingleImports<'a> {
-    /// Creates a `SingleImports<'a>` of None type.
-    fn default() -> Self {
-        SingleImports::None
-    }
-}
-
-impl<'a> SingleImports<'a> {
-    fn add_directive(&mut self, directive: &'a ImportDirective<'a>, use_extern_macros: bool) {
-        match *self {
-            SingleImports::None => *self = SingleImports::MaybeOne(directive),
-            SingleImports::MaybeOne(directive_one) => *self = if use_extern_macros {
-                SingleImports::MaybeTwo(directive_one, directive)
-            } else {
-                SingleImports::AtLeastOne
-            },
-            // If three single imports can define the name in the namespace, we can assume that at
-            // least one of them will define it since otherwise we'd get duplicate errors in one of
-            // other namespaces.
-            SingleImports::MaybeTwo(..) => *self = SingleImports::AtLeastOne,
-            SingleImports::AtLeastOne => {}
-        };
-    }
-
-    fn directive_failed(&mut self, dir: &'a ImportDirective<'a>) {
-        match *self {
-            SingleImports::None => unreachable!(),
-            SingleImports::MaybeOne(_) => *self = SingleImports::None,
-            SingleImports::MaybeTwo(dir1, dir2) =>
-                *self = SingleImports::MaybeOne(if ptr::eq(dir1, dir) { dir1 } else { dir2 }),
-            SingleImports::AtLeastOne => {}
-        }
-    }
-}
-
 impl<'a> NameResolution<'a> {
     // Returns the binding for the name if it is known or None if it not known.
     fn binding(&self) -> Option<&'a NameBinding<'a>> {
-        self.binding.and_then(|binding| match self.single_imports {
-            SingleImports::None => Some(binding),
-            _ if !binding.is_glob_import() => Some(binding),
-            _ => None, // The binding could be shadowed by a single import, so it is not known.
+        self.binding.and_then(|binding| {
+            if !binding.is_glob_import() ||
+               self.single_imports.is_empty() { Some(binding) } else { None }
         })
     }
 }
@@ -227,58 +180,31 @@ impl<'a> Resolver<'a> {
             if usable { Ok(binding) } else { Err(Determined) }
         };
 
-        // Items and single imports are not shadowable.
+        // Items and single imports are not shadowable, if we have one, then it's determined.
         if let Some(binding) = resolution.binding {
             if !binding.is_glob_import() {
                 return check_usable(self, binding);
             }
         }
 
-        // Check if a single import can still define the name.
-        let resolve_single_import = |this: &mut Self, directive: &'a ImportDirective<'a>| {
-            let module = match directive.imported_module.get() {
-                Some(module) => module,
-                None => return false,
-            };
-            let ident = match directive.subclass {
+        // From now on we either have a glob resolution or no resolution.
+
+        // Check if one of single imports can still define the name,
+        // if it can then our result is not determined and can be invalidated.
+        for single_import in &resolution.single_imports {
+            let single_import = unsafe { &**single_import };
+            if !self.is_accessible(single_import.vis.get()) {
+                continue;
+            }
+            let module = unwrap_or!(single_import.imported_module.get(), return Err(Undetermined));
+            let ident = match single_import.subclass {
                 SingleImport { source, .. } => source,
                 _ => unreachable!(),
             };
-            match this.resolve_ident_in_module(module, ident, ns, false, path_span) {
-                Err(Determined) => {}
-                _ => return false,
+            match self.resolve_ident_in_module(module, ident, ns, false, path_span) {
+                Err(Determined) => continue,
+                Ok(_) | Err(Undetermined) => return Err(Undetermined),
             }
-            true
-        };
-        match resolution.single_imports {
-            SingleImports::AtLeastOne => return Err(Undetermined),
-            SingleImports::MaybeOne(directive) => {
-                let accessible = self.is_accessible(directive.vis.get());
-                if accessible {
-                    if !resolve_single_import(self, directive) {
-                        return Err(Undetermined)
-                    }
-                }
-            }
-            SingleImports::MaybeTwo(directive1, directive2) => {
-                let accessible1 = self.is_accessible(directive1.vis.get());
-                let accessible2 = self.is_accessible(directive2.vis.get());
-                if accessible1 && accessible2 {
-                    if !resolve_single_import(self, directive1) &&
-                       !resolve_single_import(self, directive2) {
-                        return Err(Undetermined)
-                    }
-                } else if accessible1 {
-                    if !resolve_single_import(self, directive1) {
-                        return Err(Undetermined)
-                    }
-                } else {
-                    if !resolve_single_import(self, directive2) {
-                        return Err(Undetermined)
-                    }
-                }
-            }
-            SingleImports::None => {},
         }
 
         let no_unresolved_invocations =
@@ -348,7 +274,7 @@ impl<'a> Resolver<'a> {
             SingleImport { target, type_ns_only, .. } => {
                 self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
                     let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
-                    resolution.single_imports.add_directive(directive, this.use_extern_macros);
+                    resolution.single_imports.insert(directive);
                 });
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
@@ -640,7 +566,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Err(Undetermined) => indeterminate = true,
                 Err(Determined) => {
                     this.update_resolution(parent, target, ns, |_, resolution| {
-                        resolution.single_imports.directive_failed(directive)
+                        resolution.single_imports.remove(&(directive as *const _));
                     });
                 }
                 Ok(binding) if !binding.is_importable() => {
@@ -826,7 +752,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                 _ => Some(&i.name),
                             }
                         },
-                        NameResolution { single_imports: SingleImports::None, .. } => None,
+                        NameResolution { ref single_imports, .. }
+                            if single_imports.is_empty() => None,
                         _ => Some(&i.name),
                     }
                 });
