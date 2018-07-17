@@ -23,8 +23,7 @@ pub struct ArchiveRO {
 unsafe impl Send for ArchiveRO {}
 
 pub struct Iter<'a> {
-    ptr: super::ArchiveIteratorRef,
-    _data: marker::PhantomData<&'a ArchiveRO>,
+    ptr: &'a mut super::ArchiveIterator<'a>,
 }
 
 pub struct Child<'a> {
@@ -68,7 +67,6 @@ impl ArchiveRO {
         unsafe {
             Iter {
                 ptr: super::LLVMRustArchiveIteratorNew(self.raw),
-                _data: marker::PhantomData,
             }
         }
     }
@@ -101,7 +99,7 @@ impl<'a> Iterator for Iter<'a> {
 impl<'a> Drop for Iter<'a> {
     fn drop(&mut self) {
         unsafe {
-            super::LLVMRustArchiveIteratorFree(self.ptr);
+            super::LLVMRustArchiveIteratorFree(&mut *(self.ptr as *mut _));
         }
     }
 }

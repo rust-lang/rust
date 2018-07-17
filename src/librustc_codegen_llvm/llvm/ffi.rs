@@ -404,8 +404,7 @@ pub struct SectionIterator<'a>(InvariantOpaque<'a>);
 extern { pub type Pass; }
 extern { pub type TargetMachine; }
 extern { pub type Archive; }
-extern { pub type ArchiveIterator; }
-pub type ArchiveIteratorRef = *mut ArchiveIterator;
+pub struct ArchiveIterator<'a>(InvariantOpaque<'a>);
 extern { pub type ArchiveChild; }
 pub type ArchiveChildRef = *mut ArchiveChild;
 extern { pub type Twine; }
@@ -1471,12 +1470,12 @@ extern "C" {
     pub fn LLVMRustMarkAllFunctionsNounwind(M: &Module);
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
-    pub fn LLVMRustArchiveIteratorNew(AR: &Archive) -> ArchiveIteratorRef;
-    pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
+    pub fn LLVMRustArchiveIteratorNew(AR: &'a Archive) -> &'a mut ArchiveIterator<'a>;
+    pub fn LLVMRustArchiveIteratorNext(AIR: &ArchiveIterator) -> ArchiveChildRef;
     pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: &mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: &mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
-    pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
+    pub fn LLVMRustArchiveIteratorFree(AIR: &'a mut ArchiveIterator<'a>);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
     pub fn LLVMRustGetSectionName(SI: &SectionIterator, data: &mut *const c_char) -> size_t;
