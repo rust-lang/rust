@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable item `z.x` as mutable
+error[E0596]: cannot borrow `z.x` as mutable, as `z` is not declared as mutable
   --> $DIR/issue-39544.rs:21:13
    |
 LL |     let z = Z { x: X::Y };
@@ -6,7 +6,7 @@ LL |     let z = Z { x: X::Y };
 LL |     let _ = &mut z.x; //~ ERROR cannot borrow
    |             ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable item `self.x` as mutable
+error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:26:17
    |
 LL |     fn foo<'z>(&'z self) {
@@ -14,7 +14,7 @@ LL |     fn foo<'z>(&'z self) {
 LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `self.x` as mutable
+error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:30:17
    |
 LL |     fn foo1(&self, other: &Z) {
@@ -22,7 +22,7 @@ LL |     fn foo1(&self, other: &Z) {
 LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `other.x` as mutable
+error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:31:17
    |
 LL |     fn foo1(&self, other: &Z) {
@@ -31,7 +31,7 @@ LL |         let _ = &mut self.x; //~ ERROR cannot borrow
 LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `self.x` as mutable
+error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:35:17
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
@@ -39,7 +39,7 @@ LL |     fn foo2<'a>(&'a self, other: &Z) {
 LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `other.x` as mutable
+error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:36:17
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
@@ -48,7 +48,7 @@ LL |         let _ = &mut self.x; //~ ERROR cannot borrow
 LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `self.x` as mutable
+error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:40:17
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
@@ -56,7 +56,7 @@ LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
 LL |         let _ = &mut self.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `other.x` as mutable
+error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:41:17
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
@@ -65,7 +65,7 @@ LL |         let _ = &mut self.x; //~ ERROR cannot borrow
 LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `other.x` as mutable
+error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:45:17
    |
 LL |     fn foo4(other: &Z) {
@@ -73,7 +73,7 @@ LL |     fn foo4(other: &Z) {
 LL |         let _ = &mut other.x; //~ ERROR cannot borrow
    |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `z.x` as mutable
+error[E0596]: cannot borrow `z.x` as mutable, as `z` is not declared as mutable
   --> $DIR/issue-39544.rs:51:13
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
@@ -81,7 +81,7 @@ LL | pub fn with_arg(z: Z, w: &Z) {
 LL |     let _ = &mut z.x; //~ ERROR cannot borrow
    |             ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable item `w.x` as mutable
+error[E0596]: cannot borrow `w.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:52:13
    |
 LL | pub fn with_arg(z: Z, w: &Z) {

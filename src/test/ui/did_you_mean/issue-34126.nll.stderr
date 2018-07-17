@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable item `self` as mutable
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-34126.rs:16:18
    |
 LL |         self.run(&mut self); //~ ERROR cannot borrow

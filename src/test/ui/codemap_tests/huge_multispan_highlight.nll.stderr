@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable item `x` as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/huge_multispan_highlight.rs:100:13
    |
 LL |     let x = "foo";

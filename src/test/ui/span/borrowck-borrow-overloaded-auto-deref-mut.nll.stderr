@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable item `x` as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:63:24
    |
 LL | fn deref_mut_field1(x: Own<Point>) {
@@ -6,7 +6,7 @@ LL | fn deref_mut_field1(x: Own<Point>) {
 LL |     let __isize = &mut x.y; //~ ERROR cannot borrow
    |                        ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable item `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:75:10
    |
 LL | fn deref_extend_mut_field1(x: &Own<Point>) -> &mut isize {
@@ -14,7 +14,7 @@ LL | fn deref_extend_mut_field1(x: &Own<Point>) -> &mut isize {
 LL |     &mut x.y //~ ERROR cannot borrow
    |          ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `x` as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:98:5
    |
 LL | fn assign_field1<'a>(x: Own<Point>) {
@@ -22,7 +22,7 @@ LL | fn assign_field1<'a>(x: Own<Point>) {
 LL |     x.y = 3; //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable item `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:102:5
    |
 LL | fn assign_field2<'a>(x: &'a Own<Point>) {
@@ -30,7 +30,7 @@ LL | fn assign_field2<'a>(x: &'a Own<Point>) {
 LL |     x.y = 3; //~ ERROR cannot borrow
    |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `x` as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:119:5
    |
 LL | fn deref_mut_method1(x: Own<Point>) {
@@ -38,7 +38,7 @@ LL | fn deref_mut_method1(x: Own<Point>) {
 LL |     x.set(0, 0); //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable item `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:131:5
    |
 LL | fn deref_extend_mut_method1(x: &Own<Point>) -> &mut isize {
@@ -46,7 +46,7 @@ LL | fn deref_extend_mut_method1(x: &Own<Point>) -> &mut isize {
 LL |     x.y_mut() //~ ERROR cannot borrow
    |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `x` as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:139:6
    |
 LL | fn assign_method1<'a>(x: Own<Point>) {
@@ -54,7 +54,7 @@ LL | fn assign_method1<'a>(x: Own<Point>) {
 LL |     *x.y_mut() = 3; //~ ERROR cannot borrow
    |      ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable item `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:143:6
    |
 LL | fn assign_method2<'a>(x: &'a Own<Point>) {
