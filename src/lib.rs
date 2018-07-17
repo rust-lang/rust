@@ -930,7 +930,7 @@ fn format_input_inner<T: Write>(
     }
 }
 
-pub fn replace_with_system_newlines(text: &mut String, config: &Config) -> () {
+fn replace_with_system_newlines(text: &mut String, config: &Config) -> () {
     let style = if config.newline_style() == NewlineStyle::Native {
         if cfg!(windows) {
             NewlineStyle::Windows
