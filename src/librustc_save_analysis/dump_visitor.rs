@@ -1243,7 +1243,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
                 for bound in bounds.iter() {
-                    if let ast::GenericBound::Trait(ref trait_ref, _) = *bound {
+                    if let ast::GenericBound::Trait(trait_ref, _) = bound {
                         self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
                     }
                 }
