@@ -323,7 +323,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         // maybe instead we should also check for
         // for (U) { if (Self: Unsize<U>) { Receiver: Unsize<Receiver<Self=Self>>}}
         if receiver_ty != self.mk_self_type() {
-            if !self.receiver_is_coercible(trait_def_id, method, receiver_ty) {
+            if !self.receiver_is_coercible(method, receiver_ty) {
                 return Some(MethodViolationCode::UncoercibleReceiver);
             }
         }
@@ -341,7 +341,6 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     #[allow(dead_code)]
     fn receiver_is_coercible(
         self,
-        trait_def_id: DefId,
         method: &ty::AssociatedItem,
         receiver_ty: Ty<'tcx>,
     ) -> bool
@@ -385,7 +384,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             param_env
         };
 
-        let receiver_substs = Substs::for_item(self, trait_def_id, |param, _| {
+        let receiver_substs = Substs::for_item(self, method.def_id, |param, _| {
             if param.index == 0 {
                 target_self_ty.into()
             } else {
