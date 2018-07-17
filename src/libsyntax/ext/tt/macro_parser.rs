@@ -697,9 +697,14 @@ pub fn parse(
                 return Failure(parser.span, token::Eof);
             }
         }
+        // Performance hack: eof_items may share matchers via Rc with other things that we want
+        // to modify. Dropping eof_items now may drop these refcounts to 1, preventing an
+        // unnecessary implicit clone later in Rc::make_mut.
+        drop(eof_items);
+
         // Another possibility is that we need to call out to parse some rust nonterminal
         // (black-box) parser. However, if there is not EXACTLY ONE of these, something is wrong.
-        else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+        if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
