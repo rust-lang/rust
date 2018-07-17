@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let _ = [0; (&0 as *const i32) as usize]; //~ ERROR raw pointers cannot be cast
+    let _ = [0; (&0 as *const i32) as usize]; //~ ERROR casting pointers to integers in constants
 }
