@@ -8,28 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
 
 #![feature(existential_type)]
 
 fn main() {}
 
-mod boo {
-    pub existential type Boo: ::std::fmt::Debug;
-    fn bomp() -> Boo {
-        ""
-    }
-}
+existential type Region<'a>: std::fmt::Debug;
 
-// don't actually know the type here
-
-fn bomp2() {
-    let _: &str = bomp(); //~ ERROR mismatched types
-}
-
-fn bomp() -> boo::Boo {
-    "" //~ ERROR mismatched types
-}
-
-fn bomp_loop() -> boo::Boo {
-    loop {}
+fn region<'b>(a: &'b ()) -> Region<'b> {
+    a
 }

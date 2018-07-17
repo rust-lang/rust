@@ -13,23 +13,8 @@
 
 fn main() {}
 
-mod boo {
-    pub existential type Boo: ::std::fmt::Debug;
-    fn bomp() -> Boo {
-        ""
-    }
-}
+existential type Two<T, U>: 'static; //~ ERROR type parameter `U` is unused
 
-// don't actually know the type here
-
-fn bomp2() {
-    let _: &str = bomp(); //~ ERROR mismatched types
-}
-
-fn bomp() -> boo::Boo {
-    "" //~ ERROR mismatched types
-}
-
-fn bomp_loop() -> boo::Boo {
-    loop {}
+fn one<T: 'static>(t: T) -> Two<T, T> {
+    t
 }

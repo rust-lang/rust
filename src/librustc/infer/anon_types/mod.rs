@@ -653,6 +653,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
             tcx,
+            reg_op: |reg| reg,
             fldop: |ty| {
                 if let ty::TyAnon(def_id, substs) = ty.sty {
                     // Check that this is `impl Trait` type is

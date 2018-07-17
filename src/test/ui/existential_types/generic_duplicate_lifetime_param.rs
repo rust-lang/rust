@@ -13,23 +13,8 @@
 
 fn main() {}
 
-mod boo {
-    pub existential type Boo: ::std::fmt::Debug;
-    fn bomp() -> Boo {
-        ""
-    }
-}
+existential type Two<'a, 'b>: std::fmt::Debug;
 
-// don't actually know the type here
-
-fn bomp2() {
-    let _: &str = bomp(); //~ ERROR mismatched types
-}
-
-fn bomp() -> boo::Boo {
-    "" //~ ERROR mismatched types
-}
-
-fn bomp_loop() -> boo::Boo {
-    loop {}
+fn one<'a>(t: &'a ()) -> Two<'a, 'a> { //~ ERROR non-defining existential type use
+    t
 }

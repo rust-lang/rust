@@ -200,21 +200,29 @@ pub trait TypeVisitor<'tcx> : Sized {
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
-pub struct BottomUpFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F>
-    where F: FnMut(Ty<'tcx>) -> Ty<'tcx>
+pub struct BottomUpFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F, G>
+    where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
+          G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
 {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub fldop: F,
+    pub reg_op: G,
 }
 
-impl<'a, 'gcx, 'tcx, F> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx, 'tcx, F>
+impl<'a, 'gcx, 'tcx, F, G> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx, 'tcx, F, G>
     where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
+          G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
 {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let t1 = ty.super_fold_with(self);
         (self.fldop)(t1)
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let r = r.super_fold_with(self);
+        (self.reg_op)(r)
     }
 }
 

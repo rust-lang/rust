@@ -575,9 +575,10 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                     let anon_node_id = tcx.hir.as_local_node_id(def_id).unwrap();
                     if may_define_existential_type(tcx, fn_def_id, anon_node_id) {
                         trace!("check_existential_types may define. Generics: {:#?}", generics);
+                        let mut seen: FxHashMap<_, Vec<_>> = FxHashMap();
                         for (subst, param) in substs.iter().zip(&generics.params) {
-                            if let ty::subst::UnpackedKind::Type(ty) = subst.unpack() {
-                                match ty.sty {
+                            match subst.unpack() {
+                                ty::subst::UnpackedKind::Type(ty) => match ty.sty {
                                     ty::TyParam(..) => {},
                                     // prevent `fn foo() -> Foo<u32>` from being defining
                                     _ => {
@@ -597,11 +598,47 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                                                 ),
                                             )
                                             .emit();
-                                        return tcx.types.err;
                                     },
-                                } // match ty
-                            } // if let Type = subst
+                                }, // match ty
+                                ty::subst::UnpackedKind::Lifetime(region) => {
+                                    let param_span = tcx.def_span(param.def_id);
+                                    if let ty::ReStatic = region {
+                                        tcx
+                                            .sess
+                                            .struct_span_err(
+                                                span,
+                                                "non-defining existential type use \
+                                                    in defining scope",
+                                            )
+                                            .span_label(
+                                                param_span,
+                                                "cannot use static lifetime, use a bound lifetime \
+                                                instead or remove the lifetime parameter from the \
+                                                existential type",
+                                            )
+                                            .emit();
+                                    } else {
+                                        seen.entry(region).or_default().push(param_span);
+                                    }
+                                },
+                            } // match subst
                         } // for (subst, param)
+                        for (_, spans) in seen {
+                            if spans.len() > 1 {
+                                tcx
+                                    .sess
+                                    .struct_span_err(
+                                        span,
+                                        "non-defining existential type use \
+                                            in defining scope",
+                                    ).
+                                    span_note(
+                                        spans,
+                                        "lifetime used multiple times",
+                                    )
+                                    .emit();
+                            }
+                        }
                     } // if may_define_existential_type
 
                     // now register the bounds on the parameters of the existential type
@@ -631,6 +668,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
             } // if let TyAnon
             ty
         },
+        reg_op: |reg| reg,
     });
     substituted_predicates
 }

@@ -389,16 +389,17 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         for (&def_id, anon_defn) in self.fcx.anon_types.borrow().iter() {
             let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
             let instantiated_ty = self.resolve(&anon_defn.concrete_ty, &node_id);
-            let mut definition_ty = self.fcx.infer_anon_definition_from_instantiation(
-                def_id,
-                anon_defn,
-                instantiated_ty,
-            );
 
             let generics = self.tcx().generics_of(def_id);
 
-            // named existential type, not an impl trait
-            if generics.parent.is_none() {
+            let definition_ty = if generics.parent.is_some() {
+                // impl trait
+                self.fcx.infer_anon_definition_from_instantiation(
+                    def_id,
+                    anon_defn,
+                    instantiated_ty,
+                )
+            } else {
                 // prevent
                 // * `fn foo<T>() -> Foo<T>`
                 // * `fn foo<T: Bound + Other>() -> Foo<T>`
@@ -411,9 +412,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 // fn foo<U>() -> Foo<U> { .. }
                 // ```
                 // figures out the concrete type with `U`, but the stored type is with `T`
-                definition_ty = definition_ty.fold_with(&mut BottomUpFolder {
+                instantiated_ty.fold_with(&mut BottomUpFolder {
                     tcx: self.tcx().global_tcx(),
                     fldop: |ty| {
+                        trace!("checking type {:?}: {:#?}", ty, ty.sty);
                         // find a type parameter
                         if let ty::TyParam(..) = ty.sty {
                             // look it up in the substitution list
@@ -445,8 +447,50 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                         }
                         ty
                     },
-                });
-            }
+                    reg_op: |region| {
+                        match region {
+                            // ignore static regions
+                            ty::ReStatic => region,
+                            _ => {
+                                trace!("checking {:?}", region);
+                                for (subst, p) in anon_defn.substs.iter().zip(&generics.params) {
+                                    if let UnpackedKind::Lifetime(subst) = subst.unpack() {
+                                        if subst == region {
+                                            // found it in the substitution list, replace with the
+                                            // parameter from the existential type
+                                            let reg = ty::EarlyBoundRegion {
+                                                def_id: p.def_id,
+                                                index: p.index,
+                                                name: p.name,
+                                            };
+                                            trace!("replace {:?} with {:?}", region, reg);
+                                            return self.tcx().global_tcx()
+                                                .mk_region(ty::ReEarlyBound(reg));
+                                        }
+                                    }
+                                }
+                                trace!("anon_defn: {:#?}", anon_defn);
+                                trace!("generics: {:#?}", generics);
+                                self.tcx().sess
+                                    .struct_span_err(
+                                        span,
+                                        "non-defining existential type use in defining scope",
+                                    )
+                                    .span_label(
+                                        span,
+                                        format!(
+                                            "lifetime `{}` is part of concrete type but not used \
+                                            in parameter list of existential type",
+                                            region,
+                                        ),
+                                    )
+                                    .emit();
+                                self.tcx().global_tcx().mk_region(ty::ReStatic)
+                            }
+                        }
+                    }
+                })
+            };
 
             let old = self.tables.concrete_existential_types.insert(def_id, definition_ty);
             if let Some(old) = old {
