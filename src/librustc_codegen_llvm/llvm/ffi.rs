@@ -395,7 +395,8 @@ extern { pub type Type; }
 extern { pub type Value; }
 extern { pub type Metadata; }
 extern { pub type BasicBlock; }
-extern { pub type Builder; }
+#[repr(C)]
+pub struct Builder<'a>(InvariantOpaque<'a>);
 extern { pub type MemoryBuffer; }
 #[repr(C)]
 pub struct PassManager<'a>(InvariantOpaque<'a>);
@@ -682,31 +683,31 @@ extern "C" {
                            Count: c_uint);
 
     // Instruction builders
-    pub fn LLVMCreateBuilderInContext(C: &Context) -> &Builder;
-    pub fn LLVMPositionBuilderAtEnd(Builder: &'a Builder, Block: &'a BasicBlock);
-    pub fn LLVMGetInsertBlock(Builder: &Builder) -> &BasicBlock;
-    pub fn LLVMDisposeBuilder(Builder: &Builder);
+    pub fn LLVMCreateBuilderInContext(C: &'a Context) -> &'a mut Builder<'a>;
+    pub fn LLVMPositionBuilderAtEnd(Builder: &Builder<'a>, Block: &'a BasicBlock);
+    pub fn LLVMGetInsertBlock(Builder: &Builder<'a>) -> &'a BasicBlock;
+    pub fn LLVMDisposeBuilder(Builder: &'a mut Builder<'a>);
 
     // Metadata
-    pub fn LLVMSetCurrentDebugLocation(Builder: &'a Builder, L: Option<&'a Value>);
-    pub fn LLVMGetCurrentDebugLocation(Builder: &Builder) -> &Value;
-    pub fn LLVMSetInstDebugLocation(Builder: &'a Builder, Inst: &'a Value);
+    pub fn LLVMSetCurrentDebugLocation(Builder: &Builder<'a>, L: Option<&'a Value>);
+    pub fn LLVMGetCurrentDebugLocation(Builder: &Builder<'a>) -> &'a Value;
+    pub fn LLVMSetInstDebugLocation(Builder: &Builder<'a>, Inst: &'a Value);
 
     // Terminators
-    pub fn LLVMBuildRetVoid(B: &Builder) -> &Value;
-    pub fn LLVMBuildRet(B: &'a Builder, V: &'a Value) -> &'a Value;
-    pub fn LLVMBuildBr(B: &'a Builder, Dest: &'a BasicBlock) -> &'a Value;
-    pub fn LLVMBuildCondBr(B: &'a Builder,
+    pub fn LLVMBuildRetVoid(B: &Builder<'a>) -> &'a Value;
+    pub fn LLVMBuildRet(B: &Builder<'a>, V: &'a Value) -> &'a Value;
+    pub fn LLVMBuildBr(B: &Builder<'a>, Dest: &'a BasicBlock) -> &'a Value;
+    pub fn LLVMBuildCondBr(B: &Builder<'a>,
                            If: &'a Value,
                            Then: &'a BasicBlock,
                            Else: &'a BasicBlock)
                            -> &'a Value;
-    pub fn LLVMBuildSwitch(B: &'a Builder,
+    pub fn LLVMBuildSwitch(B: &Builder<'a>,
                            V: &'a Value,
                            Else: &'a BasicBlock,
                            NumCases: c_uint)
                            -> &'a Value;
-    pub fn LLVMRustBuildInvoke(B: &'a Builder,
+    pub fn LLVMRustBuildInvoke(B: &Builder<'a>,
                                Fn: &'a Value,
                                Args: *const &'a Value,
                                NumArgs: c_uint,
@@ -715,37 +716,37 @@ extern "C" {
                                Bundle: Option<&OperandBundleDef<'a>>,
                                Name: *const c_char)
                                -> &'a Value;
-    pub fn LLVMBuildLandingPad(B: &'a Builder,
+    pub fn LLVMBuildLandingPad(B: &Builder<'a>,
                                Ty: &'a Type,
                                PersFn: &'a Value,
                                NumClauses: c_uint,
                                Name: *const c_char)
                                -> &'a Value;
-    pub fn LLVMBuildResume(B: &'a Builder, Exn: &'a Value) -> &'a Value;
-    pub fn LLVMBuildUnreachable(B: &Builder) -> &Value;
+    pub fn LLVMBuildResume(B: &Builder<'a>, Exn: &'a Value) -> &'a Value;
+    pub fn LLVMBuildUnreachable(B: &Builder<'a>) -> &'a Value;
 
-    pub fn LLVMRustBuildCleanupPad(B: &'a Builder,
+    pub fn LLVMRustBuildCleanupPad(B: &Builder<'a>,
                                    ParentPad: Option<&'a Value>,
                                    ArgCnt: c_uint,
                                    Args: *const &'a Value,
                                    Name: *const c_char)
                                    -> Option<&'a Value>;
-    pub fn LLVMRustBuildCleanupRet(B: &'a Builder,
+    pub fn LLVMRustBuildCleanupRet(B: &Builder<'a>,
                                    CleanupPad: &'a Value,
                                    UnwindBB: Option<&'a BasicBlock>)
                                    -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchPad(B: &'a Builder,
+    pub fn LLVMRustBuildCatchPad(B: &Builder<'a>,
                                  ParentPad: &'a Value,
                                  ArgCnt: c_uint,
                                  Args: *const &'a Value,
                                  Name: *const c_char)
                                  -> Option<&'a Value>;
     pub fn LLVMRustBuildCatchRet(
-        B: &'a Builder,
+        B: &Builder<'a>,
         Pad: &'a Value,
         BB: &'a BasicBlock,
     ) -> Option<&'a Value>;
-    pub fn LLVMRustBuildCatchSwitch(Builder: &'a Builder,
+    pub fn LLVMRustBuildCatchSwitch(Builder: &Builder<'a>,
                                     ParentPad: Option<&'a Value>,
                                     BB: Option<&'a BasicBlock>,
                                     NumHandlers: c_uint,
@@ -764,215 +765,215 @@ extern "C" {
     pub fn LLVMSetCleanup(LandingPad: &Value, Val: Bool);
 
     // Arithmetic
-    pub fn LLVMBuildAdd(B: &'a Builder,
+    pub fn LLVMBuildAdd(B: &Builder<'a>,
                         LHS: &'a Value,
                         RHS: &'a Value,
                         Name: *const c_char)
                         -> &'a Value;
-    pub fn LLVMBuildFAdd(B: &'a Builder,
+    pub fn LLVMBuildFAdd(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildSub(B: &'a Builder,
+    pub fn LLVMBuildSub(B: &Builder<'a>,
                         LHS: &'a Value,
                         RHS: &'a Value,
                         Name: *const c_char)
                         -> &'a Value;
-    pub fn LLVMBuildFSub(B: &'a Builder,
+    pub fn LLVMBuildFSub(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildMul(B: &'a Builder,
+    pub fn LLVMBuildMul(B: &Builder<'a>,
                         LHS: &'a Value,
                         RHS: &'a Value,
                         Name: *const c_char)
                         -> &'a Value;
-    pub fn LLVMBuildFMul(B: &'a Builder,
+    pub fn LLVMBuildFMul(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildUDiv(B: &'a Builder,
+    pub fn LLVMBuildUDiv(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildExactUDiv(B: &'a Builder,
+    pub fn LLVMBuildExactUDiv(B: &Builder<'a>,
                               LHS: &'a Value,
                               RHS: &'a Value,
                               Name: *const c_char)
                               -> &'a Value;
-    pub fn LLVMBuildSDiv(B: &'a Builder,
+    pub fn LLVMBuildSDiv(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildExactSDiv(B: &'a Builder,
+    pub fn LLVMBuildExactSDiv(B: &Builder<'a>,
                               LHS: &'a Value,
                               RHS: &'a Value,
                               Name: *const c_char)
                               -> &'a Value;
-    pub fn LLVMBuildFDiv(B: &'a Builder,
+    pub fn LLVMBuildFDiv(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildURem(B: &'a Builder,
+    pub fn LLVMBuildURem(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildSRem(B: &'a Builder,
+    pub fn LLVMBuildSRem(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildFRem(B: &'a Builder,
+    pub fn LLVMBuildFRem(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildShl(B: &'a Builder,
+    pub fn LLVMBuildShl(B: &Builder<'a>,
                         LHS: &'a Value,
                         RHS: &'a Value,
                         Name: *const c_char)
                         -> &'a Value;
-    pub fn LLVMBuildLShr(B: &'a Builder,
+    pub fn LLVMBuildLShr(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildAShr(B: &'a Builder,
+    pub fn LLVMBuildAShr(B: &Builder<'a>,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildAnd(B: &'a Builder,
+    pub fn LLVMBuildAnd(B: &Builder<'a>,
                         LHS: &'a Value,
                         RHS: &'a Value,
                         Name: *const c_char)
                         -> &'a Value;
-    pub fn LLVMBuildOr(B: &'a Builder,
+    pub fn LLVMBuildOr(B: &Builder<'a>,
                        LHS: &'a Value,
                        RHS: &'a Value,
                        Name: *const c_char)
                        -> &'a Value;
-    pub fn LLVMBuildXor(B: &'a Builder,
+    pub fn LLVMBuildXor(B: &Builder<'a>,
                         LHS: &'a Value,
                         RHS: &'a Value,
                         Name: *const c_char)
                         -> &'a Value;
-    pub fn LLVMBuildNeg(B: &'a Builder, V: &'a Value, Name: *const c_char) -> &'a Value;
-    pub fn LLVMBuildFNeg(B: &'a Builder, V: &'a Value, Name: *const c_char) -> &'a Value;
-    pub fn LLVMBuildNot(B: &'a Builder, V: &'a Value, Name: *const c_char) -> &'a Value;
+    pub fn LLVMBuildNeg(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
+    pub fn LLVMBuildFNeg(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
+    pub fn LLVMBuildNot(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
     pub fn LLVMRustSetHasUnsafeAlgebra(Instr: &Value);
 
     // Memory
-    pub fn LLVMBuildAlloca(B: &'a Builder, Ty: &'a Type, Name: *const c_char) -> &'a Value;
-    pub fn LLVMBuildLoad(B: &'a Builder, PointerVal: &'a Value, Name: *const c_char) -> &'a Value;
+    pub fn LLVMBuildAlloca(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub fn LLVMBuildLoad(B: &Builder<'a>, PointerVal: &'a Value, Name: *const c_char) -> &'a Value;
 
-    pub fn LLVMBuildStore(B: &'a Builder, Val: &'a Value, Ptr: &'a Value) -> &'a Value;
+    pub fn LLVMBuildStore(B: &Builder<'a>, Val: &'a Value, Ptr: &'a Value) -> &'a Value;
 
-    pub fn LLVMBuildGEP(B: &'a Builder,
+    pub fn LLVMBuildGEP(B: &Builder<'a>,
                         Pointer: &'a Value,
                         Indices: *const &'a Value,
                         NumIndices: c_uint,
                         Name: *const c_char)
                         -> &'a Value;
-    pub fn LLVMBuildInBoundsGEP(B: &'a Builder,
+    pub fn LLVMBuildInBoundsGEP(B: &Builder<'a>,
                                 Pointer: &'a Value,
                                 Indices: *const &'a Value,
                                 NumIndices: c_uint,
                                 Name: *const c_char)
                                 -> &'a Value;
-    pub fn LLVMBuildStructGEP(B: &'a Builder,
+    pub fn LLVMBuildStructGEP(B: &Builder<'a>,
                               Pointer: &'a Value,
                               Idx: c_uint,
                               Name: *const c_char)
                               -> &'a Value;
 
     // Casts
-    pub fn LLVMBuildTrunc(B: &'a Builder,
+    pub fn LLVMBuildTrunc(B: &Builder<'a>,
                           Val: &'a Value,
                           DestTy: &'a Type,
                           Name: *const c_char)
                           -> &'a Value;
-    pub fn LLVMBuildZExt(B: &'a Builder,
+    pub fn LLVMBuildZExt(B: &Builder<'a>,
                          Val: &'a Value,
                          DestTy: &'a Type,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildSExt(B: &'a Builder,
+    pub fn LLVMBuildSExt(B: &Builder<'a>,
                          Val: &'a Value,
                          DestTy: &'a Type,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildFPToUI(B: &'a Builder,
+    pub fn LLVMBuildFPToUI(B: &Builder<'a>,
                            Val: &'a Value,
                            DestTy: &'a Type,
                            Name: *const c_char)
                            -> &'a Value;
-    pub fn LLVMBuildFPToSI(B: &'a Builder,
+    pub fn LLVMBuildFPToSI(B: &Builder<'a>,
                            Val: &'a Value,
                            DestTy: &'a Type,
                            Name: *const c_char)
                            -> &'a Value;
-    pub fn LLVMBuildUIToFP(B: &'a Builder,
+    pub fn LLVMBuildUIToFP(B: &Builder<'a>,
                            Val: &'a Value,
                            DestTy: &'a Type,
                            Name: *const c_char)
                            -> &'a Value;
-    pub fn LLVMBuildSIToFP(B: &'a Builder,
+    pub fn LLVMBuildSIToFP(B: &Builder<'a>,
                            Val: &'a Value,
                            DestTy: &'a Type,
                            Name: *const c_char)
                            -> &'a Value;
-    pub fn LLVMBuildFPTrunc(B: &'a Builder,
+    pub fn LLVMBuildFPTrunc(B: &Builder<'a>,
                             Val: &'a Value,
                             DestTy: &'a Type,
                             Name: *const c_char)
                             -> &'a Value;
-    pub fn LLVMBuildFPExt(B: &'a Builder,
+    pub fn LLVMBuildFPExt(B: &Builder<'a>,
                           Val: &'a Value,
                           DestTy: &'a Type,
                           Name: *const c_char)
                           -> &'a Value;
-    pub fn LLVMBuildPtrToInt(B: &'a Builder,
+    pub fn LLVMBuildPtrToInt(B: &Builder<'a>,
                              Val: &'a Value,
                              DestTy: &'a Type,
                              Name: *const c_char)
                              -> &'a Value;
-    pub fn LLVMBuildIntToPtr(B: &'a Builder,
+    pub fn LLVMBuildIntToPtr(B: &Builder<'a>,
                              Val: &'a Value,
                              DestTy: &'a Type,
                              Name: *const c_char)
                              -> &'a Value;
-    pub fn LLVMBuildBitCast(B: &'a Builder,
+    pub fn LLVMBuildBitCast(B: &Builder<'a>,
                             Val: &'a Value,
                             DestTy: &'a Type,
                             Name: *const c_char)
                             -> &'a Value;
-    pub fn LLVMBuildPointerCast(B: &'a Builder,
+    pub fn LLVMBuildPointerCast(B: &Builder<'a>,
                                 Val: &'a Value,
                                 DestTy: &'a Type,
                                 Name: *const c_char)
                                 -> &'a Value;
-    pub fn LLVMRustBuildIntCast(B: &'a Builder,
+    pub fn LLVMRustBuildIntCast(B: &Builder<'a>,
                                 Val: &'a Value,
                                 DestTy: &'a Type,
                                 IsSized: bool)
                                 -> &'a Value;
 
     // Comparisons
-    pub fn LLVMBuildICmp(B: &'a Builder,
+    pub fn LLVMBuildICmp(B: &Builder<'a>,
                          Op: c_uint,
                          LHS: &'a Value,
                          RHS: &'a Value,
                          Name: *const c_char)
                          -> &'a Value;
-    pub fn LLVMBuildFCmp(B: &'a Builder,
+    pub fn LLVMBuildFCmp(B: &Builder<'a>,
                          Op: c_uint,
                          LHS: &'a Value,
                          RHS: &'a Value,
@@ -980,111 +981,119 @@ extern "C" {
                          -> &'a Value;
 
     // Miscellaneous instructions
-    pub fn LLVMBuildPhi(B: &'a Builder, Ty: &'a Type, Name: *const c_char) -> &'a Value;
-    pub fn LLVMRustBuildCall(B: &'a Builder,
+    pub fn LLVMBuildPhi(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub fn LLVMRustBuildCall(B: &Builder<'a>,
                              Fn: &'a Value,
                              Args: *const &'a Value,
                              NumArgs: c_uint,
                              Bundle: Option<&OperandBundleDef<'a>>,
                              Name: *const c_char)
                              -> &'a Value;
-    pub fn LLVMBuildSelect(B: &'a Builder,
+    pub fn LLVMBuildSelect(B: &Builder<'a>,
                            If: &'a Value,
                            Then: &'a Value,
                            Else: &'a Value,
                            Name: *const c_char)
                            -> &'a Value;
-    pub fn LLVMBuildVAArg(B: &'a Builder,
+    pub fn LLVMBuildVAArg(B: &Builder<'a>,
                           list: &'a Value,
                           Ty: &'a Type,
                           Name: *const c_char)
                           -> &'a Value;
-    pub fn LLVMBuildExtractElement(B: &'a Builder,
+    pub fn LLVMBuildExtractElement(B: &Builder<'a>,
                                    VecVal: &'a Value,
                                    Index: &'a Value,
                                    Name: *const c_char)
                                    -> &'a Value;
-    pub fn LLVMBuildInsertElement(B: &'a Builder,
+    pub fn LLVMBuildInsertElement(B: &Builder<'a>,
                                   VecVal: &'a Value,
                                   EltVal: &'a Value,
                                   Index: &'a Value,
                                   Name: *const c_char)
                                   -> &'a Value;
-    pub fn LLVMBuildShuffleVector(B: &'a Builder,
+    pub fn LLVMBuildShuffleVector(B: &Builder<'a>,
                                   V1: &'a Value,
                                   V2: &'a Value,
                                   Mask: &'a Value,
                                   Name: *const c_char)
                                   -> &'a Value;
-    pub fn LLVMBuildExtractValue(B: &'a Builder,
+    pub fn LLVMBuildExtractValue(B: &Builder<'a>,
                                  AggVal: &'a Value,
                                  Index: c_uint,
                                  Name: *const c_char)
                                  -> &'a Value;
-    pub fn LLVMBuildInsertValue(B: &'a Builder,
+    pub fn LLVMBuildInsertValue(B: &Builder<'a>,
                                 AggVal: &'a Value,
                                 EltVal: &'a Value,
                                 Index: c_uint,
                                 Name: *const c_char)
                                 -> &'a Value;
 
-    pub fn LLVMRustBuildVectorReduceFAdd(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceFAdd(B: &Builder<'a>,
                                          Acc: &'a Value,
                                          Src: &'a Value)
                                          -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceFMul(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceFMul(B: &Builder<'a>,
                                          Acc: &'a Value,
                                          Src: &'a Value)
                                          -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceAdd(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceAdd(B: &Builder<'a>,
                                         Src: &'a Value)
                                         -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceMul(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceMul(B: &Builder<'a>,
                                         Src: &'a Value)
                                         -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceAnd(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceAnd(B: &Builder<'a>,
                                         Src: &'a Value)
                                         -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceOr(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceOr(B: &Builder<'a>,
                                        Src: &'a Value)
                                        -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceXor(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceXor(B: &Builder<'a>,
                                         Src: &'a Value)
                                         -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceMin(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceMin(B: &Builder<'a>,
                                         Src: &'a Value,
                                         IsSigned: bool)
                                         -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceMax(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceMax(B: &Builder<'a>,
                                         Src: &'a Value,
                                         IsSigned: bool)
                                         -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceFMin(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceFMin(B: &Builder<'a>,
                                          Src: &'a Value,
                                          IsNaN: bool)
                                          -> Option<&'a Value>;
-    pub fn LLVMRustBuildVectorReduceFMax(B: &'a Builder,
+    pub fn LLVMRustBuildVectorReduceFMax(B: &Builder<'a>,
                                          Src: &'a Value,
                                          IsNaN: bool)
                                          -> Option<&'a Value>;
 
-    pub fn LLVMRustBuildMinNum(B: &'a Builder, LHS: &'a Value, LHS: &'a Value) -> Option<&'a Value>;
-    pub fn LLVMRustBuildMaxNum(B: &'a Builder, LHS: &'a Value, LHS: &'a Value) -> Option<&'a Value>;
+    pub fn LLVMRustBuildMinNum(
+        B: &Builder<'a>,
+        LHS: &'a Value,
+        LHS: &'a Value,
+    ) -> Option<&'a Value>;
+    pub fn LLVMRustBuildMaxNum(
+        B: &Builder<'a>,
+        LHS: &'a Value,
+        LHS: &'a Value,
+    ) -> Option<&'a Value>;
 
     // Atomic Operations
-    pub fn LLVMRustBuildAtomicLoad(B: &'a Builder,
+    pub fn LLVMRustBuildAtomicLoad(B: &Builder<'a>,
                                    PointerVal: &'a Value,
                                    Name: *const c_char,
                                    Order: AtomicOrdering)
                                    -> &'a Value;
 
-    pub fn LLVMRustBuildAtomicStore(B: &'a Builder,
+    pub fn LLVMRustBuildAtomicStore(B: &Builder<'a>,
                                     Val: &'a Value,
                                     Ptr: &'a Value,
                                     Order: AtomicOrdering)
                                     -> &'a Value;
 
-    pub fn LLVMRustBuildAtomicCmpXchg(B: &'a Builder,
+    pub fn LLVMRustBuildAtomicCmpXchg(B: &Builder<'a>,
                                       LHS: &'a Value,
                                       CMP: &'a Value,
                                       RHS: &'a Value,
@@ -1093,7 +1102,7 @@ extern "C" {
                                       Weak: Bool)
                                       -> &'a Value;
 
-    pub fn LLVMBuildAtomicRMW(B: &'a Builder,
+    pub fn LLVMBuildAtomicRMW(B: &Builder<'a>,
                               Op: AtomicRmwBinOp,
                               LHS: &'a Value,
                               RHS: &'a Value,
@@ -1564,7 +1573,7 @@ extern "C" {
                                          -> &'a mut OperandBundleDef<'a>;
     pub fn LLVMRustFreeOperandBundleDef(Bundle: &'a mut OperandBundleDef<'a>);
 
-    pub fn LLVMRustPositionBuilderAtStart(B: &'a Builder, BB: &'a BasicBlock);
+    pub fn LLVMRustPositionBuilderAtStart(B: &Builder<'a>, BB: &'a BasicBlock);
 
     pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: &Value);
