@@ -39,7 +39,6 @@
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
 
-#[cfg_attr(not(test), macro_use)]
 extern crate core as _core;
 #[cfg(test)]
 #[macro_use]
@@ -52,33 +51,10 @@ extern crate stdsimd_test;
 #[cfg(test)]
 extern crate test;
 
-macro_rules! test_v16 {
-    ($item:item) => {};
-}
-macro_rules! test_v32 {
-    ($item:item) => {};
-}
-macro_rules! test_v64 {
-    ($item:item) => {};
-}
-macro_rules! test_v128 {
-    ($item:item) => {};
-}
-macro_rules! test_v256 {
-    ($item:item) => {};
-}
-macro_rules! test_v512 {
-    ($item:item) => {};
-}
-macro_rules! vector_impl {
-    ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* }
-}
-
 #[path = "../../../coresimd/mod.rs"]
 mod coresimd;
 
 pub use coresimd::arch;
-pub use coresimd::simd;
 
 #[allow(unused_imports)]
 use _core::clone;

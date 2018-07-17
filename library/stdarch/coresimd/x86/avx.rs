@@ -61,7 +61,7 @@ pub unsafe fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
 pub unsafe fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
     let a: u64x4 = mem::transmute(a);
     let b: u64x4 = mem::transmute(b);
-    mem::transmute(a & b)
+    mem::transmute(simd_and(a, b))
 }
 
 /// Compute the bitwise AND of packed single-precision (32-bit) floating-point
@@ -75,7 +75,7 @@ pub unsafe fn _mm256_and_pd(a: __m256d, b: __m256d) -> __m256d {
 pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
     let a: u32x8 = mem::transmute(a);
     let b: u32x8 = mem::transmute(b);
-    mem::transmute(a & b)
+    mem::transmute(simd_and(a, b))
 }
 
 /// Compute the bitwise OR packed double-precision (64-bit) floating-point
@@ -91,7 +91,7 @@ pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
 pub unsafe fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
     let a: u64x4 = mem::transmute(a);
     let b: u64x4 = mem::transmute(b);
-    mem::transmute(a | b)
+    mem::transmute(simd_or(a, b))
 }
 
 /// Compute the bitwise OR packed single-precision (32-bit) floating-point
@@ -105,7 +105,7 @@ pub unsafe fn _mm256_or_pd(a: __m256d, b: __m256d) -> __m256d {
 pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
     let a: u32x8 = mem::transmute(a);
     let b: u32x8 = mem::transmute(b);
-    mem::transmute(a | b)
+    mem::transmute(simd_or(a, b))
 }
 
 /// Shuffle double-precision (64-bit) floating-point elements within 128-bit
@@ -230,7 +230,7 @@ pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
 pub unsafe fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
     let a: u64x4 = mem::transmute(a);
     let b: u64x4 = mem::transmute(b);
-    mem::transmute((!a) & b)
+    mem::transmute(simd_and(simd_xor(u64x4::splat(!(0_u64)), a), b))
 }
 
 /// Compute the bitwise NOT of packed single-precision (32-bit) floating-point
@@ -245,7 +245,7 @@ pub unsafe fn _mm256_andnot_pd(a: __m256d, b: __m256d) -> __m256d {
 pub unsafe fn _mm256_andnot_ps(a: __m256, b: __m256) -> __m256 {
     let a: u32x8 = mem::transmute(a);
     let b: u32x8 = mem::transmute(b);
-    mem::transmute((!a) & b)
+    mem::transmute(simd_and(simd_xor(u32x8::splat(!(0_u32)), a), b))
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements
@@ -741,7 +741,7 @@ pub unsafe fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
 pub unsafe fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
     let a: u64x4 = mem::transmute(a);
     let b: u64x4 = mem::transmute(b);
-    mem::transmute(a ^ b)
+    mem::transmute(simd_xor(a, b))
 }
 
 /// Compute the bitwise XOR of packed single-precision (32-bit) floating-point
@@ -755,7 +755,7 @@ pub unsafe fn _mm256_xor_pd(a: __m256d, b: __m256d) -> __m256d {
 pub unsafe fn _mm256_xor_ps(a: __m256, b: __m256) -> __m256 {
     let a: u32x8 = mem::transmute(a);
     let b: u32x8 = mem::transmute(b);
-    mem::transmute(a ^ b)
+    mem::transmute(simd_xor(a, b))
 }
 
 /// Equal (ordered, non-signaling)

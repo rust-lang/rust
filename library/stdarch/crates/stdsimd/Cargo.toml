@@ -34,10 +34,6 @@ name = "hex"
 path = "../../examples/hex.rs"
 
 [[example]]
-name = "nbody"
-path = "../../examples/nbody.rs"
-
-[[example]]
 name = "wasm"
 crate-type = ["cdylib"]
 path = "../../examples/wasm.rs"

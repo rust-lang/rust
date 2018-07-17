@@ -5,9 +5,16 @@
 //!
 //! [msa_ref]: http://cdn2.imgtec.com/documentation/MD00866-2B-MSA32-AFP-01.12.pdf
 
-use coresimd::simd::*;
 #[cfg(test)]
 use stdsimd_test::assert_instr;
+
+types! {
+    /// MIPS-specific 128-bit wide vector of 16 packed `i8`.
+    pub struct i8x16(
+        i8, i8, i8, i8, i8, i8, i8, i8,
+        i8, i8, i8, i8, i8, i8, i8, i8,
+    );
+}
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -35,20 +42,25 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn __msa_add_a_b() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = i8x16::new(
+        let a = i8x16(
             1, 2, 3, 4,
             1, 2, 3, 4,
             1, 2, 3, 4,
             1, 2, 3, 4,
         );
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let b = i8x16::new(
+        let b = i8x16(
             -4, -3, -2, -1,
             -4, -3, -2, -1,
             -4, -3, -2, -1,
             -4, -3, -2, -1,
         );
-        let r = i8x16::splat(5);
+        let r = i8x16(
+            5, 5, 5, 5,
+            5, 5, 5, 5,
+            5, 5, 5, 5,
+            5, 5, 5, 5,
+        );
 
         assert_eq!(r, msa::__msa_add_a_b(a, b));
     }

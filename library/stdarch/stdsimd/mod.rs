@@ -480,6 +480,3 @@ pub mod arch {
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc64 {}
 }
-
-#[unstable(feature = "stdsimd", issue = "27731")]
-pub use coresimd::simd;

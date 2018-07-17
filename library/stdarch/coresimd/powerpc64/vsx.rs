@@ -8,8 +8,6 @@
 
 #![allow(non_camel_case_types)]
 
-use coresimd::powerpc::*;
-use coresimd::simd::*;
 use coresimd::simd_llvm::*;
 
 #[cfg(test)]
@@ -34,194 +32,8 @@ types! {
     // pub struct vector_unsigned___int128 = i128x1;
 }
 
-impl_from_bits_!(
-    vector_signed_long: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-impl_from_bits_!(
-    i64x2: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int,
-    vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
-impl_from_bits_!(
-    vector_unsigned_long: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int,
-    vector_signed_long,
-    vector_bool_long,
-    vector_double
-);
-impl_from_bits_!(
-    u64x2: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int,
-    vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
-impl_from_bits_!(
-    vector_double: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int,
-    vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long
-);
-impl_from_bits_!(
-    f64x2: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int,
-    vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
-impl_from_bits_!(vector_bool_long: m64x2);
-impl_from_bits_!(m64x2: vector_bool_long);
-impl_from_bits_!(m32x4: vector_bool_long);
-impl_from_bits_!(m16x8: vector_bool_long);
-impl_from_bits_!(m8x16: vector_bool_long);
-impl_from_bits_!(vector_bool_char: vector_bool_long);
-impl_from_bits_!(vector_bool_short: vector_bool_long);
-impl_from_bits_!(vector_bool_int: vector_bool_long);
-
-impl_from_bits_!(
-    vector_signed_char: vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
-impl_from_bits_!(
-    vector_unsigned_char: vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
-impl_from_bits_!(
-    vector_signed_short: vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
-impl_from_bits_!(
-    vector_unsigned_short: vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
-impl_from_bits_!(
-    vector_signed_int: vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
-impl_from_bits_!(
-    vector_unsigned_int: vector_signed_long,
-    vector_unsigned_long,
-    vector_bool_long,
-    vector_double
-);
-
 mod sealed {
-
+    use coresimd::simd::*;
     use super::*;
 
     pub trait VectorPermDI {
@@ -283,20 +95,20 @@ mod tests {
     #[cfg(target_arch = "powerpc64")]
     use coresimd::arch::powerpc64::*;
 
-    use simd::*;
+    use coresimd::simd::*;
     use stdsimd_test::simd_test;
 
     macro_rules! test_vec_xxpermdi {
         {$name:ident, $shorttype:ident, $longtype:ident, [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "vsx")]
             unsafe fn $name() {
-                let a: $longtype = $shorttype::new($($a),+, $($b),+).into_bits();
-                let b = $shorttype::new($($c),+, $($d),+).into_bits();
+                let a: $longtype = ::mem::transmute($shorttype::new($($a),+, $($b),+));
+                let b = ::mem::transmute($shorttype::new($($c),+, $($d),+));
 
-                assert_eq!($shorttype::new($($a),+, $($c),+), vec_xxpermdi(a, b, 0).into_bits());
-                assert_eq!($shorttype::new($($b),+, $($c),+), vec_xxpermdi(a, b, 1).into_bits());
-                assert_eq!($shorttype::new($($a),+, $($d),+), vec_xxpermdi(a, b, 2).into_bits());
-                assert_eq!($shorttype::new($($b),+, $($d),+), vec_xxpermdi(a, b, 3).into_bits());
+                assert_eq!($shorttype::new($($a),+, $($c),+), ::mem::transmute(vec_xxpermdi(a, b, 0)));
+                assert_eq!($shorttype::new($($b),+, $($c),+), ::mem::transmute(vec_xxpermdi(a, b, 1)));
+                assert_eq!($shorttype::new($($a),+, $($d),+), ::mem::transmute(vec_xxpermdi(a, b, 2)));
+                assert_eq!($shorttype::new($($b),+, $($d),+), ::mem::transmute(vec_xxpermdi(a, b, 3)));
             }
         }
     }

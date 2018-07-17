@@ -13,8 +13,8 @@
 
 #![allow(non_camel_case_types)]
 
-use coresimd::simd::*;
 use coresimd::simd_llvm::*;
+use coresimd::simd::*;
 
 use mem;
 
@@ -48,304 +48,6 @@ types! {
     /// PowerPC-specific 128-bit wide vector of four packed `f32`
     pub struct vector_float(f32, f32, f32, f32);
 }
-
-impl_from_bits_!(
-    vector_signed_char: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-impl_from_bits_!(
-    i8x16: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-
-impl_from_bits_!(
-    vector_unsigned_char: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_signed_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-impl_from_bits_!(
-    u8x16: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-
-impl_from_bits_!(
-    vector_bool_char: m64x2,
-    m32x4,
-    m16x8,
-    m8x16,
-    vector_bool_short,
-    vector_bool_int
-);
-impl_from_bits_!(m8x16: vector_bool_char, vector_bool_short, vector_bool_int);
-
-impl_from_bits_!(
-    vector_signed_short: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_signed_char,
-    vector_bool_char,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-impl_from_bits_!(
-    i16x8: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-
-impl_from_bits_!(
-    vector_unsigned_short: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_signed_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-impl_from_bits_!(
-    u16x8: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-
-impl_from_bits_!(
-    vector_bool_short: m64x2,
-    m32x4,
-    m16x8,
-    m8x16,
-    vector_bool_int
-);
-impl_from_bits_!(m16x8: vector_bool_short, vector_bool_int);
-
-impl_from_bits_!(
-    vector_signed_int: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_signed_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-impl_from_bits_!(
-    i32x4: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-
-impl_from_bits_!(
-    vector_unsigned_int: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_signed_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_float,
-    vector_bool_int
-);
-impl_from_bits_!(
-    u32x4: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
-
-impl_from_bits_!(
-    vector_bool_int: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16
-);
-impl_from_bits_!(m32x4: vector_bool_int);
-
-impl_from_bits_!(
-    vector_float: u64x2,
-    i64x2,
-    f64x2,
-    m64x2,
-    u32x4,
-    i32x4,
-    f32x4,
-    m32x4,
-    u16x8,
-    i16x8,
-    m16x8,
-    u8x16,
-    i8x16,
-    m8x16,
-    vector_signed_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_bool_int
-);
-impl_from_bits_!(
-    f32x4: vector_signed_char,
-    vector_unsigned_char,
-    vector_bool_char,
-    vector_signed_short,
-    vector_unsigned_short,
-    vector_bool_short,
-    vector_signed_int,
-    vector_unsigned_int,
-    vector_float,
-    vector_bool_int
-);
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -455,7 +157,7 @@ mod sealed {
     pub unsafe fn vec_add_bc_sc(
         a: vector_bool_char, b: vector_signed_char,
     ) -> vector_signed_char {
-        simd_add(a.into_bits(), b)
+        simd_add(::mem::transmute(a), b)
     }
     impl VectorAdd<vector_signed_char> for vector_bool_char {
         type Result = vector_signed_char;
@@ -497,7 +199,7 @@ mod sealed {
     pub unsafe fn vec_add_bc_uc(
         a: vector_bool_char, b: vector_unsigned_char,
     ) -> vector_unsigned_char {
-        simd_add(a.into_bits(), b)
+        simd_add(::mem::transmute(a), b)
     }
     impl VectorAdd<vector_unsigned_char> for vector_bool_char {
         type Result = vector_unsigned_char;
@@ -539,7 +241,7 @@ mod sealed {
     pub unsafe fn vec_add_bs_ss(
         a: vector_bool_short, b: vector_signed_short,
     ) -> vector_signed_short {
-        let a: i16x8 = a.into_bits();
+        let a: i16x8 = ::mem::transmute(a);
         let a: vector_signed_short = simd_cast(a);
         simd_add(a, b)
     }
@@ -584,7 +286,7 @@ mod sealed {
     pub unsafe fn vec_add_bs_us(
         a: vector_bool_short, b: vector_unsigned_short,
     ) -> vector_unsigned_short {
-        let a: i16x8 = a.into_bits();
+        let a: i16x8 = ::mem::transmute(a);
         let a: vector_unsigned_short = simd_cast(a);
         simd_add(a, b)
     }
@@ -629,7 +331,7 @@ mod sealed {
     pub unsafe fn vec_add_bi_si(
         a: vector_bool_int, b: vector_signed_int,
     ) -> vector_signed_int {
-        let a: i32x4 = a.into_bits();
+        let a: i32x4 = ::mem::transmute(a);
         let a: vector_signed_int = simd_cast(a);
         simd_add(a, b)
     }
@@ -673,7 +375,7 @@ mod sealed {
     pub unsafe fn vec_add_bi_ui(
         a: vector_bool_int, b: vector_unsigned_int,
     ) -> vector_unsigned_int {
-        let a: i32x4 = a.into_bits();
+        let a: i32x4 = ::mem::transmute(a);
         let a: vector_unsigned_int = simd_cast(a);
         simd_add(a, b)
     }
@@ -754,10 +456,10 @@ mod endian {
         // vperm has big-endian bias
         //
         // Xor the mask and flip the arguments
-        let d = u8x16::new(
+        let d = ::mem::transmute(u8x16::new(
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255,
-        ).into_bits();
+        ));
         let c = simd_xor(c, d);
 
         b.vec_vperm(a, c)
@@ -816,19 +518,22 @@ mod tests {
     #[cfg(target_arch = "powerpc64")]
     use coresimd::arch::powerpc64::*;
 
-    use simd::*;
+    use coresimd::simd::*;
     use stdsimd_test::simd_test;
 
     macro_rules! test_vec_perm {
-        {$name:ident, $shorttype:ident, $longtype:ident, [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
+        {$name:ident,
+         $shorttype:ident, $longtype:ident,
+         [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "altivec")]
             unsafe fn $name() {
-                let a: $longtype = $shorttype::new($($a),+).into_bits();
-                let b = $shorttype::new($($b),+).into_bits();
-                let c = u8x16::new($($c),+).into_bits();
+                let a: $longtype = ::mem::transmute($shorttype::new($($a),+));
+                let b: $longtype = ::mem::transmute($shorttype::new($($b),+));
+                let c: vector_unsigned_char = ::mem::transmute(u8x16::new($($c),+));
                 let d = $shorttype::new($($d),+);
 
-                assert_eq!(d, vec_perm(a, b, c).into_bits());
+                let r: $shorttype = ::mem::transmute(vec_perm(a, b, c));
+                assert_eq!(d, r);
             }
         }
     }
@@ -847,6 +552,7 @@ mod tests {
     [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
      0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
     [0, 1, 100, 101, 2, 3, 102, 103, 4, 5, 104, 105, 6, 7, 106, 107]}
+
     test_vec_perm!{test_vec_perm_m8x16,
     m8x16, vector_bool_char,
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],
@@ -854,7 +560,6 @@ mod tests {
     [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
      0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
     [false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true]}
-
     test_vec_perm!{test_vec_perm_u16x8,
     u16x8, vector_unsigned_short,
     [0, 1, 2, 3, 4, 5, 6, 7],
@@ -908,7 +613,7 @@ mod tests {
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_madds() {
-        let a: vector_signed_short = i16x8::new(
+        let a: vector_signed_short = ::mem::transmute(i16x8::new(
             0 * 256,
             1 * 256,
             2 * 256,
@@ -917,20 +622,20 @@ mod tests {
             5 * 256,
             6 * 256,
             7 * 256,
-        ).into_bits();
+        ));
         let b: vector_signed_short =
-            i16x8::new(256, 256, 256, 256, 256, 256, 256, 256).into_bits();
+            ::mem::transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
         let c: vector_signed_short =
-            i16x8::new(0, 1, 2, 3, 4, 5, 6, 7).into_bits();
+            ::mem::transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, 7));
 
         let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, 21);
 
-        assert_eq!(d, vec_madds(a, b, c).into_bits());
+        assert_eq!(d, ::mem::transmute(vec_madds(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_mradds() {
-        let a: vector_signed_short = i16x8::new(
+        let a: vector_signed_short = ::mem::transmute(i16x8::new(
             0 * 256,
             1 * 256,
             2 * 256,
@@ -939,20 +644,20 @@ mod tests {
             5 * 256,
             6 * 256,
             7 * 256,
-        ).into_bits();
+        ));
         let b: vector_signed_short =
-            i16x8::new(256, 256, 256, 256, 256, 256, 256, 256).into_bits();
+            ::mem::transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
         let c: vector_signed_short =
-            i16x8::new(0, 1, 2, 3, 4, 5, 6, i16::max_value() - 1).into_bits();
+            ::mem::transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, i16::max_value() - 1));
 
         let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, i16::max_value());
 
-        assert_eq!(d, vec_mradds(a, b, c).into_bits());
+        assert_eq!(d, ::mem::transmute(vec_mradds(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_msums_unsigned() {
-        let a: vector_unsigned_short = u16x8::new(
+        let a: vector_unsigned_short = ::mem::transmute(u16x8::new(
             0 * 256,
             1 * 256,
             2 * 256,
@@ -961,10 +666,10 @@ mod tests {
             5 * 256,
             6 * 256,
             7 * 256,
-        ).into_bits();
+        ));
         let b: vector_unsigned_short =
-            u16x8::new(256, 256, 256, 256, 256, 256, 256, 256).into_bits();
-        let c: vector_unsigned_int = u32x4::new(0, 1, 2, 3).into_bits();
+            ::mem::transmute(u16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
+        let c: vector_unsigned_int = ::mem::transmute(u32x4::new(0, 1, 2, 3));
         let d = u32x4::new(
             (0 + 1) * 256 * 256 + 0,
             (2 + 3) * 256 * 256 + 1,
@@ -972,12 +677,12 @@ mod tests {
             (6 + 7) * 256 * 256 + 3,
         );
 
-        assert_eq!(d, vec_msums(a, b, c).into_bits());
+        assert_eq!(d, ::mem::transmute(vec_msums(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn test_vec_msums_signed() {
-        let a: vector_signed_short = i16x8::new(
+        let a: vector_signed_short = ::mem::transmute(i16x8::new(
             0 * 256,
            -1 * 256,
             2 * 256,
@@ -986,10 +691,10 @@ mod tests {
            -5 * 256,
             6 * 256,
            -7 * 256,
-        ).into_bits();
+        ));
         let b: vector_signed_short =
-            i16x8::new(256, 256, 256, 256, 256, 256, 256, 256).into_bits();
-        let c: vector_signed_int = i32x4::new(0, 1, 2, 3).into_bits();
+            ::mem::transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
+        let c: vector_signed_int = ::mem::transmute(i32x4::new(0, 1, 2, 3));
         let d = i32x4::new(
             (0 - 1) * 256 * 256 + 0,
             (2 - 3) * 256 * 256 + 1,
@@ -997,16 +702,16 @@ mod tests {
             (6 - 7) * 256 * 256 + 3,
         );
 
-        assert_eq!(d, vec_msums(a, b, c).into_bits());
+        assert_eq!(d, ::mem::transmute(vec_msums(a, b, c)));
     }
 
     #[simd_test(enable = "altivec")]
     unsafe fn vec_add_i32x4_i32x4() {
         let x = i32x4::new(1, 2, 3, 4);
         let y = i32x4::new(4, 3, 2, 1);
-        let x: vector_signed_int = x.into_bits();
-        let y: vector_signed_int = y.into_bits();
+        let x: vector_signed_int = ::mem::transmute(x);
+        let y: vector_signed_int = ::mem::transmute(y);
         let z = vec_add(x, y);
-        assert_eq!(i32x4::splat(5), z.into_bits());
+        assert_eq!(i32x4::splat(5), ::mem::transmute(z));
     }
 }
