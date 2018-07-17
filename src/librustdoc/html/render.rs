@@ -2082,7 +2082,6 @@ where F: Fn(&mut fmt::Formatter) -> fmt::Result {
 impl<'a> fmt::Display for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         debug_assert!(!self.item.is_stripped());
-        println!("=> {:?}", self.item.name);
         // Write the breadcrumb trail header for the top
         write!(fmt, "<h1 class='fqn'><span class='in-band'>")?;
         match self.item.inner {
@@ -3586,6 +3585,11 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         None => return Ok(()),
     };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| {
+        if ::std::env::var("LOL").is_ok() {
+            if let Some(ref t) = i.inner_impl().trait_ {
+                println!("==> {:?}", t);
+            }
+        }
         i.inner_impl().trait_.is_none()
     });
     if !non_trait.is_empty() {
