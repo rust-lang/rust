@@ -1,0 +1,11 @@
+error[E0369]: binary operation `*` cannot be applied to type `Thing`
+  --> $DIR/issue-3820.rs:24:13
+   |
+LL |     let w = u * 3; //~ ERROR binary operation `*` cannot be applied to type `Thing`
+   |             ^^^^^
+   |
+   = note: an implementation of `std::ops::Mul` might be missing for `Thing`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

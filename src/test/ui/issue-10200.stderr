@@ -1,0 +1,9 @@
+error[E0532]: expected tuple struct/variant, found function `foo`
+  --> $DIR/issue-10200.rs:16:9
+   |
+LL |         foo(x) //~ ERROR expected tuple struct/variant, found function `foo`
+   |         ^^^ did you mean `Foo`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0532`.

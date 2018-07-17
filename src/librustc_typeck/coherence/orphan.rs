@@ -34,7 +34,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let def_id = self.tcx.hir.local_def_id(item.id);
         match item.node {
-            hir::ItemImpl(.., Some(_), _, _) => {
+            hir::ItemKind::Impl(.., Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}",
                        self.tcx.hir.node_to_string(item.id));

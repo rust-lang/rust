@@ -10,6 +10,7 @@
 
 use rustc::traits::auto_trait as auto;
 use rustc::ty::TypeFoldable;
+use rustc::hir;
 use std::fmt::Debug;
 
 use super::*;
@@ -65,9 +66,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         let did = self.cx.tcx.hir.local_def_id(id);
 
         let def_ctor = match *item {
-            hir::ItemStruct(_, _) => Def::Struct,
-            hir::ItemUnion(_, _) => Def::Union,
-            hir::ItemEnum(_, _) => Def::Enum,
+            hir::ItemKind::Struct(_, _) => Def::Struct,
+            hir::ItemKind::Union(_, _) => Def::Union,
+            hir::ItemKind::Enum(_, _) => Def::Enum,
             _ => panic!("Unexpected type {:?} {:?}", item, id),
         };
 
@@ -216,7 +217,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
             let ty = hir::Ty {
                 id: ast::DUMMY_NODE_ID,
-                node: hir::Ty_::TyPath(hir::QPath::Resolved(None, P(new_path))),
+                node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
                 span: DUMMY_SP,
                 hir_id: hir::DUMMY_HIR_ID,
             };
@@ -279,7 +280,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
         hir::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: hir::Ty_::TyPath(hir::QPath::Resolved(
+            node: hir::TyKind::Path(hir::QPath::Resolved(
                 None,
                 P(hir::Path {
                     span: DUMMY_SP,

@@ -232,7 +232,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
 
     let movable_generator = match tcx.hir.get(id) {
         hir::map::Node::NodeExpr(&hir::Expr {
-            node: hir::ExprClosure(.., Some(hir::GeneratorMovability::Static)),
+            node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..
         }) => false,
         _ => true,

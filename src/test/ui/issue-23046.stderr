@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-23046.rs:27:15
+   |
+LL |     let ex = |x| { //~ ERROR type annotations needed
+   |               ^ consider giving this closure parameter a type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

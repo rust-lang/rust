@@ -10,7 +10,7 @@
 
 // aux-build:macro-brackets.rs
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 
 extern crate macro_brackets as bar;
 use bar::doit;

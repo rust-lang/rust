@@ -1,0 +1,79 @@
+warning: `repr` attribute must have a hint
+  --> $DIR/issue-43988.rs:34:5
+   |
+LL |     #[repr]
+   |     ^^^^^^^ needs a hint
+   |
+   = note: #[warn(bad_repr)] on by default
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
+
+warning: `repr` attribute must have a hint
+  --> $DIR/issue-43988.rs:46:14
+   |
+LL |     let _z = #[repr] 1;
+   |              ^^^^^^^ needs a hint
+   |
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/issue-43988.rs:15:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     let _a = 4;
+   |     ----------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/issue-43988.rs:20:5
+   |
+LL |     #[inline(XYZ)]
+   |     ^^^^^^^^^^^^^^
+LL |     let _b = 4;
+   |     ----------- not a function or closure
+
+error[E0517]: attribute should not be applied to a statement
+  --> $DIR/issue-43988.rs:24:5
+   |
+LL |     #[repr(nothing)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     let _x = 0;
+   |     ----------- not a struct, enum or union
+
+error[E0517]: attribute should not be applied to an expression
+  --> $DIR/issue-43988.rs:28:5
+   |
+LL |       #[repr(something_not_real)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /     loop {
+LL | |         ()
+LL | |     };
+   | |_____- not defining a struct, enum or union
+
+error[E0517]: attribute should not be applied to a statement
+  --> $DIR/issue-43988.rs:34:5
+   |
+LL |     #[repr]
+   |     ^^^^^^^
+LL |     let _y = "123";
+   |     --------------- not a struct, enum or union
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/issue-43988.rs:42:5
+   |
+LL |     #[inline(ABC)]
+   |     ^^^^^^^^^^^^^^
+LL |     foo();
+   |     ----- not a function or closure
+
+error[E0517]: attribute should not be applied to an expression
+  --> $DIR/issue-43988.rs:46:14
+   |
+LL |     let _z = #[repr] 1;
+   |              ^^^^^^^ - not defining a struct, enum or union
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0517, E0518.
+For more information about an error, try `rustc --explain E0517`.

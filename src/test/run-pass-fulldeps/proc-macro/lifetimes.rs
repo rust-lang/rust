@@ -11,7 +11,7 @@
 // aux-build:lifetimes.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 
 extern crate lifetimes;
 use lifetimes::*;

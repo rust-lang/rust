@@ -1,0 +1,13 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-20261.rs:14:11
+   |
+LL |     for (ref i,) in [].iter() {
+   |         -------- consider giving `__next` a type
+LL |         i.clone();
+   |           ^^^^^ cannot infer type for `_`
+   |
+   = note: type must be known at this point
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

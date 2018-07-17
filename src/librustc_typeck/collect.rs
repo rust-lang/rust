@@ -129,7 +129,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if let hir::ExprClosure(..) = expr.node {
+        if let hir::ExprKind::Closure(..) = expr.node {
             let def_id = self.tcx.hir.local_def_id(expr.id);
             self.tcx.generics_of(def_id);
             self.tcx.type_of(def_id);
@@ -266,13 +266,13 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeItem(item) => {
             match item.node {
-                ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, _, ref generics, ..) |
-                ItemTy(_, ref generics) |
-                ItemEnum(_, ref generics) |
-                ItemStruct(_, ref generics) |
-                ItemUnion(_, ref generics) => generics,
-                ItemTrait(_, _, ref generics, ..) => {
+                ItemKind::Fn(.., ref generics, _) |
+                ItemKind::Impl(_, _, _, ref generics, ..) |
+                ItemKind::Ty(_, ref generics) |
+                ItemKind::Enum(_, ref generics) |
+                ItemKind::Struct(_, ref generics) |
+                ItemKind::Union(_, ref generics) => generics,
+                ItemKind::Trait(_, _, ref generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_node_id {
                         result.predicates.push(
@@ -287,7 +287,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeForeignItem(item) => {
             match item.node {
-                ForeignItemFn(_, _, ref generics) => generics,
+                ForeignItemKind::Fn(_, _, ref generics) => generics,
                 _ => return result
             }
         }
@@ -346,7 +346,7 @@ fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       param_id: ast::NodeId)
                       -> bool
 {
-    if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
+    if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
         match path.def {
             Def::SelfTy(Some(def_id), None) |
             Def::TyParam(def_id) => {
@@ -365,45 +365,45 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
     let def_id = tcx.hir.local_def_id(item_id);
     match it.node {
         // These don't define types.
-        hir::ItemExternCrate(_) |
-        hir::ItemUse(..) |
-        hir::ItemMod(_) |
-        hir::ItemGlobalAsm(_) => {}
-        hir::ItemForeignMod(ref foreign_mod) => {
+        hir::ItemKind::ExternCrate(_) |
+        hir::ItemKind::Use(..) |
+        hir::ItemKind::Mod(_) |
+        hir::ItemKind::GlobalAsm(_) => {}
+        hir::ItemKind::ForeignMod(ref foreign_mod) => {
             for item in &foreign_mod.items {
                 let def_id = tcx.hir.local_def_id(item.id);
                 tcx.generics_of(def_id);
                 tcx.type_of(def_id);
                 tcx.predicates_of(def_id);
-                if let hir::ForeignItemFn(..) = item.node {
+                if let hir::ForeignItemKind::Fn(..) = item.node {
                     tcx.fn_sig(def_id);
                 }
             }
         }
-        hir::ItemEnum(ref enum_definition, _) => {
+        hir::ItemKind::Enum(ref enum_definition, _) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.predicates_of(def_id);
             convert_enum_variant_types(tcx, def_id, &enum_definition.variants);
         },
-        hir::ItemImpl(..) => {
+        hir::ItemKind::Impl(..) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.impl_trait_ref(def_id);
             tcx.predicates_of(def_id);
         },
-        hir::ItemTrait(..) => {
+        hir::ItemKind::Trait(..) => {
             tcx.generics_of(def_id);
             tcx.trait_def(def_id);
             tcx.at(it.span).super_predicates_of(def_id);
             tcx.predicates_of(def_id);
         },
-        hir::ItemTraitAlias(..) => {
+        hir::ItemKind::TraitAlias(..) => {
             span_err!(tcx.sess, it.span, E0645,
                       "trait aliases are not yet implemented (see issue #41517)");
         },
-        hir::ItemStruct(ref struct_def, _) |
-        hir::ItemUnion(ref struct_def, _) => {
+        hir::ItemKind::Struct(ref struct_def, _) |
+        hir::ItemKind::Union(ref struct_def, _) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.predicates_of(def_id);
@@ -419,12 +419,15 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
                 convert_variant_ctor(tcx, struct_def.id());
             }
         },
-        hir::ItemExistential(..) => {}
-        hir::ItemTy(..) | hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) => {
+        hir::ItemKind::Existential(..) => {}
+        hir::ItemKind::Ty(..) |
+        hir::ItemKind::Static(..) |
+        hir::ItemKind::Const(..) |
+        hir::ItemKind::Fn(..) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.predicates_of(def_id);
-            if let hir::ItemFn(..) = it.node {
+            if let hir::ItemKind::Fn(..) = it.node {
                 tcx.fn_sig(def_id);
             }
         }
@@ -561,7 +564,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let repr = ReprOptions::new(tcx, def_id);
     let (kind, variants) = match item.node {
-        ItemEnum(ref def, _) => {
+        ItemKind::Enum(ref def, _) => {
             let mut distance_from_explicit = 0;
             (AdtKind::Enum, def.variants.iter().map(|v| {
                 let did = tcx.hir.local_def_id(v.node.data.id());
@@ -576,7 +579,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 convert_struct_variant(tcx, did, v.node.name, discr, &v.node.data)
             }).collect())
         }
-        ItemStruct(ref def, _) => {
+        ItemKind::Struct(ref def, _) => {
             // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
             let ctor_id = if !def.is_struct() {
                 Some(tcx.hir.local_def_id(def.id()))
@@ -588,7 +591,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        ty::VariantDiscr::Relative(0), def)
             ])
         }
-        ItemUnion(ref def, _) => {
+        ItemKind::Union(ref def, _) => {
             (AdtKind::Union, vec![
                 convert_struct_variant(tcx, def_id, item.name,
                                        ty::VariantDiscr::Relative(0), def)
@@ -614,8 +617,8 @@ fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let (generics, bounds) = match item.node {
-        hir::ItemTrait(.., ref generics, ref supertraits, _) => (generics, supertraits),
-        hir::ItemTraitAlias(ref generics, ref supertraits) => (generics, supertraits),
+        hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => (generics, supertraits),
+        hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
         _ => span_bug!(item.span,
                        "super_predicates invoked on non-trait"),
     };
@@ -658,8 +661,8 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let item = tcx.hir.expect_item(node_id);
 
     let (is_auto, unsafety) = match item.node {
-        hir::ItemTrait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
-        hir::ItemTraitAlias(..) => (false, hir::Unsafety::Normal),
+        hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
+        hir::ItemKind::TraitAlias(..) => (false, hir::Unsafety::Normal),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -701,7 +704,7 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
             if self.has_late_bound_regions.is_some() { return }
             match ty.node {
-                hir::TyBareFn(..) => {
+                hir::TyKind::BareFn(..) => {
                     self.outer_index.shift_in(1);
                     intravisit::walk_ty(self, ty);
                     self.outer_index.shift_out(1);
@@ -774,12 +777,12 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             _ => None,
         },
         hir_map::NodeForeignItem(item) => match item.node {
-            hir::ForeignItemFn(ref fn_decl, _, ref generics) =>
+            hir::ForeignItemKind::Fn(ref fn_decl, _, ref generics) =>
                 has_late_bound_regions(tcx, generics, fn_decl),
             _ => None,
         },
         hir_map::NodeItem(item) => match item.node {
-            hir::ItemFn(ref fn_decl, .., ref generics, _) =>
+            hir::ItemKind::Fn(ref fn_decl, .., ref generics, _) =>
                 has_late_bound_regions(tcx, generics, fn_decl),
             _ => None,
         },
@@ -805,12 +808,12 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let parent_id = tcx.hir.get_parent(node_id);
             Some(tcx.hir.local_def_id(parent_id))
         }
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+        NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(..), .. }) => {
             Some(tcx.closure_base_def_id(def_id))
         }
         NodeItem(item) => {
             match item.node {
-                ItemExistential(hir::ExistTy { impl_trait_fn, .. }) => impl_trait_fn,
+                ItemKind::Existential(hir::ExistTy { impl_trait_fn, .. }) => impl_trait_fn,
                 _ => None,
             }
         },
@@ -828,19 +831,20 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeItem(item) => {
             match item.node {
-                ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, _, ref generics, ..) => generics,
+                ItemKind::Fn(.., ref generics, _) |
+                ItemKind::Impl(_, _, _, ref generics, ..) => generics,
 
-                ItemTy(_, ref generics) |
-                ItemEnum(_, ref generics) |
-                ItemStruct(_, ref generics) |
-                ItemExistential(hir::ExistTy { ref generics, .. }) |
-                ItemUnion(_, ref generics) => {
+                ItemKind::Ty(_, ref generics) |
+                ItemKind::Enum(_, ref generics) |
+                ItemKind::Struct(_, ref generics) |
+                ItemKind::Existential(hir::ExistTy { ref generics, .. }) |
+                ItemKind::Union(_, ref generics) => {
                     allow_defaults = true;
                     generics
                 }
 
-                ItemTrait(_, _, ref generics, ..) | ItemTraitAlias(ref generics, ..) => {
+                ItemKind::Trait(_, _, ref generics, ..) |
+                ItemKind::TraitAlias(ref generics, ..) => {
                     // Add in the self type parameter.
                     //
                     // Something of a hack: use the node id for the trait, also as
@@ -869,9 +873,9 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeForeignItem(item) => {
             match item.node {
-                ForeignItemStatic(..) => &no_generics,
-                ForeignItemFn(_, _, ref generics) => generics,
-                ForeignItemType => &no_generics,
+                ForeignItemKind::Static(..) => &no_generics,
+                ForeignItemKind::Fn(_, _, ref generics) => generics,
+                ForeignItemKind::Type => &no_generics,
             }
         }
 
@@ -946,7 +950,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
-    if let NodeExpr(&hir::Expr { node: hir::ExprClosure(.., gen), .. }) = node {
+    if let NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(.., gen), .. }) = node {
         let dummy_args = if gen.is_some() {
             &["<yield_ty>", "<return_ty>", "<witness>"][..]
         } else {
@@ -1043,33 +1047,33 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeItem(item) => {
             match item.node {
-                ItemStatic(ref t, ..) | ItemConst(ref t, _) |
-                ItemTy(ref t, _) | ItemImpl(.., ref t, _) => {
+                ItemKind::Static(ref t, ..) | ItemKind::Const(ref t, _) |
+                ItemKind::Ty(ref t, _) | ItemKind::Impl(.., ref t, _) => {
                     icx.to_ty(t)
                 }
-                ItemFn(..) => {
+                ItemKind::Fn(..) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)
                 }
-                ItemEnum(..) |
-                ItemStruct(..) |
-                ItemUnion(..) => {
+                ItemKind::Enum(..) |
+                ItemKind::Struct(..) |
+                ItemKind::Union(..) => {
                     let def = tcx.adt_def(def_id);
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
                 // this is only reachable once we have named existential types
-                ItemExistential(hir::ExistTy { impl_trait_fn: None, .. }) => unimplemented!(),
+                ItemKind::Existential(hir::ExistTy { impl_trait_fn: None, .. }) => unimplemented!(),
                 // existential types desugared from impl Trait
-                ItemExistential(hir::ExistTy { impl_trait_fn: Some(owner), .. }) => {
+                ItemKind::Existential(hir::ExistTy { impl_trait_fn: Some(owner), .. }) => {
                     tcx.typeck_tables_of(owner).concrete_existential_types[&def_id]
                 },
-                ItemTrait(..) | ItemTraitAlias(..) |
-                ItemMod(..) |
-                ItemForeignMod(..) |
-                ItemGlobalAsm(..) |
-                ItemExternCrate(..) |
-                ItemUse(..) => {
+                ItemKind::Trait(..) | ItemKind::TraitAlias(..) |
+                ItemKind::Mod(..) |
+                ItemKind::ForeignMod(..) |
+                ItemKind::GlobalAsm(..) |
+                ItemKind::ExternCrate(..) |
+                ItemKind::Use(..) => {
                     span_bug!(
                         item.span,
                         "compute_type_of_item: unexpected item type: {:?}",
@@ -1080,17 +1084,17 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeForeignItem(foreign_item) => {
             match foreign_item.node {
-                ForeignItemFn(..) => {
+                ForeignItemKind::Fn(..) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)
                 }
-                ForeignItemStatic(ref t, _) => icx.to_ty(t),
-                ForeignItemType => tcx.mk_foreign(def_id),
+                ForeignItemKind::Static(ref t, _) => icx.to_ty(t),
+                ForeignItemKind::Type => tcx.mk_foreign(def_id),
             }
         }
 
         NodeStructCtor(&ref def) |
-        NodeVariant(&Spanned { node: hir::Variant_ { data: ref def, .. }, .. }) => {
+        NodeVariant(&Spanned { node: hir::VariantKind { data: ref def, .. }, .. }) => {
             match *def {
                 VariantData::Unit(..) | VariantData::Struct(..) => {
                     tcx.type_of(tcx.hir.get_parent_did(node_id))
@@ -1104,7 +1108,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeField(field) => icx.to_ty(&field.ty),
 
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(.., gen), .. }) => {
+        NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(.., gen), .. }) => {
             if gen.is_some() {
                 let hir_id = tcx.hir.node_to_hir_id(node_id);
                 return tcx.typeck_tables_of(def_id).node_id_to_type(hir_id);
@@ -1118,12 +1122,12 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         NodeAnonConst(_) => match tcx.hir.get(tcx.hir.get_parent_node(node_id)) {
-            NodeTy(&hir::Ty { node: TyArray(_, ref constant), .. }) |
-            NodeTy(&hir::Ty { node: TyTypeof(ref constant), .. }) |
-            NodeExpr(&hir::Expr { node: ExprRepeat(_, ref constant), .. })
+            NodeTy(&hir::Ty { node: hir::TyKind::Array(_, ref constant), .. }) |
+            NodeTy(&hir::Ty { node: hir::TyKind::Typeof(ref constant), .. }) |
+            NodeExpr(&hir::Expr { node: ExprKind::Repeat(_, ref constant), .. })
                 if constant.id == node_id => tcx.types.usize,
 
-            NodeVariant(&Spanned { node: Variant_ { disr_expr: Some(ref e), .. }, .. })
+            NodeVariant(&Spanned { node: VariantKind { disr_expr: Some(ref e), .. }, .. })
                 if e.id == node_id => {
                     tcx.adt_def(tcx.hir.get_parent_did(node_id))
                         .repr.discr_type().to_ty(tcx)
@@ -1165,17 +1169,17 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             AstConv::ty_of_fn(&icx, sig.header.unsafety, sig.header.abi, &sig.decl)
         }
 
-        NodeItem(hir::Item { node: ItemFn(decl, header, _, _), .. }) => {
+        NodeItem(hir::Item { node: ItemKind::Fn(decl, header, _, _), .. }) => {
             AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
         }
 
-        NodeForeignItem(&hir::ForeignItem { node: ForeignItemFn(ref fn_decl, _, _), .. }) => {
+        NodeForeignItem(&hir::ForeignItem { node: ForeignItemKind::Fn(ref fn_decl, _, _), .. }) => {
             let abi = tcx.hir.get_foreign_abi(node_id);
             compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
         }
 
         NodeStructCtor(&VariantData::Tuple(ref fields, _)) |
-        NodeVariant(&Spanned { node: hir::Variant_ {
+        NodeVariant(&Spanned { node: hir::VariantKind {
             data: VariantData::Tuple(ref fields, _), ..
         }, .. }) => {
             let ty = tcx.type_of(tcx.hir.get_parent_did(node_id));
@@ -1191,7 +1195,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ))
         }
 
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+        NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(..), .. }) => {
             // Closure signatures are not like other function
             // signatures and cannot be accessed through `fn_sig`. For
             // example, a closure signature excludes the `self`
@@ -1223,7 +1227,7 @@ fn impl_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     match tcx.hir.expect_item(node_id).node {
-        hir::ItemImpl(.., ref opt_trait_ref, _, _) => {
+        hir::ItemKind::Impl(.., ref opt_trait_ref, _, _) => {
             opt_trait_ref.as_ref().map(|ast_trait_ref| {
                 let selfty = tcx.type_of(def_id);
                 AstConv::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
@@ -1238,7 +1242,7 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            -> hir::ImplPolarity {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     match tcx.hir.expect_item(node_id).node {
-        hir::ItemImpl(_, polarity, ..) => polarity,
+        hir::ItemKind::Impl(_, polarity, ..) => polarity,
         ref item => bug!("impl_polarity: {:?} not an impl", item)
     }
 }
@@ -1371,23 +1375,23 @@ fn explicit_predicates_of<'a, 'tcx>(
 
         NodeItem(item) => {
             match item.node {
-                ItemImpl(_, _, defaultness, ref generics, ..) => {
+                ItemKind::Impl(_, _, defaultness, ref generics, ..) => {
                     if defaultness.is_default() {
                         is_default_impl_trait = tcx.impl_trait_ref(def_id);
                     }
                     generics
                 }
-                ItemFn(.., ref generics, _) |
-                ItemTy(_, ref generics) |
-                ItemEnum(_, ref generics) |
-                ItemStruct(_, ref generics) |
-                ItemUnion(_, ref generics) => generics,
+                ItemKind::Fn(.., ref generics, _) |
+                ItemKind::Ty(_, ref generics) |
+                ItemKind::Enum(_, ref generics) |
+                ItemKind::Struct(_, ref generics) |
+                ItemKind::Union(_, ref generics) => generics,
 
-                ItemTrait(_, _, ref generics, .., ref items) => {
+                ItemKind::Trait(_, _, ref generics, .., ref items) => {
                     is_trait = Some((ty::TraitRef::identity(tcx, def_id), items));
                     generics
                 }
-                ItemExistential(ref exist_ty) => {
+                ItemKind::Existential(ref exist_ty) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
                     let anon_ty = tcx.mk_anon(def_id, substs);
 
@@ -1412,9 +1416,9 @@ fn explicit_predicates_of<'a, 'tcx>(
 
         NodeForeignItem(item) => {
             match item.node {
-                ForeignItemStatic(..) => &no_generics,
-                ForeignItemFn(_, _, ref generics) => generics,
-                ForeignItemType => &no_generics,
+                ForeignItemKind::Static(..) => &no_generics,
+                ForeignItemKind::Fn(_, _, ref generics) => generics,
+                ForeignItemKind::Type => &no_generics,
             }
         }
 
@@ -1578,7 +1582,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     // before uses of `U`.  This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
-    if let NodeItem(&Item { node: ItemImpl(..), .. }) = node {
+    if let NodeItem(&Item { node: ItemKind::Impl(..), .. }) = node {
         let self_ty = tcx.type_of(def_id);
         let trait_ref = tcx.impl_trait_ref(def_id);
         ctp::setup_constraining_predicates(tcx,

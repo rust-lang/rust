@@ -1,0 +1,9 @@
+error[E0018]: raw pointers cannot be cast to integers in constants
+  --> $DIR/issue-18294.rs:13:22
+   |
+LL |     const Y: usize = &X as *const u32 as usize; //~ ERROR E0018
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0018`.

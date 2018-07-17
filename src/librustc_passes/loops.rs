@@ -78,23 +78,23 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
     fn visit_expr(&mut self, e: &'hir hir::Expr) {
         match e.node {
-            hir::ExprWhile(ref e, ref b, _) => {
+            hir::ExprKind::While(ref e, ref b, _) => {
                 self.with_context(Loop(LoopKind::WhileLoop), |v| {
                     v.visit_expr(&e);
                     v.visit_block(&b);
                 });
             }
-            hir::ExprLoop(ref b, _, source) => {
+            hir::ExprKind::Loop(ref b, _, source) => {
                 self.with_context(Loop(LoopKind::Loop(source)), |v| v.visit_block(&b));
             }
-            hir::ExprClosure(_, ref function_decl, b, _, _) => {
+            hir::ExprKind::Closure(_, ref function_decl, b, _, _) => {
                 self.visit_fn_decl(&function_decl);
                 self.with_context(Closure, |v| v.visit_nested_body(b));
             }
-            hir::ExprBlock(ref b, Some(_label)) => {
+            hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
             }
-            hir::ExprBreak(label, ref opt_expr) => {
+            hir::ExprKind::Break(label, ref opt_expr) => {
                 opt_expr.as_ref().map(|e| self.visit_expr(e));
 
                 if self.require_label_in_labeled_block(e.span, &label, "break") {
@@ -125,8 +125,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                         None
                     } else {
                         Some(match self.hir_map.expect_expr(loop_id).node {
-                            hir::ExprWhile(..) => LoopKind::WhileLoop,
-                            hir::ExprLoop(_, _, source) => LoopKind::Loop(source),
+                            hir::ExprKind::While(..) => LoopKind::WhileLoop,
+                            hir::ExprKind::Loop(_, _, source) => LoopKind::Loop(source),
                             ref r => span_bug!(e.span,
                                                "break label resolved to a non-loop: {:?}", r),
                         })
@@ -153,7 +153,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 self.require_break_cx("break", e.span);
             }
-            hir::ExprContinue(label) => {
+            hir::ExprKind::Continue(label) => {
                 self.require_label_in_labeled_block(e.span, &label, "continue");
 
                 match label.target_id {

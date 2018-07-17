@@ -1,0 +1,51 @@
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:11:20
+   |
+LL | trait Serializable<'self, T> { //~ ERROR lifetimes cannot use keyword names
+   |                    ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:12:25
+   |
+LL |     fn serialize(val : &'self T) -> Vec<u8>; //~ ERROR lifetimes cannot use keyword names
+   |                         ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:13:38
+   |
+LL |     fn deserialize(repr : &[u8]) -> &'self T; //~ ERROR lifetimes cannot use keyword names
+   |                                      ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:16:6
+   |
+LL | impl<'self> Serializable<str> for &'self str { //~ ERROR lifetimes cannot use keyword names
+   |      ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:16:36
+   |
+LL | impl<'self> Serializable<str> for &'self str { //~ ERROR lifetimes cannot use keyword names
+   |                                    ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:19:25
+   |
+LL |     fn serialize(val : &'self str) -> Vec<u8> { //~ ERROR lifetimes cannot use keyword names
+   |                         ^^^^^
+
+error: lifetimes cannot use keyword names
+  --> $DIR/issue-10412.rs:22:37
+   |
+LL |     fn deserialize(repr: &[u8]) -> &'self str { //~ ERROR lifetimes cannot use keyword names
+   |                                     ^^^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-10412.rs:16:13
+   |
+LL | impl<'self> Serializable<str> for &'self str { //~ ERROR lifetimes cannot use keyword names
+   |             ^^^^^^^^^^^^^^^^^ expected lifetime parameter
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

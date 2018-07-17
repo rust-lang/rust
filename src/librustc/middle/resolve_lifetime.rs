@@ -476,21 +476,21 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            hir::ItemFn(ref decl, _, ref generics, _) => {
+            hir::ItemKind::Fn(ref decl, _, ref generics, _) => {
                 self.visit_early_late(None, decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });
             }
 
-            hir::ItemExternCrate(_)
-            | hir::ItemUse(..)
-            | hir::ItemMod(..)
-            | hir::ItemForeignMod(..)
-            | hir::ItemGlobalAsm(..) => {
+            hir::ItemKind::ExternCrate(_)
+            | hir::ItemKind::Use(..)
+            | hir::ItemKind::Mod(..)
+            | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::GlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemStatic(..) | hir::ItemConst(..) => {
+            hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
                 // No lifetime parameters, but implied 'static.
                 let scope = Scope::Elision {
                     elide: Elide::Exact(Region::Static),
@@ -498,27 +498,27 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemExistential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {
+            hir::ItemKind::Existential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {
                 // currently existential type declarations are just generated from impl Trait
                 // items. doing anything on this node is irrelevant, as we currently don't need
                 // it.
             }
-            hir::ItemTy(_, ref generics)
-            | hir::ItemExistential(hir::ExistTy { impl_trait_fn: None, ref generics, .. })
-            | hir::ItemEnum(_, ref generics)
-            | hir::ItemStruct(_, ref generics)
-            | hir::ItemUnion(_, ref generics)
-            | hir::ItemTrait(_, _, ref generics, ..)
-            | hir::ItemTraitAlias(ref generics, ..)
-            | hir::ItemImpl(_, _, _, ref generics, ..) => {
+            hir::ItemKind::Ty(_, ref generics)
+            | hir::ItemKind::Existential(hir::ExistTy { impl_trait_fn: None, ref generics, .. })
+            | hir::ItemKind::Enum(_, ref generics)
+            | hir::ItemKind::Struct(_, ref generics)
+            | hir::ItemKind::Union(_, ref generics)
+            | hir::ItemKind::Trait(_, _, ref generics, ..)
+            | hir::ItemKind::TraitAlias(ref generics, ..)
+            | hir::ItemKind::Impl(_, _, _, ref generics, ..) => {
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
                 // This is not true for other kinds of items.x
                 let track_lifetime_uses = match item.node {
-                    hir::ItemImpl(..) => true,
+                    hir::ItemKind::Impl(..) => true,
                     _ => false,
                 };
                 // These kinds of items have only early bound lifetime parameters.
-                let mut index = if let hir::ItemTrait(..) = item.node {
+                let mut index = if let hir::ItemKind::Trait(..) = item.node {
                     1 // Self comes before lifetimes
                 } else {
                     0
@@ -550,15 +550,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
         match item.node {
-            hir::ForeignItemFn(ref decl, _, ref generics) => {
+            hir::ForeignItemKind::Fn(ref decl, _, ref generics) => {
                 self.visit_early_late(None, decl, generics, |this| {
                     intravisit::walk_foreign_item(this, item);
                 })
             }
-            hir::ForeignItemStatic(..) => {
+            hir::ForeignItemKind::Static(..) => {
                 intravisit::walk_foreign_item(self, item);
             }
-            hir::ForeignItemType => {
+            hir::ForeignItemKind::Type => {
                 intravisit::walk_foreign_item(self, item);
             }
         }
@@ -567,7 +567,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         debug!("visit_ty: id={:?} ty={:?}", ty.id, ty);
         match ty.node {
-            hir::TyBareFn(ref c) => {
+            hir::TyKind::BareFn(ref c) => {
                 let next_early_index = self.next_early_index();
                 let was_in_fn_syntax = self.is_in_fn_syntax;
                 self.is_in_fn_syntax = true;
@@ -591,7 +591,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 });
                 self.is_in_fn_syntax = was_in_fn_syntax;
             }
-            hir::TyTraitObject(ref bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                 for bound in bounds {
                     self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                 }
@@ -617,7 +617,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }
                 }
             }
-            hir::TyRptr(ref lifetime_ref, ref mt) => {
+            hir::TyKind::Rptr(ref lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: self.map.defs.get(&lifetime_ref.id).cloned(),
@@ -625,7 +625,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| this.visit_ty(&mt.ty));
             }
-            hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+            hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                 if let Def::Existential(exist_ty_did) = path.def {
                     assert!(exist_ty_did.is_local());
                     // Resolve the lifetimes that are applied to the existential type.
@@ -675,7 +675,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     //                          ^            ^ this gets resolved in the scope of
                     //                                         the exist_ty generics
                     let (generics, bounds) = match self.tcx.hir.expect_item(id).node {
-                        hir::ItemExistential(hir::ExistTy{ ref generics, ref bounds, .. }) => (
+                        hir::ItemKind::Existential(
+                            hir::ExistTy { ref generics, ref bounds, .. }
+                        ) => (
                             generics,
                             bounds,
                         ),
@@ -1157,8 +1159,8 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
 
     fn expression_label(ex: &hir::Expr) -> Option<ast::Ident> {
         match ex.node {
-            hir::ExprWhile(.., Some(label)) |
-            hir::ExprLoop(_, Some(label), _) => Some(label.ident),
+            hir::ExprKind::While(.., Some(label)) |
+            hir::ExprKind::Loop(_, Some(label), _) => Some(label.ident),
             _ => None,
         }
     }
@@ -1208,11 +1210,11 @@ fn compute_object_lifetime_defaults(
     let mut map = NodeMap();
     for item in tcx.hir.krate().items.values() {
         match item.node {
-            hir::ItemStruct(_, ref generics)
-            | hir::ItemUnion(_, ref generics)
-            | hir::ItemEnum(_, ref generics)
-            | hir::ItemTy(_, ref generics)
-            | hir::ItemTrait(_, _, ref generics, ..) => {
+            hir::ItemKind::Struct(_, ref generics)
+            | hir::ItemKind::Union(_, ref generics)
+            | hir::ItemKind::Enum(_, ref generics)
+            | hir::ItemKind::Ty(_, ref generics)
+            | hir::ItemKind::Trait(_, _, ref generics, ..) => {
                 let result = object_lifetime_defaults_for_item(tcx, generics);
 
                 // Debugging aid.
@@ -1287,7 +1289,7 @@ fn object_lifetime_defaults_for_item(
                 }
 
                 let def = match data.bounded_ty.node {
-                    hir::TyPath(hir::QPath::Resolved(None, ref path)) => path.def,
+                    hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => path.def,
                     _ => continue,
                 };
 
@@ -1485,12 +1487,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut index = 0;
         if let Some(parent_id) = parent_id {
             let parent = self.tcx.hir.expect_item(parent_id);
-            if let hir::ItemTrait(..) = parent.node {
+            if let hir::ItemKind::Trait(..) = parent.node {
                 index += 1; // Self comes first.
             }
             match parent.node {
-                hir::ItemTrait(_, _, ref generics, ..)
-                | hir::ItemImpl(_, _, _, ref generics, ..) => {
+                hir::ItemKind::Trait(_, _, ref generics, ..)
+                | hir::ItemKind::Impl(_, _, _, ref generics, ..) => {
                     index += generics.params.len() as u32;
                 }
                 _ => {}
@@ -1609,7 +1611,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 let fn_id = self.tcx.hir.body_owner(body_id);
                 match self.tcx.hir.get(fn_id) {
                     hir::map::NodeItem(&hir::Item {
-                        node: hir::ItemFn(..),
+                        node: hir::ItemKind::Fn(..),
                         ..
                     })
                     | hir::map::NodeTraitItem(&hir::TraitItem {
@@ -1834,7 +1836,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let body = match self.tcx.hir.get(parent) {
             // `fn` definitions and methods.
             hir::map::NodeItem(&hir::Item {
-                node: hir::ItemFn(.., body),
+                node: hir::ItemKind::Fn(.., body),
                 ..
             }) => Some(body),
 
@@ -1847,7 +1849,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     .expect_item(self.tcx.hir.get_parent(parent))
                     .node
                 {
-                    hir::ItemTrait(.., ref trait_items) => {
+                    hir::ItemKind::Trait(.., ref trait_items) => {
                         assoc_item_kind = trait_items
                             .iter()
                             .find(|ti| ti.id.node_id == parent)
@@ -1870,7 +1872,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     .expect_item(self.tcx.hir.get_parent(parent))
                     .node
                 {
-                    hir::ItemImpl(.., ref self_ty, ref impl_items) => {
+                    hir::ItemKind::Impl(.., ref self_ty, ref impl_items) => {
                         impl_self = Some(self_ty);
                         assoc_item_kind = impl_items
                             .iter()
@@ -1912,7 +1914,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 // Can't always rely on literal (or implied) `Self` due
                 // to the way elision rules were originally specified.
                 let impl_self = impl_self.map(|ty| &ty.node);
-                if let Some(&hir::TyPath(hir::QPath::Resolved(None, ref path))) = impl_self {
+                if let Some(&hir::TyKind::Path(hir::QPath::Resolved(None, ref path))) = impl_self {
                     match path.def {
                         // Whitelist the types that unambiguously always
                         // result in the same type constructor being used
@@ -1927,8 +1929,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 false
             };
 
-            if let hir::TyRptr(lifetime_ref, ref mt) = inputs[0].node {
-                if let hir::TyPath(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
+            if let hir::TyKind::Rptr(lifetime_ref, ref mt) = inputs[0].node {
+                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
                     if is_self_ty(path.def) {
                         if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.id) {
                             let scope = Scope::Elision {
@@ -2007,10 +2009,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             fn visit_ty(&mut self, ty: &hir::Ty) {
-                if let hir::TyBareFn(_) = ty.node {
+                if let hir::TyKind::BareFn(_) = ty.node {
                     self.outer_index.shift_in(1);
                 }
-                if let hir::TyTraitObject(ref bounds, ref lifetime) = ty.node {
+                if let hir::TyKind::TraitObject(ref bounds, ref lifetime) = ty.node {
                     for bound in bounds {
                         self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                     }
@@ -2023,7 +2025,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 } else {
                     intravisit::walk_ty(self, ty);
                 }
-                if let hir::TyBareFn(_) = ty.node {
+                if let hir::TyKind::BareFn(_) = ty.node {
                     self.outer_index.shift_out(1);
                 }
             }
@@ -2578,14 +2580,14 @@ fn insert_late_bound_lifetimes(
 
         fn visit_ty(&mut self, ty: &'v hir::Ty) {
             match ty.node {
-                hir::TyPath(hir::QPath::Resolved(Some(_), _))
-                | hir::TyPath(hir::QPath::TypeRelative(..)) => {
+                hir::TyKind::Path(hir::QPath::Resolved(Some(_), _))
+                | hir::TyKind::Path(hir::QPath::TypeRelative(..)) => {
                     // ignore lifetimes appearing in associated type
                     // projections, as they are not *constrained*
                     // (defined above)
                 }
 
-                hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+                hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                     // consider only the lifetimes on the final
                     // segment; I am not sure it's even currently
                     // valid to have them elsewhere, but even if it

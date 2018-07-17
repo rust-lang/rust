@@ -10,18 +10,11 @@
 
 // The Rust HIR.
 
-pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
-pub use self::Decl_::*;
-pub use self::Expr_::*;
 pub use self::FunctionRetTy::*;
-pub use self::ForeignItem_::*;
-pub use self::Item_::*;
 pub use self::Mutability::*;
 pub use self::PrimTy::*;
-pub use self::Stmt_::*;
-pub use self::Ty_::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
@@ -443,7 +436,7 @@ impl GenericArgs {
                 match arg {
                     GenericArg::Lifetime(_) => {}
                     GenericArg::Type(ref ty) => {
-                        if let TyTup(ref tys) = ty.node {
+                        if let TyKind::Tup(ref tys) = ty.node {
                             return tys;
                         }
                         break;
@@ -941,98 +934,103 @@ impl Mutability {
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, Hash)]
-pub enum BinOp_ {
+pub enum BinOpKind {
     /// The `+` operator (addition)
-    BiAdd,
+    Add,
     /// The `-` operator (subtraction)
-    BiSub,
+    Sub,
     /// The `*` operator (multiplication)
-    BiMul,
+    Mul,
     /// The `/` operator (division)
-    BiDiv,
+    Div,
     /// The `%` operator (modulus)
-    BiRem,
+    Rem,
     /// The `&&` operator (logical and)
-    BiAnd,
+    And,
     /// The `||` operator (logical or)
-    BiOr,
+    Or,
     /// The `^` operator (bitwise xor)
-    BiBitXor,
+    BitXor,
     /// The `&` operator (bitwise and)
-    BiBitAnd,
+    BitAnd,
     /// The `|` operator (bitwise or)
-    BiBitOr,
+    BitOr,
     /// The `<<` operator (shift left)
-    BiShl,
+    Shl,
     /// The `>>` operator (shift right)
-    BiShr,
+    Shr,
     /// The `==` operator (equality)
-    BiEq,
+    Eq,
     /// The `<` operator (less than)
-    BiLt,
+    Lt,
     /// The `<=` operator (less than or equal to)
-    BiLe,
+    Le,
     /// The `!=` operator (not equal to)
-    BiNe,
+    Ne,
     /// The `>=` operator (greater than or equal to)
-    BiGe,
+    Ge,
     /// The `>` operator (greater than)
-    BiGt,
+    Gt,
 }
 
-impl BinOp_ {
+impl BinOpKind {
     pub fn as_str(self) -> &'static str {
         match self {
-            BiAdd => "+",
-            BiSub => "-",
-            BiMul => "*",
-            BiDiv => "/",
-            BiRem => "%",
-            BiAnd => "&&",
-            BiOr => "||",
-            BiBitXor => "^",
-            BiBitAnd => "&",
-            BiBitOr => "|",
-            BiShl => "<<",
-            BiShr => ">>",
-            BiEq => "==",
-            BiLt => "<",
-            BiLe => "<=",
-            BiNe => "!=",
-            BiGe => ">=",
-            BiGt => ">",
+            BinOpKind::Add => "+",
+            BinOpKind::Sub => "-",
+            BinOpKind::Mul => "*",
+            BinOpKind::Div => "/",
+            BinOpKind::Rem => "%",
+            BinOpKind::And => "&&",
+            BinOpKind::Or => "||",
+            BinOpKind::BitXor => "^",
+            BinOpKind::BitAnd => "&",
+            BinOpKind::BitOr => "|",
+            BinOpKind::Shl => "<<",
+            BinOpKind::Shr => ">>",
+            BinOpKind::Eq => "==",
+            BinOpKind::Lt => "<",
+            BinOpKind::Le => "<=",
+            BinOpKind::Ne => "!=",
+            BinOpKind::Ge => ">=",
+            BinOpKind::Gt => ">",
         }
     }
 
     pub fn is_lazy(self) -> bool {
         match self {
-            BiAnd | BiOr => true,
+            BinOpKind::And | BinOpKind::Or => true,
             _ => false,
         }
     }
 
     pub fn is_shift(self) -> bool {
         match self {
-            BiShl | BiShr => true,
+            BinOpKind::Shl | BinOpKind::Shr => true,
             _ => false,
         }
     }
 
     pub fn is_comparison(self) -> bool {
         match self {
-            BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
-            BiAnd |
-            BiOr |
-            BiAdd |
-            BiSub |
-            BiMul |
-            BiDiv |
-            BiRem |
-            BiBitXor |
-            BiBitAnd |
-            BiBitOr |
-            BiShl |
-            BiShr => false,
+            BinOpKind::Eq |
+            BinOpKind::Lt |
+            BinOpKind::Le |
+            BinOpKind::Ne |
+            BinOpKind::Gt |
+            BinOpKind::Ge => true,
+            BinOpKind::And |
+            BinOpKind::Or |
+            BinOpKind::Add |
+            BinOpKind::Sub |
+            BinOpKind::Mul |
+            BinOpKind::Div |
+            BinOpKind::Rem |
+            BinOpKind::BitXor |
+            BinOpKind::BitAnd |
+            BinOpKind::BitOr |
+            BinOpKind::Shl |
+            BinOpKind::Shr => false,
         }
     }
 
@@ -1042,32 +1040,32 @@ impl BinOp_ {
     }
 }
 
-impl Into<ast::BinOpKind> for BinOp_ {
+impl Into<ast::BinOpKind> for BinOpKind {
     fn into(self) -> ast::BinOpKind {
         match self {
-            BiAdd => ast::BinOpKind::Add,
-            BiSub => ast::BinOpKind::Sub,
-            BiMul => ast::BinOpKind::Mul,
-            BiDiv => ast::BinOpKind::Div,
-            BiRem => ast::BinOpKind::Rem,
-            BiAnd => ast::BinOpKind::And,
-            BiOr => ast::BinOpKind::Or,
-            BiBitXor => ast::BinOpKind::BitXor,
-            BiBitAnd => ast::BinOpKind::BitAnd,
-            BiBitOr => ast::BinOpKind::BitOr,
-            BiShl => ast::BinOpKind::Shl,
-            BiShr => ast::BinOpKind::Shr,
-            BiEq => ast::BinOpKind::Eq,
-            BiLt => ast::BinOpKind::Lt,
-            BiLe => ast::BinOpKind::Le,
-            BiNe => ast::BinOpKind::Ne,
-            BiGe => ast::BinOpKind::Ge,
-            BiGt => ast::BinOpKind::Gt,
+            BinOpKind::Add => ast::BinOpKind::Add,
+            BinOpKind::Sub => ast::BinOpKind::Sub,
+            BinOpKind::Mul => ast::BinOpKind::Mul,
+            BinOpKind::Div => ast::BinOpKind::Div,
+            BinOpKind::Rem => ast::BinOpKind::Rem,
+            BinOpKind::And => ast::BinOpKind::And,
+            BinOpKind::Or => ast::BinOpKind::Or,
+            BinOpKind::BitXor => ast::BinOpKind::BitXor,
+            BinOpKind::BitAnd => ast::BinOpKind::BitAnd,
+            BinOpKind::BitOr => ast::BinOpKind::BitOr,
+            BinOpKind::Shl => ast::BinOpKind::Shl,
+            BinOpKind::Shr => ast::BinOpKind::Shr,
+            BinOpKind::Eq => ast::BinOpKind::Eq,
+            BinOpKind::Lt => ast::BinOpKind::Lt,
+            BinOpKind::Le => ast::BinOpKind::Le,
+            BinOpKind::Ne => ast::BinOpKind::Ne,
+            BinOpKind::Ge => ast::BinOpKind::Ge,
+            BinOpKind::Gt => ast::BinOpKind::Gt,
         }
     }
 }
 
-pub type BinOp = Spanned<BinOp_>;
+pub type BinOp = Spanned<BinOpKind>;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, Hash)]
 pub enum UnOp {
@@ -1098,9 +1096,9 @@ impl UnOp {
 }
 
 /// A statement
-pub type Stmt = Spanned<Stmt_>;
+pub type Stmt = Spanned<StmtKind>;
 
-impl fmt::Debug for Stmt_ {
+impl fmt::Debug for StmtKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Sadness.
         let spanned = codemap::dummy_spanned(self.clone());
@@ -1112,31 +1110,31 @@ impl fmt::Debug for Stmt_ {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum Stmt_ {
+pub enum StmtKind {
     /// Could be an item or a local (let) binding:
-    StmtDecl(P<Decl>, NodeId),
+    Decl(P<Decl>, NodeId),
 
     /// Expr without trailing semi-colon (must have unit type):
-    StmtExpr(P<Expr>, NodeId),
+    Expr(P<Expr>, NodeId),
 
     /// Expr with trailing semi-colon (may have any type):
-    StmtSemi(P<Expr>, NodeId),
+    Semi(P<Expr>, NodeId),
 }
 
-impl Stmt_ {
+impl StmtKind {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
-            StmtDecl(ref d, _) => d.node.attrs(),
-            StmtExpr(ref e, _) |
-            StmtSemi(ref e, _) => &e.attrs,
+            StmtKind::Decl(ref d, _) => d.node.attrs(),
+            StmtKind::Expr(ref e, _) |
+            StmtKind::Semi(ref e, _) => &e.attrs,
         }
     }
 
     pub fn id(&self) -> NodeId {
         match *self {
-            StmtDecl(_, id) => id,
-            StmtExpr(_, id) => id,
-            StmtSemi(_, id) => id,
+            StmtKind::Decl(_, id) => id,
+            StmtKind::Expr(_, id) => id,
+            StmtKind::Semi(_, id) => id,
         }
     }
 }
@@ -1155,27 +1153,27 @@ pub struct Local {
     pub source: LocalSource,
 }
 
-pub type Decl = Spanned<Decl_>;
+pub type Decl = Spanned<DeclKind>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum Decl_ {
+pub enum DeclKind {
     /// A local (let) binding:
-    DeclLocal(P<Local>),
+    Local(P<Local>),
     /// An item binding:
-    DeclItem(ItemId),
+    Item(ItemId),
 }
 
-impl Decl_ {
+impl DeclKind {
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
-            DeclLocal(ref l) => &l.attrs,
-            DeclItem(_) => &[]
+            DeclKind::Local(ref l) => &l.attrs,
+            DeclKind::Item(_) => &[]
         }
     }
 
     pub fn is_local(&self) -> bool {
         match *self {
-            Decl_::DeclLocal(_) => true,
+            DeclKind::Local(_) => true,
             _ => false,
         }
     }
@@ -1283,7 +1281,7 @@ pub struct AnonConst {
 pub struct Expr {
     pub id: NodeId,
     pub span: Span,
-    pub node: Expr_,
+    pub node: ExprKind,
     pub attrs: ThinVec<Attribute>,
     pub hir_id: HirId,
 }
@@ -1291,34 +1289,34 @@ pub struct Expr {
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.node {
-            ExprBox(_) => ExprPrecedence::Box,
-            ExprArray(_) => ExprPrecedence::Array,
-            ExprCall(..) => ExprPrecedence::Call,
-            ExprMethodCall(..) => ExprPrecedence::MethodCall,
-            ExprTup(_) => ExprPrecedence::Tup,
-            ExprBinary(op, ..) => ExprPrecedence::Binary(op.node.into()),
-            ExprUnary(..) => ExprPrecedence::Unary,
-            ExprLit(_) => ExprPrecedence::Lit,
-            ExprType(..) | ExprCast(..) => ExprPrecedence::Cast,
-            ExprIf(..) => ExprPrecedence::If,
-            ExprWhile(..) => ExprPrecedence::While,
-            ExprLoop(..) => ExprPrecedence::Loop,
-            ExprMatch(..) => ExprPrecedence::Match,
-            ExprClosure(..) => ExprPrecedence::Closure,
-            ExprBlock(..) => ExprPrecedence::Block,
-            ExprAssign(..) => ExprPrecedence::Assign,
-            ExprAssignOp(..) => ExprPrecedence::AssignOp,
-            ExprField(..) => ExprPrecedence::Field,
-            ExprIndex(..) => ExprPrecedence::Index,
-            ExprPath(..) => ExprPrecedence::Path,
-            ExprAddrOf(..) => ExprPrecedence::AddrOf,
-            ExprBreak(..) => ExprPrecedence::Break,
-            ExprContinue(..) => ExprPrecedence::Continue,
-            ExprRet(..) => ExprPrecedence::Ret,
-            ExprInlineAsm(..) => ExprPrecedence::InlineAsm,
-            ExprStruct(..) => ExprPrecedence::Struct,
-            ExprRepeat(..) => ExprPrecedence::Repeat,
-            ExprYield(..) => ExprPrecedence::Yield,
+            ExprKind::Box(_) => ExprPrecedence::Box,
+            ExprKind::Array(_) => ExprPrecedence::Array,
+            ExprKind::Call(..) => ExprPrecedence::Call,
+            ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
+            ExprKind::Tup(_) => ExprPrecedence::Tup,
+            ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node.into()),
+            ExprKind::Unary(..) => ExprPrecedence::Unary,
+            ExprKind::Lit(_) => ExprPrecedence::Lit,
+            ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
+            ExprKind::If(..) => ExprPrecedence::If,
+            ExprKind::While(..) => ExprPrecedence::While,
+            ExprKind::Loop(..) => ExprPrecedence::Loop,
+            ExprKind::Match(..) => ExprPrecedence::Match,
+            ExprKind::Closure(..) => ExprPrecedence::Closure,
+            ExprKind::Block(..) => ExprPrecedence::Block,
+            ExprKind::Assign(..) => ExprPrecedence::Assign,
+            ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
+            ExprKind::Field(..) => ExprPrecedence::Field,
+            ExprKind::Index(..) => ExprPrecedence::Index,
+            ExprKind::Path(..) => ExprPrecedence::Path,
+            ExprKind::AddrOf(..) => ExprPrecedence::AddrOf,
+            ExprKind::Break(..) => ExprPrecedence::Break,
+            ExprKind::Continue(..) => ExprPrecedence::Continue,
+            ExprKind::Ret(..) => ExprPrecedence::Ret,
+            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::Struct(..) => ExprPrecedence::Struct,
+            ExprKind::Repeat(..) => ExprPrecedence::Repeat,
+            ExprKind::Yield(..) => ExprPrecedence::Yield,
         }
     }
 }
@@ -1331,18 +1329,18 @@ impl fmt::Debug for Expr {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum Expr_ {
+pub enum ExprKind {
     /// A `box x` expression.
-    ExprBox(P<Expr>),
+    Box(P<Expr>),
     /// An array (`[a, b, c, d]`)
-    ExprArray(HirVec<Expr>),
+    Array(HirVec<Expr>),
     /// A function call
     ///
-    /// The first field resolves to the function itself (usually an `ExprPath`),
+    /// The first field resolves to the function itself (usually an `ExprKind::Path`),
     /// and the second field is the list of arguments.
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
-    ExprCall(P<Expr>, HirVec<Expr>),
+    Call(P<Expr>, HirVec<Expr>),
     /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
     /// The `PathSegment`/`Span` represent the method name and its generic arguments
@@ -1352,83 +1350,83 @@ pub enum Expr_ {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
-    ExprMethodCall(PathSegment, Span, HirVec<Expr>),
+    MethodCall(PathSegment, Span, HirVec<Expr>),
     /// A tuple (`(a, b, c ,d)`)
-    ExprTup(HirVec<Expr>),
+    Tup(HirVec<Expr>),
     /// A binary operation (For example: `a + b`, `a * b`)
-    ExprBinary(BinOp, P<Expr>, P<Expr>),
+    Binary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
-    ExprUnary(UnOp, P<Expr>),
+    Unary(UnOp, P<Expr>),
     /// A literal (For example: `1`, `"foo"`)
-    ExprLit(P<Lit>),
+    Lit(P<Lit>),
     /// A cast (`foo as f64`)
-    ExprCast(P<Expr>, P<Ty>),
-    ExprType(P<Expr>, P<Ty>),
+    Cast(P<Expr>, P<Ty>),
+    Type(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
     ///
     /// `if expr { expr } else { expr }`
-    ExprIf(P<Expr>, P<Expr>, Option<P<Expr>>),
+    If(P<Expr>, P<Expr>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
-    ExprWhile(P<Expr>, P<Block>, Option<Label>),
+    While(P<Expr>, P<Block>, Option<Label>),
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    ExprLoop(P<Block>, Option<Label>, LoopSource),
+    Loop(P<Block>, Option<Label>, LoopSource),
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
-    ExprMatch(P<Expr>, HirVec<Arm>, MatchSource),
+    Match(P<Expr>, HirVec<Arm>, MatchSource),
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
     ///
     /// This may also be a generator literal, indicated by the final boolean,
     /// in that case there is an GeneratorClause.
-    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
+    Closure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
     /// A block (`'label: { ... }`)
-    ExprBlock(P<Block>, Option<Label>),
+    Block(P<Block>, Option<Label>),
 
     /// An assignment (`a = foo()`)
-    ExprAssign(P<Expr>, P<Expr>),
+    Assign(P<Expr>, P<Expr>),
     /// An assignment with an operator
     ///
     /// For example, `a += 1`.
-    ExprAssignOp(BinOp, P<Expr>, P<Expr>),
+    AssignOp(BinOp, P<Expr>, P<Expr>),
     /// Access of a named (`obj.foo`) or unnamed (`obj.0`) struct or tuple field
-    ExprField(P<Expr>, Ident),
+    Field(P<Expr>, Ident),
     /// An indexing operation (`foo[2]`)
-    ExprIndex(P<Expr>, P<Expr>),
+    Index(P<Expr>, P<Expr>),
 
     /// Path to a definition, possibly containing lifetime or type parameters.
-    ExprPath(QPath),
+    Path(QPath),
 
     /// A referencing operation (`&a` or `&mut a`)
-    ExprAddrOf(Mutability, P<Expr>),
+    AddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Destination, Option<P<Expr>>),
+    Break(Destination, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    ExprContinue(Destination),
+    Continue(Destination),
     /// A `return`, with an optional value to be returned
-    ExprRet(Option<P<Expr>>),
+    Ret(Option<P<Expr>>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
-    ExprInlineAsm(P<InlineAsm>, HirVec<Expr>, HirVec<Expr>),
+    InlineAsm(P<InlineAsm>, HirVec<Expr>, HirVec<Expr>),
 
     /// A struct or struct-like variant literal expression.
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    ExprStruct(QPath, HirVec<Field>, Option<P<Expr>>),
+    Struct(QPath, HirVec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
     /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    ExprRepeat(P<Expr>, AnonConst),
+    Repeat(P<Expr>, AnonConst),
 
     /// A suspension point for generators. This is `yield <expr>` in Rust.
-    ExprYield(P<Expr>),
+    Yield(P<Expr>),
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.
@@ -1447,7 +1445,7 @@ pub enum QPath {
     ///
     /// UFCS source paths can desugar into this, with `Vec::new` turning into
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
-    /// the `X` and `Y` nodes each being a `TyPath(QPath::TypeRelative(..))`.
+    /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
     TypeRelative(P<Ty>, P<PathSegment>)
 }
 
@@ -1478,7 +1476,7 @@ pub enum MatchSource {
     TryDesugar,
 }
 
-/// The loop type that yielded an ExprLoop
+/// The loop type that yielded an ExprKind::Loop
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum LoopSource {
     /// A `loop { .. }` loop
@@ -1637,7 +1635,7 @@ pub struct TypeBinding {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
     pub id: NodeId,
-    pub node: Ty_,
+    pub node: TyKind,
     pub span: Span,
     pub hir_id: HirId,
 }
@@ -1678,36 +1676,36 @@ pub struct ExistTy {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 /// The different kinds of types recognized by the compiler
-pub enum Ty_ {
+pub enum TyKind {
     /// A variable length slice (`[T]`)
-    TySlice(P<Ty>),
+    Slice(P<Ty>),
     /// A fixed length array (`[T; n]`)
-    TyArray(P<Ty>, AnonConst),
+    Array(P<Ty>, AnonConst),
     /// A raw pointer (`*const T` or `*mut T`)
-    TyPtr(MutTy),
+    Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
-    TyRptr(Lifetime, MutTy),
+    Rptr(Lifetime, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
-    TyBareFn(P<BareFnTy>),
+    BareFn(P<BareFnTy>),
     /// The never type (`!`)
-    TyNever,
+    Never,
     /// A tuple (`(A, B, C, D,...)`)
-    TyTup(HirVec<Ty>),
+    Tup(HirVec<Ty>),
     /// A path to a type definition (`module::module::...::Type`), or an
     /// associated type, e.g. `<Vec<T> as Trait>::Type` or `<T>::Target`.
     ///
     /// Type parameters may be stored in each `PathSegment`.
-    TyPath(QPath),
+    Path(QPath),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
+    TraitObject(HirVec<PolyTraitRef>, Lifetime),
     /// Unused for now
-    TyTypeof(AnonConst),
-    /// TyInfer means the type should be inferred instead of it having been
+    Typeof(AnonConst),
+    /// TyKind::Infer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
-    TyInfer,
+    Infer,
     /// Placeholder for a type that has failed to be defined.
-    TyErr,
+    Err,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1876,7 +1874,7 @@ pub struct EnumDef {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Variant_ {
+pub struct VariantKind {
     pub name: Name,
     pub attrs: HirVec<Attribute>,
     pub data: VariantData,
@@ -1884,7 +1882,7 @@ pub struct Variant_ {
     pub disr_expr: Option<AnonConst>,
 }
 
-pub type Variant = Spanned<Variant_>;
+pub type Variant = Spanned<VariantKind>;
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum UseKind {
@@ -2041,7 +2039,7 @@ pub struct Item {
     pub id: NodeId,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
-    pub node: Item_,
+    pub node: ItemKind,
     pub vis: Visibility,
     pub span: Span,
 }
@@ -2055,96 +2053,96 @@ pub struct FnHeader {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum Item_ {
+pub enum ItemKind {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
     /// E.g. `extern crate foo` or `extern crate foo_bar as foo`
-    ItemExternCrate(Option<Name>),
+    ExternCrate(Option<Name>),
 
     /// `use foo::bar::*;` or `use foo::bar::baz as quux;`
     ///
     /// or just
     ///
     /// `use foo::bar::baz;` (with `as baz` implicitly on the right)
-    ItemUse(P<Path>, UseKind),
+    Use(P<Path>, UseKind),
 
     /// A `static` item
-    ItemStatic(P<Ty>, Mutability, BodyId),
+    Static(P<Ty>, Mutability, BodyId),
     /// A `const` item
-    ItemConst(P<Ty>, BodyId),
+    Const(P<Ty>, BodyId),
     /// A function declaration
-    ItemFn(P<FnDecl>, FnHeader, Generics, BodyId),
+    Fn(P<FnDecl>, FnHeader, Generics, BodyId),
     /// A module
-    ItemMod(Mod),
+    Mod(Mod),
     /// An external module
-    ItemForeignMod(ForeignMod),
+    ForeignMod(ForeignMod),
     /// Module-level inline assembly (from global_asm!)
-    ItemGlobalAsm(P<GlobalAsm>),
+    GlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
-    ItemTy(P<Ty>, Generics),
+    Ty(P<Ty>, Generics),
     /// A type alias, e.g. `type Foo = Bar<u8>`
-    ItemExistential(ExistTy),
+    Existential(ExistTy),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
-    ItemEnum(EnumDef, Generics),
+    Enum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
-    ItemStruct(VariantData, Generics),
+    Struct(VariantData, Generics),
     /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
-    ItemUnion(VariantData, Generics),
+    Union(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
     /// Represents a Trait Alias Declaration
-    ItemTraitAlias(Generics, GenericBounds),
+    TraitAlias(Generics, GenericBounds),
 
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
-    ItemImpl(Unsafety,
-             ImplPolarity,
-             Defaultness,
-             Generics,
-             Option<TraitRef>, // (optional) trait this impl implements
-             P<Ty>, // self
-             HirVec<ImplItemRef>),
+    Impl(Unsafety,
+         ImplPolarity,
+         Defaultness,
+         Generics,
+         Option<TraitRef>, // (optional) trait this impl implements
+         P<Ty>, // self
+         HirVec<ImplItemRef>),
 }
 
-impl Item_ {
+impl ItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
-            ItemExternCrate(..) => "extern crate",
-            ItemUse(..) => "use",
-            ItemStatic(..) => "static item",
-            ItemConst(..) => "constant item",
-            ItemFn(..) => "function",
-            ItemMod(..) => "module",
-            ItemForeignMod(..) => "foreign module",
-            ItemGlobalAsm(..) => "global asm",
-            ItemTy(..) => "type alias",
-            ItemExistential(..) => "existential type",
-            ItemEnum(..) => "enum",
-            ItemStruct(..) => "struct",
-            ItemUnion(..) => "union",
-            ItemTrait(..) => "trait",
-            ItemTraitAlias(..) => "trait alias",
-            ItemImpl(..) => "item",
+            ItemKind::ExternCrate(..) => "extern crate",
+            ItemKind::Use(..) => "use",
+            ItemKind::Static(..) => "static item",
+            ItemKind::Const(..) => "constant item",
+            ItemKind::Fn(..) => "function",
+            ItemKind::Mod(..) => "module",
+            ItemKind::ForeignMod(..) => "foreign module",
+            ItemKind::GlobalAsm(..) => "global asm",
+            ItemKind::Ty(..) => "type alias",
+            ItemKind::Existential(..) => "existential type",
+            ItemKind::Enum(..) => "enum",
+            ItemKind::Struct(..) => "struct",
+            ItemKind::Union(..) => "union",
+            ItemKind::Trait(..) => "trait",
+            ItemKind::TraitAlias(..) => "trait alias",
+            ItemKind::Impl(..) => "item",
         }
     }
 
     pub fn adt_kind(&self) -> Option<AdtKind> {
         match *self {
-            ItemStruct(..) => Some(AdtKind::Struct),
-            ItemUnion(..) => Some(AdtKind::Union),
-            ItemEnum(..) => Some(AdtKind::Enum),
+            ItemKind::Struct(..) => Some(AdtKind::Struct),
+            ItemKind::Union(..) => Some(AdtKind::Union),
+            ItemKind::Enum(..) => Some(AdtKind::Enum),
             _ => None,
         }
     }
 
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
-            ItemFn(_, _, ref generics, _) |
-            ItemTy(_, ref generics) |
-            ItemEnum(_, ref generics) |
-            ItemStruct(_, ref generics) |
-            ItemUnion(_, ref generics) |
-            ItemTrait(_, _, ref generics, _, _) |
-            ItemImpl(_, _, _, ref generics, _, _, _)=> generics,
+            ItemKind::Fn(_, _, ref generics, _) |
+            ItemKind::Ty(_, ref generics) |
+            ItemKind::Enum(_, ref generics) |
+            ItemKind::Struct(_, ref generics) |
+            ItemKind::Union(_, ref generics) |
+            ItemKind::Trait(_, _, ref generics, _, _) |
+            ItemKind::Impl(_, _, _, ref generics, _, _, _)=> generics,
             _ => return None
         })
     }
@@ -2192,7 +2190,7 @@ pub enum AssociatedItemKind {
 pub struct ForeignItem {
     pub name: Name,
     pub attrs: HirVec<Attribute>,
-    pub node: ForeignItem_,
+    pub node: ForeignItemKind,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
@@ -2200,22 +2198,22 @@ pub struct ForeignItem {
 
 /// An item within an `extern` block
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ForeignItem_ {
+pub enum ForeignItemKind {
     /// A foreign function
-    ForeignItemFn(P<FnDecl>, HirVec<Ident>, Generics),
+    Fn(P<FnDecl>, HirVec<Ident>, Generics),
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
-    ForeignItemStatic(P<Ty>, bool),
+    Static(P<Ty>, bool),
     /// A foreign type
-    ForeignItemType,
+    Type,
 }
 
-impl ForeignItem_ {
+impl ForeignItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
-            ForeignItemFn(..) => "foreign function",
-            ForeignItemStatic(..) => "foreign static item",
-            ForeignItemType => "foreign type",
+            ForeignItemKind::Fn(..) => "foreign function",
+            ForeignItemKind::Static(..) => "foreign static item",
+            ForeignItemKind::Type => "foreign type",
         }
     }
 }

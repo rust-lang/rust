@@ -2757,7 +2757,7 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     let parent_def_id = tcx.hir.local_def_id(parent_id);
     let parent_item = tcx.hir.expect_item(parent_id);
     match parent_item.node {
-        hir::ItemImpl(.., ref impl_item_refs) => {
+        hir::ItemKind::Impl(.., ref impl_item_refs) => {
             if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.node_id == id) {
                 let assoc_item = tcx.associated_item_from_impl_item_ref(parent_def_id,
                                                                         impl_item_ref);
@@ -2766,7 +2766,7 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             }
         }
 
-        hir::ItemTrait(.., ref trait_item_refs) => {
+        hir::ItemKind::Trait(.., ref trait_item_refs) => {
             if let Some(trait_item_ref) = trait_item_refs.iter().find(|i| i.id.node_id == id) {
                 let assoc_item = tcx.associated_item_from_trait_item_ref(parent_def_id,
                                                                          &parent_item.vis,
@@ -2815,19 +2815,19 @@ fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = tcx.hir.expect_item(id);
     let vec: Vec<_> = match item.node {
-        hir::ItemTrait(.., ref trait_item_refs) => {
+        hir::ItemKind::Trait(.., ref trait_item_refs) => {
             trait_item_refs.iter()
                            .map(|trait_item_ref| trait_item_ref.id)
                            .map(|id| tcx.hir.local_def_id(id.node_id))
                            .collect()
         }
-        hir::ItemImpl(.., ref impl_item_refs) => {
+        hir::ItemKind::Impl(.., ref impl_item_refs) => {
             impl_item_refs.iter()
                           .map(|impl_item_ref| impl_item_ref.id)
                           .map(|id| tcx.hir.local_def_id(id.node_id))
                           .collect()
         }
-        hir::ItemTraitAlias(..) => vec![],
+        hir::ItemKind::TraitAlias(..) => vec![],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
     };
     Lrc::new(vec)

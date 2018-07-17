@@ -330,19 +330,19 @@ impl_stable_hash_for!(struct hir::ExistTy {
     bounds
 });
 
-impl_stable_hash_for!(enum hir::Ty_ {
-    TySlice(t),
-    TyArray(t, body_id),
-    TyPtr(t),
-    TyRptr(lifetime, t),
-    TyBareFn(t),
-    TyNever,
-    TyTup(ts),
-    TyPath(qpath),
-    TyTraitObject(trait_refs, lifetime),
-    TyTypeof(body_id),
-    TyErr,
-    TyInfer
+impl_stable_hash_for!(enum hir::TyKind {
+    Slice(t),
+    Array(t, body_id),
+    Ptr(t),
+    Rptr(lifetime, t),
+    BareFn(t),
+    Never,
+    Tup(ts),
+    Path(qpath),
+    TraitObject(trait_refs, lifetime),
+    Typeof(body_id),
+    Err,
+    Infer
 });
 
 impl_stable_hash_for!(struct hir::FnDecl {
@@ -437,28 +437,28 @@ impl_stable_hash_for!(enum hir::PatKind {
     Slice(one, two, three)
 });
 
-impl_stable_hash_for!(enum hir::BinOp_ {
-    BiAdd,
-    BiSub,
-    BiMul,
-    BiDiv,
-    BiRem,
-    BiAnd,
-    BiOr,
-    BiBitXor,
-    BiBitAnd,
-    BiBitOr,
-    BiShl,
-    BiShr,
-    BiEq,
-    BiLt,
-    BiLe,
-    BiNe,
-    BiGe,
-    BiGt
+impl_stable_hash_for!(enum hir::BinOpKind {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    And,
+    Or,
+    BitXor,
+    BitAnd,
+    BitOr,
+    Shl,
+    Shr,
+    Eq,
+    Lt,
+    Le,
+    Ne,
+    Ge,
+    Gt
 });
 
-impl_stable_hash_for_spanned!(hir::BinOp_);
+impl_stable_hash_for_spanned!(hir::BinOpKind);
 
 impl_stable_hash_for!(enum hir::UnOp {
     UnDeref,
@@ -466,7 +466,7 @@ impl_stable_hash_for!(enum hir::UnOp {
     UnNeg
 });
 
-impl_stable_hash_for_spanned!(hir::Stmt_);
+impl_stable_hash_for_spanned!(hir::StmtKind);
 
 impl_stable_hash_for!(struct hir::Local {
     pat,
@@ -479,10 +479,10 @@ impl_stable_hash_for!(struct hir::Local {
     source
 });
 
-impl_stable_hash_for_spanned!(hir::Decl_);
-impl_stable_hash_for!(enum hir::Decl_ {
-    DeclLocal(local),
-    DeclItem(item_id)
+impl_stable_hash_for_spanned!(hir::DeclKind);
+impl_stable_hash_for!(enum hir::DeclKind {
+    Local(local),
+    Item(item_id)
 });
 
 impl_stable_hash_for!(struct hir::Arm {
@@ -541,36 +541,36 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
     }
 }
 
-impl_stable_hash_for!(enum hir::Expr_ {
-    ExprBox(sub),
-    ExprArray(subs),
-    ExprCall(callee, args),
-    ExprMethodCall(segment, span, args),
-    ExprTup(fields),
-    ExprBinary(op, lhs, rhs),
-    ExprUnary(op, operand),
-    ExprLit(value),
-    ExprCast(expr, t),
-    ExprType(expr, t),
-    ExprIf(cond, then, els),
-    ExprWhile(cond, body, label),
-    ExprLoop(body, label, loop_src),
-    ExprMatch(matchee, arms, match_src),
-    ExprClosure(capture_clause, decl, body_id, span, gen),
-    ExprBlock(blk, label),
-    ExprAssign(lhs, rhs),
-    ExprAssignOp(op, lhs, rhs),
-    ExprField(owner, ident),
-    ExprIndex(lhs, rhs),
-    ExprPath(path),
-    ExprAddrOf(mutability, sub),
-    ExprBreak(destination, sub),
-    ExprContinue(destination),
-    ExprRet(val),
-    ExprInlineAsm(asm, inputs, outputs),
-    ExprStruct(path, fields, base),
-    ExprRepeat(val, times),
-    ExprYield(val)
+impl_stable_hash_for!(enum hir::ExprKind {
+    Box(sub),
+    Array(subs),
+    Call(callee, args),
+    MethodCall(segment, span, args),
+    Tup(fields),
+    Binary(op, lhs, rhs),
+    Unary(op, operand),
+    Lit(value),
+    Cast(expr, t),
+    Type(expr, t),
+    If(cond, then, els),
+    While(cond, body, label),
+    Loop(body, label, loop_src),
+    Match(matchee, arms, match_src),
+    Closure(capture_clause, decl, body_id, span, gen),
+    Block(blk, label),
+    Assign(lhs, rhs),
+    AssignOp(op, lhs, rhs),
+    Field(owner, ident),
+    Index(lhs, rhs),
+    Path(path),
+    AddrOf(mutability, sub),
+    Break(destination, sub),
+    Continue(destination),
+    Ret(val),
+    InlineAsm(asm, inputs, outputs),
+    Struct(path, fields, base),
+    Repeat(val, times),
+    Yield(val)
 });
 
 impl_stable_hash_for!(enum hir::LocalSource {
@@ -793,14 +793,14 @@ impl_stable_hash_for!(struct hir::EnumDef {
     variants
 });
 
-impl_stable_hash_for!(struct hir::Variant_ {
+impl_stable_hash_for!(struct hir::VariantKind {
     name,
     attrs,
     data,
     disr_expr
 });
 
-impl_stable_hash_for_spanned!(hir::Variant_);
+impl_stable_hash_for_spanned!(hir::VariantKind);
 
 impl_stable_hash_for!(enum hir::UseKind {
     Single,
@@ -847,23 +847,23 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
     }
 }
 
-impl_stable_hash_for!(enum hir::Item_ {
-    ItemExternCrate(orig_name),
-    ItemUse(path, use_kind),
-    ItemStatic(ty, mutability, body_id),
-    ItemConst(ty, body_id),
-    ItemFn(fn_decl, header, generics, body_id),
-    ItemMod(module),
-    ItemForeignMod(foreign_mod),
-    ItemGlobalAsm(global_asm),
-    ItemTy(ty, generics),
-    ItemExistential(exist),
-    ItemEnum(enum_def, generics),
-    ItemStruct(variant_data, generics),
-    ItemUnion(variant_data, generics),
-    ItemTrait(is_auto, unsafety, generics, bounds, item_refs),
-    ItemTraitAlias(generics, bounds),
-    ItemImpl(unsafety, impl_polarity, impl_defaultness, generics, trait_ref, ty, impl_item_refs)
+impl_stable_hash_for!(enum hir::ItemKind {
+    ExternCrate(orig_name),
+    Use(path, use_kind),
+    Static(ty, mutability, body_id),
+    Const(ty, body_id),
+    Fn(fn_decl, header, generics, body_id),
+    Mod(module),
+    ForeignMod(foreign_mod),
+    GlobalAsm(global_asm),
+    Ty(ty, generics),
+    Existential(exist),
+    Enum(enum_def, generics),
+    Struct(variant_data, generics),
+    Union(variant_data, generics),
+    Trait(is_auto, unsafety, generics, bounds, item_refs),
+    TraitAlias(generics, bounds),
+    Impl(unsafety, impl_polarity, impl_defaultness, generics, trait_ref, ty, impl_item_refs)
 });
 
 impl_stable_hash_for!(struct hir::TraitItemRef {
@@ -909,16 +909,16 @@ impl_stable_hash_for!(struct hir::ForeignItem {
     vis
 });
 
-impl_stable_hash_for!(enum hir::ForeignItem_ {
-    ForeignItemFn(fn_decl, arg_names, generics),
-    ForeignItemStatic(ty, is_mutbl),
-    ForeignItemType
+impl_stable_hash_for!(enum hir::ForeignItemKind {
+    Fn(fn_decl, arg_names, generics),
+    Static(ty, is_mutbl),
+    Type
 });
 
-impl_stable_hash_for!(enum hir::Stmt_ {
-    StmtDecl(decl, id),
-    StmtExpr(expr, id),
-    StmtSemi(expr, id)
+impl_stable_hash_for!(enum hir::StmtKind {
+    Decl(decl, id),
+    Expr(expr, id),
+    Semi(expr, id)
 });
 
 impl_stable_hash_for!(struct hir::Arg {

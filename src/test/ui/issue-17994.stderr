@@ -1,0 +1,9 @@
+error[E0091]: type parameter `T` is unused
+  --> $DIR/issue-17994.rs:12:10
+   |
+LL | type Huh<T> where T: Tr = isize; //~  ERROR type parameter `T` is unused
+   |          ^ unused type parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0091`.

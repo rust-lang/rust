@@ -34,7 +34,7 @@ use syntax_pos::Span;
 /// More specifically, it is one of either:
 ///
 ///   - A function item,
-///   - A closure expr (i.e. an ExprClosure), or
+///   - A closure expr (i.e. an ExprKind::Closure), or
 ///   - The default implementation for a trait method.
 ///
 /// To construct one, use the `Code::from_node` function.
@@ -47,7 +47,7 @@ pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 
 impl MaybeFnLike for ast::Item {
     fn is_fn_like(&self) -> bool {
-        match self.node { ast::ItemFn(..) => true, _ => false, }
+        match self.node { ast::ItemKind::Fn(..) => true, _ => false, }
     }
 }
 
@@ -63,7 +63,7 @@ impl MaybeFnLike for ast::TraitItem {
 impl MaybeFnLike for ast::Expr {
     fn is_fn_like(&self) -> bool {
         match self.node {
-            ast::ExprClosure(..) => true,
+            ast::ExprKind::Closure(..) => true,
             _ => false,
         }
     }
@@ -229,7 +229,7 @@ impl<'a> FnLikeNode<'a> {
     {
         match self.node {
             map::NodeItem(i) => match i.node {
-                ast::ItemFn(ref decl, header, ref generics, block) =>
+                ast::ItemKind::Fn(ref decl, header, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
                         name: i.name,
@@ -260,7 +260,7 @@ impl<'a> FnLikeNode<'a> {
                 }
             },
             map::NodeExpr(e) => match e.node {
-                ast::ExprClosure(_, ref decl, block, _fn_decl_span, _gen) =>
+                ast::ExprKind::Closure(_, ref decl, block, _fn_decl_span, _gen) =>
                     closure(ClosureParts::new(&decl, block, e.id, e.span, &e.attrs)),
                 _ => bug!("expr FnLikeNode that is not fn-like"),
             },

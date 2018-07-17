@@ -1,0 +1,16 @@
+error[E0391]: cycle detected when processing `FOO`
+  --> $DIR/issue-17252.rs:11:20
+   |
+LL | const FOO: usize = FOO; //~ ERROR E0391
+   |                    ^^^
+   |
+   = note: ...which again requires processing `FOO`, completing the cycle
+note: cycle used when processing `main::{{constant}}`
+  --> $DIR/issue-17252.rs:14:18
+   |
+LL |     let _x: [u8; FOO]; // caused stack overflow prior to fix
+   |                  ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

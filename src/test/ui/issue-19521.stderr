@@ -1,0 +1,9 @@
+error[E0599]: no method named `homura` found for type `&'static str` in the current scope
+  --> $DIR/issue-19521.rs:12:8
+   |
+LL |     "".homura()(); //~ ERROR no method named `homura` found
+   |        ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

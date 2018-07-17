@@ -263,14 +263,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemImpl(.., None, _, _) | hir::ItemForeignMod(..) => {
+            hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {
                 self.in_trait_impl = false;
                 kind = AnnotationKind::Container;
             }
-            hir::ItemImpl(.., Some(_), _, _) => {
+            hir::ItemKind::Impl(.., Some(_), _, _) => {
                 self.in_trait_impl = true;
             }
-            hir::ItemStruct(ref sd, _) => {
+            hir::ItemKind::Struct(ref sd, _) => {
                 if !sd.is_struct() {
                     self.annotate(sd.id(), &i.attrs, i.span, AnnotationKind::Required, |_| {})
                 }
@@ -353,7 +353,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemImpl(.., None, _, _) | hir::ItemForeignMod(..) => {}
+            hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
 
             _ => self.check_missing_stability(i.id, i.span)
         }
@@ -723,7 +723,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            hir::ItemExternCrate(_) => {
+            hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
                 if item.span.is_dummy() { return }
 
@@ -739,7 +739,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemImpl(.., Some(ref t), _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., Some(ref t), _, ref impl_item_refs) => {
                 if let Def::Trait(trait_did) = t.path.def {
                     for impl_item_ref in impl_item_refs {
                         let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
@@ -756,7 +756,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
             // There's no good place to insert stability check for non-Copy unions,
             // so semi-randomly perform it here in stability.rs
-            hir::ItemUnion(..) if !self.tcx.features().untagged_unions => {
+            hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 let adt_def = self.tcx.adt_def(def_id);
                 let ty = self.tcx.type_of(def_id);

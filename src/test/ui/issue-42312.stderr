@@ -1,0 +1,22 @@
+error[E0277]: the size for values of type `<Self as std::ops::Deref>::Target` cannot be known at compilation time
+  --> $DIR/issue-42312.rs:14:29
+   |
+LL |     fn baz(_: Self::Target) where Self: Deref {}
+   |                             ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `<Self as std::ops::Deref>::Target`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
+   = help: consider adding a `where <Self as std::ops::Deref>::Target: std::marker::Sized` bound
+
+error[E0277]: the size for values of type `(dyn std::string::ToString + 'static)` cannot be known at compilation time
+  --> $DIR/issue-42312.rs:18:23
+   |
+LL | pub fn f(_: ToString) {}
+   |                       ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn std::string::ToString + 'static)`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -105,11 +105,11 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 // Only consider nodes that actually have exported symbols.
                 hir::map::NodeItem(&hir::Item {
-                    node: hir::ItemStatic(..),
+                    node: hir::ItemKind::Static(..),
                     ..
                 }) |
                 hir::map::NodeItem(&hir::Item {
-                    node: hir::ItemFn(..), ..
+                    node: hir::ItemKind::Fn(..), ..
                 }) |
                 hir::map::NodeImplItem(&hir::ImplItem {
                     node: hir::ImplItemKind::Method(..),

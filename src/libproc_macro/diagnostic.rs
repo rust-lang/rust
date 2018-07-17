@@ -13,7 +13,7 @@ use Span;
 use rustc_errors as rustc;
 
 /// An enum representing a diagnostic level.
-#[unstable(feature = "proc_macro", issue = "38356")]
+#[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
 #[derive(Copy, Clone, Debug)]
 pub enum Level {
     /// An error.
@@ -30,7 +30,7 @@ pub enum Level {
 
 /// A structure representing a diagnostic message and associated children
 /// messages.
-#[unstable(feature = "proc_macro", issue = "38356")]
+#[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
 #[derive(Clone, Debug)]
 pub struct Diagnostic {
     level: Level,
@@ -43,7 +43,7 @@ macro_rules! diagnostic_child_methods {
     ($spanned:ident, $regular:ident, $level:expr) => (
         /// Add a new child diagnostic message to `self` with the level
         /// identified by this methods name with the given `span` and `message`.
-        #[unstable(feature = "proc_macro", issue = "38356")]
+        #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
         pub fn $spanned<T: Into<String>>(mut self, span: Span, message: T) -> Diagnostic {
             self.children.push(Diagnostic::spanned(span, $level, message));
             self
@@ -51,7 +51,7 @@ macro_rules! diagnostic_child_methods {
 
         /// Add a new child diagnostic message to `self` with the level
         /// identified by this method's name with the given `message`.
-        #[unstable(feature = "proc_macro", issue = "38356")]
+        #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
         pub fn $regular<T: Into<String>>(mut self, message: T) -> Diagnostic {
             self.children.push(Diagnostic::new($level, message));
             self
@@ -61,7 +61,7 @@ macro_rules! diagnostic_child_methods {
 
 impl Diagnostic {
     /// Create a new diagnostic with the given `level` and `message`.
-    #[unstable(feature = "proc_macro", issue = "38356")]
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
     pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
         Diagnostic {
             level: level,
@@ -73,7 +73,7 @@ impl Diagnostic {
 
     /// Create a new diagnostic with the given `level` and `message` pointing to
     /// the given `span`.
-    #[unstable(feature = "proc_macro", issue = "38356")]
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
     pub fn spanned<T: Into<String>>(span: Span, level: Level, message: T) -> Diagnostic {
         Diagnostic {
             level: level,
@@ -89,13 +89,13 @@ impl Diagnostic {
     diagnostic_child_methods!(span_help, help, Level::Help);
 
     /// Returns the diagnostic `level` for `self`.
-    #[unstable(feature = "proc_macro", issue = "38356")]
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
     pub fn level(&self) -> Level {
         self.level
     }
 
     /// Emit the diagnostic.
-    #[unstable(feature = "proc_macro", issue = "38356")]
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
     pub fn emit(self) {
         ::__internal::with_sess(move |sess, _| {
             let handler = &sess.span_diagnostic;

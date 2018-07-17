@@ -691,7 +691,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     // ```
                     if let Some(anon_node_id) = tcx.hir.as_local_node_id(def_id) {
                         let anon_parent_def_id = match tcx.hir.expect_item(anon_node_id).node {
-                            hir::ItemExistential(hir::ExistTy {
+                            hir::ItemKind::Existential(hir::ExistTy {
                                 impl_trait_fn: Some(parent),
                                 ..
                             }) => parent,

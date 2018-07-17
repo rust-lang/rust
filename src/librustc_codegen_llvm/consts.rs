@@ -125,7 +125,7 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
         let llty = cx.layout_of(ty).llvm_type(cx);
         let (g, attrs) = match cx.tcx.hir.get(id) {
             hir_map::NodeItem(&hir::Item {
-                ref attrs, span, node: hir::ItemStatic(..), ..
+                ref attrs, span, node: hir::ItemKind::Static(..), ..
             }) => {
                 if declare::get_declared_value(cx, &sym[..]).is_some() {
                     span_bug!(span, "Conflicting symbol names for static?");
@@ -143,7 +143,7 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
             }
 
             hir_map::NodeForeignItem(&hir::ForeignItem {
-                ref attrs, span, node: hir::ForeignItemStatic(..), ..
+                ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
             }) => {
                 let g = if let Some(linkage) = cx.tcx.codegen_fn_attrs(def_id).linkage {
                     // If this is a static with a linkage specified, then we need to handle

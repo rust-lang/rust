@@ -1,0 +1,14 @@
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/issue-34349.rs:26:17
+   |
+LL |     let diary = || { //~ ERROR E0525
+   |                 ^^ this closure implements `FnMut`, not `Fn`
+LL |         farewell.push_str("!!!");
+   |         -------- closure is `FnMut` because it mutates the variable `farewell` here
+...
+LL |     apply(diary);
+   |     ----- the requirement to implement `Fn` derives from here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0525`.

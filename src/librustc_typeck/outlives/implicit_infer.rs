@@ -77,7 +77,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 
         let mut item_required_predicates = RequiredPredicates::default();
         match item.node {
-            hir::ItemUnion(..) | hir::ItemEnum(..) | hir::ItemStruct(..) => {
+            hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) => {
                 let adt_def = self.tcx.adt_def(item_did);
 
                 // Iterate over all fields in item_did

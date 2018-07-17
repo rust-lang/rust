@@ -1,0 +1,57 @@
+error[E0277]: the trait bound `(): std::iter::Iterator` is not satisfied
+  --> $DIR/issue-28098.rs:12:13
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             ^^^^^^^^^^^^^^ `()` is not an iterator; maybe try calling `.iter()` or a similar method
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = note: required by `std::iter::Iterator::next`
+
+error[E0277]: the trait bound `bool: std::iter::Iterator` is not satisfied
+  --> $DIR/issue-28098.rs:15:14
+   |
+LL |     for _ in false {}
+   |              ^^^^^ `bool` is not an iterator; maybe try calling `.iter()` or a similar method
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `bool`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error[E0277]: the trait bound `(): std::iter::Iterator` is not satisfied
+  --> $DIR/issue-28098.rs:18:13
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             ^^^^^^^^^^^^^^ `()` is not an iterator; maybe try calling `.iter()` or a similar method
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = note: required by `std::iter::Iterator::next`
+
+error[E0277]: the trait bound `(): std::iter::Iterator` is not satisfied
+  --> $DIR/issue-28098.rs:27:13
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             ^^^^^^^^^^^^^^ `()` is not an iterator; maybe try calling `.iter()` or a similar method
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = note: required by `std::iter::Iterator::next`
+
+error[E0277]: the trait bound `(): std::iter::Iterator` is not satisfied
+  --> $DIR/issue-28098.rs:30:13
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             ^^^^^^^^^^^^^^ `()` is not an iterator; maybe try calling `.iter()` or a similar method
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `()`
+   = note: required by `std::iter::Iterator::next`
+
+error[E0277]: the trait bound `bool: std::iter::Iterator` is not satisfied
+  --> $DIR/issue-28098.rs:33:14
+   |
+LL |     for _ in false {}
+   |              ^^^^^ `bool` is not an iterator; maybe try calling `.iter()` or a similar method
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `bool`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

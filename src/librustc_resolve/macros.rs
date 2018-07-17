@@ -429,7 +429,7 @@ impl<'a> Resolver<'a> {
                         *item = mem::replace(item, dummy_item).map_attrs(|mut attrs| {
                             let inert_attr = attr.take().unwrap();
                             attr::mark_known(&inert_attr);
-                            if self.proc_macro_enabled {
+                            if self.use_extern_macros {
                                 *attr = expand::find_attr_invoc(&mut attrs);
                             }
                             attrs.push(inert_attr);

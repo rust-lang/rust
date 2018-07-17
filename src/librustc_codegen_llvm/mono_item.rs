@@ -60,7 +60,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
             }
             MonoItem::GlobalAsm(node_id) => {
                 let item = cx.tcx.hir.expect_item(node_id);
-                if let hir::ItemGlobalAsm(ref ga) = item.node {
+                if let hir::ItemKind::GlobalAsm(ref ga) = item.node {
                     asm::codegen_global_asm(cx, ga);
                 } else {
                     span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")

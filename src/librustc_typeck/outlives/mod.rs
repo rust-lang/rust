@@ -41,7 +41,7 @@ fn inferred_outlives_of<'a, 'tcx>(
 
     match tcx.hir.get(id) {
         hir_map::NodeItem(item) => match item.node {
-            hir::ItemStruct(..) | hir::ItemEnum(..) | hir::ItemUnion(..) => {
+            hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
                 let crate_map = tcx.inferred_outlives_crate(LOCAL_CRATE);
 
                 let predicates = crate_map

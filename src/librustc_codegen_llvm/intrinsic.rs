@@ -1022,12 +1022,12 @@ fn generic_simd_intrinsic<'a, 'tcx>(
     let in_len = arg_tys[0].simd_size(tcx);
 
     let comparison = match name {
-        "simd_eq" => Some(hir::BiEq),
-        "simd_ne" => Some(hir::BiNe),
-        "simd_lt" => Some(hir::BiLt),
-        "simd_le" => Some(hir::BiLe),
-        "simd_gt" => Some(hir::BiGt),
-        "simd_ge" => Some(hir::BiGe),
+        "simd_eq" => Some(hir::BinOpKind::Eq),
+        "simd_ne" => Some(hir::BinOpKind::Ne),
+        "simd_lt" => Some(hir::BinOpKind::Lt),
+        "simd_le" => Some(hir::BinOpKind::Le),
+        "simd_gt" => Some(hir::BinOpKind::Gt),
+        "simd_ge" => Some(hir::BinOpKind::Ge),
         _ => None
     };
 

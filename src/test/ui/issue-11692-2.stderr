@@ -1,0 +1,8 @@
+error: cannot find macro `test!` in this scope
+  --> $DIR/issue-11692-2.rs:12:13
+   |
+LL |     concat!(test!());
+   |             ^^^^
+
+error: aborting due to previous error
+

@@ -132,7 +132,7 @@ use syntax_pos::{self, BytePos, Span, MultiSpan};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map::Node;
-use rustc::hir::{self, PatKind, Item_};
+use rustc::hir::{self, PatKind, ItemKind};
 use rustc::middle::lang_items;
 
 mod autoderef;
@@ -759,10 +759,10 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match tcx.hir.get(id) {
         hir::map::NodeItem(item) => {
             match item.node {
-                hir::ItemConst(_, body) |
-                hir::ItemStatic(_, _, body) =>
+                hir::ItemKind::Const(_, body) |
+                hir::ItemKind::Static(_, _, body) =>
                     Some((body, None)),
-                hir::ItemFn(ref decl, .., body) =>
+                hir::ItemKind::Fn(ref decl, .., body) =>
                     Some((body, Some(decl))),
                 _ =>
                     None,
@@ -1165,7 +1165,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                     }
 
                     if let Node::NodeItem(item) = fcx.tcx.hir.get(fn_id) {
-                        if let Item_::ItemFn(_, _, ref generics, _) = item.node {
+                        if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -1213,7 +1213,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                     }
 
                     if let Node::NodeItem(item) = fcx.tcx.hir.get(fn_id) {
-                        if let Item_::ItemFn(_, _, ref generics, _) = item.node {
+                        if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -1269,25 +1269,25 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
     let _indenter = indenter();
     match it.node {
       // Consts can play a role in type-checking, so they are included here.
-      hir::ItemStatic(..) => {
+      hir::ItemKind::Static(..) => {
         tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
       }
-      hir::ItemConst(..) => {
+      hir::ItemKind::Const(..) => {
         tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
         if it.attrs.iter().any(|a| a.check_name("wasm_custom_section")) {
             let def_id = tcx.hir.local_def_id(it.id);
             check_const_is_u8_array(tcx, def_id, it.span);
         }
       }
-      hir::ItemEnum(ref enum_definition, _) => {
+      hir::ItemKind::Enum(ref enum_definition, _) => {
         check_enum(tcx,
                    it.span,
                    &enum_definition.variants,
                    it.id);
       }
-      hir::ItemFn(..) => {} // entirely within check_item_body
-      hir::ItemImpl(.., ref impl_item_refs) => {
-          debug!("ItemImpl {} with id {}", it.name, it.id);
+      hir::ItemKind::Fn(..) => {} // entirely within check_item_body
+      hir::ItemKind::Impl(.., ref impl_item_refs) => {
+          debug!("ItemKind::Impl {} with id {}", it.name, it.id);
           let impl_def_id = tcx.hir.local_def_id(it.id);
           if let Some(impl_trait_ref) = tcx.impl_trait_ref(impl_def_id) {
               check_impl_items_against_trait(tcx,
@@ -1299,23 +1299,23 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
               check_on_unimplemented(tcx, trait_def_id, it);
           }
       }
-      hir::ItemTrait(..) => {
+      hir::ItemKind::Trait(..) => {
         let def_id = tcx.hir.local_def_id(it.id);
         check_on_unimplemented(tcx, def_id, it);
       }
-      hir::ItemStruct(..) => {
+      hir::ItemKind::Struct(..) => {
         check_struct(tcx, it.id, it.span);
       }
-      hir::ItemUnion(..) => {
+      hir::ItemKind::Union(..) => {
         check_union(tcx, it.id, it.span);
       }
-      hir::ItemTy(..) => {
+      hir::ItemKind::Ty(..) => {
         let def_id = tcx.hir.local_def_id(it.id);
         let pty_ty = tcx.type_of(def_id);
         let generics = tcx.generics_of(def_id);
         check_bounds_are_used(tcx, &generics, pty_ty);
       }
-      hir::ItemForeignMod(ref m) => {
+      hir::ItemKind::ForeignMod(ref m) => {
         check_abi(tcx, it.span, m.abi);
 
         if m.abi == Abi::RustIntrinsic {
@@ -1340,7 +1340,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
                     err.emit();
                 }
 
-                if let hir::ForeignItemFn(ref fn_decl, _, _) = item.node {
+                if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
                     require_c_abi_if_variadic(tcx, fn_decl, m.abi, item.span);
                 }
             }
@@ -2347,52 +2347,52 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn is_place_expr(&self, expr: &hir::Expr) -> bool {
          match expr.node {
-            hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 match path.def {
                     Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
                     _ => false,
                 }
             }
 
-            hir::ExprType(ref e, _) => {
+            hir::ExprKind::Type(ref e, _) => {
                 self.is_place_expr(e)
             }
 
-            hir::ExprUnary(hir::UnDeref, _) |
-            hir::ExprField(..) |
-            hir::ExprIndex(..) => {
+            hir::ExprKind::Unary(hir::UnDeref, _) |
+            hir::ExprKind::Field(..) |
+            hir::ExprKind::Index(..) => {
                 true
             }
 
             // Partially qualified paths in expressions can only legally
             // refer to associated items which are always rvalues.
-            hir::ExprPath(hir::QPath::TypeRelative(..)) |
+            hir::ExprKind::Path(hir::QPath::TypeRelative(..)) |
 
-            hir::ExprCall(..) |
-            hir::ExprMethodCall(..) |
-            hir::ExprStruct(..) |
-            hir::ExprTup(..) |
-            hir::ExprIf(..) |
-            hir::ExprMatch(..) |
-            hir::ExprClosure(..) |
-            hir::ExprBlock(..) |
-            hir::ExprRepeat(..) |
-            hir::ExprArray(..) |
-            hir::ExprBreak(..) |
-            hir::ExprContinue(..) |
-            hir::ExprRet(..) |
-            hir::ExprWhile(..) |
-            hir::ExprLoop(..) |
-            hir::ExprAssign(..) |
-            hir::ExprInlineAsm(..) |
-            hir::ExprAssignOp(..) |
-            hir::ExprLit(_) |
-            hir::ExprUnary(..) |
-            hir::ExprBox(..) |
-            hir::ExprAddrOf(..) |
-            hir::ExprBinary(..) |
-            hir::ExprYield(..) |
-            hir::ExprCast(..) => {
+            hir::ExprKind::Call(..) |
+            hir::ExprKind::MethodCall(..) |
+            hir::ExprKind::Struct(..) |
+            hir::ExprKind::Tup(..) |
+            hir::ExprKind::If(..) |
+            hir::ExprKind::Match(..) |
+            hir::ExprKind::Closure(..) |
+            hir::ExprKind::Block(..) |
+            hir::ExprKind::Repeat(..) |
+            hir::ExprKind::Array(..) |
+            hir::ExprKind::Break(..) |
+            hir::ExprKind::Continue(..) |
+            hir::ExprKind::Ret(..) |
+            hir::ExprKind::While(..) |
+            hir::ExprKind::Loop(..) |
+            hir::ExprKind::Assign(..) |
+            hir::ExprKind::InlineAsm(..) |
+            hir::ExprKind::AssignOp(..) |
+            hir::ExprKind::Lit(_) |
+            hir::ExprKind::Unary(..) |
+            hir::ExprKind::Box(..) |
+            hir::ExprKind::AddrOf(..) |
+            hir::ExprKind::Binary(..) |
+            hir::ExprKind::Yield(..) |
+            hir::ExprKind::Cast(..) => {
                 false
             }
         }
@@ -2763,7 +2763,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 let is_closure = match arg.node {
-                    hir::ExprClosure(..) => true,
+                    hir::ExprKind::Closure(..) => true,
                     _ => false
                 };
 
@@ -2915,7 +2915,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
             // Add help to type error if this is an `if` condition with an assignment
             match (expected, &expr.node) {
-                (ExpectIfCondition, &hir::ExprAssign(ref lhs, ref rhs)) => {
+                (ExpectIfCondition, &hir::ExprKind::Assign(ref lhs, ref rhs)) => {
                     let msg = "try comparing for equality";
                     if let (Ok(left), Ok(right)) = (
                         self.tcx.sess.codemap().span_to_snippet(lhs.span),
@@ -3625,9 +3625,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Warn for non-block expressions with diverging children.
         match expr.node {
-            hir::ExprBlock(..) |
-            hir::ExprLoop(..) | hir::ExprWhile(..) |
-            hir::ExprIf(..) | hir::ExprMatch(..) => {}
+            hir::ExprKind::Block(..) |
+            hir::ExprKind::Loop(..) | hir::ExprKind::While(..) |
+            hir::ExprKind::If(..) | hir::ExprKind::Match(..) => {}
 
             _ => self.warn_if_unreachable(expr.id, expr.span, "expression")
         }
@@ -3659,7 +3659,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let id = expr.id;
         match expr.node {
-            hir::ExprBox(ref subexpr) => {
+            hir::ExprKind::Box(ref subexpr) => {
                 let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
                     match ty.sty {
                         ty::TyAdt(def, _) if def.is_box()
@@ -3671,16 +3671,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_box(referent_ty)
             }
 
-            hir::ExprLit(ref lit) => {
+            hir::ExprKind::Lit(ref lit) => {
                 self.check_lit(&lit, expected)
             }
-            hir::ExprBinary(op, ref lhs, ref rhs) => {
+            hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.check_binop(expr, op, lhs, rhs)
             }
-            hir::ExprAssignOp(op, ref lhs, ref rhs) => {
+            hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                 self.check_binop_assign(expr, op, lhs, rhs)
             }
-            hir::ExprUnary(unop, ref oprnd) => {
+            hir::ExprKind::Unary(unop, ref oprnd) => {
                 let expected_inner = match unop {
                     hir::UnNot | hir::UnNeg => {
                         expected
@@ -3748,7 +3748,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 oprnd_t
             }
-            hir::ExprAddrOf(mutbl, ref oprnd) => {
+            hir::ExprKind::AddrOf(mutbl, ref oprnd) => {
                 let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
                     match ty.sty {
                         ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
@@ -3788,7 +3788,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.mk_ref(region, tm)
                 }
             }
-            hir::ExprPath(ref qpath) => {
+            hir::ExprKind::Path(ref qpath) => {
                 let (def, opt_ty, segs) = self.resolve_ty_and_def_ufcs(qpath, expr.id, expr.span);
                 let ty = if def != Def::Err {
                     self.instantiate_value_path(segs, opt_ty, def, expr.span, id)
@@ -3804,7 +3804,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 ty
             }
-            hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+            hir::ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
                 for output in outputs {
                     self.check_expr(output);
                 }
@@ -3813,7 +3813,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 tcx.mk_nil()
             }
-            hir::ExprBreak(destination, ref expr_opt) => {
+            hir::ExprKind::Break(destination, ref expr_opt) => {
                 if let Ok(target_id) = destination.target_id {
                     let (e_ty, cause);
                     if let Some(ref e) = *expr_opt {
@@ -3886,7 +3886,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         // ... except when we try to 'break rust;'.
                         // ICE this expression in particular (see #43162).
-                        if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = e.node {
+                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = e.node {
                             if path.segments.len() == 1 && path.segments[0].ident.name == "rust" {
                                 fatally_break_rust(self.tcx.sess);
                             }
@@ -3897,7 +3897,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
             }
-            hir::ExprContinue(destination) => {
+            hir::ExprKind::Continue(destination) => {
                 if let Ok(_) = destination.target_id {
                     tcx.types.never
                 } else {
@@ -3905,7 +3905,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.types.err
                 }
             }
-            hir::ExprRet(ref expr_opt) => {
+            hir::ExprKind::Ret(ref expr_opt) => {
                 if self.ret_coercion.is_none() {
                     struct_span_err!(self.tcx.sess, expr.span, E0572,
                                         "return statement outside of function body").emit();
@@ -3918,7 +3918,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 tcx.types.never
             }
-            hir::ExprAssign(ref lhs, ref rhs) => {
+            hir::ExprKind::Assign(ref lhs, ref rhs) => {
                 let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
 
                 let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
@@ -3948,11 +3948,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.mk_nil()
                 }
             }
-            hir::ExprIf(ref cond, ref then_expr, ref opt_else_expr) => {
+            hir::ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => {
                 self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
                                     expr.span, expected)
             }
-            hir::ExprWhile(ref cond, ref body, _) => {
+            hir::ExprKind::While(ref cond, ref body, _) => {
                 let ctxt = BreakableCtxt {
                     // cannot use break with a value from a while loop
                     coerce: None,
@@ -3976,7 +3976,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 self.tcx.mk_nil()
             }
-            hir::ExprLoop(ref body, _, source) => {
+            hir::ExprKind::Loop(ref body, _, source) => {
                 let coerce = match source {
                     // you can only use break with a value from a normal `loop { }`
                     hir::LoopSource::Loop => {
@@ -4016,22 +4016,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
             }
-            hir::ExprMatch(ref discrim, ref arms, match_src) => {
+            hir::ExprKind::Match(ref discrim, ref arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
             }
-            hir::ExprClosure(capture, ref decl, body_id, _, gen) => {
+            hir::ExprKind::Closure(capture, ref decl, body_id, _, gen) => {
                 self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
             }
-            hir::ExprBlock(ref body, _) => {
+            hir::ExprKind::Block(ref body, _) => {
                 self.check_block_with_expected(&body, expected)
             }
-            hir::ExprCall(ref callee, ref args) => {
+            hir::ExprKind::Call(ref callee, ref args) => {
                 self.check_call(expr, &callee, args, expected)
             }
-            hir::ExprMethodCall(ref segment, span, ref args) => {
+            hir::ExprKind::MethodCall(ref segment, span, ref args) => {
                 self.check_method_call(expr, segment, span, args, expected, needs)
             }
-            hir::ExprCast(ref e, ref t) => {
+            hir::ExprKind::Cast(ref e, ref t) => {
                 // Find the type of `e`. Supply hints based on the type we are casting to,
                 // if appropriate.
                 let t_cast = self.to_ty(t);
@@ -4056,12 +4056,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            hir::ExprType(ref e, ref t) => {
+            hir::ExprKind::Type(ref e, ref t) => {
                 let ty = self.to_ty(&t);
                 self.check_expr_eq_type(&e, ty);
                 ty
             }
-            hir::ExprArray(ref args) => {
+            hir::ExprKind::Array(ref args) => {
                 let uty = expected.to_option(self).and_then(|uty| {
                     match uty.sty {
                         ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
@@ -4085,7 +4085,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
                 tcx.mk_array(element_ty, args.len() as u64)
             }
-            hir::ExprRepeat(ref element, ref count) => {
+            hir::ExprKind::Repeat(ref element, ref count) => {
                 let count_def_id = tcx.hir.local_def_id(count.id);
                 let param_env = ty::ParamEnv::empty();
                 let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
@@ -4148,7 +4148,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.types.err
                 }
             }
-            hir::ExprTup(ref elts) => {
+            hir::ExprKind::Tup(ref elts) => {
                 let flds = expected.only_has_type(self).and_then(|ty| {
                     let ty = self.resolve_type_vars_with_obligations(ty);
                     match ty.sty {
@@ -4178,13 +4178,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tuple
                 }
             }
-            hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
+            hir::ExprKind::Struct(ref qpath, ref fields, ref base_expr) => {
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
             }
-            hir::ExprField(ref base, field) => {
+            hir::ExprKind::Field(ref base, field) => {
                 self.check_field(expr, needs, &base, field)
             }
-            hir::ExprIndex(ref base, ref idx) => {
+            hir::ExprKind::Index(ref base, ref idx) => {
                 let base_t = self.check_expr_with_needs(&base, needs);
                 let idx_t = self.check_expr(&idx);
 
@@ -4210,7 +4210,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 let mut needs_note = true;
                                 // If the index is an integer, we can show the actual
                                 // fixed expression:
-                                if let hir::ExprLit(ref lit) = idx.node {
+                                if let hir::ExprKind::Lit(ref lit) = idx.node {
                                     if let ast::LitKind::Int(i,
                                             ast::LitIntType::Unsuffixed) = lit.node {
                                         let snip = tcx.sess.codemap().span_to_snippet(base.span);
@@ -4233,7 +4233,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            hir::ExprYield(ref value) => {
+            hir::ExprKind::Yield(ref value) => {
                 match self.yield_ty {
                     Some(ty) => {
                         self.check_expr_coercable_to_type(&value, ty);
@@ -4265,7 +4265,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
-                let def = if let hir::TyPath(hir::QPath::Resolved(_, ref path)) = qself.node {
+                let def = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.node {
                     path.def
                 } else {
                     Def::Err
@@ -4377,15 +4377,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
         // Don't do all the complex logic below for DeclItem.
         match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
-                    hir::DeclLocal(_) => {}
-                    hir::DeclItem(_) => {
+                    hir::DeclKind::Local(_) => {}
+                    hir::DeclKind::Item(_) => {
                         return;
                     }
                 }
             }
-            hir::StmtExpr(..) | hir::StmtSemi(..) => {}
+            hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
 
         self.warn_if_unreachable(stmt.node.id(), stmt.span, "statement");
@@ -4397,19 +4397,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.has_errors.set(false);
 
         match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
-                    hir::DeclLocal(ref l) => {
+                    hir::DeclKind::Local(ref l) => {
                         self.check_decl_local(&l);
                     }
-                    hir::DeclItem(_) => {/* ignore for now */}
+                    hir::DeclKind::Item(_) => {/* ignore for now */}
                 }
             }
-            hir::StmtExpr(ref expr, _) => {
+            hir::StmtKind::Expr(ref expr, _) => {
                 // Check with expected type of ()
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_nil());
             }
-            hir::StmtSemi(ref expr, _) => {
+            hir::StmtKind::Semi(ref expr, _) => {
                 self.check_expr(&expr);
             }
         }
@@ -4548,7 +4548,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let parent = self.tcx.hir.get(fn_id);
 
             if let Node::NodeItem(&hir::Item {
-                name, node: hir::ItemFn(ref decl, ..), ..
+                name, node: hir::ItemKind::Fn(ref decl, ..), ..
             }) = parent {
                 decl.clone().and_then(|decl| {
                     // This is less than ideal, it will not suggest a return type span on any
@@ -4641,13 +4641,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // `BlockTailExpression` only relevant if the tail expr would be
             // useful on its own.
             match expression.node {
-                hir::ExprCall(..) |
-                hir::ExprMethodCall(..) |
-                hir::ExprIf(..) |
-                hir::ExprWhile(..) |
-                hir::ExprLoop(..) |
-                hir::ExprMatch(..) |
-                hir::ExprBlock(..) => {
+                hir::ExprKind::Call(..) |
+                hir::ExprKind::MethodCall(..) |
+                hir::ExprKind::If(..) |
+                hir::ExprKind::While(..) |
+                hir::ExprKind::Loop(..) |
+                hir::ExprKind::Match(..) |
+                hir::ExprKind::Block(..) => {
                     let sp = self.tcx.sess.codemap().next_point(cause_span);
                     err.span_suggestion(sp,
                                         "try adding a semicolon",
@@ -4733,7 +4733,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             None => return,
         };
         let last_expr = match last_stmt.node {
-            hir::StmtSemi(ref e, _) => e,
+            hir::StmtKind::Semi(ref e, _) => e,
             _ => return,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
@@ -5048,7 +5048,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match self.tcx.hir.get(self.tcx.hir.get_parent_node(node_id)) {
             Node::NodeExpr(expr) => {
                 match expr.node {
-                    hir::ExprCall(ref callee, ..) => {
+                    hir::ExprKind::Call(ref callee, ..) => {
                         if callee.id == node_id {
                             return
                         }

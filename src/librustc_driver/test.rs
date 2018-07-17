@@ -249,24 +249,24 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             }
 
             return match it.node {
-                hir::ItemUse(..) |
-                hir::ItemExternCrate(..) |
-                hir::ItemConst(..) |
-                hir::ItemStatic(..) |
-                hir::ItemFn(..) |
-                hir::ItemForeignMod(..) |
-                hir::ItemGlobalAsm(..) |
-                hir::ItemExistential(..) |
-                hir::ItemTy(..) => None,
+                hir::ItemKind::Use(..) |
+                hir::ItemKind::ExternCrate(..) |
+                hir::ItemKind::Const(..) |
+                hir::ItemKind::Static(..) |
+                hir::ItemKind::Fn(..) |
+                hir::ItemKind::ForeignMod(..) |
+                hir::ItemKind::GlobalAsm(..) |
+                hir::ItemKind::Existential(..) |
+                hir::ItemKind::Ty(..) => None,
 
-                hir::ItemEnum(..) |
-                hir::ItemStruct(..) |
-                hir::ItemUnion(..) |
-                hir::ItemTrait(..) |
-                hir::ItemTraitAlias(..) |
-                hir::ItemImpl(..) => None,
+                hir::ItemKind::Enum(..) |
+                hir::ItemKind::Struct(..) |
+                hir::ItemKind::Union(..) |
+                hir::ItemKind::Trait(..) |
+                hir::ItemKind::TraitAlias(..) |
+                hir::ItemKind::Impl(..) => None,
 
-                hir::ItemMod(ref m) => search_mod(this, m, idx, names),
+                hir::ItemKind::Mod(ref m) => search_mod(this, m, idx, names),
             };
         }
     }

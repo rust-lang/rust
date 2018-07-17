@@ -29,7 +29,7 @@ use std::iter::FromIterator;
 use std::vec::Vec;
 use rustc::dep_graph::{DepNode, label_strs};
 use rustc::hir;
-use rustc::hir::{Item_ as HirItem, ImplItemKind, TraitItemKind};
+use rustc::hir::{ItemKind as HirItem, ImplItemKind, TraitItemKind};
 use rustc::hir::map::Node as HirNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -342,40 +342,40 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     // FIXME(michaelwoerister): do commented out ones
 
                     // // An `extern crate` item, with optional original crate name,
-                    // HirItem::ItemExternCrate(..),  // intentionally no assertions
+                    // HirItem::ExternCrate(..),  // intentionally no assertions
 
                     // // `use foo::bar::*;` or `use foo::bar::baz as quux;`
-                    // HirItem::ItemUse(..),  // intentionally no assertions
+                    // HirItem::Use(..),  // intentionally no assertions
 
                     // A `static` item
-                    HirItem::ItemStatic(..) => ("ItemStatic", LABELS_CONST),
+                    HirItem::Static(..) => ("ItemStatic", LABELS_CONST),
 
                     // A `const` item
-                    HirItem::ItemConst(..) => ("ItemConst", LABELS_CONST),
+                    HirItem::Const(..) => ("ItemConst", LABELS_CONST),
 
                     // A function declaration
-                    HirItem::ItemFn(..) => ("ItemFn", LABELS_FN),
+                    HirItem::Fn(..) => ("ItemFn", LABELS_FN),
 
                     // // A module
-                    HirItem::ItemMod(..) =>("ItemMod", LABELS_HIR_ONLY),
+                    HirItem::Mod(..) =>("ItemMod", LABELS_HIR_ONLY),
 
                     // // An external module
-                    HirItem::ItemForeignMod(..) => ("ItemForeignMod", LABELS_HIR_ONLY),
+                    HirItem::ForeignMod(..) => ("ItemForeignMod", LABELS_HIR_ONLY),
 
                     // Module-level inline assembly (from global_asm!)
-                    HirItem::ItemGlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
+                    HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
                     // A type alias, e.g. `type Foo = Bar<u8>`
-                    HirItem::ItemTy(..) => ("ItemTy", LABELS_HIR_ONLY),
+                    HirItem::Ty(..) => ("ItemTy", LABELS_HIR_ONLY),
 
                     // An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
-                    HirItem::ItemEnum(..) => ("ItemEnum", LABELS_ADT),
+                    HirItem::Enum(..) => ("ItemEnum", LABELS_ADT),
 
                     // A struct definition, e.g. `struct Foo<A> {x: A}`
-                    HirItem::ItemStruct(..) => ("ItemStruct", LABELS_ADT),
+                    HirItem::Struct(..) => ("ItemStruct", LABELS_ADT),
 
                     // A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
-                    HirItem::ItemUnion(..) => ("ItemUnion", LABELS_ADT),
+                    HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration
                     // FIXME(michaelwoerister): trait declaration is buggy because sometimes some of
@@ -391,10 +391,10 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     // However, this did not seem to work effectively and more bugs were hit.
                     // Nebie @vitiral gave up :)
                     //
-                    //HirItem::ItemTrait(..) => ("ItemTrait", LABELS_TRAIT),
+                    //HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
-                    HirItem::ItemImpl(..) => ("ItemImpl", LABELS_IMPL),
+                    HirItem::Impl(..) => ("ItemKind::Impl", LABELS_IMPL),
 
                     _ => self.tcx.sess.span_fatal(
                         attr.span,
