@@ -8,28 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(existential_type)]
 
-fn main() {}
-
-mod boo {
-    pub existential type Boo: ::std::fmt::Debug;
-    fn bomp() -> Boo {
-        ""
-    }
+fn main() {
 }
 
-// don't actually know the type here
-
-fn bomp2() {
-    let _: &str = bomp(); //~ ERROR mismatched types
+trait TraitWithAssoc {
+    type Assoc;
 }
 
-fn bomp() -> boo::Boo {
-    "" //~ ERROR mismatched types
-}
+existential type Foo<V>: Trait<V>;
 
-fn bomp_loop() -> boo::Boo {
-    loop {}
+trait Trait<U> {}
+
+impl<W> Trait<W> for () {}
+
+fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> { //~ ERROR non-defining
+    ()
 }

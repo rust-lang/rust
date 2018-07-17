@@ -8,28 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
+
+#![allow(warnings)]
 
 #![feature(existential_type)]
 
-fn main() {}
-
-mod boo {
-    pub existential type Boo: ::std::fmt::Debug;
-    fn bomp() -> Boo {
-        ""
-    }
+fn main() {
 }
 
-// don't actually know the type here
+existential type Foo<V>: std::fmt::Debug;
 
-fn bomp2() {
-    let _: &str = bomp(); //~ ERROR mismatched types
-}
+trait Trait<U> {}
 
-fn bomp() -> boo::Boo {
-    "" //~ ERROR mismatched types
-}
-
-fn bomp_loop() -> boo::Boo {
-    loop {}
+fn foo_desugared<T: Trait<[u32; {
+    #[no_mangle]
+    static FOO: usize = 42;
+    3
+}]>>(_: T) -> Foo<T> {
+    (42, std::marker::PhantomData::<T>)
 }
