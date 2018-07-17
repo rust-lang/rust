@@ -20,7 +20,7 @@
 )]
 #![cfg_attr(
     test,
-    feature(proc_macro, test, attr_literals, abi_vectorcall, untagged_unions)
+    feature(use_extern_macros, test, attr_literals, abi_vectorcall, untagged_unions)
 )]
 #![cfg_attr(
     feature = "cargo-clippy",

@@ -4,7 +4,7 @@
 //! output once globally and then provides the `assert` function which makes
 //! assertions about the disassembly of a function.
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 #![cfg_attr(
     feature = "cargo-clippy",
     allow(missing_docs_in_private_items, print_stdout)

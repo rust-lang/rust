@@ -3,8 +3,6 @@
 //! This macro expands to a `#[test]` function which tests the local machine
 //! for the appropriate cfg before calling the inner test function.
 
-#![feature(proc_macro)]
-
 extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use]

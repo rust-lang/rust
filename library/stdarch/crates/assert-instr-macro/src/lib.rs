@@ -8,8 +8,6 @@
 //! `#[test]` function to the original token stream which asserts that the
 //! function itself contains the relevant instruction.
 
-#![feature(proc_macro)]
-
 extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use]
