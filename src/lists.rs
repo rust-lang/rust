@@ -297,15 +297,13 @@ where
                     if formatting.ends_with_newline {
                         trailing_separator = true;
                     }
+                } else if line_len > 0 {
+                    result.push(' ');
+                    line_len += 1;
                 }
 
                 if last && formatting.ends_with_newline {
                     separate = formatting.trailing_separator != SeparatorTactic::Never;
-                }
-
-                if line_len > 0 {
-                    result.push(' ');
-                    line_len += 1;
                 }
 
                 line_len += total_width;
@@ -341,6 +339,8 @@ where
                     } else {
                         result.push('\n');
                         result.push_str(indent_str);
+                        // This is the width of the item (without comments).
+                        line_len = item.item.as_ref().map_or(0, |str| str.len());
                     }
                 } else {
                     result.push(' ');
