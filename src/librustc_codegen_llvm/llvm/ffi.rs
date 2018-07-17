@@ -25,7 +25,6 @@ use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_ulonglong, c_void};
 
 use std::marker::PhantomData;
-use std::ptr::NonNull;
 
 use super::RustString;
 
@@ -383,6 +382,7 @@ pub enum ThreadLocalMode {
 }
 
 extern { type Opaque; }
+#[repr(C)]
 struct InvariantOpaque<'a> {
     _marker: PhantomData<&'a mut &'a ()>,
     _opaque: Opaque,
@@ -397,22 +397,27 @@ extern { pub type Metadata; }
 extern { pub type BasicBlock; }
 extern { pub type Builder; }
 extern { pub type MemoryBuffer; }
+#[repr(C)]
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 extern { pub type PassManagerBuilder; }
 extern { pub type ObjectFile; }
+#[repr(C)]
 pub struct SectionIterator<'a>(InvariantOpaque<'a>);
 extern { pub type Pass; }
 extern { pub type TargetMachine; }
 extern { pub type Archive; }
+#[repr(C)]
 pub struct ArchiveIterator<'a>(InvariantOpaque<'a>);
-extern { pub type ArchiveChild; }
-pub type ArchiveChildRef = *mut ArchiveChild;
+#[repr(C)]
+pub struct ArchiveChild<'a>(InvariantOpaque<'a>);
 extern { pub type Twine; }
 extern { pub type DiagnosticInfo; }
 extern { pub type SMDiagnostic; }
 extern { pub type RustArchiveMember; }
 pub type RustArchiveMemberRef = *mut RustArchiveMember;
+#[repr(C)]
 pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
+#[repr(C)]
 pub struct Linker<'a>(InvariantOpaque<'a>);
 
 pub type DiagnosticHandler = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
@@ -474,7 +479,6 @@ pub mod debuginfo {
 
 extern { pub type ModuleBuffer; }
 
-#[allow(improper_ctypes)] // TODO remove this (use for NonNull)
 extern "C" {
     // Create and destroy contexts.
     pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
@@ -1403,10 +1407,15 @@ extern "C" {
                                                 -> &'a Value;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
+}
 
+#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
+extern "C" {
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
+}
 
+extern "C" {
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&Value>;
     pub fn LLVMIsAConstantFP(value_ref: &Value) -> Option<&Value>;
 
@@ -1471,21 +1480,29 @@ extern "C" {
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
     pub fn LLVMRustArchiveIteratorNew(AR: &'a Archive) -> &'a mut ArchiveIterator<'a>;
-    pub fn LLVMRustArchiveIteratorNext(AIR: &ArchiveIterator) -> ArchiveChildRef;
-    pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: &mut size_t) -> *const c_char;
-    pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: &mut size_t) -> *const c_char;
-    pub fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
+    pub fn LLVMRustArchiveIteratorNext(AIR: &ArchiveIterator<'a>) -> Option<&'a mut ArchiveChild<'a>>;
+    pub fn LLVMRustArchiveChildName(ACR: &ArchiveChild, size: &mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildData(ACR: &ArchiveChild, size: &mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildFree(ACR: &'a mut ArchiveChild<'a>);
     pub fn LLVMRustArchiveIteratorFree(AIR: &'a mut ArchiveIterator<'a>);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
     pub fn LLVMRustGetSectionName(SI: &SectionIterator, data: &mut *const c_char) -> size_t;
+}
 
+#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
+extern "C" {
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
+}
 
+extern "C" {
     pub fn LLVMContextSetDiagnosticHandler(C: &Context,
                                            Handler: DiagnosticHandler,
                                            DiagnosticContext: *mut c_void);
+}
 
+#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
+extern "C" {
     pub fn LLVMRustUnpackOptimizationDiagnostic(DI: &'a DiagnosticInfo,
                                                 pass_name_out: &RustString,
                                                 function_out: &mut Option<&'a Value>,
@@ -1493,20 +1510,34 @@ extern "C" {
                                                 loc_column_out: &mut c_uint,
                                                 loc_filename_out: &RustString,
                                                 message_out: &RustString);
+}
+
+extern "C" {
     pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: &'a DiagnosticInfo,
                                              cookie_out: &mut c_uint,
                                              message_out: &mut Option<&'a Twine>,
                                              instruction_out: &mut Option<&'a Value>);
+}
 
+#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
+extern "C" {
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: &RustString);
+}
+
+extern "C" {
     pub fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: &Context,
                                                  H: InlineAsmDiagHandler,
                                                  CX: *mut c_void);
+}
 
+#[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.
+extern "C" {
     pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: &RustString);
+}
 
+extern "C" {
     pub fn LLVMRustWriteArchive(Dst: *const c_char,
                                 NumMembers: size_t,
                                 Members: *const RustArchiveMemberRef,
@@ -1515,7 +1546,7 @@ extern "C" {
                                 -> LLVMRustResult;
     pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
                                     Name: *const c_char,
-                                    Child: Option<NonNull<ArchiveChild>>)
+                                    Child: Option<&ArchiveChild>)
                                     -> RustArchiveMemberRef;
     pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
 

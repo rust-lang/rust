@@ -14,7 +14,7 @@ use std::ffi::{CString, CStr};
 use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::ptr::{self, NonNull};
+use std::ptr;
 use std::str;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
@@ -246,7 +246,7 @@ impl<'a> ArchiveBuilder<'a> {
                     let name = CString::new(child_name)?;
                     members.push(llvm::LLVMRustArchiveMemberNew(ptr::null(),
                                                                 name.as_ptr(),
-                                                                NonNull::new(child.raw())));
+                                                                Some(child.raw)));
                     strings.push(name);
                 }
             }
@@ -284,7 +284,7 @@ impl<'a> ArchiveBuilder<'a> {
                             let name = CString::new(child_name)?;
                             let m = llvm::LLVMRustArchiveMemberNew(ptr::null(),
                                                                    name.as_ptr(),
-                                                                   NonNull::new(child.raw()));
+                                                                   Some(child.raw));
                             members.push(m);
                             strings.push(name);
                         }
