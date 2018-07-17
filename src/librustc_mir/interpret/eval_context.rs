@@ -770,135 +770,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
             Cast(kind, ref operand, cast_ty) => {
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
-                use rustc::mir::CastKind::*;
-                match kind {
-                    Unsize => {
-                        let src = self.eval_operand(operand)?;
-                        let src_layout = self.layout_of(src.ty)?;
-                        let dst_layout = self.layout_of(dest_ty)?;
-                        self.unsize_into(src.value, src_layout, dest, dst_layout)?;
-                    }
-
-                    Misc => {
-                        let src = self.eval_operand(operand)?;
-                        if self.type_is_fat_ptr(src.ty) {
-                            match (src.value, self.type_is_fat_ptr(dest_ty)) {
-                                (Value::ByRef { .. }, _) |
-                                // pointers to extern types
-                                (Value::Scalar(_),_) |
-                                // slices and trait objects to other slices/trait objects
-                                (Value::ScalarPair(..), true) => {
-                                    let valty = ValTy {
-                                        value: src.value,
-                                        ty: dest_ty,
-                                    };
-                                    self.write_value(valty, dest)?;
-                                }
-                                // slices and trait objects to thin pointers (dropping the metadata)
-                                (Value::ScalarPair(data, _), false) => {
-                                    let valty = ValTy {
-                                        value: Value::Scalar(data),
-                                        ty: dest_ty,
-                                    };
-                                    self.write_value(valty, dest)?;
-                                }
-                            }
-                        } else {
-                            let src_layout = self.layout_of(src.ty)?;
-                            match src_layout.variants {
-                                layout::Variants::Single { index } => {
-                                    if let Some(def) = src.ty.ty_adt_def() {
-                                        let discr_val = def
-                                            .discriminant_for_variant(*self.tcx, index)
-                                            .val;
-                                        let defined = self
-                                            .layout_of(dest_ty)
-                                            .unwrap()
-                                            .size
-                                            .bits() as u8;
-                                        return self.write_scalar(
-                                            dest,
-                                            Scalar::Bits {
-                                                bits: discr_val,
-                                                defined,
-                                            },
-                                            dest_ty);
-                                    }
-                                }
-                                layout::Variants::Tagged { .. } |
-                                layout::Variants::NicheFilling { .. } => {},
-                            }
-
-                            let src_val = self.value_to_scalar(src)?;
-                            let dest_val = self.cast_scalar(src_val, src.ty, dest_ty)?;
-                            let valty = ValTy {
-                                value: Value::Scalar(dest_val),
-                                ty: dest_ty,
-                            };
-                            self.write_value(valty, dest)?;
-                        }
-                    }
-
-                    ReifyFnPointer => {
-                        match self.eval_operand(operand)?.ty.sty {
-                            ty::TyFnDef(def_id, substs) => {
-                                if self.tcx.has_attr(def_id, "rustc_args_required_const") {
-                                    bug!("reifying a fn ptr that requires \
-                                          const arguments");
-                                }
-                                let instance: EvalResult<'tcx, _> = ty::Instance::resolve(
-                                    *self.tcx,
-                                    self.param_env,
-                                    def_id,
-                                    substs,
-                                ).ok_or_else(|| EvalErrorKind::TooGeneric.into());
-                                let fn_ptr = self.memory.create_fn_alloc(instance?);
-                                let valty = ValTy {
-                                    value: Value::Scalar(fn_ptr.into()),
-                                    ty: dest_ty,
-                                };
-                                self.write_value(valty, dest)?;
-                            }
-                            ref other => bug!("reify fn pointer on {:?}", other),
-                        }
-                    }
-
-                    UnsafeFnPointer => {
-                        match dest_ty.sty {
-                            ty::TyFnPtr(_) => {
-                                let mut src = self.eval_operand(operand)?;
-                                src.ty = dest_ty;
-                                self.write_value(src, dest)?;
-                            }
-                            ref other => bug!("fn to unsafe fn cast on {:?}", other),
-                        }
-                    }
-
-                    ClosureFnPointer => {
-                        match self.eval_operand(operand)?.ty.sty {
-                            ty::TyClosure(def_id, substs) => {
-                                let substs = self.tcx.subst_and_normalize_erasing_regions(
-                                    self.substs(),
-                                    ty::ParamEnv::reveal_all(),
-                                    &substs,
-                                );
-                                let instance = ty::Instance::resolve_closure(
-                                    *self.tcx,
-                                    def_id,
-                                    substs,
-                                    ty::ClosureKind::FnOnce,
-                                );
-                                let fn_ptr = self.memory.create_fn_alloc(instance);
-                                let valty = ValTy {
-                                    value: Value::Scalar(fn_ptr.into()),
-                                    ty: dest_ty,
-                                };
-                                self.write_value(valty, dest)?;
-                            }
-                            ref other => bug!("closure fn pointer on {:?}", other),
-                        }
-                    }
-                }
+                let src = self.eval_operand(operand)?;
+                self.cast(src, kind, cast_ty, dest)?;
             }
 
             Discriminant(ref place) => {
@@ -1565,7 +1438,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    fn unsize_into(
+    crate fn unsize_into(
         &mut self,
         src: Value,
         src_layout: TyLayout<'tcx>,
