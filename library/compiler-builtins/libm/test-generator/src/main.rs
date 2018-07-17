@@ -770,7 +770,7 @@ f64_f64! {
 
 // With signature `fn(f64, f64) -> f64`
 f64f64_f64! {
-    // atan2,
+    atan2,
     fdim,
     fmod,
     hypot,
