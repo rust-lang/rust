@@ -518,9 +518,27 @@ impl<I: Idx, T> IndexVec<I, T> {
 }
 
 impl<I: Idx, T: Clone> IndexVec<I, T> {
+    /// Grows the index vector so that it contains an entry for
+    /// `elem`; if that is already true, then has no
+    /// effect. Otherwise, inserts new values as needed by invoking
+    /// `fill_value`.
+    #[inline]
+    pub fn ensure_contains_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
+        let min_new_len = elem.index() + 1;
+        if self.len() < min_new_len {
+            self.raw.resize_with(min_new_len, fill_value);
+        }
+    }
+
     #[inline]
     pub fn resize(&mut self, new_len: usize, value: T) {
         self.raw.resize(new_len, value)
+    }
+
+    #[inline]
+    pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
+        let min_new_len = elem.index() + 1;
+        self.raw.resize_with(min_new_len, fill_value);
     }
 }
 
