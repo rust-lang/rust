@@ -1580,24 +1580,24 @@ extern "C" {
         NumModules: c_uint,
         PreservedSymbols: *const *const c_char,
         PreservedSymbolsLen: c_uint,
-    ) -> *mut ThinLTOData;
+    ) -> Option<&'static mut ThinLTOData>;
     pub fn LLVMRustPrepareThinLTORename(
-        Data: *const ThinLTOData,
+        Data: &ThinLTOData,
         Module: &Module,
     ) -> bool;
     pub fn LLVMRustPrepareThinLTOResolveWeak(
-        Data: *const ThinLTOData,
+        Data: &ThinLTOData,
         Module: &Module,
     ) -> bool;
     pub fn LLVMRustPrepareThinLTOInternalize(
-        Data: *const ThinLTOData,
+        Data: &ThinLTOData,
         Module: &Module,
     ) -> bool;
     pub fn LLVMRustPrepareThinLTOImport(
-        Data: *const ThinLTOData,
+        Data: &ThinLTOData,
         Module: &Module,
     ) -> bool;
-    pub fn LLVMRustFreeThinLTOData(Data: *mut ThinLTOData);
+    pub fn LLVMRustFreeThinLTOData(Data: &'static mut ThinLTOData);
     pub fn LLVMRustParseBitcodeForThinLTO(
         Context: &Context,
         Data: *const u8,

@@ -423,11 +423,10 @@ fn thin_lto(diag_handler: &Handler,
             thin_modules.len() as u32,
             symbol_white_list.as_ptr(),
             symbol_white_list.len() as u32,
-        );
-        if data.is_null() {
-            let msg = "failed to prepare thin LTO context".to_string();
-            return Err(write::llvm_err(&diag_handler, msg))
-        }
+        ).ok_or_else(|| {
+            write::llvm_err(&diag_handler, "failed to prepare thin LTO context".to_string())
+        })?;
+
         let data = ThinData(data);
         info!("thin LTO data created");
         timeline.record("data");
@@ -566,7 +565,7 @@ struct ThinShared {
     module_names: Vec<CString>,
 }
 
-struct ThinData(*mut llvm::ThinLTOData);
+struct ThinData(&'static mut llvm::ThinLTOData);
 
 unsafe impl Send for ThinData {}
 unsafe impl Sync for ThinData {}
@@ -574,7 +573,7 @@ unsafe impl Sync for ThinData {}
 impl Drop for ThinData {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMRustFreeThinLTOData(self.0);
+            llvm::LLVMRustFreeThinLTOData(&mut *(self.0 as *mut _));
         }
     }
 }
