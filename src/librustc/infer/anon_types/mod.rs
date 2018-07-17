@@ -690,38 +690,35 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     // }
                     // ```
                     if let Some(anon_node_id) = tcx.hir.as_local_node_id(def_id) {
-                        let anon_parent_def_id = match tcx.hir.expect_item(anon_node_id).node {
+                        let in_definition_scope = match tcx.hir.expect_item(anon_node_id).node {
                             // impl trait
                             hir::ItemKind::Existential(hir::ExistTy {
                                 impl_trait_fn: Some(parent),
                                 ..
-                            }) => parent,
+                            }) => parent == self.parent_def_id,
                             // named existential types
                             hir::ItemKind::Existential(hir::ExistTy {
                                 impl_trait_fn: None,
                                 ..
-                            }) if may_define_existential_type(
+                            }) => may_define_existential_type(
                                 tcx,
                                 self.parent_def_id,
                                 anon_node_id,
-                            ) => {
-                                return self.fold_anon_ty(ty, def_id, substs);
-                            },
+                            ),
                             _ => {
                                 let anon_parent_node_id = tcx.hir.get_parent(anon_node_id);
-                                tcx.hir.local_def_id(anon_parent_node_id)
+                                self.parent_def_id == tcx.hir.local_def_id(anon_parent_node_id)
                             },
                         };
-                        if self.parent_def_id == anon_parent_def_id {
+                        if in_definition_scope {
                             return self.fold_anon_ty(ty, def_id, substs);
                         }
 
                         debug!(
                             "instantiate_anon_types_in_map: \
-                             encountered anon with wrong parent \
-                             def_id={:?} \
-                             anon_parent_def_id={:?}",
-                            def_id, anon_parent_def_id
+                             encountered anon outside it's definition scope \
+                             def_id={:?}",
+                            def_id,
                         );
                     }
                 }
