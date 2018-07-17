@@ -400,8 +400,7 @@ extern { pub type MemoryBuffer; }
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 extern { pub type PassManagerBuilder; }
 extern { pub type ObjectFile; }
-extern { pub type SectionIterator; }
-pub type SectionIteratorRef = *mut SectionIterator;
+pub struct SectionIterator<'a>(InvariantOpaque<'a>);
 extern { pub type Pass; }
 extern { pub type TargetMachine; }
 extern { pub type Archive; }
@@ -1146,18 +1145,18 @@ extern "C" {
     pub fn LLVMDisposeObjectFile(ObjFile: &'static mut ObjectFile);
 
     /// Enumerates the sections in an object file.
-    pub fn LLVMGetSections(ObjFile: &ObjectFile) -> SectionIteratorRef;
+    pub fn LLVMGetSections(ObjFile: &'a ObjectFile) -> &'a mut SectionIterator<'a>;
     /// Destroys a section iterator.
-    pub fn LLVMDisposeSectionIterator(SI: SectionIteratorRef);
+    pub fn LLVMDisposeSectionIterator(SI: &'a mut SectionIterator<'a>);
     /// Returns true if the section iterator is at the end of the section
     /// list:
-    pub fn LLVMIsSectionIteratorAtEnd(ObjFile: &ObjectFile, SI: SectionIteratorRef) -> Bool;
+    pub fn LLVMIsSectionIteratorAtEnd(ObjFile: &'a ObjectFile, SI: &SectionIterator<'a>) -> Bool;
     /// Moves the section iterator to point to the next section.
-    pub fn LLVMMoveToNextSection(SI: SectionIteratorRef);
+    pub fn LLVMMoveToNextSection(SI: &SectionIterator);
     /// Returns the current section size.
-    pub fn LLVMGetSectionSize(SI: SectionIteratorRef) -> c_ulonglong;
+    pub fn LLVMGetSectionSize(SI: &SectionIterator) -> c_ulonglong;
     /// Returns the current section contents as a string buffer.
-    pub fn LLVMGetSectionContents(SI: SectionIteratorRef) -> *const c_char;
+    pub fn LLVMGetSectionContents(SI: &SectionIterator) -> *const c_char;
 
     /// Reads the given file and returns it as a memory buffer. Use
     /// LLVMDisposeMemoryBuffer() to get rid of it.
@@ -1481,7 +1480,7 @@ extern "C" {
     pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
-    pub fn LLVMRustGetSectionName(SI: SectionIteratorRef, data: &mut *const c_char) -> size_t;
+    pub fn LLVMRustGetSectionName(SI: &SectionIterator, data: &mut *const c_char) -> size_t;
 
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 

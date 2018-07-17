@@ -204,19 +204,19 @@ impl Drop for ObjectFile {
 
 // Memory-managed interface to section iterators.
 
-pub struct SectionIter {
-    pub llsi: SectionIteratorRef,
+pub struct SectionIter<'a> {
+    pub llsi: &'a mut SectionIterator<'a>,
 }
 
-impl Drop for SectionIter {
+impl Drop for SectionIter<'a> {
     fn drop(&mut self) {
         unsafe {
-            LLVMDisposeSectionIterator(self.llsi);
+            LLVMDisposeSectionIterator(&mut *(self.llsi as *mut _));
         }
     }
 }
 
-pub fn mk_section_iter(llof: &ffi::ObjectFile) -> SectionIter {
+pub fn mk_section_iter(llof: &'a ffi::ObjectFile) -> SectionIter<'a> {
     unsafe { SectionIter { llsi: LLVMGetSections(llof) } }
 }
 
