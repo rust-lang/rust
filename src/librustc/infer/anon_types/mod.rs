@@ -808,6 +808,23 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 }
 
 /// Whether `anon_node_id` is a sibling or a child of a sibling of `def_id`
+///
+/// ```rust
+/// pub mod foo {
+///     pub mod bar {
+///         pub existential type Baz;
+///
+///         fn f1() -> Baz { .. }
+///     }
+///
+///     fn f2() -> bar::Baz { .. }
+/// }
+/// ```
+///
+/// Here, `def_id` will be the `DefId` of the existential type `Baz`.
+/// `anon_node_id` is the `NodeId` of the reference to Baz -- so either the return type of f1 or f2.
+/// We will return true if the reference is within the same module as the existential type
+/// So true for f1, false for f2.
 pub fn may_define_existential_type(
     tcx: TyCtxt,
     def_id: DefId,

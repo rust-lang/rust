@@ -2861,7 +2861,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
                        -> ParamEnv<'tcx> {
 
-    // The param_env of an existential type is its parent's param_env
+    // The param_env of an impl Trait type is its defining function's param_env
     if let Some(Def::Existential(_)) = tcx.describe_def(def_id) {
         if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
             if let hir::map::NodeItem(item) = tcx.hir.get(node_id) {

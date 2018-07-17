@@ -535,6 +535,26 @@ fn check_fn_or_method<'a, 'fcx, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     check_where_clauses(tcx, fcx, span, def_id, Some(sig.output()));
 }
 
+/// Checks "defining uses" of existential types to ensure that they meet the restrictions laid for
+/// "higher-order pattern unification".
+/// This ensures that inference is tractable.
+/// In particular, definitions of existential types can only use other generics as arguments,
+/// and they cannot repeat an argument. Example:
+///
+/// ```rust
+/// existential type Foo<A, B>;
+///
+/// // ok -- `Foo` is applied to two distinct, generic types.
+/// fn a<T, U>() -> Foo<T, U> { .. }
+///
+/// // not ok -- `Foo` is applied to `T` twice.
+/// fn b<T>() -> Foo<T, T> { .. }
+///
+///
+/// // not ok -- `Foo` is applied to a non-generic type.
+/// fn b<T>() -> Foo<T, u32> { .. }
+/// ```
+///
 fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
     fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
