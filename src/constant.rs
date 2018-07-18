@@ -15,23 +15,24 @@ pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Cons
             .unwrap(),
     };
 
-    let layout = fx.layout_of(const_.ty);
-    match const_.ty.sty {
+    let ty = fx.monomorphize(&const_.ty);
+    let layout = fx.layout_of(ty);
+    match ty.sty {
         TypeVariants::TyBool => {
             let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
-            CValue::const_val(fx, const_.ty, bits as u64 as i64)
+            CValue::const_val(fx, ty, bits as u64 as i64)
         }
         TypeVariants::TyUint(_) => {
             let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
-            CValue::const_val(fx, const_.ty, bits as u64 as i64)
+            CValue::const_val(fx, ty, bits as u64 as i64)
         }
         TypeVariants::TyInt(_) => {
             let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
-            CValue::const_val(fx, const_.ty, bits as i128 as i64)
+            CValue::const_val(fx, ty, bits as i128 as i64)
         }
         TypeVariants::TyFnDef(def_id, substs) => {
             let func_ref = fx.get_function_ref(Instance::new(def_id, substs));
-            CValue::Func(func_ref, fx.layout_of(const_.ty))
+            CValue::Func(func_ref, layout)
         }
         _ => {
             let mut memory = Memory::<CompileTimeEvaluator>::new(fx.tcx.at(DUMMY_SP), ());
