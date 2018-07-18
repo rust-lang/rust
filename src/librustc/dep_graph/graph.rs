@@ -204,13 +204,31 @@ impl DepGraph {
         where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
               R: HashStable<StableHashingContext<'gcx>>,
     {
-        self.with_task_impl(key, cx, arg, false, task,
+        self.with_task_impl(key, cx, arg, false, true, task,
             |key| OpenTask::Regular(Lock::new(RegularOpenTask {
                 node: key,
                 reads: SmallVec::new(),
                 read_set: FxHashSet(),
             })),
-            |data, key, task| data.borrow_mut().complete_task(key, task))
+            |data, key, task| data.borrow_mut().complete_task(key, task, false))
+    }
+
+    pub fn with_forced_task<'gcx, C, A, R>(&self,
+                                           key: DepNode,
+                                           cx: C,
+                                           arg: A,
+                                           task: fn(C, A) -> R)
+                                           -> (R, DepNodeIndex)
+        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
+              R: HashStable<StableHashingContext<'gcx>>,
+    {
+        self.with_task_impl(key, cx, arg, false, false, task,
+            |key| OpenTask::Regular(Lock::new(RegularOpenTask {
+                node: key,
+                reads: SmallVec::new(),
+                read_set: FxHashSet(),
+            })),
+            |data, key, task| data.borrow_mut().complete_task(key, task, true))
     }
 
     /// Creates a new dep-graph input with value `input`
@@ -226,7 +244,7 @@ impl DepGraph {
             arg
         }
 
-        self.with_task_impl(key, cx, input, true, identity_fn,
+        self.with_task_impl(key, cx, input, true, true, identity_fn,
             |_| OpenTask::Ignore,
             |data, key, _| data.borrow_mut().alloc_node(key, SmallVec::new()))
     }
@@ -237,6 +255,7 @@ impl DepGraph {
         cx: C,
         arg: A,
         no_tcx: bool,
+        do_fingerprinting: bool,
         task: fn(C, A) -> R,
         create_task: fn(DepNode) -> OpenTask,
         finish_task_and_alloc_depnode: fn(&Lock<CurrentDepGraph>,
@@ -282,41 +301,58 @@ impl DepGraph {
 
             let dep_node_index = finish_task_and_alloc_depnode(&data.current, key, open_task);
 
-            let mut stable_hasher = StableHasher::new();
-            result.hash_stable(&mut hcx, &mut stable_hasher);
+            if do_fingerprinting {
+                let mut stable_hasher = StableHasher::new();
+                result.hash_stable(&mut hcx, &mut stable_hasher);
 
-            let current_fingerprint = stable_hasher.finish();
+                let current_fingerprint = stable_hasher.finish();
 
-            // Store the current fingerprint
-            {
-                let mut fingerprints = self.fingerprints.borrow_mut();
+                // Store the current fingerprint
+                {
+                    let mut fingerprints = self.fingerprints.borrow_mut();
 
-                if dep_node_index.index() >= fingerprints.len() {
-                    fingerprints.resize(dep_node_index.index() + 1, Fingerprint::ZERO);
+                    if dep_node_index.index() >= fingerprints.len() {
+                        fingerprints.resize(dep_node_index.index() + 1, Fingerprint::ZERO);
+                    }
+
+                    debug_assert!(fingerprints[dep_node_index] == Fingerprint::ZERO,
+                                  "DepGraph::with_task() - Duplicate fingerprint \
+                                   insertion for {:?}", key);
+                    fingerprints[dep_node_index] = current_fingerprint;
                 }
 
-                debug_assert!(fingerprints[dep_node_index] == Fingerprint::ZERO,
-                              "DepGraph::with_task() - Duplicate fingerprint \
-                               insertion for {:?}", key);
-                fingerprints[dep_node_index] = current_fingerprint;
-            }
+                // Determine the color of the new DepNode.
+                if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
+                    let prev_fingerprint = data.previous.fingerprint_by_index(prev_index);
 
-            // Determine the color of the new DepNode.
-            if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
-                let prev_fingerprint = data.previous.fingerprint_by_index(prev_index);
+                    let color = if current_fingerprint == prev_fingerprint {
+                        DepNodeColor::Green(dep_node_index)
+                    } else {
+                        DepNodeColor::Red
+                    };
 
-                let color = if current_fingerprint == prev_fingerprint {
-                    DepNodeColor::Green(dep_node_index)
-                } else {
-                    DepNodeColor::Red
-                };
+                    let mut colors = data.colors.borrow_mut();
+                    debug_assert!(colors.get(prev_index).is_none(),
+                                  "DepGraph::with_task() - Duplicate DepNodeColor \
+                                   insertion for {:?}", key);
 
-                let mut colors = data.colors.borrow_mut();
-                debug_assert!(colors.get(prev_index).is_none(),
-                              "DepGraph::with_task() - Duplicate DepNodeColor \
-                               insertion for {:?}", key);
+                    colors.insert(prev_index, color);
+                }
+            } else {
+                // Always store a ZERO fingerprint
+                {
+                    let mut fingerprints = self.fingerprints.borrow_mut();
 
-                colors.insert(prev_index, color);
+                    if dep_node_index.index() >= fingerprints.len() {
+                        fingerprints.resize(dep_node_index.index() + 1, Fingerprint::ZERO);
+                    }
+
+                    fingerprints[dep_node_index] = Fingerprint::ZERO;
+                }
+
+                if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
+                    data.colors.borrow_mut().insert(prev_index, DepNodeColor::Red);
+                }
             }
 
             (result, dep_node_index)
@@ -378,7 +414,7 @@ impl DepGraph {
     }
 
     /// Execute something within an "eval-always" task which is a task
-    // that runs whenever anything changes.
+    /// that runs whenever anything changes.
     pub fn with_eval_always_task<'gcx, C, A, R>(&self,
                                    key: DepNode,
                                    cx: C,
@@ -388,7 +424,7 @@ impl DepGraph {
         where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
               R: HashStable<StableHashingContext<'gcx>>,
     {
-        self.with_task_impl(key, cx, arg, false, task,
+        self.with_task_impl(key, cx, arg, false, true, task,
             |key| OpenTask::EvalAlways { node: key },
             |data, key, task| data.borrow_mut().complete_eval_always_task(key, task))
     }
@@ -939,7 +975,11 @@ impl CurrentDepGraph {
         }
     }
 
-    fn complete_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
+    fn complete_task(&mut self,
+                     key: DepNode,
+                     task: OpenTask,
+                     allow_existing_dep_node: bool)
+                     -> DepNodeIndex {
         if let OpenTask::Regular(task) = task {
             let RegularOpenTask {
                 node,
@@ -970,7 +1010,16 @@ impl CurrentDepGraph {
                 }
             }
 
-            self.alloc_node(node, reads)
+            if allow_existing_dep_node {
+                if let Some(&dep_node_index) = self.node_to_node_index.get(&node) {
+                    self.edges[dep_node_index] = reads;
+                    dep_node_index
+                } else {
+                    self.alloc_node(node, reads)
+                }
+            } else {
+                self.alloc_node(node, reads)
+            }
         } else {
             bug!("complete_task() - Expected regular task to be popped")
         }

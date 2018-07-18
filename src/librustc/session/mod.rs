@@ -26,6 +26,7 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
+use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{self, Lrc, Lock, LockCell, OneThread, Once, RwLock};
 
 use syntax::ast::NodeId;
@@ -579,11 +580,6 @@ impl Session {
         // If there's only one codegen unit and LTO isn't enabled then there's
         // no need for ThinLTO so just return false.
         if self.codegen_units() == 1 {
-            return config::Lto::No;
-        }
-
-        // Right now ThinLTO isn't compatible with incremental compilation.
-        if self.opts.incremental.is_some() {
             return config::Lto::No;
         }
 
@@ -1182,6 +1178,14 @@ pub struct CrateDisambiguator(Fingerprint);
 impl CrateDisambiguator {
     pub fn to_fingerprint(self) -> Fingerprint {
         self.0
+    }
+}
+
+impl fmt::Display for CrateDisambiguator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let (a, b) = self.0.as_value();
+        let as_u128 = a as u128 | ((b as u128) << 64);
+        f.write_str(&base_n::encode(as_u128, base_n::CASE_INSENSITIVE))
     }
 }
 

@@ -351,6 +351,11 @@ pub enum ThinLTOData {}
 /// LLVMRustThinLTOBuffer
 pub enum ThinLTOBuffer {}
 
+/// LLVMRustThinLTOModuleName
+pub type ThinLTOModuleName = *const c_char;
+/// LLVMRustThinLTOModuleImports
+pub type ThinLTOModuleImports = *const ThinLTOModuleName;
+
 /// LLVMRustThinLTOModule
 #[repr(C)]
 pub struct ThinLTOModule {
@@ -1779,6 +1784,9 @@ extern "C" {
         Data: *const ThinLTOData,
         Module: ModuleRef,
     ) -> bool;
+    pub fn LLVMRustGetThinLTOModuleImports(
+        Data: *const ThinLTOData,
+    ) -> *const ThinLTOModuleImports;
     pub fn LLVMRustFreeThinLTOData(Data: *mut ThinLTOData);
     pub fn LLVMRustParseBitcodeForThinLTO(
         Context: ContextRef,
