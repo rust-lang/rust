@@ -103,6 +103,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         ty: Ty<'tcx>,
         span: Span,
     ) -> Vec<OutlivesBound<'tcx>> {
+        debug!("implied_outlives_bounds(ty = {:?})", ty);
+
         let mut orig_values = SmallVec::new();
         let key = self.canonicalize_query(&param_env.and(ty), &mut orig_values);
         let result = match self.tcx.global_tcx().implied_outlives_bounds(key) {
@@ -119,7 +121,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         let result = self.instantiate_query_result_and_region_obligations(
             &ObligationCause::dummy(), param_env, &orig_values, &result);
-        debug!("implied_outlives_bounds for {:?}: {:?}", ty, result);
+        debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
         let result = match result {
             Ok(v) => v,
             Err(_) => {

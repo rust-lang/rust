@@ -18,8 +18,10 @@
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::canonical::substitute::substitute_value;
-use infer::canonical::{Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResult,
-                       Certainty, QueryRegionConstraint, QueryResult, SmallCanonicalVarValues};
+use infer::canonical::{
+    Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResult, Certainty,
+    QueryRegionConstraint, QueryResult, SmallCanonicalVarValues,
+};
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::InferCtxtBuilder;
 use infer::{InferCtxt, InferOk, InferResult, RegionObligation};
@@ -276,9 +278,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         for (index, original_value) in original_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
-            let result_value = query_result
-                .substitute_projected(self.tcx, &result_subst,
-                                      |v| &v.var_values[CanonicalVar::new(index)]);
+            let result_value = query_result.substitute_projected(self.tcx, &result_subst, |v| {
+                &v.var_values[CanonicalVar::new(index)]
+            });
             match (original_value.unpack(), result_value.unpack()) {
                 (UnpackedKind::Lifetime(ty::ReErased), UnpackedKind::Lifetime(ty::ReErased)) => {
                     // no action needed
@@ -312,11 +314,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.reserve(query_result.value.region_constraints.len());
         for r_c in query_result.value.region_constraints.iter() {
-            output_query_region_constraints.push(r_c.map_bound(|ty::OutlivesPredicate(k1, r2)| {
-                let k1 = substitute_value(self.tcx, &result_subst, &k1);
-                let r2 = substitute_value(self.tcx, &result_subst, &r2);
-                ty::OutlivesPredicate(k1, r2)
-            }));
+            let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder(); // reconstructed below
+            let k1 = substitute_value(self.tcx, &result_subst, &k1);
+            let r2 = substitute_value(self.tcx, &result_subst, &r2);
+            if k1 != r2.into() {
+                output_query_region_constraints
+                    .push(ty::Binder::bind(ty::OutlivesPredicate(k1, r2)));
+            }
         }
 
         let user_result: R =
