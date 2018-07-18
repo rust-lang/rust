@@ -5,7 +5,7 @@
 ## Building
 
 ```bash
-$ git clone https://github.com/bjorn3/rustc_codegen_cranelift
+$ git clone https://github.com/bjorn3/rustc_codegen_cranelift.git
 $ cd rustc_codegen_cranelift
 $ git submodule update --init
 $ cargo build
@@ -18,6 +18,19 @@ $ rustc -Zcodegen-backend=$(pwd)/target/debug/librustc_codegen_cranelift.so my_c
 ```
 
 > You must compile with `-Og`, because checked binops are not yet supported.
+
+## Building libcore
+
+```bash
+$ git clone https://github.com/rust-lang/rust.git
+$ cd rust
+$ git apply ../0001-Disable-stdsimd-in-libcore.patch
+$ git apply ../0002-Disable-u128-and-i128-in-libcore.patch
+$ cd ../
+$ ./build.sh
+```
+
+> ⚠⚠⚠ You will get a panic because of unimplemented stuff ⚠⚠⚠
 
 ## Not yet supported
 
