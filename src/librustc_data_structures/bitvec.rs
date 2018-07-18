@@ -9,8 +9,6 @@
 // except according to those terms.
 
 use indexed_vec::{Idx, IndexVec};
-use std::collections::btree_map::Entry;
-use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 
@@ -72,7 +70,7 @@ impl BitVector {
     }
 
     #[inline]
-    pub fn insert_all(&mut self, all: &BitVector) -> bool {
+    pub fn merge(&mut self, all: &BitVector) -> bool {
         assert!(self.data.len() == all.data.len());
         let mut changed = false;
         for (i, j) in self.data.iter_mut().zip(&all.data) {
@@ -271,20 +269,26 @@ impl BitMatrix {
     }
 }
 
+/// A moderately sparse bit matrix: rows are appended lazily, but columns
+/// within appended rows are instantiated fully upon creation.
 #[derive(Clone, Debug)]
 pub struct SparseBitMatrix<R, C>
 where
     R: Idx,
     C: Idx,
 {
-    vector: IndexVec<R, SparseBitSet<C>>,
+    columns: usize,
+    vector: IndexVec<R, BitVector>,
+    marker: PhantomData<C>,
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Create a new empty sparse bit matrix with no rows or columns.
-    pub fn new() -> Self {
+    pub fn new(columns: usize) -> Self {
         Self {
+            columns,
             vector: IndexVec::new(),
+            marker: PhantomData,
         }
     }
 
@@ -293,15 +297,10 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     ///
     /// Returns true if this changed the matrix, and false otherwise.
     pub fn add(&mut self, row: R, column: C) -> bool {
-        debug!(
-            "add(row={:?}, column={:?}, current_len={})",
-            row,
-            column,
-            self.vector.len()
-        );
+        let columns = self.columns;
         self.vector
-            .ensure_contains_elem(row, || SparseBitSet::new());
-        self.vector[row].insert(column)
+            .ensure_contains_elem(row, || BitVector::new(columns));
+        self.vector[row].insert(column.index())
     }
 
     /// Do the bits from `row` contain `column`? Put another way, is
@@ -309,7 +308,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
-        self.vector.get(row).map_or(false, |r| r.contains(column))
+        self.vector.get(row).map_or(false, |r| r.contains(column.index()))
     }
 
     /// Add the bits from row `read` to the bits from row `write`,
@@ -320,39 +319,23 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// `write` can reach everything that `read` can (and
     /// potentially more).
     pub fn merge(&mut self, read: R, write: R) -> bool {
-        let mut changed = false;
-
-        if read != write {
-            if self.vector.get(read).is_some() {
-                self.vector
-                    .ensure_contains_elem(write, || SparseBitSet::new());
-                let (bit_set_read, bit_set_write) = self.vector.pick2_mut(read, write);
-
-                for read_chunk in bit_set_read.chunks() {
-                    changed = changed | bit_set_write.insert_chunk(read_chunk).any();
-                }
-            }
+        if read == write || self.vector.get(read).is_none() {
+            return false;
         }
 
-        changed
+        let columns = self.columns;
+        self.vector
+            .ensure_contains_elem(write, || BitVector::new(columns));
+        let (bitvec_read, bitvec_write) = self.vector.pick2_mut(read, write);
+        bitvec_write.merge(bitvec_read)
     }
 
     /// Merge a row, `from`, into the `into` row.
-    pub fn merge_into(&mut self, into: R, from: &SparseBitSet<C>) -> bool {
+    pub fn merge_into(&mut self, into: R, from: &BitVector) -> bool {
+        let columns = self.columns;
         self.vector
-            .ensure_contains_elem(into, || SparseBitSet::new());
-        self.vector[into].insert_from(from)
-    }
-
-    /// True if `sub` is a subset of `sup`
-    pub fn is_subset(&self, sub: R, sup: R) -> bool {
-        sub == sup || {
-            let bit_set_sub = &self.vector[sub];
-            let bit_set_sup = &self.vector[sup];
-            bit_set_sub
-                .chunks()
-                .all(|read_chunk| read_chunk.bits_eq(bit_set_sup.contains_chunk(read_chunk)))
-        }
+            .ensure_contains_elem(into, || BitVector::new(columns));
+        self.vector[into].merge(from)
     }
 
     /// Number of elements in the matrix.
@@ -363,175 +346,12 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
     pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
-        self.vector.get(row).into_iter().flat_map(|r| r.iter())
+        self.vector.get(row).into_iter().flat_map(|r| r.iter().map(|n| C::new(n)))
     }
 
     /// Iterates through each row and the accompanying bit set.
-    pub fn iter_enumerated<'a>(&'a self) -> impl Iterator<Item = (R, &'a SparseBitSet<C>)> + 'a {
+    pub fn iter_enumerated<'a>(&'a self) -> impl Iterator<Item = (R, &'a BitVector)> + 'a {
         self.vector.iter_enumerated()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct SparseBitSet<I: Idx> {
-    chunk_bits: BTreeMap<u32, Word>,
-    _marker: PhantomData<I>,
-}
-
-#[derive(Copy, Clone)]
-pub struct SparseChunk<I> {
-    key: u32,
-    bits: Word,
-    _marker: PhantomData<I>,
-}
-
-impl<I: Idx> SparseChunk<I> {
-    #[inline]
-    pub fn one(index: I) -> Self {
-        let index = index.index();
-        let key_usize = index / 128;
-        let key = key_usize as u32;
-        assert_eq!(key as usize, key_usize);
-        SparseChunk {
-            key,
-            bits: 1 << (index % 128),
-            _marker: PhantomData,
-        }
-    }
-
-    #[inline]
-    pub fn any(&self) -> bool {
-        self.bits != 0
-    }
-
-    #[inline]
-    pub fn bits_eq(&self, other: SparseChunk<I>) -> bool {
-        self.bits == other.bits
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = I> {
-        let base = self.key as usize * 128;
-        let mut bits = self.bits;
-        (0..128)
-            .map(move |i| {
-                let current_bits = bits;
-                bits >>= 1;
-                (i, current_bits)
-            })
-            .take_while(|&(_, bits)| bits != 0)
-            .filter_map(move |(i, bits)| {
-                if (bits & 1) != 0 {
-                    Some(I::new(base + i))
-                } else {
-                    None
-                }
-            })
-    }
-}
-
-impl<I: Idx> SparseBitSet<I> {
-    pub fn new() -> Self {
-        SparseBitSet {
-            chunk_bits: BTreeMap::new(),
-            _marker: PhantomData,
-        }
-    }
-
-    pub fn capacity(&self) -> usize {
-        self.chunk_bits.len() * 128
-    }
-
-    /// Returns a chunk containing only those bits that are already
-    /// present. You can test therefore if `self` contains all the
-    /// bits in chunk already by doing `chunk ==
-    /// self.contains_chunk(chunk)`.
-    pub fn contains_chunk(&self, chunk: SparseChunk<I>) -> SparseChunk<I> {
-        SparseChunk {
-            bits: self.chunk_bits
-                .get(&chunk.key)
-                .map_or(0, |bits| bits & chunk.bits),
-            ..chunk
-        }
-    }
-
-    /// Modifies `self` to contain all the bits from `chunk` (in
-    /// addition to any pre-existing bits); returns a new chunk that
-    /// contains only those bits that were newly added. You can test
-    /// if anything was inserted by invoking `any()` on the returned
-    /// value.
-    pub fn insert_chunk(&mut self, chunk: SparseChunk<I>) -> SparseChunk<I> {
-        if chunk.bits == 0 {
-            return chunk;
-        }
-        let bits = self.chunk_bits.entry(chunk.key).or_insert(0);
-        let old_bits = *bits;
-        let new_bits = old_bits | chunk.bits;
-        *bits = new_bits;
-        let changed = new_bits ^ old_bits;
-        SparseChunk {
-            bits: changed,
-            ..chunk
-        }
-    }
-
-    /// Insert into bit set from another bit set.
-    pub fn insert_from(&mut self, from: &SparseBitSet<I>) -> bool {
-        let mut changed = false;
-        for read_chunk in from.chunks() {
-            changed = changed | self.insert_chunk(read_chunk).any();
-        }
-        changed
-    }
-
-    pub fn remove_chunk(&mut self, chunk: SparseChunk<I>) -> SparseChunk<I> {
-        if chunk.bits == 0 {
-            return chunk;
-        }
-        let changed = match self.chunk_bits.entry(chunk.key) {
-            Entry::Occupied(mut bits) => {
-                let old_bits = *bits.get();
-                let new_bits = old_bits & !chunk.bits;
-                if new_bits == 0 {
-                    bits.remove();
-                } else {
-                    bits.insert(new_bits);
-                }
-                new_bits ^ old_bits
-            }
-            Entry::Vacant(_) => 0,
-        };
-        SparseChunk {
-            bits: changed,
-            ..chunk
-        }
-    }
-
-    pub fn clear(&mut self) {
-        self.chunk_bits.clear();
-    }
-
-    pub fn chunks<'a>(&'a self) -> impl Iterator<Item = SparseChunk<I>> + 'a {
-        self.chunk_bits.iter().map(|(&key, &bits)| SparseChunk {
-            key,
-            bits,
-            _marker: PhantomData,
-        })
-    }
-
-    pub fn contains(&self, index: I) -> bool {
-        self.contains_chunk(SparseChunk::one(index)).any()
-    }
-
-    pub fn insert(&mut self, index: I) -> bool {
-        self.insert_chunk(SparseChunk::one(index)).any()
-    }
-
-    pub fn remove(&mut self, index: I) -> bool {
-        self.remove_chunk(SparseChunk::one(index)).any()
-    }
-
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = I> + 'a {
-        self.chunks().flat_map(|chunk| chunk.iter())
     }
 }
 
@@ -584,8 +404,8 @@ fn union_two_vecs() {
     assert!(!vec1.insert(3));
     assert!(vec2.insert(5));
     assert!(vec2.insert(64));
-    assert!(vec1.insert_all(&vec2));
-    assert!(!vec1.insert_all(&vec2));
+    assert!(vec1.merge(&vec2));
+    assert!(!vec1.merge(&vec2));
     assert!(vec1.contains(3));
     assert!(!vec1.contains(4));
     assert!(vec1.contains(5));

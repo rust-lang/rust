@@ -10,7 +10,7 @@
 
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::RegionVid;
-use rustc_data_structures::bitvec::{SparseBitMatrix, SparseBitSet};
+use rustc_data_structures::bitvec::{BitVector, SparseBitMatrix};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
@@ -53,6 +53,11 @@ impl RegionValueElements {
             num_universal_regions,
             num_points,
         }
+    }
+
+    /// Total number of element indices that exist.
+    crate fn num_elements(&self) -> usize {
+        self.num_points + self.num_universal_regions
     }
 
     /// Converts an element of a region value into a `RegionElementIndex`.
@@ -186,7 +191,7 @@ impl<N: Idx> RegionValues<N> {
     crate fn new(elements: &Rc<RegionValueElements>) -> Self {
         Self {
             elements: elements.clone(),
-            matrix: SparseBitMatrix::new(),
+            matrix: SparseBitMatrix::new(elements.num_elements()),
         }
     }
 
@@ -217,12 +222,12 @@ impl<N: Idx> RegionValues<N> {
     /// Iterates through each row and the accompanying bit set.
     pub fn iter_enumerated<'a>(
         &'a self
-    ) -> impl Iterator<Item = (N, &'a SparseBitSet<RegionElementIndex>)> + 'a {
+    ) -> impl Iterator<Item = (N, &'a BitVector)> + 'a {
         self.matrix.iter_enumerated()
     }
 
     /// Merge a row, `from`, originating in another `RegionValues` into the `into` row.
-    pub fn merge_into(&mut self, into: N, from: &SparseBitSet<RegionElementIndex>) -> bool {
+    pub fn merge_into(&mut self, into: N, from: &BitVector) -> bool {
         self.matrix.merge_into(into, from)
     }
 
