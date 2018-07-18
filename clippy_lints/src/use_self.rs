@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, span_lint_and_then};
+use crate::utils::{in_macro, span_lint_and_sugg};
 use rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -51,9 +51,14 @@ impl LintPass for UseSelf {
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 fn span_use_self_lint(cx: &LateContext, path: &Path) {
-    span_lint_and_then(cx, USE_SELF, path.span, "unnecessary structure name repetition", |db| {
-        db.span_suggestion(path.span, "use the applicable keyword", "Self".to_owned());
-    });
+    span_lint_and_sugg(
+        cx,
+        USE_SELF,
+        path.span,
+        "unnecessary structure name repetition",
+        "use the applicable keyword",
+        "Self".to_owned(),
+    );
 }
 
 struct TraitImplTyVisitor<'a, 'tcx: 'a> {
