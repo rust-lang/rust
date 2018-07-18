@@ -53,7 +53,7 @@ create_config! {
     license_template_path: String, String::default(), false,
         "Beginning of file must match license template";
     format_strings: bool, false, false, "Format string literals where necessary";
-    format_macro_matchers: bool, true, false,
+    format_macro_matchers: bool, false, false,
         "Format the metavariable matching patterns in macros";
     format_macro_bodies: bool, true, false, "Format the bodies of macros";
 

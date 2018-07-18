@@ -1,4 +1,5 @@
 // rustfmt-normalize_comments: true
+// rustfmt-format_macro_matchers: true
 itemmacro!(this, is.now() .formatted(yay));
 
 itemmacro!(really, long.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbb() .is.formatted());
