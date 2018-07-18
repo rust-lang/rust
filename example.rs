@@ -6,7 +6,11 @@
 trait Sized {}
 
 #[lang="copy"]
-trait Copy {}
+unsafe trait Copy {}
+
+unsafe impl Copy for u8 {}
+unsafe impl<'a, T: ?Sized> Copy for &'a T {}
+unsafe impl<T: ?Sized> Copy for *const T {}
 
 #[lang="freeze"]
 trait Freeze {}
@@ -25,6 +29,22 @@ impl Mul for u8 {
     fn mul(self, rhs: Self) -> Self {
         self * rhs
     }
+}
+
+#[lang = "eq"]
+pub trait PartialEq<Rhs: ?Sized = Self> {
+    fn eq(&self, other: &Rhs) -> bool;
+    fn ne(&self, other: &Rhs) -> bool;
+}
+
+impl PartialEq for u8 {
+    fn eq(&self, other: &u8) -> bool { (*self) == (*other) }
+    fn ne(&self, other: &u8) -> bool { (*self) != (*other) }
+}
+
+impl<T: ?Sized> PartialEq for *const T {
+    fn eq(&self, other: &*const T) -> bool { *self == *other }
+    fn ne(&self, other: &*const T) -> bool { *self != *other }
 }
 
 #[lang="panic"]
@@ -88,4 +108,8 @@ fn promoted_val() -> &'static u8 {
 
 fn cast_ref_to_raw_ptr(abc: &u8) -> *const u8 {
     abc as *const u8
+}
+
+fn cmp_raw_ptr(a: *const u8, b: *const u8) -> bool {
+    a == b
 }

@@ -327,6 +327,9 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         TypeVariants::TyInt(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true, false)
                         }
+                        TypeVariants::TyRawPtr(..) => {
+                            trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
+                        }
                         _ => unimplemented!("bin op {:?} for {:?}", bin_op, ty),
                     };
                     lval.write_cvalue(fx, res);
@@ -467,36 +470,90 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
     Ok(())
 }
 
-fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
-    let res = match (bin_op, signed) {
-        (BinOp::Add, _) => fx.bcx.ins().iadd(lhs, rhs),
-        (BinOp::Sub, _) => fx.bcx.ins().isub(lhs, rhs),
-        (BinOp::Mul, _) => fx.bcx.ins().imul(lhs, rhs),
-        (BinOp::Div, false) => fx.bcx.ins().udiv(lhs, rhs),
-        (BinOp::Div, true) => fx.bcx.ins().sdiv(lhs, rhs),
-        (BinOp::Rem, false) => fx.bcx.ins().urem(lhs, rhs),
-        (BinOp::Rem, true) => fx.bcx.ins().srem(lhs, rhs),
-        (BinOp::BitXor, _) => fx.bcx.ins().bxor(lhs, rhs),
-        (BinOp::BitAnd, _) => fx.bcx.ins().band(lhs, rhs),
-        (BinOp::BitOr, _) => fx.bcx.ins().bor(lhs, rhs),
-        (BinOp::Shl, _) => fx.bcx.ins().ishl(lhs, rhs),
-        (BinOp::Shr, false) => fx.bcx.ins().ushr(lhs, rhs),
-        (BinOp::Shr, true) => fx.bcx.ins().sshr(lhs, rhs),
-
-        // TODO: cast b1 to u8
-        (BinOp::Eq, _) => fx.bcx.ins().icmp(IntCC::Equal , lhs, rhs),
-        (BinOp::Lt, false) => fx.bcx.ins().icmp(IntCC::UnsignedLessThan , lhs, rhs),
-        (BinOp::Lt, true) => fx.bcx.ins().icmp(IntCC::SignedLessThan , lhs, rhs),
-        (BinOp::Le, false) => fx.bcx.ins().icmp(IntCC::UnsignedLessThanOrEqual , lhs, rhs),
-        (BinOp::Le, true) => fx.bcx.ins().icmp(IntCC::SignedLessThanOrEqual , lhs, rhs),
-        (BinOp::Ne, _) => fx.bcx.ins().icmp(IntCC::NotEqual , lhs, rhs),
-        (BinOp::Ge, false) => fx.bcx.ins().icmp(IntCC::UnsignedGreaterThanOrEqual , lhs, rhs),
-        (BinOp::Ge, true) => fx.bcx.ins().icmp(IntCC::SignedGreaterThanOrEqual , lhs, rhs),
-        (BinOp::Gt, false) => fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan , lhs, rhs),
-        (BinOp::Gt, true) => fx.bcx.ins().icmp(IntCC::SignedGreaterThan , lhs, rhs),
-
-        (BinOp::Offset, _) => bug!("bin op Offset on non ptr lhs: {:?} rhs: {:?}", lhs, rhs),
+macro_rules! binop_match {
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, bug) => {
+        bug!("bin op {} on {} lhs: {:?} rhs: {:?}", stringify!($var), $bug_fmt, $lhs, $rhs)
     };
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, icmp($cc:ident)) => {{
+        let b = $fx.bcx.ins().icmp(IntCC::$cc, $lhs, $rhs);
+        $fx.bcx.ins().bint(types::I8, b)
+    }};
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $name:ident) => {
+        $fx.bcx.ins().$name($lhs, $rhs)
+    };
+    (
+        $fx:expr, $bin_op:expr, $signed:expr, $lhs:expr, $rhs:expr, $bug_fmt:expr;
+        $(
+            $var:ident ($sign:pat) $name:tt $( ( $next:tt ) )? ;
+        )*
+    ) => {
+        match ($bin_op, $signed) {
+            $(
+                (BinOp::$var, $sign) => binop_match!(@single $fx, $bug_fmt, $var, $lhs, $rhs, $name $( ( $next ) )?),
+            )*
+        }
+    }
+}
+
+fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
+    let res = binop_match! {
+        fx, bin_op, signed, lhs, rhs, "non ptr";
+        Add (_) iadd;
+        Sub (_) isub;
+        Mul (_) imul;
+        Div (false) udiv;
+        Div (true) sdiv;
+        Rem (false) urem;
+        Rem (true) srem;
+        BitXor (_) bxor;
+        BitAnd (_) band;
+        BitOr (_) bor;
+        Shl (_) ishl;
+        Shr (false) ushr;
+        Shr (true) sshr;
+
+        Eq (_) icmp(Equal);
+        Lt (false) icmp(UnsignedLessThan);
+        Lt (true) icmp(SignedLessThan);
+        Le (false) icmp(UnsignedLessThanOrEqual);
+        Le (true) icmp(SignedLessThanOrEqual);
+        Ne (_) icmp(NotEqual);
+        Ge (false) icmp(UnsignedGreaterThanOrEqual);
+        Ge (true) icmp(SignedGreaterThanOrEqual);
+        Gt (false) icmp(UnsignedGreaterThan);
+        Gt (true) icmp(SignedGreaterThan);
+
+        Offset (_) bug;
+    };
+
+    // TODO: return correct value for checked binops
+    CValue::ByVal(res, fx.layout_of(ty))
+}
+
+fn trans_ptr_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, _checked: bool) -> CValue<'tcx> {
+    let res = binop_match! {
+        fx, bin_op, false, lhs, rhs, "ptr";
+        Add (_) bug;
+        Sub (_) bug;
+        Mul (_) bug;
+        Div (_) bug;
+        Rem (_) bug;
+        BitXor (_) bug;
+        BitAnd (_) bug;
+        BitOr (_) bug;
+        Shl (_) bug;
+        Shr (_) bug;
+
+        Eq (_) icmp(Equal);
+        Lt (_) icmp(UnsignedLessThan);
+        Le (_) icmp(UnsignedLessThanOrEqual);
+        Ne (_) icmp(NotEqual);
+        Ge (_) icmp(UnsignedGreaterThanOrEqual);
+        Gt (_) icmp(UnsignedGreaterThan);
+
+        Offset (_) iadd;
+    };
+
     // TODO: return correct value for checked binops
     CValue::ByVal(res, fx.layout_of(ty))
 }
