@@ -524,7 +524,10 @@ pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blend_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vblendpd, imm8 = 9))]
+// Note: LLVM7 prefers single-precision blend instructions when
+// possible, see: https://bugs.llvm.org/show_bug.cgi?id=38194
+// #[cfg_attr(test, assert_instr(vblendpd, imm8 = 9))]
+#[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blend_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {

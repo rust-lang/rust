@@ -80,7 +80,10 @@ pub unsafe fn _mm_blendv_epi8(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_blend_epi16)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(test, assert_instr(pblendw, imm8 = 0xF0))]
+// Note: LLVM7 prefers the single-precision floating-point domain when possible
+// see https://bugs.llvm.org/show_bug.cgi?id=38195
+// #[cfg_attr(test, assert_instr(pblendw, imm8 = 0xF0))]
+#[cfg_attr(test, assert_instr(blendps, imm8 = 0xF0))]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blend_epi16(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
@@ -124,7 +127,10 @@ pub unsafe fn _mm_blendv_ps(a: __m128, b: __m128, mask: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_blend_pd)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(test, assert_instr(blendpd, imm2 = 0b10))]
+// Note: LLVM7 prefers the single-precision floating-point domain when possible
+// see https://bugs.llvm.org/show_bug.cgi?id=38195
+// #[cfg_attr(test, assert_instr(blendpd, imm2 = 0b10))]
+#[cfg_attr(test, assert_instr(blendps, imm2 = 0b10))]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blend_pd(a: __m128d, b: __m128d, imm2: i32) -> __m128d {
