@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     let mut x = Default::default();
    |         ----- consider giving `x` a type
 LL |     x.0;
-   |     ^ cannot infer type for `_`
+   |     ^ cannot infer type
    |
    = note: type must be known at this point
 
@@ -14,7 +14,7 @@ error[E0282]: type annotations needed
 LL |     let mut x = Default::default();
    |         ----- consider giving `x` a type
 LL |     x[0];
-   |     ^ cannot infer type for `_`
+   |     ^ cannot infer type
    |
    = note: type must be known at this point
 
