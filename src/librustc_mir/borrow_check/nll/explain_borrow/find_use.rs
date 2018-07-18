@@ -19,10 +19,10 @@ use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use util::liveness::{self, DefUse, LivenessMode};
 
-crate fn find<'cx, 'gcx: 'tcx, 'tcx: 'cx>(
-    mir: &'cx Mir<'tcx>,
-    regioncx: &'cx Rc<RegionInferenceContext<'tcx>>,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+crate fn find<'tcx>(
+    mir: &Mir<'tcx>,
+    regioncx: &Rc<RegionInferenceContext<'tcx>>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 ) -> Option<Cause> {
