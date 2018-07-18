@@ -10,6 +10,7 @@
 
 #![feature(raw_identifiers)]
 #![allow(dead_code, unused_variables, non_camel_case_types, non_upper_case_globals)]
+#![deny(async_idents)]
 
 // edition:2015
 // run-rustfix

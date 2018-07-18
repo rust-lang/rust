@@ -1788,7 +1788,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
 
 declare_lint! {
     pub ASYNC_IDENTS,
-    Deny,
+    Allow,
     "detects `async` being used as an identifier"
 }
 
