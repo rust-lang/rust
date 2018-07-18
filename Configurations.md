@@ -1006,6 +1006,76 @@ fn main() {
 
 See also [`max_width`](#max_width).
 
+## `format_macro_matchers`
+
+Format the metavariable matching patterns in macros.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `false` (default):
+
+```rust
+macro_rules! foo {
+    ($a: ident : $b: ty) => {
+        $a(42): $b;
+    };
+    ($a: ident $b: ident $c: ident) => {
+        $a = $b + $c;
+    };
+}
+```
+
+#### `true`:
+
+```rust
+macro_rules! foo {
+    ($a:ident : $b:ty) => {
+        $a(42): $b;
+    };
+    ($a:ident $b:ident $c:ident) => {
+        $a = $b + $c;
+    };
+}
+```
+
+See also [`format_macro_bodies`](#format_macro_bodies).
+
+
+## `format_macro_bodies`
+
+Format the bodies of macros.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `true` (default):
+
+```rust
+macro_rules! foo {
+    ($a:ident : $b:ty) => {
+        $a(42): $b;
+    };
+    ($a:ident $b:ident $c:ident) => {
+        $a = $b + $c;
+    };
+}
+```
+
+#### `false`:
+
+```rust
+macro_rules! foo {
+    ($a:ident : $b:ty) => { $a(42): $b; };
+    ($a:ident $b:ident $c:ident) => { $a=$b+$c; };
+}
+```
+
+See also [`format_macro_matchers`](#format_macro_matchers).
+
+
 ## `hard_tabs`
 
 Use tab characters for indentation, spaces for alignment

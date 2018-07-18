@@ -938,8 +938,20 @@ fn format_macro_args(
     toks: ThinTokenStream,
     shape: Shape,
 ) -> Option<String> {
+    if !context.config.format_macro_matchers() {
+        let token_stream: TokenStream = toks.into();
+        let span = span_for_token_stream(token_stream);
+        return Some(match span {
+            Some(span) => context.snippet(span).to_owned(),
+            None => String::new(),
+        });
+    }
     let parsed_args = MacroArgParser::new().parse(toks)?;
     wrap_macro_args(context, &parsed_args, shape)
+}
+
+fn span_for_token_stream(token_stream: TokenStream) -> Option<Span> {
+    token_stream.trees().next().map(|tt| tt.span())
 }
 
 // We should insert a space if the next token is a:
@@ -1172,13 +1184,14 @@ impl MacroParser {
             TokenTree::Token(_, Token::FatArrow) => {}
             _ => return None,
         }
-        let (mut hi, body) = match self.toks.next()? {
+        let (mut hi, body, whole_body) = match self.toks.next()? {
             TokenTree::Token(..) => return None,
             TokenTree::Delimited(sp, _) => {
                 let data = sp.data();
                 (
                     data.hi,
                     Span::new(data.lo + BytePos(1), data.hi - BytePos(1), data.ctxt),
+                    sp,
                 )
             }
         };
@@ -1191,6 +1204,7 @@ impl MacroParser {
             args_paren_kind,
             args,
             body,
+            whole_body,
         })
     }
 }
@@ -1207,6 +1221,7 @@ struct MacroBranch {
     args_paren_kind: DelimToken,
     args: ThinTokenStream,
     body: Span,
+    whole_body: Span,
 }
 
 impl MacroBranch {
@@ -1229,6 +1244,12 @@ impl MacroBranch {
             result += " =>";
         }
 
+        if !context.config.format_macro_bodies() {
+            result += " ";
+            result += context.snippet(self.whole_body);
+            return Some(result);
+        }
+
         // The macro body is the most interesting part. It might end up as various
         // AST nodes, but also has special variables (e.g, `$foo`) which can't be
         // parsed as regular Rust code (and note that these can be escaped using
@@ -1237,13 +1258,12 @@ impl MacroBranch {
 
         let old_body = context.snippet(self.body).trim();
         let (body_str, substs) = replace_names(old_body)?;
+        let has_block_body = old_body.starts_with('{');
 
         let mut config = context.config.clone();
         config.set().hide_parse_errors(true);
 
         result += " {";
-
-        let has_block_body = old_body.starts_with('{');
 
         let body_indent = if has_block_body {
             shape.indent
