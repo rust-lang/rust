@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     for (ref i,) in [].iter() {
    |         -------- consider giving `__next` a type
 LL |         i.clone();
-   |           ^^^^^ cannot infer type for `_`
+   |           ^^^^^ cannot infer type
    |
    = note: type must be known at this point
 

@@ -96,7 +96,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let name = self.extract_type_name(&ty);
 
         let mut err_span = span;
-        let mut labels = vec![(span, format!("cannot infer type for `{}`", name))];
+        let mut labels = vec![(
+            span,
+            if &name == "_" {
+                "cannot infer type".to_string()
+            } else {
+                format!("cannot infer type for `{}`", name)
+            },
+        )];
 
         let mut local_visitor = FindLocalByTypeVisitor {
             infcx: &self,
