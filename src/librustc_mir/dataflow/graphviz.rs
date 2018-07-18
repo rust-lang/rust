@@ -34,8 +34,8 @@ pub trait MirWithFlowState<'tcx> {
     fn flow_state(&self) -> &DataflowState<Self::BD>;
 }
 
-impl<'a, 'tcx: 'a, BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
-    where 'tcx: 'a, BD: BitDenotation
+impl<'a, 'tcx, BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
+    where BD: BitDenotation
 {
     type BD = BD;
     fn node_id(&self) -> NodeId { self.node_id }
