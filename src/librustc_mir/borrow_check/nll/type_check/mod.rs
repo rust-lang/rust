@@ -41,6 +41,7 @@ use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 use util::liveness::LivenessResults;
+use rustc_errors::Diagnostic;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
@@ -102,6 +103,7 @@ mod liveness;
 ///   constraints for the regions in the types of variables
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
+/// - `errors_buffer` -- errors are sent here for future reporting
 pub(crate) fn type_check<'gcx, 'tcx>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
@@ -115,6 +117,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
+    errors_buffer: &mut Vec<Diagnostic>,
 ) -> MirTypeckRegionConstraints<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
@@ -140,14 +143,13 @@ pub(crate) fn type_check<'gcx, 'tcx>(
             &universal_regions.region_bound_pairs,
             Some(implicit_region_bound),
             Some(&mut borrowck_context),
+            Some(errors_buffer),
             |cx| {
                 liveness::generate(cx, mir, liveness, flow_inits, move_data);
-
                 cx.equate_inputs_and_outputs(mir, mir_def_id, universal_regions);
             },
         );
     }
-
     constraints
 }
 
@@ -159,6 +161,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, F>(
     region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
+    errors_buffer: Option<&mut Vec<Diagnostic>>,
     mut extra: F,
 )
     where F: FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>)
@@ -180,7 +183,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, F>(
 
     if !errors_reported {
         // if verifier failed, don't do further checks to avoid ICEs
-        checker.typeck_mir(mir);
+        checker.typeck_mir(mir, errors_buffer);
     }
 
     extra(&mut checker);
@@ -1227,7 +1230,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_local(&mut self, mir: &Mir<'tcx>, local: Local, local_decl: &LocalDecl<'tcx>) {
+    fn check_local(&mut self,
+                   mir: &Mir<'tcx>,
+                   local: Local,
+                   local_decl: &LocalDecl<'tcx>,
+                   errors_buffer: &mut Option<&mut Vec<Diagnostic>>)
+    {
         match mir.local_kind(local) {
             LocalKind::ReturnPointer | LocalKind::Arg => {
                 // return values of normal functions are required to be
@@ -1255,14 +1263,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             // slot or local, so to find all unsized rvalues it is enough
             // to check all temps, return slots and locals.
             if let None = self.reported_errors.replace((ty, span)) {
-                span_err!(
-                    self.tcx().sess,
-                    span,
-                    E0161,
-                    "cannot move a value of type {0}: the size of {0} \
-                     cannot be statically determined",
-                    ty
-                );
+                let mut diag = struct_span_err!(self.tcx().sess,
+                                                span,
+                                                E0161,
+                                                "cannot move a value of type {0}: the size of {0} \
+                                                 cannot be statically determined",
+                                                ty);
+                if let Some(ref mut errors_buffer) = *errors_buffer {
+                    diag.buffer(errors_buffer);
+                } else {
+                    // we're allowed to use emit() here because the
+                    // NLL migration will be turned on (and thus
+                    // errors will need to be buffered) *only if*
+                    // errors_buffer is Some.
+                    diag.emit();
+                }
             }
         }
     }
@@ -1742,12 +1757,15 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
+    fn typeck_mir(&mut self,
+                  mir: &Mir<'tcx>,
+                  mut errors_buffer: Option<&mut Vec<Diagnostic>>)
+    {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
 
         for (local, local_decl) in mir.local_decls.iter_enumerated() {
-            self.check_local(mir, local, local_decl);
+            self.check_local(mir, local, local_decl, &mut errors_buffer);
         }
 
         for (block, block_data) in mir.basic_blocks().iter_enumerated() {
@@ -1812,7 +1830,7 @@ impl MirPass for TypeckMir {
 
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            type_check_internal(&infcx, def_id, param_env, mir, &[], None, None, |_| ());
+            type_check_internal(&infcx, def_id, param_env, mir, &[], None, None, None, |_| ());
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)

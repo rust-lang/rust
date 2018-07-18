@@ -122,6 +122,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         flow_inits,
         move_data,
         elements,
+        errors_buffer,
     );
 
     if let Some(all_facts) = &mut all_facts {
