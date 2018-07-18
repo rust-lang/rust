@@ -75,10 +75,10 @@ fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
 }
 
 trait Trait {}
-existential type GenericBound<T: Trait>: 'static;
+existential type GenericBound<'a, T: Trait>: 'a;
 
-fn generic_bound<T: Trait>(_: T) -> GenericBound<T> {
-    unimplemented!()
+fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
+    t
 }
 
 mod pass_through {
@@ -91,23 +91,4 @@ mod pass_through {
 
 fn use_passthrough(x: pass_through::Passthrough<u32>) -> pass_through::Passthrough<u32> {
     x
-}
-
-existential type PartiallyDefined<T>: 'static;
-
-// doesn't declare all PartiallyDefined for all possible `T`, but since it's the only
-// function producing the value, noone can ever get a value that is problematic
-fn partially_defined<T: std::fmt::Debug>(_: T) -> PartiallyDefined<T> {
-    4u32
-}
-
-existential type PartiallyDefined2<T>: 'static;
-
-fn partially_defined2<T: std::fmt::Debug>(_: T) -> PartiallyDefined2<T> {
-    4u32
-}
-
-// fully defines PartiallyDefine2
-fn partially_defined22<T>(_: T) -> PartiallyDefined2<T> {
-    4u32
 }
