@@ -331,7 +331,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     result
 }
 
-#[allow(dead_code)]
 pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     mir: &'cx Mir<'tcx>,
