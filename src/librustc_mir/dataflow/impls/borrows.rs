@@ -53,8 +53,8 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     _nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
 }
 
-fn precompute_borrows_out_of_scope<'a, 'tcx>(
-    mir: &'a Mir<'tcx>,
+fn precompute_borrows_out_of_scope<'tcx>(
+    mir: &Mir<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     borrows_out_of_scope_at_location: &mut FxHashMap<Location, Vec<BorrowIndex>>,
     borrow_index: BorrowIndex,
