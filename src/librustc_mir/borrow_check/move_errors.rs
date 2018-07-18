@@ -96,19 +96,19 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     .map(|stmt| &stmt.kind)
                 {
                     let local_decl = &self.mir.local_decls[*local];
+                    // opt_match_place is the
+                    // match_span is the span of the expression being matched on
+                    // match *x.y { ... }        match_place is Some(*x.y)
+                    //       ^^^^                match_span is the span of *x.y
+                    //
+                    // opt_match_place is None for let [mut] x = ... statements,
+                    // whether or not the right-hand side is a place expression
                     if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                         opt_match_place: Some((ref opt_match_place, match_span)),
                         binding_mode: _,
                         opt_ty_info: _,
                     }))) = local_decl.is_user_variable
                     {
-                        // opt_match_place is the
-                        // match_span is the span of the expression being matched on
-                        // match *x.y { ... }        match_place is Some(*x.y)
-                        //       ^^^^                match_span is the span of *x.y
-                        // opt_match_place is None for let [mut] x = ... statements,
-                        // whether or not the right-hand side is a place expression
-
                         // HACK use scopes to determine if this assignment is
                         // the initialization of a variable.
                         // FIXME(matthewjasper) This would probably be more
@@ -127,8 +127,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 opt_match_place,
                                 match_span,
                             );
+                            return;
                         }
-                        return;
                     }
                 }
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {
