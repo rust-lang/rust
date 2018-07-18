@@ -260,6 +260,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
             CPlace::Addr(fx.bcx.ins().iadd(base, field_offset), field_ty)
         } else {
+            fx.bcx.ins().nop();
             CPlace::Addr(base, field_ty)
         }
     }
@@ -290,9 +291,8 @@ pub fn cton_sig_from_instance<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, inst: I
 
 pub fn cton_sig_from_mono_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>) -> Signature {
     // TODO: monomorphize signature
-    // TODO: this should likely not use skip_binder()
 
-    let sig = sig.skip_binder();
+    let sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig);
     let inputs = sig.inputs();
     let _output = sig.output();
     assert!(!sig.variadic, "Variadic function are not yet supported");

@@ -53,4 +53,3 @@ $ ./build.sh
 
 * [ ] cranelift-module api seems to be used wrong, thus causing panic for some consts
 * [ ] cranelift-codegen doesn't have encodings for some instructions for types smaller than I32
-* [ ] `thread 'main' panicked at 'assertion failed: !value.has_escaping_regions()', librustc/ty/sty.rs:754:9` in cton_sig_from_mono_fn_sig
