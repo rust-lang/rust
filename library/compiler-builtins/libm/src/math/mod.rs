@@ -49,6 +49,7 @@ mod log1pf;
 mod log2;
 mod log2f;
 mod logf;
+mod pow;
 mod powf;
 mod round;
 mod roundf;
@@ -110,6 +111,7 @@ pub use self::log1pf::log1pf;
 pub use self::log2::log2;
 pub use self::log2f::log2f;
 pub use self::logf::logf;
+pub use self::pow::pow;
 pub use self::powf::powf;
 pub use self::round::round;
 pub use self::roundf::roundf;
@@ -167,7 +169,6 @@ fn get_low_word(x: f64) -> u32 {
     x.to_bits() as u32
 }
 
-#[allow(dead_code)]
 #[inline]
 fn with_set_high_word(f: f64, hi: u32) -> f64 {
     let mut tmp = f.to_bits();

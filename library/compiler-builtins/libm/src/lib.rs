@@ -343,7 +343,6 @@ pub trait F64Ext: private::Sealed + Sized {
     // NOTE depends on unstable intrinsics::powif64
     // fn powi(self, n: i32) -> Self;
 
-    #[cfg(todo)]
     fn powf(self, n: Self) -> Self;
 
     fn sqrt(self) -> Self;
@@ -463,7 +462,6 @@ impl F64Ext for f64 {
         }
     }
 
-    #[cfg(todo)]
     #[inline]
     fn powf(self, n: Self) -> Self {
         pow(self, n)
