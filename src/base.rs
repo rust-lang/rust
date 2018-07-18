@@ -55,7 +55,9 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
             }
             inst => cx.tcx.sess.warn(&format!("Unimplemented instance {:?}", inst)),
         }
-        mono_item => cx.tcx.sess.warn(&format!("Unimplemented mono item {:?}", mono_item)),
+        MonoItem::Static(def_id) => cx.tcx.sess.err(&format!("Unimplemented static mono item {:?}", def_id)),
+        MonoItem::GlobalAsm(node_id) => cx.tcx.sess.err(&format!("Unimplemented global asm mono item {:?}", node_id)),
+        MonoItem::CustomSection(def_id) => cx.tcx.sess.err(&format!("Unimplemented custom section mono item {:?}", def_id)),
     }
 }
 
@@ -367,6 +369,9 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                     let layout = fx.layout_of(ty);
                     lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
                 }
+                Rvalue::Cast(CastKind::Misc, operand, ty) => unimplemented!("rval misc {:?} {:?}", operand, ty),
+                Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty),
+                Rvalue::Cast(CastKind::Unsize, operand, ty) => unimplemented!("rval unsize {:?} {:?}", operand, ty),
                 Rvalue::Discriminant(place) => {
                     let place = trans_place(fx, place);
                     let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();
@@ -428,13 +433,17 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         }
                     }
                 }
-                rval => unimplemented!("rval {:?}", rval),
+                Rvalue::Repeat(operand, times) => unimplemented!("rval repeat {:?} {:?}", operand, times),
+                Rvalue::Len(lval) => unimplemented!("rval len {:?}", lval),
+                Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),
+                Rvalue::NullaryOp(NullOp::SizeOf, ty) => unimplemented!("rval size_of {:?}", ty),
+                Rvalue::Aggregate(_, _) => bug!("shouldn't exist at trans {:?}", rval),
             }
         }
-        StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {
+        StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop | StatementKind::ReadForMatch(_) | StatementKind::Validate(_, _) | StatementKind::EndRegion(_) | StatementKind::UserAssertTy(_, _) => {
             fx.bcx.ins().nop();
         }
-        _ => unimplemented!("stmt {:?}", stmt),
+        StatementKind::InlineAsm { .. } => fx.tcx.sess.fatal("Inline assembly is not supported"),
     }
 
     let inst = fx.bcx.func.layout.next_inst(nop_inst).unwrap();
@@ -481,6 +490,7 @@ fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, l
 fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>) -> CPlace<'tcx> {
     match place {
         Place::Local(local) => fx.get_local_place(*local),
+        Place::Static(static_) => unimplemented!("static place {:?} ty {:?}", static_.def_id, static_.ty),
         Place::Projection(projection) => {
             let base = trans_place(fx, &projection.base);
             match projection.elem {
@@ -490,13 +500,15 @@ fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>)
                 ProjectionElem::Field(field, _ty) => {
                     base.place_field(fx, field)
                 }
+                ProjectionElem::Index(local) => unimplemented!("projection index {:?} {:?}", projection.base, local),
+                ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false } => unimplemented!("projection const index {:?} offset {:?} not from end", projection.base, offset),
+                ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true } => unimplemented!("projection const index {:?} offset {:?} from end", projection.base, offset),
+                ProjectionElem::Subslice { from, to } => unimplemented!("projection subslice {:?} from {} to {}", projection.base, from, to),
                 ProjectionElem::Downcast(_adt_def, variant) => {
                     base.downcast_variant(fx, variant)
                 }
-                _ => unimplemented!("projection {:?}", projection),
             }
         }
-        place => unimplemented!("place {:?}", place),
     }
 }
 

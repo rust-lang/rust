@@ -61,6 +61,7 @@ fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) ->
     })
 }
 
+/// A read-only value
 #[derive(Debug, Copy, Clone)]
 pub enum CValue<'tcx> {
     ByRef(Value, TyLayout<'tcx>),
@@ -158,6 +159,7 @@ impl<'tcx> CValue<'tcx> {
     }
 }
 
+/// A place where you can write a value to or read a value from
 #[derive(Debug, Copy, Clone)]
 pub enum CPlace<'tcx> {
     Var(Variable, TyLayout<'tcx>),
