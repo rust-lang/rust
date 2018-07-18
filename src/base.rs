@@ -50,7 +50,9 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                 }
 
                 context.func = f;
-                cx.module.define_function(func_id, context).unwrap();
+                // TODO: cranelift doesn't yet support some of the things needed
+                // cx.module.define_function(func_id, context).unwrap();
+
                 context.clear();
             }
             inst => cx.tcx.sess.warn(&format!("Unimplemented instance {:?}", inst)),

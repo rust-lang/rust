@@ -1,5 +1,6 @@
 #![feature(no_core, lang_items)]
 #![no_core]
+#![allow(dead_code)]
 
 #[lang="sized"]
 trait Sized {}
@@ -52,14 +53,14 @@ fn bcd(b: bool, a: u8) -> u8 {
 }
 
 // FIXME make calls work
-/*fn call() {
+fn call() {
     abc(42);
 }
 
 fn indirect_call() {
     let f: fn() = call;
     f();
-}*/
+}
 
 enum BoolOption {
     Some(bool),

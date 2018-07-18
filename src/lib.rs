@@ -192,27 +192,29 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         tcx.sess.warn("Compiled everything");
 
-        module.finalize_all();
+        // TODO: this doesn't work most of the time
+        if false {
+            module.finalize_all();
+            tcx.sess.warn("Finalized everything");
 
-        tcx.sess.warn("Finalized everything");
-
-        for (inst, func_id) in def_id_fn_id_map.iter() {
-            //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
-            if tcx.absolute_item_path_str(inst.def_id()) != "example::option_unwrap_or" {
-                continue;
+            for (inst, func_id) in def_id_fn_id_map.iter() {
+                //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
+                if tcx.absolute_item_path_str(inst.def_id()) != "example::option_unwrap_or" {
+                    continue;
+                }
+                let finalized_function: *const u8 = module.finalize_function(*func_id);
+                /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
+                let mut res = 0u32;
+                f(&mut res);
+                tcx.sess.warn(&format!("ret_42 returned {}", res));*/
+                let f: extern "C" fn(&mut bool, &u8, bool) = unsafe { ::std::mem::transmute(finalized_function) };
+                let mut res = false;
+                f(&mut res, &3, false);
+                tcx.sess.warn(&format!("option_unwrap_or returned {}", res));
             }
-            let finalized_function: *const u8 = module.finalize_function(*func_id);
-            /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
-            let mut res = 0u32;
-            f(&mut res);
-            tcx.sess.warn(&format!("ret_42 returned {}", res));*/
-            let f: extern "C" fn(&mut bool, &u8, bool) = unsafe { ::std::mem::transmute(finalized_function) };
-            let mut res = false;
-            f(&mut res, &3, false);
-            tcx.sess.warn(&format!("option_unwrap_or returned {}", res));
-        }
 
-        module.finish();
+            module.finish();
+        }
 
         tcx.sess.fatal("unimplemented");
 
