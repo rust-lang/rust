@@ -315,7 +315,7 @@ pub fn cton_intcast<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, fro
     if from == to {
         return val;
     }
-    if from.wider_or_equal(to) {
+    if to.wider_or_equal(from) {
         if signed {
             fx.bcx.ins().sextend(to, val)
         } else {

@@ -374,17 +374,29 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                     let layout = fx.layout_of(ty);
                     lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
                 }
-                Rvalue::Cast(CastKind::Misc, operand, ty) => {
+                Rvalue::Cast(CastKind::Misc, operand, to_ty) => {
                     let operand = trans_operand(fx, operand);
-                    match (&operand.layout().ty.sty, &ty.sty) {
+                    let from_ty = operand.layout().ty;
+                    match (&from_ty.sty, &to_ty.sty) {
                         (TypeVariants::TyRef(..), TypeVariants::TyRef(..)) |
                         (TypeVariants::TyRef(..), TypeVariants::TyRawPtr(..)) |
                         (TypeVariants::TyRawPtr(..), TypeVariants::TyRef(..)) |
                         (TypeVariants::TyRawPtr(..), TypeVariants::TyRawPtr(..)) => {
-                            let layout = fx.layout_of(ty);
-                            lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
+                            lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        _ => unimplemented!("rval misc {:?} {:?}", operand, ty),
+                        (TypeVariants::TyUint(_), TypeVariants::TyInt(_)) |
+                        (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
+                            let from = operand.load_value(fx);
+                            let res = ::common::cton_intcast(fx, from, from_ty, to_ty, false);
+                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        }
+                        (TypeVariants::TyInt(_), TypeVariants::TyInt(_)) |
+                        (TypeVariants::TyInt(_), TypeVariants::TyUint(_)) => {
+                            let from = operand.load_value(fx);
+                            let res = ::common::cton_intcast(fx, from, from_ty, to_ty, true);
+                            lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        }
+                        _ => unimplemented!("rval misc {:?} {:?}", operand, to_ty),
                     }
                 },
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty),

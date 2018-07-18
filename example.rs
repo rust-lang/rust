@@ -9,6 +9,14 @@ trait Sized {}
 unsafe trait Copy {}
 
 unsafe impl Copy for u8 {}
+unsafe impl Copy for u16 {}
+unsafe impl Copy for u32 {}
+unsafe impl Copy for u64 {}
+unsafe impl Copy for usize {}
+unsafe impl Copy for i8 {}
+unsafe impl Copy for i16 {}
+unsafe impl Copy for i32 {}
+unsafe impl Copy for isize {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
 
@@ -112,4 +120,17 @@ fn cast_ref_to_raw_ptr(abc: &u8) -> *const u8 {
 
 fn cmp_raw_ptr(a: *const u8, b: *const u8) -> bool {
     a == b
+}
+
+fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize) {
+    (
+        a as u8,
+        a as u16,
+        a as u32,
+        a as usize,
+        a as i8,
+        a as i16,
+        a as i32,
+        a as isize,
+    )
 }

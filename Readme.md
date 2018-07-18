@@ -37,7 +37,6 @@ $ ./build.sh
 * [ ] Checked binops
 * [ ] Statics
 * [ ] Drop glue
-* [ ] Ints cast
 
 * [ ] Building libraries
 * [ ] Other call abi's
