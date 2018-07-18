@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-#[path = "../../libm/src/math/mod.rs"]
+#[path = "../libm/src/math/mod.rs"]
 mod libm;
 
 macro_rules! no_mangle {
