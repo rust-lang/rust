@@ -1,4 +1,4 @@
-//! Port of MUSL's libm to Rust
+//! libm in pure Rust
 //!
 //! # Usage
 //!
