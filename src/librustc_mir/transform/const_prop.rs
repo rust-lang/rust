@@ -17,7 +17,7 @@ use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
-use rustc::mir::interpret::ConstEvalErr;
+use rustc::mir::interpret::{ConstEvalErr, EvalErrorKind};
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, Scalar, GlobalId, EvalResult};
 use interpret::EvalContext;
@@ -145,17 +145,23 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(err) => {
-                let (frames, span) = self.ecx.generate_stacktrace(None);
-                let err = ConstEvalErr {
-                    span,
-                    error: err,
-                    stacktrace: frames,
-                };
-                err.report_as_lint(
-                    self.ecx.tcx,
-                    "this expression will panic at runtime",
-                    lint_root,
-                );
+                match err.kind {
+                    // don't report these, they make no sense in a const prop context
+                    EvalErrorKind::MachineError(_) => {},
+                    _ => {
+                        let (frames, span) = self.ecx.generate_stacktrace(None);
+                        let err = ConstEvalErr {
+                            span,
+                            error: err,
+                            stacktrace: frames,
+                        };
+                        err.report_as_lint(
+                            self.ecx.tcx,
+                            "this expression will panic at runtime",
+                            lint_root,
+                        );
+                    }
+                }
                 None
             },
         };
@@ -257,10 +263,25 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             },
             Rvalue::Repeat(..) |
             Rvalue::Ref(..) |
-            Rvalue::Cast(..) |
             Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
             Rvalue::Discriminant(..) => None,
+
+            Rvalue::Cast(kind, ref operand, _) => {
+                let (value, ty, span) = self.eval_operand(operand, source_info)?;
+                self.use_ecx(source_info, |this| {
+                    let dest_ptr = this.ecx.alloc_ptr(place_ty)?;
+                    let place_align = this.ecx.layout_of(place_ty)?.align;
+                    let dest = ::interpret::Place::from_ptr(dest_ptr, place_align);
+                    this.ecx.cast(ValTy { value, ty }, kind, place_ty, dest)?;
+                    Ok((
+                        Value::ByRef(dest_ptr.into(), place_align),
+                        place_ty,
+                        span,
+                    ))
+                })
+            }
+
             // FIXME(oli-obk): evaluate static/constant slice lengths
             Rvalue::Len(_) => None,
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
@@ -354,7 +375,6 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     )
                 } else {
                     if overflow {
-                        use rustc::mir::interpret::EvalErrorKind;
                         let err = EvalErrorKind::Overflow(op).into();
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
