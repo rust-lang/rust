@@ -19,7 +19,7 @@ use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir, Local};
+use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir, LocalWithRegion};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
@@ -30,7 +30,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 use transform::MirSource;
-use util::liveness::{IdentityMap, LivenessResults, LocalSet};
+use util::liveness::{IdentityMap, LivenessResults, LocalSet, NllLivenessMap};
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
@@ -103,7 +103,8 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let elements = &Rc::new(RegionValueElements::new(mir, universal_regions.len()));
 
     // Run the MIR type-checker.
-    let liveness = &LivenessResults::compute(mir, &IdentityMap::new(mir));
+    let liveness_map = NllLivenessMap::compute(&mir);
+    let liveness = LivenessResults::compute(mir, &liveness_map);
     let constraint_sets = type_check::type_check(
         infcx,
         param_env,
@@ -193,7 +194,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // write unit-tests, as well as helping with debugging.
     dump_mir_results(
         infcx,
-        liveness,
+        &liveness,
         MirSource::item(def_id),
         &mir,
         &regioncx,
@@ -209,7 +210,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
 fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    liveness: &LivenessResults<Local>,
+    liveness: &LivenessResults<LocalWithRegion>,
     source: MirSource,
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext,
@@ -407,7 +408,7 @@ impl ToRegionVid for RegionVid {
     }
 }
 
-fn live_variable_set(regular: &LocalSet<Local>, drops: &LocalSet<Local>) -> String {
+fn live_variable_set(regular: &LocalSet<LocalWithRegion>, drops: &LocalSet<LocalWithRegion>) -> String {
     // sort and deduplicate:
     let all_locals: BTreeSet<_> = regular.iter().chain(drops.iter()).collect();
 

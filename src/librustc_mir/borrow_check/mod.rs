@@ -278,7 +278,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     // Note that this set is expected to be small - only upvars from closures
     // would have a chance of erroneously adding non-user-defined mutable vars
     // to the set.
-    let temporary_used_locals: FxHashSet<Local> = mbcx
+    let temporary_used_locals: FxHashSet<LocalWithRegion> = mbcx
         .used_mut
         .iter()
         .filter(|&local| !mbcx.mir.local_decls[*local].is_user_variable.is_some())

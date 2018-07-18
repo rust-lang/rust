@@ -37,18 +37,18 @@ impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
-    type Idx = Local;
+    type Idx = LocalWithRegion;
     fn name() -> &'static str { "has_been_borrowed_locals" }
     fn bits_per_block(&self) -> usize {
         self.mir.local_decls.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut IdxSet<Local>) {
+    fn start_block_effect(&self, _sets: &mut IdxSet<LocalWithRegion>) {
         // Nothing is borrowed on function entry
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<Local>,
+                        sets: &mut BlockSets<LocalWithRegion>,
                         loc: Location) {
         BorrowedLocalsVisitor {
             sets,
@@ -56,7 +56,7 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<Local>,
+                         sets: &mut BlockSets<LocalWithRegion>,
                          loc: Location) {
         BorrowedLocalsVisitor {
             sets,
@@ -64,7 +64,7 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<Local>,
+                             _in_out: &mut IdxSet<LocalWithRegion>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {
@@ -87,10 +87,10 @@ impl<'a, 'tcx> InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
 }
 
 struct BorrowedLocalsVisitor<'b, 'c: 'b> {
-    sets: &'b mut BlockSets<'c, Local>,
+    sets: &'b mut BlockSets<'c, LocalWithRegion>,
 }
 
-fn find_local<'tcx>(place: &Place<'tcx>) -> Option<Local> {
+fn find_local<'tcx>(place: &Place<'tcx>) -> Option<LocalWithRegion> {
     match *place {
         Place::Local(l) => Some(l),
         Place::Static(..) => None,

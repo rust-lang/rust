@@ -37,8 +37,7 @@ use rustc::mir::visit::MirVisitable;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::Local;
 use rustc::mir::*;
-use rustc::ty::item_path;
-use rustc::ty::TyCtxt;
+use rustc::ty::{item_path, TyCtxt, TypeFoldable};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::work_queue::WorkQueue;
@@ -545,3 +544,42 @@ pub fn write_mir_fn<'a, 'tcx, V: Idx>(
     writeln!(w, "}}")?;
     Ok(())
 }
+
+crate struct NllLivenessMap {
+    pub from_local: IndexVec<Local, Option<LocalWithRegion>>,
+    pub to_local: IndexVec<LocalWithRegion, Local>,
+
+}
+
+impl LiveVariableMap for NllLivenessMap {
+    type LiveVar = LocalWithRegion;
+
+    fn from_local(&self, local: Local) -> Option<Self::LiveVar> {
+        self.from_local[local]
+    }
+
+    fn from_live_var(&self, local: Self::LiveVar) -> Local {
+        self.to_local[local]
+    }
+
+    fn num_variables(&self) -> usize {
+        self.to_local.len()
+    }
+}
+
+impl NllLivenessMap {
+    pub fn compute(mir: &Mir) -> Self {
+        let mut to_local = IndexVec::default();
+        let from_local: IndexVec<_,_> = mir.local.decls.iter_enumerated.map(|local, local_decl| {
+            if local_decl.ty.has_free_regions() {
+                Some(to_local.push(local))
+            }
+            else {
+                None
+            }
+            }).collect();
+
+        Self { from_local, to_local }
+    }
+}
+

@@ -13,7 +13,7 @@ use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
 use rustc::infer::canonical::QueryRegionConstraint;
-use rustc::mir::Local;
+use rustc::mir::{Local, LocalWithRegion};
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
@@ -36,7 +36,7 @@ use super::TypeChecker;
 pub(super) fn generate<'gcx, 'tcx>(
     cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    liveness: &LivenessResults<Local>,
+    liveness: &LivenessResults<LocalWithRegion>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
@@ -64,7 +64,7 @@ where
 {
     cx: &'gen mut TypeChecker<'typeck, 'gcx, 'tcx>,
     mir: &'gen Mir<'tcx>,
-    liveness: &'gen LivenessResults<Local>,
+    liveness: &'gen LivenessResults<LocalWithRegion>,
     flow_inits: &'gen mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
     move_data: &'gen MoveData<'tcx>,
     drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,
@@ -93,7 +93,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                 }
             });
 
-        let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
+        let mut all_live_locals: Vec<(Location, Vec<LocalWithRegion>)> = vec![];
         self.liveness
             .drop
             .simulate_block(self.mir, bb, self.map, |location, live_locals| {
