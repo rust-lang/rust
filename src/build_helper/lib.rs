@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, fs};
+use std::thread;
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
@@ -181,7 +182,9 @@ pub struct NativeLibBoilerplate {
 
 impl Drop for NativeLibBoilerplate {
     fn drop(&mut self) {
-        t!(File::create(self.out_dir.join("rustbuild.timestamp")));
+        if !thread::panicking() {
+            t!(File::create(self.out_dir.join("rustbuild.timestamp")));
+        }
     }
 }
 
@@ -225,24 +228,34 @@ pub fn native_lib_boilerplate(
     }
 }
 
-pub fn sanitizer_lib_boilerplate(sanitizer_name: &str) -> Result<NativeLibBoilerplate, ()> {
-    let (link_name, search_path) = match &*env::var("TARGET").unwrap() {
+pub fn sanitizer_lib_boilerplate(sanitizer_name: &str)
+    -> Result<(NativeLibBoilerplate, String), ()>
+{
+    let (link_name, search_path, dynamic) = match &*env::var("TARGET").unwrap() {
         "x86_64-unknown-linux-gnu" => (
             format!("clang_rt.{}-x86_64", sanitizer_name),
             "build/lib/linux",
+            false,
         ),
         "x86_64-apple-darwin" => (
-            format!("dylib=clang_rt.{}_osx_dynamic", sanitizer_name),
+            format!("clang_rt.{}_osx_dynamic", sanitizer_name),
             "build/lib/darwin",
+            true,
         ),
         _ => return Err(()),
     };
-    native_lib_boilerplate(
+    let to_link = if dynamic {
+        format!("dylib={}", link_name)
+    } else {
+        format!("static={}", link_name)
+    };
+    let lib = native_lib_boilerplate(
         "libcompiler_builtins/compiler-rt",
         sanitizer_name,
-        &link_name,
+        &to_link,
         search_path,
-    )
+    )?;
+    Ok((lib, link_name))
 }
 
 fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
