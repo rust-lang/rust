@@ -192,7 +192,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     /// particular this takes `#[may_dangle]` into account.
     fn add_drop_live_constraint(
         &mut self,
-        dropped_local: Local,
+        dropped_local: LocalWithRegion,
         dropped_ty: Ty<'tcx>,
         location: Location,
     ) {

@@ -146,7 +146,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_user_assert_ty(&mut self,
                                     c_ty: & $($mutability)* CanonicalTy<'tcx>,
-                                    local: & $($mutability)* LocalWithRegion,
+                                    local: & $($mutability)* Local,
                                     location: Location) {
                 self.super_user_assert_ty(c_ty, local, location);
             }
@@ -250,13 +250,13 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_local_decl(&mut self,
-                                local: LocalWithRegion,
+                                local: Local,
                                 local_decl: & $($mutability)* LocalDecl<'tcx>) {
                 self.super_local_decl(local, local_decl);
             }
 
             fn visit_local(&mut self,
-                            _local: & $($mutability)* LocalWithRegion,
+                            _local: & $($mutability)* Local,
                             _context: PlaceContext<'tcx>,
                             _location: Location) {
             }
@@ -632,7 +632,7 @@ macro_rules! make_mir_visitor {
 
             fn super_user_assert_ty(&mut self,
                                     _c_ty: & $($mutability)* CanonicalTy<'tcx>,
-                                    local: & $($mutability)* LocalWithRegion,
+                                    local: & $($mutability)* Local,
                                     location: Location) {
                 self.visit_local(local, PlaceContext::Validate, location);
             }
@@ -708,7 +708,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_local_decl(&mut self,
-                                local: LocalWithRegion,
+                                local: Local,
                                 local_decl: & $($mutability)* LocalDecl<'tcx>) {
                 let LocalDecl {
                     mutability: _,
