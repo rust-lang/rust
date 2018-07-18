@@ -378,7 +378,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     // Does this place refer to what the user sees as an upvar

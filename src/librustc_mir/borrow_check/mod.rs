@@ -23,6 +23,7 @@ use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -148,6 +149,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let mir = &mir; // no further changes
     let location_table = &LocationTable::new(mir);
 
+    let mut errors_buffer = Vec::new();
     let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<MoveError<'tcx>>>) =
         match MoveData::gather_moves(mir, tcx) {
             Ok(move_data) => (move_data, None),
@@ -214,6 +216,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &mut flow_inits,
         &mdpe.move_data,
         &borrow_set,
+        &mut errors_buffer,
     );
     let regioncx = Rc::new(regioncx);
 
@@ -252,6 +255,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
         moved_error_reported: FxHashSet(),
+        errors_buffer,
         nonlexical_regioncx: regioncx,
         used_mut: FxHashSet(),
         used_mut_upvars: SmallVec::new(),
@@ -287,10 +291,12 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
 
+    let used_mut = mbcx.used_mut;
+
     for local in mbcx
         .mir
         .mut_vars_and_args_iter()
-        .filter(|local| !mbcx.used_mut.contains(local))
+        .filter(|local| !used_mut.contains(local))
     {
         if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.source_scope_local_data {
             let local_decl = &mbcx.mir.local_decls[local];
@@ -311,14 +317,20 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             let span = local_decl.source_info.span;
             let mut_span = tcx.sess.codemap().span_until_non_whitespace(span);
 
-            tcx.struct_span_lint_node(
+            let mut err = tcx.struct_span_lint_node(
                 UNUSED_MUT,
                 vsi[local_decl.source_info.scope].lint_root,
                 span,
                 "variable does not need to be mutable",
-            ).span_suggestion_short(mut_span, "remove this `mut`", "".to_owned())
-                .emit();
+            );
+            err.span_suggestion_short(mut_span, "remove this `mut`", "".to_owned());
+
+            err.buffer(&mut mbcx.errors_buffer);
         }
+    }
+
+    for diag in mbcx.errors_buffer.drain(..) {
+        DiagnosticBuilder::new_diagnostic(mbcx.tcx.sess.diagnostic(), diag).emit();
     }
 
     let result = BorrowCheckResult {
@@ -367,6 +379,8 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// This field keeps track of errors reported in the checking of moved variables,
     /// so that we don't report seemingly duplicate errors.
     moved_error_reported: FxHashSet<Place<'tcx>>,
+    /// Errors to be reported buffer
+    errors_buffer: Vec<Diagnostic>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
     used_mut: FxHashSet<Local>,
@@ -1353,13 +1367,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         debug!("check_for_local_borrow({:?})", borrow);
 
         if borrow_of_local_data(&borrow.borrowed_place) {
-            self.tcx
+            let err = self.tcx
                 .cannot_borrow_across_generator_yield(
                     self.retrieve_borrow_span(borrow),
                     yield_span,
                     Origin::Mir,
-                )
-                .emit();
+                );
+
+            err.buffer(&mut self.errors_buffer);
         }
     }
 

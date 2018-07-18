@@ -59,7 +59,7 @@ enum GroupedMoveError<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
-    pub(crate) fn report_move_errors(&self, move_errors: Vec<MoveError<'tcx>>) {
+    pub(crate) fn report_move_errors(&mut self, move_errors: Vec<MoveError<'tcx>>) {
         let grouped_errors = self.group_move_errors(move_errors);
         for error in grouped_errors {
             self.report(error);
@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         };
     }
 
-    fn report(&self, error: GroupedMoveError<'tcx>) {
+    fn report(&mut self, error: GroupedMoveError<'tcx>) {
         let (mut err, err_span) = {
             let (span, kind): (Span, &IllegalMoveOriginKind) = match error {
                 GroupedMoveError::MovesFromMatchPlace { span, ref kind, .. }
@@ -286,7 +286,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         };
 
         self.add_move_hints(error, &mut err, err_span);
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     fn add_move_hints(

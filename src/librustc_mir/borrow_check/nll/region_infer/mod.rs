@@ -30,6 +30,7 @@ use rustc::util::common;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_errors::Diagnostic;
 
 use std::rc::Rc;
 
@@ -360,11 +361,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
+        errors_buffer: &mut Vec<Diagnostic>,
     ) -> Option<ClosureRegionRequirements<'gcx>> {
         common::time(
             infcx.tcx.sess,
             &format!("solve_nll_region_constraints({:?})", mir_def_id),
-            || self.solve_inner(infcx, mir, mir_def_id),
+            || self.solve_inner(infcx, mir, mir_def_id, errors_buffer),
         )
     }
 
@@ -373,6 +375,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
+        errors_buffer: &mut Vec<Diagnostic>,
     ) -> Option<ClosureRegionRequirements<'gcx>> {
         self.propagate_constraints(mir);
 
@@ -389,7 +392,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         self.check_type_tests(infcx, mir, mir_def_id, outlives_requirements.as_mut());
 
-        self.check_universal_regions(infcx, mir, mir_def_id, outlives_requirements.as_mut());
+        self.check_universal_regions(
+            infcx, mir, mir_def_id, outlives_requirements.as_mut(), errors_buffer);
 
         let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
@@ -834,6 +838,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
+        errors_buffer: &mut Vec<Diagnostic>,
     ) {
         // The universal regions are always found in a prefix of the
         // full list.
@@ -851,6 +856,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 mir_def_id,
                 fr,
                 &mut propagated_outlives_requirements,
+                errors_buffer,
             );
         }
     }
@@ -870,6 +876,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
+        errors_buffer: &mut Vec<Diagnostic>,
     ) {
         debug!("check_universal_region(fr={:?})", longer_fr);
 
@@ -924,7 +931,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Note: in this case, we use the unapproximated regions
             // to report the error. This gives better error messages
             // in some cases.
-            self.report_error(mir, infcx, mir_def_id, longer_fr, shorter_fr, blame_span);
+            self.report_error(
+                mir, infcx, mir_def_id, longer_fr, shorter_fr, blame_span, errors_buffer);
         }
     }
 }

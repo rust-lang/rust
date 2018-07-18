@@ -23,6 +23,7 @@ use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
+use rustc_errors::Diagnostic;
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::env;
@@ -91,6 +92,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
+    errors_buffer: &mut Vec<Diagnostic>,
 ) -> (
     RegionInferenceContext<'tcx>,
     Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
@@ -190,7 +192,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     });
 
     // Solve the region constraints.
-    let closure_region_requirements = regioncx.solve(infcx, &mir, def_id);
+    let closure_region_requirements = regioncx.solve(infcx, &mir, def_id, errors_buffer);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
@@ -205,7 +207,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
     // We also have a `#[rustc_nll]` annotation that causes us to dump
     // information
-    dump_annotation(infcx, &mir, def_id, &regioncx, &closure_region_requirements);
+    dump_annotation(infcx, &mir, def_id, &regioncx, &closure_region_requirements, errors_buffer);
 
     (regioncx, polonius_output, closure_region_requirements)
 }
@@ -323,6 +325,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext,
     closure_region_requirements: &Option<ClosureRegionRequirements>,
+    errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.closure_base_def_id(mir_def_id);
@@ -357,14 +360,15 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
             Ok(())
         }).unwrap();
 
-        err.emit();
+        err.buffer(errors_buffer);
     } else {
         let mut err = tcx
             .sess
             .diagnostic()
             .span_note_diag(mir.span, "No external requirements");
         regioncx.annotate(&mut err);
-        err.emit();
+
+        err.buffer(errors_buffer);
     }
 }
 
