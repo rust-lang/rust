@@ -99,7 +99,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        _body_id: ast::NodeId,
+        body_id: ast::NodeId,
         ty: Ty<'tcx>,
         span: Span,
     ) -> Vec<OutlivesBound<'tcx>> {
@@ -120,7 +120,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         assert!(result.value.is_proven());
 
         let result = self.instantiate_query_result_and_region_obligations(
-            &ObligationCause::dummy(), param_env, &orig_values, &result);
+            &ObligationCause::misc(span, body_id), param_env, &orig_values, &result);
         debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
         let result = match result {
             Ok(v) => v,
