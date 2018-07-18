@@ -24,7 +24,6 @@ pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
     GlobalAsm(NodeId),
-    CustomSection(DefId),
 }
 
 impl<'tcx> MonoItem<'tcx> {
@@ -38,8 +37,7 @@ impl<'tcx> MonoItem<'tcx> {
             // Conservatively estimate the size of a static declaration
             // or assembly to be 1.
             MonoItem::Static(_) |
-            MonoItem::GlobalAsm(_) |
-            MonoItem::CustomSection(_) => 1,
+            MonoItem::GlobalAsm(_) => 1,
         }
     }
 }
@@ -54,8 +52,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
             MonoItem::Fn(ref instance) => {
                 instance.hash_stable(hcx, hasher);
             }
-            MonoItem::Static(def_id) |
-            MonoItem::CustomSection(def_id) => {
+            MonoItem::Static(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
             MonoItem::GlobalAsm(node_id) => {

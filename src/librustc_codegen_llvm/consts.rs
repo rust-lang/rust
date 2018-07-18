@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc::c_uint;
 use llvm;
 use llvm::{SetUnnamedAddr};
 use llvm::{ValueRef, True};
@@ -24,11 +25,9 @@ use type_of::LayoutLlvmExt;
 use rustc::ty;
 use rustc::ty::layout::{Align, LayoutOf};
 
-use rustc::hir;
+use rustc::hir::{self, CodegenFnAttrFlags};
 
 use std::ffi::{CStr, CString};
-use syntax::ast;
-use syntax::attr;
 
 pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
     unsafe {
@@ -244,17 +243,18 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
 }
 
 pub fn codegen_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                              def_id: DefId,
-                              is_mutable: bool,
-                              attrs: &[ast::Attribute]) {
+                                def_id: DefId,
+                                is_mutable: bool) {
     unsafe {
-        let g = get_static(cx, def_id);
+        let attrs = cx.tcx.codegen_fn_attrs(def_id);
 
         let (v, alloc) = match ::mir::codegen_static_initializer(cx, def_id) {
             Ok(v) => v,
             // Error has already been reported
             Err(_) => return,
         };
+
+        let g = get_static(cx, def_id);
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
@@ -307,7 +307,7 @@ pub fn codegen_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         debuginfo::create_global_var_metadata(cx, def_id, g);
 
-        if attr::contains_name(attrs, "thread_local") {
+        if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
             llvm::set_thread_local_mode(g, cx.tls_model);
 
             // Do not allow LLVM to change the alignment of a TLS on macOS.
@@ -349,9 +349,34 @@ pub fn codegen_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
         }
 
-        base::set_link_section(cx, g, attrs);
 
-        if attr::contains_name(attrs, "used") {
+        // Wasm statics with custom link sections get special treatment as they
+        // go into custom sections of the wasm executable.
+        if cx.tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+            if let Some(section) = attrs.link_section {
+                let section = llvm::LLVMMDStringInContext(
+                    cx.llcx,
+                    section.as_str().as_ptr() as *const _,
+                    section.as_str().len() as c_uint,
+                );
+                let alloc = llvm::LLVMMDStringInContext(
+                    cx.llcx,
+                    alloc.bytes.as_ptr() as *const _,
+                    alloc.bytes.len() as c_uint,
+                );
+                let data = [section, alloc];
+                let meta = llvm::LLVMMDNodeInContext(cx.llcx, data.as_ptr(), 2);
+                llvm::LLVMAddNamedMetadataOperand(
+                    cx.llmod,
+                    "wasm.custom_sections\0".as_ptr() as *const _,
+                    meta,
+                );
+            }
+        } else {
+            base::set_link_section(g, &attrs);
+        }
+
+        if attrs.flags.contains(CodegenFnAttrFlags::USED) {
             // This static will be stored in the llvm.used variable which is an array of i8*
             let cast = llvm::LLVMConstPointerCast(g, Type::i8p(cx).to_ref());
             cx.used_statics.borrow_mut().push(cast);

@@ -15,7 +15,7 @@
 #![feature(rustc_attrs)]
 #![crate_type = "rlib"]
 
-#![rustc_partition_codegened(module="issue_49595-tests", cfg="cfail2")]
+#![rustc_partition_codegened(module="issue_49595-__test", cfg="cfail2")]
 #![rustc_partition_codegened(module="issue_49595-lit_test", cfg="cfail3")]
 
 mod tests {

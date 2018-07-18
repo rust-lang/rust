@@ -313,11 +313,6 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt,
         return true;
     }
 
-    // These constants are special for wasm
-    if attr::contains_name(attrs, "wasm_custom_section") {
-        return true;
-    }
-
     tcx.lint_level_at_node(lint::builtin::DEAD_CODE, id).0 == lint::Allow
 }
 

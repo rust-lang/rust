@@ -407,9 +407,6 @@ declare_features! (
     // `use path as _;` and `extern crate c as _;`
     (active, underscore_imports, "1.26.0", Some(48216), None),
 
-    // The #[wasm_custom_section] attribute
-    (active, wasm_custom_section, "1.26.0", Some(51088), None),
-
     // The #![wasm_import_module] attribute
     (active, wasm_import_module, "1.26.0", Some(52090), None),
 
@@ -1061,11 +1058,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                    "infer_outlives_requirements",
                                    "infer outlives requirements is an experimental feature",
                                    cfg_fn!(infer_outlives_requirements))),
-
-    ("wasm_custom_section", Whitelisted, Gated(Stability::Unstable,
-                                 "wasm_custom_section",
-                                 "attribute is currently unstable",
-                                 cfg_fn!(wasm_custom_section))),
 
     // RFC 2070
     ("panic_implementation", Normal, Gated(Stability::Unstable,

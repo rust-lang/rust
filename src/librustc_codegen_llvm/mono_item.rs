@@ -54,9 +54,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                         bug!("Expected Def::Static for {:?}, found nothing", def_id)
                     }
                 };
-                let attrs = tcx.get_attrs(def_id);
-
-                consts::codegen_static(&cx, def_id, is_mutable, &attrs);
+                consts::codegen_static(&cx, def_id, is_mutable);
             }
             MonoItem::GlobalAsm(node_id) => {
                 let item = cx.tcx.hir.expect_item(node_id);
@@ -65,9 +63,6 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                 } else {
                     span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
                 }
-            }
-            MonoItem::CustomSection(def_id) => {
-                base::define_custom_section(cx, def_id);
             }
             MonoItem::Fn(instance) => {
                 base::codegen_instance(&cx, instance);
@@ -100,7 +95,6 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
             MonoItem::Fn(instance) => {
                 predefine_fn(cx, instance, linkage, visibility, &symbol_name);
             }
-            MonoItem::CustomSection(..) => {}
             MonoItem::GlobalAsm(..) => {}
         }
 
@@ -119,9 +113,6 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
             }
             MonoItem::Static(id) => {
                 format!("Static({:?})", id)
-            }
-            MonoItem::CustomSection(id) => {
-                format!("CustomSection({:?})", id)
             }
             MonoItem::GlobalAsm(id) => {
                 format!("GlobalAsm({:?})", id)
@@ -164,10 +155,10 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             !instance.substs.has_param_types());
 
     let mono_ty = instance.ty(cx.tcx);
-    let attrs = instance.def.attrs(cx.tcx);
+    let attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
     let lldecl = declare::declare_fn(cx, symbol_name, mono_ty);
     unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
-    base::set_link_section(cx, lldecl, &attrs);
+    base::set_link_section(lldecl, &attrs);
     if linkage == Linkage::LinkOnceODR ||
         linkage == Linkage::WeakODR {
         llvm::SetUniqueComdat(cx.llmod, lldecl);

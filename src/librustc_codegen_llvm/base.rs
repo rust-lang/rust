@@ -33,7 +33,6 @@ use back::link;
 use back::write::{self, OngoingCodegen, create_target_machine};
 use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
-use libc::c_uint;
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
@@ -87,8 +86,7 @@ use std::sync::mpsc;
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
 use syntax::attr;
-use rustc::hir;
-use syntax::ast;
+use rustc::hir::{self, CodegenFnAttrs};
 
 use mir::operand::OperandValue;
 
@@ -513,17 +511,14 @@ pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'
     mir::codegen_mir(cx, lldecl, &mir, instance, sig);
 }
 
-pub fn set_link_section(cx: &CodegenCx,
-                        llval: ValueRef,
-                        attrs: &[ast::Attribute]) {
-    if let Some(sect) = attr::first_attr_value_str_by_name(attrs, "link_section") {
-        if contains_null(&sect.as_str()) {
-            cx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
-        }
-        unsafe {
-            let buf = CString::new(sect.as_str().as_bytes()).unwrap();
-            llvm::LLVMSetSection(llval, buf.as_ptr());
-        }
+pub fn set_link_section(llval: ValueRef, attrs: &CodegenFnAttrs) {
+    let sect = match attrs.link_section {
+        Some(name) => name,
+        None => return,
+    };
+    unsafe {
+        let buf = CString::new(sect.as_str().as_bytes()).unwrap();
+        llvm::LLVMSetSection(llval, buf.as_ptr());
     }
 }
 
@@ -611,10 +606,6 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         let result = bx.call(start_fn, &args, None);
         bx.ret(bx.intcast(result, Type::c_int(cx), true));
     }
-}
-
-fn contains_null(s: &str) -> bool {
-    s.bytes().any(|b| b == 0)
 }
 
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
@@ -1367,44 +1358,5 @@ mod temp_stable_hash_impls {
                                               _: &mut StableHasher<W>) {
             // do nothing
         }
-    }
-}
-
-pub fn define_custom_section(cx: &CodegenCx, def_id: DefId) {
-    use rustc::mir::interpret::GlobalId;
-
-    assert!(cx.tcx.sess.opts.target_triple.triple().starts_with("wasm32"));
-
-    info!("loading wasm section {:?}", def_id);
-
-    let section = cx.tcx.codegen_fn_attrs(def_id).wasm_custom_section.unwrap();
-
-    let instance = ty::Instance::mono(cx.tcx, def_id);
-    let cid = GlobalId {
-        instance,
-        promoted: None
-    };
-    let param_env = ty::ParamEnv::reveal_all();
-    let val = cx.tcx.const_eval(param_env.and(cid)).unwrap();
-    let alloc = cx.tcx.const_value_to_allocation(val);
-
-    unsafe {
-        let section = llvm::LLVMMDStringInContext(
-            cx.llcx,
-            section.as_str().as_ptr() as *const _,
-            section.as_str().len() as c_uint,
-        );
-        let alloc = llvm::LLVMMDStringInContext(
-            cx.llcx,
-            alloc.bytes.as_ptr() as *const _,
-            alloc.bytes.len() as c_uint,
-        );
-        let data = [section, alloc];
-        let meta = llvm::LLVMMDNodeInContext(cx.llcx, data.as_ptr(), 2);
-        llvm::LLVMAddNamedMetadataOperand(
-            cx.llmod,
-            "wasm.custom_sections\0".as_ptr() as *const _,
-            meta,
-        );
     }
 }
