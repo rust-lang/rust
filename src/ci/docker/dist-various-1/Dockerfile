@@ -80,8 +80,8 @@ RUN \
   echo "# a" >> /usr/local/mips-linux-musl/bin/mips-openwrt-linux-musl-wrapper.sh && \
   echo "# b" >> /usr/local/mipsel-linux-musl/bin/mipsel-openwrt-linux-musl-wrapper.sh
 
-# ENV RUN_MAKE_TARGETS=thumbv6m-none-eabi
-ENV RUN_MAKE_TARGETS=thumbv7m-none-eabi
+ENV RUN_MAKE_TARGETS=thumbv6m-none-eabi
+ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7m-none-eabi
 ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabi
 ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabihf
 
