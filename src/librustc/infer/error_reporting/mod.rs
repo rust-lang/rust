@@ -1086,6 +1086,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) {
+        self.construct_generic_bound_failure(region_scope_tree,
+                                             span,
+                                             origin,
+                                             bound_kind,
+                                             sub)
+            .emit()
+    }
+
+    pub fn construct_generic_bound_failure(
+        &self,
+        region_scope_tree: &region::ScopeTree,
+        span: Span,
+        origin: Option<SubregionOrigin<'tcx>>,
+        bound_kind: GenericKind<'tcx>,
+        sub: Region<'tcx>,
+    ) -> DiagnosticBuilder<'a>
+    {
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
         let type_param_span = match (self.in_progress_tables, bound_kind) {
@@ -1139,14 +1156,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             trait_item_def_id,
         }) = origin
         {
-            self.report_extra_impl_obligation(
+            return self.report_extra_impl_obligation(
                 span,
                 item_name,
                 impl_item_def_id,
                 trait_item_def_id,
                 &format!("`{}: {}`", bound_kind, sub),
-            ).emit();
-            return;
+            );
         }
 
         fn binding_suggestion<'tcx, S: fmt::Display>(
@@ -1229,7 +1245,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if let Some(origin) = origin {
             self.note_region_origin(&mut err, &origin);
         }
-        err.emit();
+        err
     }
 
     fn report_sub_sup_conflict(
