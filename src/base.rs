@@ -371,7 +371,19 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                     let layout = fx.layout_of(ty);
                     lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
                 }
-                Rvalue::Cast(CastKind::Misc, operand, ty) => unimplemented!("rval misc {:?} {:?}", operand, ty),
+                Rvalue::Cast(CastKind::Misc, operand, ty) => {
+                    let operand = trans_operand(fx, operand);
+                    match (&operand.layout().ty.sty, &ty.sty) {
+                        (TypeVariants::TyRef(..), TypeVariants::TyRef(..)) |
+                        (TypeVariants::TyRef(..), TypeVariants::TyRawPtr(..)) |
+                        (TypeVariants::TyRawPtr(..), TypeVariants::TyRef(..)) |
+                        (TypeVariants::TyRawPtr(..), TypeVariants::TyRawPtr(..)) => {
+                            let layout = fx.layout_of(ty);
+                            lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
+                        }
+                        _ => unimplemented!("rval misc {:?} {:?}", operand, ty),
+                    }
+                },
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty),
                 Rvalue::Cast(CastKind::Unsize, operand, ty) => unimplemented!("rval unsize {:?} {:?}", operand, ty),
                 Rvalue::Discriminant(place) => {
@@ -436,7 +448,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                     }
                 }
                 Rvalue::Repeat(operand, times) => unimplemented!("rval repeat {:?} {:?}", operand, times),
-                Rvalue::Len(lval) => unimplemented!("rval len {:?}", lval),
+                Rvalue::Len(lval) => return Err(format!("rval len {:?}", lval)),
                 Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => unimplemented!("rval size_of {:?}", ty),
                 Rvalue::Aggregate(_, _) => bug!("shouldn't exist at trans {:?}", rval),

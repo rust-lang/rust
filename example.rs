@@ -85,3 +85,7 @@ fn return_str() -> &'static str {
 fn promoted_val() -> &'static u8 {
     &(1 * 2)
 }
+
+fn cast_ref_to_raw_ptr(abc: &u8) -> *const u8 {
+    abc as *const u8
+}
