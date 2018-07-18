@@ -130,7 +130,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
-    /// Invariant: if `record_used` is `Some`, import resolution must be complete.
+    /// Invariant: if `record_used` is `Some`, expansion and import resolution must be complete.
     pub fn resolve_ident_in_module_unadjusted(&mut self,
                                               module: Module<'a>,
                                               ident: Ident,
@@ -187,7 +187,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        // From now on we either have a glob resolution or no resolution.
+        // --- From now on we either have a glob resolution or no resolution. ---
 
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
@@ -207,27 +207,43 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let no_unresolved_invocations =
-            restricted_shadowing || module.unresolved_invocations.borrow().is_empty();
+        let no_unexpanded_macros = module.unresolved_invocations.borrow().is_empty();
         match resolution.binding {
-            // In `MacroNS`, expanded bindings do not shadow (enforced in `try_define`).
-            Some(binding) if no_unresolved_invocations || ns == MacroNS =>
+            // So we have a resolution that's from a glob import. This resolution is determined
+            // if it cannot be shadowed by some new item/import expanded from a macro.
+            // This happens either if there are no unexpanded macros, or expanded names cannot
+            // shadow globs (that happens in macro namespace or with restricted shadowing).
+            Some(binding) if no_unexpanded_macros || ns == MacroNS || restricted_shadowing =>
                 return check_usable(self, binding),
-            None if no_unresolved_invocations => {}
+            // If we have no resolution, then it's a determined error it some new item/import
+            // cannot appear from a macro expansion or an undetermined glob.
+            None if no_unexpanded_macros => {} // go check for globs below
+            // This is actually an undetermined error, but we need to return determinate error
+            // due to subtle interactions with `resolve_lexical_macro_path_segment`
+            // that are going to be removed in the next commit.
+            None if restricted_shadowing => {} // go check for globs below
             _ => return Err(Undetermined),
         }
 
-        // Check if the globs are determined
+        // --- From now on we have no resolution. ---
+
+        // Check if one of glob imports can still define the name,
+        // if it can then our "no resolution" result is not determined and can be invalidated.
+
+        // What on earth is this?
+        // Apparently one more subtle interaction with `resolve_lexical_macro_path_segment`
+        // that are going to be removed in the next commit.
         if restricted_shadowing && module.def().is_some() {
             return Err(Determined);
         }
-        for directive in module.globs.borrow().iter() {
-            if !self.is_accessible(directive.vis.get()) {
+
+        for glob_import in module.globs.borrow().iter() {
+            if !self.is_accessible(glob_import.vis.get()) {
                 continue
             }
-            let module = unwrap_or!(directive.imported_module.get(), return Err(Undetermined));
+            let module = unwrap_or!(glob_import.imported_module.get(), return Err(Undetermined));
             let (orig_current_module, mut ident) = (self.current_module, ident.modern());
-            match ident.span.glob_adjust(module.expansion, directive.span.ctxt().modern()) {
+            match ident.span.glob_adjust(module.expansion, glob_import.span.ctxt().modern()) {
                 Some(Some(def)) => self.current_module = self.macro_def_scope(def),
                 Some(None) => {}
                 None => continue,
@@ -236,8 +252,9 @@ impl<'a> Resolver<'a> {
                 module, ident, ns, false, false, path_span,
             );
             self.current_module = orig_current_module;
-            if let Err(Undetermined) = result {
-                return Err(Undetermined);
+            match result {
+                Err(Determined) => continue,
+                Ok(_) | Err(Undetermined) => return Err(Undetermined),
             }
         }
 
