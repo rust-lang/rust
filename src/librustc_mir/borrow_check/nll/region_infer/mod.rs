@@ -390,7 +390,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             None
         };
 
-        self.check_type_tests(infcx, mir, mir_def_id, outlives_requirements.as_mut());
+        self.check_type_tests(
+            infcx, mir, mir_def_id, outlives_requirements.as_mut(), errors_buffer);
 
         self.check_universal_regions(
             infcx, mir, mir_def_id, outlives_requirements.as_mut(), errors_buffer);
@@ -480,6 +481,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
+        errors_buffer: &mut Vec<Diagnostic>,
     ) {
         let tcx = infcx.tcx;
 
@@ -506,13 +508,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(lower_bound_region) = lower_bound_region {
                 let region_scope_tree = &tcx.region_scope_tree(mir_def_id);
                 let type_test_span = type_test.locations.span(mir);
-                infcx.report_generic_bound_failure(
+                infcx.construct_generic_bound_failure(
                     region_scope_tree,
                     type_test_span,
                     None,
                     type_test.generic_kind,
                     lower_bound_region,
-                );
+                ).buffer(errors_buffer);
             } else {
                 // FIXME. We should handle this case better. It
                 // indicates that we have e.g. some region variable
@@ -524,10 +526,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // iterating over the universal regions and reporting
                 // an error that multiple bounds are required.
                 let type_test_span = type_test.locations.span(mir);
-                tcx.sess.span_err(
+                tcx.sess.struct_span_err(
                     type_test_span,
                     &format!("`{}` does not live long enough", type_test.generic_kind,),
-                );
+                ).buffer(errors_buffer);
             }
         }
     }
