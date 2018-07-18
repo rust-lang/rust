@@ -2268,24 +2268,26 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
 
 fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
     if item.is_non_exhaustive() {
-        write!(w, "<p class='non-exhaustive'>")?;
+        write!(w, "<div class='docblock non-exhaustive non-exhaustive-{}'>", {
+            if item.is_struct() { "struct" } else if item.is_enum() { "enum" } else { "type" }
+        })?;
 
         if item.is_struct() {
-            write!(w, "This struct is marked as non-exhaustive as additional fields may be \
-                       added in the future. This means that this struct cannot be constructed in \
-                       external crates using the traditional <code>Struct {{ .. }}</code> syntax;
-                       cannot be matched against without a wildcard <code>..</code>; and \
-                       functional-record-updates do not work on this struct.")?;
+            write!(w, "Non-exhaustive structs could have additional fields added in future. \
+                       Therefore, non-exhaustive structs cannot be constructed in external crates \
+                       using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
+                       matched against without a wildcard <code>..</code>; and \
+                       functional-record-updates do not work.")?;
         } else if item.is_enum() {
-            write!(w, "This enum is marked as non-exhaustive, and additional variants may be \
-                       added in the future. When matching over values of this type, an extra \
-                       <code>_</code> arm must be added to account for future extensions.")?;
+            write!(w, "Non-exhaustive enums could have additional variants added in future. \
+                       Therefore, when matching against variants of non-exhaustive enums, an \
+                       extra wildcard arm must be added to account for any future variants.")?;
         } else {
             write!(w, "This type will require a wildcard arm in any match statements or \
                        constructors.")?;
         }
 
-        write!(w, "</p>")?;
+        write!(w, "</div>")?;
     }
 
     Ok(())

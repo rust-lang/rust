@@ -1993,7 +1993,7 @@
         onEach(e.getElementsByClassName('associatedconstant'), func);
     });
 
-    function createToggle(otherMessage, extraClass) {
+    function createToggle(otherMessage, fontSize, extraClass) {
         var span = document.createElement('span');
         span.className = 'toggle-label';
         span.style.display = 'none';
@@ -2001,7 +2001,10 @@
             span.innerHTML = '&nbsp;Expand&nbsp;description';
         } else {
             span.innerHTML = otherMessage;
-            span.style.fontSize = '20px';
+        }
+
+        if (fontSize) {
+            span.style.fontSize = fontSize;
         }
 
         var mainToggle = toggle.cloneNode(true);
@@ -2040,13 +2043,27 @@
         }
         if (e.parentNode.id === "main") {
             var otherMessage;
+            var fontSize;
             var extraClass;
+
             if (hasClass(e, "type-decl")) {
+                fontSize = "20px";
                 otherMessage = '&nbsp;Show&nbsp;declaration';
+            } else if (hasClass(e, "non-exhaustive")) {
+                otherMessage = '&nbsp;This&nbsp;';
+                if (hasClass(e, "non-exhaustive-struct")) {
+                    otherMessage += 'struct';
+                } else if (hasClass(e, "non-exhaustive-enum")) {
+                    otherMessage += 'enum';
+                } else if (hasClass(e, "non-exhaustive-type")) {
+                    otherMessage += 'type';
+                }
+                otherMessage += '&nbsp;is&nbsp;marked&nbsp;as&nbsp;non-exhaustive';
             } else if (hasClass(e.childNodes[0], "impl-items")) {
                 extraClass = "marg-left";
             }
-            e.parentNode.insertBefore(createToggle(otherMessage, extraClass), e);
+
+            e.parentNode.insertBefore(createToggle(otherMessage, fontSize, extraClass), e);
             if (otherMessage && getCurrentValue('rustdoc-item-declarations') !== "false") {
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }

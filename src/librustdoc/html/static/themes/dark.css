@@ -148,8 +148,6 @@ pre {
 .content .fnname{ color: #2BAB63; }
 .content span.keyword, .content a.keyword, .block a.current.keyword { color: #de5249; }
 
-.non-exhaustive { color: #DDD; margin-bottom: 1em; }
-
 pre.rust .comment { color: #8d8d8b; }
 pre.rust .doccomment { color: #8ca375; }
 
