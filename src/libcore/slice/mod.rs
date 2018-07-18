@@ -546,7 +546,7 @@ impl<T> [T] {
             assume(!ptr.is_null());
 
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as usize).wrapping_add(self.len()) as *const _
+                (ptr as *const u8).wrapping_offset(self.len() as isize) as *const T
             } else {
                 ptr.offset(self.len() as isize)
             };
@@ -578,7 +578,7 @@ impl<T> [T] {
             assume(!ptr.is_null());
 
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as usize).wrapping_add(self.len()) as *mut _
+                (ptr as *mut u8).wrapping_offset(self.len() as isize) as *mut T
             } else {
                 ptr.offset(self.len() as isize)
             };
@@ -2354,7 +2354,7 @@ macro_rules! iterator {
             unsafe fn post_inc_start(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
                     // This is *reducing* the length.  `ptr` never changes with ZST.
-                    self.end = (self.end as isize).wrapping_sub(offset) as * $raw_mut T;
+                    self.end = (self.end as * $raw_mut u8).wrapping_offset(-offset) as * $raw_mut T;
                     self.ptr
                 } else {
                     let old = self.ptr;
@@ -2369,7 +2369,7 @@ macro_rules! iterator {
             #[inline(always)]
             unsafe fn pre_dec_end(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
-                    self.end = (self.end as isize).wrapping_sub(offset) as * $raw_mut T;
+                    self.end = (self.end as * $raw_mut u8).wrapping_offset(-offset) as * $raw_mut T;
                     self.ptr
                 } else {
                     self.end = self.end.offset(-offset);
@@ -2432,12 +2432,14 @@ macro_rules! iterator {
             #[inline]
             fn nth(&mut self, n: usize) -> Option<$elem> {
                 if n >= self.len() {
-                    // This iterator is now empty.  The way we encode the length of a non-ZST
-                    // iterator, this works for both ZST and non-ZST.
-                    // For a ZST we would usually do `self.end = self.ptr`, but since
-                    // we will not give out an reference any more after this there is no
-                    // way to observe the difference except for raw pointers.
-                    self.ptr = self.end;
+                    // This iterator is now empty.
+                    if mem::size_of::<T>() == 0 {
+                        // We have to do it this way as `ptr` may never be 0, but `end`
+                        // could be (due to wrapping).
+                        self.end = self.ptr;
+                    } else {
+                        self.ptr = self.end;
+                    }
                     return None;
                 }
                 // We are in bounds. `offset` does the right thing even for ZSTs.
