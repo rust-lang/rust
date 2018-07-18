@@ -7,14 +7,29 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- acosf
+- asin
+- asinf
+- atan
+- atan2
 - atan2f
+- atanf
 - cos
+- cosf
+- cosh
 - coshf
+- exp2
+- expm1
+- expm1f
+- expo2
 - fmaf
+- pow
 - sin
+- sinf
 - sinh
 - sinhf
 - tan
+- tanf
 - tanh
 - tanhf
 
