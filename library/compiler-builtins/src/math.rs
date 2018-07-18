@@ -4,12 +4,13 @@ mod libm;
 
 macro_rules! no_mangle {
     ($(fn $fun:ident($($iid:ident : $ity:ty),+) -> $oty:ty;)+) => {
-        $(
-            #[no_mangle]
-            pub fn $fun($($iid: $ity),+) -> $oty {
-                self::libm::$fun($($iid),+)
-            }
-        )+
+        intrinsics! {
+            $(
+                pub extern "C" fn $fun($($iid: $ity),+) -> $oty {
+                    self::libm::$fun($($iid),+)
+                }
+            )+
+        }
     }
 }
 
