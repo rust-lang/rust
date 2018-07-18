@@ -41,6 +41,7 @@ use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
 use std::collections::HashSet;
 
+use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Spanned;
@@ -1782,5 +1783,72 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
             }
             _ => return,
         };
+    }
+}
+
+declare_lint! {
+    pub ASYNC_IDENTS,
+    Allow,
+    "detects `async` being used as an identifier"
+}
+
+/// Checks for uses of `async` as an identifier
+#[derive(Clone)]
+pub struct Async2018;
+
+impl LintPass for Async2018 {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(ASYNC_IDENTS)
+    }
+}
+
+impl Async2018 {
+    fn check_tokens(&mut self, cx: &EarlyContext, tokens: TokenStream) {
+        for tt in tokens.into_trees() {
+            match tt {
+                TokenTree::Token(span, tok) => match tok.ident() {
+                    // only report non-raw idents
+                    Some((ident, false)) if ident.as_str() == "async" => {
+                        self.report(cx, span.substitute_dummy(ident.span))
+                    },
+                    _ => {},
+                }
+                TokenTree::Delimited(_, ref delim) => {
+                    self.check_tokens(cx, delim.tts.clone().into())
+                },
+            }
+        }
+    }
+    fn report(&mut self, cx: &EarlyContext, span: Span) {
+        // don't lint `r#async`
+        if cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&span) {
+            return;
+        }
+        let mut lint = cx.struct_span_lint(
+            ASYNC_IDENTS,
+            span,
+            "`async` is a keyword in the 2018 edition",
+        );
+        lint.span_suggestion_with_applicability(
+            span,
+            "you can use a raw identifier to stay compatible",
+            "r#async".to_string(),
+            Applicability::MachineApplicable,
+        );
+        lint.emit()
+    }
+}
+
+impl EarlyLintPass for Async2018 {
+    fn check_mac_def(&mut self, cx: &EarlyContext, mac_def: &ast::MacroDef, _id: ast::NodeId) {
+        self.check_tokens(cx, mac_def.stream());
+    }
+    fn check_mac(&mut self, cx: &EarlyContext, mac: &ast::Mac) {
+        self.check_tokens(cx, mac.node.tts.clone().into());
+    }
+    fn check_ident(&mut self, cx: &EarlyContext, ident: ast::Ident) {
+        if ident.as_str() == "async" {
+            self.report(cx, ident.span);
+        }
     }
 }

@@ -1,17 +1,3 @@
-warning: macro_escape is a deprecated synonym for macro_use
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:500:1
-   |
-LL | #[macro_escape]
-   | ^^^^^^^^^^^^^^^
-
-warning: macro_escape is a deprecated synonym for macro_use
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:503:17
-   |
-LL |     mod inner { #![macro_escape] }
-   |                 ^^^^^^^^^^^^^^^^
-   |
-   = help: consider an outer attribute, #[macro_use] mod ...
-
 warning: unknown lint: `x5400`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:49:33
    |
@@ -185,6 +171,20 @@ warning: unknown lint: `x5100`
    |
 LL |     #[deny(x5100)] impl S { }
    |            ^^^^^
+
+warning: macro_escape is a deprecated synonym for macro_use
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:500:1
+   |
+LL | #[macro_escape]
+   | ^^^^^^^^^^^^^^^
+
+warning: macro_escape is a deprecated synonym for macro_use
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:503:17
+   |
+LL |     mod inner { #![macro_escape] }
+   |                 ^^^^^^^^^^^^^^^^
+   |
+   = help: consider an outer attribute, #[macro_use] mod ...
 
 warning: `repr` attribute isn't configurable with a literal
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:316:17

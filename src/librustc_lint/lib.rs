@@ -83,6 +83,14 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             )
     }
 
+    macro_rules! add_pre_expansion_builtin {
+        ($sess:ident, $($name:ident),*,) => (
+            {$(
+                store.register_early_pass($sess, false, box $name);
+                )*}
+            )
+    }
+
     macro_rules! add_early_builtin_with_new {
         ($sess:ident, $($name:ident),*,) => (
             {$(
@@ -96,6 +104,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             store.register_group($sess, false, $name, vec![$(LintId::of($lint)),*]);
             )
     }
+
+    add_pre_expansion_builtin!(sess,
+        Async2018,
+    );
 
     add_early_builtin!(sess,
                        UnusedParens,
@@ -213,6 +225,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(DUPLICATE_MACRO_EXPORTS),
             reference: "issue #35896 <https://github.com/rust-lang/rust/issues/35896>",
+            edition: Some(Edition::Edition2018),
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(ASYNC_IDENTS),
+            reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
             edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {

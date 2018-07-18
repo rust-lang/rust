@@ -327,6 +327,8 @@ pub trait EarlyLintPass: LintPass {
     fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
     fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
+    fn check_mac_def(&mut self, _: &EarlyContext, _: &ast::MacroDef, _id: ast::NodeId) { }
+    fn check_mac(&mut self, _: &EarlyContext, _: &ast::Mac) { }
 
     /// Called when entering a syntax node that can have lint attributes such
     /// as `#[allow(...)]`. Called with *all* the attributes of that node.
@@ -340,6 +342,8 @@ pub trait EarlyLintPass: LintPass {
 pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
 pub type LateLintPassObject = Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + sync::Send
                                                                            + sync::Sync + 'static>;
+
+
 
 /// Identifies a lint known to the compiler.
 #[derive(Clone, Copy, Debug)]
