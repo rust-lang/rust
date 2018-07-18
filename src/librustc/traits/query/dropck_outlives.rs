@@ -10,6 +10,7 @@
 
 use infer::at::At;
 use infer::InferOk;
+use rustc_data_structures::small_vec::SmallVec;
 use std::iter::FromIterator;
 use syntax::codemap::Span;
 use ty::subst::Kind;
@@ -50,7 +51,8 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         }
 
         let gcx = tcx.global_tcx();
-        let (c_ty, orig_values) = self.infcx.canonicalize_query(&self.param_env.and(ty));
+        let mut orig_values = SmallVec::new();
+        let c_ty = self.infcx.canonicalize_query(&self.param_env.and(ty), &mut orig_values);
         let span = self.cause.span;
         debug!("c_ty = {:?}", c_ty);
         match &gcx.dropck_outlives(c_ty) {

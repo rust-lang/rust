@@ -33,6 +33,7 @@
 
 use infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::sync::Lrc;
 use serialize::UseSpecializedDecodable;
 use std::ops::Index;
@@ -73,6 +74,10 @@ impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> {}
 pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<CanonicalVar, Kind<'tcx>>,
 }
+
+/// Like CanonicalVarValues, but for use in places where a SmallVec is
+/// appropriate.
+pub type SmallCanonicalVarValues<'tcx> = SmallVec<[Kind<'tcx>; 8]>;
 
 /// Information about a canonical variable that is included with the
 /// canonical value. This is sufficient information for code to create
@@ -281,10 +286,6 @@ BraceStructLiftImpl! {
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
-    fn iter<'a>(&'a self) -> impl Iterator<Item = Kind<'tcx>> + 'a {
-        self.var_values.iter().cloned()
-    }
-
     fn len(&self) -> usize {
         self.var_values.len()
     }

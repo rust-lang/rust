@@ -25,6 +25,7 @@ use rustc::traits::{
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::subst::Kind;
 use rustc::ty::{self, TyCtxt};
+use rustc_data_structures::small_vec::SmallVec;
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
@@ -388,14 +389,15 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         &mut self,
         value: &ty::ParamEnvAnd<'tcx, Goal<'tcx>>,
     ) -> Canonical<'gcx, ty::ParamEnvAnd<'gcx, Goal<'gcx>>> {
-        self.infcx.canonicalize_query(value).0
+        let mut _orig_values = SmallVec::new();
+        self.infcx.canonicalize_query(value, &mut _orig_values)
     }
 
     fn canonicalize_ex_clause(
         &mut self,
         value: &ChalkExClause<'tcx>,
     ) -> Canonical<'gcx, ChalkExClause<'gcx>> {
-        self.infcx.canonicalize_response(value).0
+        self.infcx.canonicalize_response(value)
     }
 
     fn canonicalize_constrained_subst(
@@ -403,9 +405,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         subst: CanonicalVarValues<'tcx>,
         constraints: Vec<QueryRegionConstraint<'tcx>>,
     ) -> Canonical<'gcx, ConstrainedSubst<'gcx>> {
-        self.infcx
-            .canonicalize_response(&ConstrainedSubst { subst, constraints })
-            .0
+        self.infcx.canonicalize_response(&ConstrainedSubst { subst, constraints })
     }
 
     fn u_canonicalize_goal(
