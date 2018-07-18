@@ -798,7 +798,7 @@ where
 pub fn phase_2_configure_and_expand_inner<'a, F>(
     sess: &'a Session,
     cstore: &'a CStore,
-    krate: ast::Crate,
+    mut krate: ast::Crate,
     registry: Option<Registry>,
     crate_name: &str,
     addl_plugins: Option<Vec<String>>,
@@ -810,6 +810,10 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(
 where
     F: FnOnce(&ast::Crate) -> CompileResult,
 {
+    krate = time(sess, "attributes injection", || {
+        syntax::attr::inject(krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr)
+    });
+
     let (mut krate, features) = syntax::config::features(
         krate,
         &sess.parse_sess,

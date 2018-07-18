@@ -423,6 +423,7 @@ impl_stable_hash_for!(enum ::syntax_pos::FileName {
     Anon,
     MacroExpansion,
     ProcMacroSourceCode,
+    CliCrateAttr,
     CfgSpec,
     Custom(s)
 });
