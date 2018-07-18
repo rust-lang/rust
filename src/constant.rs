@@ -35,6 +35,11 @@ pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Cons
             CValue::Func(func_ref, layout)
         }
         _ => {
+            if true {
+                // TODO: cranelift-module api seems to be used wrong,
+                // thus causing panics for some consts, so this disables it
+                return CValue::ByRef(fx.bcx.ins().iconst(types::I64, 0), layout);
+            }
             let mut memory = Memory::<CompileTimeEvaluator>::new(fx.tcx.at(DUMMY_SP), ());
             let alloc = fx.tcx.const_value_to_allocation(value);
             //println!("const value: {:?} allocation: {:?}", value, alloc);
