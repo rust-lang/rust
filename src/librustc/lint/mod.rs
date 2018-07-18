@@ -39,7 +39,7 @@ use hir::intravisit;
 use hir;
 use lint::builtin::BuiltinLintDiagnostics;
 use session::{Session, DiagnosticMessageId};
-use std::hash;
+use std::{hash, ptr};
 use syntax::ast;
 use syntax::codemap::MultiSpan;
 use syntax::edition::Edition;
@@ -354,7 +354,7 @@ pub struct LintId {
 
 impl PartialEq for LintId {
     fn eq(&self, other: &LintId) -> bool {
-        (self.lint as *const Lint) == (other.lint as *const Lint)
+        ptr::eq(self.lint, other.lint)
     }
 }
 

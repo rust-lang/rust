@@ -17,6 +17,7 @@ use Resolver;
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
+use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
 use rustc::lint::builtin::BuiltinLintDiagnostics;
 use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE};
@@ -33,7 +34,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
 use std::cell::{Cell, RefCell};
-use std::mem;
+use std::{mem, ptr};
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
@@ -105,8 +106,8 @@ impl<'a> ImportDirective<'a> {
 /// Records information about the resolution of a name in a namespace of a module.
 pub struct NameResolution<'a> {
     /// Single imports that may define the name in the namespace.
-    /// Import directives are arena-allocated, so it's ok to use pointers as keys, they are stable.
-    single_imports: FxHashSet<*const ImportDirective<'a>>,
+    /// Import directives are arena-allocated, so it's ok to use pointers as keys.
+    single_imports: FxHashSet<PtrKey<'a, ImportDirective<'a>>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
     shadowed_glob: Option<&'a NameBinding<'a>>,
@@ -192,7 +193,6 @@ impl<'a> Resolver<'a> {
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
         for single_import in &resolution.single_imports {
-            let single_import = unsafe { &**single_import };
             if !self.is_accessible(single_import.vis.get()) {
                 continue;
             }
@@ -291,7 +291,7 @@ impl<'a> Resolver<'a> {
             SingleImport { target, type_ns_only, .. } => {
                 self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
                     let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
-                    resolution.single_imports.insert(directive);
+                    resolution.single_imports.insert(PtrKey(directive));
                 });
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
@@ -398,7 +398,7 @@ impl<'a> Resolver<'a> {
                 _ if old_binding.is_some() => return t,
                 None => return t,
                 Some(binding) => match old_binding {
-                    Some(old_binding) if old_binding as *const _ == binding as *const _ => return t,
+                    Some(old_binding) if ptr::eq(old_binding, binding) => return t,
                     _ => (binding, t),
                 }
             }
@@ -583,7 +583,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Err(Undetermined) => indeterminate = true,
                 Err(Determined) => {
                     this.update_resolution(parent, target, ns, |_, resolution| {
-                        resolution.single_imports.remove(&(directive as *const _));
+                        resolution.single_imports.remove(&PtrKey(directive));
                     });
                 }
                 Ok(binding) if !binding.is_importable() => {
@@ -916,7 +916,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         let mut reexports = Vec::new();
         let mut exported_macro_names = FxHashMap();
-        if module as *const _ == self.graph_root as *const _ {
+        if ptr::eq(module, self.graph_root) {
             let macro_exports = mem::replace(&mut self.macro_exports, Vec::new());
             for export in macro_exports.into_iter().rev() {
                 if let Some(later_span) = exported_macro_names.insert(export.ident.modern(),

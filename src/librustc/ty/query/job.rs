@@ -11,6 +11,7 @@
 #![allow(warnings)]
 
 use std::mem;
+use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, Weak};
 use rustc_data_structures::OnDrop;
 use syntax_pos::Span;
@@ -20,7 +21,7 @@ use ty::query::plumbing::CycleError;
 use ty::context::TyCtxt;
 use errors::Diagnostic;
 use std::process;
-use std::fmt;
+use std::{fmt, ptr};
 use std::collections::HashSet;
 #[cfg(parallel_queries)]
 use {
@@ -124,7 +125,7 @@ impl<'tcx> QueryJob<'tcx> {
         while let Some(job) = current_job {
             cycle.insert(0, job.info.clone());
 
-            if &*job as *const _ == self as *const _ {
+            if ptr::eq(&*job, self) {
                 // This is the end of the cycle
                 // The span entry we included was for the usage
                 // of the cycle itself, and not part of the cycle
@@ -282,7 +283,7 @@ where
 fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
                      span: Span,
                      stack: &mut Vec<(Span, Lrc<QueryJob<'tcx>>)>,
-                     visited: &mut HashSet<*const QueryJob<'tcx>>
+                     visited: &mut HashSet<PtrKey<'tcx, QueryJob<'tcx>>>
 ) -> Option<Option<Waiter<'tcx>>> {
     if visited.contains(&query.as_ptr()) {
         return if let Some(p) = stack.iter().position(|q| q.1.as_ptr() == query.as_ptr()) {
@@ -321,7 +322,7 @@ fn cycle_check<'tcx>(query: Lrc<QueryJob<'tcx>>,
 #[cfg(parallel_queries)]
 fn connected_to_root<'tcx>(
     query: Lrc<QueryJob<'tcx>>,
-    visited: &mut HashSet<*const QueryJob<'tcx>>
+    visited: &mut HashSet<PtrKey<'tcx, QueryJob<'tcx>>>
 ) -> bool {
     // We already visited this or we're deliberately ignoring it
     if visited.contains(&query.as_ptr()) {
