@@ -588,7 +588,7 @@ impl fmt::Display for TokenTree {
 /// A delimited token stream.
 ///
 /// A `Group` internally contains a `TokenStream` which is surrounded by `Delimiter`s.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub struct Group {
     delimiter: Delimiter,
@@ -682,12 +682,23 @@ impl fmt::Display for Group {
     }
 }
 
+#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
+impl fmt::Debug for Group {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Group")
+            .field("delimiter", &self.delimiter())
+            .field("stream", &self.stream())
+            .field("span", &self.span())
+            .finish()
+    }
+}
+
 /// An `Punct` is an single punctuation character like `+`, `-` or `#`.
 ///
 /// Multicharacter operators like `+=` are represented as two instances of `Punct` with different
 /// forms of `Spacing` returned.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Punct {
     ch: char,
     spacing: Spacing,
@@ -771,8 +782,19 @@ impl fmt::Display for Punct {
     }
 }
 
+#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
+impl fmt::Debug for Punct {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Punct")
+            .field("ch", &self.as_char())
+            .field("spacing", &self.spacing())
+            .field("span", &self.span())
+            .finish()
+    }
+}
+
 /// An identifier (`ident`).
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub struct Ident {
     sym: Symbol,
@@ -851,10 +873,17 @@ impl Ident {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.is_raw {
-            f.write_str("r#")?;
-        }
-        self.sym.as_str().fmt(f)
+        TokenStream::from(TokenTree::from(self.clone())).fmt(f)
+    }
+}
+
+#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
+impl fmt::Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Ident")
+            .field("ident", &self.to_string())
+            .field("span", &self.span())
+            .finish()
     }
 }
 
@@ -862,6 +891,7 @@ impl fmt::Display for Ident {
 /// character (`'a'`), byte character (`b'a'`), an integer or floating point number
 /// with or without a suffix (`1`, `1u8`, `2.3`, `2.3f32`).
 /// Boolean literals like `true` and `false` do not belong here, they are `Ident`s.
+// FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
 #[derive(Clone, Debug)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub struct Literal {
