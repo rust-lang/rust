@@ -26,7 +26,7 @@ pub struct MirPatch<'tcx> {
     make_nop: Vec<Location>,
 }
 
-impl<'tcx> MirPatch<'tcx> {
+impl MirPatch<'tcx> {
     pub fn new(mir: &Mir<'tcx>) -> Self {
         let mut result = MirPatch {
             patch_map: IndexVec::from_elem(None, mir.basic_blocks()),

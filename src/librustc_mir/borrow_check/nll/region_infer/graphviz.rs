@@ -19,7 +19,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+impl RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.
     crate fn dump_graphviz_raw_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
         dot::render(&RawConstraints { regioncx: self }, &mut w)
@@ -45,7 +45,7 @@ struct RawConstraints<'a, 'tcx: 'a> {
     regioncx: &'a RegionInferenceContext<'tcx>,
 }
 
-impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
+impl dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
     type Node = RegionVid;
     type Edge = OutlivesConstraint;
 
@@ -66,7 +66,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
     }
 }
 
-impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
+impl dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
     type Node = RegionVid;
     type Edge = OutlivesConstraint;
 
@@ -95,7 +95,7 @@ struct SccConstraints<'a, 'tcx: 'a> {
     nodes_per_scc: IndexVec<ConstraintSccIndex, Vec<RegionVid>>,
 }
 
-impl<'a, 'this, 'tcx> dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
+impl dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
     type Node = ConstraintSccIndex;
     type Edge = (ConstraintSccIndex, ConstraintSccIndex);
 
@@ -114,7 +114,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
     }
 }
 
-impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for SccConstraints<'a, 'tcx> {
+impl dot::GraphWalk<'this> for SccConstraints<'a, 'tcx> {
     type Node = ConstraintSccIndex;
     type Edge = (ConstraintSccIndex, ConstraintSccIndex);
 

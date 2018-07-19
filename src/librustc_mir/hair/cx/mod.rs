@@ -56,7 +56,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     check_overflow: bool,
 }
 
-impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
+impl Cx<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                src_id: ast::NodeId) -> Cx<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
@@ -102,7 +102,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
 }
 
-impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
+impl Cx<'a, 'gcx, 'tcx> {
     /// Normalizes `ast` into the appropriate `mirror` type.
     pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)

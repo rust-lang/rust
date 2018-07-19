@@ -17,7 +17,7 @@ use rustc::mir::{Projection, ProjectionElem};
 use rustc::ty::{self, TyCtxt};
 use std::cmp::max;
 
-pub(super) fn places_conflict<'gcx, 'tcx>(
+pub(super) fn places_conflict(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     borrow_place: &Place<'tcx>,
@@ -36,7 +36,7 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
     })
 }
 
-fn place_components_conflict<'gcx, 'tcx>(
+fn place_components_conflict(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     mut borrow_components: PlaceComponentsIter<'_, 'tcx>,
@@ -229,7 +229,7 @@ struct PlaceComponents<'p, 'tcx: 'p> {
     next: Option<&'p PlaceComponents<'p, 'tcx>>,
 }
 
-impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
+impl PlaceComponents<'_, 'tcx> {
     /// Converts a list of `Place` components into an iterator; this
     /// iterator yields up a never-ending stream of `Option<&Place>`.
     /// These begin with the "innermst" place and then with each
@@ -254,7 +254,7 @@ struct PlaceComponentsIter<'p, 'tcx: 'p> {
     value: Option<&'p PlaceComponents<'p, 'tcx>>,
 }
 
-impl<'p, 'tcx> PlaceComponentsIter<'p, 'tcx> {
+impl PlaceComponentsIter<'p, 'tcx> {
     fn next(&mut self) -> Option<&'p Place<'tcx>> {
         if let Some(&PlaceComponents { component, next }) = self.value {
             self.value = next;
@@ -296,8 +296,8 @@ fn unroll_place<'tcx, R>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn place_element_conflict(
+    tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     elem1: &Place<'tcx>,
     elem2: &Place<'tcx>,

@@ -71,7 +71,7 @@ bitflags! {
     }
 }
 
-impl<'a, 'tcx> Qualif {
+impl Qualif {
     /// Remove flags which are impossible for the given type.
     fn restrict(&mut self, ty: Ty<'tcx>,
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -121,7 +121,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     promotion_candidates: Vec<Candidate>
 }
 
-impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
+impl Qualifier<'a, 'tcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            def_id: DefId,
            mir: &'a Mir<'tcx>,
@@ -405,7 +405,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 /// Accumulates an Rvalue or Call's effects in self.qualif.
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
-impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
+impl Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     fn visit_local(&mut self,
                    &local: &Local,
                    _: PlaceContext<'tcx>,
@@ -1102,9 +1102,7 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              def_id: DefId)
-                              -> (u8, Lrc<IdxSetBuf<Local>>) {
+fn mir_const_qualif(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> (u8, Lrc<IdxSetBuf<Local>>) {
     // NB: This `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1124,10 +1122,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub struct QualifyAndPromoteConstants;
 
 impl MirPass for QualifyAndPromoteConstants {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if mir.return_ty().references_error() {
             tcx.sess.delay_span_bug(mir.span, "QualifyAndPromoteConstants: Mir had errors");

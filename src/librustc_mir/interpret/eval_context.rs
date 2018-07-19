@@ -95,9 +95,9 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub stmt: usize,
 }
 
-impl<'mir, 'tcx: 'mir> Eq for Frame<'mir, 'tcx> {}
+impl Eq for Frame<'mir, 'tcx> {}
 
-impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
+impl PartialEq for Frame<'mir, 'tcx> {
     fn eq(&self, other: &Self) -> bool {
         let Frame {
             mir: _,
@@ -121,7 +121,7 @@ impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
+impl Hash for Frame<'mir, 'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let Frame {
             mir: _,
@@ -162,7 +162,7 @@ pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mi
     snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx, M>>,
 }
 
-impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
+impl<M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
           'tcx: 'a + 'mir,
 {
@@ -174,7 +174,7 @@ impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
     }
 }
 
-impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
+impl<M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
           'tcx: 'a + 'mir,
 {
@@ -236,21 +236,21 @@ pub struct ValTy<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
+impl ::std::ops::Deref for ValTy<'tcx> {
     type Target = Value;
     fn deref(&self) -> &Value {
         &self.value
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
+impl<M: Machine<'mir, 'tcx>> HasDataLayout
     for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
@@ -258,22 +258,22 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'_, 'tcx, 'tcx> {
         *self.tcx
     }
 }
 
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx>
+impl<M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx>
     for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
-    fn tcx<'d>(&'d self) -> TyCtxt<'d, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'_, 'tcx, 'tcx> {
         *self.tcx
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for &'a EvalContext<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> LayoutOf for &'a EvalContext<'a, 'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
@@ -283,7 +283,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for &'a EvalContext<'a, 'm
     }
 }
 
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf
+impl<M: Machine<'mir, 'tcx>> LayoutOf
     for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
@@ -1625,7 +1625,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 }
 
-impl<'mir, 'tcx> Frame<'mir, 'tcx> {
+impl Frame<'mir, 'tcx> {
     pub fn get_local(&self, local: mir::Local) -> EvalResult<'tcx, Value> {
         self.locals[local].ok_or_else(|| EvalErrorKind::DeadLocal.into())
     }

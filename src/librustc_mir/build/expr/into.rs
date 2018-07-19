@@ -18,7 +18,7 @@ use rustc::mir::*;
 
 use rustc_target::spec::abi::Abi;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl Builder<'_, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(&mut self,

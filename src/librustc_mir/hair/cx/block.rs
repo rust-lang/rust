@@ -16,10 +16,10 @@ use rustc::hir;
 
 use rustc_data_structures::indexed_vec::Idx;
 
-impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
+impl Mirror<'tcx> for &'tcx hir::Block {
     type Output = Block<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
+    fn make_mirror(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = mirror_stmts(cx, self.hir_id.local_id, &*self.stmts);
@@ -46,10 +46,11 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     }
 }
 
-fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                block_id: hir::ItemLocalId,
-                                stmts: &'tcx [hir::Stmt])
-                                -> Vec<StmtRef<'tcx>> {
+fn mirror_stmts(
+    cx: &mut Cx<'a, 'gcx, 'tcx>,
+    block_id: hir::ItemLocalId,
+    stmts: &'tcx [hir::Stmt]
+) -> Vec<StmtRef<'tcx>> {
     let mut result = vec![];
     for (index, stmt) in stmts.iter().enumerate() {
         let hir_id = cx.tcx.hir.node_to_hir_id(stmt.node.id());
@@ -97,9 +98,10 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     return result;
 }
 
-pub fn to_expr_ref<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                   block: &'tcx hir::Block)
-                                   -> ExprRef<'tcx> {
+pub fn to_expr_ref(
+    cx: &mut Cx<'a, 'gcx, 'tcx>,
+    block: &'tcx hir::Block
+) -> ExprRef<'tcx> {
     let block_ty = cx.tables().node_id_to_type(block.hir_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(block.hir_id.local_id);
     let expr = Expr {

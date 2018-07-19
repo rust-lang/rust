@@ -121,7 +121,7 @@ pub enum PatternKind<'tcx> {
     },
 }
 
-impl<'tcx> fmt::Display for Pattern<'tcx> {
+impl fmt::Display for Pattern<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self.kind {
             PatternKind::Wild => write!(f, "_"),
@@ -271,7 +271,7 @@ pub struct PatternContext<'a, 'tcx: 'a> {
     pub errors: Vec<PatternError>,
 }
 
-impl<'a, 'tcx> Pattern<'tcx> {
+impl Pattern<'tcx> {
     pub fn from_hir(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
                     tables: &'a ty::TypeckTables<'tcx>,
@@ -287,7 +287,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
     }
 }
 
-impl<'a, 'tcx> PatternContext<'a, 'tcx> {
+impl PatternContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
                tables: &'a ty::TypeckTables<'tcx>) -> Self {
@@ -901,20 +901,20 @@ pub trait PatternFolder<'tcx> : Sized {
 }
 
 
-impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Box<T> {
+impl<T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Box<T> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let content: T = (**self).fold_with(folder);
         box content
     }
 }
 
-impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Vec<T> {
+impl<T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Vec<T> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.iter().map(|t| t.fold_with(folder)).collect()
     }
 }
 
-impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Option<T> {
+impl<T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Option<T> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self{
         self.as_ref().map(|t| t.fold_with(folder))
     }
@@ -923,7 +923,7 @@ impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Option<T> {
 macro_rules! CloneImpls {
     (<$lt_tcx:tt> $($ty:ty),+) => {
         $(
-            impl<$lt_tcx> PatternFoldable<$lt_tcx> for $ty {
+            impl PatternFoldable<$lt_tcx> for $ty {
                 fn super_fold_with<F: PatternFolder<$lt_tcx>>(&self, _: &mut F) -> Self {
                     Clone::clone(self)
                 }
@@ -938,7 +938,7 @@ CloneImpls!{ <'tcx>
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
 }
 
-impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {
+impl PatternFoldable<'tcx> for FieldPattern<'tcx> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         FieldPattern {
             field: self.field.fold_with(folder),
@@ -947,7 +947,7 @@ impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {
     }
 }
 
-impl<'tcx> PatternFoldable<'tcx> for Pattern<'tcx> {
+impl PatternFoldable<'tcx> for Pattern<'tcx> {
     fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_pattern(self)
     }
@@ -961,7 +961,7 @@ impl<'tcx> PatternFoldable<'tcx> for Pattern<'tcx> {
     }
 }
 
-impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
+impl PatternFoldable<'tcx> for PatternKind<'tcx> {
     fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_pattern_kind(self)
     }
@@ -1041,7 +1041,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
     }
 }
 
-pub fn compare_const_vals<'a, 'tcx>(
+pub fn compare_const_vals(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
@@ -1129,11 +1129,12 @@ enum LitToConstError {
 }
 
 // FIXME: Combine with rustc_mir::hair::cx::const_eval_literal
-fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          ty: Ty<'tcx>,
-                          neg: bool)
-                          -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
+fn lit_to_const(
+    lit: &'tcx ast::LitKind,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ty: Ty<'tcx>,
+    neg: bool
+) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
     use syntax::ast::*;
 
     use rustc::mir::interpret::*;
@@ -1216,7 +1217,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
     Ok(ty::Const::from_const_value(tcx, lit, ty))
 }
 
-pub fn parse_float<'tcx>(
+pub fn parse_float(
     num: Symbol,
     fty: ast::FloatTy,
     neg: bool,

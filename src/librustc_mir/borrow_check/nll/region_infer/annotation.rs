@@ -19,7 +19,7 @@ use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::universal_regions::DefiningTy;
 use rustc_errors::DiagnosticBuilder;
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+impl RegionInferenceContext<'tcx> {
     /// Write out our state into the `.mir` files.
     pub(crate) fn annotate(&self, err: &mut DiagnosticBuilder<'_>) {
         match self.universal_regions.defining_ty {

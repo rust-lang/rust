@@ -34,7 +34,7 @@ pub trait MirWithFlowState<'tcx> {
     fn flow_state(&self) -> &DataflowState<Self::BD>;
 }
 
-impl<'a, 'tcx, BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
+impl<BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
     where BD: BitDenotation
 {
     type BD = BD;
@@ -51,7 +51,7 @@ struct Graph<'a, 'tcx, MWF:'a, P> where
     render_idx: P,
 }
 
-pub(crate) fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
+pub(crate) fn print_borrowck_graph_to<BD, P>(
     mbcx: &DataflowBuilder<'a, 'tcx, BD>,
     path: &Path,
     render_idx: P)
@@ -77,7 +77,7 @@ fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
         .map(|index| Edge { source: bb, index: index}).collect()
 }
 
-impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
+impl<MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
     where MWF: MirWithFlowState<'tcx>,
           P: Fn(&MWF::BD, <MWF::BD as BitDenotation>::Idx) -> DebugFormatted,
 {
@@ -129,7 +129,7 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
     }
 }
 
-impl<'a, 'tcx, MWF, P> Graph<'a, 'tcx, MWF, P>
+impl<MWF, P> Graph<'a, 'tcx, MWF, P>
 where MWF: MirWithFlowState<'tcx>,
       P: Fn(&MWF::BD, <MWF::BD as BitDenotation>::Idx) -> DebugFormatted,
 {
@@ -253,7 +253,7 @@ where MWF: MirWithFlowState<'tcx>,
     }
 }
 
-impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
+impl<MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
     where MWF: MirWithFlowState<'tcx>
 {
     type Node = Node;

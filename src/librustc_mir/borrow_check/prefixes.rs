@@ -27,7 +27,7 @@ pub trait IsPrefixOf<'tcx> {
     fn is_prefix_of(&self, other: &Place<'tcx>) -> bool;
 }
 
-impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
+impl IsPrefixOf<'tcx> for Place<'tcx> {
     fn is_prefix_of(&self, other: &Place<'tcx>) -> bool {
         let mut cursor = other;
         loop {

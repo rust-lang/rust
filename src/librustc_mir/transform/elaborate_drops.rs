@@ -32,11 +32,7 @@ use std::fmt;
 pub struct ElaborateDrops;
 
 impl MirPass for ElaborateDrops {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
-                          mir: &mut Mir<'tcx>)
-    {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
 
         let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
@@ -75,7 +71,7 @@ impl MirPass for ElaborateDrops {
 /// Return the set of basic blocks whose unwind edges are known
 /// to not be reachable, because they are `drop` terminators
 /// that can't drop anything.
-fn find_dead_unwinds<'a, 'tcx>(
+fn find_dead_unwinds(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     id: ast::NodeId,
@@ -139,12 +135,13 @@ struct InitializationData {
 }
 
 impl InitializationData {
-    fn apply_location<'a,'tcx>(&mut self,
-                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               mir: &Mir<'tcx>,
-                               env: &MoveDataParamEnv<'tcx, 'tcx>,
-                               loc: Location)
-    {
+    fn apply_location(
+        &mut self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        mir: &Mir<'tcx>,
+        env: &MoveDataParamEnv<'tcx, 'tcx>,
+        loc: Location,
+    ) {
         drop_flag_effects_for_location(tcx, mir, env, loc, |path, df| {
             debug!("at location {:?}: setting {:?} to {:?}",
                    loc, path, df);
@@ -171,13 +168,13 @@ struct Elaborator<'a, 'b: 'a, 'tcx: 'b> {
     ctxt: &'a mut ElaborateDropsCtxt<'b, 'tcx>,
 }
 
-impl<'a, 'b, 'tcx> fmt::Debug for Elaborator<'a, 'b, 'tcx> {
+impl fmt::Debug for Elaborator<'a, 'b, 'tcx> {
     fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
     }
 }
 
-impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
+impl DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     type Path = MovePathIndex;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
@@ -297,7 +294,7 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     patch: MirPatch<'tcx>,
 }
 
-impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
+impl ElaborateDropsCtxt<'b, 'tcx> {
     fn move_data(&self) -> &'b MoveData<'tcx> { &self.env.move_data }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

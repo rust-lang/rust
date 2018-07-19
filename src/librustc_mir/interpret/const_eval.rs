@@ -18,7 +18,7 @@ use rustc::mir::interpret::{
 };
 use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory, MemoryKind};
 
-pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
+pub fn mk_borrowck_eval_cx(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
@@ -38,7 +38,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     Ok(ecx)
 }
 
-pub fn mk_eval_cx<'a, 'tcx>(
+pub fn mk_eval_cx(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -58,7 +58,7 @@ pub fn mk_eval_cx<'a, 'tcx>(
     Ok(ecx)
 }
 
-pub fn eval_promoted<'a, 'mir, 'tcx>(
+pub fn eval_promoted(
     ecx: &mut EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>,
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
@@ -69,7 +69,7 @@ pub fn eval_promoted<'a, 'mir, 'tcx>(
     })
 }
 
-pub fn value_to_const_value<'tcx>(
+pub fn value_to_const_value(
     ecx: &EvalContext<'_, '_, 'tcx, CompileTimeEvaluator>,
     val: Value,
     ty: Ty<'tcx>,
@@ -116,7 +116,7 @@ pub fn value_to_const_value<'tcx>(
     }
 }
 
-fn eval_body_and_ecx<'a, 'mir, 'tcx>(
+fn eval_body_and_ecx(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
@@ -132,7 +132,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     (r, ecx)
 }
 
-fn eval_body_using_ecx<'a, 'mir, 'tcx>(
+fn eval_body_using_ecx(
     ecx: &mut EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>,
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
@@ -188,7 +188,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CompileTimeEvaluator;
 
-impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
+impl Into<EvalError<'tcx>> for ConstEvalError {
     fn into(self) -> EvalError<'tcx> {
         EvalErrorKind::MachineError(self.to_string()).into()
     }
@@ -230,10 +230,10 @@ impl Error for ConstEvalError {
     }
 }
 
-impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
+impl super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     type MemoryData = ();
     type MemoryKinds = !;
-    fn eval_fn_call<'a>(
+    fn eval_fn_call(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Place, mir::BasicBlock)>,
@@ -290,7 +290,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     }
 
 
-    fn call_intrinsic<'a>(
+    fn call_intrinsic(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
@@ -363,7 +363,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         Ok(())
     }
 
-    fn try_ptr_op<'a>(
+    fn try_ptr_op(
         _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         left: Scalar,
@@ -380,7 +380,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         }
     }
 
-    fn mark_static_initialized<'a>(
+    fn mark_static_initialized(
         _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
         _id: AllocId,
         _mutability: Mutability,
@@ -399,7 +399,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
             .intern_static(cid.instance.def_id()))
     }
 
-    fn box_alloc<'a>(
+    fn box_alloc(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _ty: Ty<'tcx>,
         _dest: Place,
@@ -409,7 +409,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         )
     }
 
-    fn global_item_with_linkage<'a>(
+    fn global_item_with_linkage(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _mutability: Mutability,
@@ -420,7 +420,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     }
 }
 
-pub fn const_val_field<'a, 'tcx>(
+pub fn const_val_field(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
@@ -475,7 +475,7 @@ pub fn const_val_field<'a, 'tcx>(
     })
 }
 
-pub fn const_variant_index<'a, 'tcx>(
+pub fn const_variant_index(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
@@ -497,7 +497,7 @@ pub fn const_variant_index<'a, 'tcx>(
     ecx.read_discriminant_as_variant_index(place, val.ty)
 }
 
-pub fn const_value_to_allocation_provider<'a, 'tcx>(
+pub fn const_value_to_allocation_provider(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     val: &'tcx ty::Const<'tcx>,
 ) -> &'tcx Allocation {
@@ -524,7 +524,7 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
     result().expect("unable to convert ConstValue to Allocation")
 }
 
-pub fn const_eval_provider<'a, 'tcx>(
+pub fn const_eval_provider(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
@@ -579,7 +579,7 @@ pub fn const_eval_provider<'a, 'tcx>(
     })
 }
 
-fn numeric_intrinsic<'tcx>(
+fn numeric_intrinsic(
     name: &str,
     bits: u128,
     kind: Primitive,

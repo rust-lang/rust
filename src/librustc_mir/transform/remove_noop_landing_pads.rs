@@ -20,10 +20,7 @@ use util::patch::MirPatch;
 /// code for these.
 pub struct RemoveNoopLandingPads;
 
-pub fn remove_noop_landing_pads<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &mut Mir<'tcx>)
-{
+pub fn remove_noop_landing_pads(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
     if tcx.sess.no_landing_pads() {
         return
     }
@@ -33,10 +30,7 @@ pub fn remove_noop_landing_pads<'a, 'tcx>(
 }
 
 impl MirPass for RemoveNoopLandingPads {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         remove_noop_landing_pads(tcx, mir);
     }
 }

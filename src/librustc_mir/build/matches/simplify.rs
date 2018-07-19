@@ -29,11 +29,12 @@ use rustc::mir::*;
 
 use std::mem;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn simplify_candidate<'pat>(&mut self,
-                                    block: BasicBlock,
-                                    candidate: &mut Candidate<'pat, 'tcx>)
-                                    -> BlockAnd<()> {
+impl Builder<'a, 'gcx, 'tcx> {
+    pub fn simplify_candidate(
+        &mut self,
+        block: BasicBlock,
+        candidate: &mut Candidate<'pat, 'tcx>
+    ) -> BlockAnd<()> {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
@@ -58,10 +59,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// have been pushed into the candidate. If no simplification is
     /// possible, Err is returned and no changes are made to
     /// candidate.
-    fn simplify_match_pair<'pat>(&mut self,
-                                 match_pair: MatchPair<'pat, 'tcx>,
-                                 candidate: &mut Candidate<'pat, 'tcx>)
-                                 -> Result<(), MatchPair<'pat, 'tcx>> {
+    fn simplify_match_pair(
+        &mut self,
+        match_pair: MatchPair<'pat, 'tcx>,
+        candidate: &mut Candidate<'pat, 'tcx>
+    ) -> Result<(), MatchPair<'pat, 'tcx>> {
         match *match_pair.pattern.kind {
             PatternKind::Wild => {
                 // nothing left to do

@@ -217,7 +217,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     }
 }
 
-impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
+impl MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn as_mono_item(&self) -> &MonoItem<'tcx> {
         self
     }
@@ -243,7 +243,7 @@ pub struct DefPathBasedNames<'a, 'tcx: 'a> {
     omit_local_crate_name: bool,
 }
 
-impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
+impl DefPathBasedNames<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                omit_disambiguators: bool,
                omit_local_crate_name: bool)

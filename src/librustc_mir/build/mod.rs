@@ -35,7 +35,7 @@ use transform::MirSource;
 use util as mir_util;
 
 /// Construct the MIR for a given def-id.
-pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
+pub fn mir_build(tcx: TyCtxt<'_, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
     let unsupported = || {
         span_bug!(tcx.hir.span(id), "can't build MIR for {:?}", def_id);
@@ -156,7 +156,9 @@ struct GlobalizeMir<'a, 'gcx: 'a> {
     span: Span
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
+impl MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx>
+    where 'tcx: 'a, 'gcx: 'tcx,
+{
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         if let Some(lifted) = self.tcx.lift(ty) {
             *ty = lifted;
@@ -198,11 +200,11 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
     }
 }
 
-fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     ctor_id: ast::NodeId,
-                                     v: &'tcx hir::VariantData)
-                                     -> Mir<'tcx>
-{
+fn create_constructor_shim(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ctor_id: ast::NodeId,
+    v: &'tcx hir::VariantData
+) -> Mir<'tcx> {
     let span = tcx.hir.span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
         tcx.infer_ctxt().enter(|infcx| {
@@ -233,10 +235,11 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            closure_expr_id: ast::NodeId,
-                                            body_id: hir::BodyId)
-                                            -> Ty<'tcx> {
+fn liberated_closure_env_ty(
+    tcx: TyCtxt<'_, '_, 'tcx>,
+    closure_expr_id: ast::NodeId,
+    body_id: hir::BodyId
+) -> Ty<'tcx> {
     let closure_expr_hir_id = tcx.hir.node_to_hir_id(closure_expr_id);
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
@@ -298,7 +301,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     cached_unreachable_block: Option<BasicBlock>,
 }
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl Builder<'a, 'gcx, 'tcx> {
     fn is_bound_var_in_guard(&self, id: ast::NodeId) -> bool {
         self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
     }
@@ -420,10 +423,11 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                         fn_def_id: DefId,
-                                         abi: Abi)
-                                         -> bool {
+fn should_abort_on_panic(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn_def_id: DefId,
+    abi: Abi
+) -> bool {
     // Not callable from C, so we can safely unwind through these
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 
@@ -458,15 +462,16 @@ struct ArgInfo<'gcx>(Ty<'gcx>,
                      Option<&'gcx hir::Pat>,
                      Option<ImplicitSelfBinding>);
 
-fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
-                                   fn_id: ast::NodeId,
-                                   arguments: A,
-                                   safety: Safety,
-                                   abi: Abi,
-                                   return_ty: Ty<'gcx>,
-                                   yield_ty: Option<Ty<'gcx>>,
-                                   body: &'gcx hir::Body)
-                                   -> Mir<'tcx>
+fn construct_fn<A>(
+    hir: Cx<'a, 'gcx, 'tcx>,
+    fn_id: ast::NodeId,
+    arguments: A,
+    safety: Safety,
+    abi: Abi,
+    return_ty: Ty<'gcx>,
+    yield_ty: Option<Ty<'gcx>>,
+    body: &'gcx hir::Body
+) -> Mir<'tcx>
     where A: Iterator<Item=ArgInfo<'gcx>>
 {
     let arguments: Vec<_> = arguments.collect();
@@ -566,9 +571,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     mir
 }
 
-fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                   body_id: hir::BodyId)
-                                   -> Mir<'tcx> {
+fn construct_const(hir: Cx<'_, '_, 'tcx>, body_id: hir::BodyId) -> Mir<'tcx> {
     let tcx = hir.tcx();
     let ast_expr = &tcx.hir.body(body_id).value;
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
@@ -596,9 +599,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     builder.finish(None)
 }
 
-fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                   body_id: hir::BodyId)
-                                   -> Mir<'tcx> {
+fn construct_error(hir: Cx<'_, '_, 'tcx>, body_id: hir::BodyId) -> Mir<'tcx> {
     let owner_id = hir.tcx().hir.body_owner(body_id);
     let span = hir.tcx().hir.span(owner_id);
     let ty = hir.tcx().types.err;
@@ -608,7 +609,7 @@ fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     builder.finish(None)
 }
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl Builder<'a, 'gcx, 'tcx> {
     fn new(hir: Cx<'a, 'gcx, 'tcx>,
            span: Span,
            arg_count: usize,

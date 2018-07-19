@@ -15,11 +15,12 @@ use rustc::mir::*;
 /// Return `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
 /// struct).
-pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  local_decls: &L,
-                                  param_env: ty::ParamEnv<'tcx>,
-                                  place: &Place<'tcx>)
-                                  -> bool
+pub fn is_disaligned<L>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    local_decls: &L,
+    param_env: ty::ParamEnv<'tcx>,
+    place: &Place<'tcx>
+) -> bool
     where L: HasLocalDecls<'tcx>
 {
     debug!("is_disaligned({:?})", place);
@@ -43,10 +44,11 @@ pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn is_within_packed<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 local_decls: &L,
-                                 place: &Place<'tcx>)
-                                 -> bool
+fn is_within_packed<L>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    local_decls: &L,
+    place: &Place<'tcx>
+) -> bool
     where L: HasLocalDecls<'tcx>
 {
     let mut place = place;

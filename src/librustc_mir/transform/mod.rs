@@ -61,14 +61,13 @@ pub(crate) fn provide(providers: &mut Providers) {
     };
 }
 
-fn is_mir_available<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+fn is_mir_available(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
     tcx.mir_keys(def_id.krate).contains(&def_id)
 }
 
 /// Finds the full set of def-ids within the current crate that have
 /// MIR associated with them.
-fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
-                      -> Lrc<DefIdSet> {
+fn mir_keys(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum) -> Lrc<DefIdSet> {
     assert_eq!(krate, LOCAL_CRATE);
 
     let mut set = DefIdSet();
@@ -82,7 +81,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         set: &'a mut DefIdSet,
     }
-    impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
+    impl Visitor<'tcx> for GatherCtors<'a, 'tcx> {
         fn visit_variant_data(&mut self,
                               v: &'tcx hir::VariantData,
                               _: ast::Name,
@@ -94,7 +93,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
             }
             intravisit::walk_struct_def(self, v)
         }
-        fn nested_visit_map<'b>(&'b mut self) -> NestedVisitorMap<'b, 'tcx> {
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, 'tcx> {
             NestedVisitorMap::None
         }
     }
@@ -106,7 +105,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
     Lrc::new(set)
 }
 
-fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
+fn mir_built(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
     let mir = build::mir_build(tcx, def_id);
     tcx.alloc_steal_mir(mir)
 }
@@ -144,14 +143,11 @@ pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
 pub trait MirPass {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
+    fn name(&self) -> Cow<'_, str> {
         default_name::<Self>()
     }
 
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
-                          mir: &mut Mir<'tcx>);
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, source: MirSource, mir: &mut Mir<'tcx>);
 }
 
 pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $($pass:expr,)*) {{
@@ -186,7 +182,7 @@ pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $
     }
 }}
 
-fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
+fn mir_const(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
@@ -204,7 +200,7 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     tcx.alloc_steal_mir(mir)
 }
 
-fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
+fn mir_validated(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     if let hir::BodyOwnerKind::Const = tcx.hir.body_owner_kind(node_id) {
         // Ensure that we compute the `mir_const_qualif` for constants at
@@ -221,7 +217,7 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     tcx.alloc_steal_mir(mir)
 }
 
-fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
+fn optimized_mir(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
     let _ = tcx.mir_borrowck(def_id);

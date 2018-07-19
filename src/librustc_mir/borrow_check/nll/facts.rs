@@ -117,7 +117,7 @@ struct FactWriter<'w> {
     dir: &'w Path,
 }
 
-impl<'w> FactWriter<'w> {
+impl FactWriter<'_> {
     fn write_facts_to_path<T>(
         &self,
         rows: &Vec<T>,

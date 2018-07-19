@@ -16,7 +16,7 @@ use rustc_errors::DiagnosticBuilder;
 
 mod find_use;
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Adds annotations to `err` explaining *why* the borrow contains the
     /// point from `context`. This is key for the "3-point errors"
     /// [described in the NLL RFC][d].

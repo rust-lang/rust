@@ -30,7 +30,7 @@ struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
     errors: Vec<MoveError<'tcx>>,
 }
 
-impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
+impl MoveDataBuilder<'a, 'gcx, 'tcx> {
     fn new(mir: &'a Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
@@ -94,7 +94,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
+impl Gatherer<'_, '_, 'gcx, 'tcx> {
     /// This creates a MovePath for a given place, returning an `MovePathError`
     /// if that place can't be moved from.
     ///
@@ -185,7 +185,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
+impl MoveDataBuilder<'_, '_, 'tcx> {
     fn finalize(self) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
         debug!("{}", {
             debug!("moves for {:?}:", self.mir.span);
@@ -207,9 +207,10 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 }
 
-pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                                           -> Result<MoveData<'tcx>,
-                                                     (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
+pub(super) fn gather_moves(
+    mir: &Mir<'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>
+) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
     let mut builder = MoveDataBuilder::new(mir, tcx);
 
     builder.gather_args();
@@ -230,7 +231,7 @@ pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx
     builder.finalize()
 }
 
-impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
+impl MoveDataBuilder<'_, '_, 'tcx> {
     fn gather_args(&mut self) {
         for arg in self.mir.args_iter() {
             let path = self.data.rev_lookup.locals[arg];
@@ -263,7 +264,7 @@ struct Gatherer<'b, 'a: 'b, 'gcx: 'tcx, 'tcx: 'a> {
     loc: Location,
 }
 
-impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
+impl Gatherer<'_, '_, '_, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match stmt.kind {
             StatementKind::Assign(ref place, ref rval) => {

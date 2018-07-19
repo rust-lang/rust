@@ -21,7 +21,7 @@ use super::{OutlivesConstraint, RegionInferenceContext};
 // enough.
 const REGION_WIDTH: usize = 8;
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+impl RegionInferenceContext<'tcx> {
     /// Write out our state into the `.mir` files.
     pub(crate) fn dump_mir(&self, out: &mut dyn Write) -> io::Result<()> {
         writeln!(out, "| Free Region Mapping")?;

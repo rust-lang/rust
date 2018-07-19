@@ -49,12 +49,12 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
-impl<'a, 'mir, 'tcx, M> Eq for Memory<'a, 'mir, 'tcx, M>
+impl<M> Eq for Memory<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
           'tcx: 'a + 'mir,
 {}
 
-impl<'a, 'mir, 'tcx, M> PartialEq for Memory<'a, 'mir, 'tcx, M>
+impl<M> PartialEq for Memory<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
           'tcx: 'a + 'mir,
 {
@@ -74,7 +74,7 @@ impl<'a, 'mir, 'tcx, M> PartialEq for Memory<'a, 'mir, 'tcx, M>
     }
 }
 
-impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
+impl<M> Hash for Memory<'a, 'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>,
           'tcx: 'a + 'mir,
 {
@@ -107,7 +107,7 @@ impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
         Memory {
             data,
@@ -118,9 +118,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn allocations<'x>(
-        &'x self,
-    ) -> impl Iterator<Item = (AllocId, &'x Allocation)> {
+    pub fn allocations(
+        &self,
+    ) -> impl Iterator<Item = (AllocId, &'_ Allocation)> {
         self.alloc_map.iter().map(|(&id, alloc)| (id, alloc))
     }
 
@@ -318,7 +318,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Allocation accessors
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     fn const_eval_static(&self, def_id: DefId) -> EvalResult<'tcx, &'tcx Allocation> {
         if self.tcx.is_foreign_item(def_id) {
             return err!(ReadForeignStatic);
@@ -500,7 +500,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Byte accessors
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     fn get_bytes_unchecked(
         &self,
         ptr: Pointer,
@@ -564,7 +564,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Reading and writing
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// mark an allocation pointed to by a static as static and initialized
     fn mark_inner_allocation_initialized(
         &mut self,
@@ -855,7 +855,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Relocations
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     fn relocations(
         &self,
         ptr: Pointer,
@@ -909,7 +909,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 }
 
 /// Undefined bytes
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     // FIXME(solson): This is a very naive, slow version.
     fn copy_undef_mask(
         &mut self,
@@ -1036,7 +1036,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Memory<'a, 'mir, 'tcx, M> {
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
         self
@@ -1048,7 +1048,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Me
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
         &mut self.memory
@@ -1060,7 +1060,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Ev
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> layout::HasDataLayout for &'a Memory<'a, 'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout

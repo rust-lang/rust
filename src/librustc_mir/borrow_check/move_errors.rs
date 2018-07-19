@@ -58,7 +58,7 @@ enum GroupedMoveError<'tcx> {
     },
 }
 
-impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
+impl MirBorrowckCtxt<'a, 'gcx, 'tcx> {
     pub(crate) fn report_move_errors(&mut self, move_errors: Vec<MoveError<'tcx>>) {
         let grouped_errors = self.group_move_errors(move_errors);
         for error in grouped_errors {
@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
     fn add_move_hints(
         &self,
         error: GroupedMoveError<'tcx>,
-        err: &mut DiagnosticBuilder<'a>,
+        err: &mut DiagnosticBuilder<'_>,
         span: Span,
     ) {
         match error {

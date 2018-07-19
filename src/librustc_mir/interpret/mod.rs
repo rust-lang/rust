@@ -36,7 +36,7 @@ pub use self::memory::{write_target_uint, write_target_int, read_target_uint};
 use rustc::mir::interpret::{EvalResult, EvalErrorKind};
 use rustc::ty::{Ty, TyCtxt, ParamEnv};
 
-pub fn sign_extend<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+pub fn sign_extend(tcx: TyCtxt<'a, 'tcx, 'tcx>, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
     let param_env = ParamEnv::empty();
     let layout = tcx.layout_of(param_env.and(ty)).map_err(|layout| EvalErrorKind::Layout(layout))?;
     let size = layout.size.bits();
@@ -48,7 +48,7 @@ pub fn sign_extend<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, value: u128, ty: Ty<'t
     Ok((((value << shift) as i128) >> shift) as u128)
 }
 
-pub fn truncate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+pub fn truncate(tcx: TyCtxt<'a, 'tcx, 'tcx>, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
     let param_env = ParamEnv::empty();
     let layout = tcx.layout_of(param_env.and(ty)).map_err(|layout| EvalErrorKind::Layout(layout))?;
     let size = layout.size.bits();

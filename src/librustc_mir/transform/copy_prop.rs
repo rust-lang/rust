@@ -38,10 +38,7 @@ use util::def_use::DefUseAnalysis;
 pub struct CopyPropagation;
 
 impl MirPass for CopyPropagation {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _source: MirSource, mir: &mut Mir<'tcx>) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
@@ -140,7 +137,7 @@ impl MirPass for CopyPropagation {
     }
 }
 
-fn eliminate_self_assignments<'tcx>(
+fn eliminate_self_assignments(
     mir: &mut Mir<'tcx>,
     def_use_analysis: &DefUseAnalysis<'tcx>,
 ) -> bool {
@@ -182,7 +179,7 @@ enum Action<'tcx> {
     PropagateConstant(Constant<'tcx>),
 }
 
-impl<'tcx> Action<'tcx> {
+impl Action<'tcx> {
     fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
@@ -324,7 +321,7 @@ struct ConstantPropagationVisitor<'tcx> {
     uses_replaced: usize,
 }
 
-impl<'tcx> ConstantPropagationVisitor<'tcx> {
+impl ConstantPropagationVisitor<'tcx> {
     fn new(dest_local: Local, constant: Constant<'tcx>)
            -> ConstantPropagationVisitor<'tcx> {
         ConstantPropagationVisitor {
@@ -335,7 +332,7 @@ impl<'tcx> ConstantPropagationVisitor<'tcx> {
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
+impl MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
 

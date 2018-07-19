@@ -59,7 +59,7 @@ use self::universal_regions::UniversalRegions;
 /// scraping out the set of universal regions (e.g., region parameters)
 /// declared on the function. That set will need to be given to
 /// `compute_regions`.
-pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
+pub(in borrow_check) fn replace_regions_in_mir(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
@@ -82,7 +82,7 @@ pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
+pub(in borrow_check) fn compute_regions(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
@@ -213,7 +213,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     (regioncx, polonius_output, closure_region_requirements)
 }
 
-fn dump_mir_results<'a, 'gcx, 'tcx>(
+fn dump_mir_results(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
     source: MirSource,
@@ -320,7 +320,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     };
 }
 
-fn dump_annotation<'a, 'gcx, 'tcx>(
+fn dump_annotation(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     mir_def_id: DefId,
@@ -399,7 +399,7 @@ pub trait ToRegionVid {
     fn to_region_vid(self) -> RegionVid;
 }
 
-impl<'tcx> ToRegionVid for &'tcx RegionKind {
+impl ToRegionVid for &'_ RegionKind {
     fn to_region_vid(self) -> RegionVid {
         if let ty::ReVar(vid) = self {
             *vid

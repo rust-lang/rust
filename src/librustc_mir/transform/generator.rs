@@ -86,7 +86,7 @@ struct RenameLocalVisitor {
     to: Local,
 }
 
-impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
+impl MutVisitor<'tcx> for RenameLocalVisitor {
     fn visit_local(&mut self,
                    local: &mut Local,
                    _: PlaceContext<'tcx>,
@@ -99,7 +99,7 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
 
 struct DerefArgVisitor;
 
-impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
+impl MutVisitor<'tcx> for DerefArgVisitor {
     fn visit_local(&mut self,
                    local: &mut Local,
                    _: PlaceContext<'tcx>,
@@ -154,7 +154,7 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     new_ret_local: Local,
 }
 
-impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
+impl TransformVisitor<'a, 'tcx> {
     // Make a GeneratorState rvalue
     fn make_state(&self, idx: usize, val: Operand<'tcx>) -> Rvalue<'tcx> {
         let adt = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None);
@@ -190,7 +190,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
+impl MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
                    _: PlaceContext<'tcx>,
@@ -267,7 +267,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
     }
 }
 
-fn make_generator_state_argument_indirect<'a, 'tcx>(
+fn make_generator_state_argument_indirect(
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 def_id: DefId,
                 mir: &mut Mir<'tcx>) {
@@ -292,8 +292,7 @@ fn make_generator_state_argument_indirect<'a, 'tcx>(
     DerefArgVisitor.visit_mir(mir);
 }
 
-fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
-                            mir: &mut Mir<'tcx>) -> Local {
+fn replace_result_variable(ret_ty: Ty<'tcx>, mir: &mut Mir<'tcx>) -> Local {
     let source_info = source_info(mir);
     let new_ret = LocalDecl {
         mutability: Mutability::Mut,
@@ -318,7 +317,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
 
 struct StorageIgnored(liveness::LiveVarSet<Local>);
 
-impl<'tcx> Visitor<'tcx> for StorageIgnored {
+impl Visitor<'tcx> for StorageIgnored {
     fn visit_statement(&mut self,
                        _block: BasicBlock,
                        statement: &Statement<'tcx>,
@@ -333,7 +332,7 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
 
 struct BorrowedLocals(liveness::LiveVarSet<Local>);
 
-fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
+fn mark_as_borrowed(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
     match *place {
         Place::Local(l) => { locals.0.add(&l); },
         Place::Promoted(_) |
@@ -349,7 +348,7 @@ fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for BorrowedLocals {
+impl Visitor<'tcx> for BorrowedLocals {
     fn visit_rvalue(&mut self,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
@@ -361,12 +360,12 @@ impl<'tcx> Visitor<'tcx> for BorrowedLocals {
     }
 }
 
-fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               mir: &Mir<'tcx>,
-                                               source: MirSource,
-                                               movable: bool) ->
-                                               (liveness::LiveVarSet<Local>,
-                                                HashMap<BasicBlock, liveness::LiveVarSet<Local>>) {
+fn locals_live_across_suspend_points(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    source: MirSource,
+    movable: bool
+) -> (liveness::LiveVarSet<Local>, HashMap<BasicBlock, liveness::LiveVarSet<Local>>) {
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
 
@@ -471,16 +470,18 @@ fn locals_live_across_suspend_points<'a, 'tcx,>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     (set, storage_liveness_map)
 }
 
-fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            source: MirSource,
-                            upvars: Vec<Ty<'tcx>>,
-                            interior: Ty<'tcx>,
-                            movable: bool,
-                            mir: &mut Mir<'tcx>)
-    -> (HashMap<Local, (Ty<'tcx>, usize)>,
-        GeneratorLayout<'tcx>,
-        HashMap<BasicBlock, liveness::LiveVarSet<Local>>)
-{
+fn compute_layout(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    source: MirSource,
+    upvars: Vec<Ty<'tcx>>,
+    interior: Ty<'tcx>,
+    movable: bool,
+    mir: &mut Mir<'tcx>
+) -> (
+    HashMap<Local, (Ty<'tcx>, usize)>,
+    GeneratorLayout<'tcx>,
+    HashMap<BasicBlock, liveness::LiveVarSet<Local>>
+) {
     // Use a liveness analysis to compute locals which are live across a suspension point
     let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx,
                                                                             mir,
@@ -535,11 +536,13 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     (remap, layout, storage_liveness)
 }
 
-fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           mir: &mut Mir<'tcx>,
-                           cases: Vec<(u32, BasicBlock)>,
-                           transform: &TransformVisitor<'a, 'tcx>,
-                           default: TerminatorKind<'tcx>) {
+fn insert_switch(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &mut Mir<'tcx>,
+    cases: Vec<(u32, BasicBlock)>,
+    transform: &TransformVisitor<'a, 'tcx>,
+    default: TerminatorKind<'tcx>
+) {
     let default_block = insert_term_block(mir, default);
 
     let switch = TerminatorKind::SwitchInt {
@@ -566,9 +569,11 @@ fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       def_id: DefId,
-                                       mir: &mut Mir<'tcx>) {
+fn elaborate_generator_drops(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    mir: &mut Mir<'tcx>
+) {
     use util::elaborate_drops::{elaborate_drop, Unwind};
     use util::patch::MirPatch;
     use shim::DropShimElaborator;
@@ -619,14 +624,15 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn create_generator_drop_shim<'a, 'tcx>(
-                tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                transform: &TransformVisitor<'a, 'tcx>,
-                def_id: DefId,
-                source: MirSource,
-                gen_ty: Ty<'tcx>,
-                mir: &Mir<'tcx>,
-                drop_clean: BasicBlock) -> Mir<'tcx> {
+fn create_generator_drop_shim(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    transform: &TransformVisitor<'a, 'tcx>,
+    def_id: DefId,
+    source: MirSource,
+    gen_ty: Ty<'tcx>,
+    mir: &Mir<'tcx>,
+    drop_clean: BasicBlock
+) -> Mir<'tcx> {
     let mut mir = mir.clone();
 
     let source_info = source_info(&mir);
@@ -685,7 +691,10 @@ fn create_generator_drop_shim<'a, 'tcx>(
     mir
 }
 
-fn insert_term_block<'tcx>(mir: &mut Mir<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
+fn insert_term_block(
+    mir: &mut Mir<'tcx>,
+    kind: TerminatorKind<'tcx>
+) -> BasicBlock {
     let term_block = BasicBlock::new(mir.basic_blocks().len());
     let source_info = source_info(mir);
     mir.basic_blocks_mut().push(BasicBlockData {
@@ -699,9 +708,11 @@ fn insert_term_block<'tcx>(mir: &mut Mir<'tcx>, kind: TerminatorKind<'tcx>) -> B
     term_block
 }
 
-fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                mir: &mut Mir<'tcx>,
-                                message: AssertMessage<'tcx>) -> BasicBlock {
+fn insert_panic_block(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &mut Mir<'tcx>,
+    message: AssertMessage<'tcx>
+) -> BasicBlock {
     let assert_block = BasicBlock::new(mir.basic_blocks().len());
     let term = TerminatorKind::Assert {
         cond: Operand::Constant(box Constant {
@@ -728,7 +739,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_block
 }
 
-fn create_generator_resume_function<'a, 'tcx>(
+fn create_generator_resume_function(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         transform: TransformVisitor<'a, 'tcx>,
         def_id: DefId,
@@ -769,14 +780,14 @@ fn create_generator_resume_function<'a, 'tcx>(
     dump_mir(tcx, None, "generator_resume", &0, source, mir, |_, _| Ok(()) );
 }
 
-fn source_info<'a, 'tcx>(mir: &Mir<'tcx>) -> SourceInfo {
+fn source_info(mir: &Mir<'tcx>) -> SourceInfo {
     SourceInfo {
         span: mir.span,
         scope: OUTERMOST_SOURCE_SCOPE,
     }
 }
 
-fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
+fn insert_clean_drop(mir: &mut Mir<'tcx>) -> BasicBlock {
     let return_block = insert_term_block(mir, TerminatorKind::Return);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
@@ -799,7 +810,7 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
     drop_clean
 }
 
-fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
+fn create_cases<F>(mir: &mut Mir<'tcx>,
                           transform: &TransformVisitor<'a, 'tcx>,
                           target: F) -> Vec<(u32, BasicBlock)>
     where F: Fn(&SuspensionPoint) -> Option<BasicBlock> {
@@ -840,10 +851,7 @@ fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
 }
 
 impl MirPass for StateTransform {
-    fn run_pass<'a, 'tcx>(&self,
-                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    source: MirSource,
-                    mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, source: MirSource, mir: &mut Mir<'tcx>) {
         let yield_ty = if let Some(yield_ty) = mir.yield_ty {
             yield_ty
         } else {

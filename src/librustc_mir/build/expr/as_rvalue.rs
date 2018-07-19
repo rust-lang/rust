@@ -22,7 +22,7 @@ use rustc::mir::*;
 use rustc::mir::interpret::EvalErrorKind;
 use syntax_pos::Span;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl Builder<'_, 'gcx, 'tcx> {
     /// See comment on `as_local_operand`
     pub fn as_local_rvalue<M>(&mut self, block: BasicBlock, expr: M)
                              -> BlockAnd<Rvalue<'tcx>>

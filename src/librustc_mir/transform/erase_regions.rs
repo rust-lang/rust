@@ -25,7 +25,7 @@ struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     in_validation_statement: bool,
 }
 
-impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
+impl EraseRegionsVisitor<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         EraseRegionsVisitor {
             tcx,
@@ -34,7 +34,7 @@ impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
+impl MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         if !self.in_validation_statement {
             *ty = self.tcx.erase_regions(ty);
@@ -78,10 +78,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
 pub struct EraseRegions;
 
 impl MirPass for EraseRegions {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }

@@ -20,7 +20,7 @@ use syntax::ast::Name;
 use syntax::symbol::keywords;
 use syntax_pos::symbol::InternedString;
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+impl RegionInferenceContext<'tcx> {
     /// Maps from an internal MIR region vid to something that we can
     /// report to the user. In some cases, the region vids will map
     /// directly to lifetimes that the user has a name for (e.g.,
@@ -327,7 +327,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// segment `last_segment`. Try to find a `'_` to highlight in
     /// the generic args (or, if not, to produce new zipped pairs of
     /// types+hir to search through).
-    fn match_adt_and_segment<'hir>(
+    fn match_adt_and_segment(
         &self,
         substs: &'tcx Substs<'tcx>,
         needle_fr: RegionVid,
@@ -371,7 +371,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// arguments `args`. If `needle_fr` appears in the args, return
     /// the `hir::Lifetime` that corresponds to it. If not, push onto
     /// `search_stack` the types+hir to search through.
-    fn try_match_adt_and_generic_args<'hir>(
+    fn try_match_adt_and_generic_args(
         &self,
         substs: &'tcx Substs<'tcx>,
         needle_fr: RegionVid,

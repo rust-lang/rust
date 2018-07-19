@@ -29,7 +29,7 @@ pub use self::graphviz::{write_mir_graphviz};
 pub use self::graphviz::write_node_label as write_graphviz_node_label;
 
 /// If possible, suggest replacing `ref` with `ref mut`.
-pub fn suggest_ref_mut<'cx, 'gcx, 'tcx>(
+pub fn suggest_ref_mut(
     tcx: ty::TyCtxt<'cx, 'gcx, 'tcx>,
     pattern_span: Span,
 ) -> Option<(Span, String)> {

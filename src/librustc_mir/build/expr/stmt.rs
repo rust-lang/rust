@@ -13,8 +13,7 @@ use build::scope::BreakableScope;
 use hair::*;
 use rustc::mir::*;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-
+impl Builder<'_, 'gcx, 'tcx> {
     pub fn stmt_expr(&mut self, mut block: BasicBlock, expr: Expr<'tcx>) -> BlockAnd<()> {
         let this = self;
         let expr_span = expr.span;

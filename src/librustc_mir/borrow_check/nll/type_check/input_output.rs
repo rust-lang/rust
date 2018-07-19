@@ -32,7 +32,7 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use super::{Locations, TypeChecker};
 
-impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
+impl TypeChecker<'a, 'gcx, 'tcx> {
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
         mir: &Mir<'tcx>,
@@ -195,7 +195,7 @@ struct ObligationAccumulator<'tcx> {
     obligations: PredicateObligations<'tcx>,
 }
 
-impl<'tcx> ObligationAccumulator<'tcx> {
+impl ObligationAccumulator<'tcx> {
     fn add<T>(&mut self, value: InferOk<'tcx, T>) -> T {
         let InferOk { value, obligations } = value;
         self.obligations.extend(obligations);

@@ -219,7 +219,7 @@ impl DropKind {
     }
 }
 
-impl<'tcx> Scope<'tcx> {
+impl Scope<'tcx> {
     /// Invalidate all the cached blocks in the scope.
     ///
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a

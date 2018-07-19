@@ -45,7 +45,7 @@ crate struct BorrowSet<'tcx> {
     crate local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 }
 
-impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
+impl Index<BorrowIndex> for BorrowSet<'tcx> {
     type Output = BorrowData<'tcx>;
 
     fn index(&self, index: BorrowIndex) -> &BorrowData<'tcx> {
@@ -79,7 +79,7 @@ crate struct BorrowData<'tcx> {
     crate assigned_place: mir::Place<'tcx>,
 }
 
-impl<'tcx> fmt::Display for BorrowData<'tcx> {
+impl fmt::Display for BorrowData<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
         let kind = match self.kind {
             mir::BorrowKind::Shared => "",
@@ -96,7 +96,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
     }
 }
 
-impl<'tcx> BorrowSet<'tcx> {
+impl BorrowSet<'tcx> {
     pub fn build(tcx: TyCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) -> Self {
         let mut visitor = GatherBorrows {
             tcx,
@@ -150,7 +150,7 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pending_activations: FxHashMap<mir::Local, BorrowIndex>,
 }
 
-impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
+impl Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
     fn visit_assign(
         &mut self,
         block: mir::BasicBlock,
@@ -184,7 +184,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 
         return self.super_assign(block, assigned_place, rvalue, location);
 
-        fn insert<'a, K, V>(map: &'a mut FxHashMap<K, FxHashSet<V>>, k: &K, v: V)
+        fn insert<K, V>(map: &mut FxHashMap<K, FxHashSet<V>>, k: &K, v: V)
         where
             K: Clone + Eq + Hash,
             V: Eq + Hash,
@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
+impl GatherBorrows<'a, 'gcx, 'tcx> {
     /// Returns true if the borrow represented by `kind` is
     /// allowed to be split into separate Reservation and
     /// Activation phases.

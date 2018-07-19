@@ -22,7 +22,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts};
 
-pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
+pub(super) fn generate_constraints(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     regioncx: &mut RegionInferenceContext<'tcx>,
     all_facts: &mut Option<AllFacts>,
@@ -52,7 +52,7 @@ struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
     borrow_set: &'cg BorrowSet<'tcx>,
 }
 
-impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx, 'tcx> {
+impl Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, data: &BasicBlockData<'tcx>) {
         self.super_basic_block_data(bb, data);
     }
@@ -184,7 +184,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
     }
 }
 
-impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
+impl ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
     /// Some variable with type `live_ty` is "regular live" at
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at

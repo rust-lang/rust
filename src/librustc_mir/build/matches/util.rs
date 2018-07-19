@@ -14,11 +14,12 @@ use hair::*;
 use rustc::mir::*;
 use std::u32;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn field_match_pairs<'pat>(&mut self,
-                                   place: Place<'tcx>,
-                                   subpatterns: &'pat [FieldPattern<'tcx>])
-                                   -> Vec<MatchPair<'pat, 'tcx>> {
+impl Builder<'a, 'gcx, 'tcx> {
+    pub fn field_match_pairs(
+        &mut self,
+        place: Place<'tcx>,
+        subpatterns: &'pat [FieldPattern<'tcx>]
+    ) -> Vec<MatchPair<'pat, 'tcx>> {
         subpatterns.iter()
                    .map(|fieldpat| {
                        let place = place.clone().field(fieldpat.field,
@@ -28,12 +29,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                    .collect()
     }
 
-    pub fn prefix_slice_suffix<'pat>(&mut self,
-                                     match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
-                                     place: &Place<'tcx>,
-                                     prefix: &'pat [Pattern<'tcx>],
-                                     opt_slice: Option<&'pat Pattern<'tcx>>,
-                                     suffix: &'pat [Pattern<'tcx>]) {
+    pub fn prefix_slice_suffix(
+        &mut self,
+        match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
+        place: &Place<'tcx>,
+        prefix: &'pat [Pattern<'tcx>],
+        opt_slice: Option<&'pat Pattern<'tcx>>,
+        suffix: &'pat [Pattern<'tcx>]
+    ) {
         let min_length = prefix.len() + suffix.len();
         assert!(min_length < u32::MAX as usize);
         let min_length = min_length as u32;
@@ -77,7 +80,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
+impl MatchPair<'pat, 'tcx> {
     pub fn new(place: Place<'tcx>, pattern: &'pat Pattern<'tcx>) -> MatchPair<'pat, 'tcx> {
         MatchPair {
             place,

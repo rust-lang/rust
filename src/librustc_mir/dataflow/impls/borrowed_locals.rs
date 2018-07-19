@@ -25,7 +25,7 @@ pub struct HaveBeenBorrowedLocals<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
 }
 
-impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
+impl HaveBeenBorrowedLocals<'a, 'tcx> {
     pub fn new(mir: &'a Mir<'tcx>)
                -> Self {
         HaveBeenBorrowedLocals { mir: mir }
@@ -36,7 +36,7 @@ impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
+impl BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
     type Idx = Local;
     fn name() -> &'static str { "has_been_borrowed_locals" }
     fn bits_per_block(&self) -> usize {
@@ -72,14 +72,14 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitwiseOperator for HaveBeenBorrowedLocals<'a, 'tcx> {
+impl BitwiseOperator for HaveBeenBorrowedLocals<'a, 'tcx> {
     #[inline]
     fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'tcx> InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
+impl InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = unborrowed
@@ -90,7 +90,7 @@ struct BorrowedLocalsVisitor<'b, 'c: 'b> {
     sets: &'b mut BlockSets<'c, Local>,
 }
 
-fn find_local<'tcx>(place: &Place<'tcx>) -> Option<Local> {
+fn find_local(place: &Place<'tcx>) -> Option<Local> {
     match *place {
         Place::Local(l) => Some(l),
         Place::Promoted(_) |
@@ -104,7 +104,7 @@ fn find_local<'tcx>(place: &Place<'tcx>) -> Option<Local> {
     }
 }
 
-impl<'tcx, 'b, 'c> Visitor<'tcx> for BorrowedLocalsVisitor<'b, 'c> {
+impl Visitor<'tcx> for BorrowedLocalsVisitor<'b, 'c> {
     fn visit_rvalue(&mut self,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {

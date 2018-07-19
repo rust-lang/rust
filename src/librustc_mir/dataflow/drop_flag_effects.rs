@@ -56,9 +56,11 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 /// is no need to maintain separate drop flags to track such state.
 ///
 /// FIXME: we have to do something for moving slice patterns.
-fn place_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                            mir: &Mir<'tcx>,
-                                                            place: &mir::Place<'tcx>) -> bool {
+fn place_contents_drop_state_cannot_differ(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    place: &mir::Place<'tcx>
+) -> bool {
     let ty = place.ty(mir, tcx).to_ty(tcx);
     match ty.sty {
         ty::TyArray(..) => {
@@ -82,7 +84,7 @@ fn place_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx,
     }
 }
 
-pub(crate) fn on_lookup_result_bits<'a, 'gcx, 'tcx, F>(
+pub(crate) fn on_lookup_result_bits<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     move_data: &MoveData<'tcx>,
@@ -100,7 +102,7 @@ pub(crate) fn on_lookup_result_bits<'a, 'gcx, 'tcx, F>(
     }
 }
 
-pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
+pub(crate) fn on_all_children_bits<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     move_data: &MoveData<'tcx>,
@@ -108,7 +110,7 @@ pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
     mut each_child: F)
     where F: FnMut(MovePathIndex)
 {
-    fn is_terminal_path<'a, 'gcx, 'tcx>(
+    fn is_terminal_path(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
         move_data: &MoveData<'tcx>,
@@ -118,7 +120,7 @@ pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
             tcx, mir, &move_data.move_paths[path].place)
     }
 
-    fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
+    fn on_all_children_bits<F>(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
         move_data: &MoveData<'tcx>,
@@ -141,7 +143,7 @@ pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
     on_all_children_bits(tcx, mir, move_data, move_path_index, &mut each_child);
 }
 
-pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
+pub(crate) fn on_all_drop_children_bits<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
@@ -164,7 +166,7 @@ pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
     })
 }
 
-pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
+pub(crate) fn drop_flag_effects_for_function_entry<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
@@ -181,7 +183,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
     }
 }
 
-pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
+pub(crate) fn drop_flag_effects_for_location<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
@@ -213,7 +215,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
     );
 }
 
-pub(crate) fn for_location_inits<'a, 'gcx, 'tcx, F>(
+pub(crate) fn for_location_inits<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     move_data: &MoveData<'tcx>,

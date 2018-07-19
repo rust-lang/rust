@@ -670,7 +670,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> BorrowckErrors<'cx> for TyCtxt<'cx, 'gcx, 'tcx> {
+impl BorrowckErrors<'cx> for TyCtxt<'cx, 'gcx, 'tcx> {
     fn struct_span_err_with_code<S: Into<MultiSpan>>(
         self,
         sp: S,

@@ -20,7 +20,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
+pub fn write_mir_graphviz<W>(tcx: TyCtxt<'_, '_, 'tcx>,
                                    single: Option<DefId>,
                                    w: &mut W)
                                    -> io::Result<()>
@@ -34,7 +34,7 @@ pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
 }
 
 /// Write a graphviz DOT graph of the MIR.
-pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
+pub fn write_mir_fn_graphviz<W>(tcx: TyCtxt<'_, '_, 'tcx>,
                                       def_id: DefId,
                                       mir: &Mir,
                                       w: &mut W) -> io::Result<()>
@@ -135,7 +135,7 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn write_graph_label<W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                def_id: DefId,
                                                mir: &Mir,
                                                w: &mut W)
