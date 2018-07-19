@@ -13,7 +13,7 @@ use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
 use rustc::infer::canonical::QueryRegionConstraint;
-use rustc::mir::{Local, LocalWithRegion};
+use rustc::mir::LocalWithRegion;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
@@ -21,7 +21,7 @@ use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
-use util::liveness::{IdentityMap, LivenessResults};
+use util::liveness::{NllLivenessMap, LivenessResults, LiveVariableMap };
 
 use super::TypeChecker;
 
@@ -47,7 +47,7 @@ pub(super) fn generate<'gcx, 'tcx>(
         flow_inits,
         move_data,
         drop_data: FxHashMap(),
-        map: &IdentityMap::new(mir),
+        map: &NllLivenessMap::compute(mir),
     };
 
     for bb in mir.basic_blocks().indices() {
@@ -68,7 +68,7 @@ where
     flow_inits: &'gen mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
     move_data: &'gen MoveData<'tcx>,
     drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,
-    map: &'gen IdentityMap<'gen, 'tcx>,
+    map: &'gen NllLivenessMap,
 }
 
 struct DropData<'tcx> {
@@ -88,7 +88,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             .regular
             .simulate_block(self.mir, bb, self.map, |location, live_locals| {
                 for live_local in live_locals.iter() {
-                    let live_local_ty = self.mir.local_decls[live_local].ty;
+                    let local = self.map.from_live_var(live_local);
+                    let live_local_ty = self.mir.local_decls[local].ty;
                     Self::push_type_live_constraint(&mut self.cx, live_local_ty, location);
                 }
             });
@@ -123,7 +124,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                     });
                 }
 
-                let mpi = self.move_data.rev_lookup.find_local(live_local);
+                let local = self.map.from_live_var(live_local);
+                let mpi = self.move_data.rev_lookup.find_local(local);
                 if let Some(initialized_child) = self.flow_inits.has_any_child_of(mpi) {
                     debug!(
                         "add_liveness_constraints: mpi={:?} has initialized child {:?}",
@@ -131,7 +133,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                         self.move_data.move_paths[initialized_child]
                     );
 
-                    let live_local_ty = self.mir.local_decls[live_local].ty;
+                    let local = self.map.from_live_var(live_local);
+                    let live_local_ty = self.mir.local_decls[local].ty;
                     self.add_drop_live_constraint(live_local, live_local_ty, location);
                 }
             }

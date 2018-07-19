@@ -570,7 +570,7 @@ impl LiveVariableMap for NllLivenessMap {
 impl NllLivenessMap {
     pub fn compute(mir: &Mir) -> Self {
         let mut to_local = IndexVec::default();
-        let from_local: IndexVec<_,_> = mir.local.decls.iter_enumerated.map(|local, local_decl| {
+        let from_local: IndexVec<Local,Option<_>> = mir.local_decls.iter_enumerated().map(|(local, local_decl)| {
             if local_decl.ty.has_free_regions() {
                 Some(to_local.push(local))
             }

@@ -30,7 +30,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 use transform::MirSource;
-use util::liveness::{IdentityMap, LivenessResults, LocalSet, NllLivenessMap};
+use util::liveness::{LivenessResults, LocalSet, NllLivenessMap};
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
@@ -220,7 +220,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         return;
     }
 
-    let map = &IdentityMap::new(mir);
+    let map = &NllLivenessMap::compute(mir);
 
     let regular_liveness_per_location: FxHashMap<_, _> = mir
         .basic_blocks()
