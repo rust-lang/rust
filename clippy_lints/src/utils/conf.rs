@@ -2,11 +2,13 @@
 
 #![deny(missing_docs_in_private_items)]
 
+use lazy_static::lazy_static;
 use std::{env, fmt, fs, io, path};
 use std::io::Read;
 use syntax::{ast, codemap};
 use toml;
 use std::sync::Mutex;
+
 /// Get the configuration file from arguments.
 pub fn file_from_args(
     args: &[codemap::Spanned<ast::NestedMetaItemKind>],
