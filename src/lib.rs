@@ -33,6 +33,7 @@ use std::sync::{mpsc, Arc};
 use std::fs::File;
 use std::io::Write;
 
+mod abi;
 mod base;
 mod constant;
 mod common;
@@ -64,6 +65,7 @@ mod prelude {
     pub use cranelift_module::{Module, Backend, FuncId, DataId, Linkage};
     pub use cranelift_simplejit::{SimpleJITBuilder, SimpleJITBackend};
 
+    pub use abi::*;
     pub use common::Variable;
     pub use common::*;
 

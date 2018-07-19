@@ -92,49 +92,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
     };
     let fx = &mut fx;
 
-    let ret_param = fx.bcx.append_ebb_param(start_ebb, types::I64);
-    let _ = fx.bcx.create_stack_slot(StackSlotData {
-        kind: StackSlotKind::ExplicitSlot,
-        size: 0,
-        offset: None,
-    }); // Dummy stack slot for debugging
-
-    let func_params = mir.args_iter().map(|local| {
-        let layout = fx.layout_of(mir.local_decls[local].ty);
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            size: layout.size.bytes() as u32,
-            offset: None,
-        });
-        let ty = mir.local_decls[local].ty;
-        let cton_type = fx.cton_type(ty).unwrap_or(types::I64);
-        (local, fx.bcx.append_ebb_param(start_ebb, cton_type), ty, stack_slot)
-    }).collect::<Vec<(Local, Value, Ty, StackSlot)>>();
-
-    let ret_layout = fx.layout_of(fx.instance.ty(fx.tcx).fn_sig(fx.tcx).skip_binder().output());
-    fx.local_map.insert(RETURN_PLACE, CPlace::Addr(ret_param, ret_layout));
-
-    for (local, ebb_param, ty, stack_slot) in func_params {
-        let place = CPlace::from_stack_slot(fx, stack_slot, ty);
-        if fx.cton_type(ty).is_some() {
-            place.write_cvalue(fx, CValue::ByVal(ebb_param, place.layout()));
-        } else {
-            place.write_cvalue(fx, CValue::ByRef(ebb_param, place.layout()));
-        }
-        fx.local_map.insert(local, place);
-    }
-
-    for local in mir.vars_and_temps_iter() {
-        let ty = mir.local_decls[local].ty;
-        let layout = fx.layout_of(ty);
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            size: layout.size.bytes() as u32,
-            offset: None,
-        });
-        let place = CPlace::from_stack_slot(fx, stack_slot, ty);
-        fx.local_map.insert(local, place);
-    }
+    ::abi::codegen_fn_prelude(fx, start_ebb);
 
     fx.bcx.ins().jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
 
@@ -180,50 +138,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
                 inst
             }
             TerminatorKind::Call { func, args, destination, cleanup: _ } => {
-                let func_ty = func.ty(&fx.mir.local_decls, fx.tcx);
-                let func = trans_operand(fx, func);
-                let return_place = if let Some((place, _)) = destination {
-                    trans_place(fx, place).expect_addr()
-                } else {
-                    fx.bcx.ins().iconst(types::I64, 0)
-                };
-                let args = Some(return_place)
-                    .into_iter()
-                    .chain(
-                        args
-                            .into_iter()
-                            .map(|arg| {
-                                let ty = arg.ty(&fx.mir.local_decls, fx.tcx);
-                                let arg = trans_operand(fx, arg);
-                                if let Some(_) = fx.cton_type(ty) {
-                                    arg.load_value(fx)
-                                } else {
-                                    arg.force_stack(fx)
-                                }
-                            })
-                    ).collect::<Vec<_>>();
-                let inst = match func {
-                    CValue::Func(func, _) => {
-                        fx.bcx.ins().call(func, &args)
-                    }
-                    func => {
-                        let func = func.load_value(fx);
-                        let sig = match func_ty.sty {
-                            TypeVariants::TyFnDef(def_id, _substs) => fx.tcx.fn_sig(def_id),
-                            TypeVariants::TyFnPtr(fn_sig) => fn_sig,
-                            _ => bug!("Calling non function type {:?}", func_ty),
-                        };
-                        let sig = fx.bcx.import_signature(cton_sig_from_fn_sig(fx.tcx, sig, fx.param_substs));
-                        fx.bcx.ins().call_indirect(sig, func, &args)
-                    }
-                };
-                if let Some((_, dest)) = *destination {
-                    let ret_ebb = fx.get_ebb(dest);
-                    fx.bcx.ins().jump(ret_ebb, &[]);
-                } else {
-                    fx.bcx.ins().trap(TrapCode::User(!0));
-                }
-                inst
+                ::abi::codegen_call(fx, func, args, destination)
             }
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
                 fx.bcx.ins().trap(TrapCode::User(!0))
@@ -569,7 +484,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, l
     CValue::ByVal(res, fx.layout_of(ty))
 }
 
-fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>) -> CPlace<'tcx> {
+pub fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>) -> CPlace<'tcx> {
     match place {
         Place::Local(local) => fx.get_local_place(*local),
         Place::Static(static_) => unimplemented!("static place {:?} ty {:?}", static_.def_id, static_.ty),
@@ -594,7 +509,7 @@ fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>)
     }
 }
 
-fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<'tcx>) -> CValue<'tcx> {
+pub fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<'tcx>) -> CValue<'tcx> {
     match operand {
         Operand::Move(place) |
         Operand::Copy(place) => {

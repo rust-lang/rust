@@ -6,7 +6,7 @@ use std::fmt;
 use syntax::ast::{IntTy, UintTy};
 use self::rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift_module::{Module, Linkage, FuncId, DataId};
+use cranelift_module::{Module, FuncId, DataId};
 
 use prelude::*;
 
@@ -25,7 +25,7 @@ impl EntityRef for Variable {
     }
 }
 
-fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
+pub fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
     Some(match ty.sty {
         TypeVariants::TyBool => types::I8,
         TypeVariants::TyUint(size) => {
@@ -278,37 +278,6 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 }
 
-pub fn cton_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>, substs: &Substs<'tcx>) -> Signature {
-    let sig = tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
-    cton_sig_from_mono_fn_sig(tcx, sig)
-}
-
-pub fn cton_sig_from_instance<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, inst: Instance<'tcx>) -> Signature {
-    let fn_ty = inst.ty(tcx);
-    let sig = fn_ty.fn_sig(tcx);
-    cton_sig_from_mono_fn_sig(tcx, sig)
-}
-
-pub fn cton_sig_from_mono_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>) -> Signature {
-    // TODO: monomorphize signature
-
-    let sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig);
-    let inputs = sig.inputs();
-    let _output = sig.output();
-    assert!(!sig.variadic, "Variadic function are not yet supported");
-    let call_conv = match sig.abi {
-        _ => CallConv::SystemV,
-    };
-    Signature {
-        params: Some(types::I64).into_iter() // First param is place to put return val
-            .chain(inputs.into_iter().map(|ty| cton_type_from_ty(tcx, ty).unwrap_or(types::I64)))
-            .map(AbiParam::new).collect(),
-        returns: vec![],
-        call_conv,
-        argument_bytes: None,
-    }
-}
-
 pub fn cton_intcast<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, from: Ty<'tcx>, to: Ty<'tcx>, signed: bool) -> Value {
     let from = fx.cton_type(from).unwrap();
     let to = fx.cton_type(to).unwrap();
@@ -407,16 +376,6 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
 
     pub fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {
         *self.local_map.get(&local).unwrap()
-    }
-
-    pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        let tcx = self.tcx;
-        let module = &mut self.module;
-        let func_id = *self.def_id_fn_id_map.entry(inst).or_insert_with(|| {
-            let sig = cton_sig_from_instance(tcx, inst);
-            module.declare_function(&tcx.absolute_item_path_str(inst.def_id()), Linkage::Local, &sig).unwrap()
-        });
-        module.declare_func_in_func(func_id, &mut self.bcx.func)
     }
 
     pub fn add_comment<'s, S: Into<Cow<'s, str>>>(&mut self, inst: Inst, comment: S) {
