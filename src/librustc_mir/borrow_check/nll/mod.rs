@@ -408,7 +408,10 @@ impl ToRegionVid for RegionVid {
     }
 }
 
-fn live_variable_set(regular: &LocalSet<LocalWithRegion>, drops: &LocalSet<LocalWithRegion>) -> String {
+fn live_variable_set(
+    regular: &LocalSet<LocalWithRegion>,
+    drops: &LocalSet<LocalWithRegion>
+) -> String {
     // sort and deduplicate:
     let all_locals: BTreeSet<_> = regular.iter().chain(drops.iter()).collect();
 
