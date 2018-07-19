@@ -13,6 +13,7 @@
 #![feature(macro_at_most_once_rep)]
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
+#![allow(macro_use_extern_crate)]
 
 #[macro_use]
 extern crate rustc;
