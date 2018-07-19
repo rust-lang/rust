@@ -14,12 +14,13 @@ use core::convert::TryInto;
 use cmp;
 use io::{self, Initializer, SeekFrom, Error, ErrorKind};
 
-/// A `Cursor` wraps another type and provides it with a
+/// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
 ///
-/// `Cursor`s are typically used with in-memory buffers to allow them to
-/// implement [`Read`] and/or [`Write`], allowing these buffers to be used
-/// anywhere you might use a reader or writer that does actual I/O.
+/// `Cursor`s are used with in-memory buffers, anything implementing
+/// `AsRef<[u8]>`, to allow them to implement [`Read`] and/or [`Write`],
+/// allowing these buffers to be used anywhere you might use a reader or writer
+/// that does actual I/O.
 ///
 /// The standard library implements some I/O traits on various types which
 /// are commonly used as a buffer, like `Cursor<`[`Vec`]`<u8>>` and
@@ -87,11 +88,11 @@ pub struct Cursor<T> {
 }
 
 impl<T> Cursor<T> {
-    /// Creates a new cursor wrapping the provided underlying I/O object.
+    /// Creates a new cursor wrapping the provided underlying in-memory buffer.
     ///
-    /// Cursor initial position is `0` even if underlying object (e.
-    /// g. `Vec`) is not empty. So writing to cursor starts with
-    /// overwriting `Vec` content, not with appending to it.
+    /// Cursor initial position is `0` even if underlying buffer (e.g. `Vec`)
+    /// is not empty. So writing to cursor starts with overwriting `Vec`
+    /// content, not with appending to it.
     ///
     /// # Examples
     ///
