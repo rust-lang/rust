@@ -28,6 +28,7 @@
 #![feature(raw)]
 #![feature(refcell_map_split)]
 #![feature(refcell_replace_swap)]
+#![feature(slice_binary_search_limit)]
 #![feature(slice_patterns)]
 #![feature(slice_rotate)]
 #![feature(sort_internals)]

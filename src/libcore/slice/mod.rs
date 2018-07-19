@@ -1339,6 +1339,135 @@ impl<T> [T] {
         self.binary_search_by(|k| f(k).cmp(b))
     }
 
+    /// Binary searches this slice for the first element greater than, or
+    /// equal to, the given value.
+    ///
+    /// Assumes that the slice is sorted.
+    ///
+    /// If all elements in the slice are less than the given value, this
+    /// function returns the length of the slice.
+    ///
+    /// To find the first element strictly greater than the given value,
+    /// use `binary_search_limit_by`.
+    ///
+    /// [`binary_search_limit_by`]: #method.binary_search_limit_by
+    ///
+    /// # Examples
+    ///
+    /// Looks up a series of elements. Values in the range `0-5` return
+    /// `1`, values in the range `6-13` return `2`, values in the range
+    /// `14-21` return `3`, etc. Values above `55` will return `5`.
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// let s = [5, 13, 21, 34, 55];
+    ///
+    /// assert_eq!(s.binary_search_limit(&0),   0);
+    /// assert_eq!(s.binary_search_limit(&5),   0);
+    /// assert_eq!(s.binary_search_limit(&6),   1);
+    /// assert_eq!(s.binary_search_limit(&30),  3);
+    /// assert_eq!(s.binary_search_limit(&55),  4);
+    /// assert_eq!(s.binary_search_limit(&100), 5);
+    /// ```
+    #[unstable(feature = "slice_binary_search_limit", issue = "52529")]
+    pub fn binary_search_limit(&self, x: &T) -> usize
+        where T: PartialOrd
+    {
+        self.binary_search_limit_by(|p| *p >= *x)
+    }
+
+    /// Binary searches this sorted slice for the first element where
+    /// the comparator function returns true.
+    ///
+    /// Assumes that the slice is sorted such that all the comparator
+    /// function returns `true` for all elements above certain limit,
+    /// and `false` for all ements below that limit.
+    ///
+    /// If the comparator returns false for all elements, this function
+    /// returns the length of the slice.
+    ///
+    /// # Examples
+    ///
+    /// Uses `binary_search_limit_by` to search using either inclusive
+    /// or exclusive limits.
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// let s = [5, 13, 21, 34, 55];
+    /// assert_eq!(s.binary_search_limit_by(|&item| item > 13),  2);
+    /// assert_eq!(s.binary_search_limit_by(|&item| item >= 13), 1);
+    /// ```
+    ///
+    /// Same thing, but seaching using a value retrived from a more
+    /// complex type.
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// let t = [(5, 'a'), (13, 'z'), (21, 'k'), (34, 'j')];
+    /// assert_eq!(t.binary_search_limit_by(|item| item.0 > 21),  3);
+    /// assert_eq!(t.binary_search_limit_by(|item| item.0 >= 21), 2);
+    /// ```
+    ///
+    /// Searchs a reversly sorted list, and using more complex expressions.
+    /// It's required that the comparator function return `true` for all
+    /// items over the searched for limit, and `false` foritems below it.
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// let u = [100.0f32, 32.0, 18.0, 2.0];
+    /// assert_eq!(u.binary_search_limit_by(|&item| item < 50.0), 1);
+    /// assert_eq!(u.binary_search_limit_by(|&item| 100.0f32 / item > 5.0), 2);
+    /// ```
+    #[unstable(feature = "slice_binary_search_limit", issue = "52529")]
+    #[inline]
+    pub fn binary_search_limit_by<'a, F>(&'a self, mut f: F) -> usize
+        where F: FnMut(&'a T) -> bool
+    {
+        self.binary_search_by(|p| if f(p) { Greater } else { Less })
+            .unwrap_err()
+    }
+
+    /// Binary searches this sorted slice with a key extraction function.
+    ///
+    /// Returns the index of the first element for which the extraction
+    /// function returns a value greater than, or equal to, the given
+    /// value.
+    ///
+    /// Assumes that the slice is sorted by the key, for instance with
+    /// [`sort_by_key`] using the same key extraction function.
+    ///
+    /// To find the first element whose key is strictly greater than the
+    /// given value, use `binary_search_limit_by`.
+    ///
+    /// [`sort_by_key`]: #method.sort_by_key
+    /// [`binary_search_limit_by`]: #method.binary_search_limit_by
+    ///
+    /// # Examples
+    ///
+    /// Looks up a series of elements using the first value in each
+    /// tuple. Values in the range `0-5` return `1`, values in the
+    /// range `6-13` return `2`, values in the range `14-21` return
+    /// `3`, etc. Values above `34` will return `4`.
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// let s = [(5, "foo"), (13, "bar"), (21, "baz"), (34, "bin")];
+    ///
+    /// assert_eq!(s.binary_search_limit_by_key(&3,   |&(a, b)| a), 0);
+    /// assert_eq!(s.binary_search_limit_by_key(&5,   |&(a, b)| a), 0);
+    /// assert_eq!(s.binary_search_limit_by_key(&6,   |&(a, b)| a), 1);
+    /// assert_eq!(s.binary_search_limit_by_key(&30,  |&(a, b)| a), 3);
+    /// assert_eq!(s.binary_search_limit_by_key(&100, |&(a, b)| a), 4);
+    /// ```
+    #[unstable(feature = "slice_binary_search_limit", issue = "52529")]
+    #[inline]
+    pub fn binary_search_limit_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> usize
+        where F: FnMut(&'a T) -> B,
+              B: PartialOrd
+    {
+        self.binary_search_limit_by(|p| f(p) >= *b)
+    }
+
     /// Sorts the slice, but may not preserve the order of equal elements.
     ///
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
