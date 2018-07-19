@@ -7,7 +7,6 @@ use std::io::Read;
 use syntax::{ast, codemap};
 use toml;
 use std::sync::Mutex;
-
 /// Get the configuration file from arguments.
 pub fn file_from_args(
     args: &[codemap::Spanned<ast::NestedMetaItemKind>],
@@ -86,10 +85,10 @@ macro_rules! define_Conf {
         //
         #[allow(rust_2018_idioms)]
         mod helpers {
+            use serde_derive::Deserialize;
             /// Type used to store lint configuration.
             #[derive(Deserialize)]
-            #[serde(rename_all="kebab-case")]
-            #[serde(deny_unknown_fields)]
+            #[serde(rename_all="kebab-case", deny_unknown_fields)]
             pub struct Conf {
                 $(#[$doc] #[serde(default=$rust_name_str)] #[serde(with=$rust_name_str)]
                           pub $rust_name: define_Conf!(TY $($ty)+),)+
