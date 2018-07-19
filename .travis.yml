@@ -10,3 +10,5 @@ script:
   - ./prepare_libcore.sh
   - ./build.sh
 
+env:
+  - RUST_BACKTRACE=1
