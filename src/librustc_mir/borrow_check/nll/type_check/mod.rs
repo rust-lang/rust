@@ -108,6 +108,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     mir_def_id: DefId,
     universal_regions: &UniversalRegions<'tcx>,
     location_table: &LocationTable,
+    borrow_set: &BorrowSet<'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
