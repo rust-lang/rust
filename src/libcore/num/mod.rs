@@ -824,7 +824,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_mod_euc(-1), None);
 ```"),
-            #[stable(feature = "euclidean_division", since = "1.29.0")]
+            #[stable(feature = "euclidean_modulo", since = "1.29.0")]
             #[inline]
             pub fn checked_mod_euc(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
@@ -1244,7 +1244,7 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_mod_euc(10), 0);
 assert_eq!((-128i8).wrapping_mod_euc(-1), 0);
 ```"),
-            #[stable(feature = "euclidean_division", since = "1.29.0")]
+            #[stable(feature = "euclidean_modulo", since = "1.29.0")]
             #[inline]
             pub fn wrapping_mod_euc(self, rhs: Self) -> Self {
                 self.overflowing_mod_euc(rhs).0
@@ -1603,7 +1603,7 @@ use std::", stringify!($SelfT), ";
 assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_mod_euc(-1), (0, true));
 ```"),
-            #[stable(feature = "euclidean_division", since = "1.29.0")]
+            #[stable(feature = "euclidean_modulo", since = "1.29.0")]
             #[inline]
             pub fn overflowing_mod_euc(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
@@ -1870,7 +1870,7 @@ assert_eq!((-a).mod_euc(b), 1);
 assert_eq!(a.mod_euc(-b), 3);
 assert_eq!((-a).mod_euc(-b), 1);
 ```"),
-            #[stable(feature = "euclidean_division", since = "1.29.0")]
+            #[stable(feature = "euclidean_modulo", since = "1.29.0")]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub fn mod_euc(self, rhs: Self) -> Self {
