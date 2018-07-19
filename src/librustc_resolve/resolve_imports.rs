@@ -233,7 +233,7 @@ impl<'a> Resolver<'a> {
         // What on earth is this?
         // Apparently one more subtle interaction with `resolve_lexical_macro_path_segment`
         // that are going to be removed in the next commit.
-        if restricted_shadowing && module.def().is_some() {
+        if restricted_shadowing {
             return Err(Determined);
         }
 

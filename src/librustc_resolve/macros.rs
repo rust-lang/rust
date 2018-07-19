@@ -588,8 +588,7 @@ impl<'a> Resolver<'a> {
                             return potential_illegal_shadower;
                         }
                     }
-                    if binding.expansion != Mark::root() ||
-                       (binding.is_glob_import() && module.unwrap().def().is_some()) {
+                    if binding.is_glob_import() || binding.expansion != Mark::root() {
                         potential_illegal_shadower = result;
                     } else {
                         return result;
