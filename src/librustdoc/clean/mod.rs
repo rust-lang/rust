@@ -496,6 +496,11 @@ impl Item {
         self.stability.as_ref().map(|s| &s.since[..])
     }
 
+    pub fn is_non_exhaustive(&self) -> bool {
+        self.attrs.other_attrs.iter()
+            .any(|a| a.name().as_str() == "non_exhaustive")
+    }
+
     /// Returns a documentation-level item type from the item.
     pub fn type_(&self) -> ItemType {
         ItemType::from(self)

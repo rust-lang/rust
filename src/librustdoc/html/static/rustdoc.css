@@ -1359,3 +1359,7 @@ kbd {
 #all-types > p {
 	margin: 5px 0;
 }
+
+.non-exhaustive {
+	margin-bottom: 1em;
+}

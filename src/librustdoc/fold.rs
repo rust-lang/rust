@@ -92,7 +92,16 @@ pub trait DocFolder : Sized {
 
     /// don't override!
     fn fold_item_recur(&mut self, item: Item) -> Option<Item> {
-        let Item { attrs, name, source, visibility, def_id, inner, stability, deprecation } = item;
+        let Item {
+            attrs,
+            name,
+            source,
+            visibility,
+            def_id,
+            inner,
+            stability,
+            deprecation,
+        } = item;
 
         let inner = match inner {
             StrippedItem(box i) => StrippedItem(box self.fold_inner_recur(i)),
