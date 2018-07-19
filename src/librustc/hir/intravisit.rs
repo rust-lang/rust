@@ -907,6 +907,10 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_id(impl_item.id);
             visitor.visit_ty(ty);
         }
+        ImplItemKind::Existential(ref bounds) => {
+            visitor.visit_id(impl_item.id);
+            walk_list!(visitor, visit_param_bound, bounds);
+        }
     }
 }
 

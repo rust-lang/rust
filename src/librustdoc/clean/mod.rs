@@ -517,6 +517,7 @@ pub enum ItemEnum {
     FunctionItem(Function),
     ModuleItem(Module),
     TypedefItem(Typedef, bool /* is associated type */),
+    ExistentialItem(Existential, bool /* is associated type */),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
@@ -550,6 +551,7 @@ impl ItemEnum {
             ItemEnum::EnumItem(ref e) => &e.generics,
             ItemEnum::FunctionItem(ref f) => &f.generics,
             ItemEnum::TypedefItem(ref t, _) => &t.generics,
+            ItemEnum::ExistentialItem(ref t, _) => &t.generics,
             ItemEnum::TraitItem(ref t) => &t.generics,
             ItemEnum::ImplItem(ref i) => &i.generics,
             ItemEnum::TyMethodItem(ref i) => &i.generics,
@@ -601,6 +603,7 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.foreigns.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(self.typedefs.iter().map(|x| x.clean(cx)));
+        items.extend(self.existentials.iter().map(|x| x.clean(cx)));
         items.extend(self.statics.iter().map(|x| x.clean(cx)));
         items.extend(self.constants.iter().map(|x| x.clean(cx)));
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
@@ -2416,6 +2419,10 @@ impl Clean<Item> for hir::ImplItem {
                 type_: ty.clean(cx),
                 generics: Generics::default(),
             }, true),
+            hir::ImplItemKind::Existential(ref bounds) => ExistentialItem(Existential {
+                bounds: bounds.clean(cx),
+                generics: Generics::default(),
+            }, true),
         };
         Item {
             name: Some(self.ident.name.clean(cx)),
@@ -2559,6 +2566,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     }, true)
                 }
             }
+            ty::AssociatedKind::Existential => unimplemented!(),
         };
 
         let visibility = match self.container {
@@ -3696,6 +3704,30 @@ impl Clean<Item> for doctree::Typedef {
             inner: TypedefItem(Typedef {
                 type_: self.ty.clean(cx),
                 generics: self.gen.clean(cx),
+            }, false),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct Existential {
+    pub bounds: Vec<GenericBound>,
+    pub generics: Generics,
+}
+
+impl Clean<Item> for doctree::Existential {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: Some(self.name.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            source: self.whence.clean(cx),
+            def_id: cx.tcx.hir.local_def_id(self.id.clone()),
+            visibility: self.vis.clean(cx),
+            stability: self.stab.clean(cx),
+            deprecation: self.depr.clean(cx),
+            inner: ExistentialItem(Existential {
+                bounds: self.exist_ty.bounds.clean(cx),
+                generics: self.exist_ty.generics.clean(cx),
             }, false),
         }
     }

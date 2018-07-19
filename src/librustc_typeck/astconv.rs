@@ -1035,6 +1035,20 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
         let span = path.span;
         match path.def {
+            Def::Existential(did) => {
+                // check for desugared impl trait
+                if ty::is_impl_trait_defn(tcx, did).is_some() {
+                    let lifetimes = &path.segments[0].args.as_ref().unwrap().args;
+                    return self.impl_trait_ty_to_ty(did, lifetimes);
+                }
+                let item_segment = path.segments.split_last().unwrap();
+                self.prohibit_generics(item_segment.1);
+                let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
+                self.normalize_ty(
+                    span,
+                    tcx.mk_anon(did, substs),
+                )
+            }
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) |
             Def::Union(did) | Def::TyForeign(did) => {
                 assert_eq!(opt_self_ty, None);
@@ -1094,11 +1108,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     hir::TyFloat(ft) => tcx.mk_mach_float(ft),
                     hir::TyStr => tcx.mk_str()
                 }
-            }
-            Def::Existential(exist_ty_did) => {
-                assert!(exist_ty_did.is_local());
-                let lifetimes = &path.segments[0].args.as_ref().unwrap().args;
-                self.impl_trait_ty_to_ty(exist_ty_did, lifetimes)
             }
             Def::Err => {
                 self.set_tainted_by_errors();

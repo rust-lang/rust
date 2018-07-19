@@ -43,6 +43,7 @@ pub enum ItemType {
     Union           = 19,
     ForeignType     = 20,
     Keyword         = 21,
+    Existential     = 22,
 }
 
 
@@ -70,6 +71,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::EnumItem(..)            => ItemType::Enum,
             clean::FunctionItem(..)        => ItemType::Function,
             clean::TypedefItem(..)         => ItemType::Typedef,
+            clean::ExistentialItem(..)     => ItemType::Existential,
             clean::StaticItem(..)          => ItemType::Static,
             clean::ConstantItem(..)        => ItemType::Constant,
             clean::TraitItem(..)           => ItemType::Trait,
@@ -135,6 +137,7 @@ impl ItemType {
             ItemType::AssociatedConst => "associatedconstant",
             ItemType::ForeignType     => "foreigntype",
             ItemType::Keyword         => "keyword",
+            ItemType::Existential     => "existential",
         }
     }
 
@@ -148,6 +151,7 @@ impl ItemType {
             ItemType::Trait |
             ItemType::Primitive |
             ItemType::AssociatedType |
+            ItemType::Existential |
             ItemType::ForeignType => NameSpace::Type,
 
             ItemType::ExternCrate |

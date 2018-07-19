@@ -470,6 +470,7 @@ impl<'hir> Map<'hir> {
                     ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     ImplItemKind::Method(..) => Some(Def::Method(def_id)),
                     ImplItemKind::Type(..) => Some(Def::AssociatedTy(def_id)),
+                    ImplItemKind::Existential(..) => Some(Def::AssociatedExistential(def_id)),
                 }
             }
             NodeVariant(variant) => {
@@ -1323,7 +1324,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemKind::ForeignMod(..) => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::Ty(..) => "ty",
-                ItemKind::Existential(..) => "existential",
+                ItemKind::Existential(..) => "existential type",
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
                 ItemKind::Union(..) => "union",
@@ -1346,6 +1347,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 }
                 ImplItemKind::Type(_) => {
                     format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
+                }
+                ImplItemKind::Existential(_) => {
+                    format!("assoc existential type {} in {}{}", ii.ident, path_str(), id_str)
                 }
             }
         }

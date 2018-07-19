@@ -269,6 +269,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemKind::Fn(.., ref generics, _) |
                 ItemKind::Impl(_, _, _, ref generics, ..) |
                 ItemKind::Ty(_, ref generics) |
+                ItemKind::Existential(ExistTy { ref generics, impl_trait_fn: None, ..}) |
                 ItemKind::Enum(_, ref generics) |
                 ItemKind::Struct(_, ref generics) |
                 ItemKind::Union(_, ref generics) => generics,
@@ -419,7 +420,11 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
                 convert_variant_ctor(tcx, struct_def.id());
             }
         },
-        hir::ItemKind::Existential(..) => {}
+
+        // Desugared from `impl Trait` -> visited by the function's return type
+        hir::ItemKind::Existential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {}
+
+        hir::ItemKind::Existential(..) |
         hir::ItemKind::Ty(..) |
         hir::ItemKind::Static(..) |
         hir::ItemKind::Const(..) |
@@ -1002,6 +1007,13 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
+fn report_assoc_ty_on_inherent_impl<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    span: Span,
+) {
+    span_err!(tcx.sess, span, E0202, "associated types are not allowed in inherent impls");
+}
+
 fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                      def_id: DefId)
                      -> Ty<'tcx> {
@@ -1034,10 +1046,16 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     tcx.mk_fn_def(def_id, substs)
                 }
                 ImplItemKind::Const(ref ty, _) => icx.to_ty(ty),
+                ImplItemKind::Existential(ref _bounds) => {
+                    if tcx.impl_trait_ref(tcx.hir.get_parent_did(node_id)).is_none() {
+                        report_assoc_ty_on_inherent_impl(tcx, item.span);
+                    }
+                    // FIXME(oli-obk) implement existential types in trait impls
+                    unimplemented!()
+                }
                 ImplItemKind::Type(ref ty) => {
                     if tcx.impl_trait_ref(tcx.hir.get_parent_did(node_id)).is_none() {
-                        span_err!(tcx.sess, item.span, E0202,
-                                  "associated types are not allowed in inherent impls");
+                        report_assoc_ty_on_inherent_impl(tcx, item.span);
                     }
 
                     icx.to_ty(ty)
@@ -1062,8 +1080,9 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
-                // this is only reachable once we have named existential types
-                ItemKind::Existential(hir::ExistTy { impl_trait_fn: None, .. }) => unimplemented!(),
+                ItemKind::Existential(hir::ExistTy { impl_trait_fn: None, .. }) => {
+                    find_existential_constraints(tcx, def_id)
+                },
                 // existential types desugared from impl Trait
                 ItemKind::Existential(hir::ExistTy { impl_trait_fn: Some(owner), .. }) => {
                     tcx.typeck_tables_of(owner).concrete_existential_types[&def_id]
@@ -1149,6 +1168,98 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         x => {
             bug!("unexpected sort of node in type_of_def_id(): {:?}", x);
+        }
+    }
+}
+
+fn find_existential_constraints<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+) -> ty::Ty<'tcx> {
+    use rustc::hir::map::*;
+    use rustc::hir::*;
+
+    struct ConstraintLocator<'a, 'tcx: 'a> {
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        def_id: DefId,
+        found: Option<(Span, ty::Ty<'tcx>)>,
+    }
+    impl<'a, 'tcx> ConstraintLocator<'a, 'tcx> {
+        fn check(&mut self, def_id: DefId) {
+            // don't try to check items that cannot possibly constrain the type
+            if !self.tcx.has_typeck_tables(def_id) {
+                return;
+            }
+            let ty = self
+                .tcx
+                .typeck_tables_of(def_id)
+                .concrete_existential_types
+                .get(&self.def_id)
+                .cloned();
+            if let Some(ty) = ty {
+                // FIXME(oli-obk): trace the actual span from inference to improve errors
+                let span = self.tcx.def_span(def_id);
+                if let Some((prev_span, prev_ty)) = self.found {
+                    if ty != prev_ty {
+                        // found different concrete types for the existential type
+                        let mut err = self.tcx.sess.struct_span_err(
+                            span,
+                            "defining existential type use differs from previous",
+                        );
+                        err.span_note(prev_span, "previous use here");
+                        err.emit();
+                    }
+                } else {
+                    self.found = Some((span, ty));
+                }
+            }
+        }
+    }
+    impl<'a, 'tcx> intravisit::Visitor<'tcx> for ConstraintLocator<'a, 'tcx> {
+        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+            intravisit::NestedVisitorMap::All(&self.tcx.hir)
+        }
+        fn visit_item(&mut self, it: &'tcx Item) {
+            let def_id = self.tcx.hir.local_def_id(it.id);
+            // the existential type itself or its children are not within its reveal scope
+            if def_id != self.def_id {
+                self.check(def_id);
+                intravisit::walk_item(self, it);
+            }
+        }
+        fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
+            let def_id = self.tcx.hir.local_def_id(it.id);
+            // the existential type itself or its children are not within its reveal scope
+            if def_id != self.def_id {
+                self.check(def_id);
+                intravisit::walk_impl_item(self, it);
+            }
+        }
+        fn visit_trait_item(&mut self, it: &'tcx TraitItem) {
+            let def_id = self.tcx.hir.local_def_id(it.id);
+            self.check(def_id);
+            intravisit::walk_trait_item(self, it);
+        }
+    }
+    let mut locator = ConstraintLocator { def_id, tcx, found: None };
+    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let parent = tcx.hir.get_parent(node_id);
+    if parent == ast::CRATE_NODE_ID {
+        intravisit::walk_crate(&mut locator, tcx.hir.krate());
+    } else {
+        match tcx.hir.get(parent) {
+            NodeItem(ref it) => intravisit::walk_item(&mut locator, it),
+            NodeImplItem(ref it) => intravisit::walk_impl_item(&mut locator, it),
+            NodeTraitItem(ref it) => intravisit::walk_trait_item(&mut locator, it),
+            other => bug!("{:?} is not a valid parent of an existential type item", other),
+        }
+    }
+    match locator.found {
+        Some((_, ty)) => ty,
+        None => {
+            let span = tcx.def_span(def_id);
+            tcx.sess.span_err(span, "could not find defining uses");
+            tcx.types.err
         }
     }
 }
@@ -1366,6 +1477,9 @@ fn explicit_predicates_of<'a, 'tcx>(
 
     let icx = ItemCtxt::new(tcx, def_id);
     let no_generics = hir::Generics::empty();
+
+    let mut predicates = vec![];
+
     let ast_generics = match node {
         NodeTraitItem(item) => {
             &item.generics
@@ -1391,23 +1505,28 @@ fn explicit_predicates_of<'a, 'tcx>(
                     is_trait = Some((ty::TraitRef::identity(tcx, def_id), items));
                     generics
                 }
-                ItemKind::Existential(ref exist_ty) => {
+                ItemKind::Existential(ExistTy { ref bounds, impl_trait_fn, ref generics }) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
                     let anon_ty = tcx.mk_anon(def_id, substs);
 
                     // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
                     let bounds = compute_bounds(&icx,
                                                 anon_ty,
-                                                &exist_ty.bounds,
+                                                bounds,
                                                 SizedByDefault::Yes,
                                                 tcx.def_span(def_id));
 
-                    let predicates = bounds.predicates(tcx, anon_ty);
-
-                    return ty::GenericPredicates {
-                        parent: None,
-                        predicates: predicates
-                    };
+                    if impl_trait_fn.is_some() {
+                        // impl Trait
+                        return ty::GenericPredicates {
+                            parent: None,
+                            predicates: bounds.predicates(tcx, anon_ty),
+                        };
+                    } else {
+                        // named existential types
+                        predicates.extend(bounds.predicates(tcx, anon_ty));
+                        generics
+                    }
                 }
 
                 _ => &no_generics,
@@ -1428,8 +1547,6 @@ fn explicit_predicates_of<'a, 'tcx>(
     let generics = tcx.generics_of(def_id);
     let parent_count = generics.parent_count as u32;
     let has_own_self = generics.has_self && parent_count == 0;
-
-    let mut predicates = vec![];
 
     // Below we'll consider the bounds on the type parameters (including `Self`)
     // and the explicit where-clauses, but to get the full set of predicates

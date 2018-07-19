@@ -84,6 +84,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 return ret;
             }
             // These items can all get re-exported
+            clean::ExistentialItem(..) |
             clean::TypedefItem(..) | clean::StaticItem(..) |
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TraitItem(..) | clean::FunctionItem(..) |

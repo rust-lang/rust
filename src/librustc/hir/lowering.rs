@@ -323,6 +323,7 @@ impl<'a> LoweringContext<'a> {
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
                     | ItemKind::Ty(_, ref generics)
+                    | ItemKind::Existential(_, ref generics)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
@@ -2632,6 +2633,11 @@ impl<'a> LoweringContext<'a> {
                 self.lower_ty(t, ImplTraitContext::Disallowed),
                 self.lower_generics(generics, ImplTraitContext::Disallowed),
             ),
+            ItemKind::Existential(ref b, ref generics) => hir::ItemKind::Existential(hir::ExistTy {
+                generics: self.lower_generics(generics, ImplTraitContext::Disallowed),
+                bounds: self.lower_param_bounds(b, ImplTraitContext::Disallowed),
+                impl_trait_fn: None,
+            }),
             ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemKind::Enum(
                 hir::EnumDef {
                     variants: enum_definition
@@ -3037,6 +3043,12 @@ impl<'a> LoweringContext<'a> {
                 self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
                 hir::ImplItemKind::Type(self.lower_ty(ty, ImplTraitContext::Disallowed)),
             ),
+            ImplItemKind::Existential(ref bounds) => (
+                self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
+                hir::ImplItemKind::Existential(
+                    self.lower_param_bounds(bounds, ImplTraitContext::Disallowed),
+                ),
+            ),
             ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
         };
 
@@ -3065,6 +3077,7 @@ impl<'a> LoweringContext<'a> {
             kind: match i.node {
                 ImplItemKind::Const(..) => hir::AssociatedItemKind::Const,
                 ImplItemKind::Type(..) => hir::AssociatedItemKind::Type,
+                ImplItemKind::Existential(..) => hir::AssociatedItemKind::Existential,
                 ImplItemKind::Method(ref sig, _) => hir::AssociatedItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
@@ -4335,7 +4348,7 @@ impl<'a> LoweringContext<'a> {
         respan(v.span, node)
     }
 
-    fn lower_defaultness(&mut self, d: Defaultness, has_value: bool) -> hir::Defaultness {
+    fn lower_defaultness(&self, d: Defaultness, has_value: bool) -> hir::Defaultness {
         match d {
             Defaultness::Default => hir::Defaultness::Default {
                 has_value: has_value,

@@ -1620,6 +1620,8 @@ pub enum ImplItemKind {
     Method(MethodSig, BodyId),
     /// An associated type
     Type(P<Ty>),
+    /// An associated existential type
+    Existential(GenericBounds),
 }
 
 // Bind a type to an associated type: `A=Foo`.
@@ -2080,7 +2082,7 @@ pub enum ItemKind {
     GlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
     Ty(P<Ty>, Generics),
-    /// A type alias, e.g. `type Foo = Bar<u8>`
+    /// An existential type definition, e.g. `existential type Foo: Bar;`
     Existential(ExistTy),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     Enum(EnumDef, Generics),
@@ -2138,6 +2140,7 @@ impl ItemKind {
         Some(match *self {
             ItemKind::Fn(_, _, ref generics, _) |
             ItemKind::Ty(_, ref generics) |
+            ItemKind::Existential(ExistTy { ref generics, impl_trait_fn: None, .. }) |
             ItemKind::Enum(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) |
@@ -2184,6 +2187,7 @@ pub enum AssociatedItemKind {
     Const,
     Method { has_self: bool },
     Type,
+    Existential,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

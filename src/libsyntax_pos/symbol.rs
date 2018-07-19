@@ -426,6 +426,7 @@ declare_keywords! {
     (56, Default,            "default")
     (57, Dyn,                "dyn")
     (58, Union,              "union")
+    (59, Existential,        "existential")
 }
 
 impl Symbol {

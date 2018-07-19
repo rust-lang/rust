@@ -271,6 +271,7 @@ impl PrintContext {
                 match key.disambiguated_data.data {
                     DefPathData::AssocTypeInTrait(_) |
                     DefPathData::AssocTypeInImpl(_) |
+                    DefPathData::AssocExistentialInImpl(_) |
                     DefPathData::Trait(_) |
                     DefPathData::TypeNs(_) => {
                         break;
@@ -1081,6 +1082,20 @@ define_print! {
                     }
 
                     ty::tls::with(|tcx| {
+                        let def_key = tcx.def_key(def_id);
+                        if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
+                            write!(f, "{}", name)?;
+                            let mut substs = substs.iter();
+                            if let Some(first) = substs.next() {
+                                write!(f, "::<")?;
+                                write!(f, "{}", first)?;
+                                for subst in substs {
+                                    write!(f, ", {}", subst)?;
+                                }
+                                write!(f, ">")?;
+                            }
+                            return Ok(());
+                        }
                         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                         // by looking up the projections associated with the def_id.
                         let predicates_of = tcx.predicates_of(def_id);

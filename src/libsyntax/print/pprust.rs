@@ -1280,9 +1280,7 @@ impl<'a> State<'a> {
                 self.end()?;
             }
             ast::ItemKind::Ty(ref ty, ref generics) => {
-                self.ibox(INDENT_UNIT)?;
-                self.ibox(0)?;
-                self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
+                self.head(&visibility_qualified(&item.vis, "type"))?;
                 self.print_ident(item.ident)?;
                 self.print_generic_params(&generics.params)?;
                 self.end()?; // end the inner ibox
@@ -1291,6 +1289,18 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.word_space("=")?;
                 self.print_type(ty)?;
+                self.s.word(";")?;
+                self.end()?; // end the outer ibox
+            }
+            ast::ItemKind::Existential(ref bounds, ref generics) => {
+                self.head(&visibility_qualified(&item.vis, "existential type"))?;
+                self.print_ident(item.ident)?;
+                self.print_generic_params(&generics.params)?;
+                self.end()?; // end the inner ibox
+
+                self.print_where_clause(&generics.where_clause)?;
+                self.s.space()?;
+                self.print_type_bounds(":", bounds)?;
                 self.s.word(";")?;
                 self.end()?; // end the outer ibox
             }
@@ -1501,8 +1511,8 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_defaultness(&mut self, defatulness: ast::Defaultness) -> io::Result<()> {
-        if let ast::Defaultness::Default = defatulness {
+    pub fn print_defaultness(&mut self, defaultness: ast::Defaultness) -> io::Result<()> {
+        if let ast::Defaultness::Default = defaultness {
             try!(self.word_nbsp("default"));
         }
         Ok(())
@@ -1649,6 +1659,10 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Type(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty))?;
+            }
+            ast::ImplItemKind::Existential(ref bounds) => {
+                self.word_space("existential")?;
+                self.print_associated_type(ii.ident, Some(bounds), None)?;
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac)?;

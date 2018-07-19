@@ -192,6 +192,7 @@ pub struct AssociatedItem {
 pub enum AssociatedKind {
     Const,
     Method,
+    Existential,
     Type
 }
 
@@ -201,6 +202,7 @@ impl AssociatedItem {
             AssociatedKind::Const => Def::AssociatedConst(self.def_id),
             AssociatedKind::Method => Def::Method(self.def_id),
             AssociatedKind::Type => Def::AssociatedTy(self.def_id),
+            AssociatedKind::Existential => Def::AssociatedExistential(self.def_id),
         }
     }
 
@@ -208,7 +210,8 @@ impl AssociatedItem {
     /// for !
     pub fn relevant_for_never<'tcx>(&self) -> bool {
         match self.kind {
-            AssociatedKind::Const => true,
+            AssociatedKind::Existential |
+            AssociatedKind::Const |
             AssociatedKind::Type => true,
             // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
             AssociatedKind::Method => !self.method_has_self_argument,
@@ -225,6 +228,7 @@ impl AssociatedItem {
                 format!("{}", tcx.fn_sig(self.def_id).skip_binder())
             }
             ty::AssociatedKind::Type => format!("type {};", self.ident),
+            ty::AssociatedKind::Existential => format!("existential type {};", self.ident),
             ty::AssociatedKind::Const => {
                 format!("const {}: {:?};", self.ident, tcx.type_of(self.def_id))
             }
@@ -2491,6 +2495,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 (ty::AssociatedKind::Method, has_self)
             }
             hir::AssociatedItemKind::Type => (ty::AssociatedKind::Type, false),
+            hir::AssociatedItemKind::Existential => bug!("only impls can have existentials"),
         };
 
         AssociatedItem {
@@ -2516,6 +2521,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 (ty::AssociatedKind::Method, has_self)
             }
             hir::AssociatedItemKind::Type => (ty::AssociatedKind::Type, false),
+            hir::AssociatedItemKind::Existential => (ty::AssociatedKind::Existential, false),
         };
 
         AssociatedItem {
@@ -2850,14 +2856,25 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
         })
 }
 
+/// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition
+pub fn is_impl_trait_defn(tcx: TyCtxt, def_id: DefId) -> Option<DefId> {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+        if let hir::map::NodeItem(item) = tcx.hir.get(node_id) {
+            if let hir::ItemKind::Existential(ref exist_ty) = item.node {
+                return exist_ty.impl_trait_fn;
+            }
+        }
+    }
+    None
+}
+
 /// See `ParamEnv` struct def'n for details.
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
                        -> ParamEnv<'tcx> {
 
-    // The param_env of an existential type is its parent's param_env
-    if let Some(Def::Existential(_)) = tcx.describe_def(def_id) {
-        let parent = tcx.parent_def_id(def_id).expect("impl trait item w/o a parent");
+    // The param_env of an impl Trait type is its defining function's param_env
+    if let Some(parent) = is_impl_trait_defn(tcx, def_id) {
         return param_env(tcx, parent);
     }
     // Compute the bounds on Self and the type parameters.

@@ -1,0 +1,16 @@
+error: non-defining existential type use in defining scope
+  --> $DIR/generic_duplicate_lifetime_param.rs:18:1
+   |
+LL | / fn one<'a>(t: &'a ()) -> Two<'a, 'a> { //~ ERROR non-defining existential type use
+LL | |     t
+LL | | }
+   | |_^
+   |
+note: lifetime used multiple times
+  --> $DIR/generic_duplicate_lifetime_param.rs:16:22
+   |
+LL | existential type Two<'a, 'b>: std::fmt::Debug;
+   |                      ^^  ^^
+
+error: aborting due to previous error
+

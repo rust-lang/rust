@@ -361,6 +361,11 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
             }
 
+            ItemKind::Existential(_, _) => {
+                let def = Def::Existential(self.definitions.local_def_id(item.id));
+                self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
+            }
+
             ItemKind::Enum(ref enum_definition, _) => {
                 let def = Def::Enum(self.definitions.local_def_id(item.id));
                 let module_kind = ModuleKind::Def(def, ident.name);

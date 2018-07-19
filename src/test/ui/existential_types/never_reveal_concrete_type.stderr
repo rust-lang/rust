@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/never_reveal_concrete_type.rs:24:27
+   |
+LL |     let _: &'static str = x; //~ mismatched types
+   |                           ^ expected reference, found anonymized type
+   |
+   = note: expected type `&'static str`
+              found type `NoReveal`
+
+error[E0605]: non-primitive cast: `NoReveal` as `&'static str`
+  --> $DIR/never_reveal_concrete_type.rs:25:13
+   |
+LL |     let _ = x as &'static str; //~ non-primitive cast
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0308, E0605.
+For more information about an error, try `rustc --explain E0308`.

@@ -653,6 +653,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
             tcx,
+            reg_op: |reg| reg,
             fldop: |ty| {
                 if let ty::TyAnon(def_id, substs) = ty.sty {
                     // Check that this is `impl Trait` type is
@@ -690,26 +691,35 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     // }
                     // ```
                     if let Some(anon_node_id) = tcx.hir.as_local_node_id(def_id) {
-                        let anon_parent_def_id = match tcx.hir.expect_item(anon_node_id).node {
+                        let in_definition_scope = match tcx.hir.expect_item(anon_node_id).node {
+                            // impl trait
                             hir::ItemKind::Existential(hir::ExistTy {
                                 impl_trait_fn: Some(parent),
                                 ..
-                            }) => parent,
+                            }) => parent == self.parent_def_id,
+                            // named existential types
+                            hir::ItemKind::Existential(hir::ExistTy {
+                                impl_trait_fn: None,
+                                ..
+                            }) => may_define_existential_type(
+                                tcx,
+                                self.parent_def_id,
+                                anon_node_id,
+                            ),
                             _ => {
                                 let anon_parent_node_id = tcx.hir.get_parent(anon_node_id);
-                                tcx.hir.local_def_id(anon_parent_node_id)
+                                self.parent_def_id == tcx.hir.local_def_id(anon_parent_node_id)
                             },
                         };
-                        if self.parent_def_id == anon_parent_def_id {
+                        if in_definition_scope {
                             return self.fold_anon_ty(ty, def_id, substs);
                         }
 
                         debug!(
                             "instantiate_anon_types_in_map: \
-                             encountered anon with wrong parent \
-                             def_id={:?} \
-                             anon_parent_def_id={:?}",
-                            def_id, anon_parent_def_id
+                             encountered anon outside it's definition scope \
+                             def_id={:?}",
+                            def_id,
                         );
                     }
                 }
@@ -742,6 +752,10 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         let ty_var = infcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
 
         let predicates_of = tcx.predicates_of(def_id);
+        debug!(
+            "instantiate_anon_types: predicates: {:#?}",
+            predicates_of,
+        );
         let bounds = predicates_of.instantiate(tcx, substs);
         debug!("instantiate_anon_types: bounds={:?}", bounds);
 
@@ -749,6 +763,18 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         debug!(
             "instantiate_anon_types: required_region_bounds={:?}",
             required_region_bounds
+        );
+
+        // make sure that we are in fact defining the *entire* type
+        // e.g. `existential type Foo<T: Bound>: Bar;` needs to be
+        // defined by a function like `fn foo<T: Bound>() -> Foo<T>`.
+        debug!(
+            "instantiate_anon_types: param_env: {:#?}",
+            self.param_env,
+        );
+        debug!(
+            "instantiate_anon_types: generics: {:#?}",
+            tcx.generics_of(def_id),
         );
 
         self.anon_types.insert(
@@ -777,4 +803,43 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
         ty_var
     }
+}
+
+/// Whether `anon_node_id` is a sibling or a child of a sibling of `def_id`
+///
+/// ```rust
+/// pub mod foo {
+///     pub mod bar {
+///         pub existential type Baz;
+///
+///         fn f1() -> Baz { .. }
+///     }
+///
+///     fn f2() -> bar::Baz { .. }
+/// }
+/// ```
+///
+/// Here, `def_id` will be the `DefId` of the existential type `Baz`.
+/// `anon_node_id` is the `NodeId` of the reference to Baz -- so either the return type of f1 or f2.
+/// We will return true if the reference is within the same module as the existential type
+/// So true for f1, false for f2.
+pub fn may_define_existential_type(
+    tcx: TyCtxt,
+    def_id: DefId,
+    anon_node_id: ast::NodeId,
+) -> bool {
+    let mut node_id = tcx
+        .hir
+        .as_local_node_id(def_id)
+        .unwrap();
+    // named existential types can be defined by any siblings or
+    // children of siblings
+    let mod_id = tcx.hir.get_parent(anon_node_id);
+    // so we walk up the node tree until we hit the root or the parent
+    // of the anon type
+    while node_id != mod_id && node_id != ast::CRATE_NODE_ID {
+        node_id = tcx.hir.get_parent(node_id);
+    }
+    // syntactically we are allowed to define the concrete type
+    node_id == mod_id
 }

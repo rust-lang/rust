@@ -37,11 +37,15 @@ pub enum Def {
     Enum(DefId),
     Variant(DefId),
     Trait(DefId),
+    /// `existential type Foo: Bar;`
     Existential(DefId),
+    /// `type Foo = Bar;`
     TyAlias(DefId),
     TyForeign(DefId),
     TraitAlias(DefId),
     AssociatedTy(DefId),
+    /// `existential type Foo: Bar;`
+    AssociatedExistential(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
@@ -245,7 +249,7 @@ impl Def {
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::Existential(id) |
+            Def::Existential(id) | Def::AssociatedExistential(id) |
             Def::GlobalAsm(id) | Def::TyForeign(id) => {
                 id
             }
@@ -276,6 +280,7 @@ impl Def {
             Def::TyAlias(..) => "type alias",
             Def::TraitAlias(..) => "trait alias",
             Def::AssociatedTy(..) => "associated type",
+            Def::AssociatedExistential(..) => "associated existential type",
             Def::Struct(..) => "struct",
             Def::StructCtor(.., CtorKind::Fn) => "tuple struct",
             Def::StructCtor(.., CtorKind::Const) => "unit struct",

@@ -210,6 +210,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             }
                         }
                     }
+                    hir::ImplItemKind::Existential(..) |
                     hir::ImplItemKind::Type(_) => false,
                 }
             }
@@ -319,6 +320,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             self.visit_nested_body(body)
                         }
                     }
+                    hir::ImplItemKind::Existential(..) |
                     hir::ImplItemKind::Type(_) => {}
                 }
             }

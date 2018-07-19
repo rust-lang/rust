@@ -279,7 +279,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn impl_item_scope_tag(item: &hir::ImplItem) -> &'static str {
         match item.node {
             hir::ImplItemKind::Method(..) => "method body",
-            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) => "associated item",
+            hir::ImplItemKind::Const(..) |
+            hir::ImplItemKind::Existential(..) |
+            hir::ImplItemKind::Type(..) => "associated item",
         }
     }
 

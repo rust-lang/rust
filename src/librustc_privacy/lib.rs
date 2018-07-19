@@ -237,7 +237,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::Use(..) => {}
             // The interface is empty
             hir::ItemKind::GlobalAsm(..) => {}
-            hir::ItemKind::Existential(..) => {
+            hir::ItemKind::Existential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {
                 if item_level.is_some() {
                     // Reach the (potentially private) type and the API being exposed
                     self.reach(item.id).ty().predicates();
@@ -245,6 +245,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             }
             // Visit everything
             hir::ItemKind::Const(..) | hir::ItemKind::Static(..) |
+            hir::ItemKind::Existential(..) |
             hir::ItemKind::Fn(..) | hir::ItemKind::Ty(..) => {
                 if item_level.is_some() {
                     self.reach(item.id).generics().predicates().ty();
@@ -1165,6 +1166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                          hir::ImplItemKind::Method(..) => {
                                              self.access_levels.is_reachable(impl_item.id)
                                          }
+                                         hir::ImplItemKind::Existential(..) |
                                          hir::ImplItemKind::Type(_) => false,
                                      }
                                  });
@@ -1566,7 +1568,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemKind::Use(..) => {}
             // No subitems
             hir::ItemKind::GlobalAsm(..) => {}
-            hir::ItemKind::Existential(..) => {
+            hir::ItemKind::Existential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {
                 // Check the traits being exposed, as they're separate,
                 // e.g. `impl Iterator<Item=T>` has two predicates,
                 // `X: Iterator` and `<X as Iterator>::Item == T`,
@@ -1577,6 +1579,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             }
             // Subitems of these items have inherited publicity
             hir::ItemKind::Const(..) | hir::ItemKind::Static(..) | hir::ItemKind::Fn(..) |
+            hir::ItemKind::Existential(..) |
             hir::ItemKind::Ty(..) => {
                 self.check(item.id, item_visibility).generics().predicates().ty();
 

@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
 
-// Point at the captured immutable outer variable
+#![feature(existential_type)]
 
-fn foo(mut f: Box<FnMut()>) {
-    f();
+fn main() {}
+
+existential type MyIter<T>: Iterator<Item = T>;
+
+fn my_iter<T>(t: T) -> MyIter<T> {
+    std::iter::once(t)
 }
 
-fn main() {
-    let y = true;
-    foo(Box::new(move || y = false) as Box<_>); //~ ERROR cannot assign to captured outer variable
+fn my_iter2<T>(t: T) -> MyIter<T> { //~ ERROR defining existential type use differs from previous
+    Some(t).into_iter()
 }

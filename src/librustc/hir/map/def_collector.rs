@@ -116,7 +116,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::Impl(..) => DefPathData::Impl,
             ItemKind::Trait(..) => DefPathData::Trait(i.ident.as_interned_str()),
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
-            ItemKind::TraitAlias(..) |
+            ItemKind::TraitAlias(..) | ItemKind::Existential(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
                 DefPathData::TypeNs(i.ident.as_interned_str()),
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
@@ -250,6 +250,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.as_interned_str()),
             ImplItemKind::Type(..) => DefPathData::AssocTypeInImpl(ii.ident.as_interned_str()),
+            ImplItemKind::Existential(..) => {
+                DefPathData::AssocExistentialInImpl(ii.ident.as_interned_str())
+            },
             ImplItemKind::Macro(..) => return self.visit_macro_invoc(ii.id),
         };
 

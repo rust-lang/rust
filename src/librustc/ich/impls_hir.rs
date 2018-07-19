@@ -701,6 +701,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
 impl_stable_hash_for!(enum hir::ImplItemKind {
     Const(t, body),
     Method(sig, body),
+    Existential(bounds),
     Type(t)
 });
 
@@ -890,6 +891,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::AssociatedItemKind {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             hir::AssociatedItemKind::Const |
+            hir::AssociatedItemKind::Existential |
             hir::AssociatedItemKind::Type => {
                 // No fields to hash.
             }
@@ -997,6 +999,7 @@ impl_stable_hash_for!(enum hir::def::Def {
     TyAlias(def_id),
     TraitAlias(def_id),
     AssociatedTy(def_id),
+    AssociatedExistential(def_id),
     PrimTy(prim_ty),
     TyParam(def_id),
     SelfTy(trait_def_id, impl_def_id),
