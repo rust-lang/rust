@@ -59,7 +59,6 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
         }
         MonoItem::Static(def_id) => cx.tcx.sess.err(&format!("Unimplemented static mono item {:?}", def_id)),
         MonoItem::GlobalAsm(node_id) => cx.tcx.sess.err(&format!("Unimplemented global asm mono item {:?}", node_id)),
-        MonoItem::CustomSection(def_id) => cx.tcx.sess.err(&format!("Unimplemented custom section mono item {:?}", def_id)),
     }
 }
 

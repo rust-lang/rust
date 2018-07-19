@@ -23,11 +23,8 @@ $ rustc -Zcodegen-backend=$(pwd)/target/debug/librustc_codegen_cranelift.so my_c
 ## Building libcore
 
 ```bash
-$ git clone https://github.com/rust-lang/rust.git
-$ cd rust
-$ git apply ../0001-Disable-stdsimd-in-libcore.patch
-$ git apply ../0002-Disable-u128-and-i128-in-libcore.patch
-$ cd ../
+$ rustup component add rust-src
+$ ./prepare_libcore.sh
 $ ./build.sh
 ```
 
