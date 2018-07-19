@@ -95,7 +95,7 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         debug!("get_fn: not casting pointer!");
 
         if instance.def.is_inline(tcx) {
-            attributes::inline(llfn, attributes::InlineAttr::Hint);
+            attributes::inline(cx, llfn, attributes::InlineAttr::Hint);
         }
         attributes::from_fn_attrs(cx, llfn, instance.def.def_id());
 

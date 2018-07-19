@@ -635,6 +635,12 @@ pub struct TargetOptions {
     /// typically because the platform needs to unwind for things like stack
     /// unwinders.
     pub requires_uwtable: bool,
+
+    /// Targets like AMDGPU add alwaysinline hints everywhere,
+    /// and basically inline everything regardless of our wishes anyway.
+    /// This causes LLVM validation errors due to the conflicting attributes.
+    /// Defaults to false.
+    pub ignore_inline_never: bool,
 }
 
 impl Default for TargetOptions {
@@ -713,6 +719,7 @@ impl Default for TargetOptions {
             embed_bitcode: false,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
+            ignore_inline_never: false,
         }
     }
 }
@@ -972,6 +979,7 @@ impl Target {
         key!(embed_bitcode, bool);
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
+        key!(ignore_inline_never, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1181,6 +1189,7 @@ impl ToJson for Target {
         target_option_val!(embed_bitcode);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
+        target_option_val!(ignore_inline_never);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()
