@@ -73,8 +73,8 @@ enum Inserted {
     /// The impl was inserted as a new child in this group of children.
     BecameNewSibling(Option<OverlapError>),
 
-    /// The impl replaced an existing impl that specializes it.
-    Replaced(DefId),
+    /// The impl should replace an existing impl X, because the impl specializes X.
+    ReplaceChild(DefId),
 
     /// The impl is a specialization of an existing child.
     ShouldRecurseOn(DefId),
@@ -94,10 +94,32 @@ impl<'a, 'gcx, 'tcx> Children {
                       impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
+            debug!("insert_blindly: impl_def_id={:?} sty={:?}", impl_def_id, sty);
             self.nonblanket_impls.entry(sty).or_insert(vec![]).push(impl_def_id)
         } else {
+            debug!("insert_blindly: impl_def_id={:?} sty=None", impl_def_id);
             self.blanket_impls.push(impl_def_id)
         }
+    }
+
+    /// Remove an impl from this set of children. Used when replacing
+    /// an impl with a parent. The impl must be present in the list of
+    /// children already.
+    fn remove_existing(&mut self,
+                      tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                      impl_def_id: DefId) {
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+        let vec: &mut Vec<DefId>;
+        if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
+            debug!("remove_existing: impl_def_id={:?} sty={:?}", impl_def_id, sty);
+            vec = self.nonblanket_impls.get_mut(&sty).unwrap();
+        } else {
+            debug!("remove_existing: impl_def_id={:?} sty=None", impl_def_id);
+            vec = &mut self.blanket_impls;
+        }
+
+        let index = vec.iter().position(|d| *d == impl_def_id).unwrap();
+        vec.remove(index);
     }
 
     /// Attempt to insert an impl into this set of children, while comparing for
@@ -110,11 +132,22 @@ impl<'a, 'gcx, 'tcx> Children {
     {
         let mut last_lint = None;
 
-        for slot in match simplified_self {
-            Some(sty) => self.filtered_mut(sty),
-            None => self.iter_mut(),
+        debug!(
+            "insert(impl_def_id={:?}, simplified_self={:?})",
+            impl_def_id,
+            simplified_self,
+        );
+
+        for possible_sibling in match simplified_self {
+            Some(sty) => self.filtered(sty),
+            None => self.iter(),
         } {
-            let possible_sibling = *slot;
+            debug!(
+                "insert: impl_def_id={:?}, simplified_self={:?}, possible_sibling={:?}",
+                impl_def_id,
+                simplified_self,
+                possible_sibling,
+            );
 
             let overlap_error = |overlap: traits::coherence::OverlapResult| {
                 // overlap, but no specialization; error out
@@ -168,9 +201,7 @@ impl<'a, 'gcx, 'tcx> Children {
                 debug!("placing as parent of TraitRef {:?}",
                        tcx.impl_trait_ref(possible_sibling).unwrap());
 
-                    // possible_sibling specializes the impl
-                    *slot = impl_def_id;
-                return Ok(Inserted::Replaced(possible_sibling));
+                return Ok(Inserted::ReplaceChild(possible_sibling));
             } else {
                 if !tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
                     traits::overlapping_impls(
@@ -193,15 +224,14 @@ impl<'a, 'gcx, 'tcx> Children {
         Ok(Inserted::BecameNewSibling(last_lint))
     }
 
-    fn iter_mut(&'a mut self) -> Box<dyn Iterator<Item = &'a mut DefId> + 'a> {
-        let nonblanket = self.nonblanket_impls.iter_mut().flat_map(|(_, v)| v.iter_mut());
-        Box::new(self.blanket_impls.iter_mut().chain(nonblanket))
+    fn iter(&mut self) -> Box<dyn Iterator<Item = DefId> + '_> {
+        let nonblanket = self.nonblanket_impls.iter_mut().flat_map(|(_, v)| v.iter());
+        Box::new(self.blanket_impls.iter().chain(nonblanket).cloned())
     }
 
-    fn filtered_mut(&'a mut self, sty: SimplifiedType)
-                    -> Box<dyn Iterator<Item = &'a mut DefId> + 'a> {
-        let nonblanket = self.nonblanket_impls.entry(sty).or_insert(vec![]).iter_mut();
-        Box::new(self.blanket_impls.iter_mut().chain(nonblanket))
+    fn filtered(&mut self, sty: SimplifiedType) -> Box<dyn Iterator<Item = DefId> + '_> {
+        let nonblanket = self.nonblanket_impls.entry(sty).or_insert(vec![]).iter();
+        Box::new(self.blanket_impls.iter().chain(nonblanket).cloned())
     }
 }
 
@@ -259,11 +289,38 @@ impl<'a, 'gcx, 'tcx> Graph {
                     last_lint = opt_lint;
                     break;
                 }
-                Replaced(new_child) => {
-                    self.parent.insert(new_child, impl_def_id);
-                    let mut new_children = Children::new();
-                    new_children.insert_blindly(tcx, new_child);
-                    self.children.insert(impl_def_id, new_children);
+                ReplaceChild(grand_child_to_be) => {
+                    // We currently have
+                    //
+                    //     P
+                    //     |
+                    //     G
+                    //
+                    // and we are inserting the impl N. We want to make it:
+                    //
+                    //     P
+                    //     |
+                    //     N
+                    //     |
+                    //     G
+
+                    // Adjust P's list of children: remove G and then add N.
+                    {
+                        let siblings = self.children
+                            .get_mut(&parent)
+                            .unwrap();
+                        siblings.remove_existing(tcx, grand_child_to_be);
+                        siblings.insert_blindly(tcx, impl_def_id);
+                    }
+
+                    // Set G's parent to N and N's parent to P
+                    self.parent.insert(grand_child_to_be, impl_def_id);
+                    self.parent.insert(impl_def_id, parent);
+
+                    // Add G as N's child.
+                    let mut grand_children = Children::new();
+                    grand_children.insert_blindly(tcx, grand_child_to_be);
+                    self.children.insert(impl_def_id, grand_children);
                     break;
                 }
                 ShouldRecurseOn(new_parent) => {
