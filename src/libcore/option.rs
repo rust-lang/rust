@@ -833,12 +833,14 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let mut x = Some(2);
-    /// x.take();
+    /// let y = x.take();
     /// assert_eq!(x, None);
+    /// assert_eq!(y, Some(2));
     ///
     /// let mut x: Option<u32> = None;
-    /// x.take();
+    /// let y = x.take();
     /// assert_eq!(x, None);
+    /// assert_eq!(y, None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

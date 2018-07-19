@@ -4521,7 +4521,7 @@ impl<'a> Resolver<'a> {
                     attr::mark_known(attr);
 
                     let msg = "attribute procedural macros are experimental";
-                    let feature = "proc_macro";
+                    let feature = "use_extern_macros";
 
                     feature_err(&self.session.parse_sess, feature,
                                 attr.span, GateIssue::Language, msg)

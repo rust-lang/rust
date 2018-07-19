@@ -1968,7 +1968,6 @@ impl Context {
 
                 // If the item is a macro, redirect from the old macro URL (with !)
                 // to the new one (without).
-                // FIXME(#35705) remove this redirect.
                 if item_type == ItemType::Macro {
                     let redir_name = format!("{}.{}!.html", item_type, name);
                     let redir_dst = self.dst.join(redir_name);

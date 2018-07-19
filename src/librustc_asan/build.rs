@@ -18,7 +18,7 @@ use cmake::Config;
 
 fn main() {
     if let Some(llvm_config) = env::var_os("LLVM_CONFIG") {
-        let native = match sanitizer_lib_boilerplate("asan") {
+        let (native, target) = match sanitizer_lib_boilerplate("asan") {
             Ok(native) => native,
             _ => return,
         };
@@ -29,7 +29,7 @@ fn main() {
             .define("COMPILER_RT_BUILD_XRAY", "OFF")
             .define("LLVM_CONFIG_PATH", llvm_config)
             .out_dir(&native.out_dir)
-            .build_target("asan")
+            .build_target(&target)
             .build();
     }
     println!("cargo:rerun-if-env-changed=LLVM_CONFIG");

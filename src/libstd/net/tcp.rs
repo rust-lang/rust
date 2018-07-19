@@ -81,7 +81,7 @@ pub struct TcpStream(net_imp::TcpStream);
 /// }
 ///
 /// fn main() -> io::Result<()> {
-///     let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+///     let listener = TcpListener::bind("127.0.0.1:80")?;
 ///
 ///     // accept connections and process them serially
 ///     for stream in listener.incoming() {

@@ -459,6 +459,7 @@ impl<'a> Builder<'a> {
                 dist::Cargo,
                 dist::Rls,
                 dist::Rustfmt,
+                dist::Clippy,
                 dist::LlvmTools,
                 dist::Extended,
                 dist::HashSign
@@ -469,6 +470,7 @@ impl<'a> Builder<'a> {
                 install::Cargo,
                 install::Rls,
                 install::Rustfmt,
+                install::Clippy,
                 install::Analysis,
                 install::Src,
                 install::Rustc
@@ -825,7 +827,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" && want_rustdoc {
-            cargo.env("RUSTDOC_LIBDIR", &libdir);
+            cargo.env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build));
         }
 
         if mode.is_tool() {

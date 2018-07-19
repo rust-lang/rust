@@ -284,7 +284,7 @@ declare_features! (
     // Allows #[link(..., cfg(..))]
     (active, link_cfg, "1.14.0", Some(37406), None),
 
-    (active, use_extern_macros, "1.15.0", Some(35896), None),
+    (active, use_extern_macros, "1.15.0", Some(35896), Some(Edition::Edition2018)),
 
     // `extern "ptx-*" fn()`
     (active, abi_ptx, "1.15.0", Some(38788), None),
