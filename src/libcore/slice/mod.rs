@@ -2382,11 +2382,12 @@ macro_rules! iterator {
         impl<'a, T> ExactSizeIterator for $name<'a, T> {
             #[inline(always)]
             fn len(&self) -> usize {
+                let diff = (self.end as usize).wrapping_sub(self.ptr as usize);
                 if mem::size_of::<T>() == 0 {
-                    // end is really ptr+len
-                    (self.end as usize).wrapping_sub(self.ptr as usize)
+                    // end is really ptr+len, so we are already done
+                    diff
                 } else {
-                    unsafe { self.end.offset_from(self.ptr) as usize }
+                    diff / mem::size_of::<T>()
                 }
             }
 
