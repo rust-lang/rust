@@ -3,6 +3,7 @@
 
 #![deny(missing_docs_in_private_items)]
 
+use if_chain::if_chain;
 use rustc::{hir, ty};
 use rustc::lint::LateContext;
 use syntax::ast;

@@ -2,6 +2,7 @@ use super::utils::{get_arg_name, match_var, remove_blocks, snippet, span_lint_an
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for matches being used to destructure a single-variant enum
 /// or tuple struct where a `let` will suffice.

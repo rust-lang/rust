@@ -19,9 +19,6 @@ use toml;
 use rustc_plugin;
 
 
-#[macro_use]
-extern crate if_chain;
-
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
         declare_lint! { pub $name, Warn, $description }

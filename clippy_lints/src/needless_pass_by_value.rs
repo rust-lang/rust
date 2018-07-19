@@ -4,6 +4,7 @@ use rustc::hir::map::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::traits;
 use rustc::middle::expr_use_visitor as euv;

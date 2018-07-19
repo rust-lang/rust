@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use std::collections::HashMap;
 use std::char;
 use syntax::ast::*;

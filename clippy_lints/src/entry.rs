@@ -2,6 +2,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use syntax::codemap::Span;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty};

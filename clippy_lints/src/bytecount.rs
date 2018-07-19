@@ -1,6 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::{Name, UintTy};
 use crate::utils::{contains_name, get_pat_name, match_type, paths, single_segment_path, snippet, span_lint_and_sugg,

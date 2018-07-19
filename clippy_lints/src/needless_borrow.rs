@@ -4,6 +4,7 @@
 
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir::{BindingAnnotation, Expr, ExprKind, MutImmutable, Pat, PatKind};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};

@@ -1,6 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::LitKind;
 use syntax_pos::Span;

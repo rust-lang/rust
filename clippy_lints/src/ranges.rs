@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir::*;
 use syntax::ast::RangeLimits;
 use syntax::codemap::Spanned;

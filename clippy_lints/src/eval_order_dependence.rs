@@ -3,6 +3,7 @@ use rustc::hir::*;
 use rustc::ty;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use syntax::ast;
 use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
 
