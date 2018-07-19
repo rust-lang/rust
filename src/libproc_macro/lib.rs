@@ -44,6 +44,10 @@ extern crate syntax_pos;
 extern crate rustc_errors;
 extern crate rustc_data_structures;
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[doc(hidden)]
+pub mod rustc;
+
 mod diagnostic;
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
@@ -54,12 +58,10 @@ use std::path::PathBuf;
 use rustc_data_structures::sync::Lrc;
 use std::str::FromStr;
 
-use syntax::ast;
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::Symbol;
 use syntax::tokenstream;
-use syntax::parse::lexer::{self, comments};
 use syntax_pos::{FileMap, Pos, FileName};
 
 /// The main type provided by this crate, representing an abstract stream of
@@ -784,6 +786,16 @@ impl !Send for Ident {}
 impl !Sync for Ident {}
 
 impl Ident {
+    fn is_valid(string: &str) -> bool {
+        let mut chars = string.chars();
+        if let Some(start) = chars.next() {
+            (start == '_' || start.is_xid_start())
+                && chars.all(|cont| cont == '_' || cont.is_xid_continue())
+        } else {
+            false
+        }
+    }
+
     /// Creates a new `Ident` with the given `string` as well as the specified
     /// `span`.
     /// The `string` argument must be a valid identifier permitted by the
@@ -805,26 +817,19 @@ impl Ident {
     /// tokens, requires a `Span` to be specified at construction.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(string: &str, span: Span) -> Ident {
-        if !lexer::is_valid_ident(string) {
+        if !Ident::is_valid(string) {
             panic!("`{:?}` is not a valid identifier", string)
         }
-        Ident {
-            sym: Symbol::intern(string),
-            span,
-            is_raw: false,
-        }
+        Ident::new_maybe_raw(string, span, false)
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
     #[unstable(feature = "proc_macro_raw_ident", issue = "38356")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
-        let mut ident = Ident::new(string, span);
-        if ident.sym == keywords::Underscore.name() ||
-           ast::Ident::with_empty_ctxt(ident.sym).is_path_segment_keyword() {
-            panic!("`{:?}` is not a valid raw identifier", string)
+        if !Ident::is_valid(string) {
+            panic!("`{:?}` is not a valid identifier", string)
         }
-        ident.is_raw = true;
-        ident
+        Ident::new_maybe_raw(string, span, true)
     }
 
     /// Returns the span of this `Ident`, encompassing the entire string returned
@@ -861,7 +866,7 @@ impl fmt::Display for Ident {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub struct Literal {
     lit: token::Lit,
-    suffix: Option<ast::Name>,
+    suffix: Option<Symbol>,
     span: Span,
 }
 
@@ -1106,236 +1111,6 @@ impl Literal {
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         TokenStream::from(TokenTree::from(self.clone())).fmt(f)
-    }
-}
-
-impl Delimiter {
-    fn from_internal(delim: token::DelimToken) -> Delimiter {
-        match delim {
-            token::Paren => Delimiter::Parenthesis,
-            token::Brace => Delimiter::Brace,
-            token::Bracket => Delimiter::Bracket,
-            token::NoDelim => Delimiter::None,
-        }
-    }
-
-    fn to_internal(self) -> token::DelimToken {
-        match self {
-            Delimiter::Parenthesis => token::Paren,
-            Delimiter::Brace => token::Brace,
-            Delimiter::Bracket => token::Bracket,
-            Delimiter::None => token::NoDelim,
-        }
-    }
-}
-
-impl TokenTree {
-    fn from_internal(stream: tokenstream::TokenStream, stack: &mut Vec<TokenTree>)
-                -> TokenTree {
-        use syntax::parse::token::*;
-
-        let (tree, is_joint) = stream.as_tree();
-        let (span, token) = match tree {
-            tokenstream::TokenTree::Token(span, token) => (span, token),
-            tokenstream::TokenTree::Delimited(span, delimed) => {
-                let delimiter = Delimiter::from_internal(delimed.delim);
-                let mut g = Group::new(delimiter, TokenStream(delimed.tts.into()));
-                g.set_span(Span(span));
-                return g.into()
-            }
-        };
-
-        let op_kind = if is_joint { Spacing::Joint } else { Spacing::Alone };
-        macro_rules! tt {
-            ($e:expr) => ({
-                let mut x = TokenTree::from($e);
-                x.set_span(Span(span));
-                x
-            })
-        }
-        macro_rules! op {
-            ($a:expr) => (tt!(Punct::new($a, op_kind)));
-            ($a:expr, $b:expr) => ({
-                stack.push(tt!(Punct::new($b, op_kind)));
-                tt!(Punct::new($a, Spacing::Joint))
-            });
-            ($a:expr, $b:expr, $c:expr) => ({
-                stack.push(tt!(Punct::new($c, op_kind)));
-                stack.push(tt!(Punct::new($b, Spacing::Joint)));
-                tt!(Punct::new($a, Spacing::Joint))
-            })
-        }
-
-        match token {
-            Eq => op!('='),
-            Lt => op!('<'),
-            Le => op!('<', '='),
-            EqEq => op!('=', '='),
-            Ne => op!('!', '='),
-            Ge => op!('>', '='),
-            Gt => op!('>'),
-            AndAnd => op!('&', '&'),
-            OrOr => op!('|', '|'),
-            Not => op!('!'),
-            Tilde => op!('~'),
-            BinOp(Plus) => op!('+'),
-            BinOp(Minus) => op!('-'),
-            BinOp(Star) => op!('*'),
-            BinOp(Slash) => op!('/'),
-            BinOp(Percent) => op!('%'),
-            BinOp(Caret) => op!('^'),
-            BinOp(And) => op!('&'),
-            BinOp(Or) => op!('|'),
-            BinOp(Shl) => op!('<', '<'),
-            BinOp(Shr) => op!('>', '>'),
-            BinOpEq(Plus) => op!('+', '='),
-            BinOpEq(Minus) => op!('-', '='),
-            BinOpEq(Star) => op!('*', '='),
-            BinOpEq(Slash) => op!('/', '='),
-            BinOpEq(Percent) => op!('%', '='),
-            BinOpEq(Caret) => op!('^', '='),
-            BinOpEq(And) => op!('&', '='),
-            BinOpEq(Or) => op!('|', '='),
-            BinOpEq(Shl) => op!('<', '<', '='),
-            BinOpEq(Shr) => op!('>', '>', '='),
-            At => op!('@'),
-            Dot => op!('.'),
-            DotDot => op!('.', '.'),
-            DotDotDot => op!('.', '.', '.'),
-            DotDotEq => op!('.', '.', '='),
-            Comma => op!(','),
-            Semi => op!(';'),
-            Colon => op!(':'),
-            ModSep => op!(':', ':'),
-            RArrow => op!('-', '>'),
-            LArrow => op!('<', '-'),
-            FatArrow => op!('=', '>'),
-            Pound => op!('#'),
-            Dollar => op!('$'),
-            Question => op!('?'),
-            SingleQuote => op!('\''),
-
-            Ident(ident, false) => {
-                tt!(self::Ident::new(&ident.as_str(), Span(span)))
-            }
-            Ident(ident, true) => {
-                tt!(self::Ident::new_raw(&ident.as_str(), Span(span)))
-            }
-            Lifetime(ident) => {
-                let ident = ident.without_first_quote();
-                stack.push(tt!(self::Ident::new(&ident.as_str(), Span(span))));
-                tt!(Punct::new('\'', Spacing::Joint))
-            }
-            Literal(lit, suffix) => tt!(self::Literal { lit, suffix, span: Span(span) }),
-            DocComment(c) => {
-                let style = comments::doc_comment_style(&c.as_str());
-                let stripped = comments::strip_doc_comment_decoration(&c.as_str());
-                let stream = vec![
-                    tt!(self::Ident::new("doc", Span(span))),
-                    tt!(Punct::new('=', Spacing::Alone)),
-                    tt!(self::Literal::string(&stripped)),
-                ].into_iter().collect();
-                stack.push(tt!(Group::new(Delimiter::Bracket, stream)));
-                if style == ast::AttrStyle::Inner {
-                    stack.push(tt!(Punct::new('!', Spacing::Alone)));
-                }
-                tt!(Punct::new('#', Spacing::Alone))
-            }
-
-            Interpolated(_) => {
-                __internal::with_sess(|sess, _| {
-                    let tts = token.interpolated_to_tokenstream(sess, span);
-                    tt!(Group::new(Delimiter::None, TokenStream(tts)))
-                })
-            }
-
-            DotEq => op!('.', '='),
-            OpenDelim(..) | CloseDelim(..) => unreachable!(),
-            Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
-        }
-    }
-
-    fn to_internal(self) -> tokenstream::TokenStream {
-        use syntax::parse::token::*;
-        use syntax::tokenstream::{TokenTree, Delimited};
-
-        let (ch, kind, span) = match self {
-            self::TokenTree::Punct(tt) => (tt.as_char(), tt.spacing(), tt.span()),
-            self::TokenTree::Group(tt) => {
-                return TokenTree::Delimited(tt.span.0, Delimited {
-                    delim: tt.delimiter.to_internal(),
-                    tts: tt.stream.0.into(),
-                }).into();
-            },
-            self::TokenTree::Ident(tt) => {
-                let token = Ident(ast::Ident::new(tt.sym, tt.span.0), tt.is_raw);
-                return TokenTree::Token(tt.span.0, token).into();
-            }
-            self::TokenTree::Literal(self::Literal {
-                lit: Lit::Integer(ref a),
-                suffix,
-                span,
-            })
-                if a.as_str().starts_with("-") =>
-            {
-                let minus = BinOp(BinOpToken::Minus);
-                let integer = Symbol::intern(&a.as_str()[1..]);
-                let integer = Literal(Lit::Integer(integer), suffix);
-                let a = TokenTree::Token(span.0, minus);
-                let b = TokenTree::Token(span.0, integer);
-                return vec![a, b].into_iter().collect()
-            }
-            self::TokenTree::Literal(self::Literal {
-                lit: Lit::Float(ref a),
-                suffix,
-                span,
-            })
-                if a.as_str().starts_with("-") =>
-            {
-                let minus = BinOp(BinOpToken::Minus);
-                let float = Symbol::intern(&a.as_str()[1..]);
-                let float = Literal(Lit::Float(float), suffix);
-                let a = TokenTree::Token(span.0, minus);
-                let b = TokenTree::Token(span.0, float);
-                return vec![a, b].into_iter().collect()
-            }
-            self::TokenTree::Literal(tt) => {
-                let token = Literal(tt.lit, tt.suffix);
-                return TokenTree::Token(tt.span.0, token).into()
-            }
-        };
-
-        let token = match ch {
-            '=' => Eq,
-            '<' => Lt,
-            '>' => Gt,
-            '!' => Not,
-            '~' => Tilde,
-            '+' => BinOp(Plus),
-            '-' => BinOp(Minus),
-            '*' => BinOp(Star),
-            '/' => BinOp(Slash),
-            '%' => BinOp(Percent),
-            '^' => BinOp(Caret),
-            '&' => BinOp(And),
-            '|' => BinOp(Or),
-            '@' => At,
-            '.' => Dot,
-            ',' => Comma,
-            ';' => Semi,
-            ':' => Colon,
-            '#' => Pound,
-            '$' => Dollar,
-            '?' => Question,
-            '\'' => SingleQuote,
-            _ => unreachable!(),
-        };
-
-        let tree = TokenTree::Token(span.0, token);
-        match kind {
-            Spacing::Alone => tree.into(),
-            Spacing::Joint => tree.joint(),
-        }
     }
 }
 

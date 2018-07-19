@@ -116,15 +116,3 @@ impl Diagnostic {
         });
     }
 }
-
-impl Level {
-    fn to_internal(self) -> errors::Level {
-        match self {
-            Level::Error => errors::Level::Error,
-            Level::Warning => errors::Level::Warning,
-            Level::Note => errors::Level::Note,
-            Level::Help => errors::Level::Help,
-            Level::__Nonexhaustive => unreachable!("Level::__Nonexhaustive")
-        }
-    }
-}
