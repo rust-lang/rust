@@ -39,22 +39,31 @@ declare_clippy_lint! {
 }
 
 /// **What it does:** Checks for `extern crate` and `use` items annotated with
-/// lint attributes
+/// lint attributes.
+///
+/// This lint whitelists `#[allow(unused_imports)]` and `#[allow(deprecated)]` on
+/// `use` items and `#[allow(unused_imports)]` on `extern crate` items with a
+/// `#[macro_use]` attribute.
 ///
 /// **Why is this bad?** Lint attributes have no effect on crate imports. Most
-/// likely a `!` was
-/// forgotten
+/// likely a `!` was forgotten.
 ///
-/// **Known problems:** Technically one might allow `unused_import` on a `use`
-/// item,
-/// but it's easier to remove the unused item.
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
+/// // Bad
 /// #[deny(dead_code)]
 /// extern crate foo;
-/// #[allow(unused_import)]
+/// #[forbid(dead_code)]
 /// use foo::bar;
+///
+/// // Ok
+/// #[allow(unused_imports)]
+/// use foo::baz;
+/// #[allow(unused_imports)]
+/// #[macro_use]
+/// extern crate baz;
 /// ```
 declare_clippy_lint! {
     pub USELESS_ATTRIBUTE,
@@ -154,17 +163,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             check_attrs(cx, item.span, item.name, &item.attrs)
         }
         match item.node {
-            ItemKind::ExternCrate(_) | ItemKind::Use(_, _) => {
+            ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
+                let skip_unused_imports = item.attrs.iter().any(|attr| attr.name() == "macro_use");
+
                 for attr in &item.attrs {
                     if let Some(ref lint_list) = attr.meta_item_list() {
                         match &*attr.name().as_str() {
                             "allow" | "warn" | "deny" | "forbid" => {
-                                // whitelist `unused_imports` and `deprecated`
+                                // whitelist `unused_imports` and `deprecated` for `use` items
+                                // and `unused_imports` for `extern crate` items with `macro_use`
                                 for lint in lint_list {
-                                    if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
-                                        if let ItemKind::Use(_, _) = item.node {
-                                            return;
-                                        }
+                                    match item.node {
+                                        ItemKind::Use(..) => if is_word(lint, "unused_imports")
+                                                                || is_word(lint, "deprecated") {
+                                                return
+                                        },
+                                        ItemKind::ExternCrate(..) => if is_word(lint, "unused_imports")
+                                                                        && skip_unused_imports {
+                                                return
+                                        },
+                                        _ => {},
                                     }
                                 }
                                 let line_span = last_line_of_span(cx, attr.span);
