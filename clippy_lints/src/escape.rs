@@ -2,6 +2,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit as visit;
 use rustc::hir::map::Node::{NodeExpr, NodeStmt};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::{cmt_, Categorization};
 use rustc::ty::{self, Ty};

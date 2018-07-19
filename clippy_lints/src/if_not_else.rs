@@ -2,6 +2,7 @@
 //! on the condition
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 
 use crate::utils::{in_external_macro, span_help_and_lint};

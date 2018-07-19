@@ -1,4 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use rustc::hir::{Expr, ExprKind};
 use crate::utils::span_lint;

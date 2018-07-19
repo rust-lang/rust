@@ -1,6 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 use crate::utils::paths;

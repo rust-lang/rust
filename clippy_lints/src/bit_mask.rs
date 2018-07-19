@@ -1,5 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use crate::utils::{span_lint, span_lint_and_then};

@@ -2,6 +2,7 @@
 //! floating-point literal expressions.
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax_pos;
 use crate::utils::{in_external_macro, snippet_opt, span_lint_and_sugg};

@@ -1,5 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::TypeVariants;
 
 use crate::utils::{any_parent_is_automatically_derived, match_def_path, opt_def_id, paths, span_lint_and_sugg};

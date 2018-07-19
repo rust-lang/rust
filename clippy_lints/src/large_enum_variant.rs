@@ -1,6 +1,7 @@
 //! lint when there is a large size difference between variants on an enum
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use crate::utils::{snippet_opt, span_lint_and_then};
 use rustc::ty::layout::LayoutOf;

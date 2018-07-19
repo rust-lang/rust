@@ -1,6 +1,7 @@
 use crate::utils::span_lint;
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::codemap::Span;
 
 /// **What it does:** Checks for plain integer arithmetic.

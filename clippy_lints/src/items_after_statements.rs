@@ -1,6 +1,7 @@
 //! lint when items are used after statements
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use crate::utils::{in_macro, span_lint};
 

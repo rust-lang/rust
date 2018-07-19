@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;

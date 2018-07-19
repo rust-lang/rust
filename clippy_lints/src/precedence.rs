@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax::codemap::Spanned;
 use crate::utils::{in_macro, snippet, span_lint_and_sugg};

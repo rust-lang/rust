@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast;
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use syntax::ptr::P;

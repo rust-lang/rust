@@ -1,5 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::LitKind;
 use syntax::ptr::P;
 use syntax::ext::quote::rt::Span;

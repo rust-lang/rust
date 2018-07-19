@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir;
 use rustc::hir::BindingAnnotation;
 use rustc::hir::def::Def;

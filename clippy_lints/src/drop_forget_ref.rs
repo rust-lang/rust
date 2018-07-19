@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use rustc::hir::*;
 use crate::utils::{is_copy, match_def_path, opt_def_id, paths, span_note_and_lint};

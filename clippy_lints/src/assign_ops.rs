@@ -3,6 +3,7 @@ use crate::utils::{higher, sugg};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast;
 
 /// **What it does:** Checks for compound assignment operations (`+=` and

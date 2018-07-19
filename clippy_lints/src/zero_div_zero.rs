@@ -1,5 +1,6 @@
 use crate::consts::{constant_simple, Constant};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use crate::utils::span_help_and_lint;
 

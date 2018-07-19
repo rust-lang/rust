@@ -5,6 +5,7 @@ use rustc::hir::*;
 use rustc::hir::map::NodeItem;
 use rustc::hir::QPath;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;

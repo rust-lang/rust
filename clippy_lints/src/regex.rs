@@ -1,6 +1,7 @@
 use regex_syntax;
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use std::collections::HashSet;
 use syntax::ast::{LitKind, NodeId, StrStyle};
 use syntax::codemap::{BytePos, Span};

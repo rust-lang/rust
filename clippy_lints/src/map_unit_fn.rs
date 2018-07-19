@@ -1,5 +1,6 @@
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use rustc_errors::Applicability;
 use syntax::codemap::Span;

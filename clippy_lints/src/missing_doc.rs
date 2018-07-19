@@ -20,6 +20,7 @@
 
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use syntax::ast;
 use syntax::attr;

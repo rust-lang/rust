@@ -1,5 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::codemap::Spanned;
 
 use crate::consts::{constant, Constant};

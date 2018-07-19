@@ -2,6 +2,7 @@ use crate::reexport::*;
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use syntax::codemap::{ExpnFormat, Span};
 use crate::utils::{get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal,

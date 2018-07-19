@@ -3,6 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Spanned;

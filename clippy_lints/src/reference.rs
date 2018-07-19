@@ -1,5 +1,6 @@
 use syntax::ast::{Expr, ExprKind, UnOp};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use crate::utils::{snippet, span_lint_and_sugg};
 
 /// **What it does:** Checks for usage of `*&` and `*&mut` in expressions.

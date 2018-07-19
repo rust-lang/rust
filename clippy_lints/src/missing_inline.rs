@@ -11,6 +11,7 @@
 
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast;
 use syntax::codemap::Span;
 

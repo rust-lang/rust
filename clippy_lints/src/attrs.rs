@@ -7,6 +7,7 @@ use crate::utils::{
 };
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};

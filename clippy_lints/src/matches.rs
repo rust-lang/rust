@@ -1,5 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::{self, Ty};
 use std::cmp::Ordering;
 use std::collections::Bound;

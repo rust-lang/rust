@@ -1,5 +1,6 @@
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::TypeVariants;
 use std::f32;
 use std::f64;

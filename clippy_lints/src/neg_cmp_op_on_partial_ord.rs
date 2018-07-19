@@ -1,5 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 
 use crate::utils::{self, paths, span_lint, in_external_macro};
 

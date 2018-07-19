@@ -4,6 +4,7 @@ use rustc::hir::*;
 use rustc::hir::map::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::TypeVariants;
 use rustc::session::config::Config as SessionConfig;
 use rustc_target::spec::abi::Abi;

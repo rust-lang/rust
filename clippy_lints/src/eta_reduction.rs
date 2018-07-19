@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use rustc::hir::*;
 use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};

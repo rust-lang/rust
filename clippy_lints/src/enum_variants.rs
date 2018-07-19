@@ -1,6 +1,7 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::symbol::LocalInternedString;

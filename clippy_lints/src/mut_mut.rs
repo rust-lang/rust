@@ -1,6 +1,7 @@
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use crate::utils::{higher, in_external_macro, span_lint};
 

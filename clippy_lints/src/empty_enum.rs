@@ -1,6 +1,7 @@
 //! lint when there is an enum with no variants
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use crate::utils::span_lint_and_then;
 

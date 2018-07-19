@@ -3,6 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::{BindingAnnotation, Expr, ExprKind, MutImmutable, Pat, PatKind};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};

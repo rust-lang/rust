@@ -28,6 +28,7 @@
 //!
 //! This lint is **warn** by default.
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast;
 use syntax::codemap::{original_sp, DUMMY_SP};
 use std::borrow::Cow;

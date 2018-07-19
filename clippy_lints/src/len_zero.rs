@@ -1,6 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use std::collections::HashSet;
 use syntax::ast::{Lit, LitKind, Name};

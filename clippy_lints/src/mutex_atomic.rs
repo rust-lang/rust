@@ -3,6 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
 use rustc::ty::{self, Ty};
 use rustc::hir::Expr;
 use syntax::ast;
