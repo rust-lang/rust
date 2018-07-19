@@ -16,6 +16,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
+use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
@@ -32,12 +33,16 @@ use value::Value;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-pub fn inline(val: &'ll Value, inline: InlineAttr) {
+pub fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
         Hint   => Attribute::InlineHint.apply_llfn(Function, val),
         Always => Attribute::AlwaysInline.apply_llfn(Function, val),
-        Never  => Attribute::NoInline.apply_llfn(Function, val),
+        Never  => {
+            if cx.tcx().sess.target.target.arch != "amdgpu" {
+                Attribute::NoInline.apply_llfn(Function, val);
+            }
+        },
         None   => {
             Attribute::InlineHint.unapply_llfn(Function, val);
             Attribute::AlwaysInline.unapply_llfn(Function, val);
@@ -142,7 +147,7 @@ pub fn from_fn_attrs(
     let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
         .unwrap_or(CodegenFnAttrs::new());
 
-    inline(llfn, codegen_fn_attrs.inline);
+    inline(cx, llfn, codegen_fn_attrs.inline);
 
     // The `uwtable` attribute according to LLVM is:
     //
