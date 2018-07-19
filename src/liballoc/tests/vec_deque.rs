@@ -929,6 +929,60 @@ fn test_append() {
 }
 
 #[test]
+fn test_append_advanced() {
+    fn check(
+        a_push_back: usize,
+        a_pop_back: usize,
+        b_push_back: usize,
+        b_pop_back: usize,
+        a_push_front: usize,
+        a_pop_front: usize,
+        b_push_front: usize,
+        b_pop_front: usize
+    ) {
+        let mut taken = 0;
+        let mut a = VecDeque::new();
+        let mut b = VecDeque::new();
+        for n in (taken..).take(a_push_back) {
+            a.push_back(n);
+        }
+        taken += a_push_back;
+        for n in (taken..).take(a_push_front) {
+            a.push_front(n);
+        }
+        taken += a_push_front;
+        for n in (taken..).take(b_push_back) {
+            b.push_back(n);
+        }
+        taken += b_push_back;
+        for n in (taken..).take(b_push_front) {
+            b.push_front(n);
+        }
+
+        a.drain(..a_pop_back);
+        a.drain(a_pop_front..);
+        b.drain(..b_pop_back);
+        b.drain(b_pop_front..);
+        let checked = a.iter().chain(b.iter()).map(|&x| x).collect::<Vec<usize>>();
+        a.append(&mut b);
+        assert_eq!(a, checked);
+        assert!(b.is_empty());
+    }
+    for a_push in 0..17 {
+        for a_pop in 0..a_push {
+            for b_push in 0..17 {
+                for b_pop in 0..b_push {
+                    check(a_push, a_pop, b_push, b_pop, 0, 0, 0, 0);
+                    check(a_push, a_pop, b_push, b_pop, a_push, 0, 0, 0);
+                    check(a_push, a_pop, b_push, b_pop, 0, 0, b_push, 0);
+                    check(0, 0, 0, 0, a_push, a_pop, b_push, b_pop);
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn test_retain() {
     let mut buf = VecDeque::new();
     buf.extend(1..5);

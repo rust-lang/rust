@@ -1834,8 +1834,144 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        // naive impl
-        self.extend(other.drain(..));
+        // Copy from src[i1..i1 + len] to dst[i2..i2 + len].
+        // Does not check if the ranges are valid.
+        unsafe fn copy_part<T>(i1: usize, i2: usize, len: usize, src: &[T], dst: &mut [T]) {
+            debug_assert!(src.get(i1..i1 + len).is_some() && dst.get(i2..i2 + len).is_some());
+            ptr::copy_nonoverlapping(src.as_ptr().add(i1), dst.as_mut_ptr().add(i2), len);
+        }
+
+        let src_total = other.len();
+
+        // Guarantees there is space in `self` for `other`.
+        self.reserve(src_total);
+
+        self.head = {
+            let dst_start_1 = self.head;
+            let src_start_1 = other.tail;
+            let dst_wrap_point = self.cap();
+            let src_wrap_point = other.cap();
+
+            let dst = unsafe { self.buffer_as_mut_slice() };
+            let src = unsafe { other.buffer_as_slice() };
+
+            let src_wraps = other.tail > other.head;
+            let dst_wraps = dst_start_1 + src_total > dst_wrap_point;
+
+            // When minimizing the amount of calls to `copy_part`, there are
+            // 6 different cases to handle. Whether src and/or dst wrap are 4
+            // combinations and there are 3 distinct cases when they both wrap.
+            // 6 = 3 + 1 + 1 + 1
+            match (src_wraps, dst_wraps) {
+                (true, true) => {
+                    let dst_before_wrap = dst_wrap_point - dst_start_1;
+                    let src_before_wrap = src_wrap_point - src_start_1;
+
+                    if src_before_wrap < dst_before_wrap {
+                        //            src
+                        // [o o o . . . . . . o o o]
+                        //  2 3 3             1 1 1
+                        //
+                        //            dst
+                        // [. . . . . . o o . . . .]
+                        //  3 3 H           1 1 1 2
+                        let src_2 = dst_before_wrap - src_before_wrap;
+                        let dst_start_2 = dst_start_1 + src_before_wrap;
+                        let src_3 = src_total - dst_before_wrap;
+
+                        unsafe {
+                            copy_part(src_start_1, dst_start_1, src_before_wrap, src, dst);
+                            copy_part(0, dst_start_2, src_2, src, dst);
+                            copy_part(src_2, 0, src_3, src, dst);
+                        }
+                        src_3
+                    } else if src_before_wrap > dst_before_wrap {
+                        //            src
+                        // [o o o . . . . . o o o o]
+                        //  3 3 3           1 1 2 2
+                        //
+                        //            dst
+                        // [. . . . . . o o o o . .]
+                        //  2 2 3 3 3 H         1 1
+                        let src_2 = src_before_wrap - dst_before_wrap;
+                        let src_start_2 = src_start_1 + dst_before_wrap;
+                        let src_3 = src_total - src_before_wrap;
+
+                        unsafe {
+                            copy_part(src_start_1, dst_start_1, dst_before_wrap, src, dst);
+                            copy_part(src_start_2, 0, src_2, src, dst);
+                            copy_part(0, src_2, src_3, src, dst);
+                        }
+                        src_2 + src_3
+                    } else {
+                        //            src
+                        // [o o . . . . . . . o o o]
+                        //  2 2               1 1 1
+                        //
+                        //            dst
+                        // [. . . . . . . o o . . .]
+                        //  2 2 H             1 1 1
+                        let src_2 = src_total - src_before_wrap;
+
+                        unsafe {
+                            copy_part(src_start_1, dst_start_1, src_before_wrap, src, dst);
+                            copy_part(0, 0, src_2, src, dst);
+                        }
+                        src_2
+                    }
+                }
+                (false, true) => {
+                    //            src
+                    // [. . . o o o o o . . . .]
+                    //        1 1 2 2 2
+                    //
+                    //            dst
+                    // [. . . . . . . o o o . .]
+                    //  2 2 2 H             1 1
+                    let dst_1 = dst_wrap_point - dst_start_1;
+                    let src_start_2 = src_start_1 + dst_1;
+                    let dst_2 = src_total - dst_1;
+
+                    unsafe {
+                        copy_part(src_start_1, dst_start_1, dst_1, src, dst);
+                        copy_part(src_start_2, 0, dst_2, src, dst);
+                    }
+                    dst_2
+                }
+                (true, false) => {
+                    //            src
+                    // [o o . . . . . . . o o o]
+                    //  2 2               1 1 1
+                    //
+                    //            dst
+                    // [. o o . . . . . . . . .]
+                    //        1 1 1 2 2 H
+                    let src_1 = src_wrap_point - src_start_1;
+                    let dst_start_2 = dst_start_1 + src_1;
+                    let src_2 = src_total - src_1;
+
+                    unsafe {
+                        copy_part(src_start_1, dst_start_1, src_1, src, dst);
+                        copy_part(0, dst_start_2, src_2, src, dst);
+                    }
+                    dst_start_1 + src_1 + src_2
+                }
+                (false, false) => {
+                    //            src
+                    // [. . . o o o . . . . . .]
+                    //        1 1 1
+                    //
+                    //            dst
+                    // [. o o o o o . . . . . .]
+                    //              1 1 1 H
+                    unsafe {
+                        copy_part(src_start_1, dst_start_1, src_total, src, dst);
+                    }
+                    dst_start_1 + src_total
+                }
+            }
+        };
+        other.clear();
     }
 
     /// Retains only the elements specified by the predicate.
