@@ -2103,6 +2103,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
             clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
             clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
+            clean::ExistentialItem(..) => write!(fmt, "Existential Type ")?,
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -2167,6 +2168,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
             clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
             clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
+            clean::ExistentialItem(ref e, _) => item_existential(fmt, self.cx, self.item, e),
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -2685,18 +2687,17 @@ fn render_impls(cx: &Context, w: &mut fmt::Formatter,
     Ok(())
 }
 
-fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
-              t: &clean::Trait) -> fmt::Result {
+fn bounds(t_bounds: &[clean::GenericBound]) -> String {
     let mut bounds = String::new();
     let mut bounds_plain = String::new();
-    if !t.bounds.is_empty() {
+    if !t_bounds.is_empty() {
         if !bounds.is_empty() {
             bounds.push(' ');
             bounds_plain.push(' ');
         }
         bounds.push_str(": ");
         bounds_plain.push_str(": ");
-        for (i, p) in t.bounds.iter().enumerate() {
+        for (i, p) in t_bounds.iter().enumerate() {
             if i > 0 {
                 bounds.push_str(" + ");
                 bounds_plain.push_str(" + ");
@@ -2705,7 +2706,16 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             bounds_plain.push_str(&format!("{:#}", *p));
         }
     }
+    bounds
+}
 
+fn item_trait(
+    w: &mut fmt::Formatter,
+    cx: &Context,
+    it: &clean::Item,
+    t: &clean::Trait,
+) -> fmt::Result {
+    let bounds = bounds(&t.bounds);
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
     let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
@@ -3903,6 +3913,29 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     Ok(())
+}
+
+fn item_existential(
+    w: &mut fmt::Formatter,
+    cx: &Context,
+    it: &clean::Item,
+    t: &clean::Existential,
+) -> fmt::Result {
+    write!(w, "<pre class='rust existential'>")?;
+    render_attributes(w, it)?;
+    write!(w, "existential type {}{}{where_clause}: {bounds};</pre>",
+           it.name.as_ref().unwrap(),
+           t.generics,
+           where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
+           bounds = bounds(&t.bounds))?;
+
+    document(w, cx, it)?;
+
+    // Render any items associated directly to this alias, as otherwise they
+    // won't be visible anywhere in the docs. It would be nice to also show
+    // associated items from the aliased type (see discussion in #32077), but
+    // we need #14072 to make sense of the generics.
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
