@@ -185,6 +185,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
             match layout.variants {
                 layout::Variants::Single { index } => {
                     assert_eq!(index, *variant_index);
+                    fx.bcx.ins().nop();
                 }
                 layout::Variants::Tagged { .. } => {
                     let ptr = place.place_field(fx, mir::Field::new(0));
@@ -212,6 +213,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                             CValue::const_val(fx, niche.layout().ty, niche_value as u64 as i64)
                         };
                         niche.write_cvalue(fx, niche_llval);
+                    } else {
+                        fx.bcx.ins().nop();
                     }
                 }
             }

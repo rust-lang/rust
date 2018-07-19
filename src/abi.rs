@@ -108,9 +108,8 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             args
                 .into_iter()
                 .map(|arg| {
-                    let ty = arg.ty(&fx.mir.local_decls, fx.tcx);
                     let arg = ::base::trans_operand(fx, arg);
-                    if let Some(_) = fx.cton_type(ty) {
+                    if let Some(_) = fx.cton_type(arg.layout().ty) {
                         arg.load_value(fx)
                     } else {
                         arg.force_stack(fx)
