@@ -132,7 +132,7 @@ impl<'a> DiagnosticBuilder<'a> {
     /// locally in whichever way makes the most sense.
     pub fn delay_as_bug(&mut self) {
         self.level = Level::Bug;
-        *self.handler.delayed_span_bug.borrow_mut() = Some(self.diagnostic.clone());
+        self.handler.delay_as_bug(self.diagnostic.clone());
         self.cancel();
     }
 
