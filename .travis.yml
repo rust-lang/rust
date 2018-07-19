@@ -1,0 +1,12 @@
+sudo: false
+language: rust
+cache: cargo
+
+rust:
+  - nightly
+
+script:
+  - rustup component add rust-src
+  - ./prepare_libcore.sh
+  - ./build.sh
+
