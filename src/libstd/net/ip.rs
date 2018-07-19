@@ -17,7 +17,6 @@ use cmp::Ordering;
 use fmt;
 use hash;
 use mem;
-use net::{hton, ntoh};
 use sys::net::netc as c;
 use sys_common::{AsInner, FromInner};
 
@@ -340,13 +339,16 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
+    #[rustc_const_unstable(feature = "const_ip")]
+    pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         Ipv4Addr {
             inner: c::in_addr {
-                s_addr: hton(((a as u32) << 24) |
-                             ((b as u32) << 16) |
-                             ((c as u32) <<  8) |
-                              (d as u32)),
+                s_addr: u32::to_be(
+                    ((a as u32) << 24) |
+                    ((b as u32) << 16) |
+                    ((c as u32) <<  8) |
+                    (d as u32)
+                ),
             }
         }
     }
@@ -399,7 +401,7 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn octets(&self) -> [u8; 4] {
-        let bits = ntoh(self.inner.s_addr);
+        let bits = u32::from_be(self.inner.s_addr);
         [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
     }
 
@@ -763,7 +765,7 @@ impl PartialOrd<IpAddr> for Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
-        ntoh(self.inner.s_addr).cmp(&ntoh(other.inner.s_addr))
+        u32::from_be(self.inner.s_addr).cmp(&u32::from_be(other.inner.s_addr))
     }
 }
 
@@ -856,18 +858,24 @@ impl Ipv6Addr {
     /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
-               h: u16) -> Ipv6Addr {
-        let mut addr: c::in6_addr = unsafe { mem::zeroed() };
-        addr.s6_addr = [(a >> 8) as u8, a as u8,
-                        (b >> 8) as u8, b as u8,
-                        (c >> 8) as u8, c as u8,
-                        (d >> 8) as u8, d as u8,
-                        (e >> 8) as u8, e as u8,
-                        (f >> 8) as u8, f as u8,
-                        (g >> 8) as u8, g as u8,
-                        (h >> 8) as u8, h as u8];
-        Ipv6Addr { inner: addr }
+    #[rustc_const_unstable(feature = "const_ip")]
+    pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16,
+                     g: u16, h: u16) -> Ipv6Addr {
+        Ipv6Addr {
+            inner: c::in6_addr {
+                s6_addr: [
+                    (a >> 8) as u8, a as u8,
+                    (b >> 8) as u8, b as u8,
+                    (c >> 8) as u8, c as u8,
+                    (d >> 8) as u8, d as u8,
+                    (e >> 8) as u8, e as u8,
+                    (f >> 8) as u8, f as u8,
+                    (g >> 8) as u8, g as u8,
+                    (h >> 8) as u8, h as u8
+                ],
+            }
+        }
+
     }
 
     /// Creates a new IPv6 address representing localhost: `::1`.
