@@ -3376,7 +3376,7 @@ Basic usage
 assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));
 ```"),
             #[inline]
-            #[stable(feature = "euclidean_division", since = "1.29.0")]
+            #[stable(feature = "euclidean_modulo", since = "1.29.0")]
             pub fn overflowing_mod_euc(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
