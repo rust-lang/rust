@@ -2277,7 +2277,7 @@ fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::R
                        Therefore, non-exhaustive structs cannot be constructed in external crates \
                        using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
                        matched against without a wildcard <code>..</code>; and \
-                       functional-record-updates do not work.")?;
+                       struct update syntax will not work.")?;
         } else if item.is_enum() {
             write!(w, "Non-exhaustive enums could have additional variants added in future. \
                        Therefore, when matching against variants of non-exhaustive enums, an \
