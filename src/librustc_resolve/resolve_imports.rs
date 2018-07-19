@@ -207,36 +207,39 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let no_unexpanded_macros = module.unresolved_invocations.borrow().is_empty();
-        match resolution.binding {
-            // So we have a resolution that's from a glob import. This resolution is determined
-            // if it cannot be shadowed by some new item/import expanded from a macro.
-            // This happens either if there are no unexpanded macros, or expanded names cannot
-            // shadow globs (that happens in macro namespace or with restricted shadowing).
-            Some(binding) if no_unexpanded_macros || ns == MacroNS || restricted_shadowing =>
-                return check_usable(self, binding),
-            // If we have no resolution, then it's a determined error it some new item/import
-            // cannot appear from a macro expansion or an undetermined glob.
-            None if no_unexpanded_macros => {} // go check for globs below
-            // This is actually an undetermined error, but we need to return determinate error
-            // due to subtle interactions with `resolve_lexical_macro_path_segment`
-            // that are going to be removed in the next commit.
-            None if restricted_shadowing => {} // go check for globs below
-            _ => return Err(Undetermined),
+        // So we have a resolution that's from a glob import. This resolution is determined
+        // if it cannot be shadowed by some new item/import expanded from a macro.
+        // This happens either if there are no unexpanded macros, or expanded names cannot
+        // shadow globs (that happens in macro namespace or with restricted shadowing).
+        let unexpanded_macros = !module.unresolved_invocations.borrow().is_empty();
+        if let Some(binding) = resolution.binding {
+            if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
+                return check_usable(self, binding);
+            } else {
+                return Err(Undetermined);
+            }
         }
 
         // --- From now on we have no resolution. ---
 
-        // Check if one of glob imports can still define the name,
-        // if it can then our "no resolution" result is not determined and can be invalidated.
-
-        // What on earth is this?
-        // Apparently one more subtle interaction with `resolve_lexical_macro_path_segment`
-        // that are going to be removed in the next commit.
+        // Now we are in situation when new item/import can appear only from a glob or a macro
+        // expansion. With restricted shadowing names from globs and macro expansions cannot
+        // shadow names from outer scopes, so we can freely fallback from module search to search
+        // in outer scopes. To continue search in outer scopes we have to lie a bit and return
+        // `Determined` to `resolve_lexical_macro_path_segment` even if the correct answer
+        // for in-module resolution could be `Undetermined`.
         if restricted_shadowing {
             return Err(Determined);
         }
 
+        // Check if one of unexpanded macros can still define the name,
+        // if it can then our "no resolution" result is not determined and can be invalidated.
+        if unexpanded_macros {
+            return Err(Undetermined);
+        }
+
+        // Check if one of glob imports can still define the name,
+        // if it can then our "no resolution" result is not determined and can be invalidated.
         for glob_import in module.globs.borrow().iter() {
             if !self.is_accessible(glob_import.vis.get()) {
                 continue
@@ -258,6 +261,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
+        // No resolution and no one else can define the name - determinate error.
         Err(Determined)
     }
 
