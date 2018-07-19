@@ -135,6 +135,10 @@ fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize) {
     )
 }
 
+fn char_cast(c: char) -> u8 {
+    c as u8
+}
+
 struct DebugTuple(());
 
 fn debug_tuple() -> DebugTuple {

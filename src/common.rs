@@ -48,6 +48,7 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>
                 IntTy::Isize => types::I64,
             }
         }
+        TypeVariants::TyChar => types::I32,
         TypeVariants::TyFnPtr(_) => types::I64,
         TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) | TypeVariants::TyRef(_, ty, _) => {
             if ty.is_sized(tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
@@ -100,7 +101,7 @@ impl<'tcx> CValue<'tcx> {
     pub fn load_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> Value where 'tcx: 'a{
         match self {
             CValue::ByRef(addr, layout) => {
-                let cton_ty = fx.cton_type(layout.ty).expect(&format!("{:?}", layout.ty));
+                let cton_ty = fx.cton_type(layout.ty).expect(&format!("load_value of type {:?}", layout.ty));
                 fx.bcx.ins().load(cton_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,

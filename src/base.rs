@@ -298,6 +298,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         (TypeVariants::TyRawPtr(..), TypeVariants::TyRawPtr(..)) => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
+                        (TypeVariants::TyChar, TypeVariants::TyUint(_)) |
                         (TypeVariants::TyUint(_), TypeVariants::TyInt(_)) |
                         (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
