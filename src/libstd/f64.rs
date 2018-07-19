@@ -244,7 +244,7 @@ impl f64 {
     /// assert_eq!((-a).mod_euc(-b), 1.0);
     /// ```
     #[inline]
-    #[unstable(feature = "euclidean_division", issue = "49048")]
+    #[stable(feature = "euclidean_division", since = "1.29.0")]
     pub fn mod_euc(self, rhs: f64) -> f64 {
         let r = self % rhs;
         if r < 0.0 {
