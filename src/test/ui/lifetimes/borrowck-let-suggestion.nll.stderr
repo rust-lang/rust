@@ -5,6 +5,7 @@ LL |     let mut x = vec![1].iter();
    |                 ^^^^^^^       - temporary value only lives until here
    |                 |
    |                 temporary value does not live long enough
+LL |     //~^ ERROR borrowed value does not live long enough
 LL |     x.use_mut();
    |     - borrow later used here
    |

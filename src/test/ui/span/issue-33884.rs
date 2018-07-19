@@ -16,6 +16,7 @@ use std::io::{self, Read, Write};
 
 fn handle_client(stream: TcpStream) -> io::Result<()> {
     stream.write_fmt(format!("message received"))
+    //~^ ERROR mismatched types
 }
 
 fn main() {

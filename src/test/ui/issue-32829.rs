@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: calls in statics are limited
-
 static S : u64 = { { panic!("foo"); 0 } };
+//~^ ERROR calls in statics are limited
 
 fn main() {
     println!("{:?}", S);

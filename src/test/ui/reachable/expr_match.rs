@@ -22,6 +22,7 @@ fn a() {
 fn b() {
     match () { () => return }
     println!("I am dead");
+    //~^ ERROR unreachable statement
 }
 
 fn c() {
@@ -32,6 +33,7 @@ fn c() {
 fn d() {
     match () { () if false => return, () => return }
     println!("I am dead");
+    //~^ ERROR unreachable statement
 }
 
 fn e() {

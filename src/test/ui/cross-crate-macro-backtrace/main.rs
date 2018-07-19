@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: in format string
-
 // aux-build:extern_macro_crate.rs
 #[macro_use(myprintln, myprint)]
 extern crate extern_macro_crate;
 
 fn main() {
     myprintln!("{}");
+    //~^ ERROR in format string
 }

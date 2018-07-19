@@ -12,12 +12,11 @@
 
 // aux-build:intercrate.rs
 
-// error-pattern:type `fn() -> u32 {intercrate::foo::bar::f}` is private
-
 #![feature(decl_macro)]
 
 extern crate intercrate;
 
 fn main() {
     assert_eq!(intercrate::foo::m!(), 1);
+    //~^ ERROR type `fn() -> u32 {intercrate::foo::bar::f}` is private
 }
