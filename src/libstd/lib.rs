@@ -532,12 +532,8 @@ mod stdsimd;
 #[cfg(not(stage0))]
 mod coresimd {
     pub use core::arch;
-    pub use core::simd;
 }
 
-#[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(all(not(stage0), not(test)))]
-pub use stdsimd::simd;
 #[stable(feature = "simd_arch", since = "1.27.0")]
 #[cfg(all(not(stage0), not(test)))]
 pub use stdsimd::arch;

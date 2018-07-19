@@ -244,9 +244,6 @@ macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*)
 #[cfg(not(stage0))] // allow changes to how stdsimd works in stage0
 mod coresimd;
 
-#[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(not(stage0))]
-pub use coresimd::simd;
 #[stable(feature = "simd_arch", since = "1.27.0")]
 #[cfg(not(stage0))]
 pub use coresimd::arch;
