@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test currently ICEs when using NLL (#52416)
+
 // We used to ICE when moving out of a `*mut T` or `*const T`.
 
 struct T(u8);

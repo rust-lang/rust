@@ -94,7 +94,9 @@ use std::cmp::max;
 use std::default::Default;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::env;
+use std::error::Error;
 use std::ffi::OsString;
+use std::fmt::{self, Display};
 use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::mem;
@@ -146,6 +148,12 @@ pub mod target_features {
     }
 }
 
+/// Exit status code used for successful compilation and help output.
+pub const EXIT_SUCCESS: isize = 0;
+
+/// Exit status code used for compilation failures and  invalid flags.
+pub const EXIT_FAILURE: isize = 1;
+
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
@@ -178,7 +186,7 @@ pub fn abort_on_err<T>(result: Result<T, CompileIncomplete>, sess: &Session) -> 
 pub fn run<F>(run_compiler: F) -> isize
     where F: FnOnce() -> (CompileResult, Option<Session>) + Send + 'static
 {
-    monitor(move || {
+    let result = monitor(move || {
         let (result, session) = run_compiler();
         if let Err(CompileIncomplete::Errored(_)) = result {
             match session {
@@ -201,7 +209,11 @@ pub fn run<F>(run_compiler: F) -> isize
             }
         }
     });
-    0
+
+    match result {
+        Ok(()) => EXIT_SUCCESS,
+        Err(_) => EXIT_FAILURE,
+    }
 }
 
 fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
@@ -1625,20 +1637,30 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     }
 }
 
+#[derive(Debug)]
+pub struct CompilationFailure;
+
+impl Error for CompilationFailure {}
+
+impl Display for CompilationFailure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "compilation had errors")
+    }
+}
+
 /// Run a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
-    let result = in_rustc_thread(move || {
+pub fn monitor<F: FnOnce() + Send + 'static>(f: F) -> Result<(), CompilationFailure> {
+    in_rustc_thread(move || {
         f()
-    });
-
-    if let Err(value) = result {
-        // Thread panicked without emitting a fatal diagnostic
-        if !value.is::<errors::FatalErrorMarker>() {
-            // Emit a newline
+    }).map_err(|value| {
+        if value.is::<errors::FatalErrorMarker>() {
+            CompilationFailure
+        } else {
+            // Thread panicked without emitting a fatal diagnostic
             eprintln!("");
 
             let emitter =
@@ -1677,10 +1699,10 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              &note,
                              errors::Level::Note);
             }
-        }
 
-        panic::resume_unwind(Box::new(errors::FatalErrorMarker));
-    }
+            panic::resume_unwind(Box::new(errors::FatalErrorMarker));
+        }
+    })
 }
 
 pub fn diagnostics_registry() -> errors::registry::Registry {
