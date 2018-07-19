@@ -1,3 +1,4 @@
+use matches::matches;
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};

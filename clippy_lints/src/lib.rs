@@ -18,8 +18,6 @@
 use toml;
 use rustc_plugin;
 
-#[macro_use]
-extern crate matches as matches_macro;
 
 #[macro_use]
 extern crate if_chain;

@@ -1,4 +1,5 @@
 use crate::reexport::*;
+use matches::matches;
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;

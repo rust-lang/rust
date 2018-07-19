@@ -1,3 +1,4 @@
+use matches::matches;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint, lint_array};
 use rustc::hir::*;

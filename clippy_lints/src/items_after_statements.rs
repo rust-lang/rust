@@ -1,5 +1,6 @@
 //! lint when items are used after statements
 
+use matches::matches;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use syntax::ast::*;

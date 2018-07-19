@@ -1,3 +1,4 @@
+use matches::matches;
 use rustc::hir::intravisit;
 use rustc::hir;
 use rustc::lint::*;

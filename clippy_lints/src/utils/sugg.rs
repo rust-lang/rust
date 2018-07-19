@@ -3,6 +3,7 @@
 // currently ignores lifetimes and generics
 #![allow(use_self)]
 
+use matches::matches;
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
 use rustc_errors;

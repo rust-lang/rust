@@ -1,3 +1,4 @@
+use matches::matches;
 use rustc::hir::*;
 use rustc::hir::map::*;
 use rustc::hir::intravisit::FnKind;

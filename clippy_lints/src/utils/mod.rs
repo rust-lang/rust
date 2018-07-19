@@ -1,4 +1,5 @@
 use crate::reexport::*;
+use matches::matches;
 use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
