@@ -103,7 +103,7 @@ impl<K, V> LeafNode<K, V> {
     }
 
     fn is_shared_root(&self) -> bool {
-        self as *const _ == &EMPTY_ROOT_NODE as *const _ as *const LeafNode<K, V>
+        ptr::eq(self, &EMPTY_ROOT_NODE as *const _ as *const _)
     }
 }
 

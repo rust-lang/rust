@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     let x = "hello".chars().rev().collect(); //~ ERROR E0282
    |         ^
    |         |
-   |         cannot infer type for `_`
+   |         cannot infer type
    |         consider giving `x` a type
 
 error: aborting due to previous error
