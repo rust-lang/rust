@@ -1,5 +1,7 @@
 use crate::reexport::*;
+use matches::matches;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::hir::intravisit::*;

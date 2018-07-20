@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::{Expr, ExprKind};
 use crate::utils::{match_def_path, opt_def_id, paths, span_lint};
 

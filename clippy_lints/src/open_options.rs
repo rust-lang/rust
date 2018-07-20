@@ -1,5 +1,6 @@
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
 use crate::utils::{match_type, paths, span_lint, walk_ptrs_ty};

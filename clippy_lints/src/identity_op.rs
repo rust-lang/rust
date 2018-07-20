@@ -1,6 +1,7 @@
 use crate::consts::{constant_simple, Constant};
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::codemap::Span;
 use crate::utils::{in_macro, snippet, span_lint, unsext, clip};
 use rustc::ty;

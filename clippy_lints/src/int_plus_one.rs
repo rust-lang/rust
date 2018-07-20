@@ -1,6 +1,7 @@
 //! lint on blocks unnecessarily using >= with a + 1 or - 1
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 
 use crate::utils::{snippet_opt, span_lint_and_then};

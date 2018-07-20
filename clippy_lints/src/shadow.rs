@@ -1,5 +1,6 @@
 use crate::reexport::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::ty;

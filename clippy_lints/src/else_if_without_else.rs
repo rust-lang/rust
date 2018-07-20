@@ -1,6 +1,7 @@
 //! lint on if expressions with an else if, but without a final else branch
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 
 use crate::utils::{in_external_macro, span_lint_and_sugg};

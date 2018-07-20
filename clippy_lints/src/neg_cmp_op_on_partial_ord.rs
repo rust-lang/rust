@@ -1,5 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 
 use crate::utils::{self, paths, span_lint, in_external_macro};
 

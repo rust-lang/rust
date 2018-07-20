@@ -2,6 +2,7 @@
 
 #![deny(missing_docs_in_private_items)]
 
+use lazy_static::lazy_static;
 use std::{env, fmt, fs, io, path};
 use std::io::Read;
 use syntax::{ast, codemap};
@@ -86,10 +87,10 @@ macro_rules! define_Conf {
         //
         #[allow(rust_2018_idioms)]
         mod helpers {
+            use serde_derive::Deserialize;
             /// Type used to store lint configuration.
             #[derive(Deserialize)]
-            #[serde(rename_all="kebab-case")]
-            #[serde(deny_unknown_fields)]
+            #[serde(rename_all="kebab-case", deny_unknown_fields)]
             pub struct Conf {
                 $(#[$doc] #[serde(default=$rust_name_str)] #[serde(with=$rust_name_str)]
                           pub $rust_name: define_Conf!(TY $($ty)+),)+

@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use std::borrow::Cow;

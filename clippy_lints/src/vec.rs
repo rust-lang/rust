@@ -1,5 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 use crate::utils::{higher, is_copy, snippet, span_lint_and_sugg};

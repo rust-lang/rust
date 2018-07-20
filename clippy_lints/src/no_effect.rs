@@ -1,4 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
 use rustc::hir::def::Def;
 use rustc::hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
 use crate::utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sugg};

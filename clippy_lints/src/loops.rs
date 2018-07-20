@@ -6,6 +6,8 @@ use rustc::hir::def_id;
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::middle::region;
 // use rustc::middle::region::CodeExtent;
 use rustc::middle::expr_use_visitor::*;

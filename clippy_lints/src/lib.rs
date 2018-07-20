@@ -13,25 +13,10 @@
 #![feature(macro_at_most_once_rep)]
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
-#![allow(macro_use_extern_crate)]
-
-#[macro_use]
-extern crate rustc;
 
 use toml;
 use rustc_plugin;
 
-#[macro_use]
-extern crate matches as matches_macro;
-
-#[macro_use]
-extern crate serde_derive;
-
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
-extern crate if_chain;
 
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {

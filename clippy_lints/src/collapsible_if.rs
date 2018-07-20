@@ -13,6 +13,8 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use syntax::ast;
 
 use crate::utils::{in_macro, snippet_block, span_lint_and_sugg, span_lint_and_then};

@@ -1,5 +1,6 @@
 use syntax::ast::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use rustc::{declare_lint, lint_array};
 
 /// **What it does:** Checks for unnecessary double parentheses.
 ///

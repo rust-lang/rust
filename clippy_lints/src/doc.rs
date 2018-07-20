@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use pulldown_cmark;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 use syntax_pos::Pos;

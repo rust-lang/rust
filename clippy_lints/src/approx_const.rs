@@ -1,6 +1,7 @@
 use crate::utils::span_lint;
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use std::f64::consts as f64;
 use syntax::ast::{FloatTy, Lit, LitKind};
 use syntax::symbol;

@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use crate::utils::{in_macro, is_range_expression, match_var, span_lint_and_sugg};
 

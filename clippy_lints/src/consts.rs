@@ -2,6 +2,7 @@
 #![allow(float_cmp)]
 
 use rustc::lint::LateContext;
+use rustc::{span_bug, bug};
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::ty::{self, Ty, TyCtxt, Instance};

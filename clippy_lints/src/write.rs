@@ -1,6 +1,8 @@
 use rustc::hir::map::Node::{NodeImplItem, NodeItem};
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use std::ops::Deref;
 use syntax::ast::LitKind;
 use syntax::ptr;

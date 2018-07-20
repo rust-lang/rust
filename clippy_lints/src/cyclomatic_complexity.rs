@@ -2,6 +2,7 @@
 
 use rustc::cfg::CFG;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

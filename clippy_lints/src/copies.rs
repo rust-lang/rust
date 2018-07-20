@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::Ty;
 use rustc::hir::*;
 use std::collections::HashMap;

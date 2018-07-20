@@ -1,6 +1,8 @@
+use matches::matches;
 use rustc::hir::intravisit;
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use rustc::hir::def::Def;
 use std::collections::HashSet;

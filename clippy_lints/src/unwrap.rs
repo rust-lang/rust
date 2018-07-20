@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 
 use crate::utils::{in_macro, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use rustc::hir::intravisit::*;

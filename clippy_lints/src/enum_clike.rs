@@ -2,6 +2,7 @@
 //! don't fit into an `i32`
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::ty::subst::Substs;

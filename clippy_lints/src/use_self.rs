@@ -1,4 +1,6 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
 use crate::utils::{in_macro, span_lint_and_then};
