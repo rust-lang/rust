@@ -37,7 +37,6 @@ const NS: Duration = Duration::from_nanos(1);
 /// 1 microsecond `Duration`
 #[unstable(feature = "time_units", issue = "0")]
 const US: Duration = Duration::from_micros(1);
-#[unstable(feature = "time_units", issue = "0")]
 /// 1 millisecond `Duration`
 #[unstable(feature = "time_units", issue = "0")]
 const MS: Duration = Duration::from_millis(1);
