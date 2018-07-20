@@ -30,6 +30,7 @@ use sys_common::FromInner;
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
+pub use core::time::{NS, US, MS, S, M, H, D};
 
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with `Duration`.
