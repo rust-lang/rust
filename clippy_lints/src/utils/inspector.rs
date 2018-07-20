@@ -70,6 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             },
             hir::ImplItemKind::Method(..) => println!("method"),
             hir::ImplItemKind::Type(_) => println!("associated type"),
+            hir::ImplItemKind::Existential(_) => println!("existential type"),
         }
     }
     // fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx

@@ -982,6 +982,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         Def::AssociatedConst(id) |
         Def::Macro(id, ..) |
         Def::Existential(id) |
+        Def::AssociatedExistential(id) |
         Def::GlobalAsm(id) => Some(id),
 
         Def::Upvar(..) | Def::Local(_) | Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,

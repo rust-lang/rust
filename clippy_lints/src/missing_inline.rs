@@ -165,7 +165,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         let desc = match impl_item.node {
             hir::ImplItemKind::Method(..) => "a method",
             hir::ImplItemKind::Const(..) |
-            hir::ImplItemKind::Type(_) => return,
+            hir::ImplItemKind::Type(_) |
+            hir::ImplItemKind::Existential(_) => return,
         };
 
         let def_id = cx.tcx.hir.local_def_id(impl_item.id);
