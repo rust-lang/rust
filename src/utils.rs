@@ -37,6 +37,26 @@ pub fn extra_offset(text: &str, shape: Shape) -> usize {
     }
 }
 
+pub fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
+    match (&a.node, &b.node) {
+        (
+            VisibilityKind::Restricted { path: p, .. },
+            VisibilityKind::Restricted { path: q, .. },
+        ) => format!("{}", p) == format!("{}", q),
+        (VisibilityKind::Public, VisibilityKind::Public)
+        | (VisibilityKind::Inherited, VisibilityKind::Inherited)
+        | (
+            VisibilityKind::Crate(CrateSugar::PubCrate),
+            VisibilityKind::Crate(CrateSugar::PubCrate),
+        )
+        | (
+            VisibilityKind::Crate(CrateSugar::JustCrate),
+            VisibilityKind::Crate(CrateSugar::JustCrate),
+        ) => true,
+        _ => false,
+    }
+}
+
 // Uses Cow to avoid allocating in the common cases.
 pub fn format_visibility(context: &RewriteContext, vis: &Visibility) -> Cow<'static, str> {
     match vis.node {

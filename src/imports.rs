@@ -21,7 +21,7 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListIte
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
-use utils::{mk_sp, rewrite_ident};
+use utils::{is_same_visibility, mk_sp, rewrite_ident};
 use visitor::FmtVisitor;
 
 use std::borrow::Cow;
@@ -485,10 +485,7 @@ impl UseTree {
                 }),
             )
             | (None, None) => true,
-            (
-                Some(codemap::Spanned { node: lnode, .. }),
-                Some(codemap::Spanned { node: rnode, .. }),
-            ) => lnode == rnode,
+            (Some(ref a), Some(ref b)) => is_same_visibility(a, b),
             _ => false,
         }
     }
