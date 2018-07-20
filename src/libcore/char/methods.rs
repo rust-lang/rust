@@ -467,6 +467,37 @@ impl char {
         }
     }
 
+    /// Encodes this character as UTF-8 into the provided byte buffer,
+    /// and then returns the subslice of the buffer that contains the encoded character.
+    /// Returns `None` if buffer too short.
+    ///
+    /// # Examples
+    ///
+    /// In both of these examples, 'ß' takes two bytes to encode.
+    ///
+    /// ```
+    /// let mut b = [0; 2];
+    ///
+    /// let result = 'ß'.encode_utf8(&mut b).unwrap();
+    ///
+    /// assert_eq!(result, "ß");
+    ///
+    /// assert_eq!(result.len(), 2);
+    /// ```
+    ///
+    /// A buffer that's too small:
+    ///
+    /// ```
+    /// let mut b = [0; 1];
+    ///
+    /// assert_eq!(None, 'ß'.encode_utf8(&mut b));
+    /// ```
+    #[unstable(feature = "try_unicode_encode_char", issue = "52579")]
+    #[inline]
+    pub fn try_encode_utf8(self, dst: &mut [u8]) -> Option<&mut str> {
+        if dst.len() < self.len_utf8() { None } else { Some(self.encode_utf8(dst)) }
+    }
+
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
     /// and then returns the subslice of the buffer that contains the encoded character.
     ///
@@ -523,6 +554,37 @@ impl char {
                     dst.len())
             }
         }
+    }
+
+    /// Encodes this character as UTF-16 into the provided `u16` buffer,
+    /// and then returns the subslice of the buffer that contains the encoded character.
+    /// Returns `None` if buffer too short.
+    ///
+    /// # Examples
+    ///
+    /// In both of these examples, '𝕊' takes two `u16`s to encode.
+    ///
+    /// ```
+    /// let mut b = [0; 2];
+    ///
+    /// let result = '𝕊'.encode_utf16(&mut b).unwrap();
+    ///
+    /// assert_eq!(result, "𝕊");
+    ///
+    /// assert_eq!(result.len(), 2);
+    /// ```
+    ///
+    /// A buffer that's too small:
+    ///
+    /// ```
+    /// let mut b = [0; 1];
+    ///
+    /// assert_eq!(None, '𝕊'.encode_utf16(&mut b));
+    /// ```
+    #[unstable(feature = "try_unicode_encode_char", issue = "52579")]
+    #[inline]
+    pub fn try_encode_utf16(self, dst: &mut [u16]) -> Option<&mut [u16]> {
+        if dst.len() < self.len_utf16() { None } else { Some(self.encode_utf16(dst)) }
     }
 
     /// Returns true if this `char` is an alphabetic code point, and false if not.
