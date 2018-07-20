@@ -132,6 +132,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir: &Mir<'tcx>,
     ) -> (ConstraintCategory, Span) {
         let constraint = self.constraints[index];
+        debug!("classify_constraint: constraint={:?}", constraint);
         let span = constraint.locations.span(mir);
         let location = constraint.locations.from_location().unwrap_or(Location::START);
 
@@ -140,8 +141,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let data = &mir[location.block];
+        debug!("classify_constraint: location={:?} data={:?}", location, data);
         let category = if location.statement_index == data.statements.len() {
             if let Some(ref terminator) = data.terminator {
+                debug!("classify_constraint: terminator.kind={:?}", terminator.kind);
                 match terminator.kind {
                     TerminatorKind::DropAndReplace { .. } => ConstraintCategory::Assignment,
                     TerminatorKind::Call { .. } => ConstraintCategory::CallArgument,
@@ -152,14 +155,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         } else {
             let statement = &data.statements[location.statement_index];
+            debug!("classify_constraint: statement.kind={:?}", statement.kind);
             match statement.kind {
                 StatementKind::Assign(ref place, ref rvalue) => {
+                    debug!("classify_constraint: place={:?} rvalue={:?}", place, rvalue);
                     if *place == Place::Local(mir::RETURN_PLACE) {
                         ConstraintCategory::Return
                     } else {
                         match rvalue {
                             Rvalue::Cast(..) => ConstraintCategory::Cast,
-                            Rvalue::Use(..) => ConstraintCategory::Assignment,
+                            Rvalue::Use(..) |
+                            Rvalue::Aggregate(..) => ConstraintCategory::Assignment,
                             _ => ConstraintCategory::Other,
                         }
                     }

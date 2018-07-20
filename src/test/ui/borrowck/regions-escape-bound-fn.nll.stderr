@@ -10,7 +10,7 @@ error: unsatisfied lifetime constraints
 LL |     let mut x: Option<&isize> = None;
    |         ----- lifetime `'2` appears in the type of `x`
 LL |     with_int(|y| x = Some(y));
-   |               -  ^^^^^^^^^^^ free region requires that `'1` must outlive `'2`
+   |               -  ^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
    |               |
    |               lifetime `'1` appears in this argument
 

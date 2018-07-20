@@ -30,7 +30,7 @@ LL |     let mut f: Option<&u32> = None;
 LL |     closure_expecting_bound(|x| {
    |                              - lifetime `'1` appears in this argument
 LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
-   |         ^^^^^^^^^^^ free region requires that `'1` must outlive `'2`
+   |         ^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error: unsatisfied lifetime constraints
   --> $DIR/expect-region-supply-region.rs:38:9
@@ -40,7 +40,7 @@ LL |     let mut f: Option<&u32> = None;
 LL |     closure_expecting_bound(|x: &u32| {
    |                                 - let's call the lifetime of this reference `'1`
 LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
-   |         ^^^^^^^^^^^ free region requires that `'1` must outlive `'2`
+   |         ^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error: unsatisfied lifetime constraints
   --> $DIR/expect-region-supply-region.rs:52:9
@@ -52,7 +52,7 @@ LL |     closure_expecting_bound(|x: &'x u32| {
    |                                 - let's call the lifetime of this reference `'1`
 ...
 LL |         f = Some(x);
-   |         ^^^^^^^^^^^ free region requires that `'1` must outlive `'2`
+   |         ^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error: aborting due to 3 previous errors
 
