@@ -324,6 +324,7 @@
 #![feature(float_internals)]
 #![feature(panic_info_message)]
 #![feature(panic_implementation)]
+#![feature(time_units)]
 
 #![default_lib_allocator]
 
