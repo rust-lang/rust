@@ -3584,29 +3584,32 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         Some(v) => v,
         None => return Ok(()),
     };
+    //println!("=======> {:?}", containing_item.name);
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| {
-        /*if ::std::env::var("LOL").is_ok() {
-            if let Some(ref t) = i.inner_impl().trait_ {
-                println!("==> {:?}", t);
-            }
+        /*if let Some(ref t) = i.inner_impl().trait_ {
+            println!("++++++> {:?}", t);
+        }*/
+        /*if i.inner_impl().trait_.is_some() {
+            println!("++++++> {:?}", i.name);
         }*/
         i.inner_impl().trait_.is_none()
     });
     if !non_trait.is_empty() {
         let render_mode = match what {
             AssocItemRender::All => {
-                write!(w, "
-                    <h2 id='methods' class='small-section-header'>
-                      Methods<a href='#methods' class='anchor'></a>
-                    </h2>
+                write!(w, "\
+                    <h2 id='methods' class='small-section-header'>\
+                      Methods<a href='#methods' class='anchor'></a>\
+                    </h2>\
                 ")?;
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
-                write!(w, "
-                    <h2 id='deref-methods' class='small-section-header'>
-                      Methods from {}&lt;Target = {}&gt;<a href='#deref-methods' class='anchor'></a>
-                    </h2>
+                write!(w, "\
+                    <h2 id='deref-methods' class='small-section-header'>\
+                      Methods from {}&lt;Target = {}&gt;\
+                      <a href='#deref-methods' class='anchor'></a>\
+                    </h2>\
                 ", trait_, type_)?;
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
@@ -3653,19 +3656,20 @@ fn render_assoc_items(w: &mut fmt::Formatter,
 
         let impls = format!("{}", RendererStruct(cx, concrete, containing_item));
         if !impls.is_empty() {
-            write!(w, "
-                <h2 id='implementations' class='small-section-header'>
-                  Trait Implementations<a href='#implementations' class='anchor'></a>
-                </h2>
+            write!(w, "\
+                <h2 id='implementations' class='small-section-header'>\
+                  Trait Implementations<a href='#implementations' class='anchor'></a>\
+                </h2>\
                 <div id='implementations-list'>{}</div>", impls)?;
         }
 
         if !synthetic.is_empty() {
-            write!(w, "
-                <h2 id='synthetic-implementations' class='small-section-header'>
-                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
-                </h2>
-                <div id='synthetic-implementations-list'>
+            write!(w, "\
+                <h2 id='synthetic-implementations' class='small-section-header'>\
+                  Auto Trait Implementations\
+                  <a href='#synthetic-implementations' class='anchor'></a>\
+                </h2>\
+                <div id='synthetic-implementations-list'>\
             ")?;
             render_impls(cx, w, &synthetic, containing_item)?;
             write!(w, "</div>")?;

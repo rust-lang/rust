@@ -276,6 +276,9 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
         let auto_impls = get_auto_traits_with_def_id(cx, did);
         let mut renderinfo = cx.renderinfo.borrow_mut();
 
+        if cx.crate_name == Some("std".to_string()) {
+            println!("=====> {} {:?}\n", auto_impls.len(), auto_impls);
+        }
         let new_impls: Vec<clean::Item> = auto_impls.into_iter()
             .filter(|i| renderinfo.inlined.insert(i.def_id)).collect();
 
@@ -337,6 +340,9 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
             build_impl(cx, def_id, &mut impls);
 
             let auto_impls = get_auto_traits_with_def_id(cx, def_id);
+            if cx.crate_name == Some("std".to_string()) {
+                println!("-----> {} {:?}\n", auto_impls.len(), auto_impls);
+            }
             let mut renderinfo = cx.renderinfo.borrow_mut();
 
             let new_impls: Vec<clean::Item> = auto_impls.into_iter()
