@@ -20,7 +20,7 @@ use ty::query::plumbing::CycleError;
 use ty::context::TyCtxt;
 use errors::Diagnostic;
 use std::process;
-use std::fmt;
+use std::{fmt, ptr};
 use std::collections::HashSet;
 #[cfg(parallel_queries)]
 use {
@@ -124,7 +124,7 @@ impl<'tcx> QueryJob<'tcx> {
         while let Some(job) = current_job {
             cycle.insert(0, job.info.clone());
 
-            if &*job as *const _ == self as *const _ {
+            if ptr::eq(&*job, self) {
                 // This is the end of the cycle
                 // The span entry we included was for the usage
                 // of the cycle itself, and not part of the cycle

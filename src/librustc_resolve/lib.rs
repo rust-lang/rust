@@ -1393,7 +1393,7 @@ pub struct Resolver<'a> {
 
     crate_loader: &'a mut dyn CrateLoader,
     macro_names: FxHashSet<Ident>,
-    global_macros: FxHashMap<Name, &'a NameBinding<'a>>,
+    macro_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Def>,
     lexical_macro_resolutions: Vec<(Ident, &'a Cell<LegacyScope<'a>>)>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
@@ -1715,7 +1715,7 @@ impl<'a> Resolver<'a> {
 
             crate_loader,
             macro_names: FxHashSet(),
-            global_macros: FxHashMap(),
+            macro_prelude: FxHashMap(),
             all_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             macro_map: FxHashMap(),
@@ -2002,7 +2002,6 @@ impl<'a> Resolver<'a> {
                                module: Module<'a>,
                                mut ident: Ident,
                                ns: Namespace,
-                               ignore_unresolved_invocations: bool,
                                record_used: bool,
                                span: Span)
                                -> Result<&'a NameBinding<'a>, Determinacy> {
@@ -2012,7 +2011,7 @@ impl<'a> Resolver<'a> {
             self.current_module = self.macro_def_scope(def);
         }
         let result = self.resolve_ident_in_module_unadjusted(
-            module, ident, ns, ignore_unresolved_invocations, record_used, span,
+            module, ident, ns, false, record_used, span,
         );
         self.current_module = orig_current_module;
         result
@@ -2518,7 +2517,7 @@ impl<'a> Resolver<'a> {
         // If there is a TraitRef in scope for an impl, then the method must be in the
         // trait.
         if let Some((module, _)) = self.current_trait_ref {
-            if self.resolve_ident_in_module(module, ident, ns, false, false, span).is_err() {
+            if self.resolve_ident_in_module(module, ident, ns, false, span).is_err() {
                 let path = &self.current_trait_ref.as_ref().unwrap().1.path;
                 resolve_error(self, span, err(ident.name, &path_names_to_string(path)));
             }
@@ -3225,7 +3224,7 @@ impl<'a> Resolver<'a> {
                 };
             }
         }
-        let is_global = self.global_macros.get(&path[0].name).cloned()
+        let is_global = self.macro_prelude.get(&path[0].name).cloned()
             .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
         if primary_ns != MacroNS && (is_global ||
                                      self.macro_names.contains(&path[0].modern())) {
@@ -3468,7 +3467,7 @@ impl<'a> Resolver<'a> {
             }
 
             let binding = if let Some(module) = module {
-                self.resolve_ident_in_module(module, ident, ns, false, record_used, path_span)
+                self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
                 self.resolve_lexical_macro_path_segment(ident, ns, record_used, path_span)
                     .map(MacroBinding::binding)
@@ -3762,7 +3761,7 @@ impl<'a> Resolver<'a> {
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
             if let Ok(binding) =
-                    self.resolve_ident_in_module(module, ident, ns, false, false, module.span) {
+                    self.resolve_ident_in_module(module, ident, ns, false, module.span) {
                 let def = binding.def();
                 if filter_fn(def) {
                     return Some(if self.has_self.contains(&def.def_id()) {
@@ -4075,7 +4074,7 @@ impl<'a> Resolver<'a> {
         let mut found_traits = Vec::new();
         // Look for the current trait.
         if let Some((module, _)) = self.current_trait_ref {
-            if self.resolve_ident_in_module(module, ident, ns, false, false, module.span).is_ok() {
+            if self.resolve_ident_in_module(module, ident, ns, false, module.span).is_ok() {
                 let def_id = module.def_id().unwrap();
                 found_traits.push(TraitCandidate { def_id: def_id, import_id: None });
             }

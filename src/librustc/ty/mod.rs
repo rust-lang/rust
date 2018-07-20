@@ -47,7 +47,7 @@ use std::ops::Deref;
 use rustc_data_structures::sync::{self, Lrc, ParallelIterator, par_iter};
 use std::slice;
 use std::vec::IntoIter;
-use std::mem;
+use std::{mem, ptr};
 use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
@@ -527,8 +527,7 @@ impl<'tcx> PartialOrd for TyS<'tcx> {
 impl<'tcx> PartialEq for TyS<'tcx> {
     #[inline]
     fn eq(&self, other: &TyS<'tcx>) -> bool {
-        // (self as *const _) == (other as *const _)
-        (self as *const TyS<'tcx>) == (other as *const TyS<'tcx>)
+        ptr::eq(self, other)
     }
 }
 impl<'tcx> Eq for TyS<'tcx> {}
@@ -678,7 +677,7 @@ impl<T> PartialOrd for Slice<T> where T: PartialOrd {
 impl<T: PartialEq> PartialEq for Slice<T> {
     #[inline]
     fn eq(&self, other: &Slice<T>) -> bool {
-        (self as *const _) == (other as *const _)
+        ptr::eq(self, other)
     }
 }
 impl<T: Eq> Eq for Slice<T> {}
@@ -1730,7 +1729,7 @@ impl Ord for AdtDef {
 impl PartialEq for AdtDef {
     // AdtDef are always interned and this is part of TyS equality
     #[inline]
-    fn eq(&self, other: &Self) -> bool { self as *const _ == other as *const _ }
+    fn eq(&self, other: &Self) -> bool { ptr::eq(self, other) }
 }
 
 impl Eq for AdtDef {}
