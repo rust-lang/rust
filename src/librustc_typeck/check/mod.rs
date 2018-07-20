@@ -857,9 +857,6 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
             // Gather locals in statics (because of block expressions).
-            // This is technically unnecessary because locals in static items are forbidden,
-            // but prevents type checking from blowing up before const checking can properly
-            // emit an error.
             GatherLocalsVisitor { fcx: &fcx }.visit_body(body);
 
             fcx.check_expr_coercable_to_type(&body.value, expected_type);
