@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, intrinsics)]
+#![feature(no_core, lang_items, intrinsics, unboxed_closures)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -53,6 +53,20 @@ impl PartialEq for u8 {
 impl<T: ?Sized> PartialEq for *const T {
     fn eq(&self, other: &*const T) -> bool { *self == *other }
     fn ne(&self, other: &*const T) -> bool { *self != *other }
+}
+
+#[lang = "fn_once"]
+#[rustc_paren_sugar]
+trait FnOnce<Args> {
+    type Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
+
+#[lang = "fn_mut"]
+#[rustc_paren_sugar]
+trait FnMut<Args> : FnOnce<Args> {
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
 #[lang="panic"]

@@ -60,7 +60,7 @@ fn cmp_raw_ptr(a: *const u8, b: *const u8) -> bool {
     a == b
 }
 
-fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize) {
+fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize, u8, u32) {
     (
         a as u8,
         a as u16,
@@ -70,6 +70,8 @@ fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize) {
         a as i16,
         a as i32,
         a as isize,
+        b as u8,
+        b as u32
     )
 }
 
@@ -106,4 +108,10 @@ const Abc: u8 = 6 * 7;
 
 fn use_const() -> u8 {
     Abc
+}
+
+fn call_closure() {
+    (|_, _, _| {
+
+    })(0u8, 42u8, 0u8)
 }

@@ -7,12 +7,22 @@ use prelude::*;
 
 pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<'tcx>) -> Signature {
     let sig = ty_fn_sig(tcx, fn_ty);
-    let sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig);
     assert!(!sig.variadic, "Variadic function are not yet supported");
     let (call_conv, inputs, _output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
-            unimplemented!("rust-call");
+            println!("rust-call sig: {:?} inputs: {:?} output: {:?}", sig, sig.inputs(), sig.output());
+            let extra_args = match sig.inputs().last().unwrap().sty {
+                ty::TyTuple(ref tupled_arguments) => tupled_arguments,
+                _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
+            };
+            let mut inputs: Vec<Ty> = sig.inputs()[0..sig.inputs().len() - 1].to_vec();
+            inputs.extend(extra_args.into_iter());
+            (
+                CallConv::SystemV,
+                inputs,
+                sig.output(),
+            )
         }
         Abi::System => bug!("system abi should be selected elsewhere"),
         // TODO: properly implement intrinsics
@@ -32,8 +42,8 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
 fn ty_fn_sig<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>
-) -> ty::PolyFnSig<'tcx> {
-    match ty.sty {
+) -> ty::FnSig<'tcx> {
+    let sig = match ty.sty {
         ty::TyFnDef(..) |
         // Shims currently have type TyFnPtr. Not sure this should remain.
         ty::TyFnPtr(_) => ty.fn_sig(tcx),
@@ -73,7 +83,8 @@ fn ty_fn_sig<'a, 'tcx>(
             })
         }
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
-    }
+    };
+    tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig)
 }
 
 impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
@@ -91,8 +102,7 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
     }
 
     fn self_sig(&self) -> FnSig<'tcx> {
-        let sig = ty_fn_sig(self.tcx, self.instance.ty(self.tcx));
-        self.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig)
+        ty_fn_sig(self.tcx, self.instance.ty(self.tcx))
     }
 
     fn return_type(&self) -> Ty<'tcx> {
@@ -153,6 +163,8 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     destination: &Option<(Place<'tcx>, BasicBlock)>,
 ) {
     let func = ::base::trans_operand(fx, func);
+    let fn_ty = func.layout().ty;
+    let sig = ty_fn_sig(fx.tcx, fn_ty);
 
     let return_place = if let Some((place, _)) = destination {
         Some(::base::trans_place(fx, place))
@@ -160,29 +172,33 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         None
     };
 
-    let args = args
-        .into_iter()
-        .map(|arg| {
-            let arg = ::base::trans_operand(fx, arg);
-            if let Some(_) = fx.cton_type(arg.layout().ty) {
-                arg.load_value(fx)
-            } else {
-                arg.force_stack(fx)
-            }
-        })
-        .collect::<Vec<_>>();
+    // Unpack arguments tuple for closures
+    let args = if sig.abi == Abi::RustCall {
+        assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
+        let self_arg = ::base::trans_operand(fx, &args[0]);
+        let pack_arg = ::base::trans_operand(fx, &args[1]);
+        let mut args = Vec::new();
+        args.push(self_arg);
+        match pack_arg.layout().ty.sty {
+            ty::TyTuple(ref tupled_arguments) => {
+                for (i, _) in tupled_arguments.iter().enumerate() {
+                    args.push(pack_arg.value_field(fx, mir::Field::new(i)));
+                }
+            },
+            _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
+        }
+        args
+    } else {
+        args
+            .into_iter()
+            .map(|arg| {
+                ::base::trans_operand(fx, arg)
+            })
+            .collect::<Vec<_>>()
+    };
 
-    let fn_ty = func.layout().ty;
     if let TypeVariants::TyFnDef(def_id, substs) = fn_ty.sty {
-        let instance = ty::Instance::resolve(
-            fx.tcx,
-            ParamEnv::reveal_all(),
-            def_id,
-            substs
-        ).unwrap();
-
-        // Handle intrinsics old codegen wants Expr's for, ourselves.
-        if let InstanceDef::Intrinsic(def_id) = instance.def {
+        if sig.abi == Abi::RustIntrinsic {
             let intrinsic = fx.tcx.item_name(def_id).as_str();
             let intrinsic = &intrinsic[..];
 
@@ -218,17 +234,23 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         None => fx.bcx.ins().iconst(types::I64, 0),
     };
 
-    let args = Some(return_ptr).into_iter().chain(args).collect::<Vec<_>>();
+    let call_args = Some(return_ptr).into_iter().chain(args.into_iter().map(|arg| {
+        if fx.cton_type(arg.layout().ty).is_some() {
+            arg.load_value(fx)
+        } else {
+            arg.force_stack(fx)
+        }
+    })).collect::<Vec<_>>();
 
     match func {
         CValue::Func(func, _) => {
-            fx.bcx.ins().call(func, &args);
+            fx.bcx.ins().call(func, &call_args);
         }
         func => {
             let func_ty = func.layout().ty;
             let func = func.load_value(fx);
             let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, func_ty));
-            fx.bcx.ins().call_indirect(sig, func, &args);
+            fx.bcx.ins().call_indirect(sig, func, &call_args);
         }
     }
     if let Some((_, dest)) = *destination {
