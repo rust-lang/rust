@@ -14,7 +14,6 @@ RUSTFLAGS="$RUSTFLAGS --cfg stdsimd_strict"
 
 # FIXME: on armv7 neon intrinsics require the neon target-feature to be
 # unconditionally enabled.
-# FIXME: powerpc (32-bit) must be compiled with altivec
 # FIXME: on powerpc (32-bit) and powerpc64 (big endian) disable
 # the instr tests.
 case ${TARGET} in
@@ -22,7 +21,6 @@ case ${TARGET} in
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+neon"
         ;;
     powerpc-*)
-        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+altivec"
         export STDSIMD_DISABLE_ASSERT_INSTR=1
         ;;
     powerpc64-*)
