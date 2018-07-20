@@ -44,15 +44,6 @@ const MS: Duration = Duration::from_millis(1);
 /// 1 second `Duration`
 #[unstable(feature = "time_units", issue = "0")]
 const S: Duration = Duration::from_secs(1);
-/// 1 minute `Duration`
-#[unstable(feature = "time_units", issue = "0")]
-const M: Duration = Duration::from_secs(60);
-/// 1 hour `Duration`
-#[unstable(feature = "time_units", issue = "0")]
-const H: Duration = Duration::from_secs(60*60);
-/// 1 day `Duration`
-#[unstable(feature = "time_units", issue = "0")]
-const D: Duration = Duration::from_secs(24*60*60);
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -524,7 +515,6 @@ impl Mul<u32> for Duration {
     }
 }
 
-#[unstable(feature = "time_units", issue = "0")]
 impl Mul<Duration> for u32 {
     type Output = Duration;
 
