@@ -240,6 +240,13 @@ impl Invocation {
             InvocationKind::Derive { ref path, .. } => path.span,
         }
     }
+
+    pub fn attr_id(&self) -> Option<ast::AttrId> {
+        match self.kind {
+            InvocationKind::Attr { attr: Some(ref attr), .. } => Some(attr.id),
+            _ => None,
+        }
+    }
 }
 
 pub struct MacroExpander<'a, 'b:'a> {
@@ -331,10 +338,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
+            let attr_id_before = invoc.attr_id();
             let ext = match self.cx.resolver.resolve_invoc(&mut invoc, scope, force) {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
                 Err(Determinacy::Undetermined) => {
+                    // Sometimes attributes which we thought were invocations
+                    // end up being custom attributes for custom derives. If
+                    // that's the case our `invoc` will have changed out from
+                    // under us. If this is the case we're making progress so we
+                    // want to flag it as such, and we test this by looking if
+                    // the `attr_id()` method has been changing over time.
+                    if invoc.attr_id() != attr_id_before {
+                        progress = true;
+                    }
                     undetermined_invocations.push(invoc);
                     continue
                 }
