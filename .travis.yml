@@ -50,6 +50,9 @@ matrix:
     - env: INTEGRATION=hyperium/hyper
 
 script:
+  - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
+  - travis_retry rustup-toolchain-install-master -f -n master
+  - rustup default master
   - |
     if [ -z ${INTEGRATION} ]; then
       ./ci/base-tests.sh
