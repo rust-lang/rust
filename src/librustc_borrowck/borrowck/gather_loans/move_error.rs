@@ -99,6 +99,7 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, errors: &Vec<Move
                            "captured outer variable");
         }
         err.emit();
+        bccx.signal_error();
     }
 }
 
