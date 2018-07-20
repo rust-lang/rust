@@ -351,6 +351,10 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         // cases exceed the limit.
         "cvtpi2ps" => 25,
 
+        // In this case the overall length, counting also the 'mergefunc'
+        // workaround overhead, is exactly 20 instructions.
+        "qsub8" | "qadd8" | "qsub16" | "qadd16" => 22,
+
         _ => 20,
     };
     let probably_only_one_instruction = instrs.len() < instruction_limit;
