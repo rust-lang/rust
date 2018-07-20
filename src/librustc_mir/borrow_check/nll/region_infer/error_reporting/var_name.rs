@@ -1,0 +1,137 @@
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::ToRegionVid;
+use rustc::mir::{Local, Mir};
+use rustc::ty::{RegionVid, TyCtxt};
+use rustc_data_structures::indexed_vec::Idx;
+use syntax::codemap::Span;
+use syntax_pos::symbol::Symbol;
+
+impl<'tcx> RegionInferenceContext<'tcx> {
+    crate fn get_var_name_and_span_for_region(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+        fr: RegionVid,
+    ) -> (Option<Symbol>, Span) {
+        debug!("get_var_name_and_span_for_region(fr={:?})", fr);
+        assert!(self.universal_regions.is_universal_region(fr));
+
+        debug!("get_var_name_and_span_for_region: attempting upvar");
+        self.get_upvar_index_for_region(tcx, fr)
+            .map(|index| self.get_upvar_name_and_span_for_region(tcx, mir, index))
+            .or_else(|| {
+                debug!("get_var_name_and_span_for_region: attempting argument");
+                self.get_argument_index_for_region(tcx, fr)
+                    .map(|index| self.get_argument_name_and_span_for_region(mir, index))
+            })
+            .unwrap_or_else(|| span_bug!(mir.span, "can't find var name for free region {:?}", fr))
+    }
+
+    /// Get upvar index for a region.
+    crate fn get_upvar_index_for_region(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        fr: RegionVid,
+    ) -> Option<usize> {
+        let upvar_index = self
+            .universal_regions
+            .defining_ty
+            .upvar_tys(tcx)
+            .position(|upvar_ty| {
+                debug!(
+                    "get_upvar_index_for_region: upvar_ty = {:?}",
+                    upvar_ty,
+                );
+                tcx.any_free_region_meets(&upvar_ty, |r| r.to_region_vid() == fr)
+            })?;
+
+        let upvar_ty = self
+            .universal_regions
+            .defining_ty
+            .upvar_tys(tcx)
+            .nth(upvar_index);
+
+        debug!(
+            "get_upvar_index_for_region: found {:?} in upvar {} which has type {:?}",
+            fr, upvar_index, upvar_ty,
+        );
+
+        Some(upvar_index)
+    }
+
+    /// Get upvar name and span for a region.
+    crate fn get_upvar_name_and_span_for_region(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+        upvar_index: usize,
+    ) -> (Option<Symbol>, Span) {
+        let upvar_hir_id = mir.upvar_decls[upvar_index].var_hir_id.assert_crate_local();
+        let upvar_node_id = tcx.hir.hir_to_node_id(upvar_hir_id);
+        debug!("get_upvar_name_and_span_for_region: upvar_node_id={:?}", upvar_node_id);
+
+        let upvar_name = tcx.hir.name(upvar_node_id);
+        let upvar_span = tcx.hir.span(upvar_node_id);
+        debug!("get_upvar_name_and_span_for_region: upvar_name={:?} upvar_span={:?}",
+               upvar_name, upvar_span);
+
+        (Some(upvar_name), upvar_span)
+    }
+
+    /// Get argument index for a region.
+    crate fn get_argument_index_for_region(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        fr: RegionVid,
+    ) -> Option<usize> {
+        let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
+        let argument_index = self
+            .universal_regions
+            .unnormalized_input_tys
+            .iter()
+            .skip(implicit_inputs)
+            .position(|arg_ty| {
+                debug!(
+                    "get_argument_index_for_region: arg_ty = {:?}",
+                    arg_ty
+                );
+                tcx.any_free_region_meets(arg_ty, |r| r.to_region_vid() == fr)
+            })?;
+
+        debug!(
+            "get_argument_index_for_region: found {:?} in argument {} which has type {:?}",
+            fr, argument_index, self.universal_regions.unnormalized_input_tys[argument_index],
+        );
+
+        Some(argument_index)
+    }
+
+    /// Get argument name and span for a region.
+    crate fn get_argument_name_and_span_for_region(
+        &self,
+        mir: &Mir<'tcx>,
+        argument_index: usize,
+    ) -> (Option<Symbol>, Span) {
+        let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
+        let argument_local = Local::new(implicit_inputs + argument_index + 1);
+        debug!("get_argument_name_and_span_for_region: argument_local={:?}", argument_local);
+
+        let argument_name = mir.local_decls[argument_local].name;
+        let argument_span = mir.local_decls[argument_local].source_info.span;
+        debug!("get_argument_name_and_span_for_region: argument_name={:?} argument_span={:?}",
+               argument_name, argument_span);
+
+        (argument_name, argument_span)
+    }
+
+}
