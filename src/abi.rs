@@ -1,25 +1,21 @@
+use std::iter;
+
+use rustc::hir;
+use rustc_target::spec::abi::Abi;
+
 use prelude::*;
 
-pub fn cton_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>, substs: &Substs<'tcx>) -> Signature {
-    let sig = tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
-    cton_sig_from_mono_fn_sig(tcx, sig)
-}
-
-pub fn cton_sig_from_instance<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, inst: Instance<'tcx>) -> Signature {
-    let fn_ty = inst.ty(tcx);
-    let sig = fn_ty.fn_sig(tcx);
-    cton_sig_from_mono_fn_sig(tcx, sig)
-}
-
-pub fn cton_sig_from_mono_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>) -> Signature {
-    // TODO: monomorphize signature
-
+pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<'tcx>) -> Signature {
+    let sig = ty_fn_sig(tcx, fn_ty);
     let sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig);
-    let inputs = sig.inputs();
-    let _output = sig.output();
     assert!(!sig.variadic, "Variadic function are not yet supported");
-    let call_conv = match sig.abi {
-        _ => CallConv::SystemV,
+    let (call_conv, inputs, _output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
+        Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
+        Abi::RustCall => {
+            unimplemented!();
+        }
+        Abi::System => bug!("system abi should be selected elsewhere"),
+        _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
     Signature {
         params: Some(types::I64).into_iter() // First param is place to put return val
@@ -31,15 +27,74 @@ pub fn cton_sig_from_mono_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig:
     }
 }
 
+fn ty_fn_sig<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ty: Ty<'tcx>
+) -> ty::PolyFnSig<'tcx> {
+    match ty.sty {
+        ty::TyFnDef(..) |
+        // Shims currently have type TyFnPtr. Not sure this should remain.
+        ty::TyFnPtr(_) => ty.fn_sig(tcx),
+        ty::TyClosure(def_id, substs) => {
+            let sig = substs.closure_sig(def_id, tcx);
+
+            let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
+            sig.map_bound(|sig| tcx.mk_fn_sig(
+                iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                sig.output(),
+                sig.variadic,
+                sig.unsafety,
+                sig.abi
+            ))
+        }
+        ty::TyGenerator(def_id, substs, _) => {
+            let sig = substs.poly_sig(def_id, tcx);
+
+            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+
+            sig.map_bound(|sig| {
+                let state_did = tcx.lang_items().gen_state().unwrap();
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_substs = tcx.intern_substs(&[
+                    sig.yield_ty.into(),
+                    sig.return_ty.into(),
+                ]);
+                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                tcx.mk_fn_sig(iter::once(env_ty),
+                    ret_ty,
+                    false,
+                    hir::Unsafety::Normal,
+                    Abi::Rust
+                )
+            })
+        }
+        _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
+    }
+}
+
 impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
+    /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
+        assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
         let tcx = self.tcx;
         let module = &mut self.module;
         let func_id = *self.def_id_fn_id_map.entry(inst).or_insert_with(|| {
-            let sig = cton_sig_from_instance(tcx, inst);
+            let fn_ty = inst.ty(tcx);
+            let sig = cton_sig_from_fn_ty(tcx, fn_ty);
             module.declare_function(&tcx.absolute_item_path_str(inst.def_id()), Linkage::Local, &sig).unwrap()
         });
         module.declare_func_in_func(func_id, &mut self.bcx.func)
+    }
+
+    fn self_sig(&self) -> FnSig<'tcx> {
+        let sig = ty_fn_sig(self.tcx, self.instance.ty(self.tcx));
+        self.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &sig)
+    }
+
+    fn return_type(&self) -> Ty<'tcx> {
+        self.self_sig().output()
     }
 }
 
@@ -63,7 +118,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
         (local, fx.bcx.append_ebb_param(start_ebb, cton_type), ty, stack_slot)
     }).collect::<Vec<(Local, Value, Ty, StackSlot)>>();
 
-    let ret_layout = fx.layout_of(fx.instance.ty(fx.tcx).fn_sig(fx.tcx).skip_binder().output());
+    let ret_layout = fx.layout_of(fx.return_type());
     fx.local_map.insert(RETURN_PLACE, CPlace::Addr(ret_param, ret_layout));
 
     for (local, ebb_param, ty, stack_slot) in func_params {
@@ -96,7 +151,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     destination: &Option<(Place<'tcx>, BasicBlock)>,
 ) -> Inst {
     let func = ::base::trans_operand(fx, func);
-    let func_ty = func.layout().ty;
     let return_place = if let Some((place, _)) = destination {
         ::base::trans_place(fx, place).expect_addr()
     } else {
@@ -121,13 +175,9 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             fx.bcx.ins().call(func, &args)
         }
         func => {
+            let func_ty = func.layout().ty;
             let func = func.load_value(fx);
-            let sig = match func_ty.sty {
-                TypeVariants::TyFnDef(def_id, _substs) => fx.tcx.fn_sig(def_id),
-                TypeVariants::TyFnPtr(fn_sig) => fn_sig,
-                _ => bug!("Calling non function type {:?}", func_ty),
-            };
-            let sig = fx.bcx.import_signature(cton_sig_from_fn_sig(fx.tcx, sig, fx.param_substs));
+            let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, func_ty));
             fx.bcx.ins().call_indirect(sig, func, &args)
         }
     };

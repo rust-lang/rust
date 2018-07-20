@@ -1,10 +1,8 @@
-extern crate rustc_target;
-
 use std::borrow::Cow;
 use std::fmt;
 
 use syntax::ast::{IntTy, UintTy};
-use self::rustc_target::spec::{HasTargetSpec, Target};
+use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::{Module, FuncId, DataId};
 

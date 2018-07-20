@@ -13,8 +13,13 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                 ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
                 tcx.sess.warn(&format!("{:?}:\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner())));
 
-                let sig = tcx.fn_sig(def_id);
-                let sig = cton_sig_from_fn_sig(tcx, sig, substs);
+                let fn_ty = inst.ty(tcx);
+                let fn_ty = tcx.subst_and_normalize_erasing_regions(
+                    substs,
+                    ty::ParamEnv::reveal_all(),
+                    &fn_ty,
+                );
+                let sig = cton_sig_from_fn_ty(tcx, fn_ty);
                 let func_id = {
                     let module = &mut cx.module;
                     *cx.def_id_fn_id_map.entry(inst).or_insert_with(|| {
@@ -44,6 +49,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                 match ::cranelift::codegen::verify_function(&f, &flags) {
                     Ok(_) => {}
                     Err(err) => {
+                        tcx.sess.err(&format!("{:?}", err));
                         let pretty_error = ::cranelift::codegen::print_errors::pretty_verifier_error(&f, None, Some(Box::new(writer)), &err);
                         tcx.sess.fatal(&format!("cretonne verify error:\n{}", pretty_error));
                     }

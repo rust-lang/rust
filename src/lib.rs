@@ -6,6 +6,7 @@ extern crate syntax;
 extern crate rustc;
 extern crate rustc_mir;
 extern crate rustc_codegen_utils;
+extern crate rustc_target;
 extern crate rustc_incremental;
 extern crate rustc_data_structures;
 
