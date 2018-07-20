@@ -39,13 +39,6 @@ static BLOCK_FN: fn(usize) -> usize = { foo::<usize> };
 
 static BLOCK_ENUM_CONSTRUCTOR: fn(usize) -> Option<usize> = { Some };
 
-// FIXME #13972
-// static BLOCK_UNSAFE_SAFE_PTR: &'static isize = unsafe { &*(0xdeadbeef as *const isize) };
-// static BLOCK_UNSAFE_SAFE_PTR_2: &'static isize = unsafe {
-//     const X: *const isize = 0xdeadbeef as *const isize;
-//     &*X
-// };
-
 pub fn main() {
     assert_eq!(BLOCK_INTEGRAL, 1);
     assert_eq!(BLOCK_EXPLICIT_UNIT, ());
@@ -58,7 +51,4 @@ pub fn main() {
     assert_eq!(BLOCK_FN_INFERRED(300), 300);
     assert_eq!(BLOCK_FN(300), 300);
     assert_eq!(BLOCK_ENUM_CONSTRUCTOR(200), Some(200));
-    // FIXME #13972
-    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR as *const isize as usize, 0xdeadbeef);
-    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR_2 as *const isize as usize, 0xdeadbeef);
 }

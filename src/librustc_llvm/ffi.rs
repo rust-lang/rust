@@ -1791,7 +1791,6 @@ extern "C" {
                                            CU1: *mut *mut c_void,
                                            CU2: *mut *mut c_void);
     pub fn LLVMRustThinLTOPatchDICompileUnit(M: ModuleRef, CU: *mut c_void);
-    pub fn LLVMRustThinLTORemoveAvailableExternally(M: ModuleRef);
 
     pub fn LLVMRustLinkerNew(M: ModuleRef) -> LinkerRef;
     pub fn LLVMRustLinkerAdd(linker: LinkerRef,
