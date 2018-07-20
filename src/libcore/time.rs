@@ -514,6 +514,7 @@ impl Mul<u32> for Duration {
     }
 }
 
+#[unstable(feature = "time_units", issue = "0")]
 impl Mul<Duration> for u32 {
     type Output = Duration;
 
