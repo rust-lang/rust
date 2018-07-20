@@ -1253,15 +1253,13 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
         .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
     if let Ok(def) = res {
         if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
-            Some(def)
-        } else {
-            None
+            return Some(def);
         }
-    } else if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
-        Some(*def)
-    } else {
-        None
     }
+    if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
+        return Some(*def);
+    }
+    None
 }
 
 #[derive(Debug)]
