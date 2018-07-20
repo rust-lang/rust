@@ -16,6 +16,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::lint::builtin::UNUSED_MUT;
+use rustc::middle::borrowck::SignalledError;
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{ClearCrossCrate, Local, Location, Mir, Mutability, Operand, Place};
 use rustc::mir::{Field, Projection, ProjectionElem, Rvalue, Statement, StatementKind};
@@ -23,7 +24,7 @@ use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 
-use rustc_errors::{Diagnostic, DiagnosticBuilder};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -329,8 +330,28 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         }
     }
 
-    for diag in mbcx.errors_buffer.drain(..) {
-        DiagnosticBuilder::new_diagnostic(mbcx.tcx.sess.diagnostic(), diag).emit();
+    if mbcx.errors_buffer.len() > 0 {
+        if tcx.migrate_borrowck() {
+            match tcx.borrowck(def_id).signalled_any_error {
+                SignalledError::NoErrorsSeen => {
+                    // if AST-borrowck signalled no errors, then
+                    // downgrade all the buffered MIR-borrowck errors
+                    // to warnings.
+                    for err in &mut mbcx.errors_buffer {
+                        if err.is_error() { err.level = Level::Warning; }
+                    }
+                }
+                SignalledError::SawSomeError => {
+                    // if AST-borrowck signalled a (cancelled) error,
+                    // then we will just emit the buffered
+                    // MIR-borrowck errors as normal.
+                }
+            }
+        }
+
+        for diag in mbcx.errors_buffer.drain(..) {
+            DiagnosticBuilder::new_diagnostic(mbcx.tcx.sess.diagnostic(), diag).emit();
+        }
     }
 
     let result = BorrowCheckResult {

@@ -455,15 +455,28 @@ pub enum BorrowckMode {
     Ast,
     Mir,
     Compare,
+    Migrate,
 }
 
 impl BorrowckMode {
+    /// Should we run the MIR-based borrow check, but also fall back
+    /// on the AST borrow check if the MIR-based one errors.
+    pub fn migrate(self) -> bool {
+        match self {
+            BorrowckMode::Ast => false,
+            BorrowckMode::Compare => false,
+            BorrowckMode::Mir => false,
+            BorrowckMode::Migrate => true,
+        }
+    }
+
     /// Should we emit the AST-based borrow checker errors?
     pub fn use_ast(self) -> bool {
         match self {
             BorrowckMode::Ast => true,
             BorrowckMode::Compare => true,
             BorrowckMode::Mir => false,
+            BorrowckMode::Migrate => false,
         }
     }
     /// Should we emit the MIR-based borrow checker errors?
@@ -472,6 +485,7 @@ impl BorrowckMode {
             BorrowckMode::Ast => false,
             BorrowckMode::Compare => true,
             BorrowckMode::Mir => true,
+            BorrowckMode::Migrate => true,
         }
     }
 }
@@ -2166,6 +2180,7 @@ pub fn build_session_options_and_crate_config(
         None | Some("ast") => BorrowckMode::Ast,
         Some("mir") => BorrowckMode::Mir,
         Some("compare") => BorrowckMode::Compare,
+        Some("migrate") => BorrowckMode::Migrate,
         Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     };
 

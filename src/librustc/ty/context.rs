@@ -1366,6 +1366,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.borrowck_mode().use_mir()
     }
 
+    /// If true, we should use the MIR-based borrow check, but also
+    /// fall back on the AST borrow check if the MIR-based one errors.
+    pub fn migrate_borrowck(self) -> bool {
+        self.borrowck_mode().migrate()
+    }
+
     /// If true, make MIR codegen for `match` emit a temp that holds a
     /// borrow of the input to the match expression.
     pub fn generate_borrow_of_any_match_input(&self) -> bool {
@@ -1399,6 +1405,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn borrowck_mode(&self) -> BorrowckMode {
         match self.sess.opts.borrowck_mode {
             mode @ BorrowckMode::Mir |
+            mode @ BorrowckMode::Migrate |
             mode @ BorrowckMode::Compare => mode,
 
             mode @ BorrowckMode::Ast => {
