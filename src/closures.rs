@@ -118,6 +118,22 @@ fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext) -> bo
         || prefix.contains('\n')
 }
 
+fn veto_block(e: &ast::Expr) -> bool {
+    match e.node {
+        ast::ExprKind::Call(..)
+        | ast::ExprKind::Binary(..)
+        | ast::ExprKind::Cast(..)
+        | ast::ExprKind::Type(..)
+        | ast::ExprKind::Assign(..)
+        | ast::ExprKind::AssignOp(..)
+        | ast::ExprKind::Field(..)
+        | ast::ExprKind::Index(..)
+        | ast::ExprKind::Range(..)
+        | ast::ExprKind::Try(..) => true,
+        _ => false,
+    }
+}
+
 // Rewrite closure with a single expression wrapping its body with block.
 fn rewrite_closure_with_block(
     body: &ast::Expr,
@@ -126,7 +142,7 @@ fn rewrite_closure_with_block(
     shape: Shape,
 ) -> Option<String> {
     let left_most = left_most_sub_expr(body);
-    let veto_block = left_most != body && !classify::expr_requires_semi_to_be_stmt(left_most);
+    let veto_block = veto_block(body) && !classify::expr_requires_semi_to_be_stmt(left_most);
     if veto_block {
         return None;
     }
