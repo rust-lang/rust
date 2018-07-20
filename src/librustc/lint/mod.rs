@@ -41,7 +41,7 @@ use lint::builtin::BuiltinLintDiagnostics;
 use session::{Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
-use syntax::codemap::MultiSpan;
+use syntax::codemap::{MultiSpan, ExpnFormat};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax::visit as ast_visit;
@@ -572,6 +572,22 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                                future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
+
+    // If this lint is *not* a future incompatibility warning then we want to be
+    // sure to not be too noisy in some situations. If this code originates in a
+    // foreign macro, aka something that this crate did not itself author, then
+    // it's likely that there's nothing this crate can do about it. We probably
+    // want to skip the lint entirely.
+    //
+    // For some lints though (like unreachable code) there's clear actionable
+    // items to take care of (delete the macro invocation). As a result we have
+    // a few lints we whitelist here for allowing a lint even though it's in a
+    // foreign macro invocation.
+    } else if lint_id != LintId::of(builtin::UNREACHABLE_CODE) &&
+        lint_id != LintId::of(builtin::DEPRECATED) {
+        if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
+            err.cancel();
+        }
     }
 
     return err
@@ -672,4 +688,33 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     providers.lint_levels = lint_levels;
+}
+
+/// Returns whether `span` originates in a foreign crate's external macro.
+///
+/// This is used to test whether a lint should be entirely aborted above.
+pub fn in_external_macro(sess: &Session, span: Span) -> bool {
+    let info = match span.ctxt().outer().expn_info() {
+        Some(info) => info,
+        // no ExpnInfo means this span doesn't come from a macro
+        None => return false,
+    };
+
+    match info.format {
+        ExpnFormat::MacroAttribute(..) => return true, // definitely a plugin
+        ExpnFormat::CompilerDesugaring(_) => return true, // well, it's "external"
+        ExpnFormat::MacroBang(..) => {} // check below
+    }
+
+    let def_site = match info.def_site {
+        Some(span) => span,
+        // no span for the def_site means it's an external macro
+        None => return true,
+    };
+
+    match sess.codemap().span_to_snippet(def_site) {
+        Ok(code) => !code.starts_with("macro_rules"),
+        // no snippet = external macro or compiler-builtin expansion
+        Err(_) => true,
+    }
 }
