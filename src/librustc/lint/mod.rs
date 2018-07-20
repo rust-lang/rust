@@ -80,6 +80,9 @@ pub struct Lint {
     /// Starting at the given edition, default to the given lint level. If this is `None`, then use
     /// `default_level`.
     pub edition_lint_opts: Option<(Edition, Level)>,
+
+    /// Whether this lint is reported even inside expansions of external macros
+    pub report_in_external_macro: bool,
 }
 
 impl Lint {
@@ -100,11 +103,18 @@ impl Lint {
 #[macro_export]
 macro_rules! declare_lint {
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
+        declare_lint!{$vis $NAME, $Level, $desc, false}
+    );
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, report_in_external_macro) => (
+        declare_lint!{$vis $NAME, $Level, $desc, true}
+    );
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $external: expr) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
             desc: $desc,
             edition_lint_opts: None,
+            report_in_external_macro: $external,
         };
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
@@ -115,6 +125,7 @@ macro_rules! declare_lint {
             default_level: $crate::lint::$Level,
             desc: $desc,
             edition_lint_opts: Some(($lint_edition, $crate::lint::Level::$edition_level)),
+            report_in_external_macro: false,
         };
     );
 }
@@ -583,8 +594,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     // items to take care of (delete the macro invocation). As a result we have
     // a few lints we whitelist here for allowing a lint even though it's in a
     // foreign macro invocation.
-    } else if lint_id != LintId::of(builtin::UNREACHABLE_CODE) &&
-        lint_id != LintId::of(builtin::DEPRECATED) {
+    } else if !lint.report_in_external_macro {
         if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
             err.cancel();
         }
