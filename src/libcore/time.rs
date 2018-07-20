@@ -33,16 +33,19 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 
 /// 1 nanosecond `Duration`
 #[unstable(feature = "time_units", issue = "0")]
-pub const NS: Duration = Duration::from_nanos(1);
+pub const NANOSECOND: Duration = Duration::from_nanos(1);
 /// 1 microsecond `Duration`
 #[unstable(feature = "time_units", issue = "0")]
-pub const US: Duration = Duration::from_micros(1);
+pub const MICROSECOND: Duration = Duration::from_micros(1);
 /// 1 millisecond `Duration`
 #[unstable(feature = "time_units", issue = "0")]
-pub const MS: Duration = Duration::from_millis(1);
+pub const MILLISECOND: Duration = Duration::from_millis(1);
 /// 1 second `Duration`
 #[unstable(feature = "time_units", issue = "0")]
-pub const S: Duration = Duration::from_secs(1);
+pub const SECOND: Duration = Duration::from_secs(1);
+/// 1 minute `Duration`
+#[unstable(feature = "time_units", issue = "0")]
+pub const MINUTE: Duration = Duration::from_secs(60);
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
