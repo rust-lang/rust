@@ -13,7 +13,7 @@
 use llvm;
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
-use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
+use llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use common::*;
 use type_::Type;
 use value::Value;
@@ -1154,23 +1154,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("ptrdiff");
         unsafe {
             llvm::LLVMBuildPtrDiff(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    pub fn trap(&self) {
-        unsafe {
-            let bb: BasicBlockRef = llvm::LLVMGetInsertBlock(self.llbuilder);
-            let fn_: ValueRef = llvm::LLVMGetBasicBlockParent(bb);
-            let m: ModuleRef = llvm::LLVMGetGlobalParent(fn_);
-            let p = "llvm.trap\0".as_ptr();
-            let t: ValueRef = llvm::LLVMGetNamedFunction(m, p as *const _);
-            assert!((t as isize != 0));
-            let args: &[ValueRef] = &[];
-            self.count_insn("trap");
-            llvm::LLVMRustBuildCall(self.llbuilder, t,
-                                    args.as_ptr(), args.len() as c_uint,
-                                    ptr::null_mut(),
-                                    noname());
         }
     }
 
