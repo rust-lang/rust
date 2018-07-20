@@ -11,8 +11,10 @@ fn a() {
 fn b() {
     match x {
         X =>
-            // A comment
+        // A comment
+        {
             y
+        }
     }
 }
 

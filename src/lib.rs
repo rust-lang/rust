@@ -140,8 +140,20 @@ pub enum ErrorKind {
     ParseError,
     /// The user mandated a version and the current version of Rustfmt does not
     /// satisfy that requirement.
-    #[fail(display = "Version mismatch")]
+    #[fail(display = "version mismatch")]
     VersionMismatch,
+    /// If we had formatted the given node, then we would have lost a comment.
+    #[fail(display = "not formatted because a comment would be lost")]
+    LostComment,
+}
+
+impl ErrorKind {
+    fn is_comment(&self) -> bool {
+        match self {
+            ErrorKind::LostComment => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<io::Error> for ErrorKind {
@@ -162,8 +174,8 @@ impl FormattingError {
     fn from_span(span: &Span, codemap: &CodeMap, kind: ErrorKind) -> FormattingError {
         FormattingError {
             line: codemap.lookup_char_pos(span.lo()).line,
+            is_comment: kind.is_comment(),
             kind,
-            is_comment: false,
             is_string: false,
             line_buffer: codemap
                 .span_to_lines(*span)
@@ -181,7 +193,8 @@ impl FormattingError {
             ErrorKind::LineOverflow(..)
             | ErrorKind::TrailingWhitespace
             | ErrorKind::IoError(_)
-            | ErrorKind::ParseError => "internal error:",
+            | ErrorKind::ParseError
+            | ErrorKind::LostComment => "internal error:",
             ErrorKind::LicenseCheck | ErrorKind::BadAttr | ErrorKind::VersionMismatch => "error:",
             ErrorKind::BadIssue(_) | ErrorKind::DeprecatedAttr => "warning:",
         }
@@ -200,7 +213,10 @@ impl FormattingError {
     fn format_len(&self) -> (usize, usize) {
         match self.kind {
             ErrorKind::LineOverflow(found, max) => (max, found - max),
-            ErrorKind::TrailingWhitespace | ErrorKind::DeprecatedAttr | ErrorKind::BadAttr => {
+            ErrorKind::TrailingWhitespace
+            | ErrorKind::DeprecatedAttr
+            | ErrorKind::BadAttr
+            | ErrorKind::LostComment => {
                 let trailing_ws_start = self
                     .line_buffer
                     .rfind(|c: char| !c.is_whitespace())
@@ -501,7 +517,7 @@ fn should_report_error(
     is_string: bool,
     error_kind: &ErrorKind,
 ) -> bool {
-    let allow_error_report = if char_kind.is_comment() || is_string {
+    let allow_error_report = if char_kind.is_comment() || is_string || error_kind.is_comment() {
         config.error_on_unformatted()
     } else {
         true
@@ -509,7 +525,7 @@ fn should_report_error(
 
     match error_kind {
         ErrorKind::LineOverflow(..) => config.error_on_line_overflow() && allow_error_report,
-        ErrorKind::TrailingWhitespace => allow_error_report,
+        ErrorKind::TrailingWhitespace | ErrorKind::LostComment => allow_error_report,
         _ => true,
     }
 }

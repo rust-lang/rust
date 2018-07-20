@@ -17,7 +17,7 @@ use syntax::codemap::{BytePos, Span};
 use syntax::{ast, ptr};
 
 use codemap::SpanUtils;
-use comment::combine_strs_with_missing_comments;
+use comment::{combine_strs_with_missing_comments, rewrite_comment};
 use config::{Config, ControlBraceStyle, IndentStyle};
 use expr::{
     format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line,
@@ -267,12 +267,15 @@ fn rewrite_match_arm(
                     false,
                 )
             })?;
+
+    let arrow_span = mk_sp(arm.pats.last().unwrap().span.hi(), arm.body.span.lo());
     rewrite_match_body(
         context,
         &arm.body,
         &pats_str,
         shape,
         arm.guard.is_some(),
+        arrow_span,
         is_last,
     )
 }
@@ -345,6 +348,7 @@ fn rewrite_match_body(
     pats_str: &str,
     shape: Shape,
     has_guard: bool,
+    arrow_span: Span,
     is_last: bool,
 ) -> Option<String> {
     let (extend, body) = flatten_arm_body(context, body);
@@ -369,24 +373,43 @@ fn rewrite_match_body(
         Some(format!("{} =>{}{}{}", pats_str, block_sep, body_str, comma))
     };
 
-    let forbid_same_line = has_guard && pats_str.contains('\n') && !is_empty_block;
     let next_line_indent = if !is_block || is_empty_block {
         shape.indent.block_indent(context.config)
     } else {
         shape.indent
     };
+
+    let forbid_same_line = has_guard && pats_str.contains('\n') && !is_empty_block;
+
+    // Look for comments between `=>` and the start of the body.
+    let arrow_comment = {
+        let arrow_snippet = context.snippet(arrow_span).trim();
+        let arrow_index = arrow_snippet.find("=>").unwrap();
+        // 2 = `=>`
+        let comment_str = arrow_snippet[arrow_index + 2..].trim();
+        if comment_str.is_empty() {
+            String::new()
+        } else {
+            rewrite_comment(comment_str, false, shape, &context.config)?
+        }
+    };
+
     let combine_next_line_body = |body_str: &str| {
+        let nested_indent_str = next_line_indent.to_string_with_newline(context.config);
+
         if is_block {
-            return Some(format!(
-                "{} =>{}{}",
-                pats_str,
-                next_line_indent.to_string_with_newline(context.config),
-                body_str
-            ));
+            let mut result = pats_str.to_owned();
+            result.push_str(" =>");
+            if !arrow_comment.is_empty() {
+                result.push_str(&nested_indent_str);
+                result.push_str(&arrow_comment);
+            }
+            result.push_str(&nested_indent_str);
+            result.push_str(&body_str);
+            return Some(result);
         }
 
         let indent_str = shape.indent.to_string_with_newline(context.config);
-        let nested_indent_str = next_line_indent.to_string_with_newline(context.config);
         let (body_prefix, body_suffix) = if context.config.match_arm_blocks() {
             let comma = if context.config.match_block_trailing_comma() {
                 ","
@@ -401,14 +424,22 @@ fn rewrite_match_body(
         let block_sep = match context.config.control_brace_style() {
             ControlBraceStyle::AlwaysNextLine => format!("{}{}", alt_block_sep, body_prefix),
             _ if body_prefix.is_empty() => "".to_owned(),
-            _ if forbid_same_line => format!("{}{}", alt_block_sep, body_prefix),
+            _ if forbid_same_line || !arrow_comment.is_empty() => {
+                format!("{}{}", alt_block_sep, body_prefix)
+            }
             _ => format!(" {}", body_prefix),
         } + &nested_indent_str;
 
-        Some(format!(
-            "{} =>{}{}{}",
-            pats_str, block_sep, body_str, body_suffix
-        ))
+        let mut result = pats_str.to_owned();
+        result.push_str(" =>");
+        if !arrow_comment.is_empty() {
+            result.push_str(&indent_str);
+            result.push_str(&arrow_comment);
+        }
+        result.push_str(&block_sep);
+        result.push_str(&body_str);
+        result.push_str(&body_suffix);
+        Some(result)
     };
 
     // Let's try and get the arm body on the same line as the condition.
@@ -416,7 +447,9 @@ fn rewrite_match_body(
     let orig_body_shape = shape
         .offset_left(extra_offset(pats_str, shape) + 4)
         .and_then(|shape| shape.sub_width(comma.len()));
-    let orig_body = if let Some(body_shape) = orig_body_shape {
+    let orig_body = if forbid_same_line || !arrow_comment.is_empty() {
+        None
+    } else if let Some(body_shape) = orig_body_shape {
         let rewrite = nop_block_collapse(
             format_expr(body, ExprType::Statement, context, body_shape),
             body_shape.width,
@@ -424,9 +457,7 @@ fn rewrite_match_body(
 
         match rewrite {
             Some(ref body_str)
-                if !forbid_same_line
-                    && (is_block
-                        || (!body_str.contains('\n') && body_str.len() <= body_shape.width)) =>
+                if is_block || (!body_str.contains('\n') && body_str.len() <= body_shape.width) =>
             {
                 return combine_orig_body(body_str);
             }
@@ -445,8 +476,7 @@ fn rewrite_match_body(
     );
     match (orig_body, next_line_body) {
         (Some(ref orig_str), Some(ref next_line_str))
-            if forbid_same_line
-                || prefer_next_line(orig_str, next_line_str, RhsTactics::Default) =>
+            if prefer_next_line(orig_str, next_line_str, RhsTactics::Default) =>
         {
             combine_next_line_body(next_line_str)
         }

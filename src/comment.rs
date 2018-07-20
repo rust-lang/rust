@@ -20,6 +20,7 @@ use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 use string::{rewrite_string, StringFormat};
 use utils::{count_newlines, first_line_width, last_line_width};
+use {ErrorKind, FormattingError};
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -1124,7 +1125,17 @@ pub fn recover_comment_removed(
 ) -> Option<String> {
     let snippet = context.snippet(span);
     if snippet != new && changed_comment_content(snippet, &new) {
-        // We missed some comments. Keep the original text.
+        // We missed some comments. Warn and keep the original text.
+        if context.config.error_on_unformatted() {
+            context.report.append(
+                context.codemap.span_to_filename(span).into(),
+                vec![FormattingError::from_span(
+                    &span,
+                    &context.codemap,
+                    ErrorKind::LostComment,
+                )],
+            );
+        }
         Some(snippet.to_owned())
     } else {
         Some(new)
