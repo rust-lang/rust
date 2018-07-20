@@ -514,7 +514,7 @@ impl Mul<u32> for Duration {
     }
 }
 
-#[stable(feature = "time_units", since = "1.29.0")]
+#[stable(feature = "u32_duration_mul", since = "1.29.0")]
 impl Mul<Duration> for u32 {
     type Output = Duration;
 
