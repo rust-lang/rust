@@ -322,7 +322,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                     }
                 },
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty),
-                Rvalue::Cast(CastKind::Unsize, operand, ty) => unimplemented!("rval unsize {:?} {:?}", operand, ty),
+                Rvalue::Cast(CastKind::Unsize, operand, ty) => return Err(format!("rval unsize {:?} {:?}", operand, ty)),
                 Rvalue::Discriminant(place) => {
                     let place = trans_place(fx, place);
                     let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();

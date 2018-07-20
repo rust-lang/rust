@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, intrinsics)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -66,6 +66,10 @@ unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
     drop_in_place(to_drop);
+}
+
+extern "rust-intrinsic" {
+    fn copy<T>(src: *const T, dst: *mut T, count: usize);
 }
 
 fn abc(a: u8) -> u8 {
@@ -144,3 +148,12 @@ struct DebugTuple(());
 fn debug_tuple() -> DebugTuple {
     DebugTuple(())
 }
+
+unsafe fn use_copy_intrinsic(src: *const u8, dst: *mut u8) {
+    copy::<u8>(src, dst, 1);
+}
+
+/*unsafe fn use_copy_intrinsic_ref(src: *const u8, dst: *mut u8) {
+    let copy2 = &copy::<u8>;
+    copy2(src, dst, 1);
+}*/

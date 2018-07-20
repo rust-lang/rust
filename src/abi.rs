@@ -15,6 +15,8 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
             unimplemented!();
         }
         Abi::System => bug!("system abi should be selected elsewhere"),
+        // TODO: properly implement intrinsics
+        Abi::RustIntrinsic => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
     Signature {

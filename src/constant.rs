@@ -14,6 +14,7 @@ pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Cons
             }))
             .unwrap(),
     };
+    fx.tcx.sess.warn(&format!("const: {:?}", value));
 
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
