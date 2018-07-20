@@ -1,0 +1,10 @@
+error: this expression will panic at runtime
+  --> $DIR/issue-34784.rs:15:9
+   |
+LL |         C => {}
+   |         ^ "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
+   |
+   = note: #[deny(const_err)] on by default
+
+error: aborting due to previous error
+
