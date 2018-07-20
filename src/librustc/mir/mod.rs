@@ -2932,5 +2932,3 @@ impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
         }
     }
 }
-
-

@@ -544,5 +544,3 @@ pub fn write_mir_fn<'a, 'tcx, V: Idx>(
     writeln!(w, "}}")?;
     Ok(())
 }
-
-
