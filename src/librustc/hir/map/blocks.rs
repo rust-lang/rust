@@ -51,6 +51,12 @@ impl MaybeFnLike for ast::Item {
     }
 }
 
+impl MaybeFnLike for ast::ImplItem {
+    fn is_fn_like(&self) -> bool {
+        match self.node { ast::ImplItemKind::Method(..) => true, _ => false, }
+    }
+}
+
 impl MaybeFnLike for ast::TraitItem {
     fn is_fn_like(&self) -> bool {
         match self.node {
@@ -141,7 +147,7 @@ impl<'a> FnLikeNode<'a> {
         let fn_like = match node {
             map::NodeItem(item) => item.is_fn_like(),
             map::NodeTraitItem(tm) => tm.is_fn_like(),
-            map::NodeImplItem(_) => true,
+            map::NodeImplItem(it) => it.is_fn_like(),
             map::NodeExpr(e) => e.is_fn_like(),
             _ => false
         };
