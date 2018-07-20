@@ -396,6 +396,13 @@ impl TestProps {
             }
         });
 
+        if self.failure_status == -1 {
+            self.failure_status = match config.mode {
+                Mode::RunFail => 101,
+                _ => 1,
+            };
+        }
+
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
                 if self.exec_env.iter().find(|&&(ref x, _)| x == key).is_none() {
