@@ -168,21 +168,21 @@ pub fn liveness_of_locals<'tcx, V: Idx>(
     mode: LivenessMode,
     map: &impl LiveVariableMap<LiveVar = V>,
 ) -> LivenessResult<V> {
-    let locals = map.num_variables();
+    let num_live_vars = map.num_variables();
 
     let def_use: IndexVec<_, DefsUses<V>> = mir
         .basic_blocks()
         .iter()
-        .map(|b| block(mode, map, b, locals))
+        .map(|b| block(mode, map, b, num_live_vars))
         .collect();
 
     let mut outs: IndexVec<_, LocalSet<V>> = mir
         .basic_blocks()
         .indices()
-        .map(|_| LocalSet::new_empty(locals))
+        .map(|_| LocalSet::new_empty(num_live_vars))
         .collect();
 
-    let mut bits = LocalSet::new_empty(locals);
+    let mut bits = LocalSet::new_empty(num_live_vars);
 
     // queue of things that need to be re-processed, and a set containing
     // the things currently in the queue
@@ -239,13 +239,13 @@ impl<V: Idx> LivenessResult<V> {
             block,
             statement_index,
         };
-        let locals = mir.local_decls.len();
+        let num_live_vars = map.num_variables();
         let mut visitor = DefsUsesVisitor {
             mode: self.mode,
             map,
             defs_uses: DefsUses {
-                defs: LocalSet::new_empty(locals),
-                uses: LocalSet::new_empty(locals),
+                defs: LocalSet::new_empty(num_live_vars),
+                uses: LocalSet::new_empty(num_live_vars),
             },
         };
         // Visit the various parts of the basic block in reverse. If we go
