@@ -353,7 +353,7 @@ impl Ipv4Addr {
         }
     }
 
-    /// Creates a new IPv4 address with the address pointing to localhost: 127.0.0.1.
+    /// An IPv4 address with the address pointing to localhost: 127.0.0.1.
     ///
     /// # Examples
     ///
@@ -361,17 +361,15 @@ impl Ipv4Addr {
     /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::localhost();
+    /// let addr = Ipv4Addr::LOCALHOST;
     /// assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
     /// ```
     #[unstable(feature = "ip_constructors",
                reason = "requires greater scrutiny before stabilization",
                issue = "44582")]
-    pub fn localhost() -> Ipv4Addr {
-        Ipv4Addr::new(127, 0, 0, 1)
-    }
+    pub const LOCALHOST: Self = Ipv4Addr::new(127, 0, 0, 1);
 
-    /// Creates a new IPv4 address representing an unspecified address: 0.0.0.0
+    /// An IPv4 address representing an unspecified address: 0.0.0.0
     ///
     /// # Examples
     ///
@@ -379,15 +377,13 @@ impl Ipv4Addr {
     /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::unspecified();
+    /// let addr = Ipv4Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
     /// ```
     #[unstable(feature = "ip_constructors",
                reason = "requires greater scrutiny before stabilization",
                issue = "44582")]
-    pub fn unspecified() -> Ipv4Addr {
-        Ipv4Addr::new(0, 0, 0, 0)
-    }
+    pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
 
     /// Returns the four eight-bit integers that make up this address.
     ///
@@ -878,7 +874,7 @@ impl Ipv6Addr {
 
     }
 
-    /// Creates a new IPv6 address representing localhost: `::1`.
+    /// An IPv6 address representing localhost: `::1`.
     ///
     /// # Examples
     ///
@@ -886,17 +882,15 @@ impl Ipv6Addr {
     /// #![feature(ip_constructors)]
     /// use std::net::Ipv6Addr;
     ///
-    /// let addr = Ipv6Addr::localhost();
+    /// let addr = Ipv6Addr::LOCALHOST;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// ```
     #[unstable(feature = "ip_constructors",
                reason = "requires greater scrutiny before stabilization",
                issue = "44582")]
-    pub fn localhost() -> Ipv6Addr {
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)
-    }
+    pub const LOCALHOST: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
 
-    /// Creates a new IPv6 address representing the unspecified address: `::`
+    /// An IPv6 address representing the unspecified address: `::`
     ///
     /// # Examples
     ///
@@ -904,15 +898,13 @@ impl Ipv6Addr {
     /// #![feature(ip_constructors)]
     /// use std::net::Ipv6Addr;
     ///
-    /// let addr = Ipv6Addr::unspecified();
+    /// let addr = Ipv6Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
     /// ```
     #[unstable(feature = "ip_constructors",
                reason = "requires greater scrutiny before stabilization",
                issue = "44582")]
-    pub fn unspecified() -> Ipv6Addr {
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)
-    }
+    pub const UNSPECIFIED: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
 
     /// Returns the eight 16-bit segments that make up this address.
     ///
@@ -1854,18 +1846,18 @@ mod tests {
 
     #[test]
     fn ipv4_from_constructors() {
-        assert_eq!(Ipv4Addr::localhost(), Ipv4Addr::new(127, 0, 0, 1));
-        assert!(Ipv4Addr::localhost().is_loopback());
-        assert_eq!(Ipv4Addr::unspecified(), Ipv4Addr::new(0, 0, 0, 0));
-        assert!(Ipv4Addr::unspecified().is_unspecified());
+        assert_eq!(Ipv4Addr::LOCALHOST, Ipv4Addr::new(127, 0, 0, 1));
+        assert!(Ipv4Addr::LOCALHOST.is_loopback());
+        assert_eq!(Ipv4Addr::UNSPECIFIED, Ipv4Addr::new(0, 0, 0, 0));
+        assert!(Ipv4Addr::UNSPECIFIED.is_unspecified());
     }
 
     #[test]
     fn ipv6_from_contructors() {
-        assert_eq!(Ipv6Addr::localhost(), Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
-        assert!(Ipv6Addr::localhost().is_loopback());
-        assert_eq!(Ipv6Addr::unspecified(), Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
-        assert!(Ipv6Addr::unspecified().is_unspecified());
+        assert_eq!(Ipv6Addr::LOCALHOST, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+        assert!(Ipv6Addr::LOCALHOST.is_loopback());
+        assert_eq!(Ipv6Addr::UNSPECIFIED, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
+        assert!(Ipv6Addr::UNSPECIFIED.is_unspecified());
     }
 
     #[test]
