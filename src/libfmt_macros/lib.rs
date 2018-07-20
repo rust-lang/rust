@@ -579,7 +579,7 @@ mod tests {
     }
 
     fn musterr(s: &str) {
-        let mut p = Parser::new(fmt, syntax::ast::StrStyle::Cooked);
+        let mut p = Parser::new(s, syntax::ast::StrStyle::Cooked);
         p.next();
         assert!(!p.errors.is_empty());
     }
