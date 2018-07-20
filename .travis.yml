@@ -38,6 +38,8 @@ matrix:
     - env: INTEGRATION=chalk
     # Fails tests, don't know why
     - env: INTEGRATION=crater
+    # Doesn't build
+    - env: INTEGRATION=futures-rs
     # Unknown
     - env: INTEGRATION=rust-clippy
     # See: https://github.com/rust-lang-nursery/rustfmt/issues/2787
