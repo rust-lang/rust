@@ -28,6 +28,8 @@ pub use self::Alignment::*;
 pub use self::Flag::*;
 pub use self::Count::*;
 
+extern crate syntax;
+
 use std::str;
 use std::string;
 use std::iter;
@@ -150,18 +152,27 @@ pub struct Parser<'a> {
     pub errors: Vec<ParseError>,
     /// Current position of implicit positional argument pointer
     curarg: usize,
+    /// The style of the string (raw or not), used to position spans correctly
+    style: syntax::ast::StrStyle,
+    /// How many newlines have been seen in the string so far, to adjust the error spans
+    seen_newlines: usize,
 }
 
 impl<'a> Iterator for Parser<'a> {
     type Item = Piece<'a>;
 
     fn next(&mut self) -> Option<Piece<'a>> {
+        let raw = match self.style {
+            syntax::ast::StrStyle::Raw(raw) => raw as usize + self.seen_newlines,
+            _ => 0,
+        };
         if let Some(&(pos, c)) = self.cur.peek() {
             match c {
                 '{' => {
+                    let pos = pos + raw + 1;
                     self.cur.next();
                     if self.consume('{') {
-                        Some(String(self.string(pos + 1)))
+                        Some(String(self.string(pos)))
                     } else {
                         let ret = Some(NextArgument(self.argument()));
                         self.must_consume('}');
@@ -169,8 +180,8 @@ impl<'a> Iterator for Parser<'a> {
                     }
                 }
                 '}' => {
+                    let pos = pos + raw + 1;
                     self.cur.next();
-                    let pos = pos + 1;
                     if self.consume('}') {
                         Some(String(self.string(pos)))
                     } else {
@@ -184,6 +195,10 @@ impl<'a> Iterator for Parser<'a> {
                         None
                     }
                 }
+                '\n' => {
+                    self.seen_newlines += 1;
+                    Some(String(self.string(pos)))
+                }
                 _ => Some(String(self.string(pos))),
             }
         } else {
@@ -194,12 +209,14 @@ impl<'a> Iterator for Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Creates a new parser for the given format string
-    pub fn new(s: &'a str) -> Parser<'a> {
+    pub fn new(s: &'a str, style: syntax::ast::StrStyle) -> Parser<'a> {
         Parser {
             input: s,
             cur: s.char_indices().peekable(),
             errors: vec![],
             curarg: 0,
+            style,
+            seen_newlines: 0,
         }
     }
 
@@ -262,14 +279,19 @@ impl<'a> Parser<'a> {
     /// found, an error is emitted.
     fn must_consume(&mut self, c: char) {
         self.ws();
+        let raw = match self.style {
+            syntax::ast::StrStyle::Raw(raw) => raw as usize,
+            _ => 0,
+        };
+        let padding = raw + self.seen_newlines;
         if let Some(&(pos, maybe)) = self.cur.peek() {
             if c == maybe {
                 self.cur.next();
             } else {
                 self.err(format!("expected `{:?}`, found `{:?}`", c, maybe),
                          format!("expected `{}`", c),
-                         pos + 1,
-                         pos + 1);
+                         pos + padding + 1,
+                         pos + padding + 1);
             }
         } else {
             let msg = format!("expected `{:?}` but string was terminated", c);
@@ -282,8 +304,8 @@ impl<'a> Parser<'a> {
                 self.err_with_note(msg,
                                    format!("expected `{:?}`", c),
                                    "if you intended to print `{`, you can escape it using `{{`",
-                                   pos,
-                                   pos);
+                                   pos + padding,
+                                   pos + padding);
             } else {
                 self.err(msg, format!("expected `{:?}`", c), pos, pos);
             }
@@ -540,7 +562,7 @@ mod tests {
     use super::*;
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
-        let parser = Parser::new(fmt);
+        let parser = Parser::new(fmt, syntax::ast::StrStyle::Cooked);
         assert!(parser.collect::<Vec<Piece<'static>>>() == p);
     }
 
@@ -556,7 +578,7 @@ mod tests {
     }
 
     fn musterr(s: &str) {
-        let mut p = Parser::new(s);
+        let mut p = Parser::new(fmt, syntax::ast::StrStyle::Cooked);
         p.next();
         assert!(!p.errors.is_empty());
     }

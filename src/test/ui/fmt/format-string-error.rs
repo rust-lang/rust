@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-tab
+
 fn main() {
     println!("{");
     //~^ ERROR invalid format string: expected `'}'` but string was terminated
@@ -24,4 +26,36 @@ fn main() {
     //~^ ERROR invalid format string: unmatched `}` found
     let _ = format!("{\\}");
     //~^ ERROR invalid format string: expected `'}'`, found `'\\'`
+    let _ = format!("\n\n\n{\n\n\n");
+    //~^ ERROR invalid format string
+    let _ = format!(r###"
+
+
+
+	{"###);
+    //~^ ERROR invalid format string
+    let _ = format!(r###"
+
+
+
+	{
+
+"###);
+    //~^^ ERROR invalid format string
+    let _ = format!(r###"
+
+
+
+	}
+
+"###);
+    //~^^^ ERROR invalid format string
+    let _ = format!(r###"
+
+
+
+        }
+
+"###);
+    //~^^^ ERROR invalid format string: unmatched `}` found
 }

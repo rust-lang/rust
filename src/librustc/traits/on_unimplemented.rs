@@ -15,7 +15,7 @@ use ty::{self, TyCtxt, GenericParamDefKind};
 use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
 
-use syntax::ast::{MetaItem, NestedMetaItem};
+use syntax::ast::{self, MetaItem, NestedMetaItem};
 use syntax::attr;
 use syntax_pos::Span;
 use syntax_pos::symbol::LocalInternedString;
@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
     {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
-        let parser = Parser::new(&self.0);
+        let parser = Parser::new(&self.0, ast::StrStyle::Cooked);
         let mut result = Ok(());
         for token in parser {
             match token {
@@ -298,7 +298,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
             Some((name, value))
         }).collect::<FxHashMap<String, String>>();
 
-        let parser = Parser::new(&self.0);
+        let parser = Parser::new(&self.0, ast::StrStyle::Cooked);
         parser.map(|p| {
             match p {
                 Piece::String(s) => s,

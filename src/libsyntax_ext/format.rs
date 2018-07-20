@@ -763,7 +763,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     };
 
     let fmt_str = &*fmt.node.0.as_str();
-    let mut parser = parse::Parser::new(fmt_str);
+    let mut parser = parse::Parser::new(fmt_str, fmt.node.1);
     let mut pieces = vec![];
 
     while let Some(mut piece) = parser.next() {
