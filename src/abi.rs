@@ -149,7 +149,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
     destination: &Option<(Place<'tcx>, BasicBlock)>,
-) -> Inst {
+) {
     let func = ::base::trans_operand(fx, func);
     let return_place = if let Some((place, _)) = destination {
         ::base::trans_place(fx, place).expect_addr()
@@ -170,22 +170,21 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     }
                 })
         ).collect::<Vec<_>>();
-    let inst = match func {
+    match func {
         CValue::Func(func, _) => {
-            fx.bcx.ins().call(func, &args)
+            fx.bcx.ins().call(func, &args);
         }
         func => {
             let func_ty = func.layout().ty;
             let func = func.load_value(fx);
             let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, func_ty));
-            fx.bcx.ins().call_indirect(sig, func, &args)
+            fx.bcx.ins().call_indirect(sig, func, &args);
         }
-    };
+    }
     if let Some((_, dest)) = *destination {
         let ret_ebb = fx.get_ebb(dest);
         fx.bcx.ins().jump(ret_ebb, &[]);
     } else {
         fx.bcx.ins().trap(TrapCode::User(!0));
     }
-    inst
 }

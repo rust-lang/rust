@@ -106,28 +106,33 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
         let ebb = fx.get_ebb(bb);
         fx.bcx.switch_to_block(ebb);
 
+        fx.bcx.ins().nop();
         for stmt in &bb_data.statements {
-            trans_stmt(fx, stmt)?;
+            trans_stmt(fx, ebb, stmt)?;
         }
 
-        let inst = match &bb_data.terminator().kind {
+        let mut terminator_head = "\n".to_string();
+        bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
+        let inst = fx.bcx.func.layout.last_inst(ebb).unwrap();
+        fx.add_comment(inst, terminator_head);
+
+        match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
                 let ebb = fx.get_ebb(*target);
-                fx.bcx.ins().jump(ebb, &[])
+                fx.bcx.ins().jump(ebb, &[]);
             }
             TerminatorKind::Return => {
-                fx.bcx.ins().return_(&[])
+                fx.bcx.ins().return_(&[]);
             }
             TerminatorKind::Assert { cond, expected, msg: _, target, cleanup: _ } => {
                 let cond = trans_operand(fx, cond).load_value(fx);
                 let target = fx.get_ebb(*target);
-                let inst = if *expected {
-                    fx.bcx.ins().brz(cond, target, &[])
+                if *expected {
+                    fx.bcx.ins().brz(cond, target, &[]);
                 } else {
-                    fx.bcx.ins().brnz(cond, target, &[])
+                    fx.bcx.ins().brnz(cond, target, &[]);
                 };
                 fx.bcx.ins().trap(TrapCode::User(!0));
-                inst
             }
 
             TerminatorKind::SwitchInt { discr, switch_ty: _, values, targets } => {
@@ -138,16 +143,15 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
                     jt_data.set_entry(*value as usize, ebb);
                 }
                 let mut jump_table = fx.bcx.create_jump_table(jt_data);
-                let inst = fx.bcx.ins().br_table(discr, jump_table);
+                fx.bcx.ins().br_table(discr, jump_table);
                 let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
                 fx.bcx.ins().jump(otherwise_ebb, &[]);
-                inst
             }
             TerminatorKind::Call { func, args, destination, cleanup: _ } => {
-                ::abi::codegen_call(fx, func, args, destination)
+                ::abi::codegen_call(fx, func, args, destination);
             }
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
-                fx.bcx.ins().trap(TrapCode::User(!0))
+                fx.bcx.ins().trap(TrapCode::User(!0));
             }
             TerminatorKind::Yield { .. } |
             TerminatorKind::FalseEdges { .. } |
@@ -158,16 +162,12 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
                 // TODO call drop impl
                 // unimplemented!("terminator {:?}", bb_data.terminator());
                 let target_ebb = fx.get_ebb(*target);
-                fx.bcx.ins().jump(target_ebb, &[])
+                fx.bcx.ins().jump(target_ebb, &[]);
             }
             TerminatorKind::GeneratorDrop => {
                 unimplemented!("terminator GeneratorDrop");
             }
         };
-
-        let mut terminator_head = "\n".to_string();
-        bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
-        fx.add_comment(inst, terminator_head);
     }
 
     fx.bcx.seal_all_blocks();
@@ -176,10 +176,11 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
     Ok(fx.comments.clone())
 }
 
-fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) -> Result<(), String> {
+fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &Statement<'tcx>) -> Result<(), String> {
     fx.tcx.sess.warn(&format!("stmt {:?}", stmt));
 
-    let nop_inst = fx.bcx.ins().nop();
+    let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
+    fx.add_comment(inst, format!("{:?}", stmt));
 
     match &stmt.kind {
         StatementKind::SetDiscriminant { place, variant_index } => {
@@ -191,7 +192,6 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
             match layout.variants {
                 layout::Variants::Single { index } => {
                     assert_eq!(index, *variant_index);
-                    fx.bcx.ins().nop();
                 }
                 layout::Variants::Tagged { .. } => {
                     let ptr = place.place_field(fx, mir::Field::new(0));
@@ -219,8 +219,6 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                             CValue::const_val(fx, niche.layout().ty, niche_value as u64 as i64)
                         };
                         niche.write_cvalue(fx, niche_llval);
-                    } else {
-                        fx.bcx.ins().nop();
                     }
                 }
             }
@@ -393,15 +391,9 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                 Rvalue::Aggregate(_, _) => bug!("shouldn't exist at trans {:?}", rval),
             }
         }
-        StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop | StatementKind::ReadForMatch(_) | StatementKind::Validate(_, _) | StatementKind::EndRegion(_) | StatementKind::UserAssertTy(_, _) => {
-            fx.bcx.ins().nop();
-        }
+        StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop | StatementKind::ReadForMatch(_) | StatementKind::Validate(_, _) | StatementKind::EndRegion(_) | StatementKind::UserAssertTy(_, _) => {}
         StatementKind::InlineAsm { .. } => fx.tcx.sess.fatal("Inline assembly is not supported"),
     }
-
-    let inst = fx.bcx.func.layout.next_inst(nop_inst).unwrap();
-    fx.bcx.func.layout.remove_inst(nop_inst);
-    fx.add_comment(inst, format!("{:?}", stmt));
 
     Ok(())
 }

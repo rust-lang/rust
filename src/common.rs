@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fmt;
 
 use syntax::ast::{IntTy, UintTy};
@@ -259,7 +258,6 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
             CPlace::Addr(fx.bcx.ins().iadd(base, field_offset), field_ty)
         } else {
-            fx.bcx.ins().nop();
             CPlace::Addr(base, field_ty)
         }
     }
@@ -375,18 +373,5 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
 
     pub fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {
         *self.local_map.get(&local).unwrap()
-    }
-
-    pub fn add_comment<'s, S: Into<Cow<'s, str>>>(&mut self, inst: Inst, comment: S) {
-        use std::collections::hash_map::Entry;
-        match self.comments.entry(inst) {
-            Entry::Occupied(mut occ) => {
-                occ.get_mut().push('\n');
-                occ.get_mut().push_str(comment.into().as_ref());
-            }
-            Entry::Vacant(vac) => {
-                vac.insert(comment.into().into_owned());
-            }
-        }
     }
 }
