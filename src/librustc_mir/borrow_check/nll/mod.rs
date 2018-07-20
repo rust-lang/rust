@@ -13,13 +13,14 @@ use borrow_check::location::{LocationIndex, LocationTable};
 use borrow_check::nll::facts::AllFactsExt;
 use borrow_check::nll::type_check::MirTypeckRegionConstraints;
 use borrow_check::nll::region_infer::values::RegionValueElements;
+use borrow_check::nll::liveness_map::{NllLivenessMap, LocalWithRegion};
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir, LocalWithRegion};
+use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
@@ -30,7 +31,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 use transform::MirSource;
-use util::liveness::{LivenessResults, LocalSet, NllLivenessMap};
+use util::liveness::{LivenessResults, LiveVarSet};
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
@@ -45,6 +46,7 @@ crate mod region_infer;
 mod renumber;
 crate mod type_check;
 mod universal_regions;
+crate mod liveness_map;
 
 mod constraints;
 
@@ -409,8 +411,8 @@ impl ToRegionVid for RegionVid {
 }
 
 fn live_variable_set(
-    regular: &LocalSet<LocalWithRegion>,
-    drops: &LocalSet<LocalWithRegion>
+    regular: &LiveVarSet<LocalWithRegion>,
+    drops: &LiveVarSet<LocalWithRegion>
 ) -> String {
     // sort and deduplicate:
     let all_locals: BTreeSet<_> = regular.iter().chain(drops.iter()).collect();

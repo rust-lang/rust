@@ -37,7 +37,7 @@ use rustc::mir::visit::MirVisitable;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::Local;
 use rustc::mir::*;
-use rustc::ty::{item_path, TyCtxt, TypeFoldable};
+use rustc::ty::{item_path, TyCtxt};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::work_queue::WorkQueue;
@@ -47,7 +47,7 @@ use std::path::{Path, PathBuf};
 use transform::MirSource;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
-pub type LocalSet<V> = IdxSetBuf<V>;
+pub type LiveVarSet<V> = IdxSetBuf<V>;
 
 /// This gives the result of the liveness analysis at the boundary of
 /// basic blocks. You can use `simulate_block` to obtain the
@@ -63,7 +63,7 @@ pub struct LivenessResult<V: Idx> {
 
     /// Live variables on exit to each basic block. This is equal to
     /// the union of the `ins` for each successor.
-    pub outs: IndexVec<BasicBlock, LocalSet<V>>,
+    pub outs: IndexVec<BasicBlock, LiveVarSet<V>>,
 }
 
 /// Defines the mapping to/from the MIR local variables (`Local`) to
@@ -176,13 +176,13 @@ pub fn liveness_of_locals<'tcx, V: Idx>(
         .map(|b| block(mode, map, b, num_live_vars))
         .collect();
 
-    let mut outs: IndexVec<_, LocalSet<V>> = mir
+    let mut outs: IndexVec<_, LiveVarSet<V>> = mir
         .basic_blocks()
         .indices()
-        .map(|_| LocalSet::new_empty(num_live_vars))
+        .map(|_| LiveVarSet::new_empty(num_live_vars))
         .collect();
 
-    let mut bits = LocalSet::new_empty(num_live_vars);
+    let mut bits = LiveVarSet::new_empty(num_live_vars);
 
     // queue of things that need to be re-processed, and a set containing
     // the things currently in the queue
@@ -223,7 +223,7 @@ impl<V: Idx> LivenessResult<V> {
         map: &impl LiveVariableMap<LiveVar = V>,
         mut callback: OP,
     ) where
-        OP: FnMut(Location, &LocalSet<V>),
+        OP: FnMut(Location, &LiveVarSet<V>),
     {
         let data = &mir[block];
 
@@ -244,8 +244,8 @@ impl<V: Idx> LivenessResult<V> {
             mode: self.mode,
             map,
             defs_uses: DefsUses {
-                defs: LocalSet::new_empty(num_live_vars),
-                uses: LocalSet::new_empty(num_live_vars),
+                defs: LiveVarSet::new_empty(num_live_vars),
+                uses: LiveVarSet::new_empty(num_live_vars),
             },
         };
         // Visit the various parts of the basic block in reverse. If we go
@@ -362,8 +362,8 @@ where
 
 #[derive(Eq, PartialEq, Clone)]
 struct DefsUses<V: Idx> {
-    defs: LocalSet<V>,
-    uses: LocalSet<V>,
+    defs: LiveVarSet<V>,
+    uses: LiveVarSet<V>,
 }
 
 impl<V: Idx> DefsUses<V> {
@@ -372,7 +372,7 @@ impl<V: Idx> DefsUses<V> {
         self.defs.clear();
     }
 
-    fn apply(&self, bits: &mut LocalSet<V>) -> bool {
+    fn apply(&self, bits: &mut LiveVarSet<V>) -> bool {
         bits.subtract(&self.defs) | bits.union(&self.uses)
     }
 
@@ -418,10 +418,10 @@ where
         &mut self,
         location: Location,
         value: &impl MirVisitable<'tcx>,
-        bits: &mut LocalSet<V>,
+        bits: &mut LiveVarSet<V>,
         callback: &mut OP,
     ) where
-        OP: FnMut(Location, &LocalSet<V>),
+        OP: FnMut(Location, &LiveVarSet<V>),
     {
         value.apply(location, self);
         self.defs_uses.apply(bits);
@@ -455,8 +455,8 @@ fn block<'tcx, V: Idx>(
         mode,
         map,
         defs_uses: DefsUses {
-            defs: LocalSet::new_empty(locals),
-            uses: LocalSet::new_empty(locals),
+            defs: LiveVarSet::new_empty(locals),
+            uses: LiveVarSet::new_empty(locals),
         },
     };
 
@@ -527,7 +527,7 @@ pub fn write_mir_fn<'a, 'tcx, V: Idx>(
 ) -> io::Result<()> {
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
-        let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LocalSet<V>>| {
+        let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LiveVarSet<V>>| {
             let live: Vec<String> = result[block].iter()
                 .map(|v| map.from_live_var(v))
                 .map(|local| format!("{:?}", local))
@@ -545,43 +545,4 @@ pub fn write_mir_fn<'a, 'tcx, V: Idx>(
     Ok(())
 }
 
-crate struct NllLivenessMap {
-    pub from_local: IndexVec<Local, Option<LocalWithRegion>>,
-    pub to_local: IndexVec<LocalWithRegion, Local>,
 
-}
-
-impl LiveVariableMap for NllLivenessMap {
-    type LiveVar = LocalWithRegion;
-
-    fn from_local(&self, local: Local) -> Option<Self::LiveVar> {
-        self.from_local[local]
-    }
-
-    fn from_live_var(&self, local: Self::LiveVar) -> Local {
-        self.to_local[local]
-    }
-
-    fn num_variables(&self) -> usize {
-        self.to_local.len()
-    }
-}
-
-impl NllLivenessMap {
-    pub fn compute(mir: &Mir) -> Self {
-        let mut to_local = IndexVec::default();
-        let from_local: IndexVec<Local,Option<_>> = mir
-            .local_decls
-            .iter_enumerated()
-            .map(|(local, local_decl)| {
-            if local_decl.ty.has_free_regions() {
-                Some(to_local.push(local))
-            }
-            else {
-                None
-            }
-            }).collect();
-
-        Self { from_local, to_local }
-    }
-}

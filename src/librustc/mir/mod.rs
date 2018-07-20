@@ -2933,4 +2933,4 @@ impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
     }
 }
 
-newtype_index!(LocalWithRegion);
+

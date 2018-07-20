@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::nll::{NllLivenessMap, LocalWithRegion};
 use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
 use rustc::infer::canonical::QueryRegionConstraint;
-use rustc::mir::LocalWithRegion;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
@@ -21,7 +21,7 @@ use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
-use util::liveness::{NllLivenessMap, LivenessResults, LiveVariableMap };
+use util::liveness::{LivenessResults, LiveVariableMap };
 
 use super::TypeChecker;
 
