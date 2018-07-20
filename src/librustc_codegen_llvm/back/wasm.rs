@@ -34,9 +34,9 @@ const WASM_EXTERNAL_KIND_GLOBAL: u8 = 3;
 ///
 /// This function is intended as a hack for now where we manually rewrite the
 /// wasm output by LLVM to have the correct import modules listed. The
-/// `#[wasm_import_module]` attribute in Rust translates to the module that each
-/// symbol is imported from, so here we manually go through the wasm file,
-/// decode it, rewrite imports, and then rewrite the wasm module.
+/// `#[link(wasm_import_module = "...")]` attribute in Rust translates to the
+/// module that each symbol is imported from, so here we manually go through the
+/// wasm file, decode it, rewrite imports, and then rewrite the wasm module.
 ///
 /// Support for this was added to LLVM in
 /// https://github.com/llvm-mirror/llvm/commit/0f32e1365, although support still

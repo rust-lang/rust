@@ -128,9 +128,10 @@ pub enum NativeLibraryKind {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
-    pub name: Symbol,
+    pub name: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
     pub foreign_module: Option<DefId>,
+    pub wasm_import_module: Option<Symbol>,
 }
 
 #[derive(Clone, Hash, RustcEncodable, RustcDecodable)]

@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(wasm_import_module)]
-
-#[wasm_import_module] //~ ERROR: must be of the form
+#[link(name = "...", wasm_import_module)] //~ ERROR: must be of the form
 extern {}
 
-#[wasm_import_module = "foo"] //~ ERROR: must only be attached to
-fn foo() {}
+#[link(name = "...", wasm_import_module(x))] //~ ERROR: must be of the form
+extern {}
+
+#[link(name = "...", wasm_import_module())] //~ ERROR: must be of the form
+extern {}
 
 fn main() {}
 
