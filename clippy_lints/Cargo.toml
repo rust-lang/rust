@@ -21,8 +21,8 @@ edition = "2018"
 [dependencies]
 cargo_metadata = "0.5"
 itertools = "0.7"
-lazy_static = "1.0"
-matches = "0.1.2"
+lazy_static = "1.0.2"
+matches = "0.1.7"
 quine-mc_cluskey = "0.2.2"
 regex-syntax = "0.6"
 semver = "0.9.0"
@@ -32,7 +32,7 @@ toml = "0.4"
 unicode-normalization = "0.1"
 pulldown-cmark = "0.1"
 url = "1.7.0"
-if_chain = "0.1"
+if_chain = "0.1.3"
 
 [features]
 debugging = []
