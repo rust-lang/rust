@@ -34,9 +34,27 @@ warning: this expression will panic at runtime
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^ attempt to divide by zero
 
+warning: attempt to divide by zero
+  --> $DIR/promoted_errors.rs:25:20
+   |
+LL |     println!("{}", 1/(false as u32));
+   |                    ^^^^^^^^^^^^^^^^
+
 warning: this expression will panic at runtime
   --> $DIR/promoted_errors.rs:25:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero
+
+warning: attempt to divide by zero
+  --> $DIR/promoted_errors.rs:28:14
+   |
+LL |     let _x = 1/(false as u32);
+   |              ^^^^^^^^^^^^^^^^
+
+warning: this expression will panic at runtime
+  --> $DIR/promoted_errors.rs:28:14
+   |
+LL |     let _x = 1/(false as u32);
+   |              ^^^^^^^^^^^^^^^^ attempt to divide by zero
 
