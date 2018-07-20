@@ -169,10 +169,9 @@ impl<'a> Iterator for Parser<'a> {
         if let Some(&(pos, c)) = self.cur.peek() {
             match c {
                 '{' => {
-                    let pos = pos + raw + 1;
                     self.cur.next();
                     if self.consume('{') {
-                        Some(String(self.string(pos)))
+                        Some(String(self.string(pos + 1)))
                     } else {
                         let ret = Some(NextArgument(self.argument()));
                         self.must_consume('}');
@@ -180,17 +179,17 @@ impl<'a> Iterator for Parser<'a> {
                     }
                 }
                 '}' => {
-                    let pos = pos + raw + 1;
                     self.cur.next();
                     if self.consume('}') {
-                        Some(String(self.string(pos)))
+                        Some(String(self.string(pos + 1)))
                     } else {
+                        let err_pos = pos + raw + 1;
                         self.err_with_note(
                             "unmatched `}` found",
                             "unmatched `}`",
                             "if you intended to print `}`, you can escape it using `}}`",
-                            pos,
-                            pos,
+                            err_pos,
+                            err_pos,
                         );
                         None
                     }
@@ -283,15 +282,17 @@ impl<'a> Parser<'a> {
             syntax::ast::StrStyle::Raw(raw) => raw as usize,
             _ => 0,
         };
+
         let padding = raw + self.seen_newlines;
         if let Some(&(pos, maybe)) = self.cur.peek() {
             if c == maybe {
                 self.cur.next();
             } else {
+                let pos = pos + padding + 1;
                 self.err(format!("expected `{:?}`, found `{:?}`", c, maybe),
                          format!("expected `{}`", c),
-                         pos + padding + 1,
-                         pos + padding + 1);
+                         pos,
+                         pos);
             }
         } else {
             let msg = format!("expected `{:?}` but string was terminated", c);
