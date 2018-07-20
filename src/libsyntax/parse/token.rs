@@ -777,11 +777,50 @@ fn prepend_attrs(sess: &ParseSess,
     for attr in attrs {
         assert_eq!(attr.style, ast::AttrStyle::Outer,
                    "inner attributes should prevent cached tokens from existing");
-        // FIXME: Avoid this pretty-print + reparse hack as bove
-        let name = FileName::MacroExpansion;
-        let source = pprust::attr_to_string(attr);
-        let stream = parse_stream_from_source_str(name, source, sess, Some(span));
-        builder.push(stream);
+
+        if attr.is_sugared_doc {
+            let stream = parse_stream_from_source_str(
+                FileName::MacroExpansion,
+                pprust::attr_to_string(attr),
+                sess,
+                Some(span),
+            );
+            builder.push(stream);
+            continue
+        }
+
+        // synthesize # [ $path $tokens ] manually here
+        let mut brackets = tokenstream::TokenStreamBuilder::new();
+
+        // For simple paths, push the identifier directly
+        if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
+            let ident = attr.path.segments[0].ident;
+            let token = Ident(ident, ident.as_str().starts_with("r#"));
+            brackets.push(tokenstream::TokenTree::Token(ident.span, token));
+
+        // ... and for more complicated paths, fall back to a reparse hack that
+        // should eventually be removed.
+        } else {
+            let stream = parse_stream_from_source_str(
+                FileName::MacroExpansion,
+                pprust::path_to_string(&attr.path),
+                sess,
+                Some(span),
+            );
+            brackets.push(stream);
+        }
+
+        brackets.push(attr.tokens.clone());
+
+        let tokens = tokenstream::Delimited {
+            delim: DelimToken::Bracket,
+            tts: brackets.build().into(),
+        };
+        // The span we list here for `#` and for `[ ... ]` are both wrong in
+        // that it encompasses more than each token, but it hopefully is "good
+        // enough" for now at least.
+        builder.push(tokenstream::TokenTree::Token(attr.span, Pound));
+        builder.push(tokenstream::TokenTree::Delimited(attr.span, tokens));
     }
     builder.push(tokens.clone());
     Some(builder.build())
