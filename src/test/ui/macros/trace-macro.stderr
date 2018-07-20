@@ -5,8 +5,8 @@ LL |     println!("Hello, World!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `println! { "Hello, World!" }`
-   = note: to `print ! ( "{}/n" , format_args ! ( "Hello, World!" ) )`
-   = note: expanding `print! { "{}/n" , format_args ! ( "Hello, World!" ) }`
-   = note: to `$crate :: io :: _print (
-           format_args ! ( "{}/n" , format_args ! ( "Hello, World!" ) ) )`
+   = note: to `{
+           # [ cfg ( not ( stage0 ) ) ] {
+           ( $crate :: io :: _print ( format_args_nl ! ( "Hello, World!" ) ) ) ; } # [
+           cfg ( stage0 ) ] { print ! ( "{}/n" , format_args ! ( "Hello, World!" ) ) } }`
 

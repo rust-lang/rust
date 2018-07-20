@@ -683,7 +683,20 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
         Some((efmt, args, names)) => {
-            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names))
+            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, false))
+        }
+        None => DummyResult::expr(sp),
+    }
+}
+
+pub fn expand_format_args_nl<'cx>(ecx: &'cx mut ExtCtxt,
+                                  mut sp: Span,
+                                  tts: &[tokenstream::TokenTree])
+                                  -> Box<dyn base::MacResult + 'cx> {
+    sp = sp.apply_mark(ecx.current_expansion.mark);
+    match parse_args(ecx, sp, tts) {
+        Some((efmt, args, names)) => {
+            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, true))
         }
         None => DummyResult::expr(sp),
     }
@@ -695,7 +708,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                                     sp: Span,
                                     efmt: P<ast::Expr>,
                                     args: Vec<P<ast::Expr>>,
-                                    names: HashMap<String, usize>)
+                                    names: HashMap<String, usize>,
+                                    append_newline: bool)
                                     -> P<ast::Expr> {
     // NOTE: this verbose way of initializing `Vec<Vec<ArgumentType>>` is because
     // `ArgumentType` does not derive `Clone`.
@@ -706,6 +720,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     let msg = "format argument must be a string literal";
     let fmt_sp = efmt.span;
     let fmt = match expr_to_spanned_string(ecx, efmt, msg) {
+        Ok(mut fmt) if append_newline => {
+            fmt.node.0 = Symbol::intern(&format!("{}\n", fmt.node.0));
+            fmt
+        }
         Ok(fmt) => fmt,
         Err(mut err) => {
             let sugg_fmt = match args.len() {

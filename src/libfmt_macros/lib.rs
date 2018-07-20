@@ -273,7 +273,11 @@ impl<'a> Parser<'a> {
             }
         } else {
             let msg = format!("expected `{:?}` but string was terminated", c);
-            let pos = self.input.len() + 1; // point at closing `"`
+            // point at closing `"`, unless the last char is `\n` to account for `println`
+            let pos = match self.input.chars().last() {
+                Some('\n') => self.input.len(),
+                _ => self.input.len() + 1,
+            };
             if c == '}' {
                 self.err_with_note(msg,
                                    format!("expected `{:?}`", c),
