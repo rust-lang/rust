@@ -253,7 +253,7 @@ impl f64 {
     /// assert!((-std::f64::EPSILON).mod_euc(3.0) != 0.0);
     /// ```
     #[inline]
-    #[unstable(feature = "euclidean_division", issue = "49048")]
+    #[stable(feature = "euclidean_modulo", since = "1.29.0")]
     pub fn mod_euc(self, rhs: f64) -> f64 {
         let r = self % rhs;
         if r < 0.0 {
