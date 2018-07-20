@@ -5,4 +5,4 @@
 
 all:
 	$(RUSTC) -o $(TMPDIR)/input.hir -Z unpretty=hir-tree input.rs
-	$(CGREP) '"Hello, Rustaceans!"' < $(TMPDIR)/input.hir
+	$(CGREP) '"Hello, Rustaceans!\n"' < $(TMPDIR)/input.hir
