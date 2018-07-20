@@ -631,9 +631,19 @@ macro_rules! handle_cycle_error {
 }
 
 macro_rules! define_queries {
+    (<$tcx:tt> $($category:tt {
+        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*
+    },)*) => {
+        define_queries_inner! { <$tcx>
+            $($( $(#[$attr])* category<$category> [$($modifiers)*] fn $name: $node($K) -> $V,)*)*
+        }
+    }
+}
+
+macro_rules! define_queries_inner {
     (<$tcx:tt>
-     $($(#[$attr:meta])*
-       [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
+     $($(#[$attr:meta])* category<$category:tt>
+        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use std::mem;
         #[cfg(parallel_queries)]
