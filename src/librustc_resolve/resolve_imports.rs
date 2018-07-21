@@ -17,6 +17,7 @@ use Resolver;
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
+use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
 use rustc::lint::builtin::BuiltinLintDiagnostics;
 use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE};
@@ -104,67 +105,20 @@ impl<'a> ImportDirective<'a> {
 #[derive(Clone, Default, Debug)]
 /// Records information about the resolution of a name in a namespace of a module.
 pub struct NameResolution<'a> {
-    /// The single imports that define the name in the namespace.
-    single_imports: SingleImports<'a>,
+    /// Single imports that may define the name in the namespace.
+    /// Import directives are arena-allocated, so it's ok to use pointers as keys.
+    single_imports: FxHashSet<PtrKey<'a, ImportDirective<'a>>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
-    shadows_glob: Option<&'a NameBinding<'a>>,
-}
-
-#[derive(Clone, Debug)]
-enum SingleImports<'a> {
-    /// No single imports can define the name in the namespace.
-    None,
-    /// Only the given single import can define the name in the namespace.
-    MaybeOne(&'a ImportDirective<'a>),
-    /// Only one of these two single imports can define the name in the namespace.
-    MaybeTwo(&'a ImportDirective<'a>, &'a ImportDirective<'a>),
-    /// At least one single import will define the name in the namespace.
-    AtLeastOne,
-}
-
-impl<'a> Default for SingleImports<'a> {
-    /// Creates a `SingleImports<'a>` of None type.
-    fn default() -> Self {
-        SingleImports::None
-    }
-}
-
-impl<'a> SingleImports<'a> {
-    fn add_directive(&mut self, directive: &'a ImportDirective<'a>, use_extern_macros: bool) {
-        match *self {
-            SingleImports::None => *self = SingleImports::MaybeOne(directive),
-            SingleImports::MaybeOne(directive_one) => *self = if use_extern_macros {
-                SingleImports::MaybeTwo(directive_one, directive)
-            } else {
-                SingleImports::AtLeastOne
-            },
-            // If three single imports can define the name in the namespace, we can assume that at
-            // least one of them will define it since otherwise we'd get duplicate errors in one of
-            // other namespaces.
-            SingleImports::MaybeTwo(..) => *self = SingleImports::AtLeastOne,
-            SingleImports::AtLeastOne => {}
-        };
-    }
-
-    fn directive_failed(&mut self, dir: &'a ImportDirective<'a>) {
-        match *self {
-            SingleImports::None => unreachable!(),
-            SingleImports::MaybeOne(_) => *self = SingleImports::None,
-            SingleImports::MaybeTwo(dir1, dir2) =>
-                *self = SingleImports::MaybeOne(if ptr::eq(dir1, dir) { dir1 } else { dir2 }),
-            SingleImports::AtLeastOne => {}
-        }
-    }
+    shadowed_glob: Option<&'a NameBinding<'a>>,
 }
 
 impl<'a> NameResolution<'a> {
     // Returns the binding for the name if it is known or None if it not known.
     fn binding(&self) -> Option<&'a NameBinding<'a>> {
-        self.binding.and_then(|binding| match self.single_imports {
-            SingleImports::None => Some(binding),
-            _ if !binding.is_glob_import() => Some(binding),
-            _ => None, // The binding could be shadowed by a single import, so it is not known.
+        self.binding.and_then(|binding| {
+            if !binding.is_glob_import() ||
+               self.single_imports.is_empty() { Some(binding) } else { None }
         })
     }
 }
@@ -177,7 +131,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
-    /// Invariant: if `record_used` is `Some`, import resolution must be complete.
+    /// Invariant: if `record_used` is `Some`, expansion and import resolution must be complete.
     pub fn resolve_ident_in_module_unadjusted(&mut self,
                                               module: Module<'a>,
                                               ident: Ident,
@@ -194,7 +148,7 @@ impl<'a> Resolver<'a> {
 
         if record_used {
             if let Some(binding) = resolution.binding {
-                if let Some(shadowed_glob) = resolution.shadows_glob {
+                if let Some(shadowed_glob) = resolution.shadowed_glob {
                     let name = ident.name;
                     // Forbid expanded shadowing to avoid time travel.
                     if restricted_shadowing &&
@@ -227,81 +181,72 @@ impl<'a> Resolver<'a> {
             if usable { Ok(binding) } else { Err(Determined) }
         };
 
-        // Items and single imports are not shadowable.
+        // Items and single imports are not shadowable, if we have one, then it's determined.
         if let Some(binding) = resolution.binding {
             if !binding.is_glob_import() {
                 return check_usable(self, binding);
             }
         }
 
-        // Check if a single import can still define the name.
-        let resolve_single_import = |this: &mut Self, directive: &'a ImportDirective<'a>| {
-            let module = match directive.imported_module.get() {
-                Some(module) => module,
-                None => return false,
-            };
-            let ident = match directive.subclass {
+        // --- From now on we either have a glob resolution or no resolution. ---
+
+        // Check if one of single imports can still define the name,
+        // if it can then our result is not determined and can be invalidated.
+        for single_import in &resolution.single_imports {
+            if !self.is_accessible(single_import.vis.get()) {
+                continue;
+            }
+            let module = unwrap_or!(single_import.imported_module.get(), return Err(Undetermined));
+            let ident = match single_import.subclass {
                 SingleImport { source, .. } => source,
                 _ => unreachable!(),
             };
-            match this.resolve_ident_in_module(module, ident, ns, false, false, path_span) {
-                Err(Determined) => {}
-                _ => return false,
+            match self.resolve_ident_in_module(module, ident, ns, false, path_span) {
+                Err(Determined) => continue,
+                Ok(_) | Err(Undetermined) => return Err(Undetermined),
             }
-            true
-        };
-        match resolution.single_imports {
-            SingleImports::AtLeastOne => return Err(Undetermined),
-            SingleImports::MaybeOne(directive) => {
-                let accessible = self.is_accessible(directive.vis.get());
-                if accessible {
-                    if !resolve_single_import(self, directive) {
-                        return Err(Undetermined)
-                    }
-                }
-            }
-            SingleImports::MaybeTwo(directive1, directive2) => {
-                let accessible1 = self.is_accessible(directive1.vis.get());
-                let accessible2 = self.is_accessible(directive2.vis.get());
-                if accessible1 && accessible2 {
-                    if !resolve_single_import(self, directive1) &&
-                       !resolve_single_import(self, directive2) {
-                        return Err(Undetermined)
-                    }
-                } else if accessible1 {
-                    if !resolve_single_import(self, directive1) {
-                        return Err(Undetermined)
-                    }
-                } else {
-                    if !resolve_single_import(self, directive2) {
-                        return Err(Undetermined)
-                    }
-                }
-            }
-            SingleImports::None => {},
         }
 
-        let no_unresolved_invocations =
-            restricted_shadowing || module.unresolved_invocations.borrow().is_empty();
-        match resolution.binding {
-            // In `MacroNS`, expanded bindings do not shadow (enforced in `try_define`).
-            Some(binding) if no_unresolved_invocations || ns == MacroNS =>
-                return check_usable(self, binding),
-            None if no_unresolved_invocations => {}
-            _ => return Err(Undetermined),
+        // So we have a resolution that's from a glob import. This resolution is determined
+        // if it cannot be shadowed by some new item/import expanded from a macro.
+        // This happens either if there are no unexpanded macros, or expanded names cannot
+        // shadow globs (that happens in macro namespace or with restricted shadowing).
+        let unexpanded_macros = !module.unresolved_invocations.borrow().is_empty();
+        if let Some(binding) = resolution.binding {
+            if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
+                return check_usable(self, binding);
+            } else {
+                return Err(Undetermined);
+            }
         }
 
-        // Check if the globs are determined
-        if restricted_shadowing && module.def().is_some() {
+        // --- From now on we have no resolution. ---
+
+        // Now we are in situation when new item/import can appear only from a glob or a macro
+        // expansion. With restricted shadowing names from globs and macro expansions cannot
+        // shadow names from outer scopes, so we can freely fallback from module search to search
+        // in outer scopes. To continue search in outer scopes we have to lie a bit and return
+        // `Determined` to `resolve_lexical_macro_path_segment` even if the correct answer
+        // for in-module resolution could be `Undetermined`.
+        if restricted_shadowing {
             return Err(Determined);
         }
-        for directive in module.globs.borrow().iter() {
-            if !self.is_accessible(directive.vis.get()) {
+
+        // Check if one of unexpanded macros can still define the name,
+        // if it can then our "no resolution" result is not determined and can be invalidated.
+        if unexpanded_macros {
+            return Err(Undetermined);
+        }
+
+        // Check if one of glob imports can still define the name,
+        // if it can then our "no resolution" result is not determined and can be invalidated.
+        for glob_import in module.globs.borrow().iter() {
+            if !self.is_accessible(glob_import.vis.get()) {
                 continue
             }
-            let module = unwrap_or!(directive.imported_module.get(), return Err(Undetermined));
+            let module = unwrap_or!(glob_import.imported_module.get(), return Err(Undetermined));
             let (orig_current_module, mut ident) = (self.current_module, ident.modern());
-            match ident.span.glob_adjust(module.expansion, directive.span.ctxt().modern()) {
+            match ident.span.glob_adjust(module.expansion, glob_import.span.ctxt().modern()) {
                 Some(Some(def)) => self.current_module = self.macro_def_scope(def),
                 Some(None) => {}
                 None => continue,
@@ -310,11 +255,13 @@ impl<'a> Resolver<'a> {
                 module, ident, ns, false, false, path_span,
             );
             self.current_module = orig_current_module;
-            if let Err(Undetermined) = result {
-                return Err(Undetermined);
+            match result {
+                Err(Determined) => continue,
+                Ok(_) | Err(Undetermined) => return Err(Undetermined),
             }
         }
 
+        // No resolution and no one else can define the name - determinate error.
         Err(Determined)
     }
 
@@ -348,7 +295,7 @@ impl<'a> Resolver<'a> {
             SingleImport { target, type_ns_only, .. } => {
                 self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
                     let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
-                    resolution.single_imports.add_directive(directive, this.use_extern_macros);
+                    resolution.single_imports.insert(PtrKey(directive));
                 });
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
@@ -401,7 +348,7 @@ impl<'a> Resolver<'a> {
                 if binding.is_glob_import() {
                     if !old_binding.is_glob_import() &&
                        !(ns == MacroNS && old_binding.expansion != Mark::root()) {
-                        resolution.shadows_glob = Some(binding);
+                        resolution.shadowed_glob = Some(binding);
                     } else if binding.def() != old_binding.def() {
                         resolution.binding = Some(this.ambiguity(old_binding, binding));
                     } else if !old_binding.vis.is_at_least(binding.vis, &*this) {
@@ -414,7 +361,7 @@ impl<'a> Resolver<'a> {
                         resolution.binding = Some(this.ambiguity(binding, old_binding));
                     } else {
                         resolution.binding = Some(binding);
-                        resolution.shadows_glob = Some(old_binding);
+                        resolution.shadowed_glob = Some(old_binding);
                     }
                 } else {
                     return Err(old_binding);
@@ -455,7 +402,7 @@ impl<'a> Resolver<'a> {
                 _ if old_binding.is_some() => return t,
                 None => return t,
                 Some(binding) => match old_binding {
-                    Some(old_binding) if old_binding as *const _ == binding as *const _ => return t,
+                    Some(old_binding) if ptr::eq(old_binding, binding) => return t,
                     _ => (binding, t),
                 }
             }
@@ -630,7 +577,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                                             source,
                                                             ns,
                                                             false,
-                                                            false,
                                                             directive.span));
             } else {
                 return
@@ -641,7 +587,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Err(Undetermined) => indeterminate = true,
                 Err(Determined) => {
                     this.update_resolution(parent, target, ns, |_, resolution| {
-                        resolution.single_imports.directive_failed(directive)
+                        resolution.single_imports.remove(&PtrKey(directive));
                     });
                 }
                 Ok(binding) if !binding.is_importable() => {
@@ -803,7 +749,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                match this.resolve_ident_in_module(module, ident, ns, false, true, span) {
+                match this.resolve_ident_in_module(module, ident, ns, true, span) {
                     Ok(_) => all_ns_failed = false,
                     _ => {}
                 }
@@ -827,7 +773,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                 _ => Some(&i.name),
                             }
                         },
-                        NameResolution { single_imports: SingleImports::None, .. } => None,
+                        NameResolution { ref single_imports, .. }
+                            if single_imports.is_empty() => None,
                         _ => Some(&i.name),
                     }
                 });
@@ -973,7 +920,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         let mut reexports = Vec::new();
         let mut exported_macro_names = FxHashMap();
-        if module as *const _ == self.graph_root as *const _ {
+        if ptr::eq(module, self.graph_root) {
             let macro_exports = mem::replace(&mut self.macro_exports, Vec::new());
             for export in macro_exports.into_iter().rev() {
                 if let Some(later_span) = exported_macro_names.insert(export.ident.modern(),
