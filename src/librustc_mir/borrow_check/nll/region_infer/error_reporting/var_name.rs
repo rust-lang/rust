@@ -28,7 +28,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         debug!("get_var_name_and_span_for_region: attempting upvar");
         self.get_upvar_index_for_region(tcx, fr)
-            .map(|index| self.get_upvar_name_and_span_for_region(tcx, mir, index))
+            .map(|index| {
+                let (name, span) = self.get_upvar_name_and_span_for_region(tcx, mir, index);
+                (Some(name), span)
+            })
             .or_else(|| {
                 debug!("get_var_name_and_span_for_region: attempting argument");
                 self.get_argument_index_for_region(tcx, fr)
@@ -37,7 +40,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .unwrap_or_else(|| span_bug!(mir.span, "can't find var name for free region {:?}", fr))
     }
 
-    /// Get upvar index for a region.
+    /// Search the upvars (if any) to find one that references fr. Return its index.
     crate fn get_upvar_index_for_region(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
@@ -69,13 +72,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         Some(upvar_index)
     }
 
-    /// Get upvar name and span for a region.
+    /// Given the index of an upvar, finds its name and the span from where it was
+    /// declared.
     crate fn get_upvar_name_and_span_for_region(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
         upvar_index: usize,
-    ) -> (Option<Symbol>, Span) {
+    ) -> (Symbol, Span) {
         let upvar_hir_id = mir.upvar_decls[upvar_index].var_hir_id.assert_crate_local();
         let upvar_node_id = tcx.hir.hir_to_node_id(upvar_hir_id);
         debug!("get_upvar_name_and_span_for_region: upvar_node_id={:?}", upvar_node_id);
@@ -85,10 +89,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("get_upvar_name_and_span_for_region: upvar_name={:?} upvar_span={:?}",
                upvar_name, upvar_span);
 
-        (Some(upvar_name), upvar_span)
+        (upvar_name, upvar_span)
     }
 
-    /// Get argument index for a region.
+    /// Search the argument types for one that references fr (which should be a free region).
+    /// Returns Some(_) with the index of the input if one is found.
+    ///
+    /// NB: In the case of a closure, the index is indexing into the signature as seen by the
+    /// user - in particular, index 0 is not the implicit self parameter.
     crate fn get_argument_index_for_region(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
@@ -116,7 +124,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         Some(argument_index)
     }
 
-    /// Get argument name and span for a region.
+    /// Given the index of an argument, finds its name (if any) and the span from where it was
+    /// declared.
     crate fn get_argument_name_and_span_for_region(
         &self,
         mir: &Mir<'tcx>,

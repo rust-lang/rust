@@ -430,10 +430,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         diag.span_label(
             upvar_span,
-            format!(
-                "lifetime `{}` appears in the type of `{}`",
-                region_name, upvar_name.unwrap(),
-            ),
+            format!("lifetime `{}` appears in the type of `{}`", region_name, upvar_name),
         );
 
         Some(region_name)
