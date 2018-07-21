@@ -275,7 +275,7 @@ pub fn prepare_tool_cargo(
 
 macro_rules! tool {
     ($($name:ident, $path:expr, $tool_name:expr, $mode:expr $(,llvm_tools = $llvm:expr)*;)+) => {
-        #[derive(Copy, Clone)]
+        #[derive(Copy, PartialEq, Eq, Clone)]
         pub enum Tool {
             $(
                 $name,
@@ -640,7 +640,7 @@ impl<'a> Builder<'a> {
     fn prepare_tool_cmd(&self, compiler: Compiler, tool: Tool, cmd: &mut Command) {
         let host = &compiler.host;
         let mut lib_paths: Vec<PathBuf> = vec![
-            if compiler.stage == 0 {
+            if compiler.stage == 0 && tool != Tool::ErrorIndex {
                 self.build.rustc_snapshot_libdir()
             } else {
                 PathBuf::from(&self.sysroot_libdir(compiler, compiler.host))
