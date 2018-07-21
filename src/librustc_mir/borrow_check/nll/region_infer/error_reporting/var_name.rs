@@ -22,7 +22,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         tcx: TyCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
         fr: RegionVid,
-    ) -> (Option<Symbol>, Span) {
+    ) -> Option<(Option<Symbol>, Span)> {
         debug!("get_var_name_and_span_for_region(fr={:?})", fr);
         assert!(self.universal_regions.is_universal_region(fr));
 
@@ -37,7 +37,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.get_argument_index_for_region(tcx, fr)
                     .map(|index| self.get_argument_name_and_span_for_region(mir, index))
             })
-            .unwrap_or_else(|| span_bug!(mir.span, "can't find var name for free region {:?}", fr))
     }
 
     /// Search the upvars (if any) to find one that references fr. Return its index.

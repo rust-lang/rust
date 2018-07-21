@@ -247,7 +247,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match category {
             ConstraintCategory::AssignmentToUpvar |
             ConstraintCategory::CallArgumentToUpvar =>
-                self.report_closure_error(mir, infcx, fr, outlived_fr, span),
+                self.report_closure_error(mir, infcx, mir_def_id, fr, outlived_fr, category, span),
             _ =>
                 self.report_general_error(mir, infcx, mir_def_id, fr, outlived_fr, category, span),
         }
@@ -257,33 +257,44 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         mir: &Mir<'tcx>,
         infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir_def_id: DefId,
         fr: RegionVid,
         outlived_fr: RegionVid,
+        category: &ConstraintCategory,
         span: &Span,
     ) {
+        let fr_name_and_span  = self.get_var_name_and_span_for_region(
+            infcx.tcx, mir, fr);
+        let outlived_fr_name_and_span = self.get_var_name_and_span_for_region(
+            infcx.tcx, mir,outlived_fr);
+
+        if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
+            return self.report_general_error(mir, infcx, mir_def_id, fr, outlived_fr, category,
+                                             span);
+        }
+
         let diag = &mut infcx.tcx.sess.struct_span_err(
             *span, &format!("borrowed data escapes outside of closure"),
         );
 
-        let (outlived_fr_name, outlived_fr_span) = self.get_var_name_and_span_for_region(
-            infcx.tcx, mir, outlived_fr);
-
-        if let Some(name) = outlived_fr_name {
-            diag.span_label(
-                outlived_fr_span,
-                format!("`{}` is declared here, outside of the closure body", name),
-            );
+        if let Some((outlived_fr_name, outlived_fr_span)) = outlived_fr_name_and_span {
+            if let Some(name) = outlived_fr_name {
+                diag.span_label(
+                    outlived_fr_span,
+                    format!("`{}` is declared here, outside of the closure body", name),
+                );
+            }
         }
 
-        let (fr_name, fr_span) = self.get_var_name_and_span_for_region(infcx.tcx, mir, fr);
+        if let Some((fr_name, fr_span)) = fr_name_and_span {
+            if let Some(name) = fr_name {
+                diag.span_label(
+                    fr_span,
+                    format!("`{}` is a reference that is only valid in the closure body", name),
+                );
 
-        if let Some(name) = fr_name {
-            diag.span_label(
-                fr_span,
-                format!("`{}` is a reference that is only valid in the closure body", name),
-            );
-
-            diag.span_label(*span, format!("`{}` escapes the closure body here", name));
+                diag.span_label(*span, format!("`{}` escapes the closure body here", name));
+            }
         }
 
         diag.emit();
