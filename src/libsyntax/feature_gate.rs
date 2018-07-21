@@ -686,7 +686,8 @@ pub fn deprecated_attributes() -> Vec<&'static (&'static str, AttributeType, Att
 }
 
 pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
-    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.check_name(builtin_name))
+    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.check_name(builtin_name)) ||
+    attr.name().as_str().starts_with("rustc_")
 }
 
 // Attributes that have a special meaning to rustc or rustdoc

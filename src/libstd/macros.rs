@@ -303,7 +303,7 @@ macro_rules! assert_approx_eq {
 /// macro, but are documented here. Their implementations can be found hardcoded
 /// into libsyntax itself.
 #[cfg(dox)]
-pub mod builtin {
+mod builtin {
 
     /// Unconditionally causes compilation to fail with the given error message when encountered.
     ///
@@ -341,7 +341,7 @@ pub mod builtin {
     ///
     /// [`panic!`]: ../std/macro.panic.html
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! compile_error {
         ($msg:expr) => ({ /* compiler built-in */ });
         ($msg:expr,) => ({ /* compiler built-in */ });
@@ -393,7 +393,7 @@ pub mod builtin {
     /// assert_eq!(s, format!("hello {}", "world"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! format_args {
         ($fmt:expr) => ({ /* compiler built-in */ });
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
@@ -431,7 +431,7 @@ pub mod builtin {
     /// error: what's that?!
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! env {
         ($name:expr) => ({ /* compiler built-in */ });
         ($name:expr,) => ({ /* compiler built-in */ });
@@ -457,7 +457,7 @@ pub mod builtin {
     /// println!("the secret key might be: {:?}", key);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! option_env {
         ($name:expr) => ({ /* compiler built-in */ });
         ($name:expr,) => ({ /* compiler built-in */ });
@@ -488,7 +488,7 @@ pub mod builtin {
     /// # }
     /// ```
     #[unstable(feature = "concat_idents_macro", issue = "29599")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! concat_idents {
         ($($e:ident),+) => ({ /* compiler built-in */ });
         ($($e:ident,)+) => ({ /* compiler built-in */ });
@@ -510,7 +510,7 @@ pub mod builtin {
     /// assert_eq!(s, "test10btrue");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! concat {
         ($($e:expr),*) => ({ /* compiler built-in */ });
         ($($e:expr,)*) => ({ /* compiler built-in */ });
@@ -538,7 +538,7 @@ pub mod builtin {
     /// println!("defined on line: {}", current_line);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! line { () => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the column number on which it was invoked.
@@ -563,7 +563,7 @@ pub mod builtin {
     /// println!("defined on column: {}", current_col);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! column { () => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the file name from which it was invoked.
@@ -587,7 +587,7 @@ pub mod builtin {
     /// println!("defined in file: {}", this_file);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! file { () => ({ /* compiler built-in */ }) }
 
     /// A macro which stringifies its arguments.
@@ -606,7 +606,7 @@ pub mod builtin {
     /// assert_eq!(one_plus_one, "1 + 1");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! stringify { ($($t:tt)*) => ({ /* compiler built-in */ }) }
 
     /// Includes a utf8-encoded file as a string.
@@ -640,7 +640,7 @@ pub mod builtin {
     ///
     /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! include_str {
         ($file:expr) => ({ /* compiler built-in */ });
         ($file:expr,) => ({ /* compiler built-in */ });
@@ -677,7 +677,7 @@ pub mod builtin {
     ///
     /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! include_bytes {
         ($file:expr) => ({ /* compiler built-in */ });
         ($file:expr,) => ({ /* compiler built-in */ });
@@ -701,7 +701,7 @@ pub mod builtin {
     /// test::foo();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
     /// Boolean evaluation of configuration flags, at compile-time.
@@ -723,7 +723,7 @@ pub mod builtin {
     /// };
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
 
     /// Parse a file as an expression or an item according to the context.
@@ -766,7 +766,7 @@ pub mod builtin {
     /// Compiling 'main.rs' and running the resulting binary will print
     /// "🙈🙊🙉🙈🙊🙉".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! include {
         ($file:expr) => ({ /* compiler built-in */ });
         ($file:expr,) => ({ /* compiler built-in */ });
@@ -819,7 +819,7 @@ pub mod builtin {
     /// assert!(a + b == 30, "a = {}, b = {}", a, b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[macro_export]
+    #[rustc_doc_only_macro]
     macro_rules! assert {
         ($cond:expr) => ({ /* compiler built-in */ });
         ($cond:expr,) => ({ /* compiler built-in */ });
