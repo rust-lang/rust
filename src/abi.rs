@@ -12,7 +12,7 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
     let (call_conv, inputs, _output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
-            unimplemented!();
+            unimplemented!("rust-call");
         }
         Abi::System => bug!("system abi should be selected elsewhere"),
         // TODO: properly implement intrinsics
@@ -153,25 +153,73 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     destination: &Option<(Place<'tcx>, BasicBlock)>,
 ) {
     let func = ::base::trans_operand(fx, func);
+
     let return_place = if let Some((place, _)) = destination {
-        ::base::trans_place(fx, place).expect_addr()
+        Some(::base::trans_place(fx, place))
     } else {
-        fx.bcx.ins().iconst(types::I64, 0)
+        None
     };
-    let args = Some(return_place)
+
+    let args = args
         .into_iter()
-        .chain(
-            args
-                .into_iter()
-                .map(|arg| {
-                    let arg = ::base::trans_operand(fx, arg);
-                    if let Some(_) = fx.cton_type(arg.layout().ty) {
-                        arg.load_value(fx)
-                    } else {
-                        arg.force_stack(fx)
-                    }
-                })
-        ).collect::<Vec<_>>();
+        .map(|arg| {
+            let arg = ::base::trans_operand(fx, arg);
+            if let Some(_) = fx.cton_type(arg.layout().ty) {
+                arg.load_value(fx)
+            } else {
+                arg.force_stack(fx)
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let fn_ty = func.layout().ty;
+    if let TypeVariants::TyFnDef(def_id, substs) = fn_ty.sty {
+        let instance = ty::Instance::resolve(
+            fx.tcx,
+            ParamEnv::reveal_all(),
+            def_id,
+            substs
+        ).unwrap();
+
+        // Handle intrinsics old codegen wants Expr's for, ourselves.
+        if let InstanceDef::Intrinsic(def_id) = instance.def {
+            let intrinsic = fx.tcx.item_name(def_id).as_str();
+            let intrinsic = &intrinsic[..];
+
+            let usize_layout = fx.layout_of(fx.tcx.types.usize);
+            match intrinsic {
+                "copy" => {
+                    /*let elem_ty = substs.type_at(0);
+                    assert_eq!(args.len(), 3);
+                    let src = args[0];
+                    let dst = args[1];
+                    let count = args[2];*/
+                    unimplemented!("copy");
+                }
+                "size_of" => {
+                    let size_of = fx.layout_of(substs.type_at(0)).size.bytes();
+                    let size_of = CValue::const_val(fx, usize_layout.ty, size_of as i64);
+                    return_place.unwrap().write_cvalue(fx, size_of);
+                }
+                _ => fx.tcx.sess.fatal(&format!("unsupported intrinsic {}", intrinsic)),
+            }
+            if let Some((_, dest)) = *destination {
+                let ret_ebb = fx.get_ebb(dest);
+                fx.bcx.ins().jump(ret_ebb, &[]);
+            } else {
+                fx.bcx.ins().trap(TrapCode::User(!0));
+            }
+            return;
+        }
+    }
+
+    let return_ptr = match return_place {
+        Some(place) => place.expect_addr(),
+        None => fx.bcx.ins().iconst(types::I64, 0),
+    };
+
+    let args = Some(return_ptr).into_iter().chain(args).collect::<Vec<_>>();
+
     match func {
         CValue::Func(func, _) => {
             fx.bcx.ins().call(func, &args);

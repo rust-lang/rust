@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 #[lang="sized"]
-trait Sized {}
+pub trait Sized {}
 
 #[lang="copy"]
 unsafe trait Copy {}
@@ -68,8 +68,11 @@ unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
-extern "rust-intrinsic" {
-    fn copy<T>(src: *const T, dst: *mut T, count: usize);
+mod intrinsics {
+    extern "rust-intrinsic" {
+        pub fn size_of<T>() -> usize;
+        pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
+    }
 }
 
 fn abc(a: u8) -> u8 {
@@ -149,9 +152,19 @@ fn debug_tuple() -> DebugTuple {
     DebugTuple(())
 }
 
-unsafe fn use_copy_intrinsic(src: *const u8, dst: *mut u8) {
-    copy::<u8>(src, dst, 1);
+fn size_of<T>() -> usize {
+    unsafe {
+        intrinsics::size_of::<T>()
+    }
 }
+
+fn use_size_of() -> usize {
+    size_of::<u64>()
+}
+
+/*unsafe fn use_copy_intrinsic(src: *const u8, dst: *mut u8) {
+    intrinsics::copy::<u8>(src, dst, 1);
+}*/
 
 /*unsafe fn use_copy_intrinsic_ref(src: *const u8, dst: *mut u8) {
     let copy2 = &copy::<u8>;

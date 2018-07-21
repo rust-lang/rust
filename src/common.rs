@@ -168,7 +168,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn layout(&self) -> TyLayout<'tcx> {
         match *self {
             CPlace::Var(_, layout) |
-            CPlace::Addr(_, layout) => layout
+            CPlace::Addr(_, layout) => layout,
         }
     }
 
