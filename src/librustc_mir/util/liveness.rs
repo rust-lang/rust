@@ -294,11 +294,9 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>, mode: LivenessMode) -> Opti
         // We let Call define the result in both the success and
         // unwind cases. This is not really correct, however it
         // does not seem to be observable due to the way that we
-        // generate MIR. See the test case
-        // `mir-opt/nll/liveness-call-subtlety.rs`. To do things
-        // properly, we would apply the def in call only to the
-        // input from the success path and not the unwind
-        // path. -nmatsakis
+        // generate MIR. To do things properly, we would apply
+        // the def in call only to the input from the success
+        // path and not the unwind path. -nmatsakis
         PlaceContext::Call |
 
         // Storage live and storage dead aren't proper defines, but we can ignore
