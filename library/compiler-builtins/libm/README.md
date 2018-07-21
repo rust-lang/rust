@@ -33,10 +33,7 @@ fn foo(x: f32) {
 }
 ```
 
-Not all the math functions are available at the moment. Check the [API docs] to learn what's
-currently supported.
-
-[API docs]: https://docs.rs/libm
+The API documentation can be found [here](https://docs.rs/libm).
 
 ## Contributing
 
