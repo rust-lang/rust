@@ -170,3 +170,9 @@ fn use_size_of() -> usize {
     let copy2 = &copy::<u8>;
     copy2(src, dst, 1);
 }*/
+
+const Abc: u8 = 6 * 7;
+
+fn use_const() -> u8 {
+    Abc
+}

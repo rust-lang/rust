@@ -1,11 +1,11 @@
 use prelude::*;
-use rustc::mir::interpret::{GlobalId, AllocId, read_target_uint};
+use rustc::mir::interpret::{ConstValue, GlobalId, AllocId, read_target_uint};
 use rustc_mir::interpret::{CompileTimeEvaluator, Memory, MemoryKind};
 use cranelift_module::*;
 
 pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Constant<'tcx>) -> CValue<'tcx> {
-    let value = match const_.literal {
-        Literal::Value { value } => value,
+    let const_val = match const_.literal {
+        Literal::Value { value } => fx.monomorphize(&value),
         Literal::Promoted { index } => fx
             .tcx
             .const_eval(ParamEnv::reveal_all().and(GlobalId {
@@ -14,21 +14,35 @@ pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Cons
             }))
             .unwrap(),
     };
-    fx.tcx.sess.warn(&format!("const: {:?}", value));
+
+    let const_ = match const_val.val {
+        ConstValue::Unevaluated(def_id, ref substs) => {
+            let param_env = ParamEnv::reveal_all();
+            let instance = Instance::resolve(fx.tcx, param_env, def_id, substs).unwrap();
+            let cid = GlobalId {
+                instance,
+                promoted: None,
+            };
+            fx.tcx.const_eval(param_env.and(cid)).unwrap()
+        },
+        _ => const_val,
+    };
+
+    fx.tcx.sess.warn(&format!("const_val: {:?} const_: {:?}", const_val, const_));
 
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
     match ty.sty {
         TypeVariants::TyBool => {
-            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
+            let bits = const_.val.to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits as u64 as i64)
         }
         TypeVariants::TyUint(_) => {
-            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
+            let bits = const_.val.to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits as u64 as i64)
         }
         TypeVariants::TyInt(_) => {
-            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
+            let bits = const_.val.to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, bits as i128 as i64)
         }
         TypeVariants::TyFnDef(def_id, substs) => {
@@ -42,7 +56,7 @@ pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Cons
                 return CValue::ByRef(fx.bcx.ins().iconst(types::I64, 0), layout);
             }
             let mut memory = Memory::<CompileTimeEvaluator>::new(fx.tcx.at(DUMMY_SP), ());
-            let alloc = fx.tcx.const_value_to_allocation(value);
+            let alloc = fx.tcx.const_value_to_allocation(const_);
             //println!("const value: {:?} allocation: {:?}", value, alloc);
             let alloc_id = memory.allocate_value(alloc.clone(), MemoryKind::Stack).unwrap();
             let data_id = get_global_for_alloc_id(fx, &memory, alloc_id);
