@@ -268,11 +268,11 @@ impl str {
         let mut result = String::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
-            result.push_str(unsafe { self.slice_unchecked(last_end, start) });
+            result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
-        result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
+        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
 
@@ -309,11 +309,11 @@ impl str {
         let mut result = String::with_capacity(32);
         let mut last_end = 0;
         for (start, part) in self.match_indices(pat).take(count) {
-            result.push_str(unsafe { self.slice_unchecked(last_end, start) });
+            result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
-        result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
+        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
 
