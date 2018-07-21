@@ -13,7 +13,7 @@ error[E0282]: type annotations needed
    |
 LL | /     data.iter() //~ ERROR 22:5: 23:20: type annotations needed
 LL | |         .sum::<_>()
-   | |___________________^ cannot infer type for `_`
+   | |___________________^ cannot infer type
    |
    = note: type must be known at this point
 
