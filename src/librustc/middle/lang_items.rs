@@ -324,6 +324,8 @@ language_item_table! {
 
     NonZeroItem,                     "non_zero",                non_zero;
 
+    ManuallyDropItem,                "manually_drop",           manually_drop;
+
     DebugTraitLangItem,              "debug_trait",             debug_trait;
 
     // A lang item for each of the 128-bit operators we can optionally lower.
