@@ -84,10 +84,10 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tables: &ty::TypeckTables::empty(None),
         in_fn: false,
         in_static: false,
-        mut_rvalue_borrows: NodeSet(),
+        mut_rvalue_borrows: Default::default(),
         param_env: ty::ParamEnv::empty(),
         identity_substs: Substs::empty(),
-        result: ItemLocalSet(),
+        result: ItemLocalSet::default(),
     };
 
     // `def_id` should be a `Body` owner

@@ -496,7 +496,7 @@ pub struct LintBuffer {
 
 impl LintBuffer {
     pub fn new() -> LintBuffer {
-        LintBuffer { map: NodeMap() }
+        LintBuffer { map: ::std::default::Default::default() }
     }
 
     pub fn add_lint(&mut self,

@@ -316,7 +316,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             use std::collections::hash_map::Entry;
 
             assert_eq!(cnum, LOCAL_CRATE);
-            let mut visible_parent_map: DefIdMap<DefId> = DefIdMap();
+            let mut visible_parent_map: DefIdMap<DefId> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we

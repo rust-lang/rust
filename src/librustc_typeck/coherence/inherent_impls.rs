@@ -38,7 +38,7 @@ pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut collect = InherentCollect {
         tcx,
         impls_map: CrateInherentImpls {
-            inherent_impls: DefIdMap()
+            inherent_impls: DefIdMap::default()
         }
     };
     krate.visit_all_item_likes(&mut collect);

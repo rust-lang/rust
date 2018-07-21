@@ -418,7 +418,7 @@ impl Definitions {
                 index_to_key: [vec![], vec![]],
                 def_path_hashes: [vec![], vec![]],
             },
-            node_to_def_index: NodeMap(),
+            node_to_def_index: Default::default(),
             def_index_to_node: [vec![], vec![]],
             node_to_hir_id: IndexVec::new(),
             parent_modules_of_macro_defs: Default::default(),
