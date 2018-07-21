@@ -31,4 +31,7 @@ struct S;
                                      //~| WARN this was previously accepted
 struct Z;
 
+#[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed
+struct W;
+
 fn main() {}

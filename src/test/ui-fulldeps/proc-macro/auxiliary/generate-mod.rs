@@ -52,3 +52,16 @@ pub fn check_derive(_: TokenStream) -> TokenStream {
     }
     ".parse().unwrap()
 }
+
+#[proc_macro_derive(CheckDeriveLint)]
+pub fn check_derive_lint(_: TokenStream) -> TokenStream {
+    "
+    type AliasDeriveLint = FromOutside; // OK
+    struct OuterDeriveLint;
+    #[allow(proc_macro_derive_resolution_fallback)]
+    mod inner_derive_lint {
+        type Alias = FromOutside; // `FromOutside` shouldn't be available from here
+        type Inner = OuterDeriveLint; // `OuterDeriveLint` shouldn't be available from here
+    }
+    ".parse().unwrap()
+}
