@@ -24,7 +24,7 @@ fn main() {
     match b {
         &mut false => {},
         ref mut r if { (|| { let bar = &mut *r; **bar = false; })();
-                             //~^ ERROR cannot borrow immutable item `*r` as mutable
+        //~^ ERROR cannot borrow `r` as mutable, as it is immutable for the pattern guard
                              false } => { &mut *r; },
         &mut true => { println!("You might think we should get here"); },
         _ => panic!("surely we could never get here, since rustc warns it is unreachable."),

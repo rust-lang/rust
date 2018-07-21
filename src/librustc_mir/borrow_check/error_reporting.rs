@@ -202,7 +202,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// the local assigned at `location`.
     /// This is done by searching in statements succeeding `location`
     /// and originating from `maybe_closure_span`.
-    fn find_closure_span(
+    pub(super) fn find_closure_span(
         &self,
         maybe_closure_span: Span,
         location: Location,
@@ -742,6 +742,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     autoderef,
                                     &including_downcast,
                                 )?;
+                            } else if let Place::Local(local) = proj.base {
+                                if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
+                                    = self.mir.local_decls[local].is_user_variable {
+                                    self.append_place_to_string(
+                                        &proj.base,
+                                        buf,
+                                        autoderef,
+                                        &including_downcast,
+                                    )?;
+                                } else {
+                                    buf.push_str(&"*");
+                                    self.append_place_to_string(
+                                        &proj.base,
+                                        buf,
+                                        autoderef,
+                                        &including_downcast,
+                                    )?;
+                                }
                             } else {
                                 buf.push_str(&"*");
                                 self.append_place_to_string(

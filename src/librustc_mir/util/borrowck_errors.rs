@@ -519,22 +519,33 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_borrow_path_as_mutable(
+    fn cannot_borrow_path_as_mutable_because(
         self,
         span: Span,
         path: &str,
+        reason: &str,
         o: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let err = struct_span_err!(
             self,
             span,
             E0596,
-            "cannot borrow {} as mutable{OGN}",
+            "cannot borrow {} as mutable{}{OGN}",
             path,
-            OGN = o
+            reason,
+            OGN = o,
         );
 
         self.cancel_if_wrong_origin(err, o)
+    }
+
+    fn cannot_borrow_path_as_mutable(
+        self,
+        span: Span,
+        path: &str,
+        o: Origin,
+    ) -> DiagnosticBuilder<'cx> {
+        self.cannot_borrow_path_as_mutable_because(span, path, "", o)
     }
 
     fn cannot_borrow_across_generator_yield(

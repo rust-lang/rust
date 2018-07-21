@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable item `f.v` as mutable
+error[E0596]: cannot borrow `f.v` as mutable, as `f` is not declared as mutable
   --> $DIR/issue-35937.rs:17:5
    |
 LL |     let f = Foo { v: Vec::new() };

@@ -14,7 +14,7 @@ LL | |     x;  //~ value moved here
    | |_____move out of `x` occurs here
    |       borrow later used here
 
-error[E0596]: cannot borrow immutable item `y` as mutable
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
   --> $DIR/augmented-assignments.rs:30:5
    |
 LL |     let y = Int(2);

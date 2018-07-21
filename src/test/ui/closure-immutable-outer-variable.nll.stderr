@@ -1,6 +1,8 @@
-error[E0594]: cannot assign to immutable item `y`
+error[E0594]: cannot assign to `y`, as it is not declared as mutable
   --> $DIR/closure-immutable-outer-variable.rs:21:26
    |
+LL |     let y = true;
+   |         - help: consider changing this to be mutable: `mut y`
 LL |     foo(Box::new(move || y = false) as Box<_>); //~ ERROR cannot assign to captured outer variable
    |                          ^^^^^^^^^ cannot assign
 

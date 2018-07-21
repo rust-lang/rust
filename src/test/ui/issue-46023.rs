@@ -16,7 +16,7 @@ fn main() {
 
     (move || {
         x = 1;
-        //[mir]~^ ERROR cannot assign to immutable item `x` [E0594]
+        //[mir]~^ ERROR cannot assign to `x`, as it is not declared as mutable [E0594]
         //[ast]~^^ ERROR cannot assign to captured outer variable in an `FnMut` closure [E0594]
     })()
 }

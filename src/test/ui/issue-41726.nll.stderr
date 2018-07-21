@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable item as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/issue-41726.rs:15:9
    |
 LL |         things[src.as_str()].sort(); //~ ERROR cannot borrow immutable

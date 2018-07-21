@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable item `*self.s` as mutable
+error[E0596]: cannot borrow `*self.s` as mutable, as it is behind a `&` reference
   --> $DIR/issue-38147-3.rs:17:9
    |
 LL |         self.s.push('x');

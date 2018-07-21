@@ -14,21 +14,14 @@ LL |     give_any(|y| x = Some(y));
    |               |
    |               lifetime `'1` appears in this argument
 
-error[E0594]: cannot assign to immutable item `x`
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/issue-45983.rs:17:18
-   |
-LL |     give_any(|y| x = Some(y));
-   |                  ^^^^^^^^^^^ cannot assign
-
-error[E0596]: cannot borrow immutable item `x` as mutable
-  --> $DIR/issue-45983.rs:17:14
    |
 LL |     let x = None;
    |         - help: consider changing this to be mutable: `mut x`
 LL |     give_any(|y| x = Some(y));
-   |              ^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |                  ^^^^^^^^^^^ cannot assign
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors occurred: E0594, E0596.
-For more information about an error, try `rustc --explain E0594`.
+For more information about this error, try `rustc --explain E0594`.

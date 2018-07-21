@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable item `*buf` as mutable
+error[E0596]: cannot borrow `*buf` as mutable, as it is behind a `&` reference
   --> $DIR/issue-40823.rs:13:5
    |
 LL |     let mut buf = &[1, 2, 3, 4];
