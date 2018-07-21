@@ -513,12 +513,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                     let text = lines.collect::<Vec<Cow<str>>>().join("\n");
                     nb_lines += doc[prev_offset..offset].lines().count();
                     let line = tests.get_line() + (nb_lines - 1);
-                    let filename = tests.get_filename();
-                    tests.add_test(text.to_owned(),
-                                   block_info.should_panic, block_info.no_run,
-                                   block_info.ignore, block_info.test_harness,
-                                   block_info.compile_fail, block_info.error_codes,
-                                   line, filename, block_info.allow_fail);
+                    tests.add_test(text, block_info, line);
                     prev_offset = offset;
                 } else {
                     handler.span_warn(position, "invalid start of a new code block");
@@ -543,16 +538,16 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-struct LangString {
+pub struct LangString {
     original: String,
-    should_panic: bool,
-    no_run: bool,
-    ignore: bool,
-    rust: bool,
-    test_harness: bool,
-    compile_fail: bool,
-    error_codes: Vec<String>,
-    allow_fail: bool,
+    pub should_panic: bool,
+    pub no_run: bool,
+    pub ignore: bool,
+    pub rust: bool,
+    pub test_harness: bool,
+    pub compile_fail: bool,
+    pub error_codes: Vec<String>,
+    pub allow_fail: bool,
 }
 
 impl LangString {

@@ -42,7 +42,7 @@ use errors;
 use errors::emitter::ColorConfig;
 
 use clean::Attributes;
-use html::markdown;
+use html::markdown::{self, LangString};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -533,10 +533,8 @@ impl Collector {
         format!("{} - {} (line {})", filename, self.names.join("::"), line)
     }
 
-    pub fn add_test(&mut self, test: String,
-                    should_panic: bool, no_run: bool, should_ignore: bool,
-                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize, filename: FileName, allow_fail: bool) {
+    pub fn add_test(&mut self, test: String, config: LangString, line: usize) {
+        let filename = self.get_filename();
         let name = self.generate_name(line, &filename);
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
@@ -551,10 +549,10 @@ impl Collector {
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name.clone()),
-                ignore: should_ignore,
+                ignore: config.ignore,
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
-                allow_fail,
+                allow_fail: config.allow_fail,
             },
             testfn: testing::DynTestFn(box move || {
                 let panic = io::set_panic(None);
@@ -572,11 +570,11 @@ impl Collector {
                                  libs,
                                  cg,
                                  externs,
-                                 should_panic,
-                                 no_run,
-                                 as_test_harness,
-                                 compile_fail,
-                                 error_codes,
+                                 config.should_panic,
+                                 config.no_run,
+                                 config.test_harness,
+                                 config.compile_fail,
+                                 config.error_codes,
                                  &opts,
                                  maybe_sysroot,
                                  linker,
@@ -604,7 +602,7 @@ impl Collector {
         self.position = position;
     }
 
-    pub fn get_filename(&self) -> FileName {
+    fn get_filename(&self) -> FileName {
         if let Some(ref codemap) = self.codemap {
             let filename = codemap.span_to_filename(self.position);
             if let FileName::Real(ref filename) = filename {
