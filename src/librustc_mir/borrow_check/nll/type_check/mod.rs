@@ -19,6 +19,7 @@ use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::region_infer::values::{RegionValues, RegionValueElements};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
+use borrow_check::nll::LocalWithRegion;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
@@ -109,7 +110,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     universal_regions: &UniversalRegions<'tcx>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
-    liveness: &LivenessResults,
+    liveness: &LivenessResults<LocalWithRegion>,
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
