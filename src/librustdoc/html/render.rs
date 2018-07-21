@@ -3585,12 +3585,6 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         None => return Ok(()),
     };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| {
-        /*if let Some(ref t) = i.inner_impl().trait_ {
-            println!("++++++> {:?}", t);
-        }*/
-        /*if i.inner_impl().trait_.is_some() {
-            println!("++++++> {:?}", i.name);
-        }*/
         i.inner_impl().trait_.is_none()
     });
     if !non_trait.is_empty() {
