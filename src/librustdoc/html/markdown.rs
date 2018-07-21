@@ -129,12 +129,14 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
 /// Adds syntax highlighting and playground Run buttons to rust code blocks.
 struct CodeBlocks<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
+    check_error_codes: bool,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'a, I> {
     fn new(iter: I) -> Self {
         CodeBlocks {
             inner: iter,
+            check_error_codes: UnstableFeatures::from_environment().is_nightly_build(),
         }
     }
 }
@@ -147,7 +149,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
         let compile_fail;
         let ignore;
         if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
-            let parse_result = LangString::parse(&lang);
+            let parse_result = LangString::parse(&lang, self.check_error_codes);
             if !parse_result.rust {
                 return Some(Event::Start(Tag::CodeBlock(lang)));
             }
@@ -471,6 +473,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                           sess: Option<&session::Session>) {
     tests.set_position(position);
 
+    let is_nightly = UnstableFeatures::from_environment().is_nightly_build();
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -481,7 +484,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                 let block_info = if s.is_empty() {
                     LangString::all_false()
                 } else {
-                    LangString::parse(&*s)
+                    LangString::parse(&*s, is_nightly)
                 };
                 if !block_info.rust {
                     continue
@@ -569,14 +572,10 @@ impl LangString {
         }
     }
 
-    fn parse(string: &str) -> LangString {
+    fn parse(string: &str, allow_error_code_check: bool) -> LangString {
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
-        let mut allow_error_code_check = false;
-        if UnstableFeatures::from_environment().is_nightly_build() {
-            allow_error_code_check = true;
-        }
 
         data.original = string.to_owned();
         let tokens = string.split(|c: char|
@@ -842,7 +841,7 @@ mod tests {
         fn t(s: &str,
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
             compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
-            assert_eq!(LangString::parse(s), LangString {
+            assert_eq!(LangString::parse(s, true), LangString {
                 should_panic,
                 no_run,
                 ignore,
