@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm
+
 #![feature(const_fn)]
 #![allow(const_err)]
 
