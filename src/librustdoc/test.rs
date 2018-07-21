@@ -692,7 +692,7 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
             markdown::find_testable_code(&doc,
                                          self.collector,
                                          attrs.span.unwrap_or(DUMMY_SP),
-                                         Some(self.sess));
+                                         self.sess.diagnostic());
         }
 
         nested(self);

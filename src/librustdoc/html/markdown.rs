@@ -27,7 +27,6 @@
 
 #![allow(non_camel_case_types)]
 
-use rustc::session;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::default::Default;
@@ -37,6 +36,7 @@ use std::ops::Range;
 use std::str;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::codemap::Span;
+use errors;
 
 use html::render::derive_id;
 use html::toc::TocBuilder;
@@ -470,7 +470,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
 }
 
 pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span,
-                          sess: Option<&session::Session>) {
+                          handler: &errors::Handler) {
     tests.set_position(position);
 
     let is_nightly = UnstableFeatures::from_environment().is_nightly_build();
@@ -521,9 +521,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                                    line, filename, block_info.allow_fail);
                     prev_offset = offset;
                 } else {
-                    if let Some(ref sess) = sess {
-                        sess.span_warn(position, "invalid start of a new code block");
-                    }
+                    handler.span_warn(position, "invalid start of a new code block");
                     break;
                 }
             }
