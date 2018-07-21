@@ -274,7 +274,7 @@ pub struct Handler {
     err_count: AtomicUsize,
     emitter: Lock<Box<dyn Emitter + sync::Send>>,
     continue_after_error: LockCell<bool>,
-    delayed_span_bug: Lock<Vec<Diagnostic>>,
+    delayed_span_bugs: Lock<Vec<Diagnostic>>,
 
     // This set contains the `DiagnosticId` of all emitted diagnostics to avoid
     // emitting the same diagnostic with extended help (`--teach`) twice, which
@@ -306,7 +306,7 @@ pub struct HandlerFlags {
 impl Drop for Handler {
     fn drop(&mut self) {
         if self.err_count() == 0 {
-            let mut bugs = self.delayed_span_bug.borrow_mut();
+            let mut bugs = self.delayed_span_bugs.borrow_mut();
             let has_bugs = !bugs.is_empty();
             for bug in bugs.drain(..) {
                 DiagnosticBuilder::new_diagnostic(self, bug).emit();
@@ -362,7 +362,7 @@ impl Handler {
             err_count: AtomicUsize::new(0),
             emitter: Lock::new(e),
             continue_after_error: LockCell::new(true),
-            delayed_span_bug: Lock::new(Vec::new()),
+            delayed_span_bugs: Lock::new(Vec::new()),
             taught_diagnostics: Lock::new(FxHashSet()),
             emitted_diagnostic_codes: Lock::new(FxHashSet()),
             emitted_diagnostics: Lock::new(FxHashSet()),
@@ -530,7 +530,7 @@ impl Handler {
         if self.flags.report_delayed_bugs {
             DiagnosticBuilder::new_diagnostic(self, diagnostic.clone()).emit();
         }
-        self.delayed_span_bug.borrow_mut().push(diagnostic);
+        self.delayed_span_bugs.borrow_mut().push(diagnostic);
     }
     pub fn span_bug_no_panic<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Bug);
