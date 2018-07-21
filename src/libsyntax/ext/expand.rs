@@ -1592,6 +1592,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_trace_macros = trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
+        fn enable_format_args_nl = format_args_nl,
         fn use_extern_macros_enabled = use_extern_macros,
         fn macros_in_extern_enabled = macros_in_extern,
         fn proc_macro_mod = proc_macro_mod,

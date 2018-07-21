@@ -413,7 +413,7 @@ pub mod builtin {
     ///
     /// [`format_args`]: ../std/macro.format_args.html
     #[doc(hidden)]
-    #[unstable(feature = "println_format_args", issue="0")]
+    #[unstable(feature = "format_args_nl", issue="0")]
     #[macro_export]
     macro_rules! format_args_nl {
         ($fmt:expr) => ({ /* compiler built-in */ });

@@ -17,6 +17,7 @@ use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
+use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -693,6 +694,20 @@ pub fn expand_format_args_nl<'cx>(ecx: &'cx mut ExtCtxt,
                                   mut sp: Span,
                                   tts: &[tokenstream::TokenTree])
                                   -> Box<dyn base::MacResult + 'cx> {
+    //if !ecx.ecfg.enable_allow_internal_unstable() {
+
+    // For some reason, the only one that actually works for `println` is the first check
+    if !sp.allows_unstable()   // the enclosing span is marked as `#[allow_insternal_unsable]`
+        || !ecx.ecfg.enable_allow_internal_unstable()  // NOTE: when is this enabled?
+        || !ecx.ecfg.enable_format_args_nl()  // enabled using `#[feature(format_args_nl]`
+    {
+        feature_gate::emit_feature_err(&ecx.parse_sess,
+                                       "format_args_nl",
+                                       sp,
+                                       feature_gate::GateIssue::Language,
+                                       feature_gate::EXPLAIN_FORMAT_ARGS_NL);
+        return base::DummyResult::expr(sp);
+    }
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
         Some((efmt, args, names)) => {
