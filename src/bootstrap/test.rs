@@ -966,7 +966,7 @@ impl Step for Compiletest {
             builder.ensure(compile::Rustc { compiler, target });
         }
 
-        if builder.no_std(target) == Some(false) {
+        if builder.no_std(target) != Some(true) {
             builder.ensure(compile::Test { compiler, target });
         }
         builder.ensure(native::TestHelpers { target });
