@@ -649,6 +649,7 @@ define_dep_nodes!( <'tcx>
     [input] OutputFilenames,
     [] NormalizeProjectionTy(CanonicalProjectionGoal<'tcx>),
     [] NormalizeTyAfterErasingRegions(ParamEnvAnd<'tcx, Ty<'tcx>>),
+    [] ImpliedOutlivesBounds(CanonicalTyGoal<'tcx>),
     [] DropckOutlives(CanonicalTyGoal<'tcx>),
     [] EvaluateObligation(CanonicalPredicateGoal<'tcx>),
     [] TypeOpEq(CanonicalTypeOpEqGoal<'tcx>),

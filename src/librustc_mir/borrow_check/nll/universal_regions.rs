@@ -25,10 +25,10 @@
 use either::Either;
 use rustc::hir::def_id::DefId;
 use rustc::hir::{self, BodyOwnerKind, HirId};
-use rustc::infer::outlives::bounds::{self, OutlivesBound};
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc::traits::query::outlives_bounds::{self, OutlivesBound};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
@@ -494,7 +494,10 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let num_universals = self.infcx.num_region_vars();
 
         // Insert the facts we know from the predicates. Why? Why not.
-        self.add_outlives_bounds(&indices, bounds::explicit_outlives_bounds(param_env));
+        self.add_outlives_bounds(
+            &indices,
+            outlives_bounds::explicit_outlives_bounds(param_env),
+        );
 
         // Add the implied bounds from inputs and outputs.
         for ty in inputs_and_output {

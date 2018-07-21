@@ -12,5 +12,4 @@
 
 pub mod env;
 pub mod free_region_map;
-pub mod bounds;
 pub mod obligations;

@@ -38,6 +38,7 @@ use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal,
                     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal, NoSolution};
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
+use traits::query::outlives_bounds::OutlivesBound;
 use traits::specialization_graph;
 use traits::Clauses;
 use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
@@ -550,6 +551,13 @@ define_queries! { <'tcx>
         [] fn normalize_ty_after_erasing_regions: NormalizeTyAfterErasingRegions(
             ParamEnvAnd<'tcx, Ty<'tcx>>
         ) -> Ty<'tcx>,
+
+        [] fn implied_outlives_bounds: ImpliedOutlivesBounds(
+            CanonicalTyGoal<'tcx>
+        ) -> Result<
+            Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, Vec<OutlivesBound<'tcx>>>>>,
+            NoSolution,
+        >,
 
         /// Do not call this query directly: invoke `infcx.at().dropck_outlives()` instead.
         [] fn dropck_outlives: DropckOutlives(
