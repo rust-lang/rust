@@ -28,8 +28,6 @@ pub use self::Alignment::*;
 pub use self::Flag::*;
 pub use self::Count::*;
 
-extern crate syntax;
-
 use std::str;
 use std::string;
 use std::iter;
@@ -152,8 +150,8 @@ pub struct Parser<'a> {
     pub errors: Vec<ParseError>,
     /// Current position of implicit positional argument pointer
     curarg: usize,
-    /// The style of the string (raw or not), used to position spans correctly
-    style: syntax::ast::StrStyle,
+    /// `Some(raw count)` when the string is "raw", used to position spans correctly
+    style: Option<usize>,
     /// How many newlines have been seen in the string so far, to adjust the error spans
     seen_newlines: usize,
 }
@@ -162,10 +160,7 @@ impl<'a> Iterator for Parser<'a> {
     type Item = Piece<'a>;
 
     fn next(&mut self) -> Option<Piece<'a>> {
-        let raw = match self.style {
-            syntax::ast::StrStyle::Raw(raw) => raw as usize + self.seen_newlines,
-            _ => 0,
-        };
+        let raw = self.style.map(|raw| raw + self.seen_newlines).unwrap_or(0);
         if let Some(&(pos, c)) = self.cur.peek() {
             match c {
                 '{' => {
@@ -208,7 +203,7 @@ impl<'a> Iterator for Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Creates a new parser for the given format string
-    pub fn new(s: &'a str, style: syntax::ast::StrStyle) -> Parser<'a> {
+    pub fn new(s: &'a str, style: Option<usize>) -> Parser<'a> {
         Parser {
             input: s,
             cur: s.char_indices().peekable(),
@@ -278,10 +273,7 @@ impl<'a> Parser<'a> {
     /// found, an error is emitted.
     fn must_consume(&mut self, c: char) {
         self.ws();
-        let raw = match self.style {
-            syntax::ast::StrStyle::Raw(raw) => raw as usize,
-            _ => 0,
-        };
+        let raw = self.style.unwrap_or(0);
 
         let padding = raw + self.seen_newlines;
         if let Some(&(pos, maybe)) = self.cur.peek() {

@@ -715,9 +715,6 @@ dependencies = [
 [[package]]
 name = "fmt_macros"
 version = "0.0.0"
-dependencies = [
- "syntax 0.0.0",
-]
 
 [[package]]
 name = "fnv"
