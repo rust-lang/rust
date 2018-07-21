@@ -105,16 +105,19 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         let generics = self.cx.tcx.generics_of(def_id);
 
         let ty = self.cx.tcx.type_of(def_id);
-        let mut traits = FxHashMap();
+        let mut traits = Vec::new();
         if self.cx.crate_name != Some("core".to_string()) {
             if let ty::TyAdt(_adt, _) = ty.sty {
+                let real_name = name.clone().map(|name| Ident::from_str(&name));
                 let param_env = self.cx.tcx.param_env(def_id);
                 for &trait_def_id in self.cx.all_traits.iter() {
-                    if traits.get(&trait_def_id).is_some() ||
-                       !self.cx.access_levels.borrow().is_doc_reachable(trait_def_id) {
+                    if !self.cx.access_levels.borrow().is_doc_reachable(trait_def_id) ||
+                       self.cx.generated_synthetics
+                              .borrow_mut()
+                              .get(&(def_id, trait_def_id))
+                              .is_some() {
                         continue
                     }
-                    let t_name = self.cx.tcx.item_name(trait_def_id).to_string();
                     self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
                         self.cx.tcx.infer_ctxt().enter(|infcx| {
                             let generics = infcx.tcx.generics_of(impl_def_id);
@@ -124,7 +127,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                 ::rustc::ty::TypeVariants::TyParam(_) => true,
                                 _ => false,
                             } {
-                                return;
+                                return
                             }
 
                             let substs = infcx.fresh_substs_for_item(DUMMY_SP, def_id);
@@ -147,38 +150,63 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                     param_env,
                                     trait_ref.to_predicate(),
                                 ));
-                                if may_apply {
-                                    if traits.get(&trait_def_id).is_none() {
-                                        let trait_ = hir::TraitRef {
-                                            path: get_path_for_type(infcx.tcx, trait_def_id, hir::def::Def::Trait),
-                                            ref_id: ast::DUMMY_NODE_ID,
-                                        };
-                                        let provided_trait_methods = infcx.tcx.provided_trait_methods(impl_def_id)
-                                                                              .into_iter()
-                                                                              .map(|meth| meth.ident.to_string())
-                                                                              .collect();
-                                        traits.insert(trait_def_id, Item {
-                                            source: Span::empty(),
-                                            name: None,
-                                            attrs: Default::default(),
-                                            visibility: None,
-                                            def_id: self.next_def_id(impl_def_id.krate),
-                                            stability: None,
-                                            deprecation: None,
-                                            inner: ImplItem(Impl {
-                                                unsafety: hir::Unsafety::Normal,
-                                                generics: (generics,
-                                                           &tcx.predicates_of(impl_def_id)).clean(self.cx),
-                                                provided_trait_methods,
-                                                trait_: Some(trait_.clean(self.cx)),
-                                                for_: ty.clean(self.cx),
-                                                items: infcx.tcx.associated_items(impl_def_id).collect::<Vec<_>>().clean(self.cx),
-                                                polarity: None,
-                                                synthetic: true,
-                                            }),
-                                        });
-                                    }
+                                if !may_apply {
+                                    return
                                 }
+                                self.cx.generated_synthetics.borrow_mut()
+                                                            .insert((def_id, trait_def_id));
+                                let trait_ = hir::TraitRef {
+                                    path: get_path_for_type(infcx.tcx, trait_def_id, hir::def::Def::Trait),
+                                    ref_id: ast::DUMMY_NODE_ID,
+                                };
+                                let provided_trait_methods = infcx.tcx.provided_trait_methods(impl_def_id)
+                                                                      .into_iter()
+                                                                      .map(|meth| meth.ident.to_string())
+                                                                      .collect();
+
+                                let path = get_path_for_type(self.cx.tcx, def_id, def_ctor);
+                                let mut segments = path.segments.into_vec();
+                                let last = segments.pop().unwrap();
+
+                                segments.push(hir::PathSegment::new(
+                                    real_name.unwrap_or(last.ident),
+                                    self.generics_to_path_params(generics.clone()),
+                                    false,
+                                ));
+
+                                let new_path = hir::Path {
+                                    span: path.span,
+                                    def: path.def,
+                                    segments: HirVec::from_vec(segments),
+                                };
+
+                                let ty = hir::Ty {
+                                    id: ast::DUMMY_NODE_ID,
+                                    node: hir::Ty_::TyPath(hir::QPath::Resolved(None, P(new_path))),
+                                    span: DUMMY_SP,
+                                    hir_id: hir::DUMMY_HIR_ID,
+                                };
+
+                                traits.push(Item {
+                                    source: Span::empty(),
+                                    name: None,
+                                    attrs: Default::default(),
+                                    visibility: None,
+                                    def_id: self.next_def_id(impl_def_id.krate),
+                                    stability: None,
+                                    deprecation: None,
+                                    inner: ImplItem(Impl {
+                                        unsafety: hir::Unsafety::Normal,
+                                        generics: (generics,
+                                                   &tcx.predicates_of(impl_def_id)).clean(self.cx),
+                                        provided_trait_methods,
+                                        trait_: Some(trait_.clean(self.cx)),
+                                        for_: ty.clean(self.cx),
+                                        items: infcx.tcx.associated_items(impl_def_id).collect::<Vec<_>>().clean(self.cx),
+                                        polarity: None,
+                                        synthetic: true,
+                                    }),
+                                });
                                 debug!("{:?} => {}", trait_ref, may_apply);
                             }
                         });
@@ -209,7 +237,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 def_ctor,
                 tcx.require_lang_item(lang_items::SyncTraitLangItem),
             ).into_iter())
-            .chain(traits.into_iter().map(|(_, v)| v))
+            .chain(traits.into_iter())
             .collect();
 
         debug!(

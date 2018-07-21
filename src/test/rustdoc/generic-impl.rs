@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// @has basic/struct.Foo.html
-// @has - '//code' 'impl<T> Send for Foo<T> where T: Send'
-// @has - '//code' 'impl<T> Sync for Foo<T> where T: Sync'
-// @count - '//*[@id="implementations-list"]/*[@class="impl"]' 0
-// @count - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]' 11
-pub struct Foo<T> {
-    field: T,
+#![crate_name = "foo"]
+
+use std::fmt;
+
+// @!has foo/struct.Bar.html 'impl<T> ToString for Bar'
+pub struct Bar;
+
+// @has foo/struct.Foo.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for Foo'
+pub struct Foo;
+
+impl fmt::Display for Foo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Foo")
+    }
 }
