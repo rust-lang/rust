@@ -19,6 +19,7 @@
 #![feature(libc)]
 #![feature(macro_at_most_once_rep)]
 #![feature(proc_macro_internals)]
+#![feature(proc_macro_quote)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
