@@ -1565,13 +1565,13 @@ assert_eq!(min_foo, 12);
                 pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
                     #[cfg(not(target_arch = "armv5te"))]
                     #[inline(always)]
-                    fn inner(&self, val: $int_type, order: Ordering) -> $int_type {
-                        unsafe { $min_fn(self.v.get(), val, order) }
+                    fn inner(a: &$atomic_type, val: $int_type, order: Ordering) -> $int_type {
+                        unsafe { $min_fn(a.v.get(), val, order) }
                     }
                     #[cfg(target_arch = "arm5vte")]
                     #[inline(always)]
-                    fn inner(&self, val: $int_type, order: Ordering) -> $int_type {
-                        self.fetch_update(|v| Some(v.min(val)), order, order).unwrap()
+                    fn inner(a: &$atomic_type, val: $int_type, order: Ordering) -> $int_type {
+                        a.fetch_update(|v| Some(v.min(val)), order, order).unwrap()
                     }
                     inner(self, val, order)
                 }
