@@ -10,7 +10,7 @@
 
 use rustc::hir;
 use rustc::traits::{self, auto_trait as auto};
-use rustc::ty::{ToPredicate, TypeFoldable};
+use rustc::ty::{self, ToPredicate, TypeFoldable};
 use rustc::ty::subst::Subst;
 use rustc::infer::InferOk;
 use std::fmt::Debug;
@@ -80,6 +80,33 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         self.get_auto_trait_impls(did, &def_ctor, Some(name))
     }
 
+    fn get_real_ty<F>(&self, def_id: DefId, def_ctor: &F, real_name: &Option<Ident>,
+                      generics: &ty::Generics) -> hir::Ty
+    where F: Fn(DefId) -> Def {
+        let path = get_path_for_type(self.cx.tcx, def_id, def_ctor);
+        let mut segments = path.segments.into_vec();
+        let last = segments.pop().unwrap();
+
+        segments.push(hir::PathSegment::new(
+            real_name.unwrap_or(last.ident),
+            self.generics_to_path_params(generics.clone()),
+            false,
+        ));
+
+        let new_path = hir::Path {
+            span: path.span,
+            def: path.def,
+            segments: HirVec::from_vec(segments),
+        };
+
+        hir::Ty {
+            id: ast::DUMMY_NODE_ID,
+            node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
+            span: DUMMY_SP,
+            hir_id: hir::DUMMY_HIR_ID,
+        }
+    }
+
     pub fn get_auto_trait_impls<F>(
         &self,
         def_id: DefId,
@@ -140,7 +167,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                             // Require the type the impl is implemented on to match
                             // our type, and ignore the impl if there was a mismatch.
                             let cause = traits::ObligationCause::dummy();
-                            let eq_result = infcx.at(&cause, param_env).eq(trait_ref.self_ty(), ty2);
+                            let eq_result = infcx.at(&cause, param_env)
+                                                 .eq(trait_ref.self_ty(), ty2);
                             if let Ok(InferOk { value: (), obligations }) = eq_result {
                                 // FIXME(eddyb) ignoring `obligations` might cause false positives.
                                 drop(obligations);
@@ -156,36 +184,18 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                 self.cx.generated_synthetics.borrow_mut()
                                                             .insert((def_id, trait_def_id));
                                 let trait_ = hir::TraitRef {
-                                    path: get_path_for_type(infcx.tcx, trait_def_id, hir::def::Def::Trait),
+                                    path: get_path_for_type(infcx.tcx,
+                                                            trait_def_id,
+                                                            hir::def::Def::Trait),
                                     ref_id: ast::DUMMY_NODE_ID,
                                 };
-                                let provided_trait_methods = infcx.tcx.provided_trait_methods(impl_def_id)
-                                                                      .into_iter()
-                                                                      .map(|meth| meth.ident.to_string())
-                                                                      .collect();
+                                let provided_trait_methods =
+                                    infcx.tcx.provided_trait_methods(impl_def_id)
+                                             .into_iter()
+                                             .map(|meth| meth.ident.to_string())
+                                             .collect();
 
-                                let path = get_path_for_type(self.cx.tcx, def_id, def_ctor);
-                                let mut segments = path.segments.into_vec();
-                                let last = segments.pop().unwrap();
-
-                                segments.push(hir::PathSegment::new(
-                                    real_name.unwrap_or(last.ident),
-                                    self.generics_to_path_params(generics.clone()),
-                                    false,
-                                ));
-
-                                let new_path = hir::Path {
-                                    span: path.span,
-                                    def: path.def,
-                                    segments: HirVec::from_vec(segments),
-                                };
-
-                                let ty = hir::Ty {
-                                    id: ast::DUMMY_NODE_ID,
-                                    node: hir::Ty_::TyPath(hir::QPath::Resolved(None, P(new_path))),
-                                    span: DUMMY_SP,
-                                    hir_id: hir::DUMMY_HIR_ID,
-                                };
+                                let ty = self.get_real_ty(def_id, def_ctor, &real_name, generics);
 
                                 traits.push(Item {
                                     source: Span::empty(),
@@ -202,7 +212,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                         provided_trait_methods,
                                         trait_: Some(trait_.clean(self.cx)),
                                         for_: ty.clean(self.cx),
-                                        items: infcx.tcx.associated_items(impl_def_id).collect::<Vec<_>>().clean(self.cx),
+                                        items: infcx.tcx.associated_items(impl_def_id)
+                                                        .collect::<Vec<_>>()
+                                                        .clean(self.cx),
                                         polarity: None,
                                         synthetic: true,
                                     }),
@@ -312,31 +324,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 }
                 _ => unreachable!(),
             };
-
-            let path = get_path_for_type(self.cx.tcx, def_id, def_ctor);
-            let mut segments = path.segments.into_vec();
-            let last = segments.pop().unwrap();
-
             let real_name = name.map(|name| Ident::from_str(&name));
-
-            segments.push(hir::PathSegment::new(
-                real_name.unwrap_or(last.ident),
-                self.generics_to_path_params(generics.clone()),
-                false,
-            ));
-
-            let new_path = hir::Path {
-                span: path.span,
-                def: path.def,
-                segments: HirVec::from_vec(segments),
-            };
-
-            let ty = hir::Ty {
-                id: ast::DUMMY_NODE_ID,
-                node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
-                span: DUMMY_SP,
-                hir_id: hir::DUMMY_HIR_ID,
-            };
+            let ty = self.get_real_ty(def_id, def_ctor, &real_name, &generics);
 
             return Some(Item {
                 source: Span::empty(),

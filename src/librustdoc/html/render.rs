@@ -3628,16 +3628,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
 
         let (synthetic, concrete) = traits
             .iter()
-            .partition::<Vec<&&Impl>, _>(|t| t.inner_impl().synthetic);
-
-        // ugly hacks to remove duplicates.
-        let synthetic = synthetic.into_iter()
-                                 .filter(|t| {
-            !concrete.iter()
-                     .any(|tt| {
-                         tt.inner_impl().trait_.def_id() == t.inner_impl().trait_.def_id()
-                     })
-        }).collect::<Vec<_>>();
+            .partition::<Vec<_>, _>(|t| t.inner_impl().synthetic);
 
         struct RendererStruct<'a, 'b, 'c>(&'a Context, Vec<&'b &'b Impl>, &'c clean::Item);
 
