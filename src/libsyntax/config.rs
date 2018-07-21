@@ -119,7 +119,7 @@ impl<'a> StripUnconfigured<'a> {
     pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
             // When not compiling with --test we should not compile the #[test] functions
-            if !self.should_test && is_test_or_bench(attr) {
+            if !self.should_test && is_test(attr) {
                 return false;
             }
 
@@ -249,7 +249,7 @@ impl<'a> StripUnconfigured<'a> {
         //
         // NB: This is intentionally not part of the fold_expr() function
         //     in order for fold_opt_expr() to be able to avoid this check
-        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a) || is_test_or_bench(a)) {
+        if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a) || is_test(a)) {
             let msg = "removing an expression is not supported in this position";
             self.sess.span_diagnostic.span_err(attr.span, msg);
         }
@@ -353,6 +353,6 @@ fn is_cfg(attr: &ast::Attribute) -> bool {
     attr.check_name("cfg")
 }
 
-pub fn is_test_or_bench(attr: &ast::Attribute) -> bool {
-    attr.check_name("test") || attr.check_name("bench")
+pub fn is_test(att: &ast::Attribute) -> bool {
+    att.check_name("test_case")
 }

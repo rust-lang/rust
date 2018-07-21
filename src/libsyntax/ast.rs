@@ -1587,7 +1587,7 @@ impl TyKind {
         if let TyKind::ImplicitSelf = *self { true } else { false }
     }
 
-    crate fn is_unit(&self) -> bool {
+    pub fn is_unit(&self) -> bool {
         if let TyKind::Tup(ref tys) = *self { tys.is_empty() } else { false }
     }
 }

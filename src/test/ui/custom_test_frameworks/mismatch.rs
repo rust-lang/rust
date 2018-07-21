@@ -8,22 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test -D unnameable_test_items
+// aux-build:example_runner.rs
+// compile-flags:--test
+#![feature(custom_test_frameworks)]
+#![test_runner(example_runner::runner)]
+
+extern crate example_runner;
 
 #[test]
-fn foo() {
-    #[test] //~ ERROR cannot test inner items [unnameable_test_items]
-    fn bar() {}
-    bar();
-}
-
-mod x {
-    #[test]
-    fn foo() {
-        #[test] //~ ERROR cannot test inner items [unnameable_test_items]
-        fn bar() {}
-        bar();
-    }
-}
-
-fn main() {}
+fn wrong_kind(){}

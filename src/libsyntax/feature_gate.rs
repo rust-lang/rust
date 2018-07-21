@@ -515,6 +515,10 @@ declare_features! (
 
     // unsized rvalues at arguments and parameters
     (active, unsized_locals, "1.30.0", Some(48055), None),
+
+    // #![test_runner]
+    // #[test_case]
+    (active, custom_test_frameworks, "1.30.0", Some(50297), None),
 );
 
 declare_features! (
@@ -775,6 +779,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("no_link", Normal, Ungated),
     ("derive", Normal, Ungated),
     ("should_panic", Normal, Ungated),
+    ("test_case", Normal, Gated(Stability::Unstable,
+                                "custom_test_frameworks",
+                                "Custom test frameworks are experimental",
+                                cfg_fn!(custom_test_frameworks))),
     ("ignore", Normal, Ungated),
     ("no_implicit_prelude", Normal, Ungated),
     ("reexport_test_harness_main", Normal, Ungated),
@@ -1156,6 +1164,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("no_builtins", CrateLevel, Ungated),
     ("recursion_limit", CrateLevel, Ungated),
     ("type_length_limit", CrateLevel, Ungated),
+    ("test_runner", CrateLevel, Gated(Stability::Unstable,
+                    "custom_test_frameworks",
+                    "Custom Test Frameworks is an unstable feature",
+                    cfg_fn!(custom_test_frameworks))),
 ];
 
 // cfg(...)'s that are feature gated

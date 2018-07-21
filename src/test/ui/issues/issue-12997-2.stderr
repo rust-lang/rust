@@ -5,7 +5,7 @@ LL | fn bar(x: isize) { }
    | ^^^^^^^^^^^^^^^^^^^^ expected isize, found mutable reference
    |
    = note: expected type `isize`
-              found type `&mut __test::test::Bencher`
+              found type `&mut test::Bencher`
 
 error: aborting due to previous error
 

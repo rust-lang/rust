@@ -12,10 +12,9 @@ use ast::{self, Block, Ident, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
 use source_map::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
-use config::{is_test_or_bench, StripUnconfigured};
+use config::StripUnconfigured;
 use errors::{Applicability, FatalError};
 use ext::base::*;
-use ext::build::AstBuilder;
 use ext::derive::{add_derived_markers, collect_derives};
 use ext::hygiene::{self, Mark, SyntaxContext};
 use ext::placeholders::{placeholder, PlaceholderExpander};
@@ -37,7 +36,6 @@ use visit::{self, Visitor};
 use rustc_data_structures::fx::FxHashMap;
 use std::fs::File;
 use std::io::Read;
-use std::iter::FromIterator;
 use std::{iter, mem};
 use std::rc::Rc;
 use std::path::PathBuf;
@@ -1366,51 +1364,25 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 self.cx.current_expansion.directory_ownership = orig_directory_ownership;
                 result
             }
-            // Ensure that test functions are accessible from the test harness.
+
+            // Ensure that test items can be exported by the harness generator.
             // #[test] fn foo() {}
             // becomes:
             // #[test] pub fn foo_gensym(){}
-            // #[allow(unused)]
-            // use foo_gensym as foo;
-            ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
-                if self.tests_nameable && item.attrs.iter().any(|attr| is_test_or_bench(attr)) {
-                    let orig_ident = item.ident;
-                    let orig_vis   = item.vis.clone();
-
+              ast::ItemKind::Const(..)
+            | ast::ItemKind::Static(..)
+            | ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
+                if self.tests_nameable && attr::contains_name(&item.attrs, "test_case") {
                     // Publicize the item under gensymed name to avoid pollution
+                    // This means #[test_case] items can't be referenced by user code
                     item = item.map(|mut item| {
                         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
                         item.ident = item.ident.gensym();
                         item
                     });
-
-                    // Use the gensymed name under the item's original visibility
-                    let mut use_item = self.cx.item_use_simple_(
-                        item.ident.span,
-                        orig_vis,
-                        Some(orig_ident),
-                        self.cx.path(item.ident.span,
-                            vec![keywords::SelfValue.ident(), item.ident]));
-
-                    // #[allow(unused)] because the test function probably isn't being referenced
-                    use_item = use_item.map(|mut ui| {
-                        ui.attrs.push(
-                            self.cx.attribute(DUMMY_SP, attr::mk_list_item(DUMMY_SP,
-                                Ident::from_str("allow"), vec![
-                                    attr::mk_nested_word_item(Ident::from_str("unused"))
-                                ]
-                            ))
-                        );
-
-                        ui
-                    });
-
-                    OneVector::from_iter(
-                        self.fold_unnameable(item).into_iter()
-                            .chain(self.fold_unnameable(use_item)))
-                } else {
-                    self.fold_unnameable(item)
                 }
+
+                self.fold_unnameable(item)
             }
             _ => self.fold_unnameable(item),
         }

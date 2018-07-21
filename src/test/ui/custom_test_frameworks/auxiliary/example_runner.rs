@@ -8,22 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test -D unnameable_test_items
-
-#[test]
-fn foo() {
-    #[test] //~ ERROR cannot test inner items [unnameable_test_items]
-    fn bar() {}
-    bar();
+pub trait Testable {
+    fn name(&self) -> String;
+    fn run(&self) -> Option<String>; // None will be success, Some is the error message
 }
 
-mod x {
-    #[test]
-    fn foo() {
-        #[test] //~ ERROR cannot test inner items [unnameable_test_items]
-        fn bar() {}
-        bar();
+pub fn runner(tests: &[&dyn Testable]) {
+    for t in tests {
+        print!("{}........{}", t.name(), t.run().unwrap_or_else(|| "SUCCESS".to_string()));
     }
 }
-
-fn main() {}

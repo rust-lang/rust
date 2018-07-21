@@ -2,7 +2,7 @@ error[E0432]: unresolved import `__test`
   --> $DIR/inaccessible-test-modules.rs:15:5
    |
 LL | use __test as x; //~ ERROR unresolved import `__test`
-   |     ^^^^^^^^^^^ no `__test` in the root. Did you mean to use `__test`?
+   |     ^^^^^^^^^^^ no `__test` in the root. Did you mean to use `test`?
 
 error[E0432]: unresolved import `__test_reexports`
   --> $DIR/inaccessible-test-modules.rs:16:5

@@ -1835,43 +1835,56 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
 }
 
 declare_lint! {
-    UNNAMEABLE_TEST_FUNCTIONS,
+    UNNAMEABLE_TEST_ITEMS,
     Warn,
-    "detects an function that cannot be named being marked as #[test]"
+    "detects an item that cannot be named being marked as #[test_case]",
+    report_in_external_macro: true
 }
 
-pub struct UnnameableTestFunctions;
+pub struct UnnameableTestItems {
+    boundary: ast::NodeId, // NodeId of the item under which things are not nameable
+    items_nameable: bool,
+}
 
-impl LintPass for UnnameableTestFunctions {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNNAMEABLE_TEST_FUNCTIONS)
+impl UnnameableTestItems {
+    pub fn new() -> Self {
+        Self {
+            boundary: ast::DUMMY_NODE_ID,
+            items_nameable: true
+        }
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
+impl LintPass for UnnameableTestItems {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNNAMEABLE_TEST_ITEMS)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        match it.node {
-            hir::ItemKind::Fn(..) => {
-                for attr in &it.attrs {
-                    if attr.name() == "test" {
-                        let parent = cx.tcx.hir.get_parent(it.id);
-                        match cx.tcx.hir.find(parent) {
-                            Some(Node::Item(hir::Item {node: hir::ItemKind::Mod(_), ..})) |
-                            None => {}
-                            _ => {
-                                cx.struct_span_lint(
-                                    UNNAMEABLE_TEST_FUNCTIONS,
-                                    attr.span,
-                                    "cannot test inner function",
-                                ).emit();
-                            }
-                        }
-                        break;
-                    }
-                }
+        if self.items_nameable {
+            if let hir::ItemKind::Mod(..) = it.node {}
+            else {
+                self.items_nameable = false;
+                self.boundary = it.id;
             }
-            _ => return,
-        };
+            return;
+        }
+
+        if let Some(attr) = attr::find_by_name(&it.attrs, "test_case") {
+            cx.struct_span_lint(
+                UNNAMEABLE_TEST_ITEMS,
+                attr.span,
+                "cannot test inner items",
+            ).emit();
+        }
+    }
+
+    fn check_item_post(&mut self, _cx: &LateContext, it: &hir::Item) {
+        if !self.items_nameable && self.boundary == it.id {
+            self.items_nameable = true;
+        }
     }
 }
 

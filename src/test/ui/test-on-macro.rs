@@ -8,22 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test -D unnameable_test_items
+// compile-pass
+// compile-flags:--test
+
+#![deny(warnings)]
+
+macro_rules! foo {
+    () => (fn foo(){})
+}
 
 #[test]
-fn foo() {
-    #[test] //~ ERROR cannot test inner items [unnameable_test_items]
-    fn bar() {}
-    bar();
-}
+foo!();
 
-mod x {
-    #[test]
-    fn foo() {
-        #[test] //~ ERROR cannot test inner items [unnameable_test_items]
-        fn bar() {}
-        bar();
-    }
-}
-
-fn main() {}
+fn main(){}

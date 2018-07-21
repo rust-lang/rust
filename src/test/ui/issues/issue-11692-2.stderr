@@ -1,4 +1,4 @@
-error: cannot find macro `test!` in this scope
+error: `test` can only be used in attributes
   --> $DIR/issue-11692-2.rs:12:13
    |
 LL |     concat!(test!());
