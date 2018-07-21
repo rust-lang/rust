@@ -114,7 +114,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         name: Option<String>,
     ) -> Vec<Item>
     where F: Fn(DefId) -> Def {
-        if self.cx
+        if !self.cx.access_levels.borrow().is_doc_reachable(def_id) ||
+           self.cx
             .tcx
             .get_attrs(def_id)
             .lists("doc")
