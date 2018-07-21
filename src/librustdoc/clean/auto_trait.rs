@@ -114,8 +114,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         name: Option<String>,
     ) -> Vec<Item>
     where F: Fn(DefId) -> Def {
-        if !self.cx.access_levels.borrow().is_doc_reachable(def_id) ||
-           self.cx
+        if self.cx
             .tcx
             .get_attrs(def_id)
             .lists("doc")
@@ -134,7 +133,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         let ty = self.cx.tcx.type_of(def_id);
         let mut traits = Vec::new();
-        if self.cx.crate_name != Some("core".to_string()) {
+        if self.cx.crate_name != Some("core".to_string()) &&
+           self.cx.access_levels.borrow().is_doc_reachable(def_id) {
             if let ty::TyAdt(_adt, _) = ty.sty {
                 let real_name = name.clone().map(|name| Ident::from_str(&name));
                 let param_env = self.cx.tcx.param_env(def_id);
@@ -191,7 +191,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                     ref_id: ast::DUMMY_NODE_ID,
                                 };
                                 let provided_trait_methods =
-                                    infcx.tcx.provided_trait_methods(impl_def_id)
+                                    infcx.tcx.provided_trait_methods(trait_def_id)
                                              .into_iter()
                                              .map(|meth| meth.ident.to_string())
                                              .collect();
