@@ -1512,7 +1512,17 @@ assert!(max_foo == 42);
                        reason = "easier and faster min/max than writing manual CAS loop",
                        issue = "48655")]
                 pub fn fetch_max(&self, val: $int_type, order: Ordering) -> $int_type {
-                    unsafe { $max_fn(self.v.get(), val, order) }
+                    #[cfg(not(target_arch = "armv5te"))]
+                    #[inline(always)]
+                    fn inner(&self, val: $int_type, order: Ordering) -> $int_type {
+                        unsafe { $max_fn(self.v.get(), val, order) }
+                    }
+                    #[cfg(target_arch = "arm5vte")]
+                    #[inline(always)]
+                    fn inner(&self, val: $int_type, order: Ordering) -> $int_type {
+                        self.fetch_update(|v| Some(v.max(val)), order, order).unwrap()
+                    }
+                    inner(self, val, order)
                 }
             }
 
@@ -1553,7 +1563,17 @@ assert_eq!(min_foo, 12);
                        reason = "easier and faster min/max than writing manual CAS loop",
                        issue = "48655")]
                 pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
-                    unsafe { $min_fn(self.v.get(), val, order) }
+                    #[cfg(not(target_arch = "armv5te"))]
+                    #[inline(always)]
+                    fn inner(&self, val: $int_type, order: Ordering) -> $int_type {
+                        unsafe { $min_fn(self.v.get(), val, order) }
+                    }
+                    #[cfg(target_arch = "arm5vte")]
+                    #[inline(always)]
+                    fn inner(&self, val: $int_type, order: Ordering) -> $int_type {
+                        self.fetch_update(|v| Some(v.min(val)), order, order).unwrap()
+                    }
+                    inner(self, val, order)
                 }
             }
 
@@ -1869,6 +1889,7 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
+#[cfg(not(target_arch = "armv5te"))]
 /// returns the max value (signed comparison)
 #[inline]
 unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
@@ -1882,6 +1903,7 @@ unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
+#[cfg(not(target_arch = "armv5te"))]
 /// returns the min value (signed comparison)
 #[inline]
 unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
@@ -1895,6 +1917,7 @@ unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
+#[cfg(not(target_arch = "armv5te"))]
 /// returns the max value (signed comparison)
 #[inline]
 unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
@@ -1908,6 +1931,7 @@ unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
+#[cfg(not(target_arch = "armv5te"))]
 /// returns the min value (signed comparison)
 #[inline]
 unsafe fn atomic_umin<T>(dst: *mut T, val: T, order: Ordering) -> T {
