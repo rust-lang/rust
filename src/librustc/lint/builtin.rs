@@ -78,7 +78,7 @@ declare_lint! {
     pub UNREACHABLE_CODE,
     Warn,
     "detects unreachable code paths",
-    report_in_external_macro
+    report_in_external_macro: true
 }
 
 declare_lint! {
@@ -218,7 +218,7 @@ declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items",
-    report_in_external_macro
+    report_in_external_macro: true
 }
 
 declare_lint! {
