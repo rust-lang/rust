@@ -182,6 +182,7 @@ pub struct StyledString {
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Style {
+    MainHeaderMsg,
     HeaderMsg,
     LineAndColumn,
     LineNumber,
