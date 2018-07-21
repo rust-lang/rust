@@ -14,24 +14,48 @@ types! {
     pub struct uint16x2_t(u16, u16);
 }
 
+macro_rules! dsp_call {
+    ($name:expr, $a:expr, $b:expr) => {
+        ::mem::transmute($name(::mem::transmute($a), ::mem::transmute($b)))
+    };
+}
+
 extern "C" {
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.qadd")]
+    #[link_name = "llvm.arm.qadd"]
     fn arm_qadd(a: i32, b: i32) -> i32;
 
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.qsub")]
-    fn arm_qsub(a: i32, b: i32) -> i32;
-
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.qadd8")]
-    fn arm_qadd8(a: i32, b: i32) -> i32;
-
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.qsub8")]
-    fn arm_qsub8(a: i32, b: i32) -> i32;
-
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.qadd16")]
+    #[link_name = "llvm.arm.qadd16"]
     fn arm_qadd16(a: i32, b: i32) -> i32;
 
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.qsub16")]
+    #[link_name = "llvm.arm.qadd8"]
+    fn arm_qadd8(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.qasx"]
+    fn arm_qasx(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.qsax"]
+    fn arm_qsax(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.qsub"]
+    fn arm_qsub(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.qsub8"]
+    fn arm_qsub8(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.qsub16"]
     fn arm_qsub16(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.sadd16"]
+    fn arm_sadd16(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.sadd8"]
+    fn arm_sadd8(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.sasx"]
+    fn arm_sasx(a: i32, b: i32) -> i32;
+
+    #[cfg_attr(not(target_feature = "mclass"), link_name = "llvm.arm.sel")]
+    fn arm_sel(a: i32, b: i32) -> i32;
 }
 
 /// Signed saturating addition
@@ -63,7 +87,7 @@ pub unsafe fn qsub(a: i32, b: i32) -> i32 {
 #[inline]
 #[cfg_attr(test, assert_instr(qadd8))]
 pub unsafe fn qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
-    ::mem::transmute(arm_qadd8(::mem::transmute(a), ::mem::transmute(b)))
+    dsp_call!(arm_qadd8, a, b)
 }
 
 /// Saturating two 8-bit integer subtraction
@@ -77,7 +101,7 @@ pub unsafe fn qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(qsub8))]
 pub unsafe fn qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
-    ::mem::transmute(arm_qsub8(::mem::transmute(a), ::mem::transmute(b)))
+    dsp_call!(arm_qsub8, a, b)
 }
 
 /// Saturating two 16-bit integer subtraction
@@ -89,7 +113,7 @@ pub unsafe fn qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 #[inline]
 #[cfg_attr(test, assert_instr(qsub16))]
 pub unsafe fn qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
-    ::mem::transmute(arm_qsub16(::mem::transmute(a), ::mem::transmute(b)))
+    dsp_call!(arm_qsub16, a, b)
 }
 
 /// Saturating two 16-bit integer additions
@@ -101,7 +125,80 @@ pub unsafe fn qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 #[inline]
 #[cfg_attr(test, assert_instr(qadd16))]
 pub unsafe fn qadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
-    ::mem::transmute(arm_qadd16(::mem::transmute(a), ::mem::transmute(b)))
+    dsp_call!(arm_qadd16, a, b)
+}
+
+/// Returns the 16-bit signed saturated equivalent of
+///
+/// res[0] = a[0] - b[1]
+/// res[1] = a[1] + b[0]
+#[inline]
+#[cfg_attr(test, assert_instr(qasx))]
+pub unsafe fn qasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+    dsp_call!(arm_qasx, a, b)
+}
+
+/// Returns the 16-bit signed saturated equivalent of
+///
+/// res[0] = a[0] + b[1]
+/// res[1] = a[1] - b[0]
+#[inline]
+#[cfg_attr(test, assert_instr(qsax))]
+pub unsafe fn qsax(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+    dsp_call!(arm_qsax, a, b)
+}
+
+/// Returns the 16-bit signed saturated equivalent of
+///
+/// res[0] = a[0] + b[1]
+/// res[1] = a[1] + b[0]
+///
+/// and the GE bits of the APSR are set.
+#[inline]
+#[cfg_attr(test, assert_instr(sadd16))]
+pub unsafe fn sadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+    dsp_call!(arm_sadd16, a, b)
+}
+
+/// Returns the 8-bit signed saturated equivalent of
+///
+/// res[0] = a[0] + b[1]
+/// res[1] = a[1] + b[0]
+/// res[2] = a[2] + b[2]
+/// res[3] = a[3] + b[3]
+///
+/// and the GE bits of the APSR are set.
+#[inline]
+#[cfg_attr(test, assert_instr(sadd8))]
+pub unsafe fn sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+    dsp_call!(arm_sadd8, a, b)
+}
+
+/// Returns the 16-bit signed equivalent of
+///
+/// res[0] = a[0] - b[1]
+/// res[1] = a[1] + b[0]
+///
+/// and the GE bits of the APSR are set.
+#[inline]
+#[cfg_attr(test, assert_instr(sasx))]
+pub unsafe fn sasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+    dsp_call!(arm_sasx, a, b)
+}
+
+/// Returns the equivalent of
+///
+/// res[0] = GE[0] ? a[0] : b[0]
+/// res[1] = GE[1] ? a[1] : b[1]
+/// res[2] = GE[2] ? a[2] : b[2]
+/// res[3] = GE[3] ? a[3] : b[3]
+///
+/// where GE are bits of APSR
+#[inline]
+#[cfg_attr(test, assert_instr(sel))]
+#[cfg(all(not(target_feature = "mclass")))]
+pub unsafe fn sel(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+    dsp_call!(arm_sel, a, b)
 }
 
 #[cfg(test)]
@@ -135,7 +232,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
             let b = i8x4::new(2, -1, 0, 1);
             let c = i8x4::new(3, 1, 3, ::std::i8::MAX);
-            let r: i8x4 = ::mem::transmute(dsp::qadd8(::mem::transmute(a), ::mem::transmute(b)));
+            let r: i8x4 = dsp_call!(dsp::qadd8, a, b);
             assert_eq!(r, c);
         }
     }
@@ -146,7 +243,7 @@ mod tests {
             let a = i8x4::new(1, 2, 3, ::std::i8::MIN);
             let b = i8x4::new(2, -1, 0, 1);
             let c = i8x4::new(-1, 3, 3, ::std::i8::MIN);
-            let r: i8x4 = ::mem::transmute(dsp::qsub8(::mem::transmute(a),::mem::transmute(b)));
+            let r: i8x4 = dsp_call!(dsp::qsub8, a, b);
             assert_eq!(r, c);
         }
     }
@@ -157,7 +254,7 @@ mod tests {
             let a = i16x2::new(1, 2);
             let b = i16x2::new(2, -1);
             let c = i16x2::new(3, 1);
-            let r: i16x2 = ::mem::transmute(dsp::qadd16(::mem::transmute(a),::mem::transmute(b)));
+            let r: i16x2 = dsp_call!(dsp::qadd16, a, b);
             assert_eq!(r, c);
         }
     }
@@ -168,7 +265,75 @@ mod tests {
             let a = i16x2::new(10, 20);
             let b = i16x2::new(20, -10);
             let c = i16x2::new(-10, 30);
-            let r: i16x2 = ::mem::transmute(dsp::qsub16(::mem::transmute(a), ::mem::transmute(b)));
+            let r: i16x2 = dsp_call!(dsp::qsub16, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn qasx() {
+        unsafe {
+            let a = i16x2::new(1, ::std::i16::MAX);
+            let b = i16x2::new(2, 2);
+            let c = i16x2::new(-1, ::std::i16::MAX);
+            let r: i16x2 = dsp_call!(dsp::qasx, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn qsax() {
+        unsafe {
+            let a = i16x2::new(1, ::std::i16::MAX);
+            let b = i16x2::new(2, 2);
+            let c = i16x2::new(3, ::std::i16::MAX - 2);
+            let r: i16x2 = dsp_call!(dsp::qsax, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn sadd16() {
+        unsafe {
+            let a = i16x2::new(1, ::std::i16::MAX);
+            let b = i16x2::new(2, 2);
+            let c = i16x2::new(3, -::std::i16::MAX);
+            let r: i16x2 = dsp_call!(dsp::sadd16, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn sadd8() {
+        unsafe {
+            let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
+            let b = i8x4::new(4, 3, 2, 2);
+            let c = i8x4::new(5, 5, 5, -::std::i8::MAX);
+            let r: i8x4 = dsp_call!(dsp::sadd8, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn sasx() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(2, 1);
+            let c = i16x2::new(0, 4);
+            let r: i16x2 = dsp_call!(dsp::sasx, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn sel() {
+        unsafe {
+            let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
+            let b = i8x4::new(4, 3, 2, 2);
+            // call sadd8() to set GE bits
+            dsp::sadd8(::mem::transmute(a), ::mem::transmute(b));
+            let c = i8x4::new(1, 2, 3, ::std::i8::MAX);
+            let r: i8x4 = dsp_call!(dsp::sel, a, b);
             assert_eq!(r, c);
         }
     }

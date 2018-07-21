@@ -338,7 +338,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
 
     let instruction_limit = match expected {
         // cpuid returns a pretty big aggregate structure so excempt it from
-        // the slightly more restrictive 20 instructions below
+        // the slightly more restrictive 22 instructions below
         "cpuid" => 30,
 
         // Apparently on Windows LLVM generates a bunch of saves/restores of
@@ -351,11 +351,10 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         // cases exceed the limit.
         "cvtpi2ps" => 25,
 
-        // In this case the overall length, counting also the 'mergefunc'
-        // workaround overhead, is exactly 20 instructions.
-        "qsub8" | "qadd8" | "qsub16" | "qadd16" => 22,
-
-        _ => 20,
+        // Original limit was 20 instructions, but ARM DSP Intrinsics are
+        // exactly 20 instructions long. So bump the limit to 22 instead of
+        // adding here a long list of expections.
+        _ => 22,
     };
     let probably_only_one_instruction = instrs.len() < instruction_limit;
 
