@@ -1215,7 +1215,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 Operand::Move(ref place @ Place::Projection(_))
                                 | Operand::Copy(ref place @ Place::Projection(_)) => {
                                     if let Some(field) = place.is_upvar_field_projection(
-                                            self.mir, &self.tcx, false) {
+                                            self.mir, &self.tcx) {
                                         self.used_mut_upvars.push(field);
                                     }
                                 }
@@ -1804,7 +1804,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 place: place @ Place::Projection(_),
                 is_local_mutation_allowed: _,
             } => {
-                if let Some(field) = place.is_upvar_field_projection(self.mir, &self.tcx, false) {
+                if let Some(field) = place.is_upvar_field_projection(self.mir, &self.tcx) {
                     self.used_mut_upvars.push(field);
                 }
             }
@@ -1867,8 +1867,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
                                     hir::MutMutable => {
-                                        let mode = match proj.base.is_upvar_field_projection(
-                                            self.mir, &self.tcx, false)
+                                        let mode = match place.is_upvar_field_projection(
+                                            self.mir, &self.tcx)
                                         {
                                             Some(field)
                                                 if {
@@ -1914,7 +1914,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::Downcast(..) => {
                         let upvar_field_projection = place.is_upvar_field_projection(
-                            self.mir, &self.tcx, false);
+                            self.mir, &self.tcx);
                         if let Some(field) = upvar_field_projection {
                             let decl = &self.mir.upvar_decls[field.index()];
                             debug!(

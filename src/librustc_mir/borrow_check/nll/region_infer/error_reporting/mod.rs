@@ -175,7 +175,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     };
 
                     if initial_category == ConstraintCategory::Assignment
-                            && place.is_upvar_field_projection(mir, &infcx.tcx, true).is_some() {
+                            && place.is_upvar_field_projection(mir, &infcx.tcx).is_some() {
                         ConstraintCategory::AssignmentToUpvar
                     } else {
                         initial_category

@@ -726,8 +726,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Projection(ref proj) => {
                 match proj.elem {
                     ProjectionElem::Deref => {
-                        let upvar_field_projection = proj.base.is_upvar_field_projection(
-                            self.mir, &self.tcx, false);
+                        let upvar_field_projection = place.is_upvar_field_projection(
+                            self.mir, &self.tcx);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
                             let name = self.mir.upvar_decls[var_index].debug_name.to_string();
@@ -788,7 +788,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         autoderef = true;
 
                         let upvar_field_projection = place.is_upvar_field_projection(
-                            self.mir, &self.tcx, false);
+                            self.mir, &self.tcx);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
                             let name = self.mir.upvar_decls[var_index].debug_name.to_string();

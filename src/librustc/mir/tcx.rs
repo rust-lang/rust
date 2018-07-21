@@ -125,22 +125,24 @@ impl<'tcx> Place<'tcx> {
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
     pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
-                                                tcx: &TyCtxt<'cx, 'gcx, 'tcx>,
-                                                recurse: bool) -> Option<Field> {
-        match *self {
+                                                tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
+        let place = if let Place::Projection(ref proj) = self {
+            if let ProjectionElem::Deref = proj.elem {
+                &proj.base
+            } else {
+                self
+            }
+        } else {
+            self
+        };
+
+        match place {
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(field, _ty) => {
                     let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
 
                     if  base_ty.is_closure() || base_ty.is_generator() {
                         Some(field)
-                    } else {
-                        None
-                    }
-                },
-                ProjectionElem::Deref => {
-                    if recurse {
-                        proj.base.is_upvar_field_projection(mir, tcx, recurse)
                     } else {
                         None
                     }
