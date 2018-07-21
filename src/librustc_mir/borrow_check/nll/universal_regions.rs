@@ -57,7 +57,7 @@ pub struct UniversalRegions<'tcx> {
     /// externals, then locals. So things from:
     /// - `FIRST_GLOBAL_INDEX..first_extern_index` are global;
     /// - `first_extern_index..first_local_index` are external; and
-    /// - first_local_index..num_universals` are local.
+    /// - `first_local_index..num_universals` are local.
     first_extern_index: usize,
 
     /// See `first_extern_index`.
