@@ -217,10 +217,17 @@ macro_rules! eprint {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
+#[allow_internal_unstable]
 macro_rules! eprintln {
     () => (eprint!("\n"));
-    ($fmt:expr) => (eprint!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (eprint!(concat!($fmt, "\n"), $($arg)*));
+    ($($arg:tt)*) => ({
+        #[cfg(not(stage0))] {
+            ($crate::io::_eprint(format_args_nl!($($arg)*)));
+        }
+        #[cfg(stage0)] {
+            eprint!("{}\n", format_args!($($arg)*))
+        }
+    })
 }
 
 #[macro_export]
