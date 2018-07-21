@@ -1473,35 +1473,34 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
     pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
                       -> Vec<ty::Predicate<'tcx>>
     {
-        let mut vec = Vec::new();
-
         // If it could be sized, and is, add the sized predicate
-        if self.implicitly_sized {
-            if let Some(sized) = tcx.lang_items().sized_trait() {
+        let sized_predicate = if self.implicitly_sized {
+            tcx.lang_items().sized_trait().map(|sized| {
                 let trait_ref = ty::TraitRef {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[])
                 };
-                vec.push(trait_ref.to_predicate());
-            }
-        }
+                trait_ref.to_predicate()
+            })
+        } else {
+            None
+        };
 
-        for &region_bound in &self.region_bounds {
-            // account for the binder being introduced below; no need to shift `param_ty`
-            // because, at present at least, it can only refer to early-bound regions
-            let region_bound = tcx.mk_region(ty::fold::shift_region(*region_bound, 1));
-            vec.push(
-                ty::Binder::dummy(ty::OutlivesPredicate(param_ty, region_bound)).to_predicate());
-        }
-
-        for bound_trait_ref in &self.trait_bounds {
-            vec.push(bound_trait_ref.to_predicate());
-        }
-
-        for projection in &self.projection_bounds {
-            vec.push(projection.to_predicate());
-        }
-
-        vec
+        sized_predicate.into_iter().chain(
+            self.region_bounds.iter().map(|&region_bound| {
+                // account for the binder being introduced below; no need to shift `param_ty`
+                // because, at present at least, it can only refer to early-bound regions
+                let region_bound = tcx.mk_region(ty::fold::shift_region(*region_bound, 1));
+                ty::Binder::dummy(ty::OutlivesPredicate(param_ty, region_bound)).to_predicate()
+            }).chain(
+                self.trait_bounds.iter().map(|bound_trait_ref| {
+                    bound_trait_ref.to_predicate()
+                })
+            ).chain(
+                self.projection_bounds.iter().map(|projection| {
+                    projection.to_predicate()
+                })
+            )
+        ).collect()
     }
 }
