@@ -93,7 +93,8 @@ impl CategoryData {
             ($name:tt, $rustic_name:ident) => {
                 let (hits, total) = self.query_counts.$rustic_name;
                 let (hits, total) = if total > 0 {
-                    (format!("{:.2}", (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
+                    (format!("{:.2}",
+                     (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
                 } else {
                     ("".into(), "".into())
                 };
@@ -109,8 +110,10 @@ impl CategoryData {
             };
         }
 
-        writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |").unwrap();
-        writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |").unwrap();
+        writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |")
+            .unwrap();
+        writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |")
+            .unwrap();
 
         p!("Parsing", parsing);
         p!("Expansion", expansion);
@@ -126,7 +129,9 @@ impl CategoryData {
             ($category:tt, $rustic_name:ident) => {{
                 let (hits, total) = self.query_counts.$rustic_name;
 
-                format!("{{ \"category\": {}, \"time_ms\": {}, \"query_count\": {}, \"query_hits\": {} }}",
+                format!(
+                    "{{ \"category\": {}, \"time_ms\": {},
+                        \"query_count\": {}, \"query_hits\": {} }}",
                     stringify!($category),
                     self.times.$rustic_name / 1_000_000,
                     total,
@@ -209,9 +214,9 @@ impl SelfProfiler {
     pub fn end_activity(&mut self, category: ProfileCategory) {
         match self.timer_stack.pop() {
             None => bug!("end_activity() was called but there was no running activity"),
-            Some(c) => 
+            Some(c) =>
                 assert!(
-                    c == category, 
+                    c == category,
                     "end_activity() was called but a different activity was running"),
         }
 
@@ -223,7 +228,8 @@ impl SelfProfiler {
             }
         }
 
-        //the new timer is different than the previous, so record the elapsed time and start a new timer
+        //the new timer is different than the previous,
+        //so record the elapsed time and start a new timer
         let elapsed = self.stop_timer();
         let new_time = self.data.times.get(category) + elapsed;
         self.data.times.set(category, new_time);
@@ -240,12 +246,18 @@ impl SelfProfiler {
     pub fn print_results(&mut self, opts: &Options) {
         self.end_activity(ProfileCategory::Other);
 
-        assert!(self.timer_stack.is_empty(), "there were timers running when print_results() was called");
+        assert!(
+            self.timer_stack.is_empty(),
+            "there were timers running when print_results() was called");
 
         let out = io::stdout();
         let mut lock = out.lock();
 
-        let crate_name = opts.crate_name.as_ref().map(|n| format!(" for {}", n)).unwrap_or_default();
+        let crate_name =
+            opts.crate_name
+            .as_ref()
+            .map(|n| format!(" for {}", n))
+            .unwrap_or_default();
 
         writeln!(lock, "Self profiling results{}:", crate_name).unwrap();
         writeln!(lock).unwrap();
@@ -261,9 +273,10 @@ impl SelfProfiler {
 
     pub fn save_results(&self, opts: &Options) {
         let category_data = self.data.json();
-        let compilation_options = format!("{{ \"optimization_level\": \"{:?}\", \"incremental\": {} }}",
-                                    opts.optimize,
-                                    if opts.incremental.is_some() { "true" } else { "false" });
+        let compilation_options =
+            format!("{{ \"optimization_level\": \"{:?}\", \"incremental\": {} }}",
+                    opts.optimize,
+                    if opts.incremental.is_some() { "true" } else { "false" });
 
         let json = format!("{{ \"category_data\": {}, \"compilation_options\": {} }}",
                         category_data,
