@@ -33,6 +33,7 @@ enum ConstraintCategory {
     Assignment,
     AssignmentToUpvar,
     Return,
+    CallArgumentToUpvar,
     CallArgument,
     Other,
     Boring,
@@ -45,7 +46,8 @@ impl fmt::Display for ConstraintCategory {
             ConstraintCategory::AssignmentToUpvar => write!(f, "assignment"),
             ConstraintCategory::Return => write!(f, "return"),
             ConstraintCategory::Cast => write!(f, "cast"),
-            ConstraintCategory::CallArgument => write!(f, "argument"),
+            ConstraintCategory::CallArgument |
+            ConstraintCategory::CallArgumentToUpvar => write!(f, "argument"),
             _ => write!(f, "free region"),
         }
     }
@@ -133,7 +135,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         index: ConstraintIndex,
         mir: &Mir<'tcx>,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        _infcx: &InferCtxt<'_, '_, 'tcx>,
     ) -> (ConstraintCategory, Span) {
         let constraint = self.constraints[index];
         debug!("classify_constraint: constraint={:?}", constraint);
@@ -163,7 +165,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             match statement.kind {
                 StatementKind::Assign(ref place, ref rvalue) => {
                     debug!("classify_constraint: place={:?} rvalue={:?}", place, rvalue);
-                    let initial_category = if *place == Place::Local(mir::RETURN_PLACE) {
+                    if *place == Place::Local(mir::RETURN_PLACE) {
                         ConstraintCategory::Return
                     } else {
                         match rvalue {
@@ -172,13 +174,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             Rvalue::Aggregate(..) => ConstraintCategory::Assignment,
                             _ => ConstraintCategory::Other,
                         }
-                    };
-
-                    if initial_category == ConstraintCategory::Assignment
-                            && place.is_upvar_field_projection(mir, &infcx.tcx).is_some() {
-                        ConstraintCategory::AssignmentToUpvar
-                    } else {
-                        initial_category
                     }
                 }
                 _ => ConstraintCategory::Other,
@@ -236,8 +231,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Get a span
         let (category, span) = categorized_path.first().unwrap();
 
+        let category = match (
+            category,
+            self.universal_regions.is_local_free_region(fr),
+            self.universal_regions.is_local_free_region(outlived_fr),
+        ) {
+            (ConstraintCategory::Assignment, true, false) =>
+                &ConstraintCategory::AssignmentToUpvar,
+            (ConstraintCategory::CallArgument, true, false) =>
+                &ConstraintCategory::CallArgumentToUpvar,
+            (category, _, _) => category,
+        };
+
+        debug!("report_error: category={:?}", category);
         match category {
-            ConstraintCategory::AssignmentToUpvar =>
+            ConstraintCategory::AssignmentToUpvar |
+            ConstraintCategory::CallArgumentToUpvar =>
                 self.report_closure_error(mir, infcx, fr, outlived_fr, span),
             _ =>
                 self.report_general_error(mir, infcx, mir_def_id, fr, outlived_fr, category, span),
