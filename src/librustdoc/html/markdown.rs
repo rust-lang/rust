@@ -34,10 +34,8 @@ use std::fmt::{self, Write};
 use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
-use syntax::feature_gate::UnstableFeatures;
-use syntax::codemap::Span;
-use errors;
 
+use syntax::feature_gate::UnstableFeatures;
 use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
@@ -469,10 +467,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span,
-                          handler: &errors::Handler) {
-    tests.set_position(position);
+pub struct TestableCodeError(());
 
+impl fmt::Display for TestableCodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid start of a new code block")
+    }
+}
+
+pub fn find_testable_code(
+    doc: &str, tests: &mut test::Collector
+) -> Result<(), TestableCodeError> {
     let is_nightly = UnstableFeatures::from_environment().is_nightly_build();
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
@@ -516,8 +521,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                     tests.add_test(text, block_info, line);
                     prev_offset = offset;
                 } else {
-                    handler.span_warn(position, "invalid start of a new code block");
-                    break;
+                    return Err(TestableCodeError(()));
                 }
             }
             Event::Start(Tag::Header(level)) => {
@@ -535,6 +539,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
             _ => {}
         }
     }
+    Ok(())
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]

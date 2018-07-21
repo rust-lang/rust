@@ -156,7 +156,11 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                                        true, opts, maybe_sysroot, None,
                                        Some(PathBuf::from(input)),
                                        linker, edition);
-    find_testable_code(&input_str, &mut collector, DUMMY_SP, diag);
+    collector.set_position(DUMMY_SP);
+    let res = find_testable_code(&input_str, &mut collector);
+    if let Err(err) = res {
+        diag.span_warn(DUMMY_SP, &err.to_string());
+    }
     test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&test_args, collector.tests,
                        testing::Options::new().display_output(display_warnings));

@@ -687,10 +687,12 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // the collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us
         if let Some(doc) = attrs.collapsed_doc_value() {
-            markdown::find_testable_code(&doc,
-                                         self.collector,
-                                         attrs.span.unwrap_or(DUMMY_SP),
-                                         self.sess.diagnostic());
+            self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
+            let res = markdown::find_testable_code(&doc, self.collector);
+            if let Err(err) = res {
+                self.sess.diagnostic().span_warn(attrs.span.unwrap_or(DUMMY_SP),
+                    &err.to_string());
+            }
         }
 
         nested(self);
