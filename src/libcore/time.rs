@@ -31,18 +31,34 @@ const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
 
-/// 1 nanosecond `Duration`
+/// 1 nanosecond `Duration`.
 #[unstable(feature = "time_units", issue = "0")]
 pub const NANOSECOND: Duration = Duration { secs: 0, nanos: 1 };
-/// 1 microsecond `Duration`
+/// 1 microsecond `Duration`.
 #[unstable(feature = "time_units", issue = "0")]
 pub const MICROSECOND: Duration = Duration { secs: 0, nanos: NANOS_PER_MICRO };
-/// 1 millisecond `Duration`
+/// 1 millisecond `Duration`.
 #[unstable(feature = "time_units", issue = "0")]
 pub const MILLISECOND: Duration = Duration { secs: 0, nanos: NANOS_PER_MILLI };
-/// 1 second `Duration`
+/// 1 second `Duration`.
 #[unstable(feature = "time_units", issue = "0")]
 pub const SECOND: Duration = Duration { secs: 1, nanos: 0 };
+/// 1 minute `Duration` (60 seconds).
+///
+/// Note that it's different from UTC minute, which can be 59-61 seconds long.
+#[unstable(feature = "time_units", issue = "0")]
+pub const MINUTE: Duration = Duration { secs: 60, nanos: 0 };
+/// 1 hour `Duration` (60*60 = 3 600 seconds).
+///
+/// Note that it's different from UTC hour, which can be 3559-3661 seconds long.
+#[unstable(feature = "time_units", issue = "0")]
+pub const HOUR: Duration = Duration { secs: 3_600, nanos: 0 };
+/// 1 day `Duration` (24*60*60 = 86 400 seconds).
+///
+/// Note that it's different from UTC day, length of which can vary from plus
+/// minus second (leap seconds) and up to plus minus an hour (Daylight Save Time).
+#[unstable(feature = "time_units", issue = "0")]
+pub const DAY: Duration = Duration { secs: 86_400, nanos: 0 };
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
