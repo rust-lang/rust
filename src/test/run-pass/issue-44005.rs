@@ -8,17 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let tiles = Default::default();
-    for row in &mut tiles {
-        for tile in row {
-            //~^ NOTE the element type for this iterator is not specified
-            *tile = 0;
-            //~^ ERROR type annotations needed
-            //~| NOTE cannot infer type
-            //~| NOTE type must be known at this point
-        }
-    }
-
-    let tiles: [[usize; 3]; 3] = tiles;
+pub trait Foo<'a> {
+    type Bar;
+    fn foo(&'a self) -> Self::Bar;
 }
+
+impl<'a, 'b, T: 'a> Foo<'a> for &'b T {
+    type Bar = &'a T;
+    fn foo(&'a self) -> &'a T {
+        self
+    }
+}
+
+pub fn uncallable<T, F>(x: T, f: F)
+    where T: for<'a> Foo<'a>,
+          F: for<'a> Fn(<T as Foo<'a>>::Bar)
+{
+    f(x.foo());
+}
+
+pub fn catalyst(x: &i32) {
+    broken(x, |_| {})
+}
+
+pub fn broken<F: Fn(&i32)>(x: &i32, f: F) {
+    uncallable(x, |y| f(y));
+}
+
+fn main() { }
+

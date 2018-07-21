@@ -188,6 +188,19 @@ pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 }
 
 #[inline]
+pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
+    // For types smaller than the block optimization below,
+    // just swap directly to avoid pessimizing codegen.
+    if mem::size_of::<T>() < 32 {
+        let z = read(x);
+        copy_nonoverlapping(y, x, 1);
+        write(y, z);
+    } else {
+        swap_nonoverlapping(x, y, 1);
+    }
+}
+
+#[inline]
 unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
     // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
@@ -2703,6 +2716,11 @@ impl<T: Sized> Unique<T> {
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
+    ///
+    /// Note that the pointer value may potentially represent a valid pointer to
+    /// a `T`, which means this must not be used as a "not yet initialized"
+    /// sentinel value. Types that lazily allocate must track initialization by
+    /// some other means.
     // FIXME: rename to dangling() to match NonNull?
     pub const fn empty() -> Self {
         unsafe {
@@ -2834,6 +2852,11 @@ impl<T: Sized> NonNull<T> {
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
+    ///
+    /// Note that the pointer value may potentially represent a valid pointer to
+    /// a `T`, which means this must not be used as a "not yet initialized"
+    /// sentinel value. Types that lazily allocate must track initialization by
+    /// some other means.
     #[stable(feature = "nonnull", since = "1.25.0")]
     pub fn dangling() -> Self {
         unsafe {

@@ -9,16 +9,14 @@
 // except according to those terms.
 
 fn main() {
-    let tiles = Default::default();
-    for row in &mut tiles {
-        for tile in row {
-            //~^ NOTE the element type for this iterator is not specified
-            *tile = 0;
-            //~^ ERROR type annotations needed
-            //~| NOTE cannot infer type
-            //~| NOTE type must be known at this point
-        }
-    }
-
-    let tiles: [[usize; 3]; 3] = tiles;
+    let thing = ();
+    let other: typeof(thing) = thing; //~ ERROR attempt to use a non-constant value in a constant
+    //~^ ERROR `typeof` is a reserved keyword but unimplemented [E0516]
 }
+
+fn f(){
+    let q = 1;
+    <typeof(q)>::N //~ ERROR attempt to use a non-constant value in a constant
+    //~^ ERROR `typeof` is a reserved keyword but unimplemented [E0516]
+}
+
