@@ -355,10 +355,10 @@ fn check_crate_duplicate(resolve: &Resolve, bad: &mut bool) {
         // "cargo", // FIXME(#53005)
         "rustc-ap-syntax",
     ];
-    let mut name_to_id = HashMap::new();
+    let mut name_to_id: HashMap<_, Vec<_>> = HashMap::new();
     for node in resolve.nodes.iter() {
         name_to_id.entry(node.id.split_whitespace().next().unwrap())
-            .or_insert(Vec::new())
+            .or_default()
             .push(&node.id);
     }
 

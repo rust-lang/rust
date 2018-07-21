@@ -80,7 +80,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
             debug!("borrow {:?} gets killed at {:?}", borrow_index, location);
             borrows_out_of_scope_at_location
                 .entry(location)
-                .or_insert(vec![])
+                .or_default()
                 .push(borrow_index);
             continue;
         }

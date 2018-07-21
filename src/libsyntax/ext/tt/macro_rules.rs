@@ -88,8 +88,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 
 fn trace_macros_note(cx: &mut ExtCtxt, sp: Span, message: String) {
     let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
-    let values: &mut Vec<String> = cx.expansions.entry(sp).or_insert_with(Vec::new);
-    values.push(message);
+    cx.expansions.entry(sp).or_default().push(message);
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create

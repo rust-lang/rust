@@ -20,7 +20,7 @@ use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
-    let mut map = HashMap::new();
+    let mut map: HashMap<_, Vec<_>> = HashMap::new();
     super::walk(path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
                 &mut |file| {
@@ -61,7 +61,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                     Ok(n) => n,
                     Err(..) => continue,
                 };
-                map.entry(code).or_insert(Vec::new())
+                map.entry(code).or_default()
                    .push((file.to_owned(), num + 1, line.to_owned()));
                 break
             }

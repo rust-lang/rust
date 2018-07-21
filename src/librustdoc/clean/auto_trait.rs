@@ -267,7 +267,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
         // all intermediate RegionVids. At the end, all constraints should
         // be between Regions (aka region variables). This gives us the information
         // we need to create the Generics.
-        let mut finished = FxHashMap();
+        let mut finished: FxHashMap<_, Vec<_>> = FxHashMap();
 
         let mut vid_map: FxHashMap<RegionTarget, RegionDeps> = FxHashMap();
 
@@ -281,25 +281,25 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                     {
                         let deps1 = vid_map
                             .entry(RegionTarget::RegionVid(r1))
-                            .or_insert_with(|| Default::default());
+                            .or_default();
                         deps1.larger.insert(RegionTarget::RegionVid(r2));
                     }
 
                     let deps2 = vid_map
                         .entry(RegionTarget::RegionVid(r2))
-                        .or_insert_with(|| Default::default());
+                        .or_default();
                     deps2.smaller.insert(RegionTarget::RegionVid(r1));
                 }
                 &Constraint::RegSubVar(region, vid) => {
                     let deps = vid_map
                         .entry(RegionTarget::RegionVid(vid))
-                        .or_insert_with(|| Default::default());
+                        .or_default();
                     deps.smaller.insert(RegionTarget::Region(region));
                 }
                 &Constraint::VarSubReg(vid, region) => {
                     let deps = vid_map
                         .entry(RegionTarget::RegionVid(vid))
-                        .or_insert_with(|| Default::default());
+                        .or_default();
                     deps.larger.insert(RegionTarget::Region(region));
                 }
                 &Constraint::RegSubReg(r1, r2) => {
@@ -308,7 +308,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                     if self.region_name(r1) != self.region_name(r2) {
                         finished
                             .entry(self.region_name(r2).expect("no region_name found"))
-                            .or_insert_with(|| Vec::new())
+                            .or_default()
                             .push(r1);
                     }
                 }
@@ -343,7 +343,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                             if self.region_name(r1) != self.region_name(r2) {
                                 finished
                                     .entry(self.region_name(r2).expect("no region name found"))
-                                    .or_insert_with(|| Vec::new())
+                                    .or_default()
                                     .push(r1) // Larger, smaller
                             }
                         }
@@ -577,8 +577,8 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
         } = full_generics.clean(self.cx);
 
         let mut has_sized = FxHashSet();
-        let mut ty_to_bounds = FxHashMap();
-        let mut lifetime_to_bounds = FxHashMap();
+        let mut ty_to_bounds: FxHashMap<_, FxHashSet<_>> = FxHashMap();
+        let mut lifetime_to_bounds: FxHashMap<_, FxHashSet<_>> = FxHashMap();
         let mut ty_to_traits: FxHashMap<Type, FxHashSet<Type>> = FxHashMap();
 
         let mut ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)> = FxHashMap();
@@ -647,11 +647,11 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
 
                             ty_to_bounds
                                 .entry(ty.clone())
-                                .or_insert_with(|| FxHashSet());
+                                .or_default();
                         } else {
                             ty_to_bounds
                                 .entry(ty.clone())
-                                .or_insert_with(|| FxHashSet())
+                                .or_default()
                                 .insert(b.clone());
                         }
                     }
@@ -659,7 +659,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                 WherePredicate::RegionPredicate { lifetime, bounds } => {
                     lifetime_to_bounds
                         .entry(lifetime)
-                        .or_insert_with(|| FxHashSet())
+                        .or_default()
                         .extend(bounds);
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
@@ -722,7 +722,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
 
                                     let bounds = ty_to_bounds
                                         .entry(*ty.clone())
-                                        .or_insert_with(|| FxHashSet());
+                                        .or_default();
 
                                     bounds.insert(GenericBound::TraitBound(
                                         PolyTrait {
@@ -752,7 +752,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                                     // loop
                                     ty_to_traits
                                         .entry(*ty.clone())
-                                        .or_insert_with(|| FxHashSet())
+                                        .or_default()
                                         .insert(*trait_.clone());
                                 }
                                 _ => panic!("Unexpected trait {:?} for {:?}", trait_, did),

@@ -327,7 +327,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // Unresolved macros produce dummy outputs as a recovery measure.
         invocations.reverse();
         let mut expanded_fragments = Vec::new();
-        let mut derives = HashMap::new();
+        let mut derives: HashMap<Mark, Vec<_>> = HashMap::new();
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
@@ -388,7 +388,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         .map_attrs(|mut attrs| { attrs.retain(|a| a.path != "derive"); attrs });
                     let item_with_markers =
                         add_derived_markers(&mut self.cx, item.span(), &traits, item.clone());
-                    let derives = derives.entry(invoc.expansion_data.mark).or_insert_with(Vec::new);
+                    let derives = derives.entry(invoc.expansion_data.mark).or_default();
 
                     for path in &traits {
                         let mark = Mark::fresh(self.cx.current_expansion.mark);

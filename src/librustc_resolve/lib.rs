@@ -1819,7 +1819,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
     fn add_to_glob_map(&mut self, id: NodeId, ident: Ident) {
         if self.make_glob_map {
-            self.glob_map.entry(id).or_insert_with(FxHashSet).insert(ident.name);
+            self.glob_map.entry(id).or_default().insert(ident.name);
         }
     }
 
@@ -3703,14 +3703,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                             let seen = self.freevars_seen
                                            .entry(function_id)
-                                           .or_insert_with(|| NodeMap());
+                                           .or_default();
                             if let Some(&index) = seen.get(&node_id) {
                                 def = Def::Upvar(node_id, index, function_id);
                                 continue;
                             }
                             let vec = self.freevars
                                           .entry(function_id)
-                                          .or_insert_with(|| vec![]);
+                                          .or_default();
                             let depth = vec.len();
                             def = Def::Upvar(node_id, depth, function_id);
 

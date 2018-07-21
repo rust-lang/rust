@@ -176,7 +176,7 @@ pub fn check(build: &mut Build) {
         if target.contains("-none-") {
             if build.no_std(*target).is_none() {
                 let target = build.config.target_config.entry(target.clone())
-                    .or_insert(Default::default());
+                    .or_default();
 
                 target.no_std = true;
             }
@@ -192,7 +192,7 @@ pub fn check(build: &mut Build) {
             // fall back to the system toolchain in /usr before giving up
             if build.musl_root(*target).is_none() && build.config.build == *target {
                 let target = build.config.target_config.entry(target.clone())
-                                 .or_insert(Default::default());
+                    .or_default();
                 target.musl_root = Some("/usr".into());
             }
             match build.musl_root(*target) {

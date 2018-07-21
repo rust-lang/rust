@@ -304,7 +304,7 @@ impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
             let impl_def_id = self.tcx.hir.local_def_id(item.id);
             let mut rc_vec = self.impls_map.inherent_impls
                                            .entry(def_id)
-                                           .or_insert_with(|| Lrc::new(vec![]));
+                                           .or_default();
 
             // At this point, there should not be any clones of the
             // `Lrc`, so we can still safely push into it in place:

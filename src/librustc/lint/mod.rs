@@ -512,7 +512,7 @@ impl LintBuffer {
             msg: msg.to_string(),
             diagnostic
         };
-        let arr = self.map.entry(id).or_insert(Vec::new());
+        let arr = self.map.entry(id).or_default();
         if !arr.contains(&early_lint) {
             arr.push(early_lint);
         }

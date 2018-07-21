@@ -599,7 +599,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
 /// returns a map mapping crate names to their paths or else an
 /// error message.
 fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
-    let mut externs = BTreeMap::new();
+    let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
@@ -607,7 +607,7 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
                                  .ok_or("--extern value must be of the format `foo=bar`"
                                     .to_string())?;
         let name = name.to_string();
-        externs.entry(name).or_insert_with(BTreeSet::new).insert(location.to_string());
+        externs.entry(name).or_default().insert(location.to_string());
     }
     Ok(Externs::new(externs))
 }

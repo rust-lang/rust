@@ -1020,12 +1020,12 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
     }).collect();
 
     if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
-        let mut item_to_cgus = FxHashMap();
+        let mut item_to_cgus: FxHashMap<_, Vec<_>> = FxHashMap();
 
         for cgu in &codegen_units {
             for (&mono_item, &linkage) in cgu.items() {
                 item_to_cgus.entry(mono_item)
-                            .or_insert(Vec::new())
+                            .or_default()
                             .push((cgu.name().clone(), linkage));
             }
         }

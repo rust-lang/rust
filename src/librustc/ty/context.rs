@@ -1132,11 +1132,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             None
         };
 
-        let mut trait_map = FxHashMap();
+        let mut trait_map: FxHashMap<_, Lrc<FxHashMap<_, _>>> = FxHashMap();
         for (k, v) in resolutions.trait_map {
             let hir_id = hir.node_to_hir_id(k);
-            let map = trait_map.entry(hir_id.owner)
-                .or_insert_with(|| Lrc::new(FxHashMap()));
+            let map = trait_map.entry(hir_id.owner).or_default();
             Lrc::get_mut(map).unwrap()
                             .insert(hir_id.local_id,
                                     Lrc::new(StableVec::new(v)));

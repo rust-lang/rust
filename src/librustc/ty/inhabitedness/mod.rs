@@ -228,7 +228,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         match self.sty {
             TyAdt(def, substs) => {
                 {
-                    let substs_set = visited.entry(def.did).or_insert(FxHashSet::default());
+                    let substs_set = visited.entry(def.did).or_default();
                     if !substs_set.insert(substs) {
                         // We are already calculating the inhabitedness of this type.
                         // The type must contain a reference to itself. Break the

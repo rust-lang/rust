@@ -1245,7 +1245,7 @@ impl DocFolder for Cache {
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = item.inner {
             if let Some(did) = i.trait_.def_id() {
-                self.implementors.entry(did).or_insert(vec![]).push(Impl {
+                self.implementors.entry(did).or_default().push(Impl {
                     impl_item: item.clone(),
                 });
             }
@@ -1440,7 +1440,7 @@ impl DocFolder for Cache {
                     unreachable!()
                 };
                 for did in dids {
-                    self.impls.entry(did).or_insert(vec![]).push(Impl {
+                    self.impls.entry(did).or_default().push(Impl {
                         impl_item: item.clone(),
                     });
                 }
@@ -1971,7 +1971,7 @@ impl Context {
 
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
         // BTreeMap instead of HashMap to get a sorted output
-        let mut map = BTreeMap::new();
+        let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
         for item in &m.items {
             if item.is_stripped() { continue }
 
@@ -1981,7 +1981,7 @@ impl Context {
                 Some(ref s) => s.to_string(),
             };
             let short = short.to_string();
-            map.entry(short).or_insert(vec![])
+            map.entry(short).or_default()
                 .push((myname, Some(plain_summary_line(item.doc_value()))));
         }
 

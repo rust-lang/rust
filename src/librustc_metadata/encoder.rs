@@ -1788,7 +1788,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {
                 self.impls
                     .entry(trait_ref.def_id)
-                    .or_insert(vec![])
+                    .or_default()
                     .push(impl_id.index);
             }
         }

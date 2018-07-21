@@ -696,7 +696,7 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
     inlining_map.iter_accesses(|accessor, accessees| {
         for accessee in accessees {
             accessor_map.entry(*accessee)
-                        .or_insert(Vec::new())
+                        .or_default()
                         .push(accessor);
         }
     });

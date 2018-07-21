@@ -49,7 +49,7 @@ pub struct Graph {
 
 /// Children of a given impl, grouped into blanket/non-blanket varieties as is
 /// done in `TraitDef`.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Default, RustcEncodable, RustcDecodable)]
 struct Children {
     // Impls of a trait (or specializations of a given impl). To allow for
     // quicker lookup, the impls are indexed by a simplified version of their
@@ -81,13 +81,6 @@ enum Inserted {
 }
 
 impl<'a, 'gcx, 'tcx> Children {
-    fn new() -> Children {
-        Children {
-            nonblanket_impls: FxHashMap(),
-            blanket_impls: vec![],
-        }
-    }
-
     /// Insert an impl into this set of children without comparing to any existing impls
     fn insert_blindly(&mut self,
                       tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -95,7 +88,7 @@ impl<'a, 'gcx, 'tcx> Children {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
             debug!("insert_blindly: impl_def_id={:?} sty={:?}", impl_def_id, sty);
-            self.nonblanket_impls.entry(sty).or_insert(vec![]).push(impl_def_id)
+            self.nonblanket_impls.entry(sty).or_default().push(impl_def_id)
         } else {
             debug!("insert_blindly: impl_def_id={:?} sty=None", impl_def_id);
             self.blanket_impls.push(impl_def_id)
@@ -230,7 +223,7 @@ impl<'a, 'gcx, 'tcx> Children {
     }
 
     fn filtered(&mut self, sty: SimplifiedType) -> Box<dyn Iterator<Item = DefId> + '_> {
-        let nonblanket = self.nonblanket_impls.entry(sty).or_insert(vec![]).iter();
+        let nonblanket = self.nonblanket_impls.entry(sty).or_default().iter();
         Box::new(self.blanket_impls.iter().chain(nonblanket).cloned())
     }
 }
@@ -268,7 +261,7 @@ impl<'a, 'gcx, 'tcx> Graph {
                    trait_ref, impl_def_id, trait_def_id);
 
             self.parent.insert(impl_def_id, trait_def_id);
-            self.children.entry(trait_def_id).or_insert(Children::new())
+            self.children.entry(trait_def_id).or_default()
                 .insert_blindly(tcx, impl_def_id);
             return Ok(None);
         }
@@ -281,7 +274,7 @@ impl<'a, 'gcx, 'tcx> Graph {
         loop {
             use self::Inserted::*;
 
-            let insert_result = self.children.entry(parent).or_insert(Children::new())
+            let insert_result = self.children.entry(parent).or_default()
                 .insert(tcx, impl_def_id, simplified)?;
 
             match insert_result {
@@ -318,9 +311,8 @@ impl<'a, 'gcx, 'tcx> Graph {
                     self.parent.insert(impl_def_id, parent);
 
                     // Add G as N's child.
-                    let mut grand_children = Children::new();
-                    grand_children.insert_blindly(tcx, grand_child_to_be);
-                    self.children.insert(impl_def_id, grand_children);
+                    self.children.entry(impl_def_id).or_default()
+                        .insert_blindly(tcx, grand_child_to_be);
                     break;
                 }
                 ShouldRecurseOn(new_parent) => {
@@ -343,7 +335,7 @@ impl<'a, 'gcx, 'tcx> Graph {
                   was already present.");
         }
 
-        self.children.entry(parent).or_insert(Children::new()).insert_blindly(tcx, child);
+        self.children.entry(parent).or_default().insert_blindly(tcx, child);
     }
 
     /// The parent of a given impl, which is the def id of the trait when the
