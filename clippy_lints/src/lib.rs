@@ -20,34 +20,34 @@ use rustc_plugin;
 
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description, report_in_external_macro }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, correctness, $description:tt } => {
-        declare_lint! { pub $name, Deny, $description, report_in_external_macro }
+        declare_lint! { pub $name, Deny, $description, report_in_external_macro: true }
     };
     { pub $name:tt, complexity, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description, report_in_external_macro }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, perf, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description, report_in_external_macro }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, pedantic, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, restriction, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, cargo, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, nursery, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, internal, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description, report_in_external_macro }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, internal_warn, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description, report_in_external_macro }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
 }
 
