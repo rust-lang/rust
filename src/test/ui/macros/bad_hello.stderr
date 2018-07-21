@@ -15,8 +15,8 @@ LL |     println!(3, 4);
    |              ^
 help: you might be missing a string literal to format with
    |
-LL |     println!("{}, {}", 3, 4);
-   |              ^^^^^^^^^
+LL |     println!("{} {}", 3, 4);
+   |              ^^^^^^^^
 
 error: aborting due to 2 previous errors
 

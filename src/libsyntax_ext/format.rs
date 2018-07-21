@@ -728,7 +728,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         Err(mut err) => {
             let sugg_fmt = match args.len() {
                 0 => "{}".to_string(),
-                _ => format!("{}{{}}", "{}, ".repeat(args.len())),
+                _ => format!("{}{{}}", "{} ".repeat(args.len())),
 
             };
             err.span_suggestion(
