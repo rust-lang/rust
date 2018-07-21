@@ -281,69 +281,48 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             constant, location
         );
 
-        let expected_ty = match constant.literal {
-            Literal::Value { value } => {
-                // FIXME(#46702) -- We need some way to get the predicates
-                // associated with the "pre-evaluated" form of the
-                // constant. For example, consider that the constant
-                // may have associated constant projections (`<Foo as
-                // Trait<'a, 'b>>::SOME_CONST`) that impose
-                // constraints on `'a` and `'b`. These constraints
-                // would be lost if we just look at the normalized
-                // value.
-                if let ty::TyFnDef(def_id, substs) = value.ty.sty {
-                    let tcx = self.tcx();
-                    let type_checker = &mut self.cx;
+        // FIXME(#46702) -- We need some way to get the predicates
+        // associated with the "pre-evaluated" form of the
+        // constant. For example, consider that the constant
+        // may have associated constant projections (`<Foo as
+        // Trait<'a, 'b>>::SOME_CONST`) that impose
+        // constraints on `'a` and `'b`. These constraints
+        // would be lost if we just look at the normalized
+        // value.
+        if let ty::TyFnDef(def_id, substs) = constant.literal.ty.sty {
+            let tcx = self.tcx();
+            let type_checker = &mut self.cx;
 
-                    // FIXME -- For now, use the substitutions from
-                    // `value.ty` rather than `value.val`. The
-                    // renumberer will rewrite them to independent
-                    // sets of regions; in principle, we ought to
-                    // derive the type of the `value.val` from "first
-                    // principles" and equate with value.ty, but as we
-                    // are transitioning to the miri-based system, we
-                    // don't have a handy function for that, so for
-                    // now we just ignore `value.val` regions.
+            // FIXME -- For now, use the substitutions from
+            // `value.ty` rather than `value.val`. The
+            // renumberer will rewrite them to independent
+            // sets of regions; in principle, we ought to
+            // derive the type of the `value.val` from "first
+            // principles" and equate with value.ty, but as we
+            // are transitioning to the miri-based system, we
+            // don't have a handy function for that, so for
+            // now we just ignore `value.val` regions.
 
-                    let instantiated_predicates =
-                        tcx.predicates_of(def_id).instantiate(tcx, substs);
-                    type_checker.normalize_and_prove_instantiated_predicates(
-                        instantiated_predicates,
-                        location.boring(),
-                    );
-                }
+            let instantiated_predicates =
+                tcx.predicates_of(def_id).instantiate(tcx, substs);
+            type_checker.normalize_and_prove_instantiated_predicates(
+                instantiated_predicates,
+                location.boring(),
+            );
+        }
 
-                value.ty
-            }
-
-            Literal::Promoted { .. } => {
-                // FIXME -- promoted MIR return types reference
-                // various "free regions" (e.g., scopes and things)
-                // that they ought not to do. We have to figure out
-                // how best to handle that -- probably we want treat
-                // promoted MIR much like closures, renumbering all
-                // their free regions and propagating constraints
-                // upwards. We have the same acyclic guarantees, so
-                // that should be possible. But for now, ignore them.
-                //
-                // let promoted_mir = &self.mir.promoted[index];
-                // promoted_mir.return_ty()
-                return;
-            }
-        };
-
-        debug!("sanitize_constant: expected_ty={:?}", expected_ty);
+        debug!("sanitize_constant: expected_ty={:?}", constant.literal.ty);
 
         if let Err(terr) = self
             .cx
-            .eq_types(expected_ty, constant.ty, location.boring())
+            .eq_types(constant.literal.ty, constant.ty, location.boring())
         {
             span_mirbug!(
                 self,
                 constant,
                 "constant {:?} should have type {:?} but has {:?} ({:?})",
                 constant,
-                expected_ty,
+                constant.literal.ty,
                 constant.ty,
                 terr,
             );
@@ -363,6 +342,21 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             Place::Local(index) => PlaceTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
+            Place::Promoted(box (_index, sty)) => {
+                let sty = self.sanitize_type(place, sty);
+                // FIXME -- promoted MIR return types reference
+                // various "free regions" (e.g., scopes and things)
+                // that they ought not to do. We have to figure out
+                // how best to handle that -- probably we want treat
+                // promoted MIR much like closures, renumbering all
+                // their free regions and propagating constraints
+                // upwards. We have the same acyclic guarantees, so
+                // that should be possible. But for now, ignore them.
+                //
+                // let promoted_mir = &self.mir.promoted[index];
+                // promoted_mir.return_ty()
+                PlaceTy::Ty { ty: sty }
+            }
             Place::Static(box Static { def_id, ty: sty }) => {
                 let sty = self.sanitize_type(place, sty);
                 let ty = self.tcx().type_of(def_id);

@@ -34,6 +34,7 @@ fn place_context<'a, 'tcx, D>(
 
     match *place {
         Local { .. } => (None, hir::MutMutable),
+        Promoted(_) |
         Static(_) => (None, hir::MutImmutable),
         Projection(ref proj) => {
             match proj.elem {

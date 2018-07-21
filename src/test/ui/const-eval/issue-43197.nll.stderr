@@ -20,36 +20,6 @@ LL |     const Y: u32 = foo(0-1);
    |                        |
    |                        attempt to subtract with overflow
 
-warning: referenced constant has errors
-  --> $DIR/issue-43197.rs:24:23
-   |
-LL |     const X: u32 = 0-1;
-   |                    --- attempt to subtract with overflow
-...
-LL |     println!("{} {}", X, Y);
-   |                       ^
-
-warning: this expression will panic at runtime
-  --> $DIR/issue-43197.rs:24:23
-   |
-LL |     println!("{} {}", X, Y);
-   |                       ^ referenced constant has errors
-
-warning: referenced constant has errors
-  --> $DIR/issue-43197.rs:24:26
-   |
-LL |     const Y: u32 = foo(0-1);
-   |                        --- attempt to subtract with overflow
-LL |     //~^ WARN this constant cannot be used
-LL |     println!("{} {}", X, Y);
-   |                          ^
-
-warning: this expression will panic at runtime
-  --> $DIR/issue-43197.rs:24:26
-   |
-LL |     println!("{} {}", X, Y);
-   |                          ^ referenced constant has errors
-
 error[E0080]: referenced constant has errors
   --> $DIR/issue-43197.rs:24:14
    |

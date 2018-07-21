@@ -10,7 +10,7 @@
 
 //! Performs various peephole optimizations.
 
-use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, ProjectionElem, Rvalue, Local};
+use rustc::mir::{Constant, Location, Place, Mir, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::{TyCtxt, TypeVariants};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -103,8 +103,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
             if let TypeVariants::TyArray(_, len) = place_ty.sty {
                 let span = self.mir.source_info(location).span;
                 let ty = self.tcx.types.usize;
-                let literal = Literal::Value { value: len };
-                let constant = Constant { span, ty, literal };
+                let constant = Constant { span, ty, literal: len };
                 self.optimizations.arrays_lengths.insert(location, constant);
             }
         }

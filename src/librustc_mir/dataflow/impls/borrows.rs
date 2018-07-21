@@ -259,6 +259,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                     // Issue #46746: Two-phase borrows handles
                     // stmts of form `Tmp = &mut Borrow` ...
                     match lhs {
+                        Place::Promoted(_) |
                         Place::Local(..) | Place::Static(..) => {} // okay
                         Place::Projection(..) => {
                             // ... can assign into projections,

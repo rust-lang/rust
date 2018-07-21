@@ -831,19 +831,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             },
 
             Constant(ref constant) => {
-                use rustc::mir::Literal;
-                let mir::Constant { ref literal, .. } = **constant;
-                let value = match *literal {
-                    Literal::Value { ref value } => self.const_to_value(value.val)?,
-
-                    Literal::Promoted { index } => {
-                        let instance = self.frame().instance;
-                        self.read_global_as_value(GlobalId {
-                            instance,
-                            promoted: Some(index),
-                        })?
-                    }
-                };
+                let value = self.const_to_value(constant.literal.val)?;
 
                 Ok(ValTy {
                     value,

@@ -74,8 +74,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range {
-                        lo: Literal::Value { value: lo },
-                        hi: Literal::Value { value: hi },
+                        lo,
+                        hi,
                         ty: match_pair.pattern.ty.clone(),
                         end,
                     },
@@ -260,9 +260,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             TestKind::Eq { value, mut ty } => {
                 let mut val = Operand::Copy(place.clone());
-                let mut expect = self.literal_operand(test.span, ty, Literal::Value {
-                    value
-                });
+                let mut expect = self.literal_operand(test.span, ty, value);
                 // Use PartialEq::eq instead of BinOp::Eq
                 // (the binop can only handle primitives)
                 let fail = self.cfg.start_new_block();
@@ -300,9 +298,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 let array = self.literal_operand(
                                     test.span,
                                     value.ty,
-                                    Literal::Value {
-                                        value
-                                    },
+                                    value,
                                 );
 
                                 let slice = self.temp(ty, test.span);

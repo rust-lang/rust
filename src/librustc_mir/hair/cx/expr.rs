@@ -627,15 +627,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     None
                 };
                 let source = if let Some((did, offset, ty)) = var {
-                    let mk_const = |val| Expr {
+                    let mk_const = |literal| Expr {
                         temp_lifetime,
                         ty,
                         span: expr.span,
-                        kind: ExprKind::Literal {
-                            literal: Literal::Value {
-                                value: val,
-                            },
-                        },
+                        kind: ExprKind::Literal { literal },
                     }.to_ref();
                     let offset = mk_const(ty::Const::from_bits(
                         cx.tcx,
@@ -706,9 +702,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         ty,
         span: expr.span,
         kind: ExprKind::Literal {
-            literal: Literal::Value {
-                value: ty::Const::zero_sized(cx.tcx(), ty),
-            },
+            literal: ty::Const::zero_sized(cx.tcx(), ty),
         },
     }
 }
@@ -760,22 +754,20 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::Method(_) |
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) => ExprKind::Literal {
-            literal: Literal::Value {
-                value: ty::Const::zero_sized(
-                    cx.tcx,
-                    cx.tables().node_id_to_type(expr.hir_id)),
-            },
+            literal: ty::Const::zero_sized(
+                cx.tcx,
+                cx.tables().node_id_to_type(expr.hir_id),
+            ),
         },
 
         Def::Const(def_id) |
         Def::AssociatedConst(def_id) => ExprKind::Literal {
-            literal: Literal::Value {
-                value: ty::Const::unevaluated(
-                    cx.tcx,
-                    def_id,
-                    substs,
-                    cx.tables().node_id_to_type(expr.hir_id))
-            },
+            literal: ty::Const::unevaluated(
+                cx.tcx,
+                def_id,
+                substs,
+                cx.tables().node_id_to_type(expr.hir_id),
+            ),
         },
 
         Def::StructCtor(def_id, CtorKind::Const) |

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{ValueRef, LLVMConstInBoundsGEP};
+use llvm::ValueRef;
 use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
 use rustc::mir::interpret::ConstValue;
@@ -22,14 +22,12 @@ use common::{CodegenCx, C_undef, C_usize};
 use builder::{Builder, MemFlags};
 use value::Value;
 use type_of::LayoutLlvmExt;
-use type_::Type;
-use consts;
 
 use std::fmt;
 use std::ptr;
 
 use super::{FunctionCx, LocalRef};
-use super::constant::{scalar_to_llvm, const_alloc_to_llvm};
+use super::constant::scalar_to_llvm;
 use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -139,16 +137,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 OperandValue::Pair(a_llval, b_llval)
             },
             ConstValue::ByRef(alloc, offset) => {
-                let init = const_alloc_to_llvm(bx.cx, alloc);
-                let base_addr = consts::addr_of(bx.cx, init, layout.align, "byte_str");
-
-                let llval = unsafe { LLVMConstInBoundsGEP(
-                    consts::bitcast(base_addr, Type::i8p(bx.cx)),
-                    &C_usize(bx.cx, offset.bytes()),
-                    1,
-                )};
-                let llval = consts::bitcast(llval, layout.llvm_type(bx.cx).ptr_to());
-                return Ok(PlaceRef::new_sized(llval, layout, alloc.align).load(bx));
+                return Ok(PlaceRef::from_const_alloc(bx, layout, alloc, offset).load(bx));
             },
         };
 
@@ -409,20 +398,12 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 self.eval_mir_constant(bx, constant)
                     .and_then(|c| OperandRef::from_const(bx, c))
                     .unwrap_or_else(|err| {
-                        match constant.literal {
-                            mir::Literal::Promoted { .. } => {
-                                // this is unreachable as long as runtime
-                                // and compile-time agree on values
-                                // With floats that won't always be true
-                                // so we generate an abort below
-                            },
-                            mir::Literal::Value { .. } => {
-                                err.report_as_error(
-                                    bx.tcx().at(constant.span),
-                                    "could not evaluate constant operand",
-                                );
-                            },
-                        }
+                        err.report_as_error(
+                            bx.tcx().at(constant.span),
+                            "could not evaluate constant operand",
+                        );
+                        // Allow RalfJ to sleep soundly knowing that even refactorings that remove
+                        // the above error (or silence it under some conditions) will not cause UB
                         let fnname = bx.cx.get_intrinsic(&("llvm.trap"));
                         bx.call(fnname, &[], None);
                         // We've errored, so we don't have to produce working code.

@@ -25,12 +25,12 @@
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
-use std::{cmp, iter, mem, usize};
+use std::{iter, mem, usize};
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -152,7 +152,6 @@ struct Promoter<'a, 'tcx: 'a> {
     source: &'a mut Mir<'tcx>,
     promoted: Mir<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
-    extra_statements: &'a mut Vec<(Location, Statement<'tcx>)>,
 
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
@@ -288,27 +287,21 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn promote_candidate(mut self, candidate: Candidate) {
-        let mut rvalue = {
+        let mut operand = {
             let promoted = &mut self.promoted;
-            let literal = Literal::Promoted {
-                index: Promoted::new(self.source.promoted.len())
-            };
-            let operand = |ty, span| {
+            let promoted_id = Promoted::new(self.source.promoted.len());
+            let mut promoted_place = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] =
                     LocalDecl::new_return_place(ty, span);
-                Operand::Constant(box Constant {
-                    span,
-                    ty,
-                    literal
-                })
+                Place::Promoted(box (promoted_id, ty))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
                 Candidate::Ref(loc) => {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
-                        StatementKind::Assign(_, Rvalue::Ref(r, bk, ref mut place)) => {
+                        StatementKind::Assign(_, Rvalue::Ref(_, _, ref mut place)) => {
                             // Find the underlying local for this (necessarilly interior) borrow.
                             // HACK(eddyb) using a recursive function because of mutable borrows.
                             fn interior_base<'a, 'tcx>(place: &'a mut Place<'tcx>)
@@ -322,32 +315,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let place = interior_base(place);
 
                             let ty = place.ty(local_decls, self.tcx).to_ty(self.tcx);
-                            let ref_ty = self.tcx.mk_ref(r,
-                                ty::TypeAndMut {
-                                    ty,
-                                    mutbl: bk.to_mutbl_lossy()
-                                }
-                            );
                             let span = statement.source_info.span;
 
-                            // Create a temp to hold the promoted reference.
-                            // This is because `*r` requires `r` to be a local,
-                            // otherwise we would use the `promoted` directly.
-                            let mut promoted_ref = LocalDecl::new_temp(ref_ty, span);
-                            promoted_ref.source_info = statement.source_info;
-                            promoted_ref.visibility_scope = statement.source_info.scope;
-                            let promoted_ref = local_decls.push(promoted_ref);
-                            assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
-                            self.extra_statements.push((loc, Statement {
-                                source_info: statement.source_info,
-                                kind: StatementKind::Assign(
-                                    Place::Local(promoted_ref),
-                                    Rvalue::Use(operand(ref_ty, span)),
-                                )
-                            }));
-                            let promoted_place = Place::Local(promoted_ref).deref();
-
-                            Rvalue::Ref(r, bk, mem::replace(place, promoted_place))
+                            Operand::Move(mem::replace(place, promoted_place(ty, span)))
                         }
                         _ => bug!()
                     }
@@ -358,7 +328,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         TerminatorKind::Call { ref mut args, .. } => {
                             let ty = args[index].ty(local_decls, self.tcx);
                             let span = terminator.source_info.span;
-                            Rvalue::Use(mem::replace(&mut args[index], operand(ty, span)))
+                            let operand = Operand::Copy(promoted_place(ty, span));
+                            mem::replace(&mut args[index], operand)
                         }
                         _ => bug!()
                     }
@@ -367,13 +338,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         };
 
         assert_eq!(self.new_block(), START_BLOCK);
-        self.visit_rvalue(&mut rvalue, Location {
+        self.visit_operand(&mut operand, Location {
             block: BasicBlock::new(0),
             statement_index: usize::MAX
         });
 
         let span = self.promoted.span;
-        self.assign(RETURN_PLACE, rvalue, span);
+        self.assign(RETURN_PLACE, Rvalue::Use(operand), span);
         self.source.promoted.push(self.promoted);
     }
 }
@@ -397,7 +368,6 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
 
-    let mut extra_statements = vec![];
     for candidate in candidates.into_iter().rev() {
         match candidate {
             Candidate::Ref(Location { block, statement_index }) => {
@@ -437,17 +407,9 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             tcx,
             source: mir,
             temps: &mut temps,
-            extra_statements: &mut extra_statements,
             keep_original: false
         };
         promoter.promote_candidate(candidate);
-    }
-
-    // Insert each of `extra_statements` before its indicated location, which
-    // has to be done in reverse location order, to not invalidate the rest.
-    extra_statements.sort_by_key(|&(loc, _)| cmp::Reverse(loc));
-    for (loc, statement) in extra_statements {
-        mir[loc.block].statements.insert(loc.statement_index, statement);
     }
 
     // Eliminate assignments to, and drops of promoted temps.

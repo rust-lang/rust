@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef};
+use llvm::{self, ValueRef, LLVMConstInBoundsGEP};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
+use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -22,6 +22,7 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 use glue;
+use mir::constant::const_alloc_to_llvm;
 
 use std::ptr;
 
@@ -54,6 +55,24 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
             layout,
             align
         }
+    }
+
+    pub fn from_const_alloc(
+        bx: &Builder<'a, 'tcx>,
+        layout: TyLayout<'tcx>,
+        alloc: &mir::interpret::Allocation,
+        offset: Size,
+    ) -> PlaceRef<'tcx> {
+        let init = const_alloc_to_llvm(bx.cx, alloc);
+        let base_addr = consts::addr_of(bx.cx, init, layout.align, "byte_str");
+
+        let llval = unsafe { LLVMConstInBoundsGEP(
+            consts::bitcast(base_addr, Type::i8p(bx.cx)),
+            &C_usize(bx.cx, offset.bytes()),
+            1,
+        )};
+        let llval = consts::bitcast(llval, layout.llvm_type(bx.cx).ptr_to());
+        PlaceRef::new_sized(llval, layout, alloc.align)
     }
 
     pub fn alloca(bx: &Builder<'a, 'tcx>, layout: TyLayout<'tcx>, name: &str)
@@ -421,6 +440,31 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
         let result = match *place {
             mir::Place::Local(_) => bug!(), // handled above
+            mir::Place::Promoted(box (index, ty)) => {
+                let param_env = ty::ParamEnv::reveal_all();
+                let cid = mir::interpret::GlobalId {
+                    instance: self.instance,
+                    promoted: Some(index),
+                };
+                let layout = cx.layout_of(self.monomorphize(&ty));
+                match bx.tcx().const_eval(param_env.and(cid)) {
+                    Ok(val) => match val.val {
+                        mir::interpret::ConstValue::ByRef(alloc, offset) => {
+                            PlaceRef::from_const_alloc(bx, layout, alloc, offset)
+                        }
+                        _ => bug!("promoteds should have an allocation: {:?}", val),
+                    },
+                    Err(_) => {
+                        // this is unreachable as long as runtime
+                        // and compile-time agree on values
+                        // With floats that won't always be true
+                        // so we generate an abort
+                        let fnname = bx.cx.get_intrinsic(&("llvm.trap"));
+                        bx.call(fnname, &[], None);
+                        PlaceRef::new_sized(C_undef(layout.llvm_type(bx.cx).ptr_to()), layout, layout.align)
+                    }
+                }
+            }
             mir::Place::Static(box mir::Static { def_id, ty }) => {
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 PlaceRef::new_sized(consts::get_static(cx, def_id), layout, layout.align)

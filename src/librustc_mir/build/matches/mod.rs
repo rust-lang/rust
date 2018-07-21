@@ -505,8 +505,8 @@ enum TestKind<'tcx> {
 
     // test whether the value falls within an inclusive or exclusive range
     Range {
-        lo: Literal<'tcx>,
-        hi: Literal<'tcx>,
+        lo: &'tcx ty::Const<'tcx>,
+        hi: &'tcx ty::Const<'tcx>,
         ty: Ty<'tcx>,
         end: hir::RangeEnd,
     },

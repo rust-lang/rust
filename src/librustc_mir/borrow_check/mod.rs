@@ -1221,6 +1221,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 }
                                 Operand::Move(Place::Static(..))
                                 | Operand::Copy(Place::Static(..))
+                                | Operand::Move(Place::Promoted(..))
+                                | Operand::Copy(Place::Promoted(..))
                                 | Operand::Constant(..) => {}
                             }
                         }
@@ -1303,6 +1305,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //
         // FIXME: allow thread-locals to borrow other thread locals?
         let (might_be_alive, will_be_dropped) = match root_place {
+            Place::Promoted(_) => (true, false),
             Place::Static(statik) => {
                 // Thread-locals might be dropped after the function exits, but
                 // "true" statics will never be.
@@ -1587,6 +1590,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match *last_prefix {
             Place::Local(_) => panic!("should have move path for every Local"),
             Place::Projection(_) => panic!("PrefixSet::All meant don't stop for Projection"),
+            Place::Promoted(_) |
             Place::Static(_) => return Err(NoMovePathFound::ReachedStatic),
         }
     }
@@ -1613,6 +1617,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut place = place;
         loop {
             match *place {
+                Place::Promoted(_) |
                 Place::Local(_) | Place::Static(_) => {
                     // assigning to `x` does not require `x` be initialized.
                     break;
@@ -1809,6 +1814,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
             RootPlace {
+                place: Place::Promoted(..),
+                is_local_mutation_allowed: _,
+            } => {}
+            RootPlace {
                 place: Place::Static(..),
                 is_local_mutation_allowed: _,
             } => {}
@@ -1843,6 +1852,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }),
                 }
             }
+            // promoteds may never be mutated
+            Place::Promoted(_) => Err(place),
             Place::Static(ref static_) => {
                 if self.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
                     Err(place)
@@ -2009,6 +2020,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut deepest = place;
         loop {
             let proj = match *cursor {
+                Place::Promoted(_) |
                 Place::Local(..) | Place::Static(..) => return deepest,
                 Place::Projection(ref proj) => proj,
             };

@@ -191,12 +191,6 @@ macro_rules! make_mir_visitor {
                 self.super_constant(constant, location);
             }
 
-            fn visit_literal(&mut self,
-                             literal: & $($mutability)* Literal<'tcx>,
-                             location: Location) {
-                self.super_literal(literal, location);
-            }
-
             fn visit_def_id(&mut self,
                             def_id: & $($mutability)* DefId,
                             _: Location) {
@@ -648,6 +642,9 @@ macro_rules! make_mir_visitor {
                     Place::Static(ref $($mutability)* static_) => {
                         self.visit_static(static_, context, location);
                     }
+                    Place::Promoted(ref $($mutability)* promoted) => {
+                        self.visit_ty(& $($mutability)* promoted.1, TyContext::Location(location));
+                    },
                     Place::Projection(ref $($mutability)* proj) => {
                         self.visit_projection(proj, context, location);
                     }
@@ -748,18 +745,7 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(span);
                 self.visit_ty(ty, TyContext::Location(location));
-                self.visit_literal(literal, location);
-            }
-
-            fn super_literal(&mut self,
-                             literal: & $($mutability)* Literal<'tcx>,
-                             location: Location) {
-                match *literal {
-                    Literal::Value { ref $($mutability)* value } => {
-                        self.visit_const(value, location);
-                    }
-                    Literal::Promoted { index: _ } => {}
-                }
+                self.visit_const(literal, location);
             }
 
             fn super_def_id(&mut self, _def_id: & $($mutability)* DefId) {

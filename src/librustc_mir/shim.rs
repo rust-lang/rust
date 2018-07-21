@@ -440,9 +440,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let func = Operand::Constant(box Constant {
             span: self.span,
             ty: func_ty,
-            literal: Literal::Value {
-                value: ty::Const::zero_sized(self.tcx, func_ty)
-            },
+            literal: ty::Const::zero_sized(self.tcx, func_ty),
         });
 
         let ref_loc = self.make_place(
@@ -500,9 +498,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         box Constant {
             span: self.span,
             ty: self.tcx.types.usize,
-            literal: Literal::Value {
-                value: ty::Const::from_usize(self.tcx, value),
-            }
+            literal: ty::Const::from_usize(self.tcx, value),
         }
     }
 
@@ -729,9 +725,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             (Operand::Constant(box Constant {
                 span,
                 ty,
-                literal: Literal::Value {
-                    value: ty::Const::zero_sized(tcx, ty)
-                },
+                literal: ty::Const::zero_sized(tcx, ty),
              }),
              vec![rcvr])
         }

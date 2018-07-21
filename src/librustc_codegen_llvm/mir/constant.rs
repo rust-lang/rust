@@ -25,6 +25,7 @@ use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
 use syntax::ast::Mutability;
+use syntax::codemap::Span;
 
 use super::super::callee;
 use super::FunctionCx;
@@ -117,13 +118,12 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
 
 pub fn codegen_static_initializer<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
-    def_id: DefId)
-    -> Result<(ValueRef, &'tcx Allocation), Lrc<ConstEvalErr<'tcx>>>
-{
+    def_id: DefId,
+) -> Result<(ValueRef, &'tcx Allocation), Lrc<ConstEvalErr<'tcx>>> {
     let instance = ty::Instance::mono(cx.tcx, def_id);
     let cid = GlobalId {
         instance,
-        promoted: None
+        promoted: None,
     };
     let param_env = ty::ParamEnv::reveal_all();
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
@@ -161,28 +161,19 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         bx: &Builder<'a, 'tcx>,
         constant: &mir::Constant<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
-        match constant.literal {
-            mir::Literal::Promoted { index } => {
-                let param_env = ty::ParamEnv::reveal_all();
-                let cid = mir::interpret::GlobalId {
-                    instance: self.instance,
-                    promoted: Some(index),
-                };
-                bx.tcx().const_eval(param_env.and(cid))
-            }
-            mir::Literal::Value { value } => {
-                Ok(self.monomorphize(&value))
-            }
-        }.and_then(|c| self.fully_evaluate(bx, c))
+        let c = self.monomorphize(&constant.literal);
+        self.fully_evaluate(bx, c)
     }
 
     /// process constant containing SIMD shuffle indices
     pub fn simd_shuffle_indices(
         &mut self,
         bx: &Builder<'a, 'tcx>,
-        constant: &mir::Constant<'tcx>,
+        span: Span,
+        ty: Ty<'tcx>,
+        constant: Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>,
     ) -> (ValueRef, Ty<'tcx>) {
-        self.eval_mir_constant(bx, constant)
+        constant
             .and_then(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
                 let fields = match c.ty.sty {
@@ -217,11 +208,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             })
             .unwrap_or_else(|e| {
                 e.report_as_error(
-                    bx.tcx().at(constant.span),
+                    bx.tcx().at(span),
                     "could not evaluate shuffle_indices at compile time",
                 );
                 // We've errored, so we don't have to produce working code.
-                let ty = self.monomorphize(&constant.ty);
+                let ty = self.monomorphize(&ty);
                 let llty = bx.cx.layout_of(ty).llvm_type(bx.cx);
                 (C_undef(llty), ty)
             })

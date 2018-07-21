@@ -249,6 +249,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
         match *place {
             Place::Local(local) => LookupResult::Exact(self.locals[local]),
+            Place::Promoted(_) |
             Place::Static(..) => LookupResult::Parent(None),
             Place::Projection(ref proj) => {
                 match self.find(&proj.base) {

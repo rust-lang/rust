@@ -177,12 +177,11 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
         let val = Operand::Constant(box Constant {
             span: source_info.span,
             ty: self.tcx.types.u32,
-            literal: Literal::Value {
-                value: ty::Const::from_bits(
-                    self.tcx,
-                    state_disc.into(),
-                    ty::ParamEnv::empty().and(self.tcx.types.u32)),
-            },
+            literal: ty::Const::from_bits(
+                self.tcx,
+                state_disc.into(),
+                ty::ParamEnv::empty().and(self.tcx.types.u32)
+            ),
         });
         Statement {
             source_info,
@@ -337,6 +336,7 @@ struct BorrowedLocals(liveness::LiveVarSet<Local>);
 fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
     match *place {
         Place::Local(l) => { locals.0.add(&l); },
+        Place::Promoted(_) |
         Place::Static(..) => (),
         Place::Projection(ref proj) => {
             match proj.elem {
@@ -707,9 +707,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cond: Operand::Constant(box Constant {
             span: mir.span,
             ty: tcx.types.bool,
-            literal: Literal::Value {
-                value: ty::Const::from_bool(tcx, false),
-            },
+            literal: ty::Const::from_bool(tcx, false),
         }),
         expected: true,
         msg: message,

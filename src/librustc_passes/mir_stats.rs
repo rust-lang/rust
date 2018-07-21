@@ -13,7 +13,7 @@
 // completely accurate (some things might be counted twice, others missed).
 
 use rustc::mir::{AggregateKind, AssertMessage, BasicBlock, BasicBlockData};
-use rustc::mir::{Constant, Literal, Location, Local, LocalDecl};
+use rustc::mir::{Constant, Location, Local, LocalDecl};
 use rustc::mir::{Place, PlaceElem, PlaceProjection};
 use rustc::mir::{Mir, Operand, ProjectionElem};
 use rustc::mir::{Rvalue, SourceInfo, Statement, StatementKind};
@@ -204,6 +204,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
         self.record(match *place {
             Place::Local(..) => "Place::Local",
             Place::Static(..) => "Place::Static",
+            Place::Promoted(..) => "Place::Promoted",
             Place::Projection(..) => "Place::Projection",
         }, place);
         self.super_place(place, context, location);
@@ -238,17 +239,6 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
                       location: Location) {
         self.record("Constant", constant);
         self.super_constant(constant, location);
-    }
-
-    fn visit_literal(&mut self,
-                     literal: &Literal<'tcx>,
-                     location: Location) {
-        self.record("Literal", literal);
-        self.record(match *literal {
-            Literal::Value { .. } => "Literal::Value",
-            Literal::Promoted { .. } => "Literal::Promoted",
-        }, literal);
-        self.super_literal(literal, location);
     }
 
     fn visit_source_info(&mut self,

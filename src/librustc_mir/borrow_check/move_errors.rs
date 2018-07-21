@@ -389,6 +389,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 // overloaded * operator.
                 local_decl.is_user_variable.is_some() && is_shared_ref(local_decl.ty)
             }
+            Place::Promoted(_) => true,
             Place::Static(ref st) => is_shared_ref(st.ty),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(_, ty) => is_shared_ref(ty),

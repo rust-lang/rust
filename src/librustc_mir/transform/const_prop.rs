@@ -13,7 +13,7 @@
 
 
 use rustc::hir::def::Def;
-use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local};
+use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
@@ -174,48 +174,22 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         c: &Constant<'tcx>,
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
-        match c.literal {
-            Literal::Value { value } => {
-                self.ecx.tcx.span = source_info.span;
-                match self.ecx.const_to_value(value.val) {
-                    Ok(val) => Some((val, value.ty, c.span)),
-                    Err(error) => {
-                        let (stacktrace, span) = self.ecx.generate_stacktrace(None);
-                        let err = ConstEvalErr {
-                            span,
-                            error,
-                            stacktrace,
-                        };
-                        err.report_as_error(
-                            self.tcx.at(source_info.span),
-                            "could not evaluate constant",
-                        );
-                        None
-                    },
-                }
-            },
-            // evaluate the promoted and replace the constant with the evaluated result
-            Literal::Promoted { index } => {
-                let generics = self.tcx.generics_of(self.source.def_id);
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
-                }
-                let substs = Substs::identity_for_item(self.tcx, self.source.def_id);
-                let instance = Instance::new(self.source.def_id, substs);
-                let cid = GlobalId {
-                    instance,
-                    promoted: Some(index),
+        self.ecx.tcx.span = source_info.span;
+        match self.ecx.const_to_value(c.literal.val) {
+            Ok(val) => Some((val, c.literal.ty, c.span)),
+            Err(error) => {
+                let (stacktrace, span) = self.ecx.generate_stacktrace(None);
+                let err = ConstEvalErr {
+                    span,
+                    error,
+                    stacktrace,
                 };
-                // cannot use `const_eval` here, because that would require having the MIR
-                // for the current function available, but we're producing said MIR right now
-                let (value, _, ty) = self.use_ecx(source_info, |this| {
-                    eval_promoted(&mut this.ecx, cid, this.mir, this.param_env)
-                })?;
-                let val = (value, ty, c.span);
-                trace!("evaluated {:?} to {:?}", c, val);
-                Some(val)
-            }
+                err.report_as_error(
+                    self.tcx.at(source_info.span),
+                    "could not evaluate constant",
+                );
+                None
+            },
         }
     }
 
@@ -232,6 +206,27 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     Some((valty.value, valty.ty, span))
                 },
                 _ => None,
+            },
+            Place::Promoted(ref promoted) => {
+                let generics = self.tcx.generics_of(self.source.def_id);
+                if generics.requires_monomorphization(self.tcx) {
+                    // FIXME: can't handle code with generics
+                    return None;
+                }
+                let substs = Substs::identity_for_item(self.tcx, self.source.def_id);
+                let instance = Instance::new(self.source.def_id, substs);
+                let cid = GlobalId {
+                    instance,
+                    promoted: Some(promoted.0),
+                };
+                // cannot use `const_eval` here, because that would require having the MIR
+                // for the current function available, but we're producing said MIR right now
+                let (value, _, ty) = self.use_ecx(source_info, |this| {
+                    eval_promoted(&mut this.ecx, cid, this.mir, this.param_env)
+                })?;
+                let val = (value, ty, source_info.span);
+                trace!("evaluated promoted {:?} to {:?}", promoted, val);
+                Some(val)
             },
             _ => None,
         }

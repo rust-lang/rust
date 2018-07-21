@@ -507,14 +507,37 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
                             match *arg {
+                                mir::Operand::Copy(mir::Place::Promoted(box(index, ty))) |
+                                mir::Operand::Move(mir::Place::Promoted(box(index, ty))) => {
+                                    let param_env = ty::ParamEnv::reveal_all();
+                                    let cid = mir::interpret::GlobalId {
+                                        instance: self.instance,
+                                        promoted: Some(index),
+                                    };
+                                    let c = bx.tcx().const_eval(param_env.and(cid));
+                                    let (llval, ty) = self.simd_shuffle_indices(
+                                        &bx,
+                                        terminator.source_info.span,
+                                        ty,
+                                        c,
+                                    );
+                                    return OperandRef {
+                                        val: Immediate(llval),
+                                        layout: bx.cx.layout_of(ty),
+                                    };
+
+                                },
                                 mir::Operand::Copy(_) |
                                 mir::Operand::Move(_) => {
                                     span_bug!(span, "shuffle indices must be constant");
                                 }
                                 mir::Operand::Constant(ref constant) => {
+                                    let c = self.eval_mir_constant(&bx, constant);
                                     let (llval, ty) = self.simd_shuffle_indices(
                                         &bx,
-                                        constant,
+                                        constant.span,
+                                        constant.ty,
+                                        c,
                                     );
                                     return OperandRef {
                                         val: Immediate(llval),
