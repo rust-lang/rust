@@ -1730,6 +1730,7 @@ impl Step for CrateRustdoc {
 
         let compiler = builder.compiler(builder.top_stage, self.host);
         let target = compiler.host;
+        builder.ensure(compile::Rustc { compiler, target });
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
