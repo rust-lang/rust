@@ -3584,7 +3584,6 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         Some(v) => v,
         None => return Ok(()),
     };
-    //println!("=======> {:?}", containing_item.name);
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| {
         /*if let Some(ref t) = i.inner_impl().trait_ {
             println!("++++++> {:?}", t);

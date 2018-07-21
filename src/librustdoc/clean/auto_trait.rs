@@ -16,6 +16,8 @@ use rustc::infer::InferOk;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
 
+use core::DocAccessLevels;
+
 use super::*;
 
 pub struct AutoTraitFinder<'a, 'tcx: 'a, 'rcx: 'a> {
@@ -115,13 +117,38 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     _ => false,
                 };*/
                 for &trait_def_id in self.cx.all_traits.iter() {
-                    if traits.get(&trait_def_id).is_some() {
+                    if traits.get(&trait_def_id).is_some() ||
+                       !self.cx.access_levels.borrow().is_doc_reachable(trait_def_id) {
                         continue
                     }
                     let t_name = self.cx.tcx.item_name(trait_def_id).to_string();
                     self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
                         self.cx.tcx.infer_ctxt().enter(|infcx| {
+                            let generics = infcx.tcx.generics_of(impl_def_id);
+
+                            /*if generics.count() == 0 {
+                                return;
+                            }*/
                             let trait_ref = infcx.tcx.impl_trait_ref(impl_def_id).unwrap();
+                            /*if !trait_ref.substs.iter().any(|x| match x.unpack() {
+                                ::rustc::ty::subst::UnpackedKind::Type(ref t) => {
+                                    match t.sty {
+                                        ::rustc::ty::TypeVariants::TyParam(_) => true,
+                                        _ => false,
+                                    }
+                                }
+                                _ => false,
+                            }) {
+                                return;
+                            }*/
+
+                            if !match infcx.tcx.type_of(impl_def_id).sty {
+                                ::rustc::ty::TypeVariants::TyParam(_) => true,
+                                _ => false,
+                            } {
+                                return;
+                            }
+
                             let substs = infcx.fresh_substs_for_item(DUMMY_SP, def_id);
                             let ty2 = ty.subst(infcx.tcx, substs);
                             let param_env = param_env.subst(infcx.tcx, substs);
@@ -146,50 +173,18 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                     println!("==> {}", infcx.tcx.item_name(trait_def_id).to_string());
                                 }*/
                                 if may_apply {
-                                    if self.cx.crate_name == Some("std".to_string()) && t_name == "ToString" {
-                                        println!("may_apply: {:?}", t_name);
-                                    }
                                     // FIXME: add crate's id before the name to avoid removing a
                                     // trait which doesn't exist.
                                     if traits.get(&trait_def_id).is_none() {
-                                        if self.cx.crate_name == Some("std".to_string()) && t_name == "ToString" {
-                                            println!("in!");
+                                        if self.cx.crate_name == Some("std".to_string()) {
+                                            println!("visibility: ({} {}) [{} {:?}] [{} {:?}]",
+                                                     self.cx.tcx.item_name(def_id).to_string(), t_name,
+                                                     impl_def_id.krate, impl_def_id.index,
+                                                     trait_def_id.krate, trait_def_id.index);
+                                            println!("{:?}", infcx.tcx.visibility(impl_def_id));
+                                            println!("{:?}", infcx.tcx.visibility(trait_def_id));
                                         }
-                                        /*if print {
-                                            println!("> {}", infcx.tcx.item_name(trait_def_id).to_string());
-                                        }*/
-                                        /*let generics = (infcx.tcx.generics_of(trait_def_id), &predicates).clean(cx);
-                                        get_path_for_type(self.cx.tcx, trait_def_id, hir::def::Def::Trait)*/
-                                        /*if let Some(i) = self.get_auto_trait_impl_for(
-                                            def_id,
-                                            name.clone(),
-                                            generics.clone(),
-                                            def_ctor,
-                                            trait_def_id,
-                                        ) {
-                                            traits.insert(trait_name, i);
-                                        }*/
 
-                                        let mut impls = Vec::new();
-                                        ::clean::inline::build_impl(&self.cx, impl_def_id, &mut impls);
-                                        /*if ::std::env::var("LOL").is_ok() {
-                                            println!("=> {} ::> {}",
-                                                     infcx.tcx.item_name(trait_def_id).to_string(),
-                                                     impls.len());
-                                            println!("{:?}", impls);
-                                        }*/
-                                        for impl_ in &mut impls {
-                                            if let ImplItem(ref mut i) = impl_.inner {
-                                                i.synthetic = true;
-                                                i.for_ = ty.clean(&self.cx);
-                                                //i.visibility = None;
-                                            }
-                                            //impl_.visibility = None;
-                                            if self.cx.crate_name == Some("std".to_string()) && t_name == "ToString" {
-                                                println!("**> {:?}", impl_);
-                                            }
-                                        }
-                                        //traits.insert(trait_def_id, impls);
                                         let trait_ = hir::TraitRef {
                                             path: get_path_for_type(infcx.tcx, trait_def_id, hir::def::Def::Trait),
                                             ref_id: ast::DUMMY_NODE_ID,
@@ -198,7 +193,6 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                                                               .into_iter()
                                                                               .map(|meth| meth.ident.to_string())
                                                                               .collect();
-                                        println!("|||> {}", t_name);
                                         traits.insert(trait_def_id, Item {
                                             source: Span::empty(),
                                             name: None,
@@ -209,7 +203,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                             deprecation: None,
                                             inner: ImplItem(Impl {
                                                 unsafety: hir::Unsafety::Normal,
-                                                generics: (infcx.tcx.generics_of(trait_def_id), &Default::default()).clean(self.cx),
+                                                generics: (generics,
+                                                           &tcx.predicates_of(impl_def_id)).clean(self.cx),
                                                 provided_trait_methods,
                                                 trait_: Some(trait_.clean(self.cx)),
                                                 for_: ty.clean(self.cx),
@@ -279,9 +274,6 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             "get_auto_traits: type {:?} auto_traits {:?}",
             def_id, auto_traits
         );
-        if self.cx.crate_name == Some("std".to_string()) {
-            println!("((((((> {} {:?}", auto_traits.len(), auto_traits);
-        }
         auto_traits
     }
 
