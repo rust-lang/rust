@@ -3191,7 +3191,8 @@ impl<'a> LoweringContext<'a> {
         let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
-            if !def.legacy || attr::contains_name(&i.attrs, "macro_export") {
+            if !def.legacy || attr::contains_name(&i.attrs, "macro_export") ||
+                              attr::contains_name(&i.attrs, "rustc_doc_only_macro") {
                 let body = self.lower_token_stream(def.stream());
                 self.exported_macros.push(hir::MacroDef {
                     name,
