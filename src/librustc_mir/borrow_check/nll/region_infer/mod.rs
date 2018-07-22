@@ -48,9 +48,6 @@ pub struct RegionInferenceContext<'tcx> {
     /// from as well as its final inferred value.
     definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
-    /// Maps from points/universal-regions to a `RegionElementIndex`.
-    elements: Rc<RegionValueElements>,
-
     /// The liveness constraints added to each region. For most
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
@@ -219,14 +216,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mut scc_values = RegionValues::new(elements);
 
-        for (region, location_set) in liveness_constraints.iter_enumerated() {
+        for region in liveness_constraints.regions_with_points() {
             let scc = constraint_sccs.scc(region);
-            scc_values.merge_into(scc, location_set);
+            scc_values.merge_row(scc, region, &liveness_constraints);
         }
 
         let mut result = Self {
             definitions,
-            elements: elements.clone(),
             liveness_constraints,
             constraints,
             constraint_graph,
@@ -273,7 +269,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         // For each universally quantified region X:
-        let elements = self.elements.clone();
         let universal_regions = self.universal_regions.clone();
         for variable in universal_regions.universal_regions() {
             // These should be free-region variables.
@@ -283,9 +278,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             });
 
             // Add all nodes in the CFG to liveness constraints
-            for point_index in elements.all_point_indices() {
-                self.add_live_element(variable, point_index);
-            }
+            let variable_scc = self.constraint_sccs.scc(variable);
+            self.liveness_constraints.add_all_points(variable);
+            self.scc_values.add_all_points(variable_scc);
 
             // Add `end(X)` into the set for X.
             self.add_live_element(variable, variable);
@@ -782,7 +777,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // now). Therefore, the sup-region outlives the sub-region if,
         // for each universal region R1 in the sub-region, there
         // exists some region R2 in the sup-region that outlives R1.
-        let universal_outlives = self.scc_values
+        let universal_outlives = self
+            .scc_values
             .universal_regions_outlived_by(sub_region_scc)
             .all(|r1| {
                 self.scc_values

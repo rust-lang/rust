@@ -43,10 +43,25 @@ impl<C: Idx> BitVector<C> {
         self.data.iter().map(|e| e.count_ones() as usize).sum()
     }
 
+    /// True if `self` contains the bit `bit`.
     #[inline]
     pub fn contains(&self, bit: C) -> bool {
         let (word, mask) = word_mask(bit);
         (self.data[word] & mask) != 0
+    }
+
+    /// True if `self` contains all the bits in `other`.
+    ///
+    /// The two vectors must have the same length.
+    #[inline]
+    pub fn contains_all(&self, other: &BitVector<C>) -> bool {
+        assert_eq!(self.data.len(), other.data.len());
+        self.data.iter().zip(&other.data).all(|(a, b)| (a & b) == *b)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.data.iter().all(|a| *a == 0)
     }
 
     /// Returns true if the bit has changed.
@@ -349,6 +364,10 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         self.vector.len()
     }
 
+    pub fn rows(&self) -> impl Iterator<Item = R> {
+        self.vector.indices()
+    }
+
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
     pub fn iter<'a>(&'a self, row: R) -> impl Iterator<Item = C> + 'a {
@@ -484,6 +503,48 @@ fn matrix_intersection() {
 #[test]
 fn matrix_iter() {
     let mut matrix = BitMatrix::new(64, 100);
+    matrix.add(3, 22);
+    matrix.add(3, 75);
+    matrix.add(2, 99);
+    matrix.add(4, 0);
+    matrix.merge(3, 5);
+
+    let expected = [99];
+    let mut iter = expected.iter();
+    for i in matrix.iter(2) {
+        let j = *iter.next().unwrap();
+        assert_eq!(i, j);
+    }
+    assert!(iter.next().is_none());
+
+    let expected = [22, 75];
+    let mut iter = expected.iter();
+    for i in matrix.iter(3) {
+        let j = *iter.next().unwrap();
+        assert_eq!(i, j);
+    }
+    assert!(iter.next().is_none());
+
+    let expected = [0];
+    let mut iter = expected.iter();
+    for i in matrix.iter(4) {
+        let j = *iter.next().unwrap();
+        assert_eq!(i, j);
+    }
+    assert!(iter.next().is_none());
+
+    let expected = [22, 75];
+    let mut iter = expected.iter();
+    for i in matrix.iter(5) {
+        let j = *iter.next().unwrap();
+        assert_eq!(i, j);
+    }
+    assert!(iter.next().is_none());
+}
+
+#[test]
+fn sparse_matrix_iter() {
+    let mut matrix = SparseBitMatrix::new(64, 100);
     matrix.add(3, 22);
     matrix.add(3, 75);
     matrix.add(2, 99);
