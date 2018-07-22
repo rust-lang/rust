@@ -6,22 +6,24 @@ The tracking issue for this feature is: [#31436]
 
 ------------------------
 
-The `catch_expr` feature adds support for a `catch` expression. The `catch`
-expression creates a new scope one can use the `?` operator in.
+The `catch_expr` feature adds support for `try` blocks. A `try`
+block creates a new scope one can use the `?` operator in.
 
-```rust
+```rust,ignore
+// This code needs the 2018 edition
+
 #![feature(catch_expr)]
 
 use std::num::ParseIntError;
 
-let result: Result<i32, ParseIntError> = do catch {
+let result: Result<i32, ParseIntError> = try {
     "1".parse::<i32>()?
         + "2".parse::<i32>()?
         + "3".parse::<i32>()?
 };
 assert_eq!(result, Ok(6));
 
-let result: Result<i32, ParseIntError> = do catch {
+let result: Result<i32, ParseIntError> = try {
     "1".parse::<i32>()?
         + "foo".parse::<i32>()?
         + "3".parse::<i32>()?
