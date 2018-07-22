@@ -507,6 +507,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
                             match *arg {
+                                // The shuffle array argument is usually not an explicit constant,
+                                // but specified directly in the code. This means it gets promoted
+                                // and we can then extract the value by evaluating the promoted.
                                 mir::Operand::Copy(mir::Place::Promoted(box(index, ty))) |
                                 mir::Operand::Move(mir::Place::Promoted(box(index, ty))) => {
                                     let param_env = ty::ParamEnv::reveal_all();
