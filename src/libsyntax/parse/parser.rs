@@ -3458,7 +3458,7 @@ impl<'a> Parser<'a> {
     {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
-        Ok(self.mk_expr(span_lo.to(body.span), ExprKind::Catch(body), attrs))
+        Ok(self.mk_expr(span_lo.to(body.span), ExprKind::TryBlock(body), attrs))
     }
 
     // `match` token already eaten

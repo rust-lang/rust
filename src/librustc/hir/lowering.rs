@@ -3613,10 +3613,10 @@ impl<'a> LoweringContext<'a> {
                     hir::LoopSource::Loop,
                 )
             }),
-            ExprKind::Catch(ref body) => {
+            ExprKind::TryBlock(ref body) => {
                 self.with_catch_scope(body.id, |this| {
                     let unstable_span =
-                        this.allow_internal_unstable(CompilerDesugaringKind::Catch, body.span);
+                        this.allow_internal_unstable(CompilerDesugaringKind::TryBlock, body.span);
                     let mut block = this.lower_block(body, true).into_inner();
                     let tail = block.expr.take().map_or_else(
                         || {

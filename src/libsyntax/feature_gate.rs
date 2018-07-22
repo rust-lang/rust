@@ -1734,7 +1734,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                   e.span,
                                   "yield syntax is experimental");
             }
-            ast::ExprKind::Catch(_) => {
+            ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, catch_expr, e.span, "`catch` expression is experimental");
             }
             ast::ExprKind::IfLet(ref pats, ..) | ast::ExprKind::WhileLet(ref pats, ..) => {
