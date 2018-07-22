@@ -2703,6 +2703,11 @@ impl<T: Sized> Unique<T> {
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
+    ///
+    /// Note that the pointer value may potentially represent a valid pointer to
+    /// a `T`, which means this must not be used as a "not yet initialized"
+    /// sentinel value. Types that lazily allocate must track initialization by
+    /// some other means.
     // FIXME: rename to dangling() to match NonNull?
     pub const fn empty() -> Self {
         unsafe {
@@ -2834,6 +2839,11 @@ impl<T: Sized> NonNull<T> {
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
+    ///
+    /// Note that the pointer value may potentially represent a valid pointer to
+    /// a `T`, which means this must not be used as a "not yet initialized"
+    /// sentinel value. Types that lazily allocate must track initialization by
+    /// some other means.
     #[stable(feature = "nonnull", since = "1.25.0")]
     pub fn dangling() -> Self {
         unsafe {
