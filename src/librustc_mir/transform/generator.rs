@@ -292,8 +292,10 @@ fn make_generator_state_argument_indirect<'a, 'tcx>(
     DerefArgVisitor.visit_mir(mir);
 }
 
-fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
-                            mir: &mut Mir<'tcx>) -> Local {
+fn replace_result_variable<'tcx>(
+    ret_ty: Ty<'tcx>,
+    mir: &mut Mir<'tcx>,
+) -> Local {
     let source_info = source_info(mir);
     let new_ret = LocalDecl {
         mutability: Mutability::Mut,
@@ -306,7 +308,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
     };
     let new_ret_local = Local::new(mir.local_decls.len());
     mir.local_decls.push(new_ret);
-    mir.local_decls.swap(0, new_ret_local.index());
+    mir.local_decls.swap(RETURN_PLACE, new_ret_local);
 
     RenameLocalVisitor {
         from: RETURN_PLACE,

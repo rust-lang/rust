@@ -22,7 +22,7 @@ use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
 use super::FunctionCx;
 
-pub fn non_ssa_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector {
+pub fn non_ssa_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector<mir::Local> {
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
@@ -54,7 +54,7 @@ pub fn non_ssa_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector {
 struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
     fx: &'mir FunctionCx<'a, 'tcx>,
     dominators: Dominators<mir::BasicBlock>,
-    non_ssa_locals: BitVector,
+    non_ssa_locals: BitVector<mir::Local>,
     // The location of the first visited direct assignment to each
     // local, or an invalid location (out of bounds `block` index).
     first_assignment: IndexVec<mir::Local, Location>
@@ -90,7 +90,7 @@ impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
 
     fn not_ssa(&mut self, local: mir::Local) {
         debug!("marking {:?} as non-SSA", local);
-        self.non_ssa_locals.insert(local.index());
+        self.non_ssa_locals.insert(local);
     }
 
     fn assign(&mut self, local: mir::Local, location: Location) {

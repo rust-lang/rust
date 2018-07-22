@@ -39,7 +39,7 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
     // are added with new elements. Perhaps better would be to ask the
     // user for a batch of edges to minimize this effect, but I
     // already wrote the code this way. :P -nmatsakis
-    closure: Lock<Option<BitMatrix>>,
+    closure: Lock<Option<BitMatrix<usize, usize>>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -354,7 +354,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     }
 
     fn with_closure<OP, R>(&self, op: OP) -> R
-        where OP: FnOnce(&BitMatrix) -> R
+        where OP: FnOnce(&BitMatrix<usize, usize>) -> R
     {
         let mut closure_cell = self.closure.borrow_mut();
         let mut closure = closure_cell.take();
@@ -366,7 +366,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         result
     }
 
-    fn compute_closure(&self) -> BitMatrix {
+    fn compute_closure(&self) -> BitMatrix<usize, usize> {
         let mut matrix = BitMatrix::new(self.elements.len(),
                                         self.elements.len());
         let mut changed = true;
@@ -396,7 +396,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
 /// - Input: `[a, b, x]`. Output: `[a, x]`.
 /// - Input: `[b, a, x]`. Output: `[b, a, x]`.
 /// - Input: `[a, x, b, y]`. Output: `[a, x]`.
-fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix) {
+fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix<usize, usize>) {
     let mut i = 0;
     while i < candidates.len() {
         let candidate_i = candidates[i];

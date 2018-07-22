@@ -348,7 +348,7 @@ where
 {
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
-    visited: BitVector,
+    visited: BitVector<usize>,
     direction: Direction,
 }
 

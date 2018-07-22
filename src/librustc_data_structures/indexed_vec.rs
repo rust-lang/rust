@@ -25,7 +25,13 @@ use rustc_serialize as serialize;
 /// (purpose: avoid mixing indexes for different bitvector domains.)
 pub trait Idx: Copy + 'static + Ord + Debug + Hash {
     fn new(idx: usize) -> Self;
+
     fn index(self) -> usize;
+
+    fn increment_by(&mut self, amount: usize) {
+        let v = self.index() + amount;
+        *self = Self::new(v);
+    }
 }
 
 impl Idx for usize {
@@ -504,8 +510,8 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn swap(&mut self, a: usize, b: usize) {
-        self.raw.swap(a, b)
+    pub fn swap(&mut self, a: I, b: I) {
+        self.raw.swap(a.index(), b.index())
     }
 
     #[inline]

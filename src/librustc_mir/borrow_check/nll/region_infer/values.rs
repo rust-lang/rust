@@ -222,12 +222,12 @@ impl<N: Idx> RegionValues<N> {
     /// Iterates through each row and the accompanying bit set.
     pub fn iter_enumerated<'a>(
         &'a self
-    ) -> impl Iterator<Item = (N, &'a BitVector)> + 'a {
+    ) -> impl Iterator<Item = (N, &'a BitVector<RegionElementIndex>)> + 'a {
         self.matrix.iter_enumerated()
     }
 
     /// Merge a row, `from`, originating in another `RegionValues` into the `into` row.
-    pub fn merge_into(&mut self, into: N, from: &BitVector) -> bool {
+    pub fn merge_into(&mut self, into: N, from: &BitVector<RegionElementIndex>) -> bool {
         self.matrix.merge_into(into, from)
     }
 
