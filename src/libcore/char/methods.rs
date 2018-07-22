@@ -436,34 +436,11 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
-        let code = self as u32;
-        unsafe {
-            let len =
-            if code < MAX_ONE_B && !dst.is_empty() {
-                *dst.get_unchecked_mut(0) = code as u8;
-                1
-            } else if code < MAX_TWO_B && dst.len() >= 2 {
-                *dst.get_unchecked_mut(0) = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-                *dst.get_unchecked_mut(1) = (code & 0x3F) as u8 | TAG_CONT;
-                2
-            } else if code < MAX_THREE_B && dst.len() >= 3  {
-                *dst.get_unchecked_mut(0) = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-                *dst.get_unchecked_mut(1) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(2) = (code & 0x3F) as u8 | TAG_CONT;
-                3
-            } else if dst.len() >= 4 {
-                *dst.get_unchecked_mut(0) = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-                *dst.get_unchecked_mut(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(2) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
-                4
-            } else {
-                panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
-                    from_u32_unchecked(code).len_utf8(),
-                    code,
-                    dst.len())
-            };
-            from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
+        let l = dst.len();
+        match self.try_encode_utf8(dst) {
+            Some(s) => s,
+            None => panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+                           self.len_utf8(), self as u32, l),
         }
     }
 
@@ -495,7 +472,32 @@ impl char {
     #[unstable(feature = "try_unicode_encode_char", issue = "52579")]
     #[inline]
     pub fn try_encode_utf8(self, dst: &mut [u8]) -> Option<&mut str> {
-        if dst.len() < self.len_utf8() { None } else { Some(self.encode_utf8(dst)) }
+        let code = self as u32;
+        unsafe {
+            let len =
+            if code < MAX_ONE_B && !dst.is_empty() {
+                *dst.get_unchecked_mut(0) = code as u8;
+                1
+            } else if code < MAX_TWO_B && dst.len() >= 2 {
+                *dst.get_unchecked_mut(0) = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+                *dst.get_unchecked_mut(1) = (code & 0x3F) as u8 | TAG_CONT;
+                2
+            } else if code < MAX_THREE_B && dst.len() >= 3  {
+                *dst.get_unchecked_mut(0) = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+                *dst.get_unchecked_mut(1) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code & 0x3F) as u8 | TAG_CONT;
+                3
+            } else if dst.len() >= 4 {
+                *dst.get_unchecked_mut(0) = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+                *dst.get_unchecked_mut(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
+                4
+            } else {
+                return None;
+            };
+            Some(from_utf8_unchecked_mut(dst.get_unchecked_mut(..len)))
+        }
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -535,24 +537,11 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
-        let mut code = self as u32;
-        unsafe {
-            if (code & 0xFFFF) == code && !dst.is_empty() {
-                // The BMP falls through (assuming non-surrogate, as it should)
-                *dst.get_unchecked_mut(0) = code as u16;
-                slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
-            } else if dst.len() >= 2 {
-                // Supplementary planes break into surrogates.
-                code -= 0x1_0000;
-                *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
-                *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
-                slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
-            } else {
-                panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
-                    from_u32_unchecked(code).len_utf16(),
-                    code,
-                    dst.len())
-            }
+        let l = dst.len();
+        match self.try_encode_utf16(dst) {
+            Some(s) => s,
+            None => panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
+                           self.len_utf16(), self as u32, l),
         }
     }
 
@@ -584,7 +573,22 @@ impl char {
     #[unstable(feature = "try_unicode_encode_char", issue = "52579")]
     #[inline]
     pub fn try_encode_utf16(self, dst: &mut [u16]) -> Option<&mut [u16]> {
-        if dst.len() < self.len_utf16() { None } else { Some(self.encode_utf16(dst)) }
+        let mut code = self as u32;
+        unsafe {
+            if (code & 0xFFFF) == code && !dst.is_empty() {
+                // The BMP falls through (assuming non-surrogate, as it should)
+                *dst.get_unchecked_mut(0) = code as u16;
+                Some(slice::from_raw_parts_mut(dst.as_mut_ptr(), 1))
+            } else if dst.len() >= 2 {
+                // Supplementary planes break into surrogates.
+                code -= 0x1_0000;
+                *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
+                *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
+                Some(slice::from_raw_parts_mut(dst.as_mut_ptr(), 2))
+            } else {
+                None
+            }
+        }
     }
 
     /// Returns true if this `char` is an alphabetic code point, and false if not.
