@@ -17,7 +17,7 @@ use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common::{self, CodegenCx, C_null, C_undef, C_usize};
+use common::{self, CodegenCx, C_undef, C_usize};
 use builder::{Builder, MemFlags};
 use value::Value;
 use type_of::LayoutLlvmExt;
@@ -413,7 +413,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     .unwrap_or_else(|err| {
                         match constant.literal {
                             mir::Literal::Promoted { .. } => {
-                                // FIXME: generate a panic here
+                                // this is unreachable as long as runtime
+                                // and compile-time agree on values
+                                // With floats that won't always be true
+                                // so we generate an abort below
                             },
                             mir::Literal::Value { .. } => {
                                 err.report_as_error(
@@ -422,10 +425,12 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                 );
                             },
                         }
+                        let fnname = bx.cx.get_intrinsic(&("llvm.trap"));
+                        bx.call(fnname, &[], None);
                         // We've errored, so we don't have to produce working code.
                         let layout = bx.cx.layout_of(ty);
                         PlaceRef::new_sized(
-                            C_null(layout.llvm_type(bx.cx).ptr_to()),
+                            C_undef(layout.llvm_type(bx.cx).ptr_to()),
                             layout,
                             layout.align,
                         ).load(bx)
