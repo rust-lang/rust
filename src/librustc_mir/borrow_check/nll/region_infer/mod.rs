@@ -9,18 +9,16 @@
 // except according to those terms.
 
 use super::universal_regions::UniversalRegions;
+use borrow_check::nll::constraints::graph::ConstraintGraph;
 use borrow_check::nll::constraints::{
     ConstraintIndex, ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
 };
-use borrow_check::nll::constraints::graph::ConstraintGraph;
 use borrow_check::nll::region_infer::values::ToElementIndex;
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::region_constraints::{GenericKind, VarInfos};
-use rustc::infer::InferCtxt;
-use rustc::infer::NLLRegionVariableOrigin;
-use rustc::infer::RegionVariableOrigin;
+use rustc::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc::mir::{
     ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location,
     Mir,
@@ -85,17 +83,10 @@ pub struct RegionInferenceContext<'tcx> {
 }
 
 struct RegionDefinition<'tcx> {
-    /// Why we created this variable. Mostly these will be
-    /// `RegionVariableOrigin::NLL`, but some variables get created
-    /// elsewhere in the code with other causes (e.g., instantiation
-    /// late-bound-regions).
-    origin: RegionVariableOrigin,
-
-    /// True if this is a universally quantified region. This means a
-    /// lifetime parameter that appears in the function signature (or,
-    /// in the case of a closure, in the closure environment, which of
-    /// course is also in the function signature).
-    is_universal: bool,
+    /// What kind of variable is this -- a free region? existential
+    /// variable? etc. (See the `NLLRegionVariableOrigin` for more
+    /// info.)
+    origin: NLLRegionVariableOrigin,
 
     /// If this is 'static or an early-bound region, then this is
     /// `Some(X)` where `X` is the name of the region.
@@ -287,11 +278,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for variable in universal_regions.universal_regions() {
             // These should be free-region variables.
             assert!(match self.definitions[variable].origin {
-                RegionVariableOrigin::NLL(NLLRegionVariableOrigin::FreeRegion) => true,
-                _ => false,
+                NLLRegionVariableOrigin::FreeRegion => true,
+                NLLRegionVariableOrigin::Existential => false,
             });
-
-            self.definitions[variable].is_universal = true;
 
             // Add all nodes in the CFG to liveness constraints
             for point_index in elements.all_point_indices() {
@@ -842,24 +831,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
         errors_buffer: &mut Vec<Diagnostic>,
     ) {
-        // The universal regions are always found in a prefix of the
-        // full list.
-        let universal_definitions = self.definitions
-            .iter_enumerated()
-            .take_while(|(_, fr_definition)| fr_definition.is_universal);
+        for (fr, fr_definition) in self.definitions.iter_enumerated() {
+            match fr_definition.origin {
+                NLLRegionVariableOrigin::FreeRegion => {
+                    // Go through each of the universal regions `fr` and check that
+                    // they did not grow too large, accumulating any requirements
+                    // for our caller into the `outlives_requirements` vector.
+                    self.check_universal_region(
+                        infcx,
+                        mir,
+                        mir_def_id,
+                        fr,
+                        &mut propagated_outlives_requirements,
+                        errors_buffer,
+                    );
+                }
 
-        // Go through each of the universal regions `fr` and check that
-        // they did not grow too large, accumulating any requirements
-        // for our caller into the `outlives_requirements` vector.
-        for (fr, _) in universal_definitions {
-            self.check_universal_region(
-                infcx,
-                mir,
-                mir_def_id,
-                fr,
-                &mut propagated_outlives_requirements,
-                errors_buffer,
-            );
+                NLLRegionVariableOrigin::Existential => {
+                    // nothing to check here
+                }
+            }
         }
     }
 
@@ -940,13 +931,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 }
 
 impl<'tcx> RegionDefinition<'tcx> {
-    fn new(origin: RegionVariableOrigin) -> Self {
+    fn new(rv_origin: RegionVariableOrigin) -> Self {
         // Create a new region definition. Note that, for free
-        // regions, these fields get updated later in
+        // regions, the `external_name` field gets updated later in
         // `init_universal_regions`.
+
+        let origin = match rv_origin {
+            RegionVariableOrigin::NLL(origin) => origin,
+            _ => NLLRegionVariableOrigin::Existential,
+        };
+
         Self {
             origin,
-            is_universal: false,
             external_name: None,
         }
     }

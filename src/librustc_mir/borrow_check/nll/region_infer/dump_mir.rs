@@ -27,8 +27,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         writeln!(out, "| Free Region Mapping")?;
 
         for region in self.regions() {
-            if self.definitions[region].is_universal {
-                let classification = self.universal_regions.region_classification(region).unwrap();
+            if self.definitions[region].origin.is_universal() {
+                let classification = self.universal_regions
+                    .region_classification(region)
+                    .unwrap();
                 let outlived_by = self.universal_regions.regions_outlived_by(region);
                 writeln!(
                     out,

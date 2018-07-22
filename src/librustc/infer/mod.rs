@@ -377,7 +377,20 @@ pub enum NLLRegionVariableOrigin {
     // elsewhere. This origin indices we've got one of those.
     FreeRegion,
 
-    Inferred(::mir::visit::TyContext),
+    Existential,
+}
+
+impl NLLRegionVariableOrigin {
+    pub fn is_universal(self) -> bool {
+        match self {
+            NLLRegionVariableOrigin::FreeRegion => true,
+            NLLRegionVariableOrigin::Existential => false,
+        }
+    }
+
+    pub fn is_existential(self) -> bool {
+        !self.is_universal()
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

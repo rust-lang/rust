@@ -21,7 +21,6 @@ use borrow_check::nll::renumber;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferOk;
-use rustc::mir::visit::TyContext;
 use rustc::mir::*;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::{ObligationCause, PredicateObligations};
@@ -117,7 +116,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             let anon_defn_ty = anon_defn_ty.subst(tcx, anon_decl.substs);
                             let anon_defn_ty = renumber::renumber_regions(
                                 infcx,
-                                TyContext::Location(Location::START),
                                 &anon_defn_ty,
                             );
                             debug!(
