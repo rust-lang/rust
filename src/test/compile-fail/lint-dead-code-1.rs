@@ -19,7 +19,7 @@
 pub use foo2::Bar2;
 
 mod foo {
-    pub struct Bar; //~ ERROR: struct is never used
+    pub struct Bar; //~ ERROR: struct is never constructed
 }
 
 mod foo2 {
@@ -42,7 +42,7 @@ const CONST_USED_IN_ENUM_DISCRIMINANT: isize = 11;
 
 pub type typ = *const UsedStruct4;
 pub struct PubStruct;
-struct PrivStruct; //~ ERROR: struct is never used
+struct PrivStruct; //~ ERROR: struct is never constructed
 struct UsedStruct1 {
     #[allow(dead_code)]
     x: isize

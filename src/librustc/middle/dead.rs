@@ -554,12 +554,16 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                 hir::ItemKind::Impl(..) => self.tcx.sess.codemap().def_span(item.span),
                 _ => item.span,
             };
+            let participle = match item.node {
+                hir::ItemKind::Struct(..) => "constructed", // Issue #52325
+                _ => "used"
+            };
             self.warn_dead_code(
                 item.id,
                 span,
                 item.name,
                 item.node.descriptive_variant(),
-                "used",
+                participle,
             );
         } else {
             // Only continue if we didn't warn
