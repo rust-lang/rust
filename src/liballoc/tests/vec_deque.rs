@@ -929,53 +929,75 @@ fn test_append() {
 }
 
 #[test]
-fn test_append_advanced() {
-    fn check(
-        a_push_back: usize,
-        a_pop_back: usize,
-        b_push_back: usize,
-        b_pop_back: usize,
-        a_push_front: usize,
-        a_pop_front: usize,
-        b_push_front: usize,
-        b_pop_front: usize
-    ) {
-        let mut taken = 0;
-        let mut a = VecDeque::new();
-        let mut b = VecDeque::new();
-        for n in (taken..).take(a_push_back) {
-            a.push_back(n);
+fn test_append_permutations() {
+    fn construct_vec_deque(
+        push_back: usize,
+        pop_back: usize,
+        push_front: usize,
+        pop_front: usize,
+    ) -> VecDeque<usize> {
+        let mut out = VecDeque::new();
+        for a in 0..push_back {
+            out.push_back(a);
         }
-        taken += a_push_back;
-        for n in (taken..).take(a_push_front) {
-            a.push_front(n);
+        for b in 0..push_front {
+            out.push_front(push_back + b);
         }
-        taken += a_push_front;
-        for n in (taken..).take(b_push_back) {
-            b.push_back(n);
+        for _ in 0..pop_back {
+            out.pop_back();
         }
-        taken += b_push_back;
-        for n in (taken..).take(b_push_front) {
-            b.push_front(n);
+        for _ in 0..pop_front {
+            out.pop_front();
         }
-
-        a.drain(..a_pop_back);
-        a.drain(a_pop_front..);
-        b.drain(..b_pop_back);
-        b.drain(b_pop_front..);
-        let checked = a.iter().chain(b.iter()).map(|&x| x).collect::<Vec<usize>>();
-        a.append(&mut b);
-        assert_eq!(a, checked);
-        assert!(b.is_empty());
+        out
     }
-    for a_push in 0..17 {
-        for a_pop in 0..a_push {
-            for b_push in 0..17 {
-                for b_pop in 0..b_push {
-                    check(a_push, a_pop, b_push, b_pop, 0, 0, 0, 0);
-                    check(a_push, a_pop, b_push, b_pop, a_push, 0, 0, 0);
-                    check(a_push, a_pop, b_push, b_pop, 0, 0, b_push, 0);
-                    check(0, 0, 0, 0, a_push, a_pop, b_push, b_pop);
+
+    const MAX: usize = 5;
+
+    // Many different permutations of both the `VecDeque` getting appended to
+    // and the one getting appended are generated to check `append`.
+    // This ensures all 6 code paths of `append` are tested.
+    for src_push_back in 0..MAX {
+        for src_push_front in 0..MAX {
+            // doesn't pop more values than are pushed
+            for src_pop_back in 0..(src_push_back + src_push_front) {
+                for src_pop_front in 0..(src_push_back + src_push_front - src_pop_back) {
+
+                    let src = construct_vec_deque(
+                        src_push_back,
+                        src_pop_back,
+                        src_push_front,
+                        src_pop_front,
+                    );
+
+                    for dst_push_back in 0..MAX {
+                        for dst_push_front in 0..MAX {
+                            for dst_pop_back in 0..(dst_push_back + dst_push_front) {
+                                for dst_pop_front
+                                    in 0..(dst_push_back + dst_push_front - dst_pop_back)
+                                {
+                                    let mut dst = construct_vec_deque(
+                                        dst_push_back,
+                                        dst_pop_back,
+                                        dst_push_front,
+                                        dst_pop_front,
+                                    );
+                                    let mut src = src.clone();
+
+                                    // Assert that appending `src` to `dst` gives the same order
+                                    // of values as iterating over both in sequence.
+                                    let correct = dst
+                                        .iter()
+                                        .chain(src.iter())
+                                        .cloned()
+                                        .collect::<Vec<usize>>();
+                                    dst.append(&mut src);
+                                    assert_eq!(dst, correct);
+                                    assert!(src.is_empty());
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
