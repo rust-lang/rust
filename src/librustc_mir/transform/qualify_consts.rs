@@ -42,43 +42,22 @@ use std::fmt;
 use transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
-// Borrows of temporaries can be promoted only if
-// they have none of these qualifications.
-#[derive(Clone, Copy, Default, Eq, PartialEq)]
-struct Qualif {
-    // Constant containing interior mutability (`UnsafeCell`).
-    mut_interior: bool,
+pub const MUT_INTERIOR_BITS: u8 = 1 << 0;
+pub const NEEDS_DROP_BITS: u8 = 1 << 1;
+pub const NOT_CONST_BITS: u8 = 1 << 2;
 
-    // Constant containing an ADT that implements Drop.
-    needs_drop: bool,
-
-    // Not constant or not promotable - non-`const fn` calls, asm!,
-    // pointer comparisons, ptr-to-int casts, etc.
-    not_const: bool,
-}
-
-impl Qualif {
-    fn from_bits(bits: u8) -> Self {
-        Self {
-            mut_interior: bits & (1 << 0) != 0,
-            needs_drop: bits & (1 << 1) != 0,
-            not_const: bits & (1 << 2) != 0,
-        }
+fn qualif_bits((mut_interior, needs_drop, not_const): (bool, bool, bool)) -> u8 {
+    let mut bits = 0;
+    if mut_interior {
+        bits |= MUT_INTERIOR_BITS;
     }
-
-    fn bits(&self) -> u8 {
-        let mut bits = 0;
-        if self.mut_interior {
-            bits |= 1 << 0;
-        }
-        if self.needs_drop {
-            bits |= 1 << 1;
-        }
-        if self.not_const {
-            bits |= 1 << 2;
-        }
-        bits
+    if needs_drop {
+        bits |= NEEDS_DROP_BITS;
     }
+    if not_const {
+        bits |= NOT_CONST_BITS;
+    }
+    bits
 }
 
 /// What kind of item we are in.
@@ -102,7 +81,25 @@ impl fmt::Display for Mode {
     }
 }
 
-struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct MutInteriorChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    span: Span,
+    mir: &'a Mir<'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    local_mut_interior: IdxSetBuf<Local>,
+    mut_interior: bool
+}
+
+struct DropChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    span: Span,
+    mir: &'a Mir<'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    local_needs_drop: IdxSetBuf<Local>,
+    needs_drop: bool
+}
+
+struct ConstChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mode: Mode,
     span: Span,
     def_id: DefId,
@@ -110,37 +107,125 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     rpo: ReversePostorder<'a, 'tcx>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    local_mut_interior: IdxSetBuf<Local>,
-    local_needs_drop: IdxSetBuf<Local>,
     local_not_const: IdxSetBuf<Local>,
-    qualif: Qualif,
+    not_const: bool,
+    mut_interior_checker: MutInteriorChecker<'a, 'gcx, 'tcx>,
+    drop_checker: DropChecker<'a, 'gcx, 'tcx>,
     const_fn_arg_vars: BitVector,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
 
-impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
+impl<'a, 'tcx> MutInteriorChecker<'a, 'tcx, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+           def_id: DefId,
+           mir: &'a Mir<'tcx>)
+           -> MutInteriorChecker<'a, 'tcx, 'tcx> {
+        let param_env = tcx.param_env(def_id);
+
+        MutInteriorChecker {
+            span: mir.span,
+            mir,
+            tcx,
+            param_env,
+            local_mut_interior: IdxSetBuf::new_empty(mir.local_decls.len()),
+            mut_interior: false
+        }
+    }
+
+    /// Add the given type's qualification to `self.mut_interior`.
+    fn add_type(&mut self, ty: Ty<'tcx>) {
+        self.mut_interior = !ty.is_freeze(self.tcx, self.param_env, DUMMY_SP);
+    }
+
+    /// Within the provided closure, `self.mut_interior` will start
+    /// out false, and its value after the closure returns will
+    /// be combined with the value before the call to nest.
+    fn nest<F: FnOnce(&mut Self)>(&mut self, f: F) {
+        let original = self.mut_interior;
+        self.mut_interior = false;
+        f(self);
+        self.mut_interior |= original;
+    }
+
+    /// Assign the current qualification to the given destination.
+    fn assign(&mut self, dest: &Place<'tcx>, _: Location) {
+        if let Place::Local(index) = *dest {
+            debug!("store to {:?} {:?}", self.mir.local_kind(index), index);
+            self.local_mut_interior.set_member(&index, self.mut_interior);
+        }
+    }
+}
+
+impl<'a, 'tcx> DropChecker<'a, 'tcx, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+           def_id: DefId,
+           mir: &'a Mir<'tcx>)
+           -> DropChecker<'a, 'tcx, 'tcx> {
+        let param_env = tcx.param_env(def_id);
+
+        let mut local_needs_drop = IdxSetBuf::new_empty(mir.local_decls.len());
+        for arg in mir.args_iter() {
+            if mir.local_decls[arg].ty.needs_drop(tcx, param_env) {
+                local_needs_drop.add(&arg);
+            }
+        }
+
+        DropChecker {
+            span: mir.span,
+            mir,
+            tcx,
+            param_env,
+            local_needs_drop,
+            needs_drop: false
+        }
+    }
+
+    /// Add the given type's qualification to `self.needs_drop`.
+    fn add_type(&mut self, ty: Ty<'tcx>) {
+        self.needs_drop = ty.needs_drop(self.tcx, self.param_env);
+    }
+
+    /// Within the provided closure, `self.needs_drop` will start
+    /// out false, and its value after the closure returns will
+    /// be combined with the value before the call to nest.
+    fn nest<F: FnOnce(&mut Self)>(&mut self, f: F) {
+        let original = self.needs_drop;
+        self.needs_drop = false;
+        f(self);
+        self.needs_drop |= original;
+    }
+
+    /// Assign the current qualification to the given destination.
+    fn assign(&mut self, dest: &Place<'tcx>, _: Location) {
+        if let Place::Local(index) = *dest {
+            debug!("store to {:?} {:?}", self.mir.local_kind(index), index);
+            self.local_needs_drop.set_member(&index, self.needs_drop);
+        }
+    }
+}
+
+impl<'a, 'tcx> ConstChecker<'a, 'tcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            def_id: DefId,
            mir: &'a Mir<'tcx>,
            mode: Mode)
-           -> Qualifier<'a, 'tcx, 'tcx> {
+           -> ConstChecker<'a, 'tcx, 'tcx> {
         let mut rpo = traversal::reverse_postorder(mir);
         let temps = promote_consts::collect_temps(mir, &mut rpo);
         rpo.reset();
 
         let param_env = tcx.param_env(def_id);
 
-        let mut local_needs_drop = IdxSetBuf::new_empty(mir.local_decls.len());
         let mut local_not_const = IdxSetBuf::new_filled(mir.local_decls.len());
         for arg in mir.args_iter() {
-            if mir.local_decls[arg].ty.needs_drop(tcx, param_env) {
-                local_needs_drop.add(&arg);
-            }
             local_not_const.remove(&arg);
         }
 
-        Qualifier {
+        let mut_interior_checker = MutInteriorChecker::new(tcx, def_id, mir);
+        let drop_checker = DropChecker::new(tcx, def_id, mir);
+
+        ConstChecker {
             mode,
             span: mir.span,
             def_id,
@@ -148,21 +233,28 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             rpo,
             tcx,
             param_env,
-            local_mut_interior: IdxSetBuf::new_empty(mir.local_decls.len()),
-            local_needs_drop,
             local_not_const,
-            qualif: Qualif::default(),
+            not_const: false,
+            mut_interior_checker,
+            drop_checker,
             const_fn_arg_vars: BitVector::new(mir.local_decls.len()),
             temp_promotion_state: temps,
-            promotion_candidates: vec![]
+            promotion_candidates: Vec::new()
         }
+    }
+
+    /// Returns whether all qualification flags are unset.
+    fn is_qualif_empty(&self) -> bool {
+        !(self.not_const ||
+          self.mut_interior_checker.mut_interior ||
+          self.drop_checker.needs_drop)
     }
 
     // FIXME(eddyb) we could split the errors into meaningful
     // categories, but enabling full miri would make that
     // slightly pointless (even with feature-gating).
     fn not_const(&mut self) {
-        self.qualif.not_const = true;
+        self.not_const = true;
         if self.mode != Mode::Fn {
             let mut err = struct_span_err!(
                 self.tcx.sess,
@@ -183,7 +275,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
     /// Error about extra statements in a constant.
     fn statement_like(&mut self) {
-        self.qualif.not_const = true;
+        self.not_const = true;
         if self.mode != Mode::Fn {
             let mut err = feature_err(
                 &self.tcx.sess.parse_sess,
@@ -201,37 +293,19 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    /// Add the given qualification to `self.qualif`.
-    fn add(&mut self, qualif: Qualif) {
-        self.qualif.mut_interior |= qualif.mut_interior;
-        self.qualif.needs_drop |= qualif.needs_drop;
-        self.qualif.not_const |= qualif.not_const;
-    }
-
-    /// Add the given type's qualification to `self.qualif`.
-    fn add_type(&mut self, ty: Ty<'tcx>) {
-        self.qualif.mut_interior = !ty.is_freeze(self.tcx, self.param_env, DUMMY_SP);
-        self.qualif.needs_drop = ty.needs_drop(self.tcx, self.param_env);
-    }
-
-    /// Within the provided closure, `self.qualif` will start
+    /// Within the provided closure, `self.not_const` will start
     /// out empty, and its value after the closure returns will
-    /// be combined with the value before the call to nest.
+    /// be combined with the value before the call to `nest`.
     fn nest<F: FnOnce(&mut Self)>(&mut self, f: F) {
-        let original = self.qualif;
-        self.qualif = Qualif::default();
+        let original = self.not_const;
+        self.not_const = false;
         f(self);
-        self.add(original);
+        self.not_const |= original;
     }
 
     /// Assign the current qualification to the given destination.
     fn assign(&mut self, dest: &Place<'tcx>, location: Location) {
         trace!("assign: {:?}", dest);
-        let store = |this: &mut Self, index| {
-            this.local_mut_interior.set_member(&index, this.qualif.mut_interior);
-            this.local_needs_drop.set_member(&index, this.qualif.needs_drop);
-            this.local_not_const.set_member(&index, this.qualif.not_const);
-        };
 
         // Only handle promotable temps in non-const functions.
         if self.mode == Mode::Fn {
@@ -239,7 +313,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 if self.mir.local_kind(index) == LocalKind::Temp
                 && self.temp_promotion_state[index].is_promotable() {
                     debug!("store to promotable temp {:?}", index);
-                    store(self, index)
+                    self.local_not_const.set_member(&index, self.not_const);
                 }
             }
             return;
@@ -250,12 +324,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                                    self.mir.local_kind(index) == LocalKind::Arg) &&
                                    self.tcx.sess.features_untracked().const_let => {
                 debug!("store to var {:?}", index);
-                store(self, index)
+                self.local_not_const.set_member(&index, self.not_const);
             }
             Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
                                    self.mir.local_kind(index) == LocalKind::ReturnPointer => {
                 debug!("store to {:?} (temp or return pointer)", index);
-                store(self, index)
+                self.local_not_const.set_member(&index, self.not_const);
             }
 
             Place::Projection(box Projection {
@@ -278,7 +352,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Qualify a whole const, static initializer or const fn.
-    fn qualify_const(&mut self) -> (Qualif, Lrc<IdxSetBuf<Local>>) {
+    fn qualify_const(&mut self) -> ((bool, bool, bool), Lrc<IdxSetBuf<Local>>) {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
@@ -318,8 +392,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                         // Check for unused values. This usually means
                         // there are extra statements in the AST.
                         for temp in mir.temps_iter() {
-                            if !self.local_mut_interior.contains(&temp) &&
-                               !self.local_needs_drop.contains(&temp) &&
+                            if !self.mut_interior_checker.local_mut_interior.contains(&temp) &&
+                               !self.drop_checker.local_needs_drop.contains(&temp) &&
                                !self.local_not_const.contains(&temp) {
                                 continue;
                             }
@@ -343,9 +417,9 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                         }
 
                         // Make sure there are no extra unassigned variables.
-                        self.qualif.mut_interior = false;
-                        self.qualif.needs_drop = false;
-                        self.qualif.not_const = true;
+                        self.mut_interior_checker.mut_interior = false;
+                        self.drop_checker.needs_drop = false;
+                        self.not_const = true;
                         for index in mir.vars_iter() {
                             if !self.const_fn_arg_vars.contains(index.index()) {
                                 debug!("unassigned variable {:?}", index);
@@ -373,9 +447,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        self.qualif.mut_interior = self.local_mut_interior.contains(&RETURN_PLACE);
-        self.qualif.needs_drop = self.local_needs_drop.contains(&RETURN_PLACE);
-        self.qualif.not_const = self.local_not_const.contains(&RETURN_PLACE);
+        self.mut_interior_checker.mut_interior =
+            self.mut_interior_checker.local_mut_interior.contains(&RETURN_PLACE);
+        self.drop_checker.needs_drop =
+            self.drop_checker.local_needs_drop.contains(&RETURN_PLACE);
+        self.not_const =
+            self.local_not_const.contains(&RETURN_PLACE);
 
         // Collect all the temps we need to promote.
         let mut promoted_temps = IdxSetBuf::new_empty(self.temp_promotion_state.len());
@@ -394,43 +471,399 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        (self.qualif, Lrc::new(promoted_temps))
+        let qualif = (self.mut_interior_checker.mut_interior,
+                      self.drop_checker.needs_drop,
+                      self.not_const);
+        (qualif, Lrc::new(promoted_temps))
     }
 }
 
-/// Accumulates an Rvalue or Call's effects in `self.qualif`.
-/// For functions (constant or not), it also records
-/// candidates for promotion in promotion_candidates.
-impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
+/// Accumulates an Rvalue or a Call's effects into `self.mut_interior`.
+impl<'a, 'tcx> Visitor<'tcx> for MutInteriorChecker<'a, 'tcx, 'tcx> {
     fn visit_local(&mut self,
                    &local: &Local,
                    _: PlaceContext<'tcx>,
                    _: Location) {
         let kind = self.mir.local_kind(local);
         match kind {
-            LocalKind::ReturnPointer => {
-                self.not_const();
+            LocalKind::Var if !self.tcx.sess.features_untracked().const_let => {}
+            LocalKind::Var |
+            LocalKind::Arg |
+            LocalKind::Temp => {
+                self.mut_interior |= self.local_mut_interior.contains(&local);
             }
+            LocalKind::ReturnPointer => {}
+        }
+    }
+
+    fn visit_place(&mut self,
+                   place: &Place<'tcx>,
+                   context: PlaceContext<'tcx>,
+                   location: Location) {
+        match *place {
+            Place::Local(ref local) => self.visit_local(local, context, location),
+            Place::Static(..) => {},
+            Place::Projection(ref proj) => {
+                self.nest(|this| {
+                    this.super_place(place, context, location);
+                    match proj.elem {
+                        ProjectionElem::Deref => {}
+
+                        ProjectionElem::Field(..) |
+                        ProjectionElem::Index(_) => {
+                            let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            this.add_type(ty);
+                        }
+
+                        ProjectionElem::ConstantIndex {..} |
+                        ProjectionElem::Subslice {..} |
+                        ProjectionElem::Downcast(..) => {}
+                    }
+                });
+            }
+        }
+    }
+
+    fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+        self.super_operand(operand, location);
+
+        match *operand {
+            Operand::Copy(_) |
+            Operand::Move(_) => {}
+            Operand::Constant(ref constant) => {
+                if let Literal::Value {
+                    value: &ty::Const { val: ConstValue::Unevaluated(def_id, _), ty, .. }
+                } = constant.literal {
+                    // Don't peek inside trait associated constants.
+                    if self.tcx.trait_of_item(def_id).is_some() {
+                        self.add_type(ty);
+                    } else {
+                        let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
+                        self.mut_interior |= (bits & MUT_INTERIOR_BITS) != 0;
+
+                        // Just in case the type is more specific than
+                        // the definition, e.g. impl associated const
+                        // with type parameters, take it into account.
+                        self.add_type(ty);
+                    }
+                }
+            }
+        }
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        // Recurse through operands and places.
+        if let Rvalue::Ref(region, kind, ref place) = *rvalue {
+            let mut is_reborrow = false;
+            if let Place::Projection(ref proj) = *place {
+                if let ProjectionElem::Deref = proj.elem {
+                    let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    if let ty::TyRef(..) = base_ty.sty {
+                        is_reborrow = true;
+                    }
+                }
+            }
+
+            if is_reborrow {
+                self.super_place(place, PlaceContext::Borrow {
+                    region,
+                    kind
+                }, location);
+            } else {
+                self.super_rvalue(rvalue, location);
+            }
+        } else {
+            self.super_rvalue(rvalue, location);
+        }
+    }
+
+    fn visit_terminator_kind(&mut self,
+                             bb: BasicBlock,
+                             kind: &TerminatorKind<'tcx>,
+                             location: Location) {
+        if let TerminatorKind::Call { ref func, ref destination, .. } = *kind {
+            self.visit_operand(func, location);
+
+            if let Some((ref dest, _)) = *destination {
+                // Be conservative about the returned value of a const fn.
+                let ty = dest.ty(self.mir, self.tcx).to_ty(self.tcx);
+                self.add_type(ty);
+                self.assign(dest, location);
+            }
+        } else if let TerminatorKind::Drop { .. } = *kind {
+            self.super_terminator_kind(bb, kind, location);
+        } else {
+            // Qualify any operands inside other terminators.
+            self.super_terminator_kind(bb, kind, location);
+        }
+    }
+
+    fn visit_assign(&mut self,
+                    _: BasicBlock,
+                    dest: &Place<'tcx>,
+                    rvalue: &Rvalue<'tcx>,
+                    location: Location) {
+        self.visit_rvalue(rvalue, location);
+        self.assign(dest, location);
+    }
+
+    fn visit_source_info(&mut self, source_info: &SourceInfo) {
+        self.span = source_info.span;
+    }
+
+    fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
+        self.nest(|this| {
+            this.visit_source_info(&statement.source_info);
+            match statement.kind {
+                StatementKind::Assign(ref place, ref rvalue) => {
+                    this.visit_assign(bb, place, rvalue, location);
+                }
+                StatementKind::ReadForMatch(..) |
+                StatementKind::SetDiscriminant { .. } |
+                StatementKind::StorageLive(_) |
+                StatementKind::StorageDead(_) |
+                StatementKind::InlineAsm {..} |
+                StatementKind::EndRegion(_) |
+                StatementKind::Validate(..) |
+                StatementKind::UserAssertTy(..) |
+                StatementKind::Nop => {}
+            }
+        });
+    }
+
+    fn visit_terminator(&mut self,
+                        bb: BasicBlock,
+                        terminator: &Terminator<'tcx>,
+                        location: Location) {
+        self.nest(|this| this.super_terminator(bb, terminator, location));
+    }
+}
+
+/// Accumulates an Rvalue or a Call's effects into `self.needs_drop`.
+impl<'a, 'tcx> Visitor<'tcx> for DropChecker<'a, 'tcx, 'tcx> {
+    fn visit_local(&mut self,
+                   &local: &Local,
+                   _: PlaceContext<'tcx>,
+                   _: Location) {
+        let kind = self.mir.local_kind(local);
+        match kind {
+            LocalKind::Var if !self.tcx.sess.features_untracked().const_let => {}
+            LocalKind::Var |
+            LocalKind::Arg |
+            LocalKind::Temp => {
+                self.needs_drop |= self.local_needs_drop.contains(&local);
+            }
+            LocalKind::ReturnPointer => {}
+        }
+    }
+
+    fn visit_place(&mut self,
+                   place: &Place<'tcx>,
+                   context: PlaceContext<'tcx>,
+                   location: Location) {
+        match *place {
+            Place::Local(ref local) => self.visit_local(local, context, location),
+            Place::Static(..) => {}
+
+            Place::Projection(ref proj) => {
+                self.nest(|this| {
+                    this.super_place(place, context, location);
+                    match proj.elem {
+                        ProjectionElem::Deref => {}
+
+                        ProjectionElem::Field(..) |
+                        ProjectionElem::Index(_) => {
+                            let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            this.add_type(ty);
+                        }
+
+                        ProjectionElem::ConstantIndex {..} |
+                        ProjectionElem::Subslice {..} |
+                        ProjectionElem::Downcast(..) => {}
+                    }
+                });
+            }
+        }
+    }
+
+    fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+        self.super_operand(operand, location);
+
+        match *operand {
+            Operand::Copy(_) |
+            Operand::Move(_) => {
+                // Mark the consumed locals to indicate later drops are noops.
+                if let Operand::Move(Place::Local(local)) = *operand {
+                    self.local_needs_drop.remove(&local);
+                }
+            }
+            Operand::Constant(ref constant) => {
+                if let Literal::Value {
+                    value: &ty::Const { val: ConstValue::Unevaluated(def_id, _), ty }
+                } = constant.literal {
+                    // Don't peek inside trait-associated constants.
+                    if self.tcx.trait_of_item(def_id).is_some() {
+                        self.add_type(ty);
+                    } else {
+                        let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
+                        self.needs_drop |= (bits & NEEDS_DROP_BITS) != 0;
+
+                        // Just in case the type is more specific than
+                        // the definition, e.g. impl associated const
+                        // with type parameters, take it into account.
+                        self.add_type(ty);
+                    }
+                }
+            }
+        }
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        // Recurse through operands and places.
+        if let Rvalue::Ref(region, kind, ref place) = *rvalue {
+            let mut is_reborrow = false;
+            if let Place::Projection(ref proj) = *place {
+                if let ProjectionElem::Deref = proj.elem {
+                    let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    if let ty::TyRef(..) = base_ty.sty {
+                        is_reborrow = true;
+                    }
+                }
+            }
+
+            if is_reborrow {
+                self.super_place(place, PlaceContext::Borrow {
+                    region,
+                    kind
+                }, location);
+            } else {
+                self.super_rvalue(rvalue, location);
+            }
+        } else {
+            self.super_rvalue(rvalue, location);
+        }
+
+        match *rvalue {
+            Rvalue::Use(_) |
+            Rvalue::Repeat(..) |
+            Rvalue::UnaryOp(UnOp::Neg, _) |
+            Rvalue::UnaryOp(UnOp::Not, _) |
+            Rvalue::NullaryOp(NullOp::SizeOf, _) |
+            Rvalue::CheckedBinaryOp(..) |
+            Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
+            Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
+            Rvalue::Cast(CastKind::ClosureFnPointer, ..) |
+            Rvalue::Cast(CastKind::Unsize, ..) |
+            Rvalue::Discriminant(..) |
+            Rvalue::Len(_) |
+            Rvalue::Ref(..) |
+            Rvalue::Cast(CastKind::Misc, ..) |
+            Rvalue::BinaryOp(..) |
+            Rvalue::NullaryOp(NullOp::Box, _) => {}
+
+            Rvalue::Aggregate(ref kind, _) => {
+                if let AggregateKind::Adt(def, ..) = **kind {
+                    if def.has_dtor(self.tcx) {
+                        self.needs_drop = true;
+                    }
+
+                    if Some(def.did) == self.tcx.lang_items().unsafe_cell_type() {
+                        let ty = rvalue.ty(self.mir, self.tcx);
+                        self.add_type(ty);
+                    }
+                }
+            }
+        }
+    }
+
+    fn visit_terminator_kind(&mut self,
+                             bb: BasicBlock,
+                             kind: &TerminatorKind<'tcx>,
+                             location: Location) {
+        if let TerminatorKind::Call { ref func, ref destination, .. } = *kind {
+            self.visit_operand(func, location);
+
+            if let Some((ref dest, _)) = *destination {
+                // Be conservative about the returned value of a const fn.
+                let ty = dest.ty(self.mir, self.tcx).to_ty(self.tcx);
+                self.add_type(ty);
+                self.assign(dest, location);
+            }
+        } else if let TerminatorKind::Drop { .. } = *kind {
+            self.super_terminator_kind(bb, kind, location);
+        } else {
+            // Qualify any operands inside other terminators.
+            self.super_terminator_kind(bb, kind, location);
+        }
+    }
+
+    fn visit_assign(&mut self,
+                    _: BasicBlock,
+                    dest: &Place<'tcx>,
+                    rvalue: &Rvalue<'tcx>,
+                    location: Location) {
+        self.visit_rvalue(rvalue, location);
+        self.assign(dest, location);
+    }
+
+    fn visit_source_info(&mut self, source_info: &SourceInfo) {
+        self.span = source_info.span;
+    }
+
+    fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
+        self.nest(|this| {
+            this.visit_source_info(&statement.source_info);
+            match statement.kind {
+                StatementKind::Assign(ref place, ref rvalue) => {
+                    this.visit_assign(bb, place, rvalue, location);
+                }
+                StatementKind::ReadForMatch(..) |
+                StatementKind::SetDiscriminant { .. } |
+                StatementKind::StorageLive(_) |
+                StatementKind::StorageDead(_) |
+                StatementKind::InlineAsm {..} |
+                StatementKind::EndRegion(_) |
+                StatementKind::Validate(..) |
+                StatementKind::UserAssertTy(..) |
+                StatementKind::Nop => {}
+            }
+        });
+    }
+
+    fn visit_terminator(&mut self,
+                        bb: BasicBlock,
+                        terminator: &Terminator<'tcx>,
+                        location: Location) {
+        self.nest(|this| this.super_terminator(bb, terminator, location));
+    }
+}
+
+/// Accumulates an Rvalue or Call's effects in `self.not_const`.
+/// For functions (constant or not), it also records
+/// candidates for promotion in promotion_candidates.
+impl<'a, 'tcx> Visitor<'tcx> for ConstChecker<'a, 'tcx, 'tcx> {
+    fn visit_local(&mut self,
+                   &local: &Local,
+                   _: PlaceContext<'tcx>,
+                   _: Location) {
+        let kind = self.mir.local_kind(local);
+        match kind {
             LocalKind::Var if !self.tcx.sess.features_untracked().const_let => {
                 if self.mode != Mode::Fn {
                     emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
                                     self.span, GateIssue::Language,
                                     &format!("let bindings in {}s are unstable",self.mode));
                 }
-                self.qualif.not_const = true;
+                self.not_const = true;
             }
             LocalKind::Var |
             LocalKind::Arg |
             LocalKind::Temp => {
-                if !self.temp_promotion_state[local].is_promotable() {
-                    self.qualif.not_const = true;
-                }
-
-                let mut qualif = Qualif::default();
-                qualif.mut_interior = self.local_mut_interior.contains(&local);
-                qualif.needs_drop = self.local_needs_drop.contains(&local);
-                qualif.not_const = self.local_not_const.contains(&local);
-                self.add(qualif);
+                self.not_const |= self.local_not_const.contains(&local) ||
+                    !self.temp_promotion_state[local].is_promotable();
+            }
+            LocalKind::ReturnPointer => {
+                self.not_const();
             }
         }
     }
@@ -439,6 +872,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                    place: &Place<'tcx>,
                    context: PlaceContext<'tcx>,
                    location: Location) {
+        self.mut_interior_checker.visit_place(place, context, location);
+        self.drop_checker.visit_place(place, context, location);
+
         match *place {
             Place::Local(ref local) => self.visit_local(local, context, location),
             Place::Static(ref global) => {
@@ -451,7 +887,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                   "thread-local statics cannot be \
                                    accessed at compile-time");
                     }
-                    self.qualif.not_const = true;
+                    self.not_const = true;
                     return;
                 }
 
@@ -459,7 +895,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
                     return;
                 }
-                self.qualif.not_const = true;
+                self.not_const = true;
 
                 if self.mode != Mode::Fn {
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
@@ -482,7 +918,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     this.super_place(place, context, location);
                     match proj.elem {
                         ProjectionElem::Deref => {
-                            this.qualif.not_const = true;
+                            this.not_const = true;
 
                             let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
                             if let ty::TyRawPtr(_) = base_ty.sty {
@@ -520,9 +956,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     }
                                 }
                             }
-
-                            let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            this.add_type(ty);
                         }
 
                         ProjectionElem::ConstantIndex {..} |
@@ -539,31 +972,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
 
+        self.mut_interior_checker.visit_operand(operand, location);
+        self.drop_checker.visit_operand(operand, location);
+
         match *operand {
             Operand::Copy(_) |
-            Operand::Move(_) => {
-                // Mark the consumed locals to indicate later drops are noops.
-                if let Operand::Move(Place::Local(local)) = *operand {
-                    self.local_needs_drop.remove(&local);
-                }
-            }
+            Operand::Move(_) => {}
             Operand::Constant(ref constant) => {
                 if let Literal::Value {
-                    value: &ty::Const { val: ConstValue::Unevaluated(def_id, _), ty, .. }
+                    value: &ty::Const { val: ConstValue::Unevaluated(def_id, _), .. }
                 } = constant.literal {
                     // Don't peek inside trait associated constants.
-                    if self.tcx.trait_of_item(def_id).is_some() {
-                        self.add_type(ty);
-                    } else {
+                    if self.tcx.trait_of_item(def_id).is_none() {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
-
-                        let qualif = Qualif::from_bits(bits);
-                        self.add(qualif);
-
-                        // Just in case the type is more specific than
-                        // the definition, e.g. impl associated const
-                        // with type parameters, take it into account.
-                        self.add_type(ty);
+                        self.not_const |= (bits & NOT_CONST_BITS) != 0;
                     }
                 }
             }
@@ -571,6 +993,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        self.mut_interior_checker.visit_rvalue(rvalue, location);
+        self.drop_checker.visit_rvalue(rvalue, location);
+
         // Recurse through operands and places.
         if let Rvalue::Ref(region, kind, ref place) = *rvalue {
             let mut is_reborrow = false;
@@ -636,7 +1061,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
 
                     if forbidden_mut {
-                        self.qualif.not_const = true;
+                        self.not_const = true;
                         if self.mode != Mode::Fn {
                             let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
                                                            "references in {}s may only refer \
@@ -660,11 +1085,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // Constants cannot be borrowed if they contain interior mutability as
                     // it means that our "silent insertion of statics" could change
                     // initializer values (very bad).
-                    if self.qualif.mut_interior {
+                    if self.mut_interior_checker.mut_interior {
                         // A reference of a MUTABLE_INTERIOR place is instead
                         // NOT_CONST (see `if forbidden_mut` below), to avoid
                         // duplicate errors (from reborrowing, for example).
-                        self.qualif.mut_interior = false;
+                        self.mut_interior_checker.mut_interior = false;
                         if self.mode != Mode::Fn {
                             span_err!(self.tcx.sess, self.span, E0492,
                                       "cannot borrow a constant which may contain \
@@ -677,7 +1102,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
 
                 if forbidden_mut {
-                    self.qualif.not_const = true;
+                    self.not_const = true;
                 } else {
                     // We might have a candidate for promotion.
                     let candidate = Candidate::Ref(location);
@@ -696,8 +1121,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             // This allows borrowing fields which don't have
                             // `MUTABLE_INTERIOR`, from a type that does, e.g.:
                             // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                            if !self.local_not_const.contains(&local) &&
-                               !self.local_needs_drop.contains(&local) {
+                            if !self.drop_checker.local_needs_drop.contains(&local) &&
+                               !self.local_not_const.contains(&local) {
                                 self.promotion_candidates.push(candidate);
                             }
                         }
@@ -712,7 +1137,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) => {
-                        self.qualif.not_const = true;
+                        self.not_const = true;
                         if self.mode != Mode::Fn {
                             let mut err = struct_span_err!(
                                 self.tcx.sess,
@@ -763,7 +1188,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                             op == BinOp::Ge || op == BinOp::Gt ||
                             op == BinOp::Offset);
 
-                    self.qualif.not_const = true;
+                    self.not_const = true;
                     if self.mode != Mode::Fn {
                         struct_span_err!(
                             self.tcx.sess, self.span, E0395,
@@ -778,7 +1203,7 @@ This does not pose a problem by itself because they can't be accessed directly."
             }
 
             Rvalue::NullaryOp(NullOp::Box, _) => {
-                self.qualif.not_const = true;
+                self.not_const = true;
                 if self.mode != Mode::Fn {
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0010,
                                                    "allocations are not allowed in {}s", self.mode);
@@ -795,19 +1220,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                 }
             }
 
-            Rvalue::Aggregate(ref kind, _) => {
-                if let AggregateKind::Adt(def, ..) = **kind {
-                    if def.has_dtor(self.tcx) {
-                        self.qualif.needs_drop = true;
-                    }
-
-                    if Some(def.did) == self.tcx.lang_items().unsafe_cell_type() {
-                        let ty = rvalue.ty(self.mir, self.tcx);
-                        self.add_type(ty);
-                        assert!(self.qualif.mut_interior);
-                    }
-                }
-            }
+            Rvalue::Aggregate(..) => {}
         }
     }
 
@@ -815,6 +1228,9 @@ This does not pose a problem by itself because they can't be accessed directly."
                              bb: BasicBlock,
                              kind: &TerminatorKind<'tcx>,
                              location: Location) {
+        self.mut_interior_checker.visit_terminator_kind(bb, kind, location);
+        self.drop_checker.visit_terminator_kind(bb, kind, location);
+
         if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
             self.visit_operand(func, location);
 
@@ -864,7 +1280,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     }
                     let candidate = Candidate::Argument { bb, index: i };
                     if is_shuffle && i == 2 {
-                        if this.qualif == Default::default() {
+                        if this.is_qualif_empty() {
                             this.promotion_candidates.push(candidate);
                         } else {
                             span_err!(this.tcx.sess, this.span, E0526,
@@ -880,7 +1296,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     if !constant_arguments.contains(&i) {
                         return
                     }
-                    if this.qualif == Default::default() {
+                    if this.is_qualif_empty() {
                         this.promotion_candidates.push(candidate);
                     } else {
                         this.tcx.sess.span_err(this.span,
@@ -911,9 +1327,9 @@ This does not pose a problem by itself because they can't be accessed directly."
                         // this doesn't come from a macro that has #[allow_internal_unstable]
                         !self.span.allows_unstable()
                     {
-                        self.qualif.mut_interior = false;
-                        self.qualif.needs_drop = false;
-                        self.qualif.not_const = true;
+                        self.mut_interior_checker.mut_interior = false;
+                        self.drop_checker.needs_drop = false;
+                        self.not_const = true;
                         if self.mode != Mode::Fn {
                             // inside a constant environment, not having the feature gate is
                             // an error
@@ -929,7 +1345,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     }
                 }
             } else {
-                self.qualif.not_const = true;
+                self.not_const = true;
                 if self.mode != Mode::Fn {
                     // FIXME(#24111) Remove this check when const fn stabilizes
                     let (msg, note) = if let UnstableFeatures::Disallow =
@@ -956,9 +1372,6 @@ This does not pose a problem by itself because they can't be accessed directly."
             }
 
             if let Some((ref dest, _)) = *destination {
-                // Be conservative about the returned value of a const fn.
-                let ty = dest.ty(self.mir, self.tcx).to_ty(self.tcx);
-                self.add_type(ty);
                 self.assign(dest, location);
             }
         } else if let TerminatorKind::Drop { location: ref place, .. } = *kind {
@@ -969,7 +1382,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                 // HACK(eddyb) Emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Local(local) = *place {
-                    if self.local_needs_drop.contains(&local) {
+                    if self.drop_checker.local_needs_drop.contains(&local) {
                         Some(self.mir.local_decls[local].source_info.span)
                     } else {
                         None
@@ -997,10 +1410,13 @@ This does not pose a problem by itself because they can't be accessed directly."
     }
 
     fn visit_assign(&mut self,
-                    _: BasicBlock,
+                    bb: BasicBlock,
                     dest: &Place<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
+        self.mut_interior_checker.visit_assign(bb, dest, rvalue, location);
+        self.drop_checker.visit_assign(bb, dest, rvalue, location);
+
         self.visit_rvalue(rvalue, location);
 
         // Check the allowed const fn argument forms.
@@ -1026,10 +1442,16 @@ This does not pose a problem by itself because they can't be accessed directly."
     }
 
     fn visit_source_info(&mut self, source_info: &SourceInfo) {
+        self.mut_interior_checker.visit_source_info(source_info);
+        self.drop_checker.visit_source_info(source_info);
+
         self.span = source_info.span;
     }
 
     fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
+        self.mut_interior_checker.visit_statement(bb, statement, location);
+        self.drop_checker.visit_statement(bb, statement, location);
+
         self.nest(|this| {
             this.visit_source_info(&statement.source_info);
             match statement.kind {
@@ -1053,6 +1475,9 @@ This does not pose a problem by itself because they can't be accessed directly."
                         bb: BasicBlock,
                         terminator: &Terminator<'tcx>,
                         location: Location) {
+        self.mut_interior_checker.visit_terminator(bb, terminator, location);
+        self.drop_checker.visit_terminator(bb, terminator, location);
+
         self.nest(|this| this.super_terminator(bb, terminator, location));
     }
 }
@@ -1075,13 +1500,12 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (Qualif {not_const: true, ..Default::default()}.bits(),
-                Lrc::new(IdxSetBuf::new_empty(0)));
+        return (qualif_bits((false, false, true)), Lrc::new(IdxSetBuf::new_empty(0)));
     }
 
-    let mut qualifier = Qualifier::new(tcx, def_id, mir, Mode::Const);
-    let (qualif, promoted_temps) = qualifier.qualify_const();
-    (qualif.bits(), promoted_temps)
+    let mut checker = ConstChecker::new(tcx, def_id, mir, Mode::Const);
+    let (qualif, promoted_temps) = checker.qualify_const();
+    (qualif_bits(qualif), promoted_temps)
 }
 
 pub struct QualifyAndPromoteConstants;
@@ -1121,20 +1545,20 @@ impl MirPass for QualifyAndPromoteConstants {
         };
 
         if mode == Mode::Fn || mode == Mode::ConstFn {
-            // This is ugly because Qualifier holds onto mir,
+            // This is ugly because `ConstChecker` holds onto mir,
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
-                let mut qualifier = Qualifier::new(tcx, def_id, mir, mode);
+                let mut checker = ConstChecker::new(tcx, def_id, mir, mode);
                 if mode == Mode::ConstFn {
                     // Enforce a constant-like CFG for `const fn`.
-                    qualifier.qualify_const();
+                    checker.qualify_const();
                 } else {
-                    while let Some((bb, data)) = qualifier.rpo.next() {
-                        qualifier.visit_basic_block_data(bb, data);
+                    while let Some((bb, data)) = checker.rpo.next() {
+                        checker.visit_basic_block_data(bb, data);
                     }
                 }
 
-                (qualifier.temp_promotion_state, qualifier.promotion_candidates)
+                (checker.temp_promotion_state, checker.promotion_candidates)
             };
 
             // Do the actual promotion, now that we know what's viable.
@@ -1144,7 +1568,7 @@ impl MirPass for QualifyAndPromoteConstants {
                 // Already computed by `mir_const_qualif`.
                 const_promoted_temps.unwrap()
             } else {
-                Qualifier::new(tcx, def_id, mir, mode).qualify_const().1
+                ConstChecker::new(tcx, def_id, mir, mode).qualify_const().1
             };
 
             // In `const` and `static` everything without `StorageDead`
