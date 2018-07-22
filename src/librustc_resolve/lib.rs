@@ -86,6 +86,10 @@ mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
 
+fn is_known_tool(name: Name) -> bool {
+    ["clippy", "rustfmt"].contains(&&*name.as_str())
+}
+
 /// A free importable items suggested in case of resolution failure.
 struct ImportSuggestion {
     path: Path,
@@ -200,15 +204,10 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                         err.span_label(typaram_span, "type variable from outer function");
                     }
                 },
-                Def::Mod(..) | Def::Struct(..) | Def::Union(..) | Def::Enum(..) | Def::Variant(..) |
-                Def::Trait(..) | Def::TyAlias(..) | Def::TyForeign(..) | Def::TraitAlias(..) |
-                Def::AssociatedTy(..) | Def::PrimTy(..) | Def::Fn(..) | Def::Const(..) |
-                Def::Static(..) | Def::StructCtor(..) | Def::VariantCtor(..) | Def::Method(..) |
-                Def::AssociatedConst(..) | Def::Local(..) | Def::Upvar(..) | Def::Label(..) |
-                Def::Existential(..) | Def::AssociatedExistential(..) |
-                Def::Macro(..) | Def::GlobalAsm(..) | Def::Err =>
+                _ => {
                     bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
                          Def::TyParam")
+                }
             }
 
             // Try to retrieve the span of the function signature and generate a new message with
@@ -1711,9 +1710,7 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
 
-            // The `proc_macro` and `decl_macro` features imply `use_extern_macros`
-            use_extern_macros:
-                features.use_extern_macros || features.decl_macro,
+            use_extern_macros: features.use_extern_macros(),
 
             crate_loader,
             macro_names: FxHashSet(),
@@ -1846,6 +1843,7 @@ impl<'a> Resolver<'a> {
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
         let record_used = record_used_id.is_some();
+        assert!(ns == TypeNS  || ns == ValueNS);
         if ns == TypeNS {
             ident.span = if ident.name == keywords::SelfType.name() {
                 // FIXME(jseyfried) improve `Self` hygiene
@@ -1922,8 +1920,9 @@ impl<'a> Resolver<'a> {
                     return Some(LexicalScopeBinding::Item(binding))
                 }
                 _ if poisoned.is_some() => break,
-                Err(Undetermined) => return None,
-                Err(Determined) => {}
+                Err(Determined) => continue,
+                Err(Undetermined) =>
+                    span_bug!(ident.span, "undetermined resolution during main resolution pass"),
             }
         }
 
@@ -1942,6 +1941,11 @@ impl<'a> Resolver<'a> {
                 self.populate_module_if_necessary(crate_root);
 
                 let binding = (crate_root, ty::Visibility::Public,
+                               ident.span, Mark::root()).to_name_binding(self.arenas);
+                return Some(LexicalScopeBinding::Item(binding));
+            }
+            if ns == TypeNS && is_known_tool(ident.name) {
+                let binding = (Def::ToolMod, ty::Visibility::Public,
                                ident.span, Mark::root()).to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));
             }
@@ -3505,6 +3509,8 @@ impl<'a> Resolver<'a> {
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(def);
                     if let Some(next_module) = binding.module() {
                         module = Some(next_module);
+                    } else if def == Def::ToolMod && i + 1 != path.len() {
+                        return PathResult::NonModule(PathResolution::new(Def::NonMacroAttr))
                     } else if def == Def::Err {
                         return PathResult::NonModule(err_path_resolution());
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {

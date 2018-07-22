@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {AmbiguityError, CrateLint, Resolver, ResolutionError, resolve_error};
-use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult};
-use Namespace::{self, MacroNS};
+use {AmbiguityError, CrateLint, Resolver, ResolutionError, is_known_tool, resolve_error};
+use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
+use Namespace::{self, TypeNS, MacroNS};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex,
@@ -27,7 +27,7 @@ use syntax::ext::expand::{self, AstFragment, AstFragmentKind, Invocation, Invoca
 use syntax::ext::hygiene::{self, Mark};
 use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{self, emit_feature_err, GateIssue};
+use syntax::feature_gate::{self, feature_err, emit_feature_err, is_builtin_attr_name, GateIssue};
 use syntax::fold::{self, Folder};
 use syntax::parse::parser::PathStyle;
 use syntax::parse::token::{self, Token};
@@ -326,6 +326,18 @@ impl<'a> base::Resolver for Resolver<'a> {
         if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
             self.report_proc_macro_stub(invoc.span());
             return Err(Determinacy::Determined);
+        } else if let Def::NonMacroAttr = def {
+            if let InvocationKind::Attr { .. } = invoc.kind {
+                if !self.session.features_untracked().tool_attributes {
+                    feature_err(&self.session.parse_sess, "tool_attributes",
+                                invoc.span(), GateIssue::Language,
+                                "tool attributes are unstable").emit();
+                }
+                return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr)));
+            } else {
+                self.report_non_macro_attr(invoc.path_span());
+                return Err(Determinacy::Determined);
+            }
         }
         let def_id = def.def_id();
 
@@ -347,6 +359,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.resolve_macro_to_def(scope, path, kind, force).and_then(|def| {
             if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
                 self.report_proc_macro_stub(path.span);
+                return Err(Determinacy::Determined);
+            } else if let Def::NonMacroAttr = def {
+                self.report_non_macro_attr(path.span);
                 return Err(Determinacy::Determined);
             }
             self.unused_macros.remove(&def.def_id());
@@ -376,6 +391,11 @@ impl<'a> Resolver<'a> {
     fn report_proc_macro_stub(&self, span: Span) {
         self.session.span_err(span,
                               "can't use a procedural macro from the same crate that defines it");
+    }
+
+    fn report_non_macro_attr(&self, span: Span) {
+        self.session.span_err(span,
+                              "expected a macro, found non-macro attribute");
     }
 
     fn resolve_invoc_to_def(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
@@ -450,7 +470,15 @@ impl<'a> Resolver<'a> {
 
     fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                             -> Result<Def, Determinacy> {
-        if kind != MacroKind::Bang && path.segments.len() > 1 {
+        let def = self.resolve_macro_to_def_inner(scope, path, kind, force);
+        if def != Err(Determinacy::Undetermined) {
+            // Do not report duplicated errors on every undetermined resolution.
+            path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
+                self.session.span_err(segment.args.as_ref().unwrap().span(),
+                                      "generic arguments in macro path");
+            });
+        }
+        if kind != MacroKind::Bang && path.segments.len() > 1 && def != Ok(Def::NonMacroAttr) {
             if !self.session.features_untracked().proc_macro_path_invoc {
                 emit_feature_err(
                     &self.session.parse_sess,
@@ -461,15 +489,6 @@ impl<'a> Resolver<'a> {
                      currently unstable",
                 );
             }
-        }
-
-        let def = self.resolve_macro_to_def_inner(scope, path, kind, force);
-        if def != Err(Determinacy::Undetermined) {
-            // Do not report duplicated errors on every undetermined resolution.
-            path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
-                self.session.span_err(segment.args.as_ref().unwrap().span(),
-                                      "generic arguments in macro path");
-            });
         }
         def
     }
@@ -544,67 +563,226 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    // Resolve the initial segment of a non-global macro path (e.g. `foo` in `foo::bar!();`)
+    // Resolve the initial segment of a non-global macro path
+    // (e.g. `foo` in `foo::bar!(); or `foo!();`).
+    // This is a variation of `fn resolve_ident_in_lexical_scope` that can be run during
+    // expansion and import resolution (perhaps they can be merged in the future).
     pub fn resolve_lexical_macro_path_segment(&mut self,
                                               mut ident: Ident,
                                               ns: Namespace,
                                               record_used: bool,
                                               path_span: Span)
                                               -> Result<MacroBinding<'a>, Determinacy> {
-        ident = ident.modern();
-        let mut module = Some(self.current_module);
-        let mut potential_illegal_shadower = Err(Determinacy::Determined);
-        let determinacy =
-            if record_used { Determinacy::Determined } else { Determinacy::Undetermined };
-        loop {
-            let orig_current_module = self.current_module;
-            let result = if let Some(module) = module {
-                self.current_module = module; // Lexical resolutions can never be a privacy error.
-                // Since expanded macros may not shadow the lexical scope and
-                // globs may not shadow global macros (both enforced below),
-                // we resolve with restricted shadowing (indicated by the penultimate argument).
-                self.resolve_ident_in_module_unadjusted(
-                    module, ident, ns, true, record_used, path_span,
-                ).map(MacroBinding::Modern)
-            } else {
-                self.macro_prelude.get(&ident.name).cloned().ok_or(determinacy)
-                    .map(MacroBinding::Global)
-            };
-            self.current_module = orig_current_module;
+        // General principles:
+        // 1. Not controlled (user-defined) names should have higher priority than controlled names
+        //    built into the language or standard library. This way we can add new names into the
+        //    language or standard library without breaking user code.
+        // 2. "Closed set" below means new names can appear after the current resolution attempt.
+        // Places to search (in order of decreasing priority):
+        // (Type NS)
+        // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet
+        //    (open set, not controlled).
+        // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled).
+        // 3. Extern prelude (closed, not controlled).
+        // 4. Tool modules (closed, controlled right now, but not in the future).
+        // 5. Standard library prelude (de-facto closed, controlled).
+        // 6. Language prelude (closed, controlled).
+        // (Macro NS)
+        // 1. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
+        //    (open, not controlled).
+        // 2. Macro prelude (language, standard library, user-defined legacy plugins lumped into
+        //    one set) (open, the open part is from macro expansions, not controlled).
+        // 2a. User-defined prelude from macro-use
+        //    (open, the open part is from macro expansions, not controlled).
+        // 2b. Standard library prelude, currently just a macro-use (closed, controlled)
+        // 2c. Language prelude, perhaps including builtin attributes
+        //    (closed, controlled, except for legacy plugins).
+        // 3. Builtin attributes (closed, controlled).
 
-            match result.map(MacroBinding::binding) {
-                Ok(binding) => {
-                    if !record_used {
-                        return result;
+        assert!(ns == TypeNS  || ns == MacroNS);
+        ident = ident.modern();
+
+        // Names from inner scope that can't shadow names from outer scopes, e.g.
+        // mod m { ... }
+        // {
+        //     use prefix::*; // if this imports another `m`, then it can't shadow the outer `m`
+        //                    // and we have and ambiguity error
+        //     m::mac!();
+        // }
+        // This includes names from globs and from macro expansions.
+        let mut potentially_ambiguous_result: Option<MacroBinding> = None;
+
+        enum WhereToResolve<'a> {
+            Module(Module<'a>),
+            MacroPrelude,
+            BuiltinAttrs,
+            ExternPrelude,
+            ToolPrelude,
+            StdLibPrelude,
+            PrimitiveTypes,
+        }
+
+        // Go through all the scopes and try to resolve the name.
+        let mut where_to_resolve = WhereToResolve::Module(self.current_module);
+        let mut use_prelude = !self.current_module.no_implicit_prelude;
+        loop {
+            let result = match where_to_resolve {
+                WhereToResolve::Module(module) => {
+                    let orig_current_module = mem::replace(&mut self.current_module, module);
+                    let binding = self.resolve_ident_in_module_unadjusted(
+                            module, ident, ns, true, record_used, path_span,
+                    );
+                    self.current_module = orig_current_module;
+                    binding.map(MacroBinding::Modern)
+                }
+                WhereToResolve::MacroPrelude => {
+                    match self.macro_prelude.get(&ident.name).cloned() {
+                        Some(binding) => Ok(MacroBinding::Global(binding)),
+                        None => Err(Determinacy::Determined),
                     }
-                    if let Ok(MacroBinding::Modern(shadower)) = potential_illegal_shadower {
-                        if shadower.def() != binding.def() {
-                            let name = ident.name;
+                }
+                WhereToResolve::BuiltinAttrs => {
+                    if is_builtin_attr_name(ident.name) {
+                        let binding = (Def::NonMacroAttr, ty::Visibility::Public,
+                                       ident.span, Mark::root()).to_name_binding(self.arenas);
+                        Ok(MacroBinding::Global(binding))
+                    } else {
+                        Err(Determinacy::Determined)
+                    }
+                }
+                WhereToResolve::ExternPrelude => {
+                    if use_prelude && self.extern_prelude.contains(&ident.name) {
+                        if !self.session.features_untracked().extern_prelude &&
+                           !self.ignore_extern_prelude_feature {
+                            feature_err(&self.session.parse_sess, "extern_prelude",
+                                        ident.span, GateIssue::Language,
+                                        "access to extern crates through prelude is experimental")
+                                        .emit();
+                        }
+
+                        let crate_id =
+                            self.crate_loader.process_path_extern(ident.name, ident.span);
+                        let crate_root =
+                            self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                        self.populate_module_if_necessary(crate_root);
+
+                        let binding = (crate_root, ty::Visibility::Public,
+                                       ident.span, Mark::root()).to_name_binding(self.arenas);
+                        Ok(MacroBinding::Global(binding))
+                    } else {
+                        Err(Determinacy::Determined)
+                    }
+                }
+                WhereToResolve::ToolPrelude => {
+                    if use_prelude && is_known_tool(ident.name) {
+                        let binding = (Def::ToolMod, ty::Visibility::Public,
+                                       ident.span, Mark::root()).to_name_binding(self.arenas);
+                        Ok(MacroBinding::Global(binding))
+                    } else {
+                        Err(Determinacy::Determined)
+                    }
+                }
+                WhereToResolve::StdLibPrelude => {
+                    let mut result = Err(Determinacy::Determined);
+                    if use_prelude {
+                        if let Some(prelude) = self.prelude {
+                            if let Ok(binding) =
+                                    self.resolve_ident_in_module_unadjusted(prelude, ident, ns,
+                                                                          false, false, path_span) {
+                                result = Ok(MacroBinding::Global(binding));
+                            }
+                        }
+                    }
+                    result
+                }
+                WhereToResolve::PrimitiveTypes => {
+                    if let Some(prim_ty) =
+                            self.primitive_type_table.primitive_types.get(&ident.name).cloned() {
+                        let binding = (Def::PrimTy(prim_ty), ty::Visibility::Public,
+                                       ident.span, Mark::root()).to_name_binding(self.arenas);
+                        Ok(MacroBinding::Global(binding))
+                    } else {
+                        Err(Determinacy::Determined)
+                    }
+                }
+            };
+
+            macro_rules! continue_search { () => {
+                where_to_resolve = match where_to_resolve {
+                    WhereToResolve::Module(module) => {
+                        match self.hygienic_lexical_parent(module, &mut ident.span) {
+                            Some(parent_module) => WhereToResolve::Module(parent_module),
+                            None => {
+                                use_prelude = !module.no_implicit_prelude;
+                                if ns == MacroNS {
+                                    WhereToResolve::MacroPrelude
+                                } else {
+                                    WhereToResolve::ExternPrelude
+                                }
+                            }
+                        }
+                    }
+                    WhereToResolve::MacroPrelude => WhereToResolve::BuiltinAttrs,
+                    WhereToResolve::BuiltinAttrs => break, // nowhere else to search
+                    WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
+                    WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
+                    WhereToResolve::StdLibPrelude => WhereToResolve::PrimitiveTypes,
+                    WhereToResolve::PrimitiveTypes => break, // nowhere else to search
+                };
+
+                continue;
+            }}
+
+            match result {
+                Ok(result) => {
+                    if !record_used {
+                        return Ok(result);
+                    }
+
+                    let binding = result.binding();
+
+                    // Found a solution that is ambiguous with a previously found solution.
+                    // Push an ambiguity error for later reporting and
+                    // return something for better recovery.
+                    if let Some(previous_result) = potentially_ambiguous_result {
+                        if binding.def() != previous_result.binding().def() {
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: path_span,
-                                name,
-                                b1: shadower,
+                                name: ident.name,
+                                b1: previous_result.binding(),
                                 b2: binding,
                                 lexical: true,
                             });
-                            return potential_illegal_shadower;
+                            return Ok(previous_result);
                         }
                     }
-                    if binding.is_glob_import() || binding.expansion != Mark::root() {
-                        potential_illegal_shadower = result;
-                    } else {
-                        return result;
-                    }
-                },
-                Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
-                Err(Determinacy::Determined) => {}
-            }
 
-            module = match module {
-                Some(module) => self.hygienic_lexical_parent(module, &mut ident.span),
-                None => return potential_illegal_shadower,
+                    // Found a solution that's not an ambiguity yet, but is "suspicious" and
+                    // can participate in ambiguities later on.
+                    // Remember it and go search for other solutions in outer scopes.
+                    if binding.is_glob_import() || binding.expansion != Mark::root() {
+                        potentially_ambiguous_result = Some(result);
+
+                        continue_search!();
+                    }
+
+                    // Found a solution that can't be ambiguous, great success.
+                    return Ok(result);
+                },
+                Err(Determinacy::Determined) => {
+                    continue_search!();
+                }
+                Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
             }
         }
+
+        // Previously found potentially ambiguous result turned out to not be ambiguous after all.
+        if let Some(previous_result) = potentially_ambiguous_result {
+            return Ok(previous_result);
+        }
+
+        if record_used { Err(Determinacy::Determined) } else { Err(Determinacy::Undetermined) }
     }
 
     pub fn resolve_legacy_scope(&mut self,

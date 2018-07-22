@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure that 'custom_attributes' feature does not allow scoped attributes.
+#![feature(tool_attributes)]
 
-#![feature(custom_attributes)]
+#[derive(rustfmt::skip)] //~ ERROR expected a macro, found non-macro attribute
+struct S;
 
-#[foo::bar]
-//~^ ERROR scoped attribute `foo::bar` is experimental (see issue #44690) [E0658]
-//~^^ ERROR an unknown tool name found in scoped attribute: `foo::bar`. [E0694]
-fn main() {}
+fn main() {
+    rustfmt::skip!(); //~ ERROR expected a macro, found non-macro attribute
+}

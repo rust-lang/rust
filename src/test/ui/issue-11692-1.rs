@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    print!(test!());
+    print!(testo!());
     //~^ ERROR: format argument must be a string literal
 }

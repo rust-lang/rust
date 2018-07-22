@@ -1,0 +1,14 @@
+error: expected a macro, found non-macro attribute
+  --> $DIR/macro-path-prelude-fail-3.rs:13:10
+   |
+LL | #[derive(inline)] //~ ERROR expected a macro, found non-macro attribute
+   |          ^^^^^^
+
+error: expected a macro, found non-macro attribute
+  --> $DIR/macro-path-prelude-fail-3.rs:17:5
+   |
+LL |     inline!(); //~ ERROR expected a macro, found non-macro attribute
+   |     ^^^^^^
+
+error: aborting due to 2 previous errors
+

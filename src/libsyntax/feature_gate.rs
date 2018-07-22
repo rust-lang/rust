@@ -80,6 +80,11 @@ macro_rules! declare_features {
             {
                 $(f(stringify!($feature), self.$feature);)+
             }
+
+            pub fn use_extern_macros(&self) -> bool {
+                // The `decl_macro` and `tool_attributes` features imply `use_extern_macros`.
+                self.use_extern_macros || self.decl_macro || self.tool_attributes
+            }
         }
     };
 
@@ -689,6 +694,10 @@ pub fn deprecated_attributes() -> Vec<&'static (&'static str, AttributeType, Att
     BUILTIN_ATTRIBUTES.iter().filter(|a| a.2.is_deprecated()).collect()
 }
 
+pub fn is_builtin_attr_name(name: ast::Name) -> bool {
+    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| name == builtin_name)
+}
+
 pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
     BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.check_name(builtin_name)) ||
     attr.name().as_str().starts_with("rustc_")
@@ -1198,28 +1207,9 @@ impl<'a> Context<'a> {
             // before the plugin attributes are registered
             // so we skip this then
             if !is_macro {
-                if attr.is_scoped() {
-                    gate_feature!(self, tool_attributes, attr.span,
-                                  &format!("scoped attribute `{}` is experimental", attr.path));
-                    if attr::is_known_tool(attr) {
-                        attr::mark_used(attr);
-                    } else {
-                        span_err!(
-                            self.parse_sess.span_diagnostic,
-                            attr.span,
-                            E0694,
-                            "an unknown tool name found in scoped attribute: `{}`.",
-                            attr.path
-                        );
-                    }
-                } else {
-                    gate_feature!(self, custom_attribute, attr.span,
-                                  &format!("The attribute `{}` is currently \
-                                            unknown to the compiler and \
-                                            may have meaning \
-                                            added to it in the future",
-                                           attr.path));
-                }
+                let msg = format!("The attribute `{}` is currently unknown to the compiler and \
+                                   may have meaning added to it in the future", attr.path);
+                gate_feature!(self, custom_attribute, attr.span, &msg);
             }
         }
     }
@@ -1529,7 +1519,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
         }
 
-        if self.context.features.use_extern_macros && attr::is_known(attr) {
+        if self.context.features.use_extern_macros() && attr::is_known(attr) {
             return
         }
 
@@ -2004,7 +1994,7 @@ impl FeatureChecker {
     // the branching can be eliminated by modifying `set!()` to set these spans
     // only for the features that need to be checked for mutual exclusion.
     fn collect(&mut self, features: &Features, span: Span) {
-        if features.use_extern_macros {
+        if features.use_extern_macros() {
             // If self.use_extern_macros is None, set to Some(span)
             self.use_extern_macros = self.use_extern_macros.or(Some(span));
         }

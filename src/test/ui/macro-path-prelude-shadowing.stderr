@@ -1,0 +1,42 @@
+error[E0659]: `inline` is ambiguous
+  --> $DIR/macro-path-prelude-shadowing.rs:24:9
+   |
+LL |         inline!(); //~ ERROR `inline` is ambiguous
+   |         ^^^^^^
+   |
+note: `inline` could refer to the name imported here
+  --> $DIR/macro-path-prelude-shadowing.rs:16:5
+   |
+LL |     #[macro_use]
+   |     ^^^^^^^^^^^^
+...
+LL | add_macro_expanded_things_to_macro_prelude!();
+   | ---------------------------------------------- in this macro invocation
+note: `inline` could also refer to the name defined here
+  --> $DIR/macro-path-prelude-shadowing.rs:24:9
+   |
+LL |         inline!(); //~ ERROR `inline` is ambiguous
+   |         ^^^^^^
+   = note: macro-expanded macro imports do not shadow
+
+error[E0659]: `std` is ambiguous
+  --> $DIR/macro-path-prelude-shadowing.rs:37:9
+   |
+LL |         std::panic!(); //~ ERROR `std` is ambiguous
+   |         ^^^^^^^^^^
+   |
+note: `std` could refer to the name imported here
+  --> $DIR/macro-path-prelude-shadowing.rs:35:9
+   |
+LL |     use m2::*; // glob-import user-defined `std`
+   |         ^^^^^
+note: `std` could also refer to the name defined here
+  --> $DIR/macro-path-prelude-shadowing.rs:37:9
+   |
+LL |         std::panic!(); //~ ERROR `std` is ambiguous
+   |         ^^^
+   = note: consider adding an explicit import of `std` to disambiguate
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0659`.
