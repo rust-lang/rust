@@ -609,7 +609,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // resolved the same as the `'_` in `&'_ Foo`.
                         //
                         // cc #48468
-                        self.resolve_elided_lifetimes(vec![lifetime], false)
+                        self.resolve_elided_lifetimes(vec![lifetime])
                     }
                     LifetimeName::Param(_) | LifetimeName::Static => {
                         // If the user wrote an explicit name, use that.
@@ -893,7 +893,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         if lifetime_ref.is_elided() {
-            self.resolve_elided_lifetimes(vec![lifetime_ref], false);
+            self.resolve_elided_lifetimes(vec![lifetime_ref]);
             return;
         }
         if lifetime_ref.is_static() {
@@ -1728,7 +1728,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             _ => None,
         }).collect();
         if elide_lifetimes {
-            self.resolve_elided_lifetimes(lifetimes, true);
+            self.resolve_elided_lifetimes(lifetimes);
         } else {
             lifetimes.iter().for_each(|lt| self.visit_lifetime(lt));
         }
@@ -2106,26 +2106,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     }
 
     fn resolve_elided_lifetimes(&mut self,
-                                lifetime_refs: Vec<&'tcx hir::Lifetime>,
-                                deprecated: bool) {
+                                lifetime_refs: Vec<&'tcx hir::Lifetime>) {
         if lifetime_refs.is_empty() {
             return;
         }
 
         let span = lifetime_refs[0].span;
-        let id = lifetime_refs[0].id;
         let mut late_depth = 0;
         let mut scope = self.scope;
-        if deprecated {
-            self.tcx
-                .struct_span_lint_node(
-                    lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
-                    id,
-                    span,
-                    &format!("hidden lifetime parameters are deprecated, try `Foo<'_>`"),
-                )
-                .emit();
-        }
         let error = loop {
             match *scope {
                 // Do not assign any resolution, it will be inferred.

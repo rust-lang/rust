@@ -47,7 +47,8 @@ use hir::map::{DefKey, DefPathData, Definitions};
 use hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
 use hir::def::{Def, PathResolution, PerNS};
 use hir::GenericArg;
-use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES};
+use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+                    ELIDED_LIFETIMES_IN_PATHS};
 use middle::cstore::CrateStore;
 use rustc_data_structures::indexed_vec::IndexVec;
 use session::Session;
@@ -1754,13 +1755,40 @@ impl<'a> LoweringContext<'a> {
             GenericArg::Lifetime(_) => true,
             _ => false,
         });
+        let first_generic_span = generic_args.args.iter().map(|a| a.span())
+            .chain(generic_args.bindings.iter().map(|b| b.span)).next();
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args =
                 self.elided_path_lifetimes(path_span, expected_lifetimes)
                     .into_iter()
                     .map(|lt| GenericArg::Lifetime(lt))
                     .chain(generic_args.args.into_iter())
-                    .collect();
+                .collect();
+            if expected_lifetimes > 0 && param_mode == ParamMode::Explicit {
+                let anon_lt_suggestion = vec!["'_"; expected_lifetimes].join(", ");
+                let no_ty_args = generic_args.args.len() == expected_lifetimes;
+                let no_bindings = generic_args.bindings.is_empty();
+                let (incl_angl_brckt, insertion_span, suggestion) = if no_ty_args && no_bindings {
+                    // If there are no (non-implicit) generic args or associated-type
+                    // bindings, our suggestion includes the angle brackets
+                    (true, path_span.shrink_to_hi(), format!("<{}>", anon_lt_suggestion))
+                } else {
+                    // Otherwise—sorry, this is kind of gross—we need to infer the
+                    // place to splice in the `'_, ` from the generics that do exist
+                    let first_generic_span = first_generic_span
+                        .expect("already checked that type args or bindings exist");
+                    (false, first_generic_span.shrink_to_lo(), format!("{}, ", anon_lt_suggestion))
+                };
+                self.sess.buffer_lint_with_diagnostic(
+                    ELIDED_LIFETIMES_IN_PATHS,
+                    CRATE_NODE_ID,
+                    path_span,
+                    "hidden lifetime parameters in types are deprecated",
+                    builtin::BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                        expected_lifetimes, path_span, incl_angl_brckt, insertion_span, suggestion
+                    )
+                );
+            }
         }
 
         hir::PathSegment::new(
