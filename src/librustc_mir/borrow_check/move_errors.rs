@@ -247,6 +247,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                             Place::Projection(ref proj) => {
                                                 proj.base == Place::Local(Local::new(1))
                                             }
+                                            Place::Promoted(_) |
                                             Place::Local(_) | Place::Static(_) => unreachable!(),
                                         }
                                     } =>

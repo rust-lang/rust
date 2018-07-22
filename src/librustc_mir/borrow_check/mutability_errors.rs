@@ -122,6 +122,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+            Place::Promoted(_) => unreachable!(),
+
             Place::Static(box Static { def_id, ty: _ }) => {
                 if let Place::Static(_) = access_place {
                     item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
