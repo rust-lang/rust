@@ -221,10 +221,10 @@ macro_rules! eprint {
 macro_rules! eprintln {
     () => (eprint!("\n"));
     ($($arg:tt)*) => ({
-        #[cfg(not(stage0))] {
+        #[cfg(all(not(stage0), not(stage1)))] {
             ($crate::io::_eprint(format_args_nl!($($arg)*)));
         }
-        #[cfg(stage0)] {
+        #[cfg(any(stage0, stage1))] {
             eprint!("{}\n", format_args!($($arg)*))
         }
     })
