@@ -4,7 +4,7 @@ error[E0597]: `pointer` does not live long enough
 LL |         f2.xmute(&pointer)
    |                  ^^^^^^^^ borrowed value does not live long enough
 LL |     };
-   |     - borrowed value only lives until here
+   |     - `pointer` dropped here while still borrowed
 LL |     //~^^ ERROR `pointer` does not live long enough
 LL |     println!("{}", dangling);
    |                    -------- borrow later used here

@@ -4,7 +4,7 @@ error[E0597]: `*a` does not live long enough
 LL |         *a.borrow() + 1
    |          ^ borrowed value does not live long enough
 LL |     }; //~^ ERROR `*a` does not live long enough
-   |     - borrowed value only lives until here
+   |     - `*a` dropped here while still borrowed
 
 error: aborting due to previous error
 

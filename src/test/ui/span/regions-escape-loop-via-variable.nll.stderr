@@ -6,7 +6,7 @@ LL |         let x = 1 + *p;
 LL |         p = &x;
    |             ^^ borrowed value does not live long enough
 LL |     }
-   |     - borrowed value only lives until here
+   |     - `x` dropped here while still borrowed
 
 error: aborting due to previous error
 

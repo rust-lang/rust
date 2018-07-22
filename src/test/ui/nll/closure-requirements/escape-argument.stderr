@@ -30,7 +30,7 @@ LL |         closure(&mut p, &y);
    |                         ^^ borrowed value does not live long enough
 LL |         //~^ ERROR `y` does not live long enough [E0597]
 LL |     }
-   |     - borrowed value only lives until here
+   |     - `y` dropped here while still borrowed
 LL | 
 LL |     deref(p);
    |           - borrow later used here

@@ -5,7 +5,7 @@ LL |     let s_inner: &'a S = &*v.0; //~ ERROR `*v.0` does not live long enough
    |                          ^^^^^ borrowed value does not live long enough
 LL |     &s_inner.0
 LL | }
-   | - borrowed value only lives until here
+   | - `*v.0` dropped here while still borrowed
    |
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 21:17...
   --> $DIR/issue-31567.rs:21:17

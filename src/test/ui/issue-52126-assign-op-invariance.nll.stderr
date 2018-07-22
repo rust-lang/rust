@@ -8,7 +8,7 @@ LL |         println!("accumulator before add_assign {:?}", acc.map);
    |                                                        ------- borrow later used here
 ...
 LL |     }
-   |     - borrowed value only lives until here
+   |     - `line` dropped here while still borrowed
 
 error: aborting due to previous error
 

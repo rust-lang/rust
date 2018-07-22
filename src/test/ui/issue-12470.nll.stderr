@@ -5,7 +5,7 @@ LL |     let bb: &B = &*b;    //~ ERROR does not live long enough
    |                  ^^^ borrowed value does not live long enough
 LL |     make_a(bb)
 LL | }
-   | - borrowed value only lives until here
+   | - `*b` dropped here while still borrowed
    |
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 36:16...
   --> $DIR/issue-12470.rs:36:16

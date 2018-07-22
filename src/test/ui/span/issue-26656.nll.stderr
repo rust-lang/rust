@@ -6,7 +6,7 @@ LL |     zook.button = B::BigRedButton(&ticking);
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `ticking` dropped here while still borrowed
    | borrow later used here, when `zook` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined

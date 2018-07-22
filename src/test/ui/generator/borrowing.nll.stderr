@@ -5,7 +5,7 @@ LL |         unsafe { (|| yield &a).resume() }
    |                  ^^^^^^^^^^^^^ borrowed value does not live long enough
 LL |         //~^ ERROR: `a` does not live long enough
 LL |     };
-   |     - borrowed value only lives until here
+   |     - `a` dropped here while still borrowed
 
 error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:24:9
@@ -16,7 +16,7 @@ LL | |             //~^ ERROR: `a` does not live long enough
 LL | |         }
    | |_________^ borrowed value does not live long enough
 LL |       };
-   |       - borrowed value only lives until here
+   |       - `a` dropped here while still borrowed
 LL |   }
    |   - borrow later used here, when `_b` is dropped
 

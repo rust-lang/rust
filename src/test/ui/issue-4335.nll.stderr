@@ -11,7 +11,7 @@ LL |     id(Box::new(|| *v))
    |                 ^^^^^ borrowed value does not live long enough
 ...
 LL | }
-   | - borrowed value only lives until here
+   | - `v` dropped here while still borrowed
    |
 note: borrowed value must be valid for the lifetime 'r as defined on the function body at 15:6...
   --> $DIR/issue-4335.rs:15:6

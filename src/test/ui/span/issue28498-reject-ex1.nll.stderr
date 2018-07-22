@@ -7,7 +7,7 @@ LL |     foo.data[0].1.set(Some(&foo.data[1]));
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `foo.data` dropped here while still borrowed
    | borrow later used here, when `foo` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined

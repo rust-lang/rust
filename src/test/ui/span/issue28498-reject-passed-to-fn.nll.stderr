@@ -7,7 +7,7 @@ LL |     foo1 = Foo(1, &first_dropped, Box::new(callback));
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `first_dropped` dropped here while still borrowed
    | borrow later used here, when `foo1` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined
