@@ -132,11 +132,11 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let mir = self.builder.mir;
         let tcx = self.builder.tcx;
         let place_ty = proj.base.ty(mir, tcx).to_ty(tcx);
- match place_ty.sty {
+        match place_ty.sty {
             ty::TyRef(..) | ty::TyRawPtr(..) =>
                 return Err(MoveError::cannot_move_out_of(
                     self.loc,
-                    BorrowedContent { target_ty: place.ty(mir, tcx).to_ty(tcx) })),
+                    BorrowedContent { target_place: place.clone() })),
             ty::TyAdt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
                 return Err(MoveError::cannot_move_out_of(self.loc,
                                                          InteriorOfTypeWithDestructor {

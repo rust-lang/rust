@@ -10,33 +10,15 @@
 
 use rustc::hir;
 use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
-use dataflow::move_paths::{IllegalMoveOrigin, IllegalMoveOriginKind, MoveData};
+use borrow_check::MirBorrowckCtxt;
+use dataflow::move_paths::{IllegalMoveOrigin, IllegalMoveOriginKind};
 use dataflow::move_paths::{LookupResult, MoveError, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
-
-pub(crate) fn report_move_errors<'gcx, 'tcx>(
-    mir: &Mir<'tcx>,
-    tcx: TyCtxt<'_, 'gcx, 'tcx>,
-    move_errors: Vec<MoveError<'tcx>>,
-    move_data: &MoveData<'tcx>,
-) {
-    MoveErrorCtxt {
-        mir,
-        tcx,
-        move_data,
-    }.report_errors(move_errors);
-}
-
-#[derive(Copy, Clone)]
-struct MoveErrorCtxt<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    move_data: &'a MoveData<'tcx>,
-}
 
 // Often when desugaring a pattern match we may have many individual moves in
 // MIR that are all part of one operation from the user's point-of-view. For
@@ -76,15 +58,15 @@ enum GroupedMoveError<'tcx> {
     },
 }
 
-impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
-    fn report_errors(self, move_errors: Vec<MoveError<'tcx>>) {
+impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
+    pub(crate) fn report_move_errors(&self, move_errors: Vec<MoveError<'tcx>>) {
         let grouped_errors = self.group_move_errors(move_errors);
         for error in grouped_errors {
             self.report(error);
         }
     }
 
-    fn group_move_errors(self, errors: Vec<MoveError<'tcx>>) -> Vec<GroupedMoveError<'tcx>> {
+    fn group_move_errors(&self, errors: Vec<MoveError<'tcx>>) -> Vec<GroupedMoveError<'tcx>> {
         let mut grouped_errors = Vec::new();
         for error in errors {
             self.append_to_grouped_errors(&mut grouped_errors, error);
@@ -93,7 +75,7 @@ impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn append_to_grouped_errors(
-        self,
+        &self,
         grouped_errors: &mut Vec<GroupedMoveError<'tcx>>,
         error: MoveError<'tcx>,
     ) {
@@ -114,19 +96,19 @@ impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
                     .map(|stmt| &stmt.kind)
                 {
                     let local_decl = &self.mir.local_decls[*local];
+                    // opt_match_place is the
+                    // match_span is the span of the expression being matched on
+                    // match *x.y { ... }        match_place is Some(*x.y)
+                    //       ^^^^                match_span is the span of *x.y
+                    //
+                    // opt_match_place is None for let [mut] x = ... statements,
+                    // whether or not the right-hand side is a place expression
                     if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                         opt_match_place: Some((ref opt_match_place, match_span)),
                         binding_mode: _,
                         opt_ty_info: _,
                     }))) = local_decl.is_user_variable
                     {
-                        // opt_match_place is the
-                        // match_span is the span of the expression being matched on
-                        // match *x.y { ... }        match_place is Some(*x.y)
-                        //       ^^^^                match_span is the span of *x.y
-                        // opt_match_place is None for let [mut] x = ... statements,
-                        // whether or not the right-hand side is a place expression
-
                         // HACK use scopes to determine if this assignment is
                         // the initialization of a variable.
                         // FIXME(matthewjasper) This would probably be more
@@ -145,8 +127,8 @@ impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
                                 opt_match_place,
                                 match_span,
                             );
+                            return;
                         }
-                        return;
                     }
                 }
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {
@@ -158,7 +140,7 @@ impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn append_binding_error(
-        self,
+        &self,
         grouped_errors: &mut Vec<GroupedMoveError<'tcx>>,
         kind: IllegalMoveOriginKind<'tcx>,
         move_from: &Place<'tcx>,
@@ -236,7 +218,7 @@ impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
         };
     }
 
-    fn report(self, error: GroupedMoveError<'tcx>) {
+    fn report(&self, error: GroupedMoveError<'tcx>) {
         let (mut err, err_span) = {
             let (span, kind): (Span, &IllegalMoveOriginKind) = match error {
                 GroupedMoveError::MovesFromMatchPlace { span, ref kind, .. }
@@ -249,14 +231,43 @@ impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
                     IllegalMoveOriginKind::Static => {
                         self.tcx.cannot_move_out_of(span, "static item", origin)
                     }
-                    IllegalMoveOriginKind::BorrowedContent { target_ty: ty } => {
+                    IllegalMoveOriginKind::BorrowedContent { target_place: place } => {
                         // Inspect the type of the content behind the
                         // borrow to provide feedback about why this
                         // was a move rather than a copy.
+                        let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
                         match ty.sty {
                             ty::TyArray(..) | ty::TySlice(..) => self
                                 .tcx
                                 .cannot_move_out_of_interior_noncopy(span, ty, None, origin),
+                            ty::TyClosure(def_id, closure_substs)
+                                if !self.mir.upvar_decls.is_empty()
+                                    && {
+                                        match place {
+                                            Place::Projection(ref proj) => {
+                                                proj.base == Place::Local(Local::new(1))
+                                            }
+                                            Place::Local(_) | Place::Static(_) => unreachable!(),
+                                        }
+                                    } =>
+                            {
+                                let closure_kind_ty =
+                                    closure_substs.closure_kind_ty(def_id, self.tcx);
+                                let closure_kind = closure_kind_ty.to_opt_closure_kind();
+                                let place_description = match closure_kind {
+                                    Some(ty::ClosureKind::Fn) => {
+                                        "captured variable in an `Fn` closure"
+                                    }
+                                    Some(ty::ClosureKind::FnMut) => {
+                                        "captured variable in an `FnMut` closure"
+                                    }
+                                    Some(ty::ClosureKind::FnOnce) => {
+                                        bug!("closure kind does not match first argument type")
+                                    }
+                                    None => bug!("closure kind not inferred by borrowck"),
+                                };
+                                self.tcx.cannot_move_out_of(span, place_description, origin)
+                            }
                             _ => self
                                 .tcx
                                 .cannot_move_out_of(span, "borrowed content", origin),
@@ -279,7 +290,7 @@ impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn add_move_hints(
-        self,
+        &self,
         error: GroupedMoveError<'tcx>,
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
@@ -365,7 +376,7 @@ impl<'a, 'gcx, 'tcx> MoveErrorCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn suitable_to_remove_deref(self, proj: &PlaceProjection<'tcx>, snippet: &str) -> bool {
+    fn suitable_to_remove_deref(&self, proj: &PlaceProjection<'tcx>, snippet: &str) -> bool {
         let is_shared_ref = |ty: ty::Ty| match ty.sty {
             ty::TypeVariants::TyRef(.., hir::Mutability::MutImmutable) => true,
             _ => false,
