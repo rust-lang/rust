@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,8 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    println!(3 + 4);
-    //~^ ERROR format argument must be a string literal
-    println!(3, 4);
-    //~^ ERROR format argument must be a string literal
+    format_args_nl!(""); //~ ERROR `format_args_nl` is only for internal language use
 }

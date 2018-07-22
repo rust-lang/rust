@@ -17,6 +17,7 @@ use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
+use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -683,7 +684,34 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
     sp = sp.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
         Some((efmt, args, names)) => {
-            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names))
+            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, false))
+        }
+        None => DummyResult::expr(sp),
+    }
+}
+
+pub fn expand_format_args_nl<'cx>(ecx: &'cx mut ExtCtxt,
+                                  mut sp: Span,
+                                  tts: &[tokenstream::TokenTree])
+                                  -> Box<dyn base::MacResult + 'cx> {
+    //if !ecx.ecfg.enable_allow_internal_unstable() {
+
+    // For some reason, the only one that actually works for `println` is the first check
+    if !sp.allows_unstable()   // the enclosing span is marked as `#[allow_insternal_unsable]`
+        && !ecx.ecfg.enable_allow_internal_unstable()  // NOTE: when is this enabled?
+        && !ecx.ecfg.enable_format_args_nl()  // enabled using `#[feature(format_args_nl]`
+    {
+        feature_gate::emit_feature_err(&ecx.parse_sess,
+                                       "format_args_nl",
+                                       sp,
+                                       feature_gate::GateIssue::Language,
+                                       feature_gate::EXPLAIN_FORMAT_ARGS_NL);
+        return base::DummyResult::expr(sp);
+    }
+    sp = sp.apply_mark(ecx.current_expansion.mark);
+    match parse_args(ecx, sp, tts) {
+        Some((efmt, args, names)) => {
+            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, true))
         }
         None => DummyResult::expr(sp),
     }
@@ -695,7 +723,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                                     sp: Span,
                                     efmt: P<ast::Expr>,
                                     args: Vec<P<ast::Expr>>,
-                                    names: HashMap<String, usize>)
+                                    names: HashMap<String, usize>,
+                                    append_newline: bool)
                                     -> P<ast::Expr> {
     // NOTE: this verbose way of initializing `Vec<Vec<ArgumentType>>` is because
     // `ArgumentType` does not derive `Clone`.
@@ -703,10 +732,28 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let mut macsp = ecx.call_site();
     macsp = macsp.apply_mark(ecx.current_expansion.mark);
-    let msg = "format argument must be a string literal.";
+    let msg = "format argument must be a string literal";
+    let fmt_sp = efmt.span;
     let fmt = match expr_to_spanned_string(ecx, efmt, msg) {
-        Some(fmt) => fmt,
-        None => return DummyResult::raw_expr(sp),
+        Ok(mut fmt) if append_newline => {
+            fmt.node.0 = Symbol::intern(&format!("{}\n", fmt.node.0));
+            fmt
+        }
+        Ok(fmt) => fmt,
+        Err(mut err) => {
+            let sugg_fmt = match args.len() {
+                0 => "{}".to_string(),
+                _ => format!("{}{{}}", "{} ".repeat(args.len())),
+
+            };
+            err.span_suggestion(
+                fmt_sp.shrink_to_lo(),
+                "you might be missing a string literal to format with",
+                format!("\"{}\", ", sugg_fmt),
+            );
+            err.emit();
+            return DummyResult::raw_expr(sp);
+        },
     };
 
     let mut cx = Context {
@@ -731,7 +778,11 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     };
 
     let fmt_str = &*fmt.node.0.as_str();
-    let mut parser = parse::Parser::new(fmt_str);
+    let str_style = match fmt.node.1 {
+        ast::StrStyle::Cooked => None,
+        ast::StrStyle::Raw(raw) => Some(raw as usize),
+    };
+    let mut parser = parse::Parser::new(fmt_str, str_style);
     let mut pieces = vec![];
 
     while let Some(mut piece) = parser.next() {
@@ -818,7 +869,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                     errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
                     "multiple unused formatting arguments"
                 );
-                diag.span_label(cx.fmtsp, "multiple unused arguments in this statement");
+                diag.span_label(cx.fmtsp, "multiple missing formatting arguments");
                 diag
             }
         };
@@ -861,8 +912,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                     }
 
                     if show_doc_note {
-                        diag.note(concat!(stringify!($kind), " formatting not supported; see \
-                                the documentation for `std::fmt`"));
+                        diag.note(concat!(
+                            stringify!($kind),
+                            " formatting not supported; see the documentation for `std::fmt`",
+                        ));
                     }
                 }};
             }

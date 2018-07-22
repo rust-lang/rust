@@ -139,6 +139,16 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                 unstable_feature: None,
                 edition: hygiene::default_edition(),
             });
+    register(Symbol::intern("format_args_nl"),
+             NormalTT {
+                 expander: Box::new(format::expand_format_args_nl),
+                 def_info: None,
+                 allow_internal_unstable: true,
+                 allow_internal_unsafe: false,
+                 local_inner_macros: false,
+                 unstable_feature: None,
+                 edition: hygiene::default_edition(),
+             });
 
     for (name, ext) in user_exts {
         register(name, ext);

@@ -153,10 +153,17 @@ macro_rules! print {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
 macro_rules! println {
     () => (print!("\n"));
-    ($fmt:expr) => (print!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
+    ($($arg:tt)*) => ({
+        #[cfg(not(stage0))] {
+            ($crate::io::_print(format_args_nl!($($arg)*)));
+        }
+        #[cfg(stage0)] {
+            print!("{}\n", format_args!($($arg)*))
+        }
+    })
 }
 
 /// Macro for printing to the standard error.
@@ -210,10 +217,17 @@ macro_rules! eprint {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
+#[allow_internal_unstable]
 macro_rules! eprintln {
     () => (eprint!("\n"));
-    ($fmt:expr) => (eprint!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (eprint!(concat!($fmt, "\n"), $($arg)*));
+    ($($arg:tt)*) => ({
+        #[cfg(all(not(stage0), not(stage1)))] {
+            ($crate::io::_eprint(format_args_nl!($($arg)*)));
+        }
+        #[cfg(any(stage0, stage1))] {
+            eprint!("{}\n", format_args!($($arg)*))
+        }
+    })
 }
 
 #[macro_export]

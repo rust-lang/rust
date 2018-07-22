@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
     {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
-        let parser = Parser::new(&self.0);
+        let parser = Parser::new(&self.0, None);
         let mut result = Ok(());
         for token in parser {
             match token {
@@ -298,7 +298,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
             Some((name, value))
         }).collect::<FxHashMap<String, String>>();
 
-        let parser = Parser::new(&self.0);
+        let parser = Parser::new(&self.0, None);
         parser.map(|p| {
             match p {
                 Piece::String(s) => s,
