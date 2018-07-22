@@ -37,7 +37,7 @@ how to fix it, you could send a PR. :smile:
 ## Running tests
 
 ```sh
-cargo run --bin miri tests/run-pass-fullmir/vecs.rs # Or whatever test you like.
+cargo run tests/run-pass-fullmir/vecs.rs # Or whatever test you like.
 ```
 
 ## Running miri on your own project('s test suite)
@@ -63,7 +63,7 @@ RUSTFLAGS='-Zalways-encode-mir' xargo build
 Now you can run miri against the libstd compiled by xargo:
 
 ```sh
-MIRI_SYSROOT=~/.xargo/HOST cargo run --bin miri tests/run-pass-fullmir/hashmap.rs
+MIRI_SYSROOT=~/.xargo/HOST cargo run tests/run-pass-fullmir/hashmap.rs
 ```
 
 Notice that you will have to re-run the last step of the preparations above when
