@@ -461,7 +461,8 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         // so we generate an abort
                         let fnname = bx.cx.get_intrinsic(&("llvm.trap"));
                         bx.call(fnname, &[], None);
-                        PlaceRef::new_sized(C_undef(layout.llvm_type(bx.cx).ptr_to()), layout, layout.align)
+                        let llval = C_undef(layout.llvm_type(bx.cx).ptr_to());
+                        PlaceRef::new_sized(llval, layout, layout.align)
                     }
                 }
             }
