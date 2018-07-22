@@ -60,20 +60,6 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>
     String::from_utf8_lossy(&out[..]).into_owned()
 }
 
-/// Highlights `src`, returning the HTML output. Returns only the inner html to
-/// be inserted into an element. C.f., `render_with_highlighting` which includes
-/// an enclosing `<pre>` block.
-pub fn render_inner_with_highlighting(src: &str) -> io::Result<String> {
-    let sess = parse::ParseSess::new(FilePathMapping::empty());
-    let fm = sess.codemap().new_filemap(FileName::Custom("stdin".to_string()), src.to_string());
-
-    let mut out = Vec::new();
-    let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.codemap());
-    classifier.write_source(&mut out)?;
-
-    Ok(String::from_utf8_lossy(&out).into_owned())
-}
-
 /// Processes a program (nested in the internal `lexer`), classifying strings of
 /// text by highlighting category (`Class`). Calls out to a `Writer` to write
 /// each span of text in sequence.

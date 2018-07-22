@@ -25,6 +25,7 @@
 #![feature(vec_remove_item)]
 #![feature(entry_and_modify)]
 #![feature(ptr_offset_from)]
+#![feature(crate_visibility_modifier)]
 
 #![recursion_limit="256"]
 
@@ -72,28 +73,28 @@ use rustc_target::spec::TargetTriple;
 use rustc::session::config::get_cmd_lint_options;
 
 #[macro_use]
-pub mod externalfiles;
+mod externalfiles;
 
-pub mod clean;
-pub mod core;
-pub mod doctree;
-pub mod fold;
+mod clean;
+mod core;
+mod doctree;
+mod fold;
 pub mod html {
-    pub mod highlight;
-    pub mod escape;
-    pub mod item_type;
-    pub mod format;
-    pub mod layout;
+    crate mod highlight;
+    crate mod escape;
+    crate mod item_type;
+    crate mod format;
+    crate mod layout;
     pub mod markdown;
-    pub mod render;
-    pub mod toc;
+    crate mod render;
+    crate mod toc;
 }
-pub mod markdown;
-pub mod passes;
-pub mod visit_ast;
-pub mod visit_lib;
-pub mod test;
-pub mod theme;
+mod markdown;
+mod passes;
+mod visit_ast;
+mod visit_lib;
+mod test;
+mod theme;
 
 use clean::AttributesExt;
 
@@ -140,7 +141,7 @@ fn unstable<F>(name: &'static str, f: F) -> RustcOptGroup
     RustcOptGroup::unstable(name, f)
 }
 
-pub fn opts() -> Vec<RustcOptGroup> {
+fn opts() -> Vec<RustcOptGroup> {
     vec![
         stable("h", |o| o.optflag("h", "help", "show this help message")),
         stable("V", |o| o.optflag("V", "version", "print rustdoc's version")),
@@ -334,7 +335,7 @@ pub fn opts() -> Vec<RustcOptGroup> {
     ]
 }
 
-pub fn usage(argv0: &str) {
+fn usage(argv0: &str) {
     let mut options = getopts::Options::new();
     for option in opts() {
         (option.apply)(&mut options);
@@ -342,7 +343,7 @@ pub fn usage(argv0: &str) {
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
 }
 
-pub fn main_args(args: &[String]) -> isize {
+fn main_args(args: &[String]) -> isize {
     let mut options = getopts::Options::new();
     for option in opts() {
         (option.apply)(&mut options);
