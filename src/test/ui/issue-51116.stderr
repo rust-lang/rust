@@ -5,7 +5,7 @@ LL |         for tile in row {
    |                     --- the element type for this iterator is not specified
 LL |             //~^ NOTE the element type for this iterator is not specified
 LL |             *tile = 0;
-   |             ^^^^^ cannot infer type for `_`
+   |             ^^^^^ cannot infer type
    |
    = note: type must be known at this point
 

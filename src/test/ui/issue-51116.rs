@@ -15,7 +15,7 @@ fn main() {
             //~^ NOTE the element type for this iterator is not specified
             *tile = 0;
             //~^ ERROR type annotations needed
-            //~| NOTE cannot infer type for `_`
+            //~| NOTE cannot infer type
             //~| NOTE type must be known at this point
         }
     }
