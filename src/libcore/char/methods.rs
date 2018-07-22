@@ -455,7 +455,7 @@ impl char {
     /// ```
     /// let mut b = [0; 2];
     ///
-    /// let result = 'ß'.encode_utf8(&mut b).unwrap();
+    /// let result = 'ß'.try_encode_utf8(&mut b).unwrap();
     ///
     /// assert_eq!(result, "ß");
     ///
@@ -467,7 +467,7 @@ impl char {
     /// ```
     /// let mut b = [0; 1];
     ///
-    /// assert_eq!(None, 'ß'.encode_utf8(&mut b));
+    /// assert_eq!(None, 'ß'.try_encode_utf8(&mut b));
     /// ```
     #[unstable(feature = "try_unicode_encode_char", issue = "52579")]
     #[inline]
@@ -517,22 +517,17 @@ impl char {
     ///
     /// let result = '𝕊'.encode_utf16(&mut b);
     ///
+    /// assert_eq!(result, "𝕊");
+    ///
     /// assert_eq!(result.len(), 2);
     /// ```
     ///
     /// A buffer that's too small:
     ///
     /// ```
-    /// use std::thread;
+    /// let mut b = [0; 1];
     ///
-    /// let result = thread::spawn(|| {
-    ///     let mut b = [0; 1];
-    ///
-    ///     // this panics
-    ///     '𝕊'.encode_utf16(&mut b);
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// assert_eq!(None, '𝕊'.encode_utf16(&mut b));
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
@@ -556,9 +551,7 @@ impl char {
     /// ```
     /// let mut b = [0; 2];
     ///
-    /// let result = '𝕊'.encode_utf16(&mut b).unwrap();
-    ///
-    /// assert_eq!(result, "𝕊");
+    /// let result = '𝕊'.try_encode_utf16(&mut b).unwrap();
     ///
     /// assert_eq!(result.len(), 2);
     /// ```
@@ -568,7 +561,7 @@ impl char {
     /// ```
     /// let mut b = [0; 1];
     ///
-    /// assert_eq!(None, '𝕊'.encode_utf16(&mut b));
+    /// assert_eq!(None, '𝕊'.try_encode_utf16(&mut b));
     /// ```
     #[unstable(feature = "try_unicode_encode_char", issue = "52579")]
     #[inline]
