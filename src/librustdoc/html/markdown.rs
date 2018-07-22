@@ -661,12 +661,11 @@ impl<'a> fmt::Display for Markdown<'a> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        html::push_html(&mut s,
-                        Footnotes::new(
-                            CodeBlocks::new(
-                                LinkReplacer::new(
-                                    HeadingLinks::new(p, None),
-                                    links), codes)));
+        let p = HeadingLinks::new(p, None);
+        let p = LinkReplacer::new(p, links);
+        let p = CodeBlocks::new(p, codes);
+        let p = Footnotes::new(p);
+        html::push_html(&mut s, p);
 
         fmt.write_str(&s)
     }
