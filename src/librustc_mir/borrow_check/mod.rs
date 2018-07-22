@@ -1853,7 +1853,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
             // promoteds may never be mutated
-            Place::Promoted(_) => Err(place),
+            Place::Promoted(_) => bug!("encountered mutable promoted"),
             Place::Static(ref static_) => {
                 if self.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
                     Err(place)
