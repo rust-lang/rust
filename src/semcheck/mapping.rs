@@ -318,6 +318,7 @@ impl NameMapping {
             TyForeign(_) |
             TraitAlias(_) | // TODO: will need some handling later on.
             AssociatedTy(_) |
+            AssociatedExistential(_) |
             PrimTy(_) |
             TyParam(_) |
             SelfTy(_, _) => Some(&mut self.type_map),

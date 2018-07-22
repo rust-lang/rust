@@ -302,7 +302,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                 },
                 _ => ty,
             }
-        }})
+        }, reg_op: |region| self.translate_region(region) })
     }
 
     /// Translate a region.
