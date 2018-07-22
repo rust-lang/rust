@@ -413,19 +413,6 @@ pub mod builtin {
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
     }
 
-    /// Internal version of [`format_args`].
-    ///
-    /// This macro differs from [`format_args`] in that it appends a newline to the format string
-    /// and nothing more. It is perma-unstable.
-    ///
-    /// [`format_args`]: ../std/macro.format_args.html
-    #[doc(hidden)]
-    #[unstable(feature = "format_args_nl", issue="0")]
-    #[macro_export]
-    macro_rules! format_args_nl {
-        ($fmt:expr) => ({ /* compiler built-in */ });
-        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
-    }
     /// Inspect an environment variable at compile time.
     ///
     /// This macro will expand to the value of the named environment variable at
