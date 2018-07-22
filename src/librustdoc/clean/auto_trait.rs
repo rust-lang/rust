@@ -80,8 +80,12 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         self.get_auto_trait_impls(did, &def_ctor, Some(name))
     }
 
-    fn get_real_ty<F>(&self, def_id: DefId, def_ctor: &F, real_name: &Option<Ident>,
-                      generics: &ty::Generics) -> hir::Ty
+    fn get_real_ty<F>(&self,
+                      def_id: DefId,
+                      def_ctor: &F,
+                      real_name: &Option<Ident>,
+                      generics: &ty::Generics,
+    ) -> hir::Ty
     where F: Fn(DefId) -> Def {
         let path = get_path_for_type(self.cx.tcx, def_id, def_ctor);
         let mut segments = path.segments.into_vec();
@@ -151,11 +155,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                             let generics = infcx.tcx.generics_of(impl_def_id);
                             let trait_ref = infcx.tcx.impl_trait_ref(impl_def_id).unwrap();
 
-                            if !match infcx.tcx.type_of(impl_def_id).sty {
-                                ::rustc::ty::TypeVariants::TyParam(_) => true,
-                                _ => false,
-                            } {
-                                return
+                            match infcx.tcx.type_of(impl_def_id).sty {
+                                ::rustc::ty::TypeVariants::TyParam(_) => {},
+                                _ => return,
                             }
 
                             let substs = infcx.fresh_substs_for_item(DUMMY_SP, def_id);
