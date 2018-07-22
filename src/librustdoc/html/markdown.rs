@@ -247,7 +247,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                                       if ignore { " ignore" }
                                       else if compile_fail { " compile_fail" }
                                       else { "" })),
-                        None,
                         playground_button.as_ref().map(String::as_str),
                         tooltip));
             Some(Event::Html(s.into()))
