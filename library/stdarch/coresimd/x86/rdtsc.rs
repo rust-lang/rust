@@ -59,7 +59,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use coresimd::x86::rdtsc;
+    use coresimd::x86::*;
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "sse2")]
