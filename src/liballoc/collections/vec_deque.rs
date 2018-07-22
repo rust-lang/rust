@@ -202,6 +202,20 @@ impl<T> VecDeque<T> {
                                  len);
     }
 
+    /// Returns a pair of slices which contain the contents of the buffer not used by the VecDeque.
+    #[inline]
+    unsafe fn unused_as_mut_slices<'a>(&'a mut self) -> (&'a mut [T], &'a mut [T]) {
+        let head = self.head;
+        let tail = self.tail;
+        let buf = self.buffer_as_mut_slice();
+        if head == tail {
+            let (before, after) = buf.split_at_mut(head);
+            (after, before)
+        } else {
+            RingSlices::ring_slices(buf, tail, head)
+        }
+    }
+
     /// Copies a potentially wrapping block of memory len long from src to dest.
     /// (abs(dst - src) + len) must be no larger than cap() (There must be at
     /// most one continuous overlapping region between src and dest).
@@ -1834,11 +1848,10 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        // Copy from src[i1..i1 + len] to dst[i2..i2 + len].
-        // Does not check if the ranges are valid.
-        unsafe fn copy_part<T>(i1: usize, i2: usize, len: usize, src: &[T], dst: &mut [T]) {
-            debug_assert!(src.get(i1..i1 + len).is_some() && dst.get(i2..i2 + len).is_some());
-            ptr::copy_nonoverlapping(src.as_ptr().add(i1), dst.as_mut_ptr().add(i2), len);
+        // Copies all values from `src_slice` to the start of `dst_slice`.
+        unsafe fn copy_whole_slice<T>(src_slice: &[T], dst_slice: &mut [T]) {
+            let len = src_slice.len();
+            ptr::copy_nonoverlapping(src_slice.as_ptr(), dst_slice[..len].as_mut_ptr(), len);
         }
 
         let src_total = other.len();
@@ -1846,132 +1859,141 @@ impl<T> VecDeque<T> {
         // Guarantees there is space in `self` for `other`.
         self.reserve(src_total);
 
-        self.head = {
-            let dst_start_1 = self.head;
-            let src_start_1 = other.tail;
-            let dst_wrap_point = self.cap();
-            let src_wrap_point = other.cap();
+        let new_head = {
+            let original_head = self.head;
 
-            let dst = unsafe { self.buffer_as_mut_slice() };
-            let src = unsafe { other.buffer_as_slice() };
+            // The goal is to copy all values from `other` into `self`. To avoid any
+            // mismatch, all valid values in `other` are retrieved...
+            let (src_high, src_low) = other.as_slices();
+            // and unoccupied parts of self are retrieved.
+            let (dst_high, dst_low) = unsafe { self.unused_as_mut_slices() };
 
-            let src_wraps = other.tail > other.head;
-            let dst_wraps = dst_start_1 + src_total > dst_wrap_point;
-
-            // When minimizing the amount of calls to `copy_part`, there are
-            // 6 different cases to handle. Whether src and/or dst wrap are 4
-            // combinations and there are 3 distinct cases when they both wrap.
-            // 6 = 3 + 1 + 1 + 1
-            match (src_wraps, dst_wraps) {
+            // Then all that is needed is to copy all values from
+            // src (src_high and src_low) to dst (dst_high and dst_low).
+            //
+            // other [o o o . . . . . o o o o]
+            //       [5 6 7]         [1 2 3 4]
+            //       src_low         src_high
+            //
+            // self  [. . . . . . o o o o . .]
+            //       [3 4 5 6 7 .]       [1 2]
+            //       dst_low             dst_high
+            //
+            // Values are not copied one by one but as slices in `copy_whole_slice`.
+            // What slices are used depends on various properties of src and dst.
+            // There are 6 cases in total:
+            //     1. `src` and `dst` are contiguous
+            //     2. `src` is contiguous and `dst` is discontiguous
+            //     3. `src` is discontiguous and `dst` is contiguous
+            //     4. `src` and `dst` are discontiguous
+            //        + src_high is smaller than dst_high
+            //     5. `src` and `dst` are discontiguous
+            //        + dst_high is smaller than src_high
+            //     6. `src` and `dst` are discontiguous
+            //        + dst_high is the same size as src_high
+            let src_contiguous = src_low.is_empty();
+            let dst_contiguous = dst_high.len() >= src_total;
+            match (src_contiguous, dst_contiguous) {
                 (true, true) => {
-                    let dst_before_wrap = dst_wrap_point - dst_start_1;
-                    let src_before_wrap = src_wrap_point - src_start_1;
-
-                    if src_before_wrap < dst_before_wrap {
-                        //            src
-                        // [o o o . . . . . . o o o]
-                        //  2 3 3             1 1 1
-                        //
-                        //            dst
-                        // [. . . . . . o o . . . .]
-                        //  3 3 H           1 1 1 2
-                        let src_2 = dst_before_wrap - src_before_wrap;
-                        let dst_start_2 = dst_start_1 + src_before_wrap;
-                        let src_3 = src_total - dst_before_wrap;
-
-                        unsafe {
-                            copy_part(src_start_1, dst_start_1, src_before_wrap, src, dst);
-                            copy_part(0, dst_start_2, src_2, src, dst);
-                            copy_part(src_2, 0, src_3, src, dst);
-                        }
-                        src_3
-                    } else if src_before_wrap > dst_before_wrap {
-                        //            src
-                        // [o o o . . . . . o o o o]
-                        //  3 3 3           1 1 2 2
-                        //
-                        //            dst
-                        // [. . . . . . o o o o . .]
-                        //  2 2 3 3 3 H         1 1
-                        let src_2 = src_before_wrap - dst_before_wrap;
-                        let src_start_2 = src_start_1 + dst_before_wrap;
-                        let src_3 = src_total - src_before_wrap;
-
-                        unsafe {
-                            copy_part(src_start_1, dst_start_1, dst_before_wrap, src, dst);
-                            copy_part(src_start_2, 0, src_2, src, dst);
-                            copy_part(0, src_2, src_3, src, dst);
-                        }
-                        src_2 + src_3
-                    } else {
-                        //            src
-                        // [o o . . . . . . . o o o]
-                        //  2 2               1 1 1
-                        //
-                        //            dst
-                        // [. . . . . . . o o . . .]
-                        //  2 2 H             1 1 1
-                        let src_2 = src_total - src_before_wrap;
-
-                        unsafe {
-                            copy_part(src_start_1, dst_start_1, src_before_wrap, src, dst);
-                            copy_part(0, 0, src_2, src, dst);
-                        }
-                        src_2
-                    }
-                }
-                (false, true) => {
-                    //            src
-                    // [. . . o o o o o . . . .]
-                    //        1 1 2 2 2
+                    // 1.
+                    // other [. . . o o o . . . . . .]
+                    //       []    [1 1 1]
                     //
-                    //            dst
-                    // [. . . . . . . o o o . .]
-                    //  2 2 2 H             1 1
-                    let dst_1 = dst_wrap_point - dst_start_1;
-                    let src_start_2 = src_start_1 + dst_1;
-                    let dst_2 = src_total - dst_1;
+                    // self  [. o o o o o . . . . . .]
+                    //       [.]         [1 1 1 . . .]
 
                     unsafe {
-                        copy_part(src_start_1, dst_start_1, dst_1, src, dst);
-                        copy_part(src_start_2, 0, dst_2, src, dst);
+                        copy_whole_slice(src_high, dst_high);
                     }
-                    dst_2
+                    original_head + src_total
                 }
                 (true, false) => {
-                    //            src
-                    // [o o . . . . . . . o o o]
-                    //  2 2               1 1 1
+                    // 2.
+                    // other [. . . o o o o o . . . .]
+                    //       []    [1 1 2 2 2]
                     //
-                    //            dst
-                    // [. o o . . . . . . . . .]
-                    //        1 1 1 2 2 H
-                    let src_1 = src_wrap_point - src_start_1;
-                    let dst_start_2 = dst_start_1 + src_1;
-                    let src_2 = src_total - src_1;
+                    // self  [. . . . . . . o o o . .]
+                    //       [2 2 2 . . . .]     [1 1]
 
+                    let (src_1, src_2) = src_high.split_at(dst_high.len());
                     unsafe {
-                        copy_part(src_start_1, dst_start_1, src_1, src, dst);
-                        copy_part(0, dst_start_2, src_2, src, dst);
+                        copy_whole_slice(src_1, dst_high);
+                        copy_whole_slice(src_2, dst_low);
                     }
-                    dst_start_1 + src_1 + src_2
+                    src_total - dst_high.len()
+                }
+                (false, true) => {
+                    // 3.
+                    // other [o o . . . . . . . o o o]
+                    //       [2 2]             [1 1 1]
+                    //
+                    // self  [. o o . . . . . . . . .]
+                    //       [.]   [1 1 1 2 2 . . . .]
+
+                    let (dst_1, dst_2) = dst_high.split_at_mut(src_high.len());
+                    unsafe {
+                        copy_whole_slice(src_high, dst_1);
+                        copy_whole_slice(src_low, dst_2);
+                    }
+                    original_head + src_total
                 }
                 (false, false) => {
-                    //            src
-                    // [. . . o o o . . . . . .]
-                    //        1 1 1
-                    //
-                    //            dst
-                    // [. o o o o o . . . . . .]
-                    //              1 1 1 H
-                    unsafe {
-                        copy_part(src_start_1, dst_start_1, src_total, src, dst);
+                    if src_high.len() < dst_high.len() {
+                        // 4.
+                        // other [o o o . . . . . . o o o]
+                        //       [2 3 3]           [1 1 1]
+                        //
+                        // self  [. . . . . . o o . . . .]
+                        //       [3 3 . . . .]   [1 1 1 2]
+
+                        let (dst_1, dst_2) = dst_high.split_at_mut(src_high.len());
+                        let (src_2, src_3) = src_low.split_at(dst_2.len());
+                        unsafe {
+                            copy_whole_slice(src_high, dst_1);
+                            copy_whole_slice(src_2, dst_2);
+                            copy_whole_slice(src_3, dst_low);
+                        }
+                        src_3.len()
+                    } else if src_high.len() > dst_high.len() {
+                        // 5.
+                        // other [o o o . . . . . o o o o]
+                        //       [3 3 3]         [1 1 2 2]
+                        //
+                        // self  [. . . . . . o o o o . .]
+                        //       [2 2 3 3 3 .]       [1 1]
+
+                        let (src_1, src_2) = src_high.split_at(dst_high.len());
+                        let (dst_2, dst_3) = dst_low.split_at_mut(src_2.len());
+                        unsafe {
+                            copy_whole_slice(src_1, dst_high);
+                            copy_whole_slice(src_2, dst_2);
+                            copy_whole_slice(src_low, dst_3);
+                        }
+                        dst_2.len() + src_low.len()
+                    } else {
+                        // 6.
+                        // other [o o . . . . . . . o o o]
+                        //       [2 2]             [1 1 1]
+                        //
+                        // self  [. . . . . . . o o . . .]
+                        //       [2 2 . . . . .]   [1 1 1]
+
+                        unsafe {
+                            copy_whole_slice(src_high, dst_high);
+                            copy_whole_slice(src_low, dst_low);
+                        }
+                        src_low.len()
                     }
-                    dst_start_1 + src_total
                 }
             }
         };
+
+        // Up until this point we are in a bad state as some values
+        // exist in both `self` and `other`. To preserve panic safety
+        // it is important we clear the old values from `other`...
         other.clear();
+        // and that we update `head` as the last step, making the values accessible in `self`.
+        self.head = new_head;
     }
 
     /// Retains only the elements specified by the predicate.
