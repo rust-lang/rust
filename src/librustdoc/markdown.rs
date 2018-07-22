@@ -12,6 +12,7 @@ use std::default::Default;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{PathBuf, Path};
+use std::cell::RefCell;
 
 use errors;
 use getopts;
@@ -24,10 +25,9 @@ use syntax::edition::Edition;
 
 use externalfiles::{ExternalHtml, LoadStringError, load_string};
 
-use html::render::reset_ids;
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{ErrorCodes, Markdown, MarkdownWithToc, find_testable_code};
+use html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_testable_code};
 use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
@@ -87,13 +87,12 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
     }
     let title = metadata[0];
 
-    reset_ids(false);
-
+    let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let text = if include_toc {
-        MarkdownWithToc(text, error_codes).to_string()
+        MarkdownWithToc(text, RefCell::new(&mut ids), error_codes).to_string()
     } else {
-        Markdown(text, &[], error_codes).to_string()
+        Markdown(text, &[], RefCell::new(&mut ids), error_codes).to_string()
     };
 
     let err = write!(

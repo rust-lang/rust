@@ -18,10 +18,12 @@
 //! ```
 //! #![feature(rustc_private)]
 //!
-//! use rustdoc::html::markdown::{Markdown, ErrorCodes};
+//! use rustdoc::html::markdown::{IdMap, Markdown, ErrorCodes};
+//! use std::cell::RefCell;
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s, &[], ErrorCodes::Yes));
+//! let mut id_map = IdMap::new();
+//! let html = format!("{}", Markdown(s, &[], RefCell::new(&mut id_map), ErrorCodes::Yes));
 //! // ... something using html
 //! ```
 
@@ -35,7 +37,6 @@ use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
 
-use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
 use test;
@@ -47,12 +48,13 @@ use pulldown_cmark::{Options, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 /// The second parameter is a list of link replacements
-pub struct Markdown<'a>(pub &'a str, pub &'a [(String, String)], pub ErrorCodes);
+pub struct Markdown<'a>(
+    pub &'a str, pub &'a [(String, String)], pub RefCell<&'a mut IdMap>, pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
-pub struct MarkdownWithToc<'a>(pub &'a str, pub ErrorCodes);
+pub struct MarkdownWithToc<'a>(pub &'a str, pub RefCell<&'a mut IdMap>, pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
-pub struct MarkdownHtml<'a>(pub &'a str, pub ErrorCodes);
+pub struct MarkdownHtml<'a>(pub &'a str, pub RefCell<&'a mut IdMap>, pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders only the first paragraph.
 pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
 
@@ -287,23 +289,25 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I>
 }
 
 /// Make headings links with anchor ids and build up TOC.
-struct HeadingLinks<'a, 'b, I: Iterator<Item = Event<'a>>> {
+struct HeadingLinks<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> {
     inner: I,
     toc: Option<&'b mut TocBuilder>,
     buf: VecDeque<Event<'a>>,
+    id_map: &'ids mut IdMap,
 }
 
-impl<'a, 'b, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, I> {
-    fn new(iter: I, toc: Option<&'b mut TocBuilder>) -> Self {
+impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, 'ids, I> {
+    fn new(iter: I, toc: Option<&'b mut TocBuilder>, ids: &'ids mut IdMap) -> Self {
         HeadingLinks {
             inner: iter,
             toc,
             buf: VecDeque::new(),
+            id_map: ids,
         }
     }
 }
 
-impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 'b, I> {
+impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 'b, 'ids, I> {
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -322,7 +326,7 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 'b, I>
                 }
                 self.buf.push_back(event);
             }
-            let id = derive_id(id);
+            let id = self.id_map.derive(id);
 
             if let Some(ref mut builder) = self.toc {
                 let mut html_header = String::new();
@@ -641,7 +645,8 @@ impl LangString {
 
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Markdown(md, links, codes) = *self;
+        let Markdown(md, links, ref ids, codes) = *self;
+        let mut ids = ids.borrow_mut();
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
@@ -661,7 +666,7 @@ impl<'a> fmt::Display for Markdown<'a> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None);
+        let p = HeadingLinks::new(p, None, &mut ids);
         let p = LinkReplacer::new(p, links);
         let p = CodeBlocks::new(p, codes);
         let p = Footnotes::new(p);
@@ -673,7 +678,8 @@ impl<'a> fmt::Display for Markdown<'a> {
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownWithToc(md, codes) = *self;
+        let MarkdownWithToc(md, ref ids, codes) = *self;
+        let mut ids = ids.borrow_mut();
 
         let mut opts = Options::empty();
         opts.insert(OPTION_ENABLE_TABLES);
@@ -686,7 +692,7 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
         let mut toc = TocBuilder::new();
 
         {
-            let p = HeadingLinks::new(p, Some(&mut toc));
+            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids);
             let p = CodeBlocks::new(p, codes);
             let p = Footnotes::new(p);
             html::push_html(&mut s, p);
@@ -700,7 +706,8 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
 
 impl<'a> fmt::Display for MarkdownHtml<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownHtml(md, codes) = *self;
+        let MarkdownHtml(md, ref ids, codes) = *self;
+        let mut ids = ids.borrow_mut();
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
@@ -718,7 +725,7 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None);
+        let p = HeadingLinks::new(p, None, &mut ids);
         let p = CodeBlocks::new(p, codes);
         let p = Footnotes::new(p);
         html::push_html(&mut s, p);
@@ -835,7 +842,10 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         let p = Parser::new_with_broken_link_callback(md, opts,
             Some(&push));
 
-        let iter = Footnotes::new(HeadingLinks::new(p, None));
+        // There's no need to thread an IdMap through to here because
+        // the IDs generated aren't going to be emitted anywhere.
+        let mut ids = IdMap::new();
+        let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
 
         for ev in iter {
             if let Event::Start(Tag::Link(dest, _)) = ev {
@@ -854,11 +864,67 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     links
 }
 
+#[derive(Default)]
+pub struct IdMap {
+    map: HashMap<String, usize>,
+}
+
+impl IdMap {
+    pub fn new() -> Self {
+        IdMap::default()
+    }
+
+    pub fn populate<I: IntoIterator<Item=String>>(&mut self, ids: I) {
+        for id in ids {
+            let _ = self.derive(id);
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.map = HashMap::new();
+    }
+
+    pub fn derive(&mut self, candidate: String) -> String {
+        let id = match self.map.get_mut(&candidate) {
+            None => candidate,
+            Some(a) => {
+                let id = format!("{}-{}", candidate, *a);
+                *a += 1;
+                id
+            }
+        };
+
+        self.map.insert(id.clone(), 1);
+        id
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn test_unique_id() {
+    let input = ["foo", "examples", "examples", "method.into_iter","examples",
+                 "method.into_iter", "foo", "main", "search", "methods",
+                 "examples", "method.into_iter", "assoc_type.Item", "assoc_type.Item"];
+    let expected = ["foo", "examples", "examples-1", "method.into_iter", "examples-2",
+                    "method.into_iter-1", "foo-1", "main", "search", "methods",
+                    "examples-3", "method.into_iter-2", "assoc_type.Item", "assoc_type.Item-1"];
+
+    let map = RefCell::new(IdMap::new());
+    let test = || {
+        let mut map = map.borrow_mut();
+        let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
+        assert_eq!(&actual[..], expected);
+    };
+    test();
+    map.borrow_mut().reset();
+    test();
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ErrorCodes, LangString, Markdown, MarkdownHtml};
+    use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap};
     use super::plain_summary_line;
-    use html::render::reset_ids;
+    use std::cell::RefCell;
 
     #[test]
     fn test_lang_string_parse() {
@@ -902,18 +968,11 @@ mod tests {
     }
 
     #[test]
-    fn issue_17736() {
-        let markdown = "# title";
-        Markdown(markdown, &[], ErrorCodes::Yes).to_string();
-        reset_ids(true);
-    }
-
-    #[test]
     fn test_header() {
         fn t(input: &str, expect: &str) {
-            let output = Markdown(input, &[], ErrorCodes::Yes).to_string();
+            let mut map = IdMap::new();
+            let output = Markdown(input, &[], RefCell::new(&mut map), ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
-            reset_ids(true);
         }
 
         t("# Foo bar", "<h1 id=\"foo-bar\" class=\"section-header\">\
@@ -932,28 +991,24 @@ mod tests {
 
     #[test]
     fn test_header_ids_multiple_blocks() {
-        fn t(input: &str, expect: &str) {
-            let output = Markdown(input, &[], ErrorCodes::Yes).to_string();
+        let mut map = IdMap::new();
+        fn t(map: &mut IdMap, input: &str, expect: &str) {
+            let output = Markdown(input, &[], RefCell::new(map), ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 
-        let test = || {
-            t("# Example", "<h1 id=\"example\" class=\"section-header\">\
-              <a href=\"#example\">Example</a></h1>");
-            t("# Panics", "<h1 id=\"panics\" class=\"section-header\">\
-              <a href=\"#panics\">Panics</a></h1>");
-            t("# Example", "<h1 id=\"example-1\" class=\"section-header\">\
-              <a href=\"#example-1\">Example</a></h1>");
-            t("# Main", "<h1 id=\"main-1\" class=\"section-header\">\
-              <a href=\"#main-1\">Main</a></h1>");
-            t("# Example", "<h1 id=\"example-2\" class=\"section-header\">\
-              <a href=\"#example-2\">Example</a></h1>");
-            t("# Panics", "<h1 id=\"panics-1\" class=\"section-header\">\
-              <a href=\"#panics-1\">Panics</a></h1>");
-        };
-        test();
-        reset_ids(true);
-        test();
+        t(&mut map, "# Example", "<h1 id=\"example\" class=\"section-header\">\
+            <a href=\"#example\">Example</a></h1>");
+        t(&mut map, "# Panics", "<h1 id=\"panics\" class=\"section-header\">\
+            <a href=\"#panics\">Panics</a></h1>");
+        t(&mut map, "# Example", "<h1 id=\"example-1\" class=\"section-header\">\
+            <a href=\"#example-1\">Example</a></h1>");
+        t(&mut map, "# Main", "<h1 id=\"main\" class=\"section-header\">\
+            <a href=\"#main\">Main</a></h1>");
+        t(&mut map, "# Example", "<h1 id=\"example-2\" class=\"section-header\">\
+            <a href=\"#example-2\">Example</a></h1>");
+        t(&mut map, "# Panics", "<h1 id=\"panics-1\" class=\"section-header\">\
+            <a href=\"#panics-1\">Panics</a></h1>");
     }
 
     #[test]
@@ -974,7 +1029,8 @@ mod tests {
     #[test]
     fn test_markdown_html_escape() {
         fn t(input: &str, expect: &str) {
-            let output = MarkdownHtml(input, ErrorCodes::Yes).to_string();
+            let mut idmap = IdMap::new();
+            let output = MarkdownHtml(input, RefCell::new(&mut idmap), ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 

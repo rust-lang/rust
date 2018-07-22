@@ -21,10 +21,11 @@ use std::fs::{read_dir, File};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::path::PathBuf;
+use std::cell::RefCell;
 
 use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
-use rustdoc::html::markdown::{Markdown, ErrorCodes, PLAYGROUND};
+use rustdoc::html::markdown::{Markdown, IdMap, ErrorCodes, PLAYGROUND};
 use rustc_serialize::json;
 
 enum OutputFormat {
@@ -36,7 +37,7 @@ enum OutputFormat {
 impl OutputFormat {
     fn from(format: &str) -> OutputFormat {
         match &*format.to_lowercase() {
-            "html"     => OutputFormat::HTML(HTMLFormatter),
+            "html"     => OutputFormat::HTML(HTMLFormatter(RefCell::new(IdMap::new()))),
             "markdown" => OutputFormat::Markdown(MarkdownFormatter),
             s          => OutputFormat::Unknown(s.to_owned()),
         }
@@ -51,7 +52,7 @@ trait Formatter {
     fn footer(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>>;
 }
 
-struct HTMLFormatter;
+struct HTMLFormatter(RefCell<IdMap>);
 struct MarkdownFormatter;
 
 impl Formatter for HTMLFormatter {
@@ -100,7 +101,11 @@ impl Formatter for HTMLFormatter {
 
         // Description rendered as markdown.
         match info.description {
-            Some(ref desc) => write!(output, "{}", Markdown(desc, &[], ErrorCodes::Yes))?,
+            Some(ref desc) => {
+                let mut id_map = self.0.borrow_mut();
+                write!(output, "{}",
+                    Markdown(desc, &[], RefCell::new(&mut id_map), ErrorCodes::Yes))?
+            },
             None => write!(output, "<p>No description.</p>\n")?,
         }
 
