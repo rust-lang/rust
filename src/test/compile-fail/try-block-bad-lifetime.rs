@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition 2018
+
 #![feature(catch_expr)]
 
-// This test checks that borrows made and returned inside catch blocks are properly constrained
+// This test checks that borrows made and returned inside try blocks are properly constrained
 pub fn main() {
     {
-        // Test that borrows returned from a catch block must be valid for the lifetime of the
+        // Test that borrows returned from a try block must be valid for the lifetime of the
         // result variable
-        let _result: Result<(), &str> = do catch {
+        let _result: Result<(), &str> = try {
             let my_string = String::from("");
             let my_str: & str = & my_string;
             //~^ ERROR `my_string` does not live long enough
@@ -25,10 +27,10 @@ pub fn main() {
     }
 
     {
-        // Test that borrows returned from catch blocks freeze their referent
+        // Test that borrows returned from try blocks freeze their referent
         let mut i = 5;
         let k = &mut i;
-        let mut j: Result<(), &mut i32> = do catch {
+        let mut j: Result<(), &mut i32> = try {
             Err(k) ?;
             i = 10; //~ ERROR cannot assign to `i` because it is borrowed
         };

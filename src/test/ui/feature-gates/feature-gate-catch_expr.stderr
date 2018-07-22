@@ -1,8 +1,8 @@
-error[E0658]: `catch` expression is experimental (see issue #31436)
-  --> $DIR/feature-gate-catch_expr.rs:12:24
+error[E0658]: `try` expression is experimental (see issue #31436)
+  --> $DIR/feature-gate-catch_expr.rs:14:33
    |
-LL |       let catch_result = do catch { //~ ERROR `catch` expression is experimental
-   |  ________________________^
+LL |       let try_result: Option<_> = try { //~ ERROR `try` expression is experimental
+   |  _________________________________^
 LL | |         let x = 5;
 LL | |         x
 LL | |     };

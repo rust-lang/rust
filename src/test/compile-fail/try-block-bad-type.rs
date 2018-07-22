@@ -8,21 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition 2018
+
 #![feature(catch_expr)]
 
 pub fn main() {
-    let res: Result<u32, i32> = do catch {
+    let res: Result<u32, i32> = try {
         Err("")?; //~ ERROR the trait bound `i32: std::convert::From<&str>` is not satisfied
         5
     };
 
-    let res: Result<i32, i32> = do catch {
+    let res: Result<i32, i32> = try {
         "" //~ ERROR type mismatch
     };
 
-    let res: Result<i32, i32> = do catch { }; //~ ERROR type mismatch
+    let res: Result<i32, i32> = try { }; //~ ERROR type mismatch
 
-    let res: () = do catch { }; //~ the trait bound `(): std::ops::Try` is not satisfied
+    let res: () = try { }; //~ the trait bound `(): std::ops::Try` is not satisfied
 
-    let res: i32 = do catch { 5 }; //~ ERROR the trait bound `i32: std::ops::Try` is not satisfied
+    let res: i32 = try { 5 }; //~ ERROR the trait bound `i32: std::ops::Try` is not satisfied
 }

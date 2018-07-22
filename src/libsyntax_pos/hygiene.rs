@@ -609,7 +609,7 @@ impl CompilerDesugaringKind {
         Symbol::intern(match self {
             CompilerDesugaringKind::Async => "async",
             CompilerDesugaringKind::QuestionMark => "?",
-            CompilerDesugaringKind::TryBlock => "do catch",
+            CompilerDesugaringKind::TryBlock => "try block",
             CompilerDesugaringKind::ExistentialReturnType => "existential type",
             CompilerDesugaringKind::ForLoop => "for loop",
         })

@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition 2018
+
 #![feature(catch_expr)]
 
-// This test checks that borrows made and returned inside catch blocks are properly constrained
+// This test checks that borrows made and returned inside try blocks are properly constrained
 pub fn main() {
     {
         // Test that a borrow which *might* be returned still freezes its referent
         let mut i = 222;
-        let x: Result<&i32, ()> = do catch {
+        let x: Result<&i32, ()> = try {
             Err(())?;
             &i
         };
@@ -26,7 +28,7 @@ pub fn main() {
 
     {
         let x = String::new();
-        let _y: Result<(), ()> = do catch {
+        let _y: Result<(), ()> = try {
             Err(())?;
             ::std::mem::drop(x);
         };
@@ -38,7 +40,7 @@ pub fn main() {
         // its referent
         let mut i = 222;
         let j;
-        let x: Result<(), ()> = do catch {
+        let x: Result<(), ()> = try {
             Err(())?;
             j = &i;
         };

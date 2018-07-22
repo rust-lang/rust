@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition 2018
+
 #![feature(catch_expr)]
 
 fn use_val<T: Sized>(_x: T) {}
 
 pub fn main() {
     let cfg_res;
-    let _: Result<(), ()> = do catch {
+    let _: Result<(), ()> = try {
         Err(())?;
         cfg_res = 5;
         Ok::<(), ()>(())?;

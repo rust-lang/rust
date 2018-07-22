@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition 2018
+
 #![feature(catch_expr)]
 
-fn foo() -> Option<()> { Some(()) }
-
 fn main() {
-    let _: Option<f32> = do catch {
-        foo()?;
-        42
-        //~^ ERROR type mismatch
-    };
-
-    let _: Option<i32> = do catch {
-        foo()?;
-    };
-    //~^ ERROR type mismatch
+    match try { false } { _ => {} } //~ ERROR expected expression, found keyword `try`
 }

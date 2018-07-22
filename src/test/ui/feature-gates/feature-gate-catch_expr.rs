@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition 2018
+
 pub fn main() {
-    let catch_result = do catch { //~ ERROR `catch` expression is experimental
+    let try_result: Option<_> = try { //~ ERROR `try` expression is experimental
         let x = 5;
         x
     };
-    assert_eq!(catch_result, 5);
+    assert_eq!(try_result, Some(5));
 }

@@ -2380,7 +2380,7 @@ impl<'a> State<'a> {
                 self.s.word("?")?
             }
             ast::ExprKind::TryBlock(ref blk) => {
-                self.head("do catch")?;
+                self.head("try")?;
                 self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?
             }

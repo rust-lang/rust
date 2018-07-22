@@ -21,7 +21,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(slice_sort_by_cached_key)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(catch_expr)]
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
@@ -60,6 +59,14 @@ extern crate log_settings;
 extern crate rustc_apfloat;
 extern crate byteorder;
 extern crate core;
+
+// Once we can use edition 2018 in the compiler,
+// replace this with real try blocks.
+macro_rules! try_block {
+    ($($inside:tt)*) => (
+        (||{ ::std::ops::Try::from_ok({ $($inside)* }) })()
+    )
+}
 
 mod diagnostics;
 

@@ -330,7 +330,7 @@ declare_features! (
     // `extern "x86-interrupt" fn()`
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
 
-    // Allows the `catch {...}` expression
+    // Allows the `try {...}` expression
     (active, catch_expr, "1.17.0", Some(31436), None),
 
     // Used to preserve symbols (see llvm.used)
@@ -1735,7 +1735,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                   "yield syntax is experimental");
             }
             ast::ExprKind::TryBlock(_) => {
-                gate_feature_post!(&self, catch_expr, e.span, "`catch` expression is experimental");
+                gate_feature_post!(&self, catch_expr, e.span, "`try` expression is experimental");
             }
             ast::ExprKind::IfLet(ref pats, ..) | ast::ExprKind::WhileLet(ref pats, ..) => {
                 if pats.len() > 1 {
