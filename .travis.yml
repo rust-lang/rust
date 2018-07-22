@@ -40,8 +40,10 @@ matrix:
     - env: INTEGRATION=crater
     # Doesn't build
     - env: INTEGRATION=futures-rs
-    # Unknown
+    # Test failure
     - env: INTEGRATION=rust-clippy
+    # Build failure
+    - env: INTEGRATION=rust-semverver
     # See: https://github.com/rust-lang-nursery/rustfmt/issues/2787
     - env: INTEGRATION=stdsimd
 
