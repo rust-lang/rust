@@ -89,6 +89,35 @@ macro_rules! newtype_index {
             }
         }
 
+        impl ::std::iter::Step for $type {
+            fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                <usize as ::std::iter::Step>::steps_between(
+                    &Idx::index(*start),
+                    &Idx::index(*end),
+                )
+            }
+
+            fn replace_one(&mut self) -> Self {
+                ::std::mem::replace(self, Self::new(1))
+            }
+
+            fn replace_zero(&mut self) -> Self {
+                ::std::mem::replace(self, Self::new(0))
+            }
+
+            fn add_one(&self) -> Self {
+                Self::new(Idx::index(*self) + 1)
+            }
+
+            fn sub_one(&self) -> Self {
+                Self::new(Idx::index(*self) - 1)
+            }
+
+            fn add_usize(&self, u: usize) -> Option<Self> {
+                Idx::index(*self).checked_add(u).map(Self::new)
+            }
+        }
+
         newtype_index!(
             @handle_debug
             @derives      [$($derives,)*]
