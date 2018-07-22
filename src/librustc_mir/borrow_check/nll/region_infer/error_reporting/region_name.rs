@@ -12,10 +12,9 @@ use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::mir::{Local, Mir};
+use rustc::mir::Mir;
 use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_errors::DiagnosticBuilder;
 use syntax::ast::Name;
 use syntax::symbol::keywords;
@@ -63,11 +62,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.give_name_from_error_region(tcx, mir_def_id, fr, counter, diag)
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_arguments(
-                    tcx, mir, mir_def_id, fr, counter, diag,
-                )
+                    tcx, mir, mir_def_id, fr, counter, diag)
             })
             .or_else(|| {
-                self.give_name_if_anonymous_region_appears_in_upvars(tcx, mir, fr, counter, diag)
+                self.give_name_if_anonymous_region_appears_in_upvars(
+                    tcx, mir, fr, counter, diag)
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_output(tcx, mir, fr, counter, diag)
@@ -139,24 +138,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
-        let argument_index = self
-            .universal_regions
-            .unnormalized_input_tys
-            .iter()
-            .skip(implicit_inputs)
-            .position(|arg_ty| {
-                debug!(
-                    "give_name_if_anonymous_region_appears_in_arguments: arg_ty = {:?}",
-                    arg_ty
-                );
-                tcx.any_free_region_meets(arg_ty, |r| r.to_region_vid() == fr)
-            })?;
-
-        debug!(
-            "give_name_if_anonymous_region_appears_in_arguments: \
-             found {:?} in argument {} which has type {:?}",
-            fr, argument_index, self.universal_regions.unnormalized_input_tys[argument_index],
-        );
+        let argument_index = self.get_argument_index_for_region(tcx, fr)?;
 
         let arg_ty =
             self.universal_regions.unnormalized_input_tys[implicit_inputs + argument_index];
@@ -172,10 +154,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return Some(region_name);
         }
 
+        let (_argument_name, argument_span) = self.get_argument_name_and_span_for_region(
+            mir, argument_index);
+
         let region_name = self.synthesize_region_name(counter);
 
-        let argument_local = Local::new(argument_index + implicit_inputs + 1);
-        let argument_span = mir.local_decls[argument_local].source_info.span;
         diag.span_label(
             argument_span,
             format!("lifetime `{}` appears in this argument", region_name,),
@@ -440,42 +423,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
-        let upvar_index = self
-            .universal_regions
-            .defining_ty
-            .upvar_tys(tcx)
-            .position(|upvar_ty| {
-                debug!(
-                    "give_name_if_anonymous_region_appears_in_upvars: upvar_ty = {:?}",
-                    upvar_ty,
-                );
-                tcx.any_free_region_meets(&upvar_ty, |r| r.to_region_vid() == fr)
-            })?;
-
-        let upvar_ty = self
-            .universal_regions
-            .defining_ty
-            .upvar_tys(tcx)
-            .nth(upvar_index);
-
-        debug!(
-            "give_name_if_anonymous_region_appears_in_upvars: \
-             found {:?} in upvar {} which has type {:?}",
-            fr, upvar_index, upvar_ty,
-        );
-
+        let upvar_index = self.get_upvar_index_for_region(tcx, fr)?;
+        let (upvar_name, upvar_span) = self.get_upvar_name_and_span_for_region(tcx, mir,
+                                                                               upvar_index);
         let region_name = self.synthesize_region_name(counter);
 
-        let upvar_hir_id = mir.upvar_decls[upvar_index].var_hir_id.assert_crate_local();
-        let upvar_node_id = tcx.hir.hir_to_node_id(upvar_hir_id);
-        let upvar_span = tcx.hir.span(upvar_node_id);
-        let upvar_name = tcx.hir.name(upvar_node_id);
         diag.span_label(
             upvar_span,
-            format!(
-                "lifetime `{}` appears in the type of `{}`",
-                region_name, upvar_name,
-            ),
+            format!("lifetime `{}` appears in the type of `{}`", region_name, upvar_name),
         );
 
         Some(region_name)

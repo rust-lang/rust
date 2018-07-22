@@ -22,6 +22,7 @@ use std::fmt;
 use syntax_pos::Span;
 
 mod region_name;
+mod var_name;
 
 /// Constraints that are considered interesting can be categorized to
 /// determine why they are interesting. Order of variants indicates
@@ -30,7 +31,9 @@ mod region_name;
 enum ConstraintCategory {
     Cast,
     Assignment,
+    AssignmentToUpvar,
     Return,
+    CallArgumentToUpvar,
     CallArgument,
     Other,
     Boring,
@@ -39,10 +42,12 @@ enum ConstraintCategory {
 impl fmt::Display for ConstraintCategory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ConstraintCategory::Assignment => write!(f, "assignment"),
+            ConstraintCategory::Assignment |
+            ConstraintCategory::AssignmentToUpvar => write!(f, "assignment"),
             ConstraintCategory::Return => write!(f, "return"),
             ConstraintCategory::Cast => write!(f, "cast"),
-            ConstraintCategory::CallArgument => write!(f, "argument"),
+            ConstraintCategory::CallArgument |
+            ConstraintCategory::CallArgumentToUpvar => write!(f, "argument"),
             _ => write!(f, "free region"),
         }
     }
@@ -130,8 +135,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         index: ConstraintIndex,
         mir: &Mir<'tcx>,
+        _infcx: &InferCtxt<'_, '_, 'tcx>,
     ) -> (ConstraintCategory, Span) {
         let constraint = self.constraints[index];
+        debug!("classify_constraint: constraint={:?}", constraint);
         let span = constraint.locations.span(mir);
         let location = constraint.locations.from_location().unwrap_or(Location::START);
 
@@ -140,8 +147,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let data = &mir[location.block];
+        debug!("classify_constraint: location={:?} data={:?}", location, data);
         let category = if location.statement_index == data.statements.len() {
             if let Some(ref terminator) = data.terminator {
+                debug!("classify_constraint: terminator.kind={:?}", terminator.kind);
                 match terminator.kind {
                     TerminatorKind::DropAndReplace { .. } => ConstraintCategory::Assignment,
                     TerminatorKind::Call { .. } => ConstraintCategory::CallArgument,
@@ -152,14 +161,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         } else {
             let statement = &data.statements[location.statement_index];
+            debug!("classify_constraint: statement.kind={:?}", statement.kind);
             match statement.kind {
                 StatementKind::Assign(ref place, ref rvalue) => {
+                    debug!("classify_constraint: place={:?} rvalue={:?}", place, rvalue);
                     if *place == Place::Local(mir::RETURN_PLACE) {
                         ConstraintCategory::Return
                     } else {
                         match rvalue {
                             Rvalue::Cast(..) => ConstraintCategory::Cast,
-                            Rvalue::Use(..) => ConstraintCategory::Assignment,
+                            Rvalue::Use(..) |
+                            Rvalue::Aggregate(..) => ConstraintCategory::Assignment,
                             _ => ConstraintCategory::Other,
                         }
                     }
@@ -208,7 +220,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Classify each of the constraints along the path.
         let mut categorized_path: Vec<(ConstraintCategory, Span)> = path.iter()
-            .map(|&index| self.classify_constraint(index, mir))
+            .map(|&index| self.classify_constraint(index, mir, infcx))
             .collect();
         debug!("report_error: categorized_path={:?}", categorized_path);
 
@@ -218,30 +230,100 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Get a span
         let (category, span) = categorized_path.first().unwrap();
+
+        let category = match (
+            category,
+            self.universal_regions.is_local_free_region(fr),
+            self.universal_regions.is_local_free_region(outlived_fr),
+        ) {
+            (ConstraintCategory::Assignment, true, false) =>
+                &ConstraintCategory::AssignmentToUpvar,
+            (ConstraintCategory::CallArgument, true, false) =>
+                &ConstraintCategory::CallArgumentToUpvar,
+            (category, _, _) => category,
+        };
+
+        debug!("report_error: category={:?}", category);
+        match category {
+            ConstraintCategory::AssignmentToUpvar |
+            ConstraintCategory::CallArgumentToUpvar =>
+                self.report_closure_error(mir, infcx, mir_def_id, fr, outlived_fr, category, span),
+            _ =>
+                self.report_general_error(mir, infcx, mir_def_id, fr, outlived_fr, category, span),
+        }
+    }
+
+    fn report_closure_error(
+        &self,
+        mir: &Mir<'tcx>,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir_def_id: DefId,
+        fr: RegionVid,
+        outlived_fr: RegionVid,
+        category: &ConstraintCategory,
+        span: &Span,
+    ) {
+        let fr_name_and_span  = self.get_var_name_and_span_for_region(
+            infcx.tcx, mir, fr);
+        let outlived_fr_name_and_span = self.get_var_name_and_span_for_region(
+            infcx.tcx, mir,outlived_fr);
+
+        if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
+            return self.report_general_error(mir, infcx, mir_def_id, fr, outlived_fr, category,
+                                             span);
+        }
+
         let diag = &mut infcx.tcx.sess.struct_span_err(
-            *span,
-            &format!("unsatisfied lifetime constraints"), // FIXME
+            *span, &format!("borrowed data escapes outside of closure"),
         );
 
-        // Figure out how we can refer
+        if let Some((outlived_fr_name, outlived_fr_span)) = outlived_fr_name_and_span {
+            if let Some(name) = outlived_fr_name {
+                diag.span_label(
+                    outlived_fr_span,
+                    format!("`{}` is declared here, outside of the closure body", name),
+                );
+            }
+        }
+
+        if let Some((fr_name, fr_span)) = fr_name_and_span {
+            if let Some(name) = fr_name {
+                diag.span_label(
+                    fr_span,
+                    format!("`{}` is a reference that is only valid in the closure body", name),
+                );
+
+                diag.span_label(*span, format!("`{}` escapes the closure body here", name));
+            }
+        }
+
+        diag.emit();
+    }
+
+    fn report_general_error(
+        &self,
+        mir: &Mir<'tcx>,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir_def_id: DefId,
+        fr: RegionVid,
+        outlived_fr: RegionVid,
+        category: &ConstraintCategory,
+        span: &Span,
+    ) {
+        let diag = &mut infcx.tcx.sess.struct_span_err(
+            *span, &format!("unsatisfied lifetime constraints"), // FIXME
+        );
+
         let counter = &mut 1;
-        let fr_name = self.give_region_a_name(infcx.tcx, mir, mir_def_id, fr, counter, diag);
+        let fr_name = self.give_region_a_name(
+            infcx.tcx, mir, mir_def_id, fr, counter, diag);
         let outlived_fr_name = self.give_region_a_name(
-            infcx.tcx,
-            mir,
-            mir_def_id,
-            outlived_fr,
-            counter,
-            diag,
-        );
+            infcx.tcx, mir, mir_def_id, outlived_fr, counter, diag);
 
-        diag.span_label(
-            *span,
-            format!(
-                "{} requires that `{}` must outlive `{}`",
-                category, fr_name, outlived_fr_name,
-            ),
-        );
+        diag.span_label(*span, format!(
+            "{} requires that `{}` must outlive `{}`",
+            category, fr_name, outlived_fr_name,
+        ));
 
         diag.emit();
     }

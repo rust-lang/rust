@@ -4,16 +4,16 @@ warning: not reporting region error due to nll
 LL |     foo(cell, |cell_a, cell_x| {
    |     ^^^
 
-error: unsatisfied lifetime constraints
+error: borrowed data escapes outside of closure
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:20
    |
 LL |     foo(cell, |cell_a, cell_x| {
-   |                ------  ------ lifetime `'1` appears in this argument
+   |                ------  ------ `cell_x` is a reference that is only valid in the closure body
    |                |
-   |                lifetime `'2` appears in this argument
+   |                `cell_a` is declared here, outside of the closure body
 LL |         //~^ WARNING not reporting region error due to nll
 LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-   |                    ^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |                    ^^^^^^^^^^^^ `cell_x` escapes the closure body here
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:15

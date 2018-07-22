@@ -4,11 +4,13 @@ warning: not reporting region error due to nll
 LL |     static_val(x); //~ ERROR cannot infer
    |                ^
 
-error: unsatisfied lifetime constraints
+error: borrowed data escapes outside of closure
   --> $DIR/dyn-trait.rs:32:5
    |
+LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
+   |                              - `x` is a reference that is only valid in the closure body
 LL |     static_val(x); //~ ERROR cannot infer
-   |     ^^^^^^^^^^^^^ argument requires that `'a` must outlive `'static`
+   |     ^^^^^^^^^^^^^ `x` escapes the closure body here
 
 error: aborting due to previous error
 

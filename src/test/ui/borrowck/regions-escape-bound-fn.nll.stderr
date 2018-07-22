@@ -4,15 +4,15 @@ warning: not reporting region error due to nll
 LL |     with_int(|y| x = Some(y));
    |                      ^^^^^^^
 
-error: unsatisfied lifetime constraints
+error: borrowed data escapes outside of closure
   --> $DIR/regions-escape-bound-fn.rs:18:18
    |
 LL |     let mut x: Option<&isize> = None;
-   |         ----- lifetime `'2` appears in the type of `x`
+   |         ----- `x` is declared here, outside of the closure body
 LL |     with_int(|y| x = Some(y));
-   |               -  ^^^^^^^^^^^ free region requires that `'1` must outlive `'2`
+   |               -  ^^^^^^^^^^^ `y` escapes the closure body here
    |               |
-   |               lifetime `'1` appears in this argument
+   |               `y` is a reference that is only valid in the closure body
 
 error: aborting due to previous error
 

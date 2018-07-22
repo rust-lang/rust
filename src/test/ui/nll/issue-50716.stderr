@@ -1,8 +1,11 @@
-error: unsatisfied lifetime constraints
+error: borrowed data escapes outside of closure
   --> $DIR/issue-50716.rs:25:14
    |
+LL | fn foo<'a, T: 'static>(s: Box<<&'a T as A>::X>)
+   |                        - `s` is a reference that is only valid in the closure body
+...
 LL |     let _x = *s; //~ ERROR
-   |              ^^ assignment requires that `'a` must outlive `'static`
+   |              ^^ `s` escapes the closure body here
 
 error: aborting due to previous error
 
