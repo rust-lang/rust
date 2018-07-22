@@ -16,6 +16,7 @@
 
 use toml;
 use rustc_plugin;
+use rustc;
 
 
 macro_rules! declare_clippy_lint {
@@ -175,6 +176,10 @@ mod reexport {
     crate use syntax::ast::{Name, NodeId};
 }
 
+pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore) {
+    store.register_pre_expansion_pass(Some(session), box write::Pass);
+}
+
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     let conf = match utils::conf::file_from_args(reg.args()) {
@@ -320,7 +325,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
-    reg.register_late_lint_pass(box write::Pass);
     reg.register_late_lint_pass(box vec::Pass);
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
