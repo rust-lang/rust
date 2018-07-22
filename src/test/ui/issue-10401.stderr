@@ -5,11 +5,6 @@ LL |     a += { "b" };
    |     -^^^^^^^^^^^
    |     |
    |     cannot use `+=` on type `&str`
-   |     `+` can't be used to concatenate two `&str` strings
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
-   |
-LL |     a.to_owned() += { "b" };
-   |     ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -300,9 +300,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
                                     self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
-                                                            rhs_ty, &mut err) {
+                                                            rhs_ty, &mut err, true) {
                                     // This has nothing here because it means we did string
-                                    // concatenation (e.g. "Hello " + "World!"). This means
+                                    // concatenation (e.g. "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
                                 } else if let ty::TyParam(_) = lhs_ty.sty {
                                     // FIXME: point to span of param
@@ -374,7 +374,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
                                     self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
-                                                            rhs_ty, &mut err) {
+                                                            rhs_ty, &mut err, false) {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g. "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
@@ -403,13 +403,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         (lhs_ty, rhs_ty, return_ty)
     }
 
-    fn check_str_addition(&self,
-                          expr: &'gcx hir::Expr,
-                          lhs_expr: &'gcx hir::Expr,
-                          rhs_expr: &'gcx hir::Expr,
-                          lhs_ty: Ty<'tcx>,
-                          rhs_ty: Ty<'tcx>,
-                          err: &mut errors::DiagnosticBuilder) -> bool {
+    fn check_str_addition(
+        &self,
+        expr: &'gcx hir::Expr,
+        lhs_expr: &'gcx hir::Expr,
+        rhs_expr: &'gcx hir::Expr,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
+        err: &mut errors::DiagnosticBuilder,
+        is_assign: bool,
+    ) -> bool {
         let codemap = self.tcx.sess.codemap();
         let msg = "`to_owned()` can be used to create an owned `String` \
                    from a string reference. String concatenation \
@@ -421,34 +424,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match (&lhs_ty.sty, &rhs_ty.sty) {
             (&TyRef(_, l_ty, _), &TyRef(_, r_ty, _))
             if l_ty.sty == TyStr && r_ty.sty == TyStr => {
-                err.span_label(expr.span,
-                    "`+` can't be used to concatenate two `&str` strings");
-                match codemap.span_to_snippet(lhs_expr.span) {
-                    Ok(lstring) => err.span_suggestion(lhs_expr.span,
-                                                       msg,
-                                                       format!("{}.to_owned()", lstring)),
-                    _ => err.help(msg),
-                };
+                if !is_assign {
+                    err.span_label(expr.span,
+                                   "`+` can't be used to concatenate two `&str` strings");
+                    match codemap.span_to_snippet(lhs_expr.span) {
+                        Ok(lstring) => err.span_suggestion(lhs_expr.span,
+                                                           msg,
+                                                           format!("{}.to_owned()", lstring)),
+                        _ => err.help(msg),
+                    };
+                }
                 true
             }
             (&TyRef(_, l_ty, _), &TyAdt(..))
             if l_ty.sty == TyStr && &format!("{:?}", rhs_ty) == "std::string::String" => {
                 err.span_label(expr.span,
                     "`+` can't be used to concatenate a `&str` with a `String`");
-                match codemap.span_to_snippet(lhs_expr.span) {
-                    Ok(lstring) => err.span_suggestion(lhs_expr.span,
-                                                       msg,
-                                                       format!("{}.to_owned()", lstring)),
-                    _ => err.help(msg),
-                };
-                match codemap.span_to_snippet(rhs_expr.span) {
-                    Ok(rstring) => {
-                        err.span_suggestion(rhs_expr.span,
-                                            "you also need to borrow the `String` on the right to \
-                                             get a `&str`",
-                                            format!("&{}", rstring));
+                match (
+                    codemap.span_to_snippet(lhs_expr.span),
+                    codemap.span_to_snippet(rhs_expr.span),
+                    is_assign,
+                ) {
+                    (Ok(l), Ok(r), false) => {
+                        err.multipart_suggestion(msg, vec![
+                            (lhs_expr.span, format!("{}.to_owned()", l)),
+                            (rhs_expr.span, format!("&{}", r)),
+                        ]);
                     }
-                    _ => {}
+                    _ => {
+                        err.help(msg);
+                    }
                 };
                 true
             }
