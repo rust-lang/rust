@@ -42,7 +42,7 @@ use errors;
 use errors::emitter::ColorConfig;
 
 use clean::Attributes;
-use html::markdown::{self, LangString};
+use html::markdown::{self, ErrorCodes, LangString};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -145,7 +145,8 @@ pub fn run(input_path: &Path,
             let mut hir_collector = HirCollector {
                 sess: &sess,
                 collector: &mut collector,
-                map: &map
+                map: &map,
+                codes: ErrorCodes::from(sess.opts.unstable_features.is_nightly_build()),
             };
             hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
                 intravisit::walk_crate(this, krate);
@@ -662,7 +663,8 @@ impl Collector {
 struct HirCollector<'a, 'hir: 'a> {
     sess: &'a session::Session,
     collector: &'a mut Collector,
-    map: &'a hir::map::Map<'hir>
+    map: &'a hir::map::Map<'hir>,
+    codes: ErrorCodes,
 }
 
 impl<'a, 'hir> HirCollector<'a, 'hir> {
@@ -688,7 +690,7 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // anything else, this will combine them for us
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
-            let res = markdown::find_testable_code(&doc, self.collector);
+            let res = markdown::find_testable_code(&doc, self.collector, self.codes);
             if let Err(err) = res {
                 self.sess.diagnostic().span_warn(attrs.span.unwrap_or(DUMMY_SP),
                     &err.to_string());

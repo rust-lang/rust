@@ -18,10 +18,10 @@
 //! ```
 //! #![feature(rustc_private)]
 //!
-//! use rustdoc::html::markdown::Markdown;
+//! use rustdoc::html::markdown::{Markdown, ErrorCodes};
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s, &[]));
+//! let html = format!("{}", Markdown(s, &[], ErrorCodes::Yes));
 //! // ... something using html
 //! ```
 
@@ -35,7 +35,6 @@ use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
 
-use syntax::feature_gate::UnstableFeatures;
 use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
@@ -48,14 +47,36 @@ use pulldown_cmark::{Options, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 /// The second parameter is a list of link replacements
-pub struct Markdown<'a>(pub &'a str, pub &'a [(String, String)]);
+pub struct Markdown<'a>(pub &'a str, pub &'a [(String, String)], pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
-pub struct MarkdownWithToc<'a>(pub &'a str);
+pub struct MarkdownWithToc<'a>(pub &'a str, pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
-pub struct MarkdownHtml<'a>(pub &'a str);
+pub struct MarkdownHtml<'a>(pub &'a str, pub ErrorCodes);
 /// A unit struct like `Markdown`, that renders only the first paragraph.
 pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum ErrorCodes {
+    Yes,
+    No,
+}
+
+impl ErrorCodes {
+    pub fn from(b: bool) -> Self {
+        match b {
+            true => ErrorCodes::Yes,
+            false => ErrorCodes::No,
+        }
+    }
+
+    pub fn as_bool(self) -> bool {
+        match self {
+            ErrorCodes::Yes => true,
+            ErrorCodes::No => false,
+        }
+    }
+}
 
 /// Controls whether a line will be hidden or shown in HTML output.
 ///
@@ -127,14 +148,14 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
 /// Adds syntax highlighting and playground Run buttons to rust code blocks.
 struct CodeBlocks<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    check_error_codes: bool,
+    check_error_codes: ErrorCodes,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'a, I> {
-    fn new(iter: I) -> Self {
+    fn new(iter: I, error_codes: ErrorCodes) -> Self {
         CodeBlocks {
             inner: iter,
-            check_error_codes: UnstableFeatures::from_environment().is_nightly_build(),
+            check_error_codes: error_codes,
         }
     }
 }
@@ -476,9 +497,8 @@ impl fmt::Display for TestableCodeError {
 }
 
 pub fn find_testable_code(
-    doc: &str, tests: &mut test::Collector
+    doc: &str, tests: &mut test::Collector, error_codes: ErrorCodes,
 ) -> Result<(), TestableCodeError> {
-    let is_nightly = UnstableFeatures::from_environment().is_nightly_build();
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -489,7 +509,7 @@ pub fn find_testable_code(
                 let block_info = if s.is_empty() {
                     LangString::all_false()
                 } else {
-                    LangString::parse(&*s, is_nightly)
+                    LangString::parse(&*s, error_codes)
                 };
                 if !block_info.rust {
                     continue
@@ -570,7 +590,8 @@ impl LangString {
         }
     }
 
-    fn parse(string: &str, allow_error_code_check: bool) -> LangString {
+    fn parse(string: &str, allow_error_code_check: ErrorCodes) -> LangString {
+        let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
@@ -620,7 +641,7 @@ impl LangString {
 
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Markdown(md, links) = *self;
+        let Markdown(md, links, codes) = *self;
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
@@ -645,7 +666,7 @@ impl<'a> fmt::Display for Markdown<'a> {
                             CodeBlocks::new(
                                 LinkReplacer::new(
                                     HeadingLinks::new(p, None),
-                                    links))));
+                                    links), codes)));
 
         fmt.write_str(&s)
     }
@@ -653,7 +674,7 @@ impl<'a> fmt::Display for Markdown<'a> {
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownWithToc(md) = *self;
+        let MarkdownWithToc(md, codes) = *self;
 
         let mut opts = Options::empty();
         opts.insert(OPTION_ENABLE_TABLES);
@@ -665,8 +686,12 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
 
         let mut toc = TocBuilder::new();
 
-        html::push_html(&mut s,
-                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, Some(&mut toc)))));
+        {
+            let p = HeadingLinks::new(p, Some(&mut toc));
+            let p = CodeBlocks::new(p, codes);
+            let p = Footnotes::new(p);
+            html::push_html(&mut s, p);
+        }
 
         write!(fmt, "<nav id=\"TOC\">{}</nav>", toc.into_toc())?;
 
@@ -676,7 +701,7 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
 
 impl<'a> fmt::Display for MarkdownHtml<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownHtml(md) = *self;
+        let MarkdownHtml(md, codes) = *self;
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
@@ -694,8 +719,10 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        html::push_html(&mut s,
-                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
+        let p = HeadingLinks::new(p, None);
+        let p = CodeBlocks::new(p, codes);
+        let p = Footnotes::new(p);
+        html::push_html(&mut s, p);
 
         fmt.write_str(&s)
     }
@@ -830,7 +857,7 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{LangString, Markdown, MarkdownHtml};
+    use super::{ErrorCodes, LangString, Markdown, MarkdownHtml};
     use super::plain_summary_line;
     use html::render::reset_ids;
 
@@ -839,7 +866,7 @@ mod tests {
         fn t(s: &str,
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
             compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
-            assert_eq!(LangString::parse(s, true), LangString {
+            assert_eq!(LangString::parse(s, ErrorCodes::Yes), LangString {
                 should_panic,
                 no_run,
                 ignore,
@@ -878,14 +905,14 @@ mod tests {
     #[test]
     fn issue_17736() {
         let markdown = "# title";
-        Markdown(markdown, &[]).to_string();
+        Markdown(markdown, &[], ErrorCodes::Yes).to_string();
         reset_ids(true);
     }
 
     #[test]
     fn test_header() {
         fn t(input: &str, expect: &str) {
-            let output = Markdown(input, &[]).to_string();
+            let output = Markdown(input, &[], ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
             reset_ids(true);
         }
@@ -907,7 +934,7 @@ mod tests {
     #[test]
     fn test_header_ids_multiple_blocks() {
         fn t(input: &str, expect: &str) {
-            let output = Markdown(input, &[]).to_string();
+            let output = Markdown(input, &[], ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 
@@ -948,7 +975,7 @@ mod tests {
     #[test]
     fn test_markdown_html_escape() {
         fn t(input: &str, expect: &str) {
-            let output = MarkdownHtml(input).to_string();
+            let output = MarkdownHtml(input, ErrorCodes::Yes).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 

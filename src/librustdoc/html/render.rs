@@ -56,6 +56,7 @@ use externalfiles::ExternalHtml;
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
 use syntax::codemap::FileName;
+use syntax::feature_gate::UnstableFeatures;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
@@ -72,7 +73,7 @@ use html::format::{GenericBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCodes};
 use html::{highlight, layout};
 
 use minifier;
@@ -99,6 +100,7 @@ pub struct Context {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
+    pub codes: ErrorCodes,
     pub shared: Arc<SharedContext>,
 }
 
@@ -581,6 +583,7 @@ pub fn run(mut krate: clean::Crate,
         current: Vec::new(),
         dst,
         render_redirect_pages: false,
+        codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
         shared: Arc::new(scx),
     };
 
@@ -2221,13 +2224,14 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
 fn render_markdown(w: &mut fmt::Formatter,
                    md_text: &str,
                    links: Vec<(String, String)>,
-                   prefix: &str,)
+                   prefix: &str,
+                   codes: ErrorCodes)
                    -> fmt::Result {
-    write!(w, "<div class='docblock'>{}{}</div>", prefix, Markdown(md_text, &links))
+    write!(w, "<div class='docblock'>{}{}</div>", prefix, Markdown(md_text, &links, codes))
 }
 
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
-                  prefix: &str) -> fmt::Result {
+                  prefix: &str, codes: ErrorCodes) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
             format!("{} [Read more]({})",
@@ -2235,7 +2239,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             plain_summary_line(Some(s)).to_string()
         };
-        render_markdown(w, &markdown, item.links(), prefix)?;
+        render_markdown(w, &markdown, item.links(), prefix, codes)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -2261,7 +2265,7 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
                  cx: &Context, prefix: &str) -> fmt::Result {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w, &*s, item.links(), prefix)?;
+        render_markdown(w, &*s, item.links(), prefix, cx.codes)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -2508,6 +2512,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
 fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
     let mut stability = vec![];
+    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 
     if let Some(stab) = item.stability.as_ref() {
         let deprecated_reason = if show_reason && !stab.deprecated_reason.is_empty() {
@@ -2521,14 +2526,11 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
+            let html = MarkdownHtml(&deprecated_reason, error_codes);
             let text = if stability::deprecation_in_effect(&stab.deprecated_since) {
-                format!("Deprecated{}{}",
-                        since,
-                        MarkdownHtml(&deprecated_reason))
+                format!("Deprecated{}{}", since, html)
             } else {
-                format!("Deprecating in {}{}",
-                        Escape(&stab.deprecated_since),
-                        MarkdownHtml(&deprecated_reason))
+                format!("Deprecating in {}{}", Escape(&stab.deprecated_since), html)
             };
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
@@ -2559,7 +2561,9 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                                         This is a nightly-only experimental API. {}\
                                         </summary>{}",
                                        unstable_extra,
-                                       MarkdownHtml(&stab.unstable_reason));
+                                       MarkdownHtml(
+                                           &stab.unstable_reason,
+                                           error_codes));
                     stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
                                    text));
                 }
@@ -2582,11 +2586,11 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
         let text = if stability::deprecation_in_effect(&depr.since) {
             format!("Deprecated{}{}",
                     since,
-                    MarkdownHtml(&note))
+                    MarkdownHtml(&note, error_codes))
         } else {
             format!("Deprecating in {}{}",
                     Escape(&depr.since),
-                    MarkdownHtml(&note))
+                    MarkdownHtml(&note, error_codes))
         };
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
@@ -3811,7 +3815,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</span></td></tr></tbody></table></h3>")?;
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             write!(w, "<div class='docblock'>{}</div>",
-                   Markdown(&*dox, &i.impl_item.links()))?;
+                   Markdown(&*dox, &i.impl_item.links(), cx.codes))?;
         }
     }
 
@@ -3897,7 +3901,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         } else if show_def_docs {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link, &prefix)?;
+                            document_short(w, it, link, &prefix, cx.codes)?;
                         }
                     }
                 } else {
@@ -3909,7 +3913,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             } else {
                 document_stability(w, cx, item)?;
                 if show_def_docs {
-                    document_short(w, item, link, &prefix)?;
+                    document_short(w, item, link, &prefix, cx.codes)?;
                 }
             }
         }

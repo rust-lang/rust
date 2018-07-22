@@ -19,6 +19,7 @@ use testing;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{Externs, CodegenOptions};
 use syntax::codemap::DUMMY_SP;
+use syntax::feature_gate::UnstableFeatures;
 use syntax::edition::Edition;
 
 use externalfiles::{ExternalHtml, LoadStringError, load_string};
@@ -26,7 +27,7 @@ use externalfiles::{ExternalHtml, LoadStringError, load_string};
 use html::render::reset_ids;
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{Markdown, MarkdownWithToc, find_testable_code};
+use html::markdown::{ErrorCodes, Markdown, MarkdownWithToc, find_testable_code};
 use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
@@ -88,10 +89,11 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
 
     reset_ids(false);
 
+    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let text = if include_toc {
-        MarkdownWithToc(text).to_string()
+        MarkdownWithToc(text, error_codes).to_string()
     } else {
-        Markdown(text, &[]).to_string()
+        Markdown(text, &[], error_codes).to_string()
     };
 
     let err = write!(
@@ -157,7 +159,8 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                                        Some(PathBuf::from(input)),
                                        linker, edition);
     collector.set_position(DUMMY_SP);
-    let res = find_testable_code(&input_str, &mut collector);
+    let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+    let res = find_testable_code(&input_str, &mut collector, codes);
     if let Err(err) = res {
         diag.span_warn(DUMMY_SP, &err.to_string());
     }
