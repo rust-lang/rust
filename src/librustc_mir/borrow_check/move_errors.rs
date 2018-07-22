@@ -87,6 +87,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 cannot_move_out_of: IllegalMoveOrigin { location, kind },
             } => {
                 let stmt_source_info = self.mir.source_info(location);
+                // Note: that the only time we assign a place isn't a temporary
+                // to a user variable is when initializing it.
+                // If that ever stops being the case, then the ever initialized
+                // flow could be used.
                 if let Some(StatementKind::Assign(
                     Place::Local(local),
                     Rvalue::Use(Operand::Move(move_from)),
@@ -109,26 +113,16 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         opt_ty_info: _,
                     }))) = local_decl.is_user_variable
                     {
-                        // HACK use scopes to determine if this assignment is
-                        // the initialization of a variable.
-                        // FIXME(matthewjasper) This would probably be more
-                        // reliable if it used the ever initialized dataflow
-                        // but move errors are currently reported before the
-                        // rest of borrowck has run.
-                        if self
-                            .mir
-                            .is_sub_scope(local_decl.source_info.scope, stmt_source_info.scope)
-                        {
-                            self.append_binding_error(
-                                grouped_errors,
-                                kind,
-                                move_from,
-                                *local,
-                                opt_match_place,
-                                match_span,
-                            );
-                            return;
-                        }
+                        self.append_binding_error(
+                            grouped_errors,
+                            kind,
+                            move_from,
+                            *local,
+                            opt_match_place,
+                            match_span,
+                            stmt_source_info.span,
+                        );
+                        return;
                     }
                 }
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {
@@ -147,6 +141,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         bind_to: Local,
         match_place: &Option<Place<'tcx>>,
         match_span: Span,
+        statement_span: Span,
     ) {
         debug!(
             "append_to_grouped_errors(match_place={:?}, match_span={:?})",
@@ -173,13 +168,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 debug!("found a new move error location");
 
                 // Don't need to point to x in let x = ... .
-                let binds_to = if from_simple_let {
-                    vec![]
+                let (binds_to, span) = if from_simple_let {
+                    (vec![], statement_span)
                 } else {
-                    vec![bind_to]
+                    (vec![bind_to], match_span)
                 };
                 grouped_errors.push(GroupedMoveError::MovesFromMatchPlace {
-                    span: match_span,
+                    span,
                     move_from: match_place.clone(),
                     kind,
                     binds_to,
