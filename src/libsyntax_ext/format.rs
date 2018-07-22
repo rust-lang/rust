@@ -698,8 +698,8 @@ pub fn expand_format_args_nl<'cx>(ecx: &'cx mut ExtCtxt,
 
     // For some reason, the only one that actually works for `println` is the first check
     if !sp.allows_unstable()   // the enclosing span is marked as `#[allow_insternal_unsable]`
-        || !ecx.ecfg.enable_allow_internal_unstable()  // NOTE: when is this enabled?
-        || !ecx.ecfg.enable_format_args_nl()  // enabled using `#[feature(format_args_nl]`
+        && !ecx.ecfg.enable_allow_internal_unstable()  // NOTE: when is this enabled?
+        && !ecx.ecfg.enable_format_args_nl()  // enabled using `#[feature(format_args_nl]`
     {
         feature_gate::emit_feature_err(&ecx.parse_sess,
                                        "format_args_nl",
