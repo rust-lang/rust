@@ -555,7 +555,7 @@ mod tests {
     use super::*;
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
-        let parser = Parser::new(fmt, syntax::ast::StrStyle::Cooked);
+        let parser = Parser::new(fmt, None);
         assert!(parser.collect::<Vec<Piece<'static>>>() == p);
     }
 
@@ -571,7 +571,7 @@ mod tests {
     }
 
     fn musterr(s: &str) {
-        let mut p = Parser::new(s, syntax::ast::StrStyle::Cooked);
+        let mut p = Parser::new(s, None);
         p.next();
         assert!(!p.errors.is_empty());
     }
