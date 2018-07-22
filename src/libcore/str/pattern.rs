@@ -354,7 +354,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let old_finger = self.finger_back;
-        let slice = unsafe { self.haystack.slice_unchecked(self.finger, old_finger) };
+        let slice = unsafe { self.haystack.get_unchecked(self.finger..old_finger) };
         let mut iter = slice.chars();
         let old_len = iter.iter.len();
         if let Some(ch) = iter.next_back() {
