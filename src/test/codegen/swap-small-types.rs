@@ -8,17 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let tiles = Default::default();
-    for row in &mut tiles {
-        for tile in row {
-            //~^ NOTE the element type for this iterator is not specified
-            *tile = 0;
-            //~^ ERROR type annotations needed
-            //~| NOTE cannot infer type
-            //~| NOTE type must be known at this point
-        }
-    }
+// compile-flags: -O
+// only-x86_64
 
-    let tiles: [[usize; 3]; 3] = tiles;
+#![crate_type = "lib"]
+
+use std::mem::swap;
+
+type RGB48 = [u16; 3];
+
+// CHECK-LABEL: @swap_rgb48
+#[no_mangle]
+pub fn swap_rgb48(x: &mut RGB48, y: &mut RGB48) {
+// CHECK-NOT: alloca
+// CHECK: load i48
+// CHECK: store i48
+    swap(x, y)
 }

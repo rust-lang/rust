@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/issue-24013.rs:15:20
    |
 LL |     unsafe {swap::<&mut _>(transmute(&a), transmute(&b))};
-   |                    ^^^^^^ cannot infer type for `_`
+   |                    ^^^^^^ cannot infer type
 
 error: aborting due to previous error
 
