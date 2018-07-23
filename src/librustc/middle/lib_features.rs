@@ -66,7 +66,9 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
 
             // Find a stability attribute (i.e. `#[stable (..)]`, `#[unstable (..)]`,
             // `#[rustc_const_unstable (..)]`).
-            if stab_attrs.iter().any(|stab_attr| attr.check_name(stab_attr)) {
+            if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {
+                attr.check_name(stab_attr)
+            }) {
                 let meta_item = attr.meta();
                 if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta_item {
                     let mut feature = None;
@@ -82,7 +84,12 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
                         }
                     }
                     if let Some(feature) = feature {
-                        features.push((feature, since, attr.span));
+                        // This additional check for stability is to make sure we
+                        // don't emit additional, irrelevant errors for malformed
+                        // attributes.
+                        if *stab_attr != "stable" || since.is_some() {
+                            features.push((feature, since, attr.span));
+                        }
                     }
                     // We need to iterate over the other attributes, because
                     // `rustc_const_unstable` is not mutually exclusive with

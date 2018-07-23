@@ -13,10 +13,11 @@
 
 #![deny(stable_features)]
 
-#![feature(test_accepted_feature)] //~ ERROR this feature has been stable since 1.0.0
+#![feature(test_accepted_feature)]
+//~^ ERROR the feature `test_accepted_feature` has been stable since 1.0.0
 
-// FIXME(#44232) we should error that this isn't used.
 #![feature(rust1)]
+//~^ ERROR the feature `rust1` has been stable since 1.0.0
 
 fn main() {
     let _foo: Vec<()> = Vec::new();

@@ -12,7 +12,7 @@
 
 #![feature(staged_api)]
 
-#![stable(feature = "test_feature", since = "1.0.0")]
+#![stable(feature = "stable_test_feature", since = "1.0.0")]
 
 #[stable(feature = "a", feature = "b", since = "1.0.0")] //~ ERROR multiple 'feature' items
 fn f1() { }
