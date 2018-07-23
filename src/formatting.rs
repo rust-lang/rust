@@ -315,11 +315,9 @@ impl<'b, T: Write + 'b> Session<'b, T> {
 
         let input_is_stdin = input.is_text();
         let mut filemap = FileMap::new();
-        // TODO split Session? out vs config - but what about summary?
-        //  - look at error handling
-        let format_result = self.format_ast(input, |this, path, mut result| {
+        // TODO split Session? out vs config?
+        let format_result = self.format_project(input, |this, path, mut result| {
             if let Some(ref mut out) = this.out {
-                // TODO pull out the has_diff return value
                 match filemap::write_file(&mut result, &path, out, &this.config) {
                     Ok(b) if b => this.summary.add_diff(),
                     Err(e) => {
@@ -342,24 +340,27 @@ impl<'b, T: Write + 'b> Session<'b, T> {
 
             println!(
                 "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
-                duration_to_f32(self.get_parse_time().unwrap()),
-                duration_to_f32(self.get_format_time().unwrap()),
+                duration_to_f32(self.timer.get_parse_time().unwrap()),
+                duration_to_f32(self.timer.get_format_time().unwrap()),
             )
         });
 
-        format_result.map(|r| (filemap, r))
+        format_result.map(|(result, summary)| {
+            self.summary.add(summary);
+            (filemap, result)
+        })
     }
 
-    // TODO name, only uses config and summary
-    // Formatting which depends on the AST.
-    fn format_ast<F>(
+    // TODO only uses config and timer
+    fn format_project<F>(
         &mut self,
         input: Input,
         mut formatted_file: F,
-    ) -> Result<FormatReport, ErrorKind>
+    ) -> Result<(FormatReport, Summary), ErrorKind>
     where
         F: FnMut(&mut Session<T>, FileName, String) -> Result<(), ErrorKind>,
     {
+        let mut summary = Summary::default();
         let main_file = match input {
             Input::File(ref file) => FileName::Real(file.clone()),
             Input::Text(..) => FileName::Stdin,
@@ -383,7 +384,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
                     }
                     ParseError::Recovered => {}
                 }
-                self.summary.add_parsing_error();
+                summary.add_parsing_error();
                 return Err(ErrorKind::ParseError);
             }
         };
@@ -453,7 +454,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             self.replace_with_system_newlines(&mut visitor.buffer);
 
             if visitor.macro_rewrite_failure {
-                self.summary.add_macro_foramt_failure();
+                summary.add_macro_format_failure();
             }
 
             formatted_file(self, path, visitor.buffer)?;
@@ -461,19 +462,19 @@ impl<'b, T: Write + 'b> Session<'b, T> {
         self.timer = self.timer.done_formatting();
 
         if report.has_warnings() {
-            self.summary.add_formatting_error();
+            summary.add_formatting_error();
         }
         {
             let report_errs = &report.internal.borrow().1;
             if report_errs.has_check_errors {
-                self.summary.add_check_error();
+                summary.add_check_error();
             }
             if report_errs.has_operational_errors {
-                self.summary.add_operational_error();
+                summary.add_operational_error();
             }
         }
 
-        Ok(report)
+        Ok((report, summary))
     }
 
     fn make_parse_sess(&self, codemap: Rc<CodeMap>) -> ParseSess {
@@ -525,28 +526,6 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             NewlineStyle::Native => unreachable!(),
         }
     }
-
-    /// Returns the time it took to parse the source files in nanoseconds.
-    fn get_parse_time(&self) -> Option<Duration> {
-        match self.timer {
-            Timer::DoneParsing(init, parse_time) | Timer::DoneFormatting(init, parse_time, _) => {
-                // This should never underflow since `Instant::now()` guarantees monotonicity.
-                Some(parse_time.duration_since(init))
-            }
-            Timer::Initialized(..) => None,
-        }
-    }
-
-    /// Returns the time it took to go from the parsed AST to the formatted output. Parsing time is
-    /// not included.
-    fn get_format_time(&self) -> Option<Duration> {
-        match self.timer {
-            Timer::DoneFormatting(_init, parse_time, format_time) => {
-                Some(format_time.duration_since(parse_time))
-            }
-            Timer::DoneParsing(..) | Timer::Initialized(..) => None,
-        }
-    }
 }
 
 /// A single span of changed lines, with 0 or more removed lines
@@ -589,6 +568,28 @@ impl Timer {
                 Timer::DoneFormatting(init_time, parse_time, Instant::now())
             }
             _ => panic!("Timer can only transition to DoneFormatting from DoneParsing state"),
+        }
+    }
+
+    /// Returns the time it took to parse the source files in nanoseconds.
+    fn get_parse_time(&self) -> Option<Duration> {
+        match *self {
+            Timer::DoneParsing(init, parse_time) | Timer::DoneFormatting(init, parse_time, _) => {
+                // This should never underflow since `Instant::now()` guarantees monotonicity.
+                Some(parse_time.duration_since(init))
+            }
+            Timer::Initialized(..) => None,
+        }
+    }
+
+    /// Returns the time it took to go from the parsed AST to the formatted output. Parsing time is
+    /// not included.
+    fn get_format_time(&self) -> Option<Duration> {
+        match *self {
+            Timer::DoneFormatting(_init, parse_time, format_time) => {
+                Some(format_time.duration_since(parse_time))
+            }
+            Timer::DoneParsing(..) | Timer::Initialized(..) => None,
         }
     }
 }
@@ -656,7 +657,7 @@ impl Summary {
         self.has_diff = true;
     }
 
-    pub(crate) fn add_macro_foramt_failure(&mut self) {
+    pub(crate) fn add_macro_format_failure(&mut self) {
         self.has_macro_format_failure = true;
     }
 
@@ -671,6 +672,7 @@ impl Summary {
     pub fn add(&mut self, other: Summary) {
         self.has_operational_errors |= other.has_operational_errors;
         self.has_formatting_errors |= other.has_formatting_errors;
+        self.has_macro_format_failure |= other.has_macro_format_failure;
         self.has_parsing_errors |= other.has_parsing_errors;
         self.has_check_errors |= other.has_check_errors;
         self.has_diff |= other.has_diff;
