@@ -171,5 +171,8 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LibFeatures {
     }
     collector.collect_from_attrs(&tcx.hir.krate().attrs);
     tcx.hir.krate().visit_all_item_likes(&mut collector);
+    for exported_macro in &tcx.hir.krate().exported_macros {
+        collector.collect_from_attrs(&exported_macro.attrs);
+    }
     collector.lib_features
 }
