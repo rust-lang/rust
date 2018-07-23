@@ -28,7 +28,7 @@ mod var_name;
 /// Constraints that are considered interesting can be categorized to
 /// determine why they are interesting. Order of variants indicates
 /// sort order of the category, thereby influencing diagnostic output.
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 enum ConstraintCategory {
     Cast,
     Assignment,
@@ -43,12 +43,14 @@ enum ConstraintCategory {
 impl fmt::Display for ConstraintCategory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ConstraintCategory::Assignment |
-            ConstraintCategory::AssignmentToUpvar => write!(f, "assignment"),
+            ConstraintCategory::Assignment | ConstraintCategory::AssignmentToUpvar => {
+                write!(f, "assignment")
+            }
             ConstraintCategory::Return => write!(f, "return"),
             ConstraintCategory::Cast => write!(f, "cast"),
-            ConstraintCategory::CallArgument |
-            ConstraintCategory::CallArgumentToUpvar => write!(f, "argument"),
+            ConstraintCategory::CallArgument | ConstraintCategory::CallArgumentToUpvar => {
+                write!(f, "argument")
+            }
             _ => write!(f, "free region"),
         }
     }
@@ -62,6 +64,43 @@ enum Trace {
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
+    /// Tries to find the best constraint to blame for the fact that
+    /// `R: from_region`, where `R` is some region that meets
+    /// `target_test`. This works by following the constraint graph,
+    /// creating a constraint path that forces `R` to outlive
+    /// `from_region`, and then finding the best choices within that
+    /// path to blame.
+    fn best_blame_constraint(
+        &self,
+        mir: &Mir<'tcx>,
+        from_region: RegionVid,
+        target_test: impl Fn(RegionVid) -> bool,
+    ) -> (ConstraintCategory, Span) {
+        debug!("best_blame_constraint(from_region={:?})", from_region);
+
+        // Find all paths
+        let path = self
+            .find_constraint_paths_between_regions(from_region, target_test)
+            .unwrap();
+        debug!("best_blame_constraint: path={:#?}", path);
+
+        // Classify each of the constraints along the path.
+        let mut categorized_path: Vec<(ConstraintCategory, Span)> = path
+            .iter()
+            .map(|&index| self.classify_constraint(index, mir))
+            .collect();
+        debug!(
+            "best_blame_constraint: categorized_path={:?}",
+            categorized_path
+        );
+
+        // Find what appears to be the most interesting path to report to the user.
+        categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
+        debug!("best_blame_constraint: sorted_path={:?}", categorized_path);
+
+        *categorized_path.first().unwrap()
+    }
+
     /// Walks the graph of constraints (where `'a: 'b` is considered
     /// an edge `'a -> 'b`) to find all paths from `from_region` to
     /// `to_region`. The paths are accumulated into the vector
@@ -89,7 +128,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let mut p = r;
                 loop {
                     match context[p] {
-                        Trace::NotVisited => bug!("found unvisited region {:?} on path to {:?}", p, r),
+                        Trace::NotVisited => {
+                            bug!("found unvisited region {:?} on path to {:?}", p, r)
+                        }
                         Trace::FromConstraint(c) => {
                             result.push(c);
                             p = self.constraints[c].sup;
@@ -139,19 +180,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         index: ConstraintIndex,
         mir: &Mir<'tcx>,
-        _infcx: &InferCtxt<'_, '_, 'tcx>,
     ) -> (ConstraintCategory, Span) {
         let constraint = self.constraints[index];
         debug!("classify_constraint: constraint={:?}", constraint);
         let span = constraint.locations.span(mir);
-        let location = constraint.locations.from_location().unwrap_or(Location::START);
+        let location = constraint
+            .locations
+            .from_location()
+            .unwrap_or(Location::START);
 
         if !self.constraint_is_interesting(index) {
             return (ConstraintCategory::Boring, span);
         }
 
         let data = &mir[location.block];
-        debug!("classify_constraint: location={:?} data={:?}", location, data);
+        debug!(
+            "classify_constraint: location={:?} data={:?}",
+            location, data
+        );
         let category = if location.statement_index == data.statements.len() {
             if let Some(ref terminator) = data.terminator {
                 debug!("classify_constraint: terminator.kind={:?}", terminator.kind);
@@ -174,8 +220,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     } else {
                         match rvalue {
                             Rvalue::Cast(..) => ConstraintCategory::Cast,
-                            Rvalue::Use(..) |
-                            Rvalue::Aggregate(..) => ConstraintCategory::Assignment,
+                            Rvalue::Use(..) | Rvalue::Aggregate(..) => {
+                                ConstraintCategory::Assignment
+                            }
                             _ => ConstraintCategory::Other,
                         }
                     }
@@ -206,27 +253,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        // Find all paths
-        let path = self.find_constraint_paths_between_regions(fr, |r| r == outlived_fr).unwrap();
-        debug!("report_error: path={:#?}", path);
-
-        // Classify each of the constraints along the path.
-        let mut categorized_path: Vec<(ConstraintCategory, Span)> = path.iter()
-            .map(|&index| self.classify_constraint(index, mir, infcx))
-            .collect();
-        debug!("report_error: categorized_path={:?}", categorized_path);
-
-        // Find what appears to be the most interesting path to report to the user.
-        categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
-        debug!("report_error: sorted_path={:?}", categorized_path);
-
-        // Get a span
-        let (category, span) = categorized_path.first().unwrap();
+        let (category, span) = self.best_blame_constraint(mir, fr, |r| r == outlived_fr);
 
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
-            let nice = NiceRegionError::new_from_span(infcx.tcx, *span, o, f, Some(tables));
+            let nice = NiceRegionError::new_from_span(infcx.tcx, span, o, f, Some(tables));
             if let Some(_error_reported) = nice.try_report() {
                 return;
             }
@@ -237,22 +269,36 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.universal_regions.is_local_free_region(fr),
             self.universal_regions.is_local_free_region(outlived_fr),
         ) {
-            (ConstraintCategory::Assignment, true, false) =>
-                &ConstraintCategory::AssignmentToUpvar,
-            (ConstraintCategory::CallArgument, true, false) =>
-                &ConstraintCategory::CallArgumentToUpvar,
+            (ConstraintCategory::Assignment, true, false) => ConstraintCategory::AssignmentToUpvar,
+            (ConstraintCategory::CallArgument, true, false) => {
+                ConstraintCategory::CallArgumentToUpvar
+            }
             (category, _, _) => category,
         };
 
         debug!("report_error: category={:?}", category);
         match category {
-            ConstraintCategory::AssignmentToUpvar |
-            ConstraintCategory::CallArgumentToUpvar =>
-                self.report_closure_error(
-                    mir, infcx, mir_def_id, fr, outlived_fr, category, span, errors_buffer),
-            _ =>
-                self.report_general_error(
-                    mir, infcx, mir_def_id, fr, outlived_fr, category, span, errors_buffer),
+            ConstraintCategory::AssignmentToUpvar | ConstraintCategory::CallArgumentToUpvar => self
+                .report_closure_error(
+                    mir,
+                    infcx,
+                    mir_def_id,
+                    fr,
+                    outlived_fr,
+                    category,
+                    span,
+                    errors_buffer,
+                ),
+            _ => self.report_general_error(
+                mir,
+                infcx,
+                mir_def_id,
+                fr,
+                outlived_fr,
+                category,
+                span,
+                errors_buffer,
+            ),
         }
     }
 
@@ -263,23 +309,31 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         fr: RegionVid,
         outlived_fr: RegionVid,
-        category: &ConstraintCategory,
-        span: &Span,
+        category: ConstraintCategory,
+        span: Span,
         errors_buffer: &mut Vec<Diagnostic>,
     ) {
-        let fr_name_and_span  = self.get_var_name_and_span_for_region(
-            infcx.tcx, mir, fr);
-        let outlived_fr_name_and_span = self.get_var_name_and_span_for_region(
-            infcx.tcx, mir,outlived_fr);
+        let fr_name_and_span = self.get_var_name_and_span_for_region(infcx.tcx, mir, fr);
+        let outlived_fr_name_and_span =
+            self.get_var_name_and_span_for_region(infcx.tcx, mir, outlived_fr);
 
         if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
             return self.report_general_error(
-                mir, infcx, mir_def_id, fr, outlived_fr, category, span, errors_buffer);
+                mir,
+                infcx,
+                mir_def_id,
+                fr,
+                outlived_fr,
+                category,
+                span,
+                errors_buffer,
+            );
         }
 
-        let mut diag = infcx.tcx.sess.struct_span_err(
-            *span, &format!("borrowed data escapes outside of closure"),
-        );
+        let mut diag = infcx
+            .tcx
+            .sess
+            .struct_span_err(span, &format!("borrowed data escapes outside of closure"));
 
         if let Some((outlived_fr_name, outlived_fr_span)) = outlived_fr_name_and_span {
             if let Some(name) = outlived_fr_name {
@@ -294,10 +348,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(name) = fr_name {
                 diag.span_label(
                     fr_span,
-                    format!("`{}` is a reference that is only valid in the closure body", name),
+                    format!(
+                        "`{}` is a reference that is only valid in the closure body",
+                        name
+                    ),
                 );
 
-                diag.span_label(*span, format!("`{}` escapes the closure body here", name));
+                diag.span_label(span, format!("`{}` escapes the closure body here", name));
             }
         }
 
@@ -311,24 +368,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         fr: RegionVid,
         outlived_fr: RegionVid,
-        category: &ConstraintCategory,
-        span: &Span,
+        category: ConstraintCategory,
+        span: Span,
         errors_buffer: &mut Vec<Diagnostic>,
     ) {
         let mut diag = infcx.tcx.sess.struct_span_err(
-            *span, &format!("unsatisfied lifetime constraints"), // FIXME
+            span,
+            &format!("unsatisfied lifetime constraints"), // FIXME
         );
 
         let counter = &mut 1;
-        let fr_name = self.give_region_a_name(
-            infcx.tcx, mir, mir_def_id, fr, counter, &mut diag);
-        let outlived_fr_name = self.give_region_a_name(
-            infcx.tcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
+        let fr_name = self.give_region_a_name(infcx.tcx, mir, mir_def_id, fr, counter, &mut diag);
+        let outlived_fr_name =
+            self.give_region_a_name(infcx.tcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
 
-        diag.span_label(*span, format!(
-            "{} requires that `{}` must outlive `{}`",
-            category, fr_name, outlived_fr_name,
-        ));
+        diag.span_label(
+            span,
+            format!(
+                "{} requires that `{}` must outlive `{}`",
+                category, fr_name, outlived_fr_name,
+            ),
+        );
 
         diag.buffer(errors_buffer);
     }
