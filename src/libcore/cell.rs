@@ -200,9 +200,8 @@ use cmp::Ordering;
 use fmt::{self, Debug, Display};
 use marker::Unsize;
 use mem;
-use ops::{Deref, DerefMut, CoerceUnsized, Index};
+use ops::{Deref, DerefMut, CoerceUnsized};
 use ptr;
-use slice::SliceIndex;
 
 /// A mutable memory location.
 ///
@@ -511,9 +510,8 @@ impl<T: ?Sized> Cell<T> {
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
     /// let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
-    /// assert_eq!(cell_slice[..].len(), 3);
+    /// let slice_cell: &[Cell<i32>] = cell_slice.as_slice_of_cells();
     ///
-    /// let slice_cell: &[Cell<i32>] = &cell_slice[..];
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
     #[inline]
@@ -548,15 +546,25 @@ impl<T: Default> Cell<T> {
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 
-#[unstable(feature = "as_cell", issue="43038")]
-impl<T, I> Index<I> for Cell<[T]>
-    where I: SliceIndex<[Cell<T>]>
-{
-    type Output = I::Output;
-
-    fn index(&self, index: I) -> &Self::Output {
+impl<T> Cell<[T]> {
+    /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(as_cell)]
+    /// use std::cell::Cell;
+    ///
+    /// let slice: &mut [i32] = &mut [1, 2, 3];
+    /// let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
+    /// let slice_cell: &[Cell<i32>] = cell_slice.as_slice_of_cells();
+    ///
+    /// assert_eq!(slice_cell.len(), 3);
+    /// ```
+    #[unstable(feature = "as_cell", issue="43038")]
+    pub fn as_slice_of_cells(&self) -> &[Cell<T>] {
         unsafe {
-            Index::index(&*(self as *const Cell<[T]> as *const [Cell<T>]), index)
+            &*(self as *const Cell<[T]> as *const [Cell<T>])
         }
     }
 }
