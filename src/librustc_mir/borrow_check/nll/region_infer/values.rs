@@ -22,11 +22,10 @@ crate struct RegionValueElements {
     /// For each basic block, how many points are contained within?
     statements_before_block: IndexVec<BasicBlock, usize>,
     num_points: usize,
-    num_universal_regions: usize,
 }
 
 impl RegionValueElements {
-    crate fn new(mir: &Mir<'_>, num_universal_regions: usize) -> Self {
+    crate fn new(mir: &Mir<'_>) -> Self {
         let mut num_points = 0;
         let statements_before_block = mir
             .basic_blocks()
@@ -37,11 +36,6 @@ impl RegionValueElements {
                 v
             })
             .collect();
-
-        debug!(
-            "RegionValueElements(num_universal_regions={:?})",
-            num_universal_regions
-        );
         debug!(
             "RegionValueElements: statements_before_block={:#?}",
             statements_before_block
@@ -51,7 +45,6 @@ impl RegionValueElements {
         Self {
             statements_before_block,
             num_points,
-            num_universal_regions,
         }
     }
 
@@ -191,11 +184,14 @@ impl<N: Idx> RegionValues<N> {
     /// Creates a new set of "region values" that tracks causal information.
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
-    crate fn new(elements: &Rc<RegionValueElements>) -> Self {
+    crate fn new(
+        elements: &Rc<RegionValueElements>,
+        num_universal_regions: usize,
+    ) -> Self {
         Self {
             elements: elements.clone(),
             points: SparseBitMatrix::new(elements.num_points),
-            free_regions: SparseBitMatrix::new(elements.num_universal_regions),
+            free_regions: SparseBitMatrix::new(num_universal_regions),
         }
     }
 

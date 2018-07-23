@@ -214,7 +214,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let constraint_graph = Rc::new(constraints.graph(definitions.len()));
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph));
 
-        let mut scc_values = RegionValues::new(elements);
+        let mut scc_values = RegionValues::new(
+            elements,
+            universal_regions.len(),
+        );
 
         for region in liveness_constraints.rows() {
             let scc = constraint_sccs.scc(region);
