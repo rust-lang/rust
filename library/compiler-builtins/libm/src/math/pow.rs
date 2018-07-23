@@ -421,12 +421,12 @@ mod tests {
     const NEG_ZERO: &[f64] = &[-0.0];
     const POS_ONE: &[f64] = &[1.0];
     const NEG_ONE: &[f64] = &[-1.0];
-    const POS_FLOATS: &[f64] = &[E, PI, MAX];
-    const NEG_FLOATS: &[f64] = &[-E, -PI, MIN];
+    const POS_FLOATS: &[f64] = &[99.0 / 70.0, E, PI];
+    const NEG_FLOATS: &[f64] = &[-99.0 / 70.0, -E, -PI];
     const POS_SMALL_FLOATS: &[f64] = &[(1.0 / 2.0), MIN_POSITIVE, EPSILON];
     const NEG_SMALL_FLOATS: &[f64] = &[-(1.0 / 2.0), -MIN_POSITIVE, -EPSILON];
-    const POS_EVENS: &[f64] = &[2.0, 6.0, 8.0, 10.0, 22.0, 100.0];
-    const NEG_EVENS: &[f64] = &[-8.0, -2.0];
+    const POS_EVENS: &[f64] = &[2.0, 6.0, 8.0, 10.0, 22.0, 100.0, MAX];
+    const NEG_EVENS: &[f64] = &[MIN, -100.0, -22.0, -10.0, -8.0, -6.0, -2.0];
     const POS_ODDS: &[f64] = &[3.0, 7.0];
     const NEG_ODDS: &[f64] = &[-7.0, -3.0];
     const NANS: &[f64] = &[NAN];
@@ -574,7 +574,7 @@ mod tests {
         test_sets_as_exponent(0.0, &POS[1..], 0.0);
 
         // (+0 ^ anything negative but 0 and NAN should be Infinity)
-        // (this should panic because we're dividing by zero but won't because release mode, I think)
+        // (this should panic because we're dividing by zero)
         test_sets_as_exponent(0.0, &NEG[1..], INFINITY);
 
         // Negative Zero as the base:
@@ -594,9 +594,38 @@ mod tests {
     }
 
     #[test]
+    fn special_cases() {
+        // /      20. (anything) ** 1 is (anything)
+        // One as the exponent:
+        // (anything ^ 1 should be anything - i.e. the base)
+        test_sets(ALL, &|v: f64| pow(v, 1.0), &|v: f64| v);
+
+        // /      21. (anything) ** -1 is 1/(anything)
+        // Negative One as the exponent:
+        // (anything ^ -1 should be 1/anything)
+        test_sets(ALL, &|v: f64| pow(v, -1.0), &|v: f64| 1.0 / v);
+
+        // /      22. (-anything) ** (integer) is (-1)**(integer)*(+anything**integer)
+        // Factoring -1 out:
+        // (negative anything ^ integer should be (-1 ^ integer) * (positive anything ^ integer))
+        &[POS_ZERO, NEG_ZERO, POS_ONE, NEG_ONE, POS_EVENS, NEG_EVENS].iter().for_each(|int_set| int_set.iter().for_each(|int| {
+            test_sets(ALL, &|v: f64| pow(-v, *int), &|v: f64| pow(-1.0, *int) * pow(v, *int));
+        }));
+
+        // /      23. (-anything except 0 and inf) ** (non-integer) is NAN
+        // Negative base (imaginary results):
+        // (-anything except 0 and Infinity ^ non-integer should be NAN)
+        &NEG[1..(NEG.len()-1)].iter().for_each(|set| set.iter().for_each(|val| {
+            test_sets(&ALL[3..7], &|v: f64| pow(*val, v), &|_| NAN);
+        }));
+
+    }
+
+    #[test]
     fn normal_cases() {
         assert_eq!(pow(2.0, 20.0), (1 << 20) as f64);
         assert_eq!(pow(-1.0, 9.0), -1.0);
         assert!(pow(-1.0, 2.2).is_nan());
+        assert!(pow(-1.0, -1.14).is_nan());
     }
 }
