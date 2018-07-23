@@ -162,6 +162,7 @@ pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::C
         errors::HandlerFlags {
             can_emit_warnings: true,
             treat_err_as_bug: false,
+            report_delayed_bugs: false,
             external_macro_backtrace: false,
             ..Default::default()
         },

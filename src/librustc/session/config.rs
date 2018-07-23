@@ -1193,6 +1193,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "run all passes except codegen; no output"),
     treat_err_as_bug: bool = (false, parse_bool, [TRACKED],
           "treat all errors that occur as bugs"),
+    report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
+          "immediately print bugs registered with `delay_span_bug`"),
     external_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
           "show macro backtraces even for non-local macros"),
     teach: bool = (false, parse_bool, [TRACKED],
@@ -3131,6 +3133,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.treat_err_as_bug = true;
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.report_delayed_bugs = true;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

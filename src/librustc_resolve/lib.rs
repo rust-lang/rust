@@ -2359,7 +2359,9 @@ impl<'a> Resolver<'a> {
         where F: FnOnce(&mut Resolver)
     {
         self.ribs[ValueNS].push(Rib::new(ConstantItemRibKind));
+        self.label_ribs.push(Rib::new(ConstantItemRibKind));
         f(self);
+        self.label_ribs.pop();
         self.ribs[ValueNS].pop();
     }
 
