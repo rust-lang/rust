@@ -21,7 +21,7 @@ use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use syntax::tokenstream;
 
 use std::collections::{HashMap, HashSet};
@@ -264,28 +264,38 @@ impl<'a, 'b> Context<'a, 'b> {
     /// errors for the case where all arguments are positional and for when
     /// there are named arguments or numbered positional arguments in the
     /// format string.
-    fn report_invalid_references(&self, numbered_position_args: bool) {
+    fn report_invalid_references(&self, numbered_position_args: bool, arg_places: &[(usize, usize)]) {
         let mut e;
-        let mut refs: Vec<String> = self.invalid_refs
-                                        .iter()
-                                        .map(|r| r.to_string())
-                                        .collect();
+        let sps = arg_places.iter()
+            .map(|&(start, end)| self.fmtsp.from_inner_byte_pos(start, end))
+            .collect::<Vec<_>>();
+        let sp = MultiSpan::from_spans(sps);
+        let mut refs: Vec<_> = self.invalid_refs
+            .iter()
+            .map(|r| r.to_string())
+            .collect();
 
         if self.names.is_empty() && !numbered_position_args {
-            e = self.ecx.mut_span_err(self.fmtsp,
+            e = self.ecx.mut_span_err(sp,
                 &format!("{} positional argument{} in format string, but {}",
                          self.pieces.len(),
                          if self.pieces.len() > 1 { "s" } else { "" },
                          self.describe_num_args()));
         } else {
             let arg_list = match refs.len() {
-                1 => format!("argument {}", refs.pop().unwrap()),
-                _ => format!("arguments {head} and {tail}",
-                             tail=refs.pop().unwrap(),
+                1 => {
+                    let reg = refs.pop().unwrap();
+                    format!("argument {}", reg)
+                },
+                _ => {
+                    let reg = refs.pop().unwrap();
+                    format!("arguments {head} and {tail}",
+                             tail=reg,
                              head=refs.join(", "))
+                }
             };
 
-            e = self.ecx.mut_span_err(self.fmtsp,
+            e = self.ecx.mut_span_err(sp,
                 &format!("invalid reference to positional {} ({})",
                         arg_list,
                         self.describe_num_args()));
@@ -835,7 +845,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     }
 
     if cx.invalid_refs.len() >= 1 {
-        cx.report_invalid_references(numbered_position_args);
+        cx.report_invalid_references(numbered_position_args, &parser.arg_places);
     }
 
     // Make sure that all arguments were used and all arguments have types.

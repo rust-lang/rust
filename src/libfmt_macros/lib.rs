@@ -154,6 +154,7 @@ pub struct Parser<'a> {
     style: Option<usize>,
     /// How many newlines have been seen in the string so far, to adjust the error spans
     seen_newlines: usize,
+    pub arg_places: Vec<(usize, usize)>,
 }
 
 impl<'a> Iterator for Parser<'a> {
@@ -168,9 +169,13 @@ impl<'a> Iterator for Parser<'a> {
                     if self.consume('{') {
                         Some(String(self.string(pos + 1)))
                     } else {
-                        let ret = Some(NextArgument(self.argument()));
-                        self.must_consume('}');
-                        ret
+                        let mut arg = self.argument();
+                        if let Some(arg_pos) = self.must_consume('}').map(|end| {
+                            (pos + raw + 1, end + raw + 2)
+                        }) {
+                            self.arg_places.push(arg_pos);
+                        }
+                        Some(NextArgument(arg))
                     }
                 }
                 '}' => {
@@ -211,6 +216,7 @@ impl<'a> Parser<'a> {
             curarg: 0,
             style,
             seen_newlines: 0,
+            arg_places: vec![],
         }
     }
 
@@ -271,7 +277,7 @@ impl<'a> Parser<'a> {
 
     /// Forces consumption of the specified character. If the character is not
     /// found, an error is emitted.
-    fn must_consume(&mut self, c: char) {
+    fn must_consume(&mut self, c: char) -> Option<usize> {
         self.ws();
         let raw = self.style.unwrap_or(0);
 
@@ -279,12 +285,14 @@ impl<'a> Parser<'a> {
         if let Some(&(pos, maybe)) = self.cur.peek() {
             if c == maybe {
                 self.cur.next();
+                Some(pos)
             } else {
                 let pos = pos + padding + 1;
                 self.err(format!("expected `{:?}`, found `{:?}`", c, maybe),
                          format!("expected `{}`", c),
                          pos,
                          pos);
+                None
             }
         } else {
             let msg = format!("expected `{:?}` but string was terminated", c);
@@ -302,6 +310,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.err(msg, format!("expected `{:?}`", c), pos, pos);
             }
+            None
         }
     }
 
