@@ -4987,23 +4987,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
         while let Some((def_id, defs)) = stack.pop() {
-            let mut params = defs.params.iter().peekable();
-            let mut remove_self = false;
+            let mut params = defs.params.iter();
+            let mut next_param = params.next();
             if has_self {
-                if let Some(param) = params.peek() {
+                if let Some(param) = next_param {
                     if param.index == 0 {
                         if let GenericParamDefKind::Type { .. } = param.kind {
                             // Handle `Self` first, so we can adjust the index to match the AST.
                             push_to_substs!(opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
                                 self.var_for_def(span, param)
                             }));
-                            remove_self = true;
+                            next_param = params.next();
                         }
                     }
                 }
-            }
-            if remove_self {
-                params.next();
             }
 
             let mut infer_types = true;
@@ -5015,29 +5012,33 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(ref data) = segments[index].args {
                         let args = &data.args;
                         'args: for arg in args {
-                            while let Some(param) = params.next() {
+                            while let Some(param) = next_param {
                                 match param.kind {
                                     GenericParamDefKind::Lifetime => match arg {
                                         GenericArg::Lifetime(lt) => {
                                             push_to_substs!(AstConv::ast_region_to_region(self,
                                                 lt, Some(param)).into());
+                                            next_param = params.next();
                                             continue 'args;
                                         }
                                         GenericArg::Type(_) => {
                                             // We're inferring a lifetime.
                                             push_to_substs!(
                                                 self.re_infer(span, Some(param)).unwrap().into());
+                                            next_param = params.next();
                                         }
                                     }
                                     GenericParamDefKind::Type { .. } => match arg {
                                         GenericArg::Type(ty) => {
                                             push_to_substs!(self.to_ty(ty).into());
+                                            next_param = params.next();
                                             continue 'args;
                                         }
                                         GenericArg::Lifetime(_) => {
                                             self.tcx.sess.delay_span_bug(span,
                                                 "found a GenericArg::Lifetime where a \
                                                  GenericArg::Type was expected");
+                                            break 'args;
                                         }
                                     }
                                 }
@@ -5051,7 +5052,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            while let Some(param) = params.next() {
+            while let Some(param) = next_param {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
                         push_to_substs!(self.re_infer(span, Some(param)).unwrap().into());
@@ -5073,6 +5074,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                 }
+                next_param = params.next();
             }
         }
         let substs = self.tcx.intern_substs(&substs);
