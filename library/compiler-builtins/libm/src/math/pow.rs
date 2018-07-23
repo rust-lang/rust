@@ -411,10 +411,10 @@ pub fn pow(x: f64, y: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    extern crate std;
+    extern crate core;
 
-    use self::std::f64::consts::{E, PI};
-    use self::std::f64::{EPSILON, INFINITY, MAX, MIN, MIN_POSITIVE, NAN, NEG_INFINITY};
+    use self::core::f64::consts::{E, PI};
+    use self::core::f64::{EPSILON, INFINITY, MAX, MIN, MIN_POSITIVE, NAN, NEG_INFINITY};
     use super::pow;
 
     const POS_ZERO: &[f64] = &[0.0];
