@@ -19,7 +19,6 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
-#![feature(const_atomic_usize_new)]
 #![feature(crate_visibility_modifier)]
 #![feature(macro_at_most_once_rep)]
 #![feature(rustc_attrs)]

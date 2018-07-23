@@ -16,7 +16,6 @@
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(pattern)]
-#![feature(rand)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(splice)]
 #![feature(str_escape)]

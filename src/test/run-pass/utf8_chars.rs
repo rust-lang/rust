@@ -9,7 +9,7 @@
 // except according to those terms.
 //
 
-#![feature(core, str_char)]
+#![feature(core)]
 
 use std::str;
 
