@@ -377,9 +377,15 @@ impl<'a, 'gcx, 'tcx> Ancestors {
         trait_def_id: DefId,
     ) -> impl Iterator<Item = NodeItem<ty::AssociatedItem>> + Captures<'gcx> + Captures<'tcx> + 'a {
         self.flat_map(move |node| {
-            node.items(tcx).filter(move |impl_item| {
-                impl_item.kind == trait_item_kind &&
-                tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id)
+            use ty::AssociatedKind::*;
+            node.items(tcx).filter(move |impl_item| match (trait_item_kind, impl_item.kind) {
+                | (Const, Const)
+                | (Method, Method)
+                | (Type, Type)
+                | (Type, Existential)
+                => tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id),
+
+                _ => false,
             }).map(move |item| NodeItem { node: node, item: item })
         })
     }

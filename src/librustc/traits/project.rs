@@ -1502,7 +1502,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     let param_env = obligation.param_env;
     let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_def_id);
 
-    let ty = if !assoc_ty.item.defaultness.has_value() {
+    if !assoc_ty.item.defaultness.has_value() {
         // This means that the impl is missing a definition for the
         // associated type. This error will be reported by the type
         // checker method `check_impl_items_against_trait`, so here we
@@ -1510,11 +1510,17 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
         debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
                assoc_ty.item.ident,
                obligation.predicate);
-        tcx.types.err
+        return Progress {
+            ty: tcx.types.err,
+            obligations: nested,
+        };
+    }
+    let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
+    let ty = if let ty::AssociatedKind::Existential = assoc_ty.item.kind {
+        tcx.mk_anon(assoc_ty.item.def_id, substs)
     } else {
         tcx.type_of(assoc_ty.item.def_id)
     };
-    let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
     Progress {
         ty: ty.subst(tcx, substs),
         obligations: nested,

@@ -691,25 +691,41 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     // }
                     // ```
                     if let Some(anon_node_id) = tcx.hir.as_local_node_id(def_id) {
-                        let in_definition_scope = match tcx.hir.expect_item(anon_node_id).node {
-                            // impl trait
-                            hir::ItemKind::Existential(hir::ExistTy {
-                                impl_trait_fn: Some(parent),
-                                ..
-                            }) => parent == self.parent_def_id,
-                            // named existential types
-                            hir::ItemKind::Existential(hir::ExistTy {
-                                impl_trait_fn: None,
-                                ..
-                            }) => may_define_existential_type(
-                                tcx,
-                                self.parent_def_id,
-                                anon_node_id,
-                            ),
-                            _ => {
-                                let anon_parent_node_id = tcx.hir.get_parent(anon_node_id);
-                                self.parent_def_id == tcx.hir.local_def_id(anon_parent_node_id)
+                        let parent_def_id = self.parent_def_id;
+                        let def_scope_default = || {
+                            let anon_parent_node_id = tcx.hir.get_parent(anon_node_id);
+                            parent_def_id == tcx.hir.local_def_id(anon_parent_node_id)
+                        };
+                        let in_definition_scope = match tcx.hir.find(anon_node_id) { // read recorded by `find`
+                            Some(hir::map::NodeItem(item)) => match item.node {
+                                // impl trait
+                                hir::ItemKind::Existential(hir::ExistTy {
+                                    impl_trait_fn: Some(parent),
+                                    ..
+                                }) => parent == self.parent_def_id,
+                                // named existential types
+                                hir::ItemKind::Existential(hir::ExistTy {
+                                    impl_trait_fn: None,
+                                    ..
+                                }) => may_define_existential_type(
+                                    tcx,
+                                    self.parent_def_id,
+                                    anon_node_id,
+                                ),
+                                _ => def_scope_default(),
                             },
+                            Some(hir::map::NodeImplItem(item)) => match item.node {
+                                hir::ImplItemKind::Existential(_) => may_define_existential_type(
+                                    tcx,
+                                    self.parent_def_id,
+                                    anon_node_id,
+                                ),
+                                _ => def_scope_default(),
+                            },
+                            _ => bug!(
+                                "expected (impl) item, found {}",
+                                tcx.hir.node_to_string(anon_node_id),
+                            ),
                         };
                         if in_definition_scope {
                             return self.fold_anon_ty(ty, def_id, substs);
