@@ -189,7 +189,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_EXTERN_CRATES,
                     UNUSED_FEATURES,
                     UNKNOWN_FEATURES,
-                    DUPLICATE_FEATURES,
                     UNUSED_LABELS,
                     UNUSED_PARENS);
 

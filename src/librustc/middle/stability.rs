@@ -18,7 +18,7 @@ use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
-use session::DiagnosticMessageId;
+use session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
@@ -816,20 +816,14 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let declared_lang_features = &tcx.features().declared_lang_features;
     let mut lang_features = FxHashSet();
-    for &(ref feature, span, since) in declared_lang_features {
+    for &(feature, span, since) in declared_lang_features {
         if let Some(since) = since {
             // Warn if the user has enabled an already-stable lang feature.
-            tcx.lint_node(lint::builtin::STABLE_FEATURES,
-                        ast::CRATE_NODE_ID,
-                        span,
-                        &format_stable_since_msg(*feature, since));
+            unnecessary_stable_feature_lint(tcx, span, feature, since);
         }
         if lang_features.contains(&feature) {
             // Warn if the user enables a lang feature multiple times.
-            tcx.lint_node(lint::builtin::DUPLICATE_FEATURES,
-                          ast::CRATE_NODE_ID,
-                          span,
-                          &format!("duplicate `{}` feature attribute", feature));
+            duplicate_feature_err(tcx.sess, span, feature);
         }
         lang_features.insert(feature);
     }
@@ -837,12 +831,9 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let declared_lib_features = &tcx.features().declared_lib_features;
     let mut remaining_lib_features = FxHashMap();
     for (feature, span) in declared_lib_features {
-        // Warn if the user enables a lib feature multiple times.
         if remaining_lib_features.contains_key(&feature) {
-            tcx.lint_node(lint::builtin::DUPLICATE_FEATURES,
-                          ast::CRATE_NODE_ID,
-                          *span,
-                          &format!("duplicate `{}` feature attribute", feature));
+            // Warn if the user enables a lib feature multiple times.
+            duplicate_feature_err(tcx.sess, *span, *feature);
         }
         remaining_lib_features.insert(feature, span.clone());
     }
@@ -851,16 +842,12 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     remaining_lib_features.remove(&Symbol::intern("libc"));
 
     for (feature, stable) in tcx.lib_features().iter() {
-        // Warn if the user has enabled an already-stable lib feature.
         if let Some(since) = stable {
             if let Some(span) = remaining_lib_features.get(&feature) {
-                tcx.lint_node(lint::builtin::STABLE_FEATURES,
-                              ast::CRATE_NODE_ID,
-                              *span,
-                              &format_stable_since_msg(feature, since));
+                // Warn if the user has enabled an already-stable lib feature.
+                unnecessary_stable_feature_lint(tcx, *span, feature, since);
             }
         }
-
         remaining_lib_features.remove(&feature);
     }
 
@@ -875,8 +862,20 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // don't lint about unused features. We should reenable this one day!
 }
 
-fn format_stable_since_msg(feature: Symbol, since: Symbol) -> String {
-    // "this feature has been stable since {}. Attribute no longer needed"
-    format!("the feature `{}` has been stable since {} and no longer requires \
-             an attribute to enable", feature, since)
+fn unnecessary_stable_feature_lint<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    span: Span,
+    feature: Symbol,
+    since: Symbol
+) {
+    tcx.lint_node(lint::builtin::STABLE_FEATURES,
+        ast::CRATE_NODE_ID,
+        span,
+        &format!("the feature `{}` has been stable since {} and no longer requires \
+                  an attribute to enable", feature, since));
+}
+
+fn duplicate_feature_err(sess: &Session, span: Span, feature: Symbol) {
+    struct_span_err!(sess, span, E0636, "the feature `{}` has already been declared", feature)
+        .emit();
 }

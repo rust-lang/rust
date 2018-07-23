@@ -1,20 +1,15 @@
-error: duplicate `if_let` feature attribute
-  --> $DIR/duplicate-features.rs:18:12
+error[E0636]: the feature `if_let` has already been declared
+  --> $DIR/duplicate-features.rs:17:12
    |
-LL | #![feature(if_let)] //~ ERROR duplicate `if_let` feature attribute
+LL | #![feature(if_let)] //~ ERROR the feature `if_let` has already been declared
    |            ^^^^^^
-   |
-note: lint level defined here
-  --> $DIR/duplicate-features.rs:12:9
-   |
-LL | #![deny(duplicate_features)]
-   |         ^^^^^^^^^^^^^^^^^^
 
-error: duplicate `rust1` feature attribute
-  --> $DIR/duplicate-features.rs:15:12
+error[E0636]: the feature `rust1` has already been declared
+  --> $DIR/duplicate-features.rs:14:12
    |
-LL | #![feature(rust1)] //~ ERROR duplicate `rust1` feature attribute
+LL | #![feature(rust1)] //~ ERROR the feature `rust1` has already been declared
    |            ^^^^^
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0636`.

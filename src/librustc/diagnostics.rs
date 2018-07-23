@@ -1918,6 +1918,19 @@ fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
 ```
 "##,
 
+E0636: r##"
+A `#![feature]` attribute was declared multiple times.
+
+Erroneous code example:
+
+```compile_fail,E0636
+#![allow(stable_features)]
+#![feature(rust1)]
+#![feature(rust1)] // error: the feature `rust1` has already been declared
+```
+
+"##,
+
 E0644: r##"
 A closure or generator was constructed that references its own type.
 
