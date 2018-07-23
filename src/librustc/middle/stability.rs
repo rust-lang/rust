@@ -833,6 +833,16 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     remaining_lib_features.remove(&Symbol::intern("libc"));
 
     for (feature, stable) in tcx.lib_features().iter() {
+        // Warn if the user has enabled an already-stable feature.
+        if let Some(since) = stable {
+            if let Some(span) = remaining_lib_features.get(&feature) {
+                tcx.lint_node(lint::builtin::STABLE_FEATURES,
+                    ast::CRATE_NODE_ID,
+                    *span,
+                    &format_stable_since_msg(feature, &since.as_str()));
+            }
+        }
+
         remaining_lib_features.remove(&feature);
     }
 
