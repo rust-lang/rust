@@ -14,18 +14,18 @@ use self::Position::*;
 use fmt_macros as parse;
 
 use syntax::ast;
-use syntax::ext::base::*;
 use syntax::ext::base;
+use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use syntax::tokenstream;
+use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 
 #[derive(PartialEq)]
 enum ArgumentType {
@@ -111,9 +111,11 @@ struct Context<'a, 'b: 'a> {
     /// still existed in this phase of processing.
     /// Used only for `all_pieces_simple` tracking in `build_piece`.
     curarg: usize,
+    /// Current piece being evaluated, used for error reporting.
     curpiece: usize,
-    /// Keep track of invalid references to positional arguments
-    invalid_refs: Vec<usize>,
+    /// Keep track of invalid references to positional arguments.
+    invalid_refs: Vec<(usize, usize)>,
+    /// Spans of all the formatting arguments, in order.
     arg_spans: Vec<Span>,
 }
 
@@ -157,15 +159,20 @@ fn parse_args(ecx: &mut ExtCtxt,
                     i
                 }
                 _ if named => {
-                    ecx.span_err(p.span,
-                                 "expected ident, positional arguments \
-                                 cannot follow named arguments");
+                    ecx.span_err(
+                        p.span,
+                        "expected ident, positional arguments cannot follow named arguments",
+                    );
                     return None;
                 }
                 _ => {
-                    ecx.span_err(p.span,
-                                 &format!("expected ident for named argument, found `{}`",
-                                          p.this_token_to_string()));
+                    ecx.span_err(
+                        p.span,
+                        &format!(
+                            "expected ident for named argument, found `{}`",
+                            p.this_token_to_string()
+                        ),
+                    );
                     return None;
                 }
             };
@@ -267,34 +274,47 @@ impl<'a, 'b> Context<'a, 'b> {
     /// errors for the case where all arguments are positional and for when
     /// there are named arguments or numbered positional arguments in the
     /// format string.
-    fn report_invalid_references(&self, numbered_position_args: bool, arg_places: &[(usize, usize)]) {
+    fn report_invalid_references(&self, numbered_position_args: bool) {
         let mut e;
-        let sps = arg_places.iter()
-            .map(|&(start, end)| self.fmtsp.from_inner_byte_pos(start, end))
-            .collect::<Vec<_>>();
-        let sp = MultiSpan::from_spans(sps);
-        let mut refs: Vec<_> = self.invalid_refs
+        let sp = MultiSpan::from_spans(self.arg_spans.clone());
+        let mut refs: Vec<_> = self
+            .invalid_refs
             .iter()
-            .map(|r| r.to_string())
+            .map(|(r, pos)| (r.to_string(), self.arg_spans.get(*pos)))
             .collect();
 
         if self.names.is_empty() && !numbered_position_args {
-            e = self.ecx.mut_span_err(sp,
-                &format!("{} positional argument{} in format string, but {}",
+            e = self.ecx.mut_span_err(
+                sp,
+                &format!(
+                    "{} positional argument{} in format string, but {}",
                          self.pieces.len(),
                          if self.pieces.len() > 1 { "s" } else { "" },
-                         self.describe_num_args()));
+                    self.describe_num_args()
+                ),
+            );
         } else {
-            let arg_list = match refs.len() {
+            let (arg_list, sp) = match refs.len() {
                 1 => {
-                    let reg = refs.pop().unwrap();
-                    format!("argument {}", reg)
-                },
+                    let (reg, pos) = refs.pop().unwrap();
+                    (
+                        format!("argument {}", reg),
+                        MultiSpan::from_span(*pos.unwrap_or(&self.fmtsp)),
+                    )
+                }
                 _ => {
+                    let pos =
+                        MultiSpan::from_spans(refs.iter().map(|(_, p)| *p.unwrap()).collect());
+                    let mut refs: Vec<String> = refs.iter().map(|(s, _)| s.to_owned()).collect();
                     let reg = refs.pop().unwrap();
-                    format!("arguments {head} and {tail}",
-                             tail=reg,
-                             head=refs.join(", "))
+                    (
+                        format!(
+                            "arguments {head} and {tail}",
+                            tail = reg,
+                            head = refs.join(", ")
+                        ),
+                        pos,
+                    )
                 }
             };
 
@@ -314,7 +334,7 @@ impl<'a, 'b> Context<'a, 'b> {
         match arg {
             Exact(arg) => {
                 if self.args.len() <= arg {
-                    self.invalid_refs.push(arg);
+                    self.invalid_refs.push((arg, self.curpiece));
                     return;
                 }
                 match ty {
@@ -520,33 +540,27 @@ impl<'a, 'b> Context<'a, 'b> {
                 let prec = self.build_count(arg.format.precision);
                 let width = self.build_count(arg.format.width);
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "FormatSpec"));
-                let fmt =
-                    self.ecx.expr_struct(sp,
+                let fmt = self.ecx.expr_struct(
+                    sp,
                                          path,
-                                         vec![self.ecx
-                                                  .field_imm(sp, self.ecx.ident_of("fill"), fill),
-                                              self.ecx.field_imm(sp,
-                                                                 self.ecx.ident_of("align"),
-                                                                 align),
-                                              self.ecx.field_imm(sp,
-                                                                 self.ecx.ident_of("flags"),
-                                                                 flags),
-                                              self.ecx.field_imm(sp,
-                                                                 self.ecx.ident_of("precision"),
-                                                                 prec),
-                                              self.ecx.field_imm(sp,
-                                                                 self.ecx.ident_of("width"),
-                                                                 width)]);
+                    vec![
+                        self.ecx.field_imm(sp, self.ecx.ident_of("fill"), fill),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("align"), align),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("flags"), flags),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("precision"), prec),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("width"), width),
+                    ],
+                );
 
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "Argument"));
-                Some(self.ecx.expr_struct(sp,
+                Some(self.ecx.expr_struct(
+                    sp,
                                           path,
-                                          vec![self.ecx.field_imm(sp,
-                                                                  self.ecx.ident_of("position"),
-                                                                  pos),
-                                               self.ecx.field_imm(sp,
-                                                                  self.ecx.ident_of("format"),
-                                                                  fmt)]))
+                    vec![
+                        self.ecx.field_imm(sp, self.ecx.ident_of("position"), pos),
+                        self.ecx.field_imm(sp, self.ecx.ident_of("format"), fmt),
+                    ],
+                ))
             }
         }
     }
@@ -559,9 +573,9 @@ impl<'a, 'b> Context<'a, 'b> {
         let mut pats = Vec::new();
         let mut heads = Vec::new();
 
-        let names_pos: Vec<_> = (0..self.args.len()).map(|i| {
-            self.ecx.ident_of(&format!("arg{}", i)).gensym()
-        }).collect();
+        let names_pos: Vec<_> = (0..self.args.len())
+            .map(|i| self.ecx.ident_of(&format!("arg{}", i)).gensym())
+            .collect();
 
         // First, build up the static array which will become our precompiled
         // format "string"
@@ -705,10 +719,11 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
     }
 }
 
-pub fn expand_format_args_nl<'cx>(ecx: &'cx mut ExtCtxt,
+pub fn expand_format_args_nl<'cx>(
+    ecx: &'cx mut ExtCtxt,
                                   mut sp: Span,
-                                  tts: &[tokenstream::TokenTree])
-                                  -> Box<dyn base::MacResult + 'cx> {
+    tts: &[tokenstream::TokenTree],
+) -> Box<dyn base::MacResult + 'cx> {
     //if !ecx.ecfg.enable_allow_internal_unstable() {
 
     // For some reason, the only one that actually works for `println` is the first check
@@ -759,7 +774,6 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             let sugg_fmt = match args.len() {
                 0 => "{}".to_string(),
                 _ => format!("{}{{}}", "{} ".repeat(args.len())),
-
             };
             err.span_suggestion(
                 fmt_sp.shrink_to_lo(),
@@ -768,7 +782,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             );
             err.emit();
             return DummyResult::raw_expr(sp);
-        },
+        }
     };
 
     let mut cx = Context {
@@ -862,7 +876,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     }
 
     if cx.invalid_refs.len() >= 1 {
-        cx.report_invalid_references(numbered_position_args, &parser.arg_places);
+        cx.report_invalid_references(numbered_position_args);
     }
 
     // Make sure that all arguments were used and all arguments have types.
@@ -894,7 +908,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             } else {
                 let mut diag = cx.ecx.struct_span_err(
                     errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
-                    "multiple unused formatting arguments"
+                    "multiple unused formatting arguments",
                 );
                 diag.span_label(cx.fmtsp, "multiple missing formatting arguments");
                 diag

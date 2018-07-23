@@ -25,34 +25,34 @@ LL |     format!("{} {}");
    |              ^^ ^^
 
 error: invalid reference to positional argument 1 (there is 1 argument)
-  --> $DIR/ifmt-bad-arg.rs:26:14
+  --> $DIR/ifmt-bad-arg.rs:26:18
    |
 LL |     format!("{0} {1}", 1);
-   |              ^^^ ^^^
+   |                  ^^^
    |
    = note: positional arguments are zero-based
 
 error: invalid reference to positional argument 2 (there are 2 arguments)
-  --> $DIR/ifmt-bad-arg.rs:29:14
+  --> $DIR/ifmt-bad-arg.rs:29:22
    |
 LL |     format!("{0} {1} {2}", 1, 2);
-   |              ^^^ ^^^ ^^^
+   |                      ^^^
    |
    = note: positional arguments are zero-based
 
 error: invalid reference to positional argument 2 (there are 2 arguments)
-  --> $DIR/ifmt-bad-arg.rs:32:14
+  --> $DIR/ifmt-bad-arg.rs:32:28
    |
 LL |     format!("{} {value} {} {}", 1, value=2);
-   |              ^^ ^^^^^^^ ^^ ^^
+   |                            ^^
    |
    = note: positional arguments are zero-based
 
 error: invalid reference to positional arguments 3, 4 and 5 (there are 3 arguments)
-  --> $DIR/ifmt-bad-arg.rs:34:14
+  --> $DIR/ifmt-bad-arg.rs:34:38
    |
 LL |     format!("{name} {value} {} {} {} {} {} {}", 0, name=1, value=2);
-   |              ^^^^^^ ^^^^^^^ ^^ ^^ ^^ ^^ ^^ ^^
+   |                                      ^^ ^^ ^^
    |
    = note: positional arguments are zero-based
 
