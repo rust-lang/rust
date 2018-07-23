@@ -183,5 +183,11 @@ LL |     format!("foo %s baz", "bar"); //~ ERROR: argument never used
    = help: `%s` should be written as `{}`
    = note: printf formatting not supported; see the documentation for `std::fmt`
 
-error: aborting due to 26 previous errors
+error: there is no argument named `foo`
+  --> $DIR/ifmt-bad-arg.rs:70:9
+   |
+LL |         {foo}
+   |         ^^^^^
+
+error: aborting due to 27 previous errors
 
