@@ -115,6 +115,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
+        // Use lifetimes to determine if we're returning a reference to the argument. In that case
+        // we can't switch to pass-by-value as the argument will not live long enough.
+        let output_lt = if let TypeVariants::TyRef(output_lt, _, _) = fn_sig.output().sty {
+            Some(output_lt)
+        } else {
+            None
+        };
+
         for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
             // All spans generated from a proc-macro invocation are the same...
             if span == input.span {
@@ -122,7 +130,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
             }
 
             if_chain! {
-                if let TypeVariants::TyRef(_, ty, Mutability::MutImmutable) = ty.sty;
+                if let TypeVariants::TyRef(input_lt, ty, Mutability::MutImmutable) = ty.sty;
+                if Some(input_lt) != output_lt;
                 if is_copy(cx, ty);
                 if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                 if size <= self.limit;
