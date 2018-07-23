@@ -1070,7 +1070,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         if fcx.tcx.features().exhaustive_patterns {
             if arg_ty.conservative_is_uninhabited() {
                 let mut diverges = Diverges::Always;
-                if let hir::Expr_::ExprBlock(ref block, _) = body.value.node {
+                if let hir::ExprKind::Block(ref block, _) = body.value.node {
                     // If the function is completely empty, or has a single trailing
                     // expression, then we do not issue a warning (as it was likely
                     // mandated by a trait, rather than being an oversight).
