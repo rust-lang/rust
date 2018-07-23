@@ -188,6 +188,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_DOC_COMMENTS,
                     UNUSED_EXTERN_CRATES,
                     UNUSED_FEATURES,
+                    UNKNOWN_FEATURES,
                     UNUSED_LABELS,
                     UNUSED_PARENS);
 
@@ -342,7 +343,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_renamed("bare_trait_object", "bare_trait_objects");
     store.register_renamed("unstable_name_collision", "unstable_name_collisions");
     store.register_renamed("unused_doc_comment", "unused_doc_comments");
-    store.register_renamed("unknown_features", "unused_features");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");
     store.register_removed("raw_pointer_derive", "using derive with raw pointers is ok");

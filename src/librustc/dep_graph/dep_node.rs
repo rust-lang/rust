@@ -615,6 +615,8 @@ define_dep_nodes!( <'tcx>
     [input] CrateName(CrateNum),
     [] ItemChildren(DefId),
     [] ExternModStmtCnum(DefId),
+    [input] GetLibFeatures,
+    [] DefinedLibFeatures(CrateNum),
     [input] GetLangItems,
     [] DefinedLangItems(CrateNum),
     [] MissingLangItems(CrateNum),

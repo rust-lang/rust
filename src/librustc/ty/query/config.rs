@@ -626,6 +626,18 @@ impl<'tcx> QueryDescription<'tcx> for queries::crate_name<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::get_lib_features<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the lib features map")
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::defined_lib_features<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the lib features defined in a crate")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::get_lang_items<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         "calculating the lang items map".to_string()

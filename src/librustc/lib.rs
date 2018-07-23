@@ -141,6 +141,7 @@ pub mod middle {
     pub mod exported_symbols;
     pub mod free_region;
     pub mod intrinsicck;
+    pub mod lib_features;
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;

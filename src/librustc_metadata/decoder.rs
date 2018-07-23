@@ -645,6 +645,14 @@ impl<'a, 'tcx> CrateMetadata {
         self.get_impl_data(id).trait_ref.map(|tr| tr.decode((self, tcx)))
     }
 
+    /// Iterates over all the stability attributes in the given crate.
+    pub fn get_lib_features(&self) -> Vec<(ast::Name, Option<ast::Name>)> {
+        self.root
+            .lib_features
+            .decode(self)
+            .collect()
+    }
+
     /// Iterates over the language items in the given crate.
     pub fn get_lang_items(&self) -> Vec<(DefId, usize)> {
         self.root

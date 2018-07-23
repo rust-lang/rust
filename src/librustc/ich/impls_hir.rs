@@ -1072,6 +1072,11 @@ impl_stable_hash_for!(struct hir::def::Export {
     span
 });
 
+impl_stable_hash_for!(struct ::middle::lib_features::LibFeatures {
+    stable,
+    unstable
+});
+
 impl<'a> HashStable<StableHashingContext<'a>> for ::middle::lang_items::LangItem {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _: &mut StableHashingContext<'a>,

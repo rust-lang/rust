@@ -813,37 +813,42 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
 
-    let ref declared_lib_features = tcx.features().declared_lib_features;
-    let mut remaining_lib_features: FxHashMap<Symbol, Span>
-        = declared_lib_features.clone().into_iter().collect();
-    remaining_lib_features.remove(&Symbol::intern("proc_macro"));
-
     for &(ref stable_lang_feature, span) in &tcx.features().declared_stable_lang_features {
-        let version = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
+        let since = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
             .expect("unexpectedly couldn't find version feature was stabilized");
         tcx.lint_node(lint::builtin::STABLE_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,
-                      &format_stable_since_msg(version));
+                      &format_stable_since_msg(*stable_lang_feature, since));
     }
 
-    // FIXME(#44232) the `used_features` table no longer exists, so we don't
-    //               lint about unknown or unused features. We should reenable
-    //               this one day!
-    //
-    // let index = tcx.stability();
-    // for (used_lib_feature, level) in &index.used_features {
-    //     remaining_lib_features.remove(used_lib_feature);
-    // }
-    //
-    // for &span in remaining_lib_features.values() {
-    //     tcx.lint_node(lint::builtin::UNUSED_FEATURES,
-    //                   ast::CRATE_NODE_ID,
-    //                   span,
-    //                   "unused or unknown feature");
-    // }
+    let ref declared_lib_features = tcx.features().declared_lib_features;
+
+    let mut remaining_lib_features = FxHashMap();
+    for (feature, span) in declared_lib_features.clone().into_iter() {
+        remaining_lib_features.insert(feature, span);
+    }
+    // FIXME(varkor): we don't properly handle lib features behind `cfg` attributes yet,
+    // but it happens just to affect `libc`, so we're just going to hard-code it for now.
+    remaining_lib_features.remove(&Symbol::intern("libc"));
+
+    for (feature, stable) in tcx.lib_features().iter() {
+        remaining_lib_features.remove(&feature);
+    }
+
+    for (feature, span) in remaining_lib_features {
+        tcx.lint_node(lint::builtin::UNKNOWN_FEATURES,
+                      ast::CRATE_NODE_ID,
+                      span,
+                      &format!("unknown feature `{}`", feature));
+    }
+
+    // FIXME(#44232): the `used_features` table no longer exists, so we
+    // don't lint about unused features. We should reenable this one day!
 }
 
-fn format_stable_since_msg(version: &str) -> String {
-    format!("this feature has been stable since {}. Attribute no longer needed", version)
+fn format_stable_since_msg(feature: Symbol, since: &str) -> String {
+    // "this feature has been stable since {}. Attribute no longer needed"
+    format!("the feature `{}` has been stable since {} and no longer requires \
+             an attribute to enable", feature, since)
 }

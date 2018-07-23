@@ -198,6 +198,7 @@ pub struct CrateRoot {
 
     pub crate_deps: LazySeq<CrateDep>,
     pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,
+    pub lib_features: LazySeq<(Symbol, Option<Symbol>)>,
     pub lang_items: LazySeq<(DefIndex, usize)>,
     pub lang_items_missing: LazySeq<lang_items::LangItem>,
     pub native_libraries: LazySeq<NativeLibrary>,

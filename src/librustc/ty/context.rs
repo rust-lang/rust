@@ -1192,6 +1192,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.sess.consider_optimizing(&cname, msg)
     }
 
+    pub fn lib_features(self) -> Lrc<middle::lib_features::LibFeatures> {
+        self.get_lib_features(LOCAL_CRATE)
+    }
+
     pub fn lang_items(self) -> Lrc<middle::lang_items::LanguageItems> {
         self.get_lang_items(LOCAL_CRATE)
     }
@@ -2839,6 +2843,11 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
+    };
+    providers.get_lib_features = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        // FIXME(#42293): see comment below.
+        tcx.dep_graph.with_ignore(|| Lrc::new(middle::lib_features::collect(tcx)))
     };
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);

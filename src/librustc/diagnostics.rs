@@ -2138,4 +2138,5 @@ register_diagnostics! {
     E0708, // `async` non-`move` closures with arguments are not currently supported
     E0709, // multiple different lifetimes used in arguments of `async fn`
     E0710, // an unknown tool name found in scoped lint
+    E0711, // a feature has been declared with conflicting stability attributes
 }
