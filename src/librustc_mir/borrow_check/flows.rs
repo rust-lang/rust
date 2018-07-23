@@ -26,7 +26,7 @@ use dataflow::move_paths::HasMoveData;
 use dataflow::Borrows;
 use dataflow::{EverInitializedPlaces, MovingOutStatements};
 use dataflow::{FlowAtLocation, FlowsAtLocation};
-use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use dataflow::MaybeUninitializedPlaces;
 use either::Either;
 use std::fmt;
 use std::rc::Rc;
@@ -34,7 +34,6 @@ use std::rc::Rc;
 // (forced to be `pub` due to its use as an associated type below.)
 crate struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
     borrows: FlowAtLocation<Borrows<'b, 'gcx, 'tcx>>,
-    pub inits: FlowAtLocation<MaybeInitializedPlaces<'b, 'gcx, 'tcx>>,
     pub uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
     pub move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
     pub ever_inits: FlowAtLocation<EverInitializedPlaces<'b, 'gcx, 'tcx>>,
@@ -46,7 +45,6 @@ crate struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
 impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
     crate fn new(
         borrows: FlowAtLocation<Borrows<'b, 'gcx, 'tcx>>,
-        inits: FlowAtLocation<MaybeInitializedPlaces<'b, 'gcx, 'tcx>>,
         uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
         move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
         ever_inits: FlowAtLocation<EverInitializedPlaces<'b, 'gcx, 'tcx>>,
@@ -54,7 +52,6 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
     ) -> Self {
         Flows {
             borrows,
-            inits,
             uninits,
             move_outs,
             ever_inits,
@@ -81,7 +78,6 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
 macro_rules! each_flow {
     ($this:ident, $meth:ident($arg:ident)) => {
         FlowAtLocation::$meth(&mut $this.borrows, $arg);
-        FlowAtLocation::$meth(&mut $this.inits, $arg);
         FlowAtLocation::$meth(&mut $this.uninits, $arg);
         FlowAtLocation::$meth(&mut $this.move_outs, $arg);
         FlowAtLocation::$meth(&mut $this.ever_inits, $arg);
@@ -131,18 +127,6 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
             saw_one = true;
             let borrow_data = &self.borrows.operator().borrows()[borrow];
             s.push_str(&format!("{}", borrow_data));
-        });
-        s.push_str("] ");
-
-        s.push_str("inits: [");
-        let mut saw_one = false;
-        self.inits.each_state_bit(|mpi_init| {
-            if saw_one {
-                s.push_str(", ");
-            };
-            saw_one = true;
-            let move_path = &self.inits.operator().move_data().move_paths[mpi_init];
-            s.push_str(&format!("{}", move_path));
         });
         s.push_str("] ");
 

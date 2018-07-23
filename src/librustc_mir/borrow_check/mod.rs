@@ -216,7 +216,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &borrow_set,
     );
     let regioncx = Rc::new(regioncx);
-    let flow_inits = flow_inits; // remove mut
 
     let flow_borrows = FlowAtLocation::new(do_dataflow(
         tcx,
@@ -262,7 +261,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
 
     let mut state = Flows::new(
         flow_borrows,
-        flow_inits,
         flow_uninits,
         flow_move_outs,
         flow_ever_inits,
