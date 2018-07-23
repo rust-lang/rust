@@ -112,6 +112,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub DUPLICATE_FEATURES,
+    Deny,
+    "duplicate features found in crate-level #[feature] directives"
+}
+
+declare_lint! {
     pub STABLE_FEATURES,
     Warn,
     "stable features found in #[feature] directive"
@@ -369,6 +375,7 @@ impl LintPass for HardwiredLints {
             WARNINGS,
             UNUSED_FEATURES,
             UNKNOWN_FEATURES,
+            DUPLICATE_FEATURES,
             STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
             TRIVIAL_CASTS,

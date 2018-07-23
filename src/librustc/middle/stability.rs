@@ -826,6 +826,13 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let mut remaining_lib_features = FxHashMap();
     for (feature, span) in declared_lib_features.clone().into_iter() {
+        // Warn if the user enables a feature multiple times.
+        if remaining_lib_features.contains_key(&feature) {
+            tcx.lint_node(lint::builtin::DUPLICATE_FEATURES,
+                          ast::CRATE_NODE_ID,
+                          span,
+                          &format!("duplicate `{}` feature attribute", feature));
+        }
         remaining_lib_features.insert(feature, span);
     }
     // FIXME(varkor): we don't properly handle lib features behind `cfg` attributes yet,
