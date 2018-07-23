@@ -1065,8 +1065,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             ty::BindingMode::BindByValue(hir::Mutability::MutImmutable), true);
 
         // If any of a function's parameters have a type that is uninhabited, then it
-        // may never be called (because its arguments cannot be constructed). Therefore,
-        // it must always diverge.
+        // it is not possible to call that function (because its arguments cannot be constructed).
+        // Therefore, it must always diverge.
         if fcx.tcx.features().exhaustive_patterns {
             if arg_ty.conservative_is_uninhabited() {
                 let mut diverges = Diverges::Always;
