@@ -16,6 +16,7 @@
 fn foo() {
     while {return} {
         println!("Hello, world!");
+        //~^ ERROR unreachable
     }
 }
 
@@ -30,8 +31,10 @@ fn baz() {
     // Here, we cite the `while` loop as dead.
     while {return} {
         println!("I am dead.");
+        //~^ ERROR unreachable
     }
     println!("I am, too.");
+    //~^ ERROR unreachable
 }
 
 fn main() { }

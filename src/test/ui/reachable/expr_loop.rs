@@ -16,6 +16,7 @@
 fn a() {
     loop { return; }
     println!("I am dead.");
+    //~^ ERROR unreachable statement
 }
 
 fn b() {
@@ -28,6 +29,7 @@ fn b() {
 fn c() {
     loop { return; }
     println!("I am dead.");
+    //~^ ERROR unreachable statement
 }
 
 fn d() {
@@ -38,6 +40,7 @@ fn d() {
 fn e() {
     loop { 'middle: loop { loop { break 'middle; } } }
     println!("I am dead.");
+    //~^ ERROR unreachable statement
 }
 
 fn main() { }

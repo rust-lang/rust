@@ -10,6 +10,7 @@
 
 fn f() {
     let mut x = vec![1].iter();
+    //~^ ERROR borrowed value does not live long enough
     x.use_mut();
 }
 

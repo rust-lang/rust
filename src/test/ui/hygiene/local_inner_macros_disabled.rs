@@ -11,11 +11,10 @@
 // `local_inner_macros` has no effect if `feature(use_extern_macros)` is not enabled
 
 // aux-build:local_inner_macros.rs
-// error-pattern: cannot find macro `helper2!` in this scope
 
 #[macro_use(public_macro)]
 extern crate local_inner_macros;
 
-public_macro!();
+public_macro!(); //~ ERROR cannot find macro `helper2!` in this scope
 
 fn main() {}

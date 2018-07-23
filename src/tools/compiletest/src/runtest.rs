@@ -1194,6 +1194,10 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
+        // On Windows, keep all '\' path separators to match the paths reported in the JSON output
+        // from the compiler
+        let os_file_name = self.testpaths.file.display().to_string();
+
         // on windows, translate all '\' path separators to '/'
         let file_name = format!("{}", self.testpaths.file.display()).replace(r"\", "/");
 
@@ -1209,7 +1213,7 @@ impl<'test> TestCx<'test> {
             .any(|ee| ee.kind == Some(ErrorKind::Note));
 
         // Parse the JSON output from the compiler and extract out the messages.
-        let actual_errors = json::parse_output(&file_name, &proc_res.stderr, proc_res);
+        let actual_errors = json::parse_output(&os_file_name, &proc_res.stderr, proc_res);
         let mut unexpected = Vec::new();
         let mut found = vec![false; expected_errors.len()];
         for actual_error in &actual_errors {

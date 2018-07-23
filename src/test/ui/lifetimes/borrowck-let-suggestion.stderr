@@ -5,7 +5,7 @@ LL |     let mut x = vec![1].iter();
    |                 ^^^^^^^       - temporary value dropped here while still borrowed
    |                 |
    |                 temporary value does not live long enough
-LL |     x.use_mut();
+...
 LL | }
    | - temporary value needs to live until here
    |
