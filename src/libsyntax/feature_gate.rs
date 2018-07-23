@@ -321,7 +321,6 @@ declare_features! (
     // `extern "x86-interrupt" fn()`
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
 
-
     // Allows the `catch {...}` expression
     (active, catch_expr, "1.17.0", Some(31436), Some(Edition::Edition2018)),
 

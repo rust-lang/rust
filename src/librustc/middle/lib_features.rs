@@ -62,8 +62,6 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
         let mut features = vec![];
 
         for attr in attrs {
-            // FIXME(varkor): the stability attribute might be behind a `#[cfg]` attribute.
-
             // Find a stability attribute (i.e. `#[stable (..)]`, `#[unstable (..)]`,
             // `#[rustc_const_unstable (..)]`).
             if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {

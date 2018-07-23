@@ -813,7 +813,6 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
 
-
     let declared_lang_features = &tcx.features().declared_lang_features;
     let mut lang_features = FxHashSet();
     for &(feature, span, since) in declared_lang_features {
@@ -837,8 +836,9 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         }
         remaining_lib_features.insert(feature, span.clone());
     }
-    // FIXME(varkor): we don't properly handle lib features behind `cfg` attributes yet,
-    // but it happens just to affect `libc`, so we're just going to hard-code it for now.
+    // `stdbuild` has special handling for `libc`, so we need to
+    // recognise the feature when building std.
+    // FIXME: only remove `libc` when `stdbuild` is active.
     remaining_lib_features.remove(&Symbol::intern("libc"));
 
     for (feature, stable) in tcx.lib_features().iter() {
