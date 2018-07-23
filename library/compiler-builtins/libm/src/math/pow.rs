@@ -595,30 +595,33 @@ mod tests {
 
     #[test]
     fn special_cases() {
-        // /      20. (anything) ** 1 is (anything)
         // One as the exponent:
         // (anything ^ 1 should be anything - i.e. the base)
         test_sets(ALL, &|v: f64| pow(v, 1.0), &|v: f64| v);
 
-        // /      21. (anything) ** -1 is 1/(anything)
         // Negative One as the exponent:
         // (anything ^ -1 should be 1/anything)
         test_sets(ALL, &|v: f64| pow(v, -1.0), &|v: f64| 1.0 / v);
 
-        // /      22. (-anything) ** (integer) is (-1)**(integer)*(+anything**integer)
         // Factoring -1 out:
         // (negative anything ^ integer should be (-1 ^ integer) * (positive anything ^ integer))
-        &[POS_ZERO, NEG_ZERO, POS_ONE, NEG_ONE, POS_EVENS, NEG_EVENS].iter().for_each(|int_set| int_set.iter().for_each(|int| {
-            test_sets(ALL, &|v: f64| pow(-v, *int), &|v: f64| pow(-1.0, *int) * pow(v, *int));
-        }));
+        &[POS_ZERO, NEG_ZERO, POS_ONE, NEG_ONE, POS_EVENS, NEG_EVENS]
+            .iter()
+            .for_each(|int_set| {
+                int_set.iter().for_each(|int| {
+                    test_sets(ALL, &|v: f64| pow(-v, *int), &|v: f64| {
+                        pow(-1.0, *int) * pow(v, *int)
+                    });
+                })
+            });
 
-        // /      23. (-anything except 0 and inf) ** (non-integer) is NAN
         // Negative base (imaginary results):
         // (-anything except 0 and Infinity ^ non-integer should be NAN)
-        &NEG[1..(NEG.len()-1)].iter().for_each(|set| set.iter().for_each(|val| {
-            test_sets(&ALL[3..7], &|v: f64| pow(*val, v), &|_| NAN);
-        }));
-
+        &NEG[1..(NEG.len() - 1)].iter().for_each(|set| {
+            set.iter().for_each(|val| {
+                test_sets(&ALL[3..7], &|v: f64| pow(*val, v), &|_| NAN);
+            })
+        });
     }
 
     #[test]
