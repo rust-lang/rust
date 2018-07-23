@@ -10,13 +10,12 @@
 
 extern crate assert_cli;
 
-use syntax;
-
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::iter::{Enumerate, Peekable};
+use std::mem;
 use std::path::{Path, PathBuf};
 use std::str::Chars;
 
@@ -419,11 +418,11 @@ fn format_file<P: Into<PathBuf>>(filepath: P, config: Config) -> (bool, FileMap,
     let filepath = filepath.into();
     let input = Input::File(filepath);
     let mut session = Session::<io::Stdout>::new(config, None);
-    syntax::with_globals(|| {
-        let result = session.format_input_inner(input).unwrap();
-        let parsing_errors = session.summary.has_parsing_errors();
-        (parsing_errors, result.0, result.1)
-    })
+    let result = session.format(input).unwrap();
+    let parsing_errors = session.summary.has_parsing_errors();
+    let mut filemap = FileMap::new();
+    mem::swap(&mut session.filemap, &mut filemap);
+    (parsing_errors, filemap, result)
 }
 
 enum IdempotentCheckError {

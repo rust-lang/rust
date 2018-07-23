@@ -49,7 +49,7 @@ use syntax::ast;
 
 use comment::LineClasses;
 use failure::Fail;
-use formatting::{FormatErrorMap, FormattingError, ReportedErrors, Summary};
+use formatting::{FileMap, FormatErrorMap, FormattingError, ReportedErrors, Summary};
 use issues::Issue;
 use shape::Indent;
 
@@ -444,6 +444,7 @@ pub struct Session<'b, T: Write + 'b> {
     pub config: Config,
     pub out: Option<&'b mut T>,
     pub summary: Summary,
+    filemap: FileMap,
 }
 
 impl<'b, T: Write + 'b> Session<'b, T> {
@@ -456,17 +457,14 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             config,
             out,
             summary: Summary::default(),
+            filemap: FileMap::new(),
         }
     }
 
     /// The main entry point for Rustfmt. Formats the given input according to the
     /// given config. `out` is only necessary if required by the configuration.
     pub fn format(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
-        if !self.config.version_meets_requirement() {
-            return Err(ErrorKind::VersionMismatch);
-        }
-
-        syntax::with_globals(|| self.format_input_inner(input)).map(|tup| tup.1)
+        self.format_input_inner(input)
     }
 
     pub fn override_config<F, U>(&mut self, mut config: Config, f: F) -> U

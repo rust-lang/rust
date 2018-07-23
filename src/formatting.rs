@@ -20,7 +20,6 @@ use {filemap, modules, ErrorKind, FormatReport, Input, Session};
 
 // A map of the files of a crate, with their new content
 pub(crate) type FileMap = Vec<FileRecord>;
-
 pub(crate) type FileRecord = (FileName, String);
 
 pub(crate) struct FormattingError {
@@ -297,56 +296,72 @@ enum ParseError<'sess> {
 }
 
 impl<'b, T: Write + 'b> Session<'b, T> {
-    pub(crate) fn format_input_inner(
-        &mut self,
-        input: Input,
-    ) -> Result<(FileMap, FormatReport), ErrorKind> {
-        syntax_pos::hygiene::set_default_edition(self.config.edition().to_libsyntax_pos_edition());
-
-        if self.config.disable_all_formatting() {
-            // When the input is from stdin, echo back the input.
-            if let Input::Text(ref buf) = input {
-                if let Err(e) = io::stdout().write_all(buf.as_bytes()) {
-                    return Err(From::from(e));
-                }
-            }
-            return Ok((FileMap::new(), FormatReport::new()));
+    pub(crate) fn format_input_inner(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
+        if !self.config.version_meets_requirement() {
+            return Err(ErrorKind::VersionMismatch);
         }
 
-        let mut filemap = FileMap::new();
-        let config = &self.config.clone();
-        let format_result = format_project(input, config, |path, mut result| {
-            if let Some(ref mut out) = self.out {
-                match filemap::write_file(&mut result, &path, out, &self.config) {
-                    Ok(b) if b => self.summary.add_diff(),
-                    Err(e) => {
-                        // Create a new error with path_str to help users see which files failed
-                        let err_msg = format!("{}: {}", path, e);
-                        return Err(io::Error::new(e.kind(), err_msg).into());
+        syntax::with_globals(|| {
+            syntax_pos::hygiene::set_default_edition(
+                self.config.edition().to_libsyntax_pos_edition(),
+            );
+
+            if self.config.disable_all_formatting() {
+                // When the input is from stdin, echo back the input.
+                if let Input::Text(ref buf) = input {
+                    if let Err(e) = io::stdout().write_all(buf.as_bytes()) {
+                        return Err(From::from(e));
                     }
-                    _ => {}
                 }
+                return Ok(FormatReport::new());
             }
 
-            filemap.push((path, result));
-            Ok(())
-        });
+            let config = &self.config.clone();
+            let format_result = format_project(input, config, self);
 
-        format_result.map(|(result, summary)| {
-            self.summary.add(summary);
-            (filemap, result)
+            format_result.map(|(report, summary)| {
+                self.summary.add(summary);
+                report
+            })
         })
     }
 }
 
-fn format_project<F>(
+// Handle the results of formatting.
+trait FormatHandler {
+    fn handle_formatted_file(&mut self, path: FileName, result: String) -> Result<(), ErrorKind>;
+}
+
+impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
+    // Called for each formatted file.
+    fn handle_formatted_file(
+        &mut self,
+        path: FileName,
+        mut result: String,
+    ) -> Result<(), ErrorKind> {
+        if let Some(ref mut out) = self.out {
+            match filemap::write_file(&mut result, &path, out, &self.config) {
+                Ok(b) if b => self.summary.add_diff(),
+                Err(e) => {
+                    // Create a new error with path_str to help users see which files failed
+                    let err_msg = format!("{}: {}", path, e);
+                    return Err(io::Error::new(e.kind(), err_msg).into());
+                }
+                _ => {}
+            }
+        }
+
+        self.filemap.push((path, result));
+        Ok(())
+    }
+}
+
+// Format an entire crate (or subset of the module tree).
+fn format_project<T: FormatHandler>(
     input: Input,
     config: &Config,
-    mut formatted_file: F,
-) -> Result<(FormatReport, Summary), ErrorKind>
-where
-    F: FnMut(FileName, String) -> Result<(), ErrorKind>,
-{
+    handler: &mut T,
+) -> Result<(FormatReport, Summary), ErrorKind> {
     let mut summary = Summary::default();
     let mut timer = Timer::Initialized(Instant::now());
 
@@ -368,7 +383,7 @@ where
                     // Note that if you see this message and want more information,
                     // then go to `parse_input` and run the parse function without
                     // `catch_unwind` so rustfmt panics and you can get a backtrace.
-                    should_emit_verbose(main_file != FileName::Stdin, config, || {
+                    should_emit_verbose(!input_is_stdin, config, || {
                         println!("The Rust parser panicked")
                     });
                 }
@@ -389,28 +404,86 @@ where
     ));
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
-    let report = FormatReport::new();
+    let mut context = FormatContext::new(
+        &krate,
+        FormatReport::new(),
+        summary,
+        parse_session,
+        config,
+        handler,
+    );
 
-    let skip_children = config.skip_children();
-    for (path, module) in modules::list_files(&krate, parse_session.codemap())? {
-        if (skip_children && path != main_file) || config.ignore().skip_file(&path) {
+    let files = modules::list_files(&krate, context.parse_session.codemap())?;
+    for (path, module) in files {
+        if (config.skip_children() && path != main_file) || config.ignore().skip_file(&path) {
             continue;
         }
-        should_emit_verbose(main_file != FileName::Stdin, config, || {
-            println!("Formatting {}", path)
-        });
-        let filemap = parse_session
+        should_emit_verbose(!input_is_stdin, config, || println!("Formatting {}", path));
+        let is_root = path == main_file;
+        context.format_file(path, module, is_root)?;
+    }
+    timer = timer.done_formatting();
+
+    should_emit_verbose(!input_is_stdin, config, || {
+        println!(
+            "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
+            timer.get_parse_time(),
+            timer.get_format_time(),
+        )
+    });
+
+    if context.report.has_warnings() {
+        context.summary.add_formatting_error();
+    }
+    {
+        let report_errs = &context.report.internal.borrow().1;
+        if report_errs.has_check_errors {
+            context.summary.add_check_error();
+        }
+        if report_errs.has_operational_errors {
+            context.summary.add_operational_error();
+        }
+    }
+
+    Ok((context.report, context.summary))
+}
+
+// Used for formatting files.
+#[derive(new)]
+struct FormatContext<'a, T: FormatHandler + 'a> {
+    krate: &'a ast::Crate,
+    report: FormatReport,
+    summary: Summary,
+    parse_session: ParseSess,
+    config: &'a Config,
+    handler: &'a mut T,
+}
+
+impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
+    // Formats a single file/module.
+    fn format_file(
+        &mut self,
+        path: FileName,
+        module: &ast::Mod,
+        is_root: bool,
+    ) -> Result<(), ErrorKind> {
+        let filemap = self
+            .parse_session
             .codemap()
             .lookup_char_pos(module.inner.lo())
             .file;
         let big_snippet = filemap.src.as_ref().unwrap();
         let snippet_provider = SnippetProvider::new(filemap.start_pos, big_snippet);
-        let mut visitor =
-            FmtVisitor::from_codemap(&parse_session, config, &snippet_provider, report.clone());
+        let mut visitor = FmtVisitor::from_codemap(
+            &self.parse_session,
+            &self.config,
+            &snippet_provider,
+            self.report.clone(),
+        );
         // Format inner attributes if available.
-        if !krate.attrs.is_empty() && path == main_file {
+        if !self.krate.attrs.is_empty() && is_root {
             visitor.skip_empty_lines(filemap.end_pos);
-            if visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner) {
+            if visitor.visit_attrs(&self.krate.attrs, ast::AttrStyle::Inner) {
                 visitor.push_rewrite(module.inner, None);
             } else {
                 visitor.format_separate_mod(module, &*filemap);
@@ -434,41 +507,17 @@ where
             &mut visitor.buffer,
             &path,
             &visitor.skipped_range,
-            config,
-            &report,
+            &self.config,
+            &self.report,
         );
-        replace_with_system_newlines(&mut visitor.buffer, config);
+        replace_with_system_newlines(&mut visitor.buffer, &self.config);
 
         if visitor.macro_rewrite_failure {
-            summary.add_macro_format_failure();
+            self.summary.add_macro_format_failure();
         }
 
-        formatted_file(path, visitor.buffer)?;
+        self.handler.handle_formatted_file(path, visitor.buffer)
     }
-    timer = timer.done_formatting();
-
-    should_emit_verbose(input_is_stdin, config, || {
-        println!(
-            "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
-            timer.get_parse_time(),
-            timer.get_format_time(),
-        )
-    });
-
-    if report.has_warnings() {
-        summary.add_formatting_error();
-    }
-    {
-        let report_errs = &report.internal.borrow().1;
-        if report_errs.has_check_errors {
-            summary.add_check_error();
-        }
-        if report_errs.has_operational_errors {
-            summary.add_operational_error();
-        }
-    }
-
-    Ok((report, summary))
 }
 
 fn make_parse_sess(codemap: Rc<CodeMap>, config: &Config) -> ParseSess {
