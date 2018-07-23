@@ -13,5 +13,5 @@
 #![feature(catch_expr)]
 
 fn main() {
-    match try { false } { _ => {} } //~ ERROR expected expression, found keyword `try`
+    match try { false } { _ => {} } //~ ERROR expected expression, found reserved keyword `try`
 }
