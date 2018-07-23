@@ -884,8 +884,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 longer_fr, shorter_fr,
             );
 
-            let blame_index = self.blame_constraint(longer_fr, shorter_fr);
-            let blame_span = self.constraints[blame_index].locations.span(mir);
+            let blame_span = self.find_outlives_blame_span(mir, longer_fr, shorter_fr);
 
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).

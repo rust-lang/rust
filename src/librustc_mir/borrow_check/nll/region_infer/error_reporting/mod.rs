@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::region_infer::values::ToElementIndex;
 use borrow_check::nll::region_infer::{ConstraintIndex, RegionInferenceContext};
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
@@ -75,11 +74,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir: &Mir<'tcx>,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
-    ) -> (ConstraintCategory, Span) {
+    ) -> (ConstraintCategory, Span, RegionVid) {
         debug!("best_blame_constraint(from_region={:?})", from_region);
 
         // Find all paths
-        let path = self
+        let (path, target_region) = self
             .find_constraint_paths_between_regions(from_region, target_test)
             .unwrap();
         debug!("best_blame_constraint: path={:#?}", path);
@@ -98,7 +97,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
         debug!("best_blame_constraint: sorted_path={:?}", categorized_path);
 
-        *categorized_path.first().unwrap()
+        let &(category, span) = categorized_path.first().unwrap();
+
+        (category, span, target_region)
     }
 
     /// Walks the graph of constraints (where `'a: 'b` is considered
@@ -106,11 +107,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `to_region`. The paths are accumulated into the vector
     /// `results`. The paths are stored as a series of
     /// `ConstraintIndex` values -- in other words, a list of *edges*.
+    ///
+    /// Returns: a series of constraints as well as the region `R`
+    /// that passed the target test.
     fn find_constraint_paths_between_regions(
         &self,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
-    ) -> Option<Vec<ConstraintIndex>> {
+    ) -> Option<(Vec<ConstraintIndex>, RegionVid)> {
         let mut context = IndexVec::from_elem(Trace::NotVisited, &self.definitions);
         context[from_region] = Trace::StartRegion;
 
@@ -138,7 +142,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                         Trace::StartRegion => {
                             result.reverse();
-                            return Some(result);
+                            return Some((result, r));
                         }
                     }
                 }
@@ -253,7 +257,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (category, span) = self.best_blame_constraint(mir, fr, |r| r == outlived_fr);
+        let (category, span, _) = self.best_blame_constraint(mir, fr, |r| r == outlived_fr);
 
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
@@ -393,82 +397,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         diag.buffer(errors_buffer);
     }
 
-    // Find some constraint `X: Y` where:
-    // - `fr1: X` transitively
-    // - and `Y` is live at `elem`
-    crate fn find_constraint(&self, fr1: RegionVid, elem: Location) -> RegionVid {
-        let index = self.blame_constraint(fr1, elem);
-        self.constraints[index].sub
-    }
-
-    /// Tries to finds a good span to blame for the fact that `fr1`
-    /// contains `fr2`.
-    pub(super) fn blame_constraint(
-        &self,
-        fr1: RegionVid,
-        elem: impl ToElementIndex,
-    ) -> ConstraintIndex {
-        // Find everything that influenced final value of `fr`.
-        let influenced_fr1 = self.dependencies(fr1);
-
-        // Try to find some outlives constraint `'X: fr2` where `'X`
-        // influenced `fr1`. Blame that.
-        //
-        // NB, this is a pretty bad choice most of the time. In
-        // particular, the connection between `'X` and `fr1` may not
-        // be obvious to the user -- not to mention the naive notion
-        // of dependencies, which doesn't account for the locations of
-        // contraints at all. But it will do for now.
-        let relevant_constraint = self.constraints
-            .iter_enumerated()
-            .filter_map(|(i, constraint)| {
-                if !self.liveness_constraints.contains(constraint.sub, elem) {
-                    None
-                } else {
-                    influenced_fr1[constraint.sup]
-                        .map(|distance| (distance, i))
-                }
+    // Finds some region R such that `fr1: R` and `R` is live at
+    // `elem`.
+    crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
+        // Find all paths
+        let (_path, r) = self
+            .find_constraint_paths_between_regions(fr1, |r| {
+                self.liveness_constraints.contains(r, elem)
             })
-            .min() // constraining fr1 with fewer hops *ought* to be more obvious
-            .map(|(_dist, i)| i);
-
-        relevant_constraint.unwrap_or_else(|| {
-            bug!(
-                "could not find any constraint to blame for {:?}: {:?}",
-                fr1,
-                elem,
-            );
-        })
+            .unwrap();
+        r
     }
 
-    /// Finds all regions whose values `'a` may depend on in some way.
-    /// For each region, returns either `None` (does not influence
-    /// `'a`) or `Some(d)` which indicates that it influences `'a`
-    /// with distinct `d` (minimum number of edges that must be
-    /// traversed).
-    ///
-    /// Used during error reporting, extremely naive and inefficient.
-    fn dependencies(&self, r0: RegionVid) -> IndexVec<RegionVid, Option<usize>> {
-        let mut result_set = IndexVec::from_elem(None, &self.definitions);
-        let mut changed = true;
-        result_set[r0] = Some(0); // distance 0 from `r0`
-
-        while changed {
-            changed = false;
-            for constraint in self.constraints.iter() {
-                if let Some(n) = result_set[constraint.sup] {
-                    let m = n + 1;
-                    if result_set[constraint.sub]
-                        .map(|distance| m < distance)
-                        .unwrap_or(true)
-                    {
-                        result_set[constraint.sub] = Some(m);
-                        changed = true;
-                    }
-                }
-            }
-        }
-
-        result_set
+    // Finds a good span to blame for the fact that `fr1` outlives `fr2`.
+    crate fn find_outlives_blame_span(&self, mir: &Mir<'tcx>, fr1: RegionVid, fr2: RegionVid) -> Span {
+        let (_, span, _) = self.best_blame_constraint(mir, fr1, |r| r == fr2);
+        span
     }
 }
