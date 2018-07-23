@@ -22,7 +22,7 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
-use rustfmt::{format_input, load_config, CliOptions, Input};
+use rustfmt::{load_config, CliOptions, Input, Session};
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
@@ -73,16 +73,14 @@ fn fmt_files(files: &[&str]) -> i32 {
         load_config::<NullOptions>(Some(Path::new(".")), None).expect("couldn't load config");
 
     let mut exit_code = 0;
+    let mut out = stdout();
+    let mut session = Session::new(config, Some(&mut out));
     for file in files {
-        let (summary, report) = format_input(
-            Input::File(PathBuf::from(file)),
-            &config,
-            Some(&mut stdout()),
-        ).unwrap();
+        let report = session.format(Input::File(PathBuf::from(file))).unwrap();
         if report.has_warnings() {
             eprintln!("{}", report);
         }
-        if !summary.has_no_errors() {
+        if !session.summary.has_no_errors() {
             exit_code = 1;
         }
     }

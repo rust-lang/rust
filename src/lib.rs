@@ -14,6 +14,7 @@
 #![feature(type_ascription)]
 #![feature(unicode_internals)]
 #![feature(extern_prelude)]
+#![feature(nll)]
 
 #[macro_use]
 extern crate derive_new;
@@ -41,17 +42,17 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Write};
+use std::mem;
 use std::path::PathBuf;
 use std::rc::Rc;
 use syntax::ast;
 
 use comment::LineClasses;
 use failure::Fail;
-use formatting::{format_input_inner, FormatErrorMap, FormattingError, ReportedErrors};
+use formatting::{FormatErrorMap, FormattingError, ReportedErrors};
 use issues::Issue;
 use shape::Indent;
 
-pub use checkstyle::{footer as checkstyle_footer, header as checkstyle_header};
 pub use config::summary::Summary;
 pub use config::{
     load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, NewlineStyle, Range,
@@ -348,13 +349,16 @@ fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     config.set().emit_mode(config::EmitMode::Stdout);
     config.set().verbose(Verbosity::Quiet);
     config.set().hide_parse_errors(true);
-    match format_input(input, &config, Some(&mut out)) {
-        // `format_input()` returns an empty string on parsing error.
-        Ok((summary, _)) if summary.has_macro_formatting_failure() => None,
-        Ok(..) if out.is_empty() && !snippet.is_empty() => None,
-        Ok(..) => String::from_utf8(out).ok(),
-        Err(..) => None,
+    {
+        let mut session = Session::new(config, Some(&mut out));
+        let result = session.format(input);
+        let formatting_error = session.summary.has_macro_formatting_failure()
+            || session.out.as_ref().unwrap().is_empty() && !snippet.is_empty();
+        if formatting_error || result.is_err() {
+            return None;
+        }
     }
+    String::from_utf8(out).ok()
 }
 
 /// Format the given code block. Mainly targeted for code block in comment.
@@ -436,24 +440,59 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
     Some(result)
 }
 
+/// A session is a run of rustfmt across a single or multiple inputs.
+pub struct Session<'b, T: Write + 'b> {
+    pub config: Config,
+    pub out: Option<&'b mut T>,
+    pub summary: Summary,
+}
+
+impl<'b, T: Write + 'b> Session<'b, T> {
+    pub fn new(config: Config, out: Option<&'b mut T>) -> Session<'b, T> {
+        if config.emit_mode() == EmitMode::Checkstyle {
+            println!("{}", checkstyle::header());
+        }
+
+        Session {
+            config,
+            out,
+            summary: Summary::default(),
+        }
+    }
+
+    /// The main entry point for Rustfmt. Formats the given input according to the
+    /// given config. `out` is only necessary if required by the configuration.
+    pub fn format(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
+        if !self.config.version_meets_requirement() {
+            return Err(ErrorKind::VersionMismatch);
+        }
+
+        syntax::with_globals(|| self.format_input_inner(input)).map(|tup| tup.1)
+    }
+
+    pub fn override_config<F, U>(&mut self, mut config: Config, f: F) -> U
+    where
+        F: FnOnce(&mut Session<'b, T>) -> U,
+    {
+        mem::swap(&mut config, &mut self.config);
+        let result = f(self);
+        mem::swap(&mut config, &mut self.config);
+        result
+    }
+}
+
+impl<'b, T: Write + 'b> Drop for Session<'b, T> {
+    fn drop(&mut self) {
+        if self.config.emit_mode() == EmitMode::Checkstyle {
+            println!("{}", checkstyle::footer());
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Input {
     File(PathBuf),
     Text(String),
-}
-
-/// The main entry point for Rustfmt. Formats the given input according to the
-/// given config. `out` is only necessary if required by the configuration.
-pub fn format_input<T: Write>(
-    input: Input,
-    config: &Config,
-    out: Option<&mut T>,
-) -> Result<(Summary, FormatReport), (ErrorKind, Summary)> {
-    if !config.version_meets_requirement() {
-        return Err((ErrorKind::VersionMismatch, Summary::default()));
-    }
-
-    syntax::with_globals(|| format_input_inner(input, config, out)).map(|tup| (tup.0, tup.2))
 }
 
 #[cfg(test)]

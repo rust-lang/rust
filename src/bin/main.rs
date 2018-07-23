@@ -28,8 +28,8 @@ use failure::err_msg;
 use getopts::{Matches, Options};
 
 use rustfmt::{
-    checkstyle_footer, checkstyle_header, format_input, load_config, CliOptions, Color, Config,
-    EmitMode, ErrorKind, FileLines, FileName, Input, Summary, Verbosity,
+    load_config, CliOptions, Color, Config, EmitMode, ErrorKind, FileLines, FileName, Input,
+    Session, Verbosity,
 };
 
 fn main() {
@@ -37,17 +37,7 @@ fn main() {
     let opts = make_opts();
 
     let exit_code = match execute(&opts) {
-        Ok((exit_mode, summary)) => {
-            if summary.has_operational_errors()
-                || summary.has_parsing_errors()
-                || ((summary.has_diff || summary.has_check_errors())
-                    && exit_mode == ExitCodeMode::Check)
-            {
-                1
-            } else {
-                0
-            }
-        }
+        Ok(code) => code,
         Err(e) => {
             eprintln!("{}", e.to_string());
             1
@@ -174,26 +164,27 @@ fn is_nightly() -> bool {
         .unwrap_or(false)
 }
 
-fn execute(opts: &Options) -> Result<(ExitCodeMode, Summary), failure::Error> {
+// Returned i32 is an exit code
+fn execute(opts: &Options) -> Result<i32, failure::Error> {
     let matches = opts.parse(env::args().skip(1))?;
     let options = GetOptsOptions::from_matches(&matches)?;
 
     match determine_operation(&matches)? {
         Operation::Help(HelpOp::None) => {
             print_usage_to_stdout(opts, "");
-            Ok((ExitCodeMode::Normal, Summary::default()))
+            return Ok(1);
         }
         Operation::Help(HelpOp::Config) => {
             Config::print_docs(&mut stdout(), options.unstable_features);
-            Ok((ExitCodeMode::Normal, Summary::default()))
+            return Ok(1);
         }
         Operation::Help(HelpOp::FileLines) => {
             print_help_file_lines();
-            Ok((ExitCodeMode::Normal, Summary::default()))
+            return Ok(1);
         }
         Operation::Version => {
             print_version();
-            Ok((ExitCodeMode::Normal, Summary::default()))
+            return Ok(1);
         }
         Operation::ConfigOutputDefault { path } => {
             let toml = Config::default().all_options().to_toml().map_err(err_msg)?;
@@ -203,35 +194,9 @@ fn execute(opts: &Options) -> Result<(ExitCodeMode, Summary), failure::Error> {
             } else {
                 io::stdout().write_all(toml.as_bytes())?;
             }
-            Ok((ExitCodeMode::Normal, Summary::default()))
+            return Ok(1);
         }
-        Operation::Stdin { input } => {
-            // try to read config from local directory
-            let (mut config, _) = load_config(Some(Path::new(".")), Some(options.clone()))?;
-
-            // emit mode is always Stdout for Stdin.
-            config.set().emit_mode(EmitMode::Stdout);
-            config.set().verbose(Verbosity::Quiet);
-
-            // parse file_lines
-            config.set().file_lines(options.file_lines);
-            for f in config.file_lines().files() {
-                match *f {
-                    FileName::Stdin => {}
-                    _ => eprintln!("Warning: Extra file listed in file_lines option '{}'", f),
-                }
-            }
-
-            let mut error_summary = Summary::default();
-            emit_pre_matter(&config);
-            match format_and_emit_report(Input::Text(input), &config) {
-                Ok(summary) => error_summary.add(summary),
-                Err(_) => error_summary.add_operational_error(),
-            }
-            emit_post_matter(&config);
-
-            Ok((ExitCodeMode::Normal, error_summary))
-        }
+        Operation::Stdin { input } => format_string(input, options),
         Operation::Format {
             files,
             minimal_config_path,
@@ -239,11 +204,41 @@ fn execute(opts: &Options) -> Result<(ExitCodeMode, Summary), failure::Error> {
     }
 }
 
+fn format_string(input: String, options: GetOptsOptions) -> Result<i32, failure::Error> {
+    // try to read config from local directory
+    let (mut config, _) = load_config(Some(Path::new(".")), Some(options.clone()))?;
+
+    // emit mode is always Stdout for Stdin.
+    config.set().emit_mode(EmitMode::Stdout);
+    config.set().verbose(Verbosity::Quiet);
+
+    // parse file_lines
+    config.set().file_lines(options.file_lines);
+    for f in config.file_lines().files() {
+        match *f {
+            FileName::Stdin => {}
+            _ => eprintln!("Warning: Extra file listed in file_lines option '{}'", f),
+        }
+    }
+
+    let out = &mut stdout();
+    let mut session = Session::new(config, Some(out));
+    format_and_emit_report(&mut session, Input::Text(input));
+
+    let exit_code =
+        if session.summary.has_operational_errors() || session.summary.has_parsing_errors() {
+            1
+        } else {
+            0
+        };
+    Ok(exit_code)
+}
+
 fn format(
     files: Vec<PathBuf>,
     minimal_config_path: Option<String>,
     options: GetOptsOptions,
-) -> Result<(ExitCodeMode, Summary), failure::Error> {
+) -> Result<i32, failure::Error> {
     options.verify_file_lines(&files);
     let (config, config_path) = load_config(None, Some(options.clone()))?;
 
@@ -253,19 +248,19 @@ fn format(
         }
     }
 
-    emit_pre_matter(&config);
-    let mut error_summary = Summary::default();
+    let out = &mut stdout();
+    let mut session = Session::new(config, Some(out));
 
     for file in files {
         if !file.exists() {
             eprintln!("Error: file `{}` does not exist", file.to_str().unwrap());
-            error_summary.add_operational_error();
+            session.summary.add_operational_error();
         } else if file.is_dir() {
             eprintln!("Error: `{}` is a directory", file.to_str().unwrap());
-            error_summary.add_operational_error();
+            session.summary.add_operational_error();
         } else {
             // Check the file directory if the config-path could not be read or not provided
-            let local_config = if config_path.is_none() {
+            if config_path.is_none() {
                 let (local_config, config_path) =
                     load_config(Some(file.parent().unwrap()), Some(options.clone()))?;
                 if local_config.verbose() == Verbosity::Verbose {
@@ -277,47 +272,42 @@ fn format(
                         );
                     }
                 }
-                local_config
-            } else {
-                config.clone()
-            };
 
-            match format_and_emit_report(Input::File(file), &local_config) {
-                Ok(summary) => error_summary.add(summary),
-                Err(_) => {
-                    error_summary.add_operational_error();
-                    break;
-                }
+                session.override_config(local_config, |sess| {
+                    format_and_emit_report(sess, Input::File(file))
+                });
+            } else {
+                format_and_emit_report(&mut session, Input::File(file));
             }
         }
     }
-    emit_post_matter(&config);
 
     // If we were given a path via dump-minimal-config, output any options
     // that were used during formatting as TOML.
     if let Some(path) = minimal_config_path {
         let mut file = File::create(path)?;
-        let toml = config.used_options().to_toml().map_err(err_msg)?;
+        let toml = session.config.used_options().to_toml().map_err(err_msg)?;
         file.write_all(toml.as_bytes())?;
     }
 
-    let exit_mode = if options.check {
-        ExitCodeMode::Check
+    let exit_code = if session.summary.has_operational_errors()
+        || session.summary.has_parsing_errors()
+        || ((session.summary.has_diff || session.summary.has_check_errors()) && options.check)
+    {
+        1
     } else {
-        ExitCodeMode::Normal
+        0
     };
-    Ok((exit_mode, error_summary))
+    Ok(exit_code)
 }
 
-fn format_and_emit_report(input: Input, config: &Config) -> Result<Summary, failure::Error> {
-    let out = &mut stdout();
-
-    match format_input(input, config, Some(out)) {
-        Ok((summary, report)) => {
+fn format_and_emit_report<T: Write>(session: &mut Session<T>, input: Input) {
+    match session.format(input) {
+        Ok(report) => {
             if report.has_warnings() {
                 match term::stderr() {
                     Some(ref t)
-                        if config.color().use_colored_tty()
+                        if session.config.color().use_colored_tty()
                             && t.supports_color()
                             && t.supports_attr(term::Attr::Bold) =>
                     {
@@ -329,26 +319,11 @@ fn format_and_emit_report(input: Input, config: &Config) -> Result<Summary, fail
                     _ => eprintln!("{}", report),
                 }
             }
-
-            Ok(summary)
         }
-        Err((msg, mut summary)) => {
+        Err(msg) => {
             eprintln!("Error writing files: {}", msg);
-            summary.add_operational_error();
-            Ok(summary)
+            session.summary.add_operational_error();
         }
-    }
-}
-
-fn emit_pre_matter(config: &Config) {
-    if config.emit_mode() == EmitMode::Checkstyle {
-        println!("{}", checkstyle_header());
-    }
-}
-
-fn emit_post_matter(config: &Config) {
-    if config.emit_mode() == EmitMode::Checkstyle {
-        println!("{}", checkstyle_footer());
     }
 }
 
@@ -454,12 +429,6 @@ fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
         files,
         minimal_config_path,
     })
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-enum ExitCodeMode {
-    Normal,
-    Check,
 }
 
 const STABLE_EMIT_MODES: [EmitMode; 3] = [EmitMode::Files, EmitMode::Stdout, EmitMode::Diff];

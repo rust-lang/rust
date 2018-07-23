@@ -663,7 +663,7 @@ pub fn format_impl(
             option.compress_where();
         }
 
-        let mut where_clause_str = rewrite_where_clause(
+        let where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,
             context.config.brace_style(),

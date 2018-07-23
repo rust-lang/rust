@@ -349,7 +349,7 @@ impl UseTree {
                 ));
             }
             UseTreeKind::Simple(ref rename, ..) => {
-                let mut name = rewrite_ident(context, path_to_imported_ident(&a.prefix)).to_owned();
+                let name = rewrite_ident(context, path_to_imported_ident(&a.prefix)).to_owned();
                 let alias = rename.and_then(|ident| {
                     if ident == path_to_imported_ident(&a.prefix) {
                         None
@@ -511,7 +511,7 @@ impl UseTree {
                 let prefix = &self.path[..self.path.len() - 1];
                 let mut result = vec![];
                 for nested_use_tree in list {
-                    for mut flattend in &mut nested_use_tree.clone().flatten() {
+                    for flattend in &mut nested_use_tree.clone().flatten() {
                         let mut new_path = prefix.to_vec();
                         new_path.append(&mut flattend.path);
                         result.push(UseTree {
@@ -532,7 +532,7 @@ impl UseTree {
 
     fn merge(&mut self, other: UseTree) {
         let mut new_path = vec![];
-        for (mut a, b) in self
+        for (a, b) in self
             .path
             .clone()
             .iter_mut()
