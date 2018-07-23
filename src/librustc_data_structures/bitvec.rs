@@ -75,6 +75,13 @@ impl<C: Idx> BitVector<C> {
         new_value != value
     }
 
+    /// Sets all bits to true.
+    pub fn insert_all(&mut self) {
+        for data in &mut self.data {
+            *data = u128::max_value();
+        }
+    }
+
     /// Returns true if the bit has changed.
     #[inline]
     pub fn remove(&mut self, bit: C) -> bool {
@@ -357,6 +364,12 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     pub fn merge_into(&mut self, into: R, from: &BitVector<C>) -> bool {
         self.ensure_row(into);
         self.vector[into].merge(from)
+    }
+
+    /// Add all bits to the given row.
+    pub fn add_all(&mut self, row: R) {
+        self.ensure_row(row);
+        self.vector[row].insert_all();
     }
 
     /// Number of elements in the matrix.
