@@ -20,10 +20,9 @@ use std::iter::{Enumerate, Peekable};
 use std::path::{Path, PathBuf};
 use std::str::Chars;
 
-use config::summary::Summary;
 use config::{Color, Config, EmitMode, FileName, ReportTactic};
 use filemap;
-use formatting::{FileMap, ModifiedChunk};
+use formatting::{FileMap, ModifiedChunk, Summary};
 use rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, OutputWriter};
 use {FormatReport, Input, Session};
 

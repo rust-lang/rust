@@ -29,7 +29,6 @@ pub mod options;
 pub mod file_lines;
 pub mod license;
 pub mod lists;
-pub mod summary;
 
 /// This macro defines configuration options used in rustfmt. Each option
 /// is defined as follows:
