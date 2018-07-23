@@ -152,7 +152,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     }
                     self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
                         self.cx.tcx.infer_ctxt().enter(|infcx| {
-                            let generics = infcx.tcx.generics_of(impl_def_id);
+                            let t_generics = infcx.tcx.generics_of(impl_def_id);
                             let trait_ref = infcx.tcx.impl_trait_ref(impl_def_id).unwrap();
 
                             match infcx.tcx.type_of(impl_def_id).sty {
@@ -161,7 +161,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                             }
 
                             let substs = infcx.fresh_substs_for_item(DUMMY_SP, def_id);
-                            let ty2 = ty.subst(infcx.tcx, substs);
+                            let ty = ty.subst(infcx.tcx, substs);
                             let param_env = param_env.subst(infcx.tcx, substs);
 
                             let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
@@ -171,7 +171,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                             // our type, and ignore the impl if there was a mismatch.
                             let cause = traits::ObligationCause::dummy();
                             let eq_result = infcx.at(&cause, param_env)
-                                                 .eq(trait_ref.self_ty(), ty2);
+                                                 .eq(trait_ref.self_ty(), ty);
                             if let Ok(InferOk { value: (), obligations }) = eq_result {
                                 // FIXME(eddyb) ignoring `obligations` might cause false positives.
                                 drop(obligations);
@@ -199,9 +199,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                              .collect();
 
                                 let ty = self.get_real_ty(def_id, def_ctor, &real_name, generics);
+                                let predicates = infcx.tcx.predicates_of(def_id);
 
                                 traits.push(Item {
-                                    source: Span::empty(),
+                                    source: infcx.tcx.def_span(impl_def_id).clean(self.cx),
                                     name: None,
                                     attrs: Default::default(),
                                     visibility: None,
@@ -210,8 +211,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                     deprecation: None,
                                     inner: ImplItem(Impl {
                                         unsafety: hir::Unsafety::Normal,
-                                        generics: (generics,
-                                                   &tcx.predicates_of(impl_def_id)).clean(self.cx),
+                                        generics: (t_generics, &predicates).clean(self.cx),
                                         provided_trait_methods,
                                         trait_: Some(trait_.clean(self.cx)),
                                         for_: ty.clean(self.cx),
