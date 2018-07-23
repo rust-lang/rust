@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::result::Result::{Ok, Err};
+use core::ops::Bound::*;
 
 #[test]
 fn test_position() {
@@ -87,83 +88,52 @@ fn test_binary_search_implementation_details() {
 
 #[test]
 fn test_binary_search_limit() {
-    let b: [i32; 0] = [];
-    assert_eq!(b.binary_search_limit(&0), 0);
-    assert_eq!(b.binary_search_limit(&5), 0);
+    fn test_slice<T, I: Iterator<Item=T>>(slice: &mut [T], iter: I)
+        where T: ::core::cmp::PartialOrd + Copy {
+        for val in iter {
+            let res_incl = slice.binary_search_limit(Included(&val));
+            assert!(res_incl <= slice.len());
+            for (i, item) in slice.iter().enumerate() {
+                assert_eq!(i >= res_incl, *item >= val);
+            }
 
-    let b = [4];
-    assert_eq!(b.binary_search_limit(&3), 0);
-    assert_eq!(b.binary_search_limit(&4), 0);
-    assert_eq!(b.binary_search_limit(&5), 1);
+            let res_excl = slice.binary_search_limit(Excluded(&val));
+            assert!(res_excl <= slice.len());
+            for (i, item) in slice.iter().enumerate() {
+                assert_eq!(i >= res_excl, *item > val);
+            }
 
-    let b = [2, 4, 6, 8];
-    assert_eq!(b.binary_search_limit(&0), 0);
-    assert_eq!(b.binary_search_limit(&1), 0);
-    assert_eq!(b.binary_search_limit(&2), 0);
-    assert_eq!(b.binary_search_limit(&3), 1);
-    assert_eq!(b.binary_search_limit(&4), 1);
-    assert_eq!(b.binary_search_limit(&5), 2);
-    assert_eq!(b.binary_search_limit(&6), 2);
-    assert_eq!(b.binary_search_limit(&7), 3);
-    assert_eq!(b.binary_search_limit(&8), 3);
-    assert_eq!(b.binary_search_limit(&9), 4);
+            let res = slice.binary_search_limit_by_key(Included(&val), |x| *x);
+            assert_eq!(res, res_incl);
+            let res = slice.binary_search_limit_by_key(Excluded(&val), |x| *x);
+            assert_eq!(res, res_excl);
 
-    let b = [1, 3, 3, 3, 5];
-    assert_eq!(b.binary_search_limit(&0), 0);
-    assert_eq!(b.binary_search_limit(&1), 0);
-    assert_eq!(b.binary_search_limit(&3), 1);
-    assert_eq!(b.binary_search_limit(&4), 4);
-    assert_eq!(b.binary_search_limit(&6), 5);
+            let res = slice.binary_search_limit_by(|x| *x >= val);
+            assert_eq!(res, res_incl);
+            let res = slice.binary_search_limit_by(|x| *x > val);
+            assert_eq!(res, res_excl);
 
-    let b = [-5i8, -5, -5, -5, -5, -4, -4];
-    assert_eq!(b.binary_search_limit(&-5), 0);
-    assert_eq!(b.binary_search_limit(&-4), 5);
-    assert_eq!(b.binary_search_limit(&-3), 7);
+            slice.reverse();
+            let res = slice.binary_search_limit_by(|x| *x < val);
+            assert_eq!(slice.len() - res, res_incl);
+            let res = slice.binary_search_limit_by(|x| *x <= val);
+            assert_eq!(slice.len() - res, res_excl);
+            slice.reverse();
+        }
 
-    let b = [1, 1, 1, 1];
-    assert_eq!(b.binary_search_limit(&0), 0);
-    assert_eq!(b.binary_search_limit(&1), 0);
-    assert_eq!(b.binary_search_limit(&2), 4);
+        assert_eq!(slice.binary_search_limit(Unbounded), 0);
+    }
 
-    let b = [0.1f32, 0.2, 1.0, 10.1];
-    assert_eq!(b.binary_search_limit(&::core::f32::NEG_INFINITY), 0);
-    assert_eq!(b.binary_search_limit(&-10000.0), 0);
-    assert_eq!(b.binary_search_limit(&0.0), 0);
-    assert_eq!(b.binary_search_limit(&0.0), 0);
-    assert_eq!(b.binary_search_limit(&0.1), 0);
-    assert_eq!(b.binary_search_limit(&0.15), 1);
-    assert_eq!(b.binary_search_limit(&0.2), 1);
-    assert_eq!(b.binary_search_limit(&0.3), 2);
-    assert_eq!(b.binary_search_limit(&1.0), 2);
-    assert_eq!(b.binary_search_limit(&1.000001), 3);
-    assert_eq!(b.binary_search_limit(&5.0), 3);
-    assert_eq!(b.binary_search_limit(&10.01), 3);
-    assert_eq!(b.binary_search_limit(&10.1), 3);
-    assert_eq!(b.binary_search_limit(&10.11), 4);
-    assert_eq!(b.binary_search_limit(&10.11), 4);
-    assert_eq!(b.binary_search_limit(&1000000.0), 4);
-    assert_eq!(b.binary_search_limit(&::core::f32::INFINITY), 4);
-
-    let b = [10, 7, 5, 1];
-    assert_eq!(b.binary_search_limit_by(|&item| item < 11), 0);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 10), 1);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 9), 1);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 8), 1);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 7), 2);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 6), 2);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 5), 3);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 4), 3);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 3), 3);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 2), 3);
-    assert_eq!(b.binary_search_limit_by(|&item| item < 1), 4);
-
-    let b = [(100, 'a'), (101, 'z'), (2000, 'b'), (10000, 'y')];
-    assert_eq!(b.binary_search_limit_by_key(   &50, |&(a, _)| a), 0);
-    assert_eq!(b.binary_search_limit_by_key(  &100, |&(a, _)| a), 0);
-    assert_eq!(b.binary_search_limit_by_key(  &101, |&(a, _)| a), 1);
-    assert_eq!(b.binary_search_limit_by_key(  &102, |&(a, _)| a), 2);
-    assert_eq!(b.binary_search_limit_by_key( &1000, |&(a, _)| a), 2);
-    assert_eq!(b.binary_search_limit_by_key(&20000, |&(a, _)| a), 4);
+    test_slice(&mut [12i32][0..0], -2..=2);
+    test_slice(&mut [4], 3..=5);
+    test_slice(&mut [2, 4, 6, 8], 0..=11);
+    test_slice(&mut [1, 3, 3, 3, 5], 0..=8);
+    test_slice(&mut [-5i8, -5, -5, -5, -5, -4, -4], -6..=0);
+    test_slice(&mut [1, 1, 1, 1], 0..=2);
+    test_slice(&mut [0.1f32, 0.2, 1.0, 10.1],
+               [::core::f32::NEG_INFINITY, -10000.0, 0.0, 0.1, 0.15, 0.2, 0.3,
+                1.0, 1.000001, 5.0, 10.01, 10.1, 10.11, 1000000.0,
+                ::core::f32::INFINITY].iter().cloned());
 }
 
 #[test]
