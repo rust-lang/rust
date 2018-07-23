@@ -117,8 +117,8 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
         // see notes on #41697 below
         tcx.item_path_str(source.def_id)
     });
-    filters.split("|").any(|or_filter| {
-        or_filter.split("&").all(|and_filter| {
+    filters.split('|').any(|or_filter| {
+        or_filter.split('&').all(|and_filter| {
             and_filter == "all" || pass_name.contains(and_filter) || node_path.contains(and_filter)
         })
     })
@@ -388,7 +388,7 @@ struct ExtraComments<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 
 impl<'cx, 'gcx, 'tcx> ExtraComments<'cx, 'gcx, 'tcx> {
     fn push(&mut self, lines: &str) {
-        for line in lines.split("\n") {
+        for line in lines.split('\n') {
             self.comments.push(line.to_string());
         }
     }

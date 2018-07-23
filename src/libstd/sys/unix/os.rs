@@ -564,7 +564,7 @@ fn glibc_version_cstr() -> Option<&'static CStr> {
 // ignoring any extra dot-separated parts. Otherwise return None.
 #[cfg(target_env = "gnu")]
 fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
-    let mut parsed_ints = version.split(".").map(str::parse::<usize>).fuse();
+    let mut parsed_ints = version.split('.').map(str::parse::<usize>).fuse();
     match (parsed_ints.next(), parsed_ints.next()) {
         (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
         _ => None

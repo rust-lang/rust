@@ -92,8 +92,8 @@ impl TargetDataLayout {
 
         let mut dl = TargetDataLayout::default();
         let mut i128_align_src = 64;
-        for spec in target.data_layout.split("-") {
-            match &spec.split(":").collect::<Vec<_>>()[..] {
+        for spec in target.data_layout.split('-') {
+            match &spec.split(':').collect::<Vec<_>>()[..] {
                 &["e"] => dl.endian = Endian::Little,
                 &["E"] => dl.endian = Endian::Big,
                 &["a", ref a..] => dl.aggregate_align = align(a, "a")?,

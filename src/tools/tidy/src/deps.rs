@@ -165,7 +165,7 @@ impl<'a> Crate<'a> {
 impl<'a> CrateVersion<'a> {
     /// Returns the struct and whether or not the dep is in-tree
     pub fn from_str(s: &'a str) -> (Self, bool) {
-        let mut parts = s.split(" ");
+        let mut parts = s.split(' ');
         let name = parts.next().unwrap();
         let version = parts.next().unwrap();
         let path = parts.next().unwrap();
