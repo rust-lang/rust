@@ -849,7 +849,7 @@ impl<'tcx> CommonTypes<'tcx> {
 ///
 /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/ty.html
 #[derive(Copy, Clone)]
-pub struct TyCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct TyCtxt<'a, 'gcx: 'tcx, 'tcx: 'a> {
     gcx: &'a GlobalCtxt<'gcx>,
     interners: &'a CtxtInterners<'tcx>
 }

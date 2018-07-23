@@ -18,6 +18,7 @@ use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKi
 use rustc::ty::RegionVid;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_errors::Diagnostic;
 use std::fmt;
 use syntax_pos::Span;
 
@@ -199,6 +200,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
         outlived_fr: RegionVid,
         blame_span: Span,
+        errors_buffer: &mut Vec<Diagnostic>,
     ) {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
@@ -247,9 +249,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match category {
             ConstraintCategory::AssignmentToUpvar |
             ConstraintCategory::CallArgumentToUpvar =>
-                self.report_closure_error(mir, infcx, mir_def_id, fr, outlived_fr, category, span),
+                self.report_closure_error(
+                    mir, infcx, mir_def_id, fr, outlived_fr, category, span, errors_buffer),
             _ =>
-                self.report_general_error(mir, infcx, mir_def_id, fr, outlived_fr, category, span),
+                self.report_general_error(
+                    mir, infcx, mir_def_id, fr, outlived_fr, category, span, errors_buffer),
         }
     }
 
@@ -262,6 +266,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         outlived_fr: RegionVid,
         category: &ConstraintCategory,
         span: &Span,
+        errors_buffer: &mut Vec<Diagnostic>,
     ) {
         let fr_name_and_span  = self.get_var_name_and_span_for_region(
             infcx.tcx, mir, fr);
@@ -269,11 +274,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             infcx.tcx, mir,outlived_fr);
 
         if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
-            return self.report_general_error(mir, infcx, mir_def_id, fr, outlived_fr, category,
-                                             span);
+            return self.report_general_error(
+                mir, infcx, mir_def_id, fr, outlived_fr, category, span, errors_buffer);
         }
 
-        let diag = &mut infcx.tcx.sess.struct_span_err(
+        let mut diag = infcx.tcx.sess.struct_span_err(
             *span, &format!("borrowed data escapes outside of closure"),
         );
 
@@ -297,7 +302,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        diag.emit();
+        diag.buffer(errors_buffer);
     }
 
     fn report_general_error(
@@ -309,23 +314,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         outlived_fr: RegionVid,
         category: &ConstraintCategory,
         span: &Span,
+        errors_buffer: &mut Vec<Diagnostic>,
     ) {
-        let diag = &mut infcx.tcx.sess.struct_span_err(
+        let mut diag = infcx.tcx.sess.struct_span_err(
             *span, &format!("unsatisfied lifetime constraints"), // FIXME
         );
 
         let counter = &mut 1;
         let fr_name = self.give_region_a_name(
-            infcx.tcx, mir, mir_def_id, fr, counter, diag);
+            infcx.tcx, mir, mir_def_id, fr, counter, &mut diag);
         let outlived_fr_name = self.give_region_a_name(
-            infcx.tcx, mir, mir_def_id, outlived_fr, counter, diag);
+            infcx.tcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
 
         diag.span_label(*span, format!(
             "{} requires that `{}` must outlive `{}`",
             category, fr_name, outlived_fr_name,
         ));
 
-        diag.emit();
+        diag.buffer(errors_buffer);
     }
 
     // Find some constraint `X: Y` where:

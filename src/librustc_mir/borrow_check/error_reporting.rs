@@ -58,7 +58,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 Some(name) => format!("`{}`", name),
                 None => "value".to_owned(),
             };
-            self.tcx
+            let mut err = self.tcx
                 .cannot_act_on_uninitialized_variable(
                     span,
                     desired_action.as_noun(),
@@ -66,9 +66,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         .describe_place_with_options(place, IncludingDowncast(true))
                         .unwrap_or("_".to_owned()),
                     Origin::Mir,
-                )
-                .span_label(span, format!("use of possibly uninitialized {}", item_msg))
-                .emit();
+                );
+            err.span_label(span, format!("use of possibly uninitialized {}", item_msg));
+            err.buffer(&mut self.errors_buffer);
         } else {
             let msg = ""; //FIXME: add "partially " or "collaterally "
 
@@ -143,7 +143,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            err.emit();
+            err.buffer(&mut self.errors_buffer);
         }
     }
 
@@ -173,7 +173,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
         err.span_label(span, format!("move out of {} occurs here", value_msg));
         self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     pub(super) fn report_use_while_mutably_borrowed(
@@ -194,8 +194,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
-
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     /// Finds the span of arguments of a closure (within `maybe_closure_span`) and its usage of
@@ -391,7 +390,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         self.explain_why_borrow_contains_point(context, issued_borrow, None, &mut err);
 
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     pub(super) fn report_borrowed_value_does_not_live_long_enough(
@@ -513,7 +512,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             format!("`{}` dropped here while still borrowed", name),
         );
         self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     fn report_scoped_temporary_value_does_not_live_long_enough(
@@ -535,7 +534,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
         err.note("consider using a `let` binding to increase its lifetime");
         self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     fn report_unscoped_local_value_does_not_live_long_enough(
@@ -563,7 +562,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(drop_span, "borrowed value only lives until here");
 
         self.explain_why_borrow_contains_point(context, borrow, kind_place, &mut err);
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     fn report_unscoped_temporary_value_does_not_live_long_enough(
@@ -589,7 +588,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(drop_span, "temporary value only lives until here");
 
         self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     pub(super) fn report_illegal_mutation_of_borrowed(
@@ -608,7 +607,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         self.explain_why_borrow_contains_point(context, loan, None, &mut err);
 
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 
     /// Reports an illegal reassignment; for example, an assignment to
@@ -679,7 +678,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
         err.span_label(span, msg);
-        err.emit();
+        err.buffer(&mut self.errors_buffer);
     }
 }
 
