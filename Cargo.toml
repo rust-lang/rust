@@ -15,4 +15,5 @@ crate-type = ["dylib"]
 cranelift = { path = "./cranelift/lib/umbrella" }
 cranelift-module = { path = "./cranelift/lib/module" }
 cranelift-simplejit = { path = "./cranelift/lib/simplejit" }
-#cranelift-faerie = { path = "./cranelift/lib/faerie" }
+cranelift-faerie = { path = "./cranelift/lib/faerie" }
+target-lexicon = "0.0.3"

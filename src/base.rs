@@ -318,7 +318,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                             let res = ::common::cton_intcast(fx, from, from_ty, to_ty, true);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        _ => unimplemented!("rval misc {:?} {:?}", operand, to_ty),
+                        _ => return Err(format!("rval misc {:?} {:?}", operand, to_ty)),
                     }
                 },
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty),

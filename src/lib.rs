@@ -10,10 +10,17 @@ extern crate rustc_target;
 extern crate rustc_incremental;
 extern crate rustc_data_structures;
 
+extern crate target_lexicon;
 extern crate cranelift;
 extern crate cranelift_module;
 extern crate cranelift_simplejit;
-//extern crate cranelift_faerie;
+extern crate cranelift_faerie;
+
+use std::any::Any;
+use std::sync::{mpsc, Arc};
+use std::path::Path;
+use std::fs::File;
+use std::io::Write;
 
 use syntax::symbol::Symbol;
 use rustc::session::{
@@ -23,16 +30,15 @@ use rustc::session::{
         OutputFilenames,
     },
 };
-use rustc::middle::cstore::{MetadataLoader, EncodedMetadata};
+use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc::ty::query::Providers;
-use rustc_codegen_utils::codegen_backend::{CodegenBackend, NoLlvmMetadataLoader};
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::{out_filename, build_link_meta};
+use rustc_data_structures::owning_ref;
 
-use std::any::Any;
-use std::sync::{mpsc, Arc};
-use std::fs::File;
-use std::io::Write;
+use cranelift::codegen::settings;
+use cranelift_faerie::*;
 
 mod abi;
 mod base;
@@ -63,7 +69,7 @@ mod prelude {
     };
     pub use cranelift::codegen::Context;
     pub use cranelift::prelude::*;
-    pub use cranelift_module::{Module, Backend, FuncId, DataId, Linkage};
+    pub use cranelift_module::{Module, Backend, DataContext, FuncId, DataId, Linkage, Writability};
     pub use cranelift_simplejit::{SimpleJITBuilder, SimpleJITBackend};
 
     pub use abi::*;
@@ -82,18 +88,23 @@ pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub constants: HashMap<AllocId, DataId>,
 }
 
-struct CraneliftCodegenBackend(());
+struct CraneliftMetadataLoader;
 
-struct OngoingCodegen {
-    metadata: EncodedMetadata,
-    //translated_module: Module<cranelift_faerie::FaerieBackend>,
-    crate_name: Symbol,
+impl MetadataLoader for CraneliftMetadataLoader {
+    fn get_rlib_metadata(&self, target: &rustc_target::spec::Target, path: &Path) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
+        self.get_dylib_metadata(target, path)
+    }
+
+    fn get_dylib_metadata(&self, _target: &rustc_target::spec::Target, _path: &Path) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
+        Err("metadata loading is not yet supported".to_string())
+    }
 }
 
-impl CraneliftCodegenBackend {
-    fn new() -> Box<CodegenBackend> {
-        Box::new(CraneliftCodegenBackend(()))
-    }
+struct CraneliftCodegenBackend;
+
+struct OngoingCodegen {
+    translated_module: Module<cranelift_faerie::FaerieBackend>,
+    crate_name: Symbol,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -112,16 +123,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
-        Box::new(NoLlvmMetadataLoader)
+        Box::new(CraneliftMetadataLoader)
     }
 
     fn provide(&self, providers: &mut Providers) {
         rustc_codegen_utils::symbol_names::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| {
-            /*Lrc::new(rustc_codegen_utils::llvm_target_features::all_known_features()
-                .map(|(a, b)| (a.to_string(), b.map(|s| s.to_string())))
-                .collect())*/
             Lrc::new(Default::default())
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
@@ -172,6 +180,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let link_meta = ::build_link_meta(tcx.crate_hash(LOCAL_CRATE));
         let metadata = tcx.encode_metadata(&link_meta);
 
+        let mut flags_builder = settings::builder();
+        flags_builder.enable("is_pic").unwrap();
+        let flags = settings::Flags::new(flags_builder);
+        let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host()).unwrap().finish(flags);
         let mut module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
         let mut context = Context::new();
         let mut def_id_fn_id_map = HashMap::new();
@@ -219,11 +231,23 @@ impl CodegenBackend for CraneliftCodegenBackend {
             module.finish();
         }
 
-        tcx.sess.fatal("unimplemented");
+        let mut translated_module = Module::new(
+            FaerieBuilder::new(
+                isa,
+                "some_file.o".to_string(),
+                FaerieTrapCollection::Disabled,
+                FaerieBuilder::default_libcall_names()
+            )
+                .unwrap()
+        );
+
+        let metadata_id = translated_module.declare_data(".rustc.metadata", Linkage::Export, false).unwrap();
+        let mut data_ctx = DataContext::new();
+        data_ctx.define(metadata.raw_data.clone().into_boxed_slice(), Writability::Readonly);
+        translated_module.define_data(metadata_id, &data_ctx).unwrap();
 
         Box::new(::OngoingCodegen {
-            metadata: metadata,
-            //translated_module: Module::new(::cranelift_faerie::FaerieBuilder::new(,
+            translated_module,
             crate_name: tcx.crate_name(LOCAL_CRATE),
         })
     }
@@ -235,21 +259,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete> {
-        if true {
-            unimplemented!();
-        }
-
-        let ongoing_codegen = ongoing_codegen.downcast::<OngoingCodegen>()
-            .expect("Expected MetadataOnlyCodegenBackend's OngoingCodegen, found Box<Any>");
+        let ongoing_codegen = *ongoing_codegen.downcast::<OngoingCodegen>()
+            .expect("Expected CraneliftCodegenBackend's OngoingCodegen, found Box<Any>");
+        let artifact = ongoing_codegen.translated_module.finish().artifact;
         for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::CrateTypeRlib && crate_type != CrateType::CrateTypeDylib {
-                continue;
+            if crate_type != CrateType::CrateTypeRlib /*&& crate_type != CrateType::CrateTypeDylib*/ {
+                sess.fatal(&format!("Unsupported crate type: {:?}", crate_type));
             }
             let output_name =
                 out_filename(sess, crate_type, &outputs, &ongoing_codegen.crate_name.as_str());
-            let metadata = &ongoing_codegen.metadata.raw_data;
-            let mut file = File::create(&output_name).unwrap();
-            file.write_all(metadata).unwrap();
+            let file = File::create(&output_name).unwrap();
+            artifact.write(file).unwrap();
         }
 
         sess.abort_if_errors();
@@ -265,5 +285,5 @@ impl CodegenBackend for CraneliftCodegenBackend {
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
-    CraneliftCodegenBackend::new()
+    Box::new(CraneliftCodegenBackend)
 }
