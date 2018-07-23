@@ -9,15 +9,14 @@
 // except according to those terms.
 
 use rustc::mir::{BasicBlock, Location, Mir};
-use rustc::ty::RegionVid;
+use rustc::ty::{self, RegionVid};
 use rustc_data_structures::bitvec::SparseBitMatrix;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-/// Maps between the various kinds of elements of a region value to
-/// the internal indices that w use.
+/// Maps between a `Location` and a `PointIndex` (and vice versa).
 crate struct RegionValueElements {
     /// For each basic block, how many points are contained within?
     statements_before_block: IndexVec<BasicBlock, usize>,
@@ -98,6 +97,12 @@ impl RegionValueElements {
 /// graph. Constructed efficiently from `RegionValueElements`.
 newtype_index!(PointIndex { DEBUG_FORMAT = "PointIndex({})" });
 
+/// A single integer representing a (non-zero) `UniverseIndex`.
+/// Computed just by subtracting one from `UniverseIndex`; this is
+/// because the `0` value for `UniverseIndex` represents the root
+/// universe, and we don't need/want a bit for that one.
+newtype_index!(PlaceholderIndex { DEBUG_FORMAT = "PointIndex({})" });
+
 /// An individual element in a region value -- the value of a
 /// particular region variable consists of a set of these elements.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -108,6 +113,10 @@ crate enum RegionElement {
     /// A universally quantified region from the root universe (e.g.,
     /// a lifetime parameter).
     RootUniversalRegion(RegionVid),
+
+    /// A subuniverse from a subuniverse (e.g., instantiated from a
+    /// `for<'a> fn(&'a u32)` type).
+    SubUniversalRegion(ty::UniverseIndex),
 }
 
 /// When we initially compute liveness, we use a bit matrix storing
@@ -135,11 +144,7 @@ impl<N: Idx> LivenessValues<N> {
 
     /// Adds the given element to the value for the given region. Returns true if
     /// the element is newly added (i.e., was not already present).
-    crate fn add_element(
-        &mut self,
-        row: N,
-        location: Location,
-    ) -> bool {
+    crate fn add_element(&mut self, row: N, location: Location) -> bool {
         debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
         let index = self.elements.point_from_location(location);
         self.points.add(row, index)
@@ -164,20 +169,38 @@ impl<N: Idx> LivenessValues<N> {
                 .into_iter()
                 .flat_map(|set| set.iter())
                 .map(|p| self.elements.to_location(p))
-                .map(RegionElement::Location)
+                .map(RegionElement::Location),
         )
     }
 }
 
-/// Stores the values for a set of regions. These are stored in a
-/// compact `SparseBitMatrix` representation, with one row per region
-/// variable. The columns consist of either universal regions or
-/// points in the CFG.
+/// Stores the full values for a set of regions (in contrast to
+/// `LivenessValues`, which only stores those points in the where a
+/// region is live). The full value for a region may contain points in
+/// the CFG, but also free regions as well as bound universe
+/// placeholders.
+///
+/// Example:
+///
+/// ```rust
+/// fn foo(x: &'a u32) -> &'a u32 {
+///    let y: &'0 u32 = x; // let's call this `'0`
+///    y
+/// }
+/// ```
+///
+/// Here, the variable `'0` would contain the free region `'a`,
+/// because (since it is returned) it must live for at least `'a`. But
+/// it would also contain various points from within the function.
 #[derive(Clone)]
 crate struct RegionValues<N: Idx> {
     elements: Rc<RegionValueElements>,
     points: SparseBitMatrix<N, PointIndex>,
     free_regions: SparseBitMatrix<N, RegionVid>,
+
+    /// Placeholders represent bound regions -- so something like `'a`
+    /// in for<'a> fn(&'a u32)`.
+    placeholders: SparseBitMatrix<N, PlaceholderIndex>,
 }
 
 impl<N: Idx> RegionValues<N> {
@@ -187,21 +210,20 @@ impl<N: Idx> RegionValues<N> {
     crate fn new(
         elements: &Rc<RegionValueElements>,
         num_universal_regions: usize,
+        max_universe: ty::UniverseIndex,
     ) -> Self {
+        let num_placeholders = max_universe.as_usize();
         Self {
             elements: elements.clone(),
             points: SparseBitMatrix::new(elements.num_points),
             free_regions: SparseBitMatrix::new(num_universal_regions),
+            placeholders: SparseBitMatrix::new(num_placeholders),
         }
     }
 
     /// Adds the given element to the value for the given region. Returns true if
     /// the element is newly added (i.e., was not already present).
-    crate fn add_element(
-        &mut self,
-        r: N,
-        elem: impl ToElementIndex,
-    ) -> bool {
+    crate fn add_element(&mut self, r: N, elem: impl ToElementIndex) -> bool {
         debug!("add(r={:?}, elem={:?})", r, elem);
         elem.add_to_row(self, r)
     }
@@ -214,16 +236,13 @@ impl<N: Idx> RegionValues<N> {
     /// Add all elements in `r_from` to `r_to` (because e.g. `r_to:
     /// r_from`).
     crate fn add_region(&mut self, r_to: N, r_from: N) -> bool {
-        self.points.merge(r_from, r_to) | self.free_regions.merge(r_from, r_to)
-        // FIXME universes?
+        self.points.merge(r_from, r_to)
+            | self.free_regions.merge(r_from, r_to)
+            | self.placeholders.merge(r_from, r_to)
     }
 
     /// True if the region `r` contains the given element.
-    crate fn contains(
-        &self,
-        r: N,
-        elem: impl ToElementIndex,
-    ) -> bool {
+    crate fn contains(&self, r: N, elem: impl ToElementIndex) -> bool {
         elem.contained_in_row(self, r)
     }
 
@@ -255,10 +274,7 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns the locations contained within a given region `r`.
-    crate fn locations_outlived_by<'a>(
-        &'a self,
-        r: N,
-    ) -> impl Iterator<Item = Location> + 'a {
+    crate fn locations_outlived_by<'a>(&'a self, r: N) -> impl Iterator<Item = Location> + 'a {
         self.points
             .row(r)
             .into_iter()
@@ -277,19 +293,32 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns all the elements contained in a given region's value.
-    crate fn elements_contained_in<'a>(
+    crate fn subuniverses_contained_in<'a>(
         &'a self,
         r: N,
-    ) -> impl Iterator<Item = RegionElement> + 'a {
-        let points_iter = self
-            .locations_outlived_by(r)
-            .map(RegionElement::Location);
+    ) -> impl Iterator<Item = ty::UniverseIndex> + 'a {
+        self.placeholders
+            .row(r)
+            .into_iter()
+            .flat_map(|set| set.iter())
+            .map(|p| ty::UniverseIndex::from_u32((p.index() + 1) as u32))
+    }
+
+    /// Returns all the elements contained in a given region's value.
+    crate fn elements_contained_in<'a>(&'a self, r: N) -> impl Iterator<Item = RegionElement> + 'a {
+        let points_iter = self.locations_outlived_by(r).map(RegionElement::Location);
 
         let free_regions_iter = self
             .universal_regions_outlived_by(r)
             .map(RegionElement::RootUniversalRegion);
 
-        points_iter.chain(free_regions_iter)
+        let subuniverses_iter = self
+            .subuniverses_contained_in(r)
+            .map(RegionElement::SubUniversalRegion);
+
+        points_iter
+            .chain(free_regions_iter)
+            .chain(subuniverses_iter)
     }
 
     /// Returns a "pretty" string value of the region. Meant for debugging.
@@ -299,58 +328,46 @@ impl<N: Idx> RegionValues<N> {
 }
 
 crate trait ToElementIndex: Debug + Copy {
-    fn add_to_row<N: Idx>(
-        self,
-        values: &mut RegionValues<N>,
-        row: N,
-    ) -> bool;
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool;
 
-    fn contained_in_row<N: Idx>(
-        self,
-        values: &RegionValues<N>,
-        row: N,
-    ) -> bool;
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool;
 }
 
 impl ToElementIndex for Location {
-    fn add_to_row<N: Idx>(
-        self,
-        values: &mut RegionValues<N>,
-        row: N,
-    ) -> bool {
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
         let index = values.elements.point_from_location(self);
         values.points.add(row, index)
     }
 
-    fn contained_in_row<N: Idx>(
-        self,
-        values: &RegionValues<N>,
-        row: N,
-    ) -> bool {
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
         let index = values.elements.point_from_location(self);
         values.points.contains(row, index)
     }
 }
 
 impl ToElementIndex for RegionVid {
-    fn add_to_row<N: Idx>(
-        self,
-        values: &mut RegionValues<N>,
-        row: N,
-    ) -> bool {
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
         values.free_regions.add(row, self)
     }
 
-    fn contained_in_row<N: Idx>(
-        self,
-        values: &RegionValues<N>,
-        row: N,
-    ) -> bool {
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
         values.free_regions.contains(row, self)
     }
 }
 
-crate fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String {
+impl ToElementIndex for ty::UniverseIndex {
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
+        let index = PlaceholderIndex::new(self.as_usize() - 1);
+        values.placeholders.add(row, index)
+    }
+
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
+        let index = PlaceholderIndex::new(self.as_usize() - 1);
+        values.placeholders.contains(row, index)
+    }
+}
+
+fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String {
     let mut result = String::new();
     result.push_str("{");
 
@@ -393,6 +410,17 @@ crate fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> 
 
                 push_sep(&mut result);
                 result.push_str(&format!("{:?}", fr));
+            }
+
+            RegionElement::SubUniversalRegion(ur) => {
+                if let Some((location1, location2)) = open_location {
+                    push_sep(&mut result);
+                    push_location_range(&mut result, location1, location2);
+                    open_location = None;
+                }
+
+                push_sep(&mut result);
+                result.push_str(&format!("{:?}", ur));
             }
         }
     }

@@ -39,7 +39,6 @@ pub struct DepGraph {
     fingerprints: Lrc<Lock<IndexVec<DepNodeIndex, Fingerprint>>>
 }
 
-
 newtype_index!(DepNodeIndex);
 
 impl DepNodeIndex {

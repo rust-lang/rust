@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/hr-fn-aau-eq-abu.rs:29:53
+   |
+LL |     let a: Cell<for<'a, 'b> fn(&'a u32, &'b u32)> = make_cell_aa();
+   |                                                     ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

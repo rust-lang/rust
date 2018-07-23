@@ -13,6 +13,7 @@
 //! state of region inference. This code handles emitting the region
 //! context internal state.
 
+use rustc::infer::NLLRegionVariableOrigin;
 use std::io::{self, Write};
 use super::{OutlivesConstraint, RegionInferenceContext};
 
@@ -27,8 +28,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         writeln!(out, "| Free Region Mapping")?;
 
         for region in self.regions() {
-            if self.definitions[region].origin.is_universal() {
-                let classification = self.universal_regions
+            if let NLLRegionVariableOrigin::FreeRegion = self.definitions[region].origin {
+                let classification = self
+                    .universal_regions
                     .region_classification(region)
                     .unwrap();
                 let outlived_by = self.universal_regions.regions_outlived_by(region);
@@ -49,9 +51,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for region in self.regions() {
             writeln!(
                 out,
-                "| {r:rw$} | {v}",
+                "| {r:rw$} | {ui:4?} | {v}",
                 r = format!("{:?}", region),
                 rw = REGION_WIDTH,
+                ui = self.region_universe(region),
                 v = self.region_value_str(region),
             )?;
         }

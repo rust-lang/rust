@@ -401,16 +401,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     // `elem`.
     crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
         // Find all paths
-        let (_path, r) = self
-            .find_constraint_paths_between_regions(fr1, |r| {
+        let (_path, r) =
+            self.find_constraint_paths_between_regions(fr1, |r| {
                 self.liveness_constraints.contains(r, elem)
-            })
-            .unwrap();
+            }).unwrap();
         r
     }
 
     // Finds a good span to blame for the fact that `fr1` outlives `fr2`.
-    crate fn find_outlives_blame_span(&self, mir: &Mir<'tcx>, fr1: RegionVid, fr2: RegionVid) -> Span {
+    crate fn find_outlives_blame_span(
+        &self,
+        mir: &Mir<'tcx>,
+        fr1: RegionVid,
+        fr2: RegionVid,
+    ) -> Span {
         let (_, span, _) = self.best_blame_constraint(mir, fr1, |r| r == fr2);
         span
     }

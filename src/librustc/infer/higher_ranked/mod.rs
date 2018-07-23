@@ -617,6 +617,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("leak_check: skol_map={:?}",
                skol_map);
 
+        // If the user gave `-Zno-leak-check`, then skip the leak
+        // check completely. This is wildly unsound and also not
+        // unlikely to cause an ICE or two. It is intended for use
+        // only during a transition period, in which the MIR typeck
+        // uses the "universe-style" check, and the rest of typeck
+        // uses the more conservative leak check.  Since the leak
+        // check is more conservative, we can't test the
+        // universe-style check without disabling it.
+        if self.tcx.sess.opts.debugging_opts.no_leak_check {
+            return Ok(());
+        }
+
         let new_vars = self.region_vars_confined_to_snapshot(snapshot);
         for (&skol_br, &skol) in skol_map {
             // The inputs to a skolemized variable can only
