@@ -236,7 +236,7 @@ use ptr;
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
-pub struct Cell<T> {
+pub struct Cell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
@@ -287,10 +287,10 @@ impl<T:Copy> Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T> Send for Cell<T> where T: Send {}
+unsafe impl<T: ?Sized> Send for Cell<T> where T: Send {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> !Sync for Cell<T> {}
+impl<T: ?Sized> !Sync for Cell<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Copy> Clone for Cell<T> {
@@ -381,46 +381,6 @@ impl<T> Cell<T> {
         }
     }
 
-    /// Returns a raw pointer to the underlying data in this cell.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::cell::Cell;
-    ///
-    /// let c = Cell::new(5);
-    ///
-    /// let ptr = c.as_ptr();
-    /// ```
-    #[inline]
-    #[stable(feature = "cell_as_ptr", since = "1.12.0")]
-    pub fn as_ptr(&self) -> *mut T {
-        self.value.get()
-    }
-
-    /// Returns a mutable reference to the underlying data.
-    ///
-    /// This call borrows `Cell` mutably (at compile-time) which guarantees
-    /// that we possess the only reference.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::cell::Cell;
-    ///
-    /// let mut c = Cell::new(5);
-    /// *c.get_mut() += 1;
-    ///
-    /// assert_eq!(c.get(), 6);
-    /// ```
-    #[inline]
-    #[stable(feature = "cell_get_mut", since = "1.11.0")]
-    pub fn get_mut(&mut self) -> &mut T {
-        unsafe {
-            &mut *self.value.get()
-        }
-    }
-
     /// Sets the contained value.
     ///
     /// # Examples
@@ -499,6 +459,70 @@ impl<T> Cell<T> {
     }
 }
 
+impl<T: ?Sized> Cell<T> {
+    /// Returns a raw pointer to the underlying data in this cell.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let ptr = c.as_ptr();
+    /// ```
+    #[inline]
+    #[stable(feature = "cell_as_ptr", since = "1.12.0")]
+    pub fn as_ptr(&self) -> *mut T {
+        self.value.get()
+    }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// This call borrows `Cell` mutably (at compile-time) which guarantees
+    /// that we possess the only reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let mut c = Cell::new(5);
+    /// *c.get_mut() += 1;
+    ///
+    /// assert_eq!(c.get(), 6);
+    /// ```
+    #[inline]
+    #[stable(feature = "cell_get_mut", since = "1.11.0")]
+    pub fn get_mut(&mut self) -> &mut T {
+        unsafe {
+            &mut *self.value.get()
+        }
+    }
+
+    /// Returns a `&Cell<T>` from a `&mut T`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(as_cell)]
+    /// use std::cell::Cell;
+    ///
+    /// let slice: &mut [i32] = &mut [1, 2, 3];
+    /// let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
+    /// let slice_cell: &[Cell<i32>] = cell_slice.as_slice_of_cells();
+    ///
+    /// assert_eq!(slice_cell.len(), 3);
+    /// ```
+    #[inline]
+    #[unstable(feature = "as_cell", issue="43038")]
+    pub fn from_mut(t: &mut T) -> &Cell<T> {
+        unsafe {
+            &*(t as *mut T as *const Cell<T>)
+        }
+    }
+}
+
 impl<T: Default> Cell<T> {
     /// Takes the value of the cell, leaving `Default::default()` in its place.
     ///
@@ -521,6 +545,29 @@ impl<T: Default> Cell<T> {
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
+
+impl<T> Cell<[T]> {
+    /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(as_cell)]
+    /// use std::cell::Cell;
+    ///
+    /// let slice: &mut [i32] = &mut [1, 2, 3];
+    /// let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
+    /// let slice_cell: &[Cell<i32>] = cell_slice.as_slice_of_cells();
+    ///
+    /// assert_eq!(slice_cell.len(), 3);
+    /// ```
+    #[unstable(feature = "as_cell", issue="43038")]
+    pub fn as_slice_of_cells(&self) -> &[Cell<T>] {
+        unsafe {
+            &*(self as *const Cell<[T]> as *const [Cell<T>])
+        }
+    }
+}
 
 /// A mutable memory location with dynamically checked borrow rules
 ///
