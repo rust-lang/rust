@@ -20,9 +20,9 @@ mod v7;
 #[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
 pub use self::v7::*;
 
-#[cfg(all(target_arch = "arm", target_feature = "v7"))]
+#[cfg(all(target_feature = "v7", not(target_feature = "mclass")))]
 mod dsp;
-#[cfg(all(target_arch = "arm", target_feature = "v7"))]
+#[cfg(all(target_feature = "v7", not(target_feature = "mclass")))]
 pub use self::dsp::*;
 
 // NEON is supported on AArch64, and on ARM when built with the v7 and neon

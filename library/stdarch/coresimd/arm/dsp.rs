@@ -54,8 +54,32 @@ extern "C" {
     #[link_name = "llvm.arm.sasx"]
     fn arm_sasx(a: i32, b: i32) -> i32;
 
-    #[cfg_attr(not(target_feature = "mclass"), link_name = "llvm.arm.sel")]
+    #[link_name = "llvm.arm.sel"]
     fn arm_sel(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.shadd8"]
+    fn arm_shadd8(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.shadd16"]
+    fn arm_shadd16(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.shsub8"]
+    fn arm_shsub8(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.shsub16"]
+    fn arm_shsub16(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.smuad"]
+    fn arm_smuad(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.smuadx"]
+    fn arm_smuadx(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.smusd"]
+    fn arm_smusd(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.smusdx"]
+    fn arm_smusdx(a: i32, b: i32) -> i32;
 }
 
 /// Signed saturating addition
@@ -201,6 +225,109 @@ pub unsafe fn sel(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_sel, a, b)
 }
 
+/// Signed halving parallel byte-wise addition.
+///
+/// Returns the 8-bit signed equivalent of
+///
+/// res\[0\] = (a\[0\] + b\[0\]) / 2
+/// res\[1\] = (a\[1\] + b\[1\]) / 2
+/// res\[2\] = (a\[2\] + b\[2\]) / 2
+/// res\[3\] = (a\[3\] + b\[3\]) / 2
+#[inline]
+#[cfg_attr(test, assert_instr(shadd8))]
+pub unsafe fn shadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+    dsp_call!(arm_shadd8, a, b)
+}
+
+/// Signed halving parallel halfword-wise addition.
+///
+/// Returns the 16-bit signed equivalent of
+///
+/// res\[0\] = (a\[0\] + b\[0\]) / 2
+/// res\[1\] = (a\[1\] + b\[1\]) / 2
+#[inline]
+#[cfg_attr(test, assert_instr(shadd16))]
+pub unsafe fn shadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+    dsp_call!(arm_shadd16, a, b)
+}
+
+/// Signed halving parallel byte-wise subtraction.
+///
+/// Returns the 8-bit signed equivalent of
+///
+/// res\[0\] = (a\[0\] - b\[0\]) / 2
+/// res\[1\] = (a\[1\] - b\[1\]) / 2
+/// res\[2\] = (a\[2\] - b\[2\]) / 2
+/// res\[3\] = (a\[3\] - b\[3\]) / 2
+#[inline]
+#[cfg_attr(test, assert_instr(shsub8))]
+pub unsafe fn shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
+    dsp_call!(arm_shsub8, a, b)
+}
+
+/// Signed halving parallel halfword-wise subtraction.
+///
+/// Returns the 16-bit signed equivalent of
+///
+/// res\[0\] = (a\[0\] - b\[0\]) / 2
+/// res\[1\] = (a\[1\] - b\[1\]) / 2
+#[inline]
+#[cfg_attr(test, assert_instr(shsub16))]
+pub unsafe fn shsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
+    dsp_call!(arm_shsub16, a, b)
+}
+
+/// Signed Dual Multiply Add.
+///
+/// Returns the equivalent of
+///
+/// res = a\[0\] * b\[0\] + a\[1\] * b\[1\]
+///
+/// and sets the Q flag if overflow occurs on the addition.
+#[cfg_attr(test, assert_instr(smuad))]
+pub unsafe fn smuad(a: int16x2_t, b: int16x2_t) -> i32 {
+    arm_smuad(::mem::transmute(a), ::mem::transmute(b))
+}
+
+/// Signed Dual Multiply Add Reversed.
+///
+/// Returns the equivalent of
+///
+/// res = a\[0\] * b\[1\] + a\[1\] * b\[0\]
+///
+/// and sets the Q flag if overflow occurs on the addition.
+#[inline]
+#[cfg_attr(test, assert_instr(smuadx))]
+pub unsafe fn smuadx(a: int16x2_t, b: int16x2_t) -> i32 {
+    arm_smuadx(::mem::transmute(a), ::mem::transmute(b))
+}
+
+/// Signed Dual Multiply Subtract.
+///
+/// Returns the equivalent of
+///
+/// res = a\[0\] * b\[0\] - a\[1\] * b\[1\]
+///
+/// and sets the Q flag if overflow occurs on the addition.
+#[inline]
+#[cfg_attr(test, assert_instr(smusd))]
+pub unsafe fn smusd(a: int16x2_t, b: int16x2_t) -> i32 {
+    arm_smusd(::mem::transmute(a), ::mem::transmute(b))
+}
+
+/// Signed Dual Multiply Subtract Reversed.
+///
+/// Returns the equivalent of
+///
+/// res = a\[0\] * b\[1\] - a\[1\] * b\[0\]
+///
+/// and sets the Q flag if overflow occurs on the addition.
+#[inline]
+#[cfg_attr(test, assert_instr(smusdx))]
+pub unsafe fn smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
+    arm_smusdx(::mem::transmute(a), ::mem::transmute(b))
+}
+
 #[cfg(test)]
 mod tests {
     use coresimd::arm::*;
@@ -335,6 +462,90 @@ mod tests {
             let c = i8x4::new(1, 2, 3, ::std::i8::MAX);
             let r: i8x4 = dsp_call!(dsp::sel, a, b);
             assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn shadd8() {
+        unsafe {
+            let a = i8x4::new(1, 2, 3, 4);
+            let b = i8x4::new(5, 4, 3, 2);
+            let c = i8x4::new(3, 3, 3, 3);
+            let r: i8x4 = dsp_call!(dsp::shadd8, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn shadd16() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(5, 4);
+            let c = i16x2::new(3, 3);
+            let r: i16x2 = dsp_call!(dsp::shadd16, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn shsub8() {
+        unsafe {
+            let a = i8x4::new(1, 2, 3, 4);
+            let b = i8x4::new(5, 4, 3, 2);
+            let c = i8x4::new(-2, -1, 0, 1);
+            let r: i8x4 = dsp_call!(dsp::shsub8, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn shsub16() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(5, 4);
+            let c = i16x2::new(-2, -1);
+            let r: i16x2 = dsp_call!(dsp::shsub16, a, b);
+            assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn smuad() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(5, 4);
+            let r = dsp::smuad(::mem::transmute(a), ::mem::transmute(b));
+            assert_eq!(r, 13);
+        }
+    }
+
+    #[test]
+    fn smuadx() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(5, 4);
+            let r = dsp::smuadx(::mem::transmute(a), ::mem::transmute(b));
+            assert_eq!(r, 14);
+        }
+    }
+
+    #[test]
+    fn smusd() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(5, 4);
+            let r = dsp::smusd(::mem::transmute(a), ::mem::transmute(b));
+            assert_eq!(r, -3);
+        }
+    }
+
+    #[test]
+    fn smusdx() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(5, 4);
+            let r = dsp::smusdx(::mem::transmute(a), ::mem::transmute(b));
+            assert_eq!(r, -6);
         }
     }
 }
