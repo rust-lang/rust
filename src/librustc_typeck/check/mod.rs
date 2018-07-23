@@ -95,7 +95,7 @@ use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
-use rustc::ty::subst::{UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -4967,7 +4967,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let def_id = def.def_id();
         let mut parent_defs = self.tcx.generics_of(def_id);
         let count = parent_defs.count();
-        let mut substs = if count <= 8 {
+        let mut substs: AccumulateVec<[Kind<'tcx>; 8]> = if count <= 8 {
             AccumulateVec::Array(ArrayVec::new())
         } else {
             AccumulateVec::Heap(Vec::with_capacity(count))
@@ -4977,74 +4977,103 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             parent_defs = self.tcx.generics_of(def_id);
             stack.push((def_id, parent_defs));
         }
+        macro_rules! push_to_substs {
+            ($kind:expr) => {
+                let k = $kind;
+                match substs {
+                    AccumulateVec::Array(ref mut arr) => arr.push(k),
+                    AccumulateVec::Heap(ref mut vec) => vec.push(k),
+                }
+            }
+        };
         while let Some((def_id, defs)) = stack.pop() {
-            Substs::fill_single(&mut substs, defs, &mut |param: &ty::GenericParamDef, substs| {
-                if param.index == 0 && has_self {
-                    if let GenericParamDefKind::Type { .. } = param.kind {
-                        // Handle `Self` first, so we can adjust the index to match the AST.
-                        return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
-                            self.var_for_def(span, param)
-                        });
+            let mut params = defs.params.iter().peekable();
+            let mut remove_self = false;
+            if has_self {
+                if let Some(param) = params.peek() {
+                    if param.index == 0 {
+                        if let GenericParamDefKind::Type { .. } = param.kind {
+                            // Handle `Self` first, so we can adjust the index to match the AST.
+                            push_to_substs!(opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
+                                self.var_for_def(span, param)
+                            }));
+                            remove_self = true;
+                        }
                     }
                 }
+            }
+            if remove_self {
+                params.next();
+            }
 
-                let infer_types = if let Some(&PathSeg(_, index)) = path_segs
-                    .iter()
-                    .find(|&PathSeg(did, _)| *did == def_id) {
-
-                    if supress_errors[&index] {
-                        true
-                    } else {
-                        if let Some(ref data) = segments[index].args {
-                            let self_offset = (defs.parent_count == 0 && has_self) as usize;
-                            let param_idx =
-                                (param.index as usize - defs.parent_count - self_offset)
-                                .saturating_sub(infer_lifetimes[&index]);
-                            if let Some(arg) = data.args.get(param_idx) {
+            let mut infer_types = true;
+            if let Some(&PathSeg(_, index)) = path_segs
+                .iter()
+                .find(|&PathSeg(did, _)| *did == def_id) {
+                if !supress_errors[&index] {
+                    infer_types = segments[index].infer_types;
+                    if let Some(ref data) = segments[index].args {
+                        let args = &data.args;
+                        'args: for arg in args {
+                            while let Some(param) = params.next() {
                                 match param.kind {
                                     GenericParamDefKind::Lifetime => match arg {
                                         GenericArg::Lifetime(lt) => {
-                                            return AstConv::ast_region_to_region(self,
-                                                lt, Some(param)).into();
+                                            push_to_substs!(AstConv::ast_region_to_region(self,
+                                                lt, Some(param)).into());
+                                            continue 'args;
                                         }
-                                        _ => {}
+                                        GenericArg::Type(_) => {
+                                            // We're inferring a lifetime.
+                                            push_to_substs!(
+                                                self.re_infer(span, Some(param)).unwrap().into());
+                                        }
                                     }
                                     GenericParamDefKind::Type { .. } => match arg {
-                                        GenericArg::Type(ty) => return self.to_ty(ty).into(),
-                                        _ => {}
+                                        GenericArg::Type(ty) => {
+                                            push_to_substs!(self.to_ty(ty).into());
+                                            continue 'args;
+                                        }
+                                        GenericArg::Lifetime(_) => {
+                                            self.tcx.sess.delay_span_bug(span,
+                                                "found a GenericArg::Lifetime where a \
+                                                 GenericArg::Type was expected");
+                                        }
                                     }
                                 }
                             }
+                            // If we get to this point, we have a GenericArg that is not matched
+                            // by a GenericParamDef: i.e. the user supplied too many generic args.
+                            self.tcx.sess.delay_span_bug(span,
+                                "GenericArg did not have matching GenericParamDef");
                         }
-
-                        segments[index].infer_types
                     }
-                } else {
-                    true
-                };
+                }
+            }
 
+            while let Some(param) = params.next() {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        self.re_infer(span, Some(param)).unwrap().into()
+                        push_to_substs!(self.re_infer(span, Some(param)).unwrap().into());
                     }
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_types && has_default {
                             // No type parameter provided, but a default exists.
                             let default = self.tcx.type_of(param.def_id);
-                            self.normalize_ty(
+                            push_to_substs!(self.normalize_ty(
                                 span,
-                                default.subst_spanned(self.tcx, substs, Some(span))
-                            ).into()
+                                default.subst_spanned(self.tcx, &substs, Some(span))
+                            ).into());
                         } else {
                             // No type parameters were provided, we can infer all.
                             // This can also be reached in some error cases:
                             // We prefer to use inference variables instead of
                             // TyError to let type inference recover somewhat.
-                            self.var_for_def(span, param)
+                            push_to_substs!(self.var_for_def(span, param));
                         }
                     }
                 }
-            });
+            }
         }
         let substs = self.tcx.intern_substs(&substs);
 
