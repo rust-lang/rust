@@ -121,8 +121,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
-        // Use lifetimes to determine if we're returning a reference to the argument. In that case
-        // we can't switch to pass-by-value as the argument will not live long enough.
+        // Use lifetimes to determine if we're returning a reference to the
+        // argument. In that case we can't switch to pass-by-value as the
+        // argument will not live long enough.
         let output_lt = if let TypeVariants::TyRef(output_lt, _, _) = fn_sig.output().sty {
             Some(output_lt)
         } else {
