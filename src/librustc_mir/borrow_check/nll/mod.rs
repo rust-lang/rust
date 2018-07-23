@@ -143,7 +143,6 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
     constraint_generation::generate_constraints(
         infcx,
-        &elements,
         &mut liveness_constraints,
         &mut all_facts,
         location_table,
