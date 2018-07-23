@@ -1,0 +1,14 @@
+error: unknown feature `unknown_rust_feature`
+  --> $DIR/unknown-feature.rs:13:12
+   |
+LL | #![feature(unknown_rust_feature)] //~ ERROR unknown feature
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unknown-feature.rs:11:9
+   |
+LL | #![deny(unknown_features)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
