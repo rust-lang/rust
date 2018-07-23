@@ -4913,19 +4913,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for PathSeg(_, index) in &path_segs {
             generic_segs.insert(index);
         }
-        let segs: Vec<_> = segments
-            .iter()
-            .enumerate()
-            .filter_map(|(index, seg)| {
-                if !generic_segs.contains(&index) {
-                    Some(seg)
-                } else {
-                    None
-                }
-            })
-            .cloned()
-            .collect();
-        AstConv::prohibit_generics(self, &segs);
+        AstConv::prohibit_generics(self, segments.iter().enumerate().filter_map(|(index, seg)| {
+            if !generic_segs.contains(&index) {
+                Some(seg)
+            } else {
+                None
+            }
+        }));
 
         match def {
             Def::Local(nid) | Def::Upvar(nid, ..) => {

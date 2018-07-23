@@ -988,7 +988,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         self.normalize_ty(span, tcx.mk_projection(item_def_id, trait_ref.substs))
     }
 
-    pub fn prohibit_generics(&self, segments: &[hir::PathSegment]) {
+    pub fn prohibit_generics<'a, T: IntoIterator<Item = &'a hir::PathSegment>>(&self, segments: T) {
         for segment in segments {
             segment.with_generic_args(|generic_args| {
                 let (mut err_for_lt, mut err_for_ty) = (false, false);
