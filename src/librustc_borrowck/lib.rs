@@ -14,7 +14,6 @@
 
 #![allow(non_camel_case_types)]
 
-#![feature(from_ref)]
 #![feature(quote)]
 
 #![recursion_limit="256"]

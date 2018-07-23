@@ -23,8 +23,6 @@
 
 #![feature(box_syntax)]
 #![feature(const_fn)]
-#![feature(fs_read_write)]
-#![feature(inclusive_range)]
 #![feature(slice_patterns)]
 
 #[macro_use]

@@ -23,7 +23,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(custom_attribute)]
 #![feature(extern_types)]
-#![feature(fs_read_write)]
 #![feature(in_band_lifetimes)]
 #![allow(unused_attributes)]
 #![feature(libc)]

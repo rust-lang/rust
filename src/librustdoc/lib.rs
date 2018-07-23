@@ -17,13 +17,11 @@
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(fs_read_write)]
 #![feature(iterator_find_map)]
 #![feature(set_stdio)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(test)]
 #![feature(vec_remove_item)]
-#![feature(entry_and_modify)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 
