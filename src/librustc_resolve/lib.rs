@@ -717,7 +717,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             }
             TyKind::ImplicitSelf => {
                 let self_ty = keywords::SelfType.ident();
-                let def = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, true, ty.span)
+                let def = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.id), ty.span)
                               .map_or(Def::Err, |d| d.def());
                 self.record_def(ty.id, PathResolution::new(def));
             }
@@ -1839,9 +1839,10 @@ impl<'a> Resolver<'a> {
     fn resolve_ident_in_lexical_scope(&mut self,
                                       mut ident: Ident,
                                       ns: Namespace,
-                                      record_used: bool,
+                                      record_used_id: Option<NodeId>,
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
+        let record_used = record_used_id.is_some();
         if ns == TypeNS {
             ident.span = if ident.name == keywords::SelfType.name() {
                 // FIXME(jseyfried) improve `Self` hygiene
@@ -1890,10 +1891,11 @@ impl<'a> Resolver<'a> {
 
         ident.span = ident.span.modern();
         loop {
-            let (opt_module, poisoned) = if record_used {
-                self.hygienic_lexical_parent_with_compatibility_fallback(module, &mut ident.span)
+            let (opt_module, poisoned) = if let Some(node_id) = record_used_id {
+                self.hygienic_lexical_parent_with_compatibility_fallback(module, &mut ident.span,
+                                                                         node_id)
             } else {
-                (self.hygienic_lexical_parent(module, &mut ident.span), false)
+                (self.hygienic_lexical_parent(module, &mut ident.span), None)
             };
             module = unwrap_or!(opt_module, break);
             let orig_current_module = self.current_module;
@@ -1905,10 +1907,10 @@ impl<'a> Resolver<'a> {
 
             match result {
                 Ok(binding) => {
-                    if poisoned {
+                    if let Some(node_id) = poisoned {
                         self.session.buffer_lint_with_diagnostic(
                             lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-                            CRATE_NODE_ID, ident.span,
+                            node_id, ident.span,
                             &format!("cannot find {} `{}` in this scope", ns.descr(), ident),
                             lint::builtin::BuiltinLintDiagnostics::
                                 ProcMacroDeriveResolutionFallback(ident.span),
@@ -1916,7 +1918,7 @@ impl<'a> Resolver<'a> {
                     }
                     return Some(LexicalScopeBinding::Item(binding))
                 }
-                _ if poisoned => break,
+                _ if poisoned.is_some() => break,
                 Err(Undetermined) => return None,
                 Err(Determined) => {}
             }
@@ -1965,10 +1967,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn hygienic_lexical_parent_with_compatibility_fallback(
-        &mut self, module: Module<'a>, span: &mut Span) -> (Option<Module<'a>>, /* poisoned */ bool
-    ) {
+        &mut self, module: Module<'a>, span: &mut Span, node_id: NodeId
+    ) -> (Option<Module<'a>>, /* poisoned */ Option<NodeId>)
+    {
         if let module @ Some(..) = self.hygienic_lexical_parent(module, span) {
-            return (module, false);
+            return (module, None);
         }
 
         // We need to support the next case under a deprecation warning
@@ -1989,13 +1992,13 @@ impl<'a> Resolver<'a> {
                 // The macro is a proc macro derive
                 if module.expansion.looks_like_proc_macro_derive() {
                     if parent.expansion.is_descendant_of(span.ctxt().outer()) {
-                        return (module.parent, true);
+                        return (module.parent, Some(node_id));
                     }
                 }
             }
         }
 
-        (None, false)
+        (None, None)
     }
 
     fn resolve_ident_in_module(&mut self,
@@ -2760,7 +2763,7 @@ impl<'a> Resolver<'a> {
                     // First try to resolve the identifier as some existing
                     // entity, then fall back to a fresh binding.
                     let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS,
-                                                                      false, pat.span)
+                                                                      None, pat.span)
                                       .and_then(LexicalScopeBinding::item);
                     let resolution = binding.map(NameBinding::def).and_then(|def| {
                         let is_syntactic_ambiguity = opt_pat.is_none() &&
@@ -3191,13 +3194,13 @@ impl<'a> Resolver<'a> {
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
         let binding = self.resolve_ident_in_lexical_scope(keywords::SelfType.ident(),
-                                                          TypeNS, false, span);
+                                                          TypeNS, None, span);
         if let Some(LexicalScopeBinding::Def(def)) = binding { def != Def::Err } else { false }
     }
 
     fn self_value_is_available(&mut self, self_span: Span, path_span: Span) -> bool {
         let ident = Ident::new(keywords::SelfValue.name(), self_span);
-        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, false, path_span);
+        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, path_span);
         if let Some(LexicalScopeBinding::Def(def)) = binding { def != Def::Err } else { false }
     }
 
@@ -3474,7 +3477,9 @@ impl<'a> Resolver<'a> {
                 self.resolve_lexical_macro_path_segment(ident, ns, record_used, path_span)
                     .map(MacroBinding::binding)
             } else {
-                match self.resolve_ident_in_lexical_scope(ident, ns, record_used, path_span) {
+                let record_used_id =
+                    if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };
+                match self.resolve_ident_in_lexical_scope(ident, ns, record_used_id, path_span) {
                     // we found a locally-imported or available item/module
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
                     // we found a local variable or type param
@@ -4692,6 +4697,17 @@ enum CrateLint {
     /// we might be resolving  `X::Y::Z` from a path like `<T as X::Y>::Z`.
     /// The `path_span` is the span of the to the trait itself (`X::Y`).
     QPathTrait { qpath_id: NodeId, qpath_span: Span },
+}
+
+impl CrateLint {
+    fn node_id(&self) -> Option<NodeId> {
+        match *self {
+            CrateLint::No => None,
+            CrateLint::SimplePath(id) |
+            CrateLint::UsePath { root_id: id, .. } |
+            CrateLint::QPathTrait { qpath_id: id, .. } => Some(id),
+        }
+    }
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }
