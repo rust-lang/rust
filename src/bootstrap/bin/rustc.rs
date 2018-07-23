@@ -296,7 +296,8 @@ fn main() {
         cmd.arg("--color=always");
     }
 
-    if env::var_os("RUSTC_DENY_WARNINGS").is_some() && env::var_os("RUSTC_EXT_TOOL").is_none() {
+    if env::var_os("RUSTC_DENY_WARNINGS").is_some() && env::var_os("RUSTC_EXTERNAL_TOOL").is_none()
+    {
         cmd.arg("-Dwarnings");
         cmd.arg("-Dbare_trait_objects");
     }

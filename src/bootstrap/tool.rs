@@ -82,7 +82,8 @@ struct ToolBuild {
     tool: &'static str,
     path: &'static str,
     mode: Mode,
-    is_ext_tool: bool,
+    is_optional_tool: bool,
+    is_external_tool: bool,
     extra_features: Vec<String>,
 }
 
@@ -102,7 +103,7 @@ impl Step for ToolBuild {
         let target = self.target;
         let tool = self.tool;
         let path = self.path;
-        let is_ext_tool = self.is_ext_tool;
+        let is_optional_tool = self.is_optional_tool;
 
         match self.mode {
             Mode::ToolRustc => {
@@ -122,7 +123,7 @@ impl Step for ToolBuild {
             target,
             "build",
             path,
-            is_ext_tool,
+            self.is_external_tool,
         );
         cargo.arg("--features").arg(self.extra_features.join(" "));
 
@@ -224,7 +225,7 @@ impl Step for ToolBuild {
         });
 
         if !is_expected {
-            if !is_ext_tool {
+            if !is_optional_tool {
                 exit(1);
             } else {
                 return None;
@@ -246,7 +247,7 @@ pub fn prepare_tool_cargo(
     target: Interned<String>,
     command: &'static str,
     path: &'static str,
-    is_ext_tool: bool,
+    is_external_tool: bool,
 ) -> Command {
     let mut cargo = builder.cargo(compiler, mode, target, command);
     let dir = builder.src.join(path);
@@ -256,8 +257,8 @@ pub fn prepare_tool_cargo(
     // stages and such and it's just easier if they're not dynamically linked.
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
-    if is_ext_tool {
-        cargo.env("RUSTC_EXT_TOOL", "1");
+    if is_external_tool {
+        cargo.env("RUSTC_EXTERNAL_TOOL", "1");
     }
 
     if let Some(dir) = builder.openssl_install_dir(target) {
@@ -287,7 +288,8 @@ pub fn prepare_tool_cargo(
 }
 
 macro_rules! tool {
-    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr $(,llvm_tools = $llvm:expr)*;)+) => {
+    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr
+        $(,llvm_tools = $llvm:expr)* $(,external_tool = $external:expr)*;)+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
         pub enum Tool {
             $(
@@ -364,7 +366,8 @@ macro_rules! tool {
                     tool: $tool_name,
                     mode: $mode,
                     path: $path,
-                    is_ext_tool: false,
+                    is_optional_tool: false,
+                    is_external_tool: false $(|| $external)*,
                     extra_features: Vec::new(),
                 }).expect("expected to build -- essential tool")
             }
@@ -383,7 +386,8 @@ tool!(
     Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolBootstrap, llvm_tools = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolBootstrap;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolBootstrap;
-    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolBootstrap;
+    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolBootstrap,
+        external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::ToolBootstrap;
 );
 
@@ -414,7 +418,8 @@ impl Step for RemoteTestServer {
             tool: "remote-test-server",
             mode: Mode::ToolStd,
             path: "src/tools/remote-test-server",
-            is_ext_tool: false,
+            is_optional_tool: false,
+            is_external_tool: false,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -541,7 +546,8 @@ impl Step for Cargo {
             tool: "cargo",
             mode: Mode::ToolRustc,
             path: "src/tools/cargo",
-            is_ext_tool: false,
+            is_optional_tool: false,
+            is_external_tool: true,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -590,7 +596,8 @@ macro_rules! tool_extended {
                     mode: Mode::ToolRustc,
                     path: $path,
                     extra_features: $sel.extra_features,
-                    is_ext_tool: true,
+                    is_optional_tool: true,
+                    is_external_tool: true,
                 })
             }
         }
