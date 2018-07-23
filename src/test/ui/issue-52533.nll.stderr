@@ -10,8 +10,8 @@ error: unsatisfied lifetime constraints
 LL |     foo(|a, b| b)
    |          -  -  ^ closure was supposed to return data with lifetime `'1` but it is returning data with lifetime `'2`
    |          |  |
-   |          |  has type `&'1u32`
-   |          has type `&'2u32`
+   |          |  has type `&'1 u32`
+   |          has type `&'2 u32`
 
 error: aborting due to previous error
 

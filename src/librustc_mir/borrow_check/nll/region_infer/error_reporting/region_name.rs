@@ -238,8 +238,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // Need to make the `end_index` relative to the full string.
                 let end_index = start_index + end_index;
                 // `start_index + 1` skips the `&`.
-                // `end_index` goes until the space after the region.
-                type_name.replace_range(start_index + 1..end_index, "");
+                // `end_index + 1` goes to (including) the space after the region.
+                type_name.replace_range(start_index + 1..end_index + 1, "");
             }
         }
         debug!("give_name_if_we_cannot_match_hir_ty: type_name={:?}", type_name);
@@ -255,7 +255,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Compute the index of the character after `&` in the original string.
             index = next_index + index + 1;
-            type_name.insert_str(index, &format!("{}", region_name));
+            type_name.insert_str(index, &format!("{} ", region_name));
         }
 
         let (_, span) = self.get_argument_name_and_span_for_region(mir, argument_index);
