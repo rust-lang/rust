@@ -13,9 +13,6 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 
-// FIXME(varkor): remove this
-// ignore-macos
-
 use std::process::Command;
 use std::env;
 
