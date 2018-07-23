@@ -101,6 +101,21 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
 
         match (since, already_in_stable, already_in_unstable) {
             (Some(since), _, false) => {
+                if let Some(prev_since) = self.lib_features.stable.get(&feature) {
+                    if *prev_since != since {
+                        let msg = format!(
+                            "feature `{}` is declared stable since {}, \
+                             but was previously declared stable since {}",
+                            feature,
+                            since,
+                            prev_since,
+                        );
+                        self.tcx.sess.struct_span_err_with_code(span, &msg,
+                            DiagnosticId::Error("E0711".into())).emit();
+                        return;
+                    }
+                }
+
                 self.lib_features.stable.insert(feature, since);
             }
             (None, false, _) => {
