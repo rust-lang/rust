@@ -16,7 +16,7 @@ use config::{Config, EmitMode, FileName, Verbosity};
 use rustfmt_diff::{make_diff, output_modified, print_diff};
 
 #[cfg(test)]
-use FileRecord;
+use formatting::FileRecord;
 
 // Append a newline to the end of each file.
 pub fn append_newline(s: &mut String) {

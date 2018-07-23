@@ -15,15 +15,17 @@ use syntax;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, BufReader, Read};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::iter::{Enumerate, Peekable};
 use std::path::{Path, PathBuf};
 use std::str::Chars;
 
 use config::summary::Summary;
-use config::{Color, Config, ReportTactic};
-use rustfmt_diff::*;
-use *;
+use config::{Color, Config, EmitMode, FileName, ReportTactic};
+use filemap;
+use formatting::{format_input_inner, get_modified_lines, FileMap, ModifiedChunk, ModifiedLines};
+use rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, OutputWriter};
+use {format_input, FormatReport, Input};
 
 const DIFF_CONTEXT_SIZE: usize = 3;
 const CONFIGURATIONS_FILE_NAME: &str = "Configurations.md";
