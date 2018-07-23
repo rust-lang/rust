@@ -199,18 +199,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         fr: RegionVid,
         outlived_fr: RegionVid,
-        blame_span: Span,
         errors_buffer: &mut Vec<Diagnostic>,
     ) {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
-
-        if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
-            let tables = infcx.tcx.typeck_tables_of(mir_def_id);
-            let nice = NiceRegionError::new_from_span(infcx.tcx, blame_span, o, f, Some(tables));
-            if let Some(_error_reported) = nice.try_report() {
-                return;
-            }
-        }
 
         // Find all paths
         let constraint_paths = self.find_constraint_paths_between_regions(fr, |r| r == outlived_fr);
@@ -232,6 +223,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Get a span
         let (category, span) = categorized_path.first().unwrap();
+
+        // Check if we can use one of the "nice region errors".
+        if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
+            let tables = infcx.tcx.typeck_tables_of(mir_def_id);
+            let nice = NiceRegionError::new_from_span(infcx.tcx, *span, o, f, Some(tables));
+            if let Some(_error_reported) = nice.try_report() {
+                return;
+            }
+        }
 
         let category = match (
             category,

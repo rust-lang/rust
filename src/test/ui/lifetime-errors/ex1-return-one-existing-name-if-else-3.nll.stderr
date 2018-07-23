@@ -5,12 +5,12 @@ LL |     if x > y { x } else { y } //~ ERROR explicit lifetime
    |                           ^
 
 error[E0621]: explicit lifetime required in parameter type
-  --> $DIR/ex1-return-one-existing-name-if-else-3.rs:11:13
+  --> $DIR/ex1-return-one-existing-name-if-else-3.rs:11:16
    |
 LL | fn foo<'a>((x, y): (&'a i32, &i32)) -> &'a i32 {
-   |            -^----
-   |            ||
-   |            |lifetime `'a` required
+   |            ----^-
+   |            |   |
+   |            |   lifetime `'a` required
    |            consider changing type to `(&'a i32, &'a i32)`
 
 error: aborting due to previous error

@@ -921,7 +921,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // to report the error. This gives better error messages
             // in some cases.
             self.report_error(
-                mir, infcx, mir_def_id, longer_fr, shorter_fr, blame_span, errors_buffer);
+                mir, infcx, mir_def_id, longer_fr, shorter_fr, errors_buffer);
         }
     }
 }
