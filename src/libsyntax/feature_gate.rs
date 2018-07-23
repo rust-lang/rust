@@ -59,8 +59,8 @@ macro_rules! declare_features {
         /// A set of features to be used by later passes.
         #[derive(Clone)]
         pub struct Features {
-            /// `#![feature]` attrs for stable language features, for error reporting
-            pub declared_stable_lang_features: Vec<(Symbol, Span)>,
+            /// `#![feature]` attrs for language features, for error reporting
+            pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
             /// `#![feature]` attrs for non-language (library) features
             pub declared_lib_features: Vec<(Symbol, Span)>,
             $(pub $feature: bool),+
@@ -69,7 +69,7 @@ macro_rules! declare_features {
         impl Features {
             pub fn new() -> Features {
                 Features {
-                    declared_stable_lang_features: Vec::new(),
+                    declared_lang_features: Vec::new(),
                     declared_lib_features: Vec::new(),
                     $($feature: false),+
                 }
@@ -1220,10 +1220,6 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
     cx.check_attribute(attr, true);
 }
 
-pub fn find_lang_feature_accepted_version(feature: &str) -> Option<&'static str> {
-    ACCEPTED_FEATURES.iter().find(|t| t.0 == feature).map(|t| t.1)
-}
-
 fn find_lang_feature_issue(feature: &str) -> Option<u32> {
     if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.0 == feature) {
         let issue = info.2;
@@ -1940,6 +1936,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
                 set(&mut features, mi.span);
                 feature_checker.collect(&features, mi.span);
+                features.declared_lang_features.push((name, mi.span, None));
                 continue
             }
 
@@ -1950,8 +1947,9 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 continue
             }
 
-            if ACCEPTED_FEATURES.iter().any(|f| name == f.0) {
-                features.declared_stable_lang_features.push((name, mi.span));
+            if let Some((_, since, ..)) = ACCEPTED_FEATURES.iter().find(|f| name == f.0) {
+                let since = Some(Symbol::intern(since));
+                features.declared_lang_features.push((name, mi.span, since));
                 continue
             }
 

@@ -23,7 +23,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
-use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
+use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::attr::{self, Stability, Deprecation};
 use util::nodemap::{FxHashSet, FxHashMap};
 
@@ -813,40 +813,51 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
 
-    for &(ref stable_lang_feature, span) in &tcx.features().declared_stable_lang_features {
-        let since = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
-            .expect("unexpectedly couldn't find version feature was stabilized");
-        tcx.lint_node(lint::builtin::STABLE_FEATURES,
-                      ast::CRATE_NODE_ID,
-                      span,
-                      &format_stable_since_msg(*stable_lang_feature, since));
-    }
 
-    let ref declared_lib_features = tcx.features().declared_lib_features;
-
-    let mut remaining_lib_features = FxHashMap();
-    for (feature, span) in declared_lib_features.clone().into_iter() {
-        // Warn if the user enables a feature multiple times.
-        if remaining_lib_features.contains_key(&feature) {
+    let declared_lang_features = &tcx.features().declared_lang_features;
+    let mut lang_features = FxHashSet();
+    for &(ref feature, span, since) in declared_lang_features {
+        if let Some(since) = since {
+            // Warn if the user has enabled an already-stable lang feature.
+            tcx.lint_node(lint::builtin::STABLE_FEATURES,
+                        ast::CRATE_NODE_ID,
+                        span,
+                        &format_stable_since_msg(*feature, since));
+        }
+        if lang_features.contains(&feature) {
+            // Warn if the user enables a lang feature multiple times.
             tcx.lint_node(lint::builtin::DUPLICATE_FEATURES,
                           ast::CRATE_NODE_ID,
                           span,
                           &format!("duplicate `{}` feature attribute", feature));
         }
-        remaining_lib_features.insert(feature, span);
+        lang_features.insert(feature);
+    }
+
+    let declared_lib_features = &tcx.features().declared_lib_features;
+    let mut remaining_lib_features = FxHashMap();
+    for (feature, span) in declared_lib_features {
+        // Warn if the user enables a lib feature multiple times.
+        if remaining_lib_features.contains_key(&feature) {
+            tcx.lint_node(lint::builtin::DUPLICATE_FEATURES,
+                          ast::CRATE_NODE_ID,
+                          *span,
+                          &format!("duplicate `{}` feature attribute", feature));
+        }
+        remaining_lib_features.insert(feature, span.clone());
     }
     // FIXME(varkor): we don't properly handle lib features behind `cfg` attributes yet,
     // but it happens just to affect `libc`, so we're just going to hard-code it for now.
     remaining_lib_features.remove(&Symbol::intern("libc"));
 
     for (feature, stable) in tcx.lib_features().iter() {
-        // Warn if the user has enabled an already-stable feature.
+        // Warn if the user has enabled an already-stable lib feature.
         if let Some(since) = stable {
             if let Some(span) = remaining_lib_features.get(&feature) {
                 tcx.lint_node(lint::builtin::STABLE_FEATURES,
-                    ast::CRATE_NODE_ID,
-                    *span,
-                    &format_stable_since_msg(feature, &since.as_str()));
+                              ast::CRATE_NODE_ID,
+                              *span,
+                              &format_stable_since_msg(feature, since));
             }
         }
 
@@ -864,7 +875,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // don't lint about unused features. We should reenable this one day!
 }
 
-fn format_stable_since_msg(feature: Symbol, since: &str) -> String {
+fn format_stable_since_msg(feature: Symbol, since: Symbol) -> String {
     // "this feature has been stable since {}. Attribute no longer needed"
     format!("the feature `{}` has been stable since {} and no longer requires \
              an attribute to enable", feature, since)
