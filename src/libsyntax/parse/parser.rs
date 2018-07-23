@@ -4391,6 +4391,11 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(keywords::Extern) && self.look_ahead(1, |t| t != &token::ModSep)
     }
 
+    fn is_existential_type_decl(&self) -> bool {
+        self.token.is_keyword(keywords::Existential) &&
+        self.look_ahead(1, |t| t.is_keyword(keywords::Type))
+    }
+
     fn is_auto_trait_item(&mut self) -> bool {
         // auto trait
         (self.token.is_keyword(keywords::Auto)
@@ -4495,6 +4500,7 @@ impl<'a> Parser<'a> {
                   !self.is_union_item() &&
                   !self.is_crate_vis() &&
                   !self.is_extern_non_path() &&
+                  !self.is_existential_type_decl() &&
                   !self.is_auto_trait_item() {
             let pth = self.parse_path(PathStyle::Expr)?;
 
