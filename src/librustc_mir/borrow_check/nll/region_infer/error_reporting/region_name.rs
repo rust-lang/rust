@@ -146,6 +146,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.universal_regions.unnormalized_input_tys[implicit_inputs + argument_index];
         if let Some(region_name) = self.give_name_if_we_can_match_hir_ty_from_argument(
             infcx,
+            mir,
             mir_def_id,
             fr,
             arg_ty,
@@ -172,6 +173,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_we_can_match_hir_ty_from_argument(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
         mir_def_id: DefId,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -188,8 +190,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // must highlight the variable.
             hir::TyKind::Infer => self.give_name_if_we_cannot_match_hir_ty(
                 infcx,
+                mir,
+                needle_fr,
                 argument_ty,
-                argument_hir_ty,
                 counter,
                 diag,
             ),
@@ -219,24 +222,46 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_we_cannot_match_hir_ty(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+        needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
-        argument_hir_ty: &hir::Ty,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
         let mut type_name = infcx.extract_type_name(&argument_ty);
+        let argument_index = self.get_argument_index_for_region(infcx.tcx, needle_fr)?;
+        let mut first_region_name = None;
 
-        type_name.find("&").map(|index| {
+        debug!("give_name_if_we_cannot_match_hir_ty: type_name={:?}", type_name);
+        while let Some(start_index) = type_name.find("&'_#") {
+            if let Some(end_index) = type_name[start_index..].find(' ') {
+                // Need to make the `end_index` relative to the full string.
+                let end_index = start_index + end_index;
+                // `start_index + 1` skips the `&`.
+                // `end_index` goes until the space after the region.
+                type_name.replace_range(start_index + 1..end_index, "");
+            }
+        }
+        debug!("give_name_if_we_cannot_match_hir_ty: type_name={:?}", type_name);
+
+        let mut index = 0;
+        while let Some(next_index) = type_name[index..].find("&") {
+            // At this point, next_index is the index of the `&` character (starting from
+            // the last `&` character).
+            debug!("give_name_if_we_cannot_match_hir_ty: start-of-loop index={:?} type_name={:?}",
+                   index, type_name);
             let region_name = self.synthesize_region_name(counter).as_str();
-            type_name.insert_str(index + 1, &format!("{} ", region_name));
+            if first_region_name.is_none() { first_region_name = Some(region_name); }
 
-            diag.span_label(
-                argument_hir_ty.span,
-                format!("has type `{}`", type_name),
-            );
+            // Compute the index of the character after `&` in the original string.
+            index = next_index + index + 1;
+            type_name.insert_str(index, &format!("{}", region_name));
+        }
 
-            region_name.as_interned_str()
-        })
+        let (_, span) = self.get_argument_name_and_span_for_region(mir, argument_index);
+        diag.span_label(span, format!("has type `{}`", type_name));
+
+        first_region_name.map(|s| s.as_interned_str())
     }
 
     /// Attempts to highlight the specific part of a type annotation

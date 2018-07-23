@@ -321,8 +321,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("report_error: fr_is_local={:?} outlived_fr_is_local={:?} category={:?}",
                fr_is_local, outlived_fr_is_local, category);
 
-        match (fr_is_local, outlived_fr_is_local) {
-            (true, false) =>
+        match (category, fr_is_local, outlived_fr_is_local) {
+            (ConstraintCategory::Assignment, true, false) |
+            (ConstraintCategory::CallArgument, true, false) =>
                 self.report_escapes_closure_error(mir, infcx, mir_def_id, fr, outlived_fr,
                                                   category, span, errors_buffer),
             _ =>
