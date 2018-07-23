@@ -495,6 +495,15 @@ pub enum Input {
     Text(String),
 }
 
+impl Input {
+    fn is_text(&self) -> bool {
+        match *self {
+            Input::File(_) => false,
+            Input::Text(_) => true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod unit_tests {
     use super::*;
