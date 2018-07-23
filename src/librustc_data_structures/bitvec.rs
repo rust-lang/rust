@@ -313,14 +313,18 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         }
     }
 
+    fn ensure_row(&mut self, row: R) {
+        let columns = self.columns;
+        self.vector
+            .ensure_contains_elem(row, || BitVector::new(columns));
+    }
+
     /// Sets the cell at `(row, column)` to true. Put another way, insert
     /// `column` to the bitset for `row`.
     ///
     /// Returns true if this changed the matrix, and false otherwise.
     pub fn add(&mut self, row: R, column: C) -> bool {
-        let columns = self.columns;
-        self.vector
-            .ensure_contains_elem(row, || BitVector::new(columns));
+        self.ensure_row(row);
         self.vector[row].insert(column)
     }
 
@@ -344,18 +348,14 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
             return false;
         }
 
-        let columns = self.columns;
-        self.vector
-            .ensure_contains_elem(write, || BitVector::new(columns));
+        self.ensure_row(write);
         let (bitvec_read, bitvec_write) = self.vector.pick2_mut(read, write);
         bitvec_write.merge(bitvec_read)
     }
 
     /// Merge a row, `from`, into the `into` row.
     pub fn merge_into(&mut self, into: R, from: &BitVector<C>) -> bool {
-        let columns = self.columns;
-        self.vector
-            .ensure_contains_elem(into, || BitVector::new(columns));
+        self.ensure_row(into);
         self.vector[into].merge(from)
     }
 
