@@ -39,7 +39,7 @@ declare_clippy_lint! {
     "using `Box<T>` where unnecessary"
 }
 
-fn is_non_trait_box(ty: Ty) -> bool {
+fn is_non_trait_box(ty: Ty<'_>) -> bool {
     ty.is_box() && !ty.boxed_ty().is_trait()
 }
 
@@ -137,7 +137,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             }
         }
     }
-    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region, _: ty::BorrowKind, loan_cause: LoanCause) {
+    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, _: ty::BorrowKind, loan_cause: LoanCause) {
         if let Categorization::Local(lid) = cmt.cat {
             match loan_cause {
                 // x.foo()

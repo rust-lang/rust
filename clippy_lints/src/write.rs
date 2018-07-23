@@ -168,7 +168,7 @@ impl LintPass for Pass {
 }
 
 impl EarlyLintPass for Pass {
-    fn check_mac(&mut self, cx: &EarlyContext, mac: &Mac) {
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
         if mac.node.path == "println" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `println!`");
             if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false) {
@@ -261,7 +261,7 @@ fn check_tts(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> Op
             return Some(fmtstr);
         }
         let expr = parser.parse_expr().map_err(|mut err| err.cancel()).ok()?;
-        const SIMPLE: FormatSpec = FormatSpec {
+        const SIMPLE: FormatSpec<'_> = FormatSpec {
             fill: None,
             align: AlignUnknown,
             flags: 0,

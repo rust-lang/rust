@@ -275,7 +275,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
 }
 
 // The boolean part of the return indicates whether some simplifications have been applied.
-fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> (String, bool) {
+fn suggest(cx: &LateContext<'_, '_>, suggestion: &Bool, terminals: &[&Expr]) -> (String, bool) {
     let mut suggest_context = SuggestContext {
         terminals,
         cx,

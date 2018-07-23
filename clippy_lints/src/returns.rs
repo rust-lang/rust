@@ -49,7 +49,7 @@ pub struct ReturnPass;
 
 impl ReturnPass {
     // Check the final stmt or expr in a block for unnecessary return.
-    fn check_block_return(&mut self, cx: &EarlyContext, block: &ast::Block) {
+    fn check_block_return(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         if let Some(stmt) = block.stmts.last() {
             match stmt.node {
                 ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
@@ -61,7 +61,7 @@ impl ReturnPass {
     }
 
     // Check a the final expression in a block if it's a return.
-    fn check_final_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr, span: Option<Span>) {
+    fn check_final_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr, span: Option<Span>) {
         match expr.node {
             // simple return is always "bad"
             ast::ExprKind::Ret(Some(ref inner)) => {
@@ -89,7 +89,7 @@ impl ReturnPass {
         }
     }
 
-    fn emit_return_lint(&mut self, cx: &EarlyContext, ret_span: Span, inner_span: Span) {
+    fn emit_return_lint(&mut self, cx: &EarlyContext<'_>, ret_span: Span, inner_span: Span) {
         if in_external_macro(cx, inner_span) || in_macro(inner_span) {
             return;
         }
@@ -101,7 +101,7 @@ impl ReturnPass {
     }
 
     // Check for "let x = EXPR; x"
-    fn check_let_return(&mut self, cx: &EarlyContext, block: &ast::Block) {
+    fn check_let_return(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         let mut it = block.stmts.iter();
 
         // we need both a let-binding stmt and an expr
@@ -138,14 +138,14 @@ impl LintPass for ReturnPass {
 }
 
 impl EarlyLintPass for ReturnPass {
-    fn check_fn(&mut self, cx: &EarlyContext, kind: FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, _: &ast::FnDecl, _: Span, _: ast::NodeId) {
         match kind {
             FnKind::ItemFn(.., block) | FnKind::Method(.., block) => self.check_block_return(cx, block),
             FnKind::Closure(body) => self.check_final_expr(cx, body, Some(body.span)),
         }
     }
 
-    fn check_block(&mut self, cx: &EarlyContext, block: &ast::Block) {
+    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         self.check_let_return(cx, block);
     }
 }

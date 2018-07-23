@@ -43,7 +43,7 @@ impl LintPass for ItemsAfterStatements {
 }
 
 impl EarlyLintPass for ItemsAfterStatements {
-    fn check_block(&mut self, cx: &EarlyContext, item: &Block) {
+    fn check_block(&mut self, cx: &EarlyContext<'_>, item: &Block) {
         if in_macro(item.span) {
             return;
         }

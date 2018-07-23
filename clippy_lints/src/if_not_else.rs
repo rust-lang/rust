@@ -47,7 +47,7 @@ impl LintPass for IfNotElse {
 }
 
 impl EarlyLintPass for IfNotElse {
-    fn check_expr(&mut self, cx: &EarlyContext, item: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
         if in_external_macro(cx, item.span) {
             return;
         }

@@ -35,14 +35,14 @@ impl LintPass for UnsafeNameRemoval {
 }
 
 impl EarlyLintPass for UnsafeNameRemoval {
-    fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if let ItemKind::Use(ref use_tree) = item.node {
             check_use_tree(use_tree, cx, item.span);
         }
     }
 }
 
-fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext, span: Span) {
+fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
     match use_tree.kind {
         UseTreeKind::Simple(Some(new_name), ..) => {
             let old_name = use_tree
@@ -63,7 +63,7 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext, span: Span) {
     }
 }
 
-fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext, span: Span) {
+fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext<'_>, span: Span) {
     let old_str = old_name.name.as_str();
     let new_str = new_name.name.as_str();
     if contains_unsafe(&old_str) && !contains_unsafe(&new_str) {

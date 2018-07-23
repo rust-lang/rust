@@ -158,7 +158,7 @@ fn invert_cmp(cmp: BinOpKind) -> BinOpKind {
 }
 
 
-fn check_compare(cx: &LateContext, bit_op: &Expr, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
+fn check_compare(cx: &LateContext<'_, '_>, bit_op: &Expr, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
     if let ExprKind::Binary(ref op, ref left, ref right) = bit_op.node {
         if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr {
             return;
@@ -169,7 +169,7 @@ fn check_compare(cx: &LateContext, bit_op: &Expr, cmp_op: BinOpKind, cmp_value: 
     }
 }
 
-fn check_bit_mask(cx: &LateContext, bit_op: BinOpKind, cmp_op: BinOpKind, mask_value: u128, cmp_value: u128, span: Span) {
+fn check_bit_mask(cx: &LateContext<'_, '_>, bit_op: BinOpKind, cmp_op: BinOpKind, mask_value: u128, cmp_value: u128, span: Span) {
     match cmp_op {
         BinOpKind::Eq | BinOpKind::Ne => match bit_op {
             BinOpKind::BitAnd => if mask_value & cmp_value != cmp_value {
@@ -270,7 +270,7 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOpKind, cmp_op: BinOpKind, mask_v
     }
 }
 
-fn check_ineffective_lt(cx: &LateContext, span: Span, m: u128, c: u128, op: &str) {
+fn check_ineffective_lt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, op: &str) {
     if c.is_power_of_two() && m < c {
         span_lint(
             cx,
@@ -286,7 +286,7 @@ fn check_ineffective_lt(cx: &LateContext, span: Span, m: u128, c: u128, op: &str
     }
 }
 
-fn check_ineffective_gt(cx: &LateContext, span: Span, m: u128, c: u128, op: &str) {
+fn check_ineffective_gt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, op: &str) {
     if (c + 1).is_power_of_two() && m <= c {
         span_lint(
             cx,
@@ -302,7 +302,7 @@ fn check_ineffective_gt(cx: &LateContext, span: Span, m: u128, c: u128, op: &str
     }
 }
 
-fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
+fn fetch_int_literal(cx: &LateContext<'_, '_>, lit: &Expr) -> Option<u128> {
     match constant(cx, cx.tables, lit)?.0 {
         Constant::Int(n) => Some(n),
         _ => None,

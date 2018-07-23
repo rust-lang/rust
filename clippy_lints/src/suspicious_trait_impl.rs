@@ -163,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
 }
 
 fn check_binop<'a>(
-    cx: &LateContext,
+    cx: &LateContext<'_, '_>,
     expr: &hir::Expr,
     binop: hir::BinOpKind,
     traits: &[&'a str],

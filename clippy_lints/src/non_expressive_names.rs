@@ -312,13 +312,13 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 }
 
 impl EarlyLintPass for NonExpressiveNames {
-    fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if let ItemKind::Fn(ref decl, _, _, ref blk) = item.node {
             do_check(self, cx, &item.attrs, decl, blk);
         }
     }
 
-    fn check_impl_item(&mut self, cx: &EarlyContext, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &ImplItem) {
         if let ImplItemKind::Method(ref sig, ref blk) = item.node {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
@@ -326,7 +326,7 @@ impl EarlyLintPass for NonExpressiveNames {
 
 }
 
-fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
+fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
     if !attr::contains_name(attrs, "test") {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),

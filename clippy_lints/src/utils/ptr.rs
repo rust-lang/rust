@@ -7,7 +7,7 @@ use syntax::codemap::Span;
 use crate::utils::{get_pat_name, match_var, snippet};
 
 pub fn get_spans(
-    cx: &LateContext,
+    cx: &LateContext<'_, '_>,
     opt_body_id: Option<BodyId>,
     idx: usize,
     replacements: &'static [(&'static str, &'static str)],

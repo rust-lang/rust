@@ -181,7 +181,7 @@ pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &m
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
+pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     let conf = match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
