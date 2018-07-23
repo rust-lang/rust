@@ -11,7 +11,7 @@ LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
    |                ----------^^^^^-----------------
    |                |   |     |
    |                |   |     free region requires that `'1` must outlive `'2`
-   |                |   lifetime `'1` appears in this argument
+   |                |   has type `&'1i32`
    |                lifetime `'2` appears in return type
 
 error: aborting due to previous error

@@ -8,12 +8,12 @@ error: unsatisfied lifetime constraints
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |                                                ---------  - lifetime `'1` appears in this argument
+   |                                                ---------  - has type `&'1 std::cell::Cell<&'2 u32>`
    |                                                |
-   |                                                lifetime `'2` appears in this argument
+   |                                                has type `&'3 std::cell::Cell<&'4 &'5 u32>`
 LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'3`
 
 note: No external requirements
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:45:47

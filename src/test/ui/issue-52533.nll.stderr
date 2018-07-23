@@ -8,10 +8,10 @@ error: unsatisfied lifetime constraints
   --> $DIR/issue-52533.rs:15:16
    |
 LL |     foo(|a, b| b)
-   |          -  -  ^ free region requires that `'1` must outlive `'2`
+   |          -  -  ^ closure was supposed to return data with lifetime `'1` but it is returning data with lifetime `'2`
    |          |  |
-   |          |  lifetime `'1` appears in this argument
-   |          lifetime `'2` appears in this argument
+   |          |  has type `&'1u32`
+   |          has type `&'2u32`
 
 error: aborting due to previous error
 

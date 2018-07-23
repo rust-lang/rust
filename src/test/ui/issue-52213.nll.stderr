@@ -5,10 +5,10 @@ LL |     match (&t,) { //~ ERROR cannot infer an appropriate lifetime
    |           ^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/issue-52213.rs:13:11
+  --> $DIR/issue-52213.rs:12:11
    |
-LL |         ((u,),) => u,
-   |           ^ free region requires that `'a` must outlive `'b`
+LL |     match (&t,) { //~ ERROR cannot infer an appropriate lifetime
+   |           ^^^^^ free region requires that `'a` must outlive `'b`
 
 error: aborting due to previous error
 
