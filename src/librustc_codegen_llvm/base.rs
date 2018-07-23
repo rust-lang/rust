@@ -1277,7 +1277,7 @@ pub fn provide(providers: &mut Providers) {
         all.iter()
             .find(|cgu| *cgu.name() == name)
             .cloned()
-            .expect(&format!("failed to find cgu with name {:?}", name))
+            .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
     };
     providers.compile_codegen_unit = compile_codegen_unit;
 

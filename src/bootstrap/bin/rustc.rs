@@ -326,7 +326,7 @@ fn main() {
             let start = Instant::now();
             let status = cmd
                 .status()
-                .expect(&format!("\n\n failed to run {:?}", cmd));
+                .unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
             let dur = start.elapsed();
 
             let is_test = args.iter().any(|a| a == "--test");
@@ -346,7 +346,7 @@ fn main() {
         }
     }
 
-    let code = exec_cmd(&mut cmd).expect(&format!("\n\n failed to run {:?}", cmd));
+    let code = exec_cmd(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
     std::process::exit(code);
 }
 

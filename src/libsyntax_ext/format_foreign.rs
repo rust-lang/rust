@@ -232,11 +232,11 @@ pub mod printf {
     impl Num {
         fn from_str(s: &str, arg: Option<&str>) -> Self {
             if let Some(arg) = arg {
-                Num::Arg(arg.parse().expect(&format!("invalid format arg `{:?}`", arg)))
+                Num::Arg(arg.parse().unwrap_or_else(|_| panic!("invalid format arg `{:?}`", arg)))
             } else if s == "*" {
                 Num::Next
             } else {
-                Num::Num(s.parse().expect(&format!("invalid format num `{:?}`", s)))
+                Num::Num(s.parse().unwrap_or_else(|_| panic!("invalid format num `{:?}`", s)))
             }
         }
 
