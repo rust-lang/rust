@@ -140,7 +140,6 @@ declare_features! (
     (active, linkage, "1.0.0", Some(29603), None),
     (active, quote, "1.0.0", Some(29601), None),
 
-
     // rustc internal
     (active, rustc_diagnostic_macros, "1.0.0", None, None),
     (active, rustc_const_unstable, "1.0.0", None, None),

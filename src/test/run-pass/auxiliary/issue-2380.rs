@@ -11,7 +11,6 @@
 #![crate_name="a"]
 #![crate_type = "lib"]
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 pub trait i<T>

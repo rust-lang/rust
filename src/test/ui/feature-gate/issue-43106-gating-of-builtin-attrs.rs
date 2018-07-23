@@ -43,6 +43,7 @@
 #![feature(rustc_attrs)] // For `rustc_error`; see note below.
 #![warn(unused_attributes, unknown_lints)]
 #![allow(dead_code)]
+#![allow(stable_features)]
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
 
@@ -100,7 +101,7 @@
 // For #![crate_id], see issue #43142. (I cannot bear to enshrine current behavior in a test)
 
 // FIXME(#44232) we should warn that this isn't used.
-#![feature                    ( x0600)]
+#![feature                    ( rust1)]
 
 // For #![no_start], see issue #43144. (I cannot bear to enshrine current behavior in a test)
 

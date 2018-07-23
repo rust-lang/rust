@@ -106,12 +106,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub UNKNOWN_FEATURES,
-    Deny,
-    "unknown features found in crate-level #[feature] directives"
-}
-
-declare_lint! {
     pub STABLE_FEATURES,
     Warn,
     "stable features found in #[feature] directive"
@@ -368,7 +362,6 @@ impl LintPass for HardwiredLints {
             UNUSED_MACROS,
             WARNINGS,
             UNUSED_FEATURES,
-            UNKNOWN_FEATURES,
             STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
             TRIVIAL_CASTS,

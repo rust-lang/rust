@@ -10,7 +10,6 @@
 
 
 #![allow(dead_assignment)]
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 pub fn main() {

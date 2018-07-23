@@ -12,7 +12,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 fn sums_to(v: Vec<isize> , sum: isize) -> bool {

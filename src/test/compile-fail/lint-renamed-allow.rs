@@ -13,6 +13,6 @@
 
 #![allow(renamed_and_removed_lints)]
 
-#[deny(unknown_features)]
+#[deny(single_use_lifetime)]
 #[deny(unused)]
 fn main() { let unused = (); } //~ ERROR unused

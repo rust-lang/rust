@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unknown_features)]
-
 #![feature(unknown_rust_feature)] //~ ERROR unknown feature
 
 fn main() {}

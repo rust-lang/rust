@@ -10,8 +10,6 @@
 
 // Test that the call operator autoderefs when calling to an object type.
 
-#![allow(unknown_features)]
-
 use std::ops::FnMut;
 
 fn make_adder(x: isize) -> Box<FnMut(isize)->isize + 'static> {

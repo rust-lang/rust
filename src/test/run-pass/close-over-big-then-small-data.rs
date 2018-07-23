@@ -12,7 +12,6 @@
 // storing closure data (as we used to do), the u64 would
 // overwrite the u16.
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 struct Pair<A,B> {

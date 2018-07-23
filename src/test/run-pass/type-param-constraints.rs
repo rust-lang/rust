@@ -10,7 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 fn p_foo<T>(_pinned: T) { }

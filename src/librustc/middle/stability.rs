@@ -840,6 +840,10 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // FIXME(varkor): we don't properly handle lib features behind `cfg` attributes yet,
     // but it happens just to affect `libc`, so we're just going to hard-code it for now.
     remaining_lib_features.remove(&Symbol::intern("libc"));
+    // FIXME(varkor): we have a problem gathering features on macros right now, so we're
+    // going to hard-code some features here for now.
+    remaining_lib_features.remove(&Symbol::intern("await_macro"));
+    remaining_lib_features.remove(&Symbol::intern("unstable_macros"));
 
     for (feature, stable) in tcx.lib_features().iter() {
         if let Some(since) = stable {
@@ -852,10 +856,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     for (feature, span) in remaining_lib_features {
-        tcx.lint_node(lint::builtin::UNKNOWN_FEATURES,
-                      ast::CRATE_NODE_ID,
-                      span,
-                      &format!("unknown feature `{}`", feature));
+        struct_span_err!(tcx.sess, span, E0635, "unknown feature `{}`", feature).emit();
     }
 
     // FIXME(#44232): the `used_features` table no longer exists, so we

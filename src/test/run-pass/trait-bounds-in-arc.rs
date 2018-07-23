@@ -12,7 +12,7 @@
 // and shared between threads as long as all types fulfill Send.
 
 // ignore-emscripten no threads support
-#![allow(unknown_features)]
+
 #![feature(box_syntax)]
 
 use std::sync::Arc;

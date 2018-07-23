@@ -11,8 +11,6 @@
 // Issue 4691: Ensure that functional-struct-updates operates
 // correctly and moves rather than copy when appropriate.
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax, core)]
 
 struct ncint { v: isize }

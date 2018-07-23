@@ -10,7 +10,6 @@
 
 // error-pattern:panicked at 'Box<Any>'
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 fn main() {
