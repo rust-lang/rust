@@ -643,6 +643,7 @@ impl fmt::Debug for CString {
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl From<CString> for Vec<u8> {
     /// Converts a [`CString`] into a [`Vec`]`<u8>`.
+    ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.
     ///
     /// [`Vec`]: ../vec/struct.Vec.html

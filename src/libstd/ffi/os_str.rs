@@ -349,6 +349,7 @@ impl OsString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for OsString {
     /// Converts a [`String`] into a [`OsString`].
+    ///
     /// The conversion copies the data, and includes an allocation on the heap.
     ///
     /// [`String`]: ../string/struct.String.html
