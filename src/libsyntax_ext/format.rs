@@ -117,6 +117,8 @@ struct Context<'a, 'b: 'a> {
     invalid_refs: Vec<(usize, usize)>,
     /// Spans of all the formatting arguments, in order.
     arg_spans: Vec<Span>,
+    /// Wether this formatting string is a literal or it comes from a macro.
+    is_literal: bool,
 }
 
 /// Parses the arguments from the given list of tokens, returning None
@@ -276,7 +278,11 @@ impl<'a, 'b> Context<'a, 'b> {
     /// format string.
     fn report_invalid_references(&self, numbered_position_args: bool) {
         let mut e;
-        let sp = MultiSpan::from_spans(self.arg_spans.clone());
+        let sp = if self.is_literal {
+            MultiSpan::from_spans(self.arg_spans.clone())
+        } else {
+            MultiSpan::from_span(self.fmtsp)
+        };
         let mut refs: Vec<_> = self
             .invalid_refs
             .iter()
@@ -294,7 +300,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 ),
             );
         } else {
-            let (arg_list, sp) = match refs.len() {
+            let (arg_list, mut sp) = match refs.len() {
                 1 => {
                     let (reg, pos) = refs.pop().unwrap();
                     (
@@ -317,11 +323,14 @@ impl<'a, 'b> Context<'a, 'b> {
                     )
                 }
             };
+            if !self.is_literal {
+                sp = MultiSpan::from_span(self.fmtsp);
+            }
 
             e = self.ecx.mut_span_err(sp,
                 &format!("invalid reference to positional {} ({})",
-                        arg_list,
-                        self.describe_num_args()));
+                         arg_list,
+                         self.describe_num_args()));
             e.note("positional arguments are zero-based");
         };
 
@@ -370,7 +379,11 @@ impl<'a, 'b> Context<'a, 'b> {
                     Some(e) => *e,
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
-                        let sp = *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp);
+                        let sp = if self.is_literal {
+                            *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp)
+                        } else {
+                            self.fmtsp
+                        };
                         let mut err = self.ecx.struct_span_err(sp, &msg[..]);
                         err.emit();
                         return;
@@ -721,7 +734,7 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
 
 pub fn expand_format_args_nl<'cx>(
     ecx: &'cx mut ExtCtxt,
-                                  mut sp: Span,
+    mut sp: Span,
     tts: &[tokenstream::TokenTree],
 ) -> Box<dyn base::MacResult + 'cx> {
     //if !ecx.ecfg.enable_allow_internal_unstable() {
@@ -784,6 +797,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             return DummyResult::raw_expr(sp);
         }
     };
+    let is_literal = match ecx.codemap().span_to_snippet(fmt_sp) {
+        Ok(ref s) if s.starts_with("\"") || s.starts_with("r#") => true,
+        _ => false,
+    };
 
     let mut cx = Context {
         ecx,
@@ -806,6 +823,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         fmtsp: fmt.span,
         invalid_refs: Vec::new(),
         arg_spans: Vec::new(),
+        is_literal,
     };
 
     let fmt_str = &*fmt.node.0.as_str();
