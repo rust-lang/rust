@@ -313,13 +313,12 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             return Ok((FileMap::new(), FormatReport::new()));
         }
 
-        let input_is_stdin = input.is_text();
         let mut filemap = FileMap::new();
-        // TODO split Session? out vs config?
-        let format_result = self.format_project(input, |this, path, mut result| {
-            if let Some(ref mut out) = this.out {
-                match filemap::write_file(&mut result, &path, out, &this.config) {
-                    Ok(b) if b => this.summary.add_diff(),
+        let config = &self.config.clone();
+        let format_result = format_project(input, config, |path, mut result| {
+            if let Some(ref mut out) = self.out {
+                match filemap::write_file(&mut result, &path, out, &self.config) {
+                    Ok(b) if b => self.summary.add_diff(),
                     Err(e) => {
                         // Create a new error with path_str to help users see which files failed
                         let err_msg = format!("{}: {}", path, e);
@@ -333,198 +332,192 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             Ok(())
         });
 
-        should_emit_verbose(input_is_stdin, &self.config, || {
-            fn duration_to_f32(d: Duration) -> f32 {
-                d.as_secs() as f32 + d.subsec_nanos() as f32 / 1_000_000_000f32
-            }
-
-            println!(
-                "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
-                duration_to_f32(self.timer.get_parse_time().unwrap()),
-                duration_to_f32(self.timer.get_format_time().unwrap()),
-            )
-        });
-
         format_result.map(|(result, summary)| {
             self.summary.add(summary);
             (filemap, result)
         })
     }
+}
 
-    // TODO only uses config and timer
-    fn format_project<F>(
-        &mut self,
-        input: Input,
-        mut formatted_file: F,
-    ) -> Result<(FormatReport, Summary), ErrorKind>
-    where
-        F: FnMut(&mut Session<T>, FileName, String) -> Result<(), ErrorKind>,
-    {
-        let mut summary = Summary::default();
-        let main_file = match input {
-            Input::File(ref file) => FileName::Real(file.clone()),
-            Input::Text(..) => FileName::Stdin,
-        };
+fn format_project<F>(
+    input: Input,
+    config: &Config,
+    mut formatted_file: F,
+) -> Result<(FormatReport, Summary), ErrorKind>
+where
+    F: FnMut(FileName, String) -> Result<(), ErrorKind>,
+{
+    let mut summary = Summary::default();
+    let mut timer = Timer::Initialized(Instant::now());
 
-        // Parse the crate.
-        let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
-        let mut parse_session = self.make_parse_sess(codemap.clone());
-        let krate = match parse_input(input, &parse_session, &self.config) {
-            Ok(krate) => krate,
-            Err(err) => {
-                match err {
-                    ParseError::Error(mut diagnostic) => diagnostic.emit(),
-                    ParseError::Panic => {
-                        // Note that if you see this message and want more information,
-                        // then go to `parse_input` and run the parse function without
-                        // `catch_unwind` so rustfmt panics and you can get a backtrace.
-                        should_emit_verbose(main_file != FileName::Stdin, &self.config, || {
-                            println!("The Rust parser panicked")
-                        });
-                    }
-                    ParseError::Recovered => {}
+    let input_is_stdin = input.is_text();
+    let main_file = match input {
+        Input::File(ref file) => FileName::Real(file.clone()),
+        Input::Text(..) => FileName::Stdin,
+    };
+
+    // Parse the crate.
+    let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
+    let mut parse_session = make_parse_sess(codemap.clone(), config);
+    let krate = match parse_input(input, &parse_session, config) {
+        Ok(krate) => krate,
+        Err(err) => {
+            match err {
+                ParseError::Error(mut diagnostic) => diagnostic.emit(),
+                ParseError::Panic => {
+                    // Note that if you see this message and want more information,
+                    // then go to `parse_input` and run the parse function without
+                    // `catch_unwind` so rustfmt panics and you can get a backtrace.
+                    should_emit_verbose(main_file != FileName::Stdin, config, || {
+                        println!("The Rust parser panicked")
+                    });
                 }
-                summary.add_parsing_error();
-                return Err(ErrorKind::ParseError);
+                ParseError::Recovered => {}
             }
-        };
-        self.timer = self.timer.done_parsing();
+            summary.add_parsing_error();
+            return Err(ErrorKind::ParseError);
+        }
+    };
+    timer = timer.done_parsing();
 
-        // Suppress error output if we have to do any further parsing.
+    // Suppress error output if we have to do any further parsing.
+    let silent_emitter = Box::new(EmitterWriter::new(
+        Box::new(Vec::new()),
+        Some(codemap.clone()),
+        false,
+        false,
+    ));
+    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
+
+    let report = FormatReport::new();
+
+    let skip_children = config.skip_children();
+    for (path, module) in modules::list_files(&krate, parse_session.codemap())? {
+        if (skip_children && path != main_file) || config.ignore().skip_file(&path) {
+            continue;
+        }
+        should_emit_verbose(main_file != FileName::Stdin, config, || {
+            println!("Formatting {}", path)
+        });
+        let filemap = parse_session
+            .codemap()
+            .lookup_char_pos(module.inner.lo())
+            .file;
+        let big_snippet = filemap.src.as_ref().unwrap();
+        let snippet_provider = SnippetProvider::new(filemap.start_pos, big_snippet);
+        let mut visitor =
+            FmtVisitor::from_codemap(&parse_session, config, &snippet_provider, report.clone());
+        // Format inner attributes if available.
+        if !krate.attrs.is_empty() && path == main_file {
+            visitor.skip_empty_lines(filemap.end_pos);
+            if visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner) {
+                visitor.push_rewrite(module.inner, None);
+            } else {
+                visitor.format_separate_mod(module, &*filemap);
+            }
+        } else {
+            visitor.last_pos = filemap.start_pos;
+            visitor.skip_empty_lines(filemap.end_pos);
+            visitor.format_separate_mod(module, &*filemap);
+        };
+
+        debug_assert_eq!(
+            visitor.line_number,
+            ::utils::count_newlines(&visitor.buffer)
+        );
+
+        // For some reason, the codemap does not include terminating
+        // newlines so we must add one on for each file. This is sad.
+        filemap::append_newline(&mut visitor.buffer);
+
+        format_lines(
+            &mut visitor.buffer,
+            &path,
+            &visitor.skipped_range,
+            config,
+            &report,
+        );
+        replace_with_system_newlines(&mut visitor.buffer, config);
+
+        if visitor.macro_rewrite_failure {
+            summary.add_macro_format_failure();
+        }
+
+        formatted_file(path, visitor.buffer)?;
+    }
+    timer = timer.done_formatting();
+
+    should_emit_verbose(input_is_stdin, config, || {
+        println!(
+            "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
+            timer.get_parse_time(),
+            timer.get_format_time(),
+        )
+    });
+
+    if report.has_warnings() {
+        summary.add_formatting_error();
+    }
+    {
+        let report_errs = &report.internal.borrow().1;
+        if report_errs.has_check_errors {
+            summary.add_check_error();
+        }
+        if report_errs.has_operational_errors {
+            summary.add_operational_error();
+        }
+    }
+
+    Ok((report, summary))
+}
+
+fn make_parse_sess(codemap: Rc<CodeMap>, config: &Config) -> ParseSess {
+    let tty_handler = if config.hide_parse_errors() {
         let silent_emitter = Box::new(EmitterWriter::new(
             Box::new(Vec::new()),
             Some(codemap.clone()),
             false,
             false,
         ));
-        parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
-
-        let report = FormatReport::new();
-
-        let skip_children = self.config.skip_children();
-        for (path, module) in modules::list_files(&krate, parse_session.codemap())? {
-            if (skip_children && path != main_file) || self.config.ignore().skip_file(&path) {
-                continue;
-            }
-            should_emit_verbose(main_file != FileName::Stdin, &self.config, || {
-                println!("Formatting {}", path)
-            });
-            let filemap = parse_session
-                .codemap()
-                .lookup_char_pos(module.inner.lo())
-                .file;
-            let big_snippet = filemap.src.as_ref().unwrap();
-            let snippet_provider = SnippetProvider::new(filemap.start_pos, big_snippet);
-            let mut visitor = FmtVisitor::from_codemap(
-                &parse_session,
-                &self.config,
-                &snippet_provider,
-                report.clone(),
-            );
-            // Format inner attributes if available.
-            if !krate.attrs.is_empty() && path == main_file {
-                visitor.skip_empty_lines(filemap.end_pos);
-                if visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner) {
-                    visitor.push_rewrite(module.inner, None);
-                } else {
-                    visitor.format_separate_mod(module, &*filemap);
-                }
-            } else {
-                visitor.last_pos = filemap.start_pos;
-                visitor.skip_empty_lines(filemap.end_pos);
-                visitor.format_separate_mod(module, &*filemap);
-            };
-
-            debug_assert_eq!(
-                visitor.line_number,
-                ::utils::count_newlines(&visitor.buffer)
-            );
-
-            // For some reason, the codemap does not include terminating
-            // newlines so we must add one on for each file. This is sad.
-            filemap::append_newline(&mut visitor.buffer);
-
-            format_lines(
-                &mut visitor.buffer,
-                &path,
-                &visitor.skipped_range,
-                &self.config,
-                &report,
-            );
-            self.replace_with_system_newlines(&mut visitor.buffer);
-
-            if visitor.macro_rewrite_failure {
-                summary.add_macro_format_failure();
-            }
-
-            formatted_file(self, path, visitor.buffer)?;
-        }
-        self.timer = self.timer.done_formatting();
-
-        if report.has_warnings() {
-            summary.add_formatting_error();
-        }
-        {
-            let report_errs = &report.internal.borrow().1;
-            if report_errs.has_check_errors {
-                summary.add_check_error();
-            }
-            if report_errs.has_operational_errors {
-                summary.add_operational_error();
-            }
-        }
-
-        Ok((report, summary))
-    }
-
-    fn make_parse_sess(&self, codemap: Rc<CodeMap>) -> ParseSess {
-        let tty_handler = if self.config.hide_parse_errors() {
-            let silent_emitter = Box::new(EmitterWriter::new(
-                Box::new(Vec::new()),
-                Some(codemap.clone()),
-                false,
-                false,
-            ));
-            Handler::with_emitter(true, false, silent_emitter)
+        Handler::with_emitter(true, false, silent_emitter)
+    } else {
+        let supports_color = term::stderr().map_or(false, |term| term.supports_color());
+        let color_cfg = if supports_color {
+            ColorConfig::Auto
         } else {
-            let supports_color = term::stderr().map_or(false, |term| term.supports_color());
-            let color_cfg = if supports_color {
-                ColorConfig::Auto
-            } else {
-                ColorConfig::Never
-            };
-            Handler::with_tty_emitter(color_cfg, true, false, Some(codemap.clone()))
+            ColorConfig::Never
         };
+        Handler::with_tty_emitter(color_cfg, true, false, Some(codemap.clone()))
+    };
 
-        ParseSess::with_span_handler(tty_handler, codemap)
-    }
+    ParseSess::with_span_handler(tty_handler, codemap)
+}
 
-    fn replace_with_system_newlines(&self, text: &mut String) -> () {
-        let style = if self.config.newline_style() == NewlineStyle::Native {
-            if cfg!(windows) {
-                NewlineStyle::Windows
-            } else {
-                NewlineStyle::Unix
-            }
+fn replace_with_system_newlines(text: &mut String, config: &Config) -> () {
+    let style = if config.newline_style() == NewlineStyle::Native {
+        if cfg!(windows) {
+            NewlineStyle::Windows
         } else {
-            self.config.newline_style()
-        };
-
-        match style {
-            NewlineStyle::Unix => return,
-            NewlineStyle::Windows => {
-                let mut transformed = String::with_capacity(text.capacity());
-                for c in text.chars() {
-                    match c {
-                        '\n' => transformed.push_str("\r\n"),
-                        '\r' => continue,
-                        c => transformed.push(c),
-                    }
-                }
-                *text = transformed;
-            }
-            NewlineStyle::Native => unreachable!(),
+            NewlineStyle::Unix
         }
+    } else {
+        config.newline_style()
+    };
+
+    match style {
+        NewlineStyle::Unix => return,
+        NewlineStyle::Windows => {
+            let mut transformed = String::with_capacity(text.capacity());
+            for c in text.chars() {
+                match c {
+                    '\n' => transformed.push_str("\r\n"),
+                    '\r' => continue,
+                    c => transformed.push(c),
+                }
+            }
+            *text = transformed;
+        }
+        NewlineStyle::Native => unreachable!(),
     }
 }
 
@@ -548,7 +541,7 @@ pub(crate) struct ModifiedLines {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum Timer {
+enum Timer {
     Initialized(Instant),
     DoneParsing(Instant, Instant),
     DoneFormatting(Instant, Instant, Instant),
@@ -571,26 +564,30 @@ impl Timer {
         }
     }
 
-    /// Returns the time it took to parse the source files in nanoseconds.
-    fn get_parse_time(&self) -> Option<Duration> {
+    /// Returns the time it took to parse the source files in seconds.
+    fn get_parse_time(&self) -> f32 {
         match *self {
             Timer::DoneParsing(init, parse_time) | Timer::DoneFormatting(init, parse_time, _) => {
                 // This should never underflow since `Instant::now()` guarantees monotonicity.
-                Some(parse_time.duration_since(init))
+                Self::duration_to_f32(parse_time.duration_since(init))
             }
-            Timer::Initialized(..) => None,
+            Timer::Initialized(..) => unreachable!(),
         }
     }
 
     /// Returns the time it took to go from the parsed AST to the formatted output. Parsing time is
     /// not included.
-    fn get_format_time(&self) -> Option<Duration> {
+    fn get_format_time(&self) -> f32 {
         match *self {
             Timer::DoneFormatting(_init, parse_time, format_time) => {
-                Some(format_time.duration_since(parse_time))
+                Self::duration_to_f32(format_time.duration_since(parse_time))
             }
-            Timer::DoneParsing(..) | Timer::Initialized(..) => None,
+            Timer::DoneParsing(..) | Timer::Initialized(..) => unreachable!(),
         }
+    }
+
+    fn duration_to_f32(d: Duration) -> f32 {
+        d.as_secs() as f32 + d.subsec_nanos() as f32 / 1_000_000_000f32
     }
 }
 

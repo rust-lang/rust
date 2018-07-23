@@ -45,12 +45,11 @@ use std::io::{self, Write};
 use std::mem;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::time::Instant;
 use syntax::ast;
 
 use comment::LineClasses;
 use failure::Fail;
-use formatting::{FormatErrorMap, FormattingError, ReportedErrors, Summary, Timer};
+use formatting::{FormatErrorMap, FormattingError, ReportedErrors, Summary};
 use issues::Issue;
 use shape::Indent;
 
@@ -445,8 +444,6 @@ pub struct Session<'b, T: Write + 'b> {
     pub config: Config,
     pub out: Option<&'b mut T>,
     pub summary: Summary,
-    // Keeps track of time spent in parsing and formatting steps.
-    timer: Timer,
 }
 
 impl<'b, T: Write + 'b> Session<'b, T> {
@@ -459,7 +456,6 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             config,
             out,
             summary: Summary::default(),
-            timer: Timer::Initialized(Instant::now()),
         }
     }
 
