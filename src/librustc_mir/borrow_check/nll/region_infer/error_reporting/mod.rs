@@ -16,9 +16,9 @@ use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
 use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
 use rustc::ty::RegionVid;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::Diagnostic;
+use std::collections::VecDeque;
 use std::fmt;
 use syntax_pos::Span;
 
@@ -54,6 +54,13 @@ impl fmt::Display for ConstraintCategory {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum Trace {
+    StartRegion,
+    FromConstraint(ConstraintIndex),
+    NotVisited,
+}
+
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Walks the graph of constraints (where `'a: 'b` is considered
     /// an edge `'a -> 'b`) to find all paths from `from_region` to
@@ -64,56 +71,52 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
-    ) -> Vec<Vec<ConstraintIndex>> {
-        let mut results = vec![];
-        self.find_constraint_paths_between_regions_helper(
-            from_region,
-            from_region,
-            &target_test,
-            &mut FxHashSet::default(),
-            &mut vec![],
-            &mut results,
-        );
-        results
-    }
+    ) -> Option<Vec<ConstraintIndex>> {
+        let mut context = IndexVec::from_elem(Trace::NotVisited, &self.definitions);
+        context[from_region] = Trace::StartRegion;
 
-    /// Helper for `find_constraint_paths_between_regions`.
-    fn find_constraint_paths_between_regions_helper(
-        &self,
-        from_region: RegionVid,
-        current_region: RegionVid,
-        target_test: &impl Fn(RegionVid) -> bool,
-        visited: &mut FxHashSet<RegionVid>,
-        stack: &mut Vec<ConstraintIndex>,
-        results: &mut Vec<Vec<ConstraintIndex>>,
-    ) {
-        // Check if we already visited this region.
-        if !visited.insert(current_region) {
-            return;
-        }
+        // Use a deque so that we do a breadth-first search. We will
+        // stop at the first match, which ought to be the shortest
+        // path (fewest constraints).
+        let mut deque = VecDeque::new();
+        deque.push_back(from_region);
 
-        // Check if we reached the region we were looking for.
-        if target_test(current_region) {
-            if !stack.is_empty() {
-                assert_eq!(self.constraints[stack[0]].sup, from_region);
-                results.push(stack.clone());
+        while let Some(r) = deque.pop_front() {
+            // Check if we reached the region we were looking for. If so,
+            // we can reconstruct the path that led to it and return it.
+            if target_test(r) {
+                let mut result = vec![];
+                let mut p = r;
+                loop {
+                    match context[p] {
+                        Trace::NotVisited => bug!("found unvisited region {:?} on path to {:?}", p, r),
+                        Trace::FromConstraint(c) => {
+                            result.push(c);
+                            p = self.constraints[c].sup;
+                        }
+
+                        Trace::StartRegion => {
+                            result.reverse();
+                            return Some(result);
+                        }
+                    }
+                }
             }
-            return;
+
+            // Otherwise, walk over the outgoing constraints and
+            // enqueue any regions we find, keeping track of how we
+            // reached them.
+            for constraint in self.constraint_graph.outgoing_edges(r) {
+                assert_eq!(self.constraints[constraint].sup, r);
+                let sub_region = self.constraints[constraint].sub;
+                if let Trace::NotVisited = context[sub_region] {
+                    context[sub_region] = Trace::FromConstraint(constraint);
+                    deque.push_back(sub_region);
+                }
+            }
         }
 
-        for constraint in self.constraint_graph.outgoing_edges(current_region) {
-            assert_eq!(self.constraints[constraint].sup, current_region);
-            stack.push(constraint);
-            self.find_constraint_paths_between_regions_helper(
-                from_region,
-                self.constraints[constraint].sub,
-                target_test,
-                visited,
-                stack,
-                results,
-            );
-            stack.pop();
-        }
+        None
     }
 
     /// This function will return true if a constraint is interesting and false if a constraint
@@ -204,12 +207,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
         // Find all paths
-        let constraint_paths = self.find_constraint_paths_between_regions(fr, |r| r == outlived_fr);
-        debug!("report_error: constraint_paths={:#?}", constraint_paths);
-
-        // Find the shortest such path.
-        let path = constraint_paths.iter().min_by_key(|p| p.len()).unwrap();
-        debug!("report_error: shortest_path={:?}", path);
+        let path = self.find_constraint_paths_between_regions(fr, |r| r == outlived_fr).unwrap();
+        debug!("report_error: path={:#?}", path);
 
         // Classify each of the constraints along the path.
         let mut categorized_path: Vec<(ConstraintCategory, Span)> = path.iter()
