@@ -754,11 +754,6 @@ where R: 'static + Send,
         for pass in &passes {
             // determine if we know about this pass
             let pass = match passes::PASSES.iter().find(|(p, ..)| p == pass) {
-            /*
-                                             .position(|&(p, ..)| {
-                                                 p == *pass
-                                             }) {
-                                                 */
                 Some(pass) => pass.1,
                 None => {
                     error!("unknown pass {}, skipping", *pass);
