@@ -57,22 +57,22 @@ LL |     format!("{name} {value} {} {} {} {} {} {}", 0, name=1, value=2);
    = note: positional arguments are zero-based
 
 error: there is no argument named `foo`
-  --> $DIR/ifmt-bad-arg.rs:37:13
+  --> $DIR/ifmt-bad-arg.rs:37:17
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^
 
 error: there is no argument named `bar`
-  --> $DIR/ifmt-bad-arg.rs:37:13
+  --> $DIR/ifmt-bad-arg.rs:37:26
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^^^
 
 error: there is no argument named `foo`
-  --> $DIR/ifmt-bad-arg.rs:41:13
+  --> $DIR/ifmt-bad-arg.rs:41:14
    |
 LL |     format!("{foo}");                //~ ERROR: no argument named `foo`
-   |             ^^^^^^^
+   |              ^^^^^
 
 error: multiple unused formatting arguments
   --> $DIR/ifmt-bad-arg.rs:42:17
@@ -139,10 +139,10 @@ LL |     format!("", foo=1, 2);           //~ ERROR: positional arguments cannot
    |                        ^
 
 error: there is no argument named `valueb`
-  --> $DIR/ifmt-bad-arg.rs:55:13
+  --> $DIR/ifmt-bad-arg.rs:55:23
    |
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
-   |             ^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^
 
 error: named argument never used
   --> $DIR/ifmt-bad-arg.rs:55:51

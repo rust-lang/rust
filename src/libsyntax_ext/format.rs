@@ -111,8 +111,10 @@ struct Context<'a, 'b: 'a> {
     /// still existed in this phase of processing.
     /// Used only for `all_pieces_simple` tracking in `build_piece`.
     curarg: usize,
+    curpiece: usize,
     /// Keep track of invalid references to positional arguments
     invalid_refs: Vec<usize>,
+    arg_spans: Vec<Span>,
 }
 
 /// Parses the arguments from the given list of tokens, returning None
@@ -235,6 +237,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
                 let ty = Placeholder(arg.format.ty.to_string());
                 self.verify_arg_type(pos, ty);
+                self.curpiece += 1;
             }
         }
     }
@@ -347,7 +350,9 @@ impl<'a, 'b> Context<'a, 'b> {
                     Some(e) => *e,
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
-                        self.ecx.span_err(self.fmtsp, &msg[..]);
+                        let sp = *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp);
+                        let mut err = self.ecx.struct_span_err(sp, &msg[..]);
+                        err.emit();
                         return;
                     }
                 };
@@ -773,6 +778,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         arg_unique_types,
         names,
         curarg: 0,
+        curpiece: 0,
         arg_index_map: Vec::new(),
         count_args: Vec::new(),
         count_positions: HashMap::new(),
@@ -785,6 +791,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         macsp,
         fmtsp: fmt.span,
         invalid_refs: Vec::new(),
+        arg_spans: Vec::new(),
     };
 
     let fmt_str = &*fmt.node.0.as_str();
@@ -793,12 +800,22 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         ast::StrStyle::Raw(raw) => Some(raw as usize),
     };
     let mut parser = parse::Parser::new(fmt_str, str_style);
+    let mut unverified_pieces = vec![];
     let mut pieces = vec![];
 
-    while let Some(mut piece) = parser.next() {
+    while let Some(piece) = parser.next() {
         if !parser.errors.is_empty() {
             break;
         }
+        unverified_pieces.push(piece);
+    }
+
+    cx.arg_spans = parser.arg_places.iter()
+        .map(|&(start, end)| fmt.span.from_inner_byte_pos(start, end))
+        .collect();
+
+    // This needs to happen *after* the Parser has consumed all pieces to create all the spans
+    for mut piece in unverified_pieces {
         cx.verify_piece(&piece);
         cx.resolve_name_inplace(&mut piece);
         pieces.push(piece);
