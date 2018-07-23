@@ -10,8 +10,8 @@
 
 // Detecting lib features (i.e. features that are not lang features).
 //
-// These are declared using stability attributes (e.g. `#[stable(..)]`
-// and `#[unstable(..)]`), but are not declared in one single location
+// These are declared using stability attributes (e.g. `#[stable (..)]`
+// and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
 use ty::TyCtxt;
@@ -64,8 +64,8 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
         for attr in attrs {
             // FIXME(varkor): the stability attribute might be behind a `#[cfg]` attribute.
 
-            // Find a stability attribute (i.e. `#[stable(..)]`, `#[unstable(..)]`,
-            // `#[rustc_const_unstable(..)]`).
+            // Find a stability attribute (i.e. `#[stable (..)]`, `#[unstable (..)]`,
+            // `#[rustc_const_unstable (..)]`).
             if stab_attrs.iter().any(|stab_attr| attr.check_name(stab_attr)) {
                 let meta_item = attr.meta();
                 if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta_item {
