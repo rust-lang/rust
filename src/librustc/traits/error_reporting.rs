@@ -1048,24 +1048,30 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         err.span_label(span, format!( "expected {} that takes {}", kind, expected_str));
 
         if let Some(found_span) = found_span {
+            err.span_label(found_span, format!("takes {}", found_str));
+
             // Suggest to take and ignore the arguments with expected_args_length `_`s if
             // found arguments is empty(Suppose the user just wants to ignore args in this case).
             // like `|_, _|` for closure with 2 expected args.
             if found_args.is_empty() && is_closure {
                 let mut underscores = "_".repeat(expected_args.len())
-                                     .split("")
-                                     .filter(|s| !s.is_empty())
-                                     .collect::<Vec<_>>()
-                                     .join(", ");
-                err.span_suggestion(
+                                      .split("")
+                                      .filter(|s| !s.is_empty())
+                                      .collect::<Vec<_>>()
+                                      .join(", ");
+                err.span_suggestion_with_applicability(
                     found_span,
-                    "consider changing this to",
+                    &format!("change the closure to take and ignore the argument{}",
+                            if expected_args.len() < 2 {
+                                ""
+                            } else {
+                                "s"
+                            }
+                    ),
                     format!("|{}|", underscores),
+                    Applicability::MachineApplicable,
                 );
-            } else {
-                err.span_label(found_span, format!("takes {}", found_str));
             }
-
 
             if let &[ArgKind::Tuple(_, ref fields)] = &found_args[..] {
                 if fields.len() == expected_args.len() {
