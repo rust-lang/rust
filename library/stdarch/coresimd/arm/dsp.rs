@@ -80,10 +80,10 @@ pub unsafe fn qsub(a: i32, b: i32) -> i32 {
 ///
 /// Returns the 8-bit signed equivalent of
 ///
-/// res[0] = a[0] + b[0]
-/// res[1] = a[1] + b[1]
-/// res[2] = a[2] + b[2]
-/// res[3] = a[3] + b[3]
+/// res\[0\] = a\[0\] + b\[0\]
+/// res\[1\] = a\[1\] + b\[1\]
+/// res\[2\] = a\[2\] + b\[2\]
+/// res\[3\] = a\[3\] + b\[3\]
 #[inline]
 #[cfg_attr(test, assert_instr(qadd8))]
 pub unsafe fn qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
@@ -94,10 +94,10 @@ pub unsafe fn qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 ///
 /// Returns the 8-bit signed equivalent of
 ///
-/// res[0] = a[0] - b[0]
-/// res[1] = a[1] - b[1]
-/// res[2] = a[2] - b[2]
-/// res[3] = a[3] - b[3]
+/// res\[0\] = a\[0\] - b\[0\]
+/// res\[1\] = a\[1\] - b\[1\]
+/// res\[2\] = a\[2\] - b\[2\]
+/// res\[3\] = a\[3\] - b\[3\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsub8))]
 pub unsafe fn qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
@@ -108,8 +108,8 @@ pub unsafe fn qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 ///
 /// Returns the 16-bit signed equivalent of
 ///
-/// res[0] = a[0] - b[0]
-/// res[1] = a[1] - b[1]
+/// res\[0\] = a\[0\] - b\[0\]
+/// res\[1\] = a\[1\] - b\[1\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsub16))]
 pub unsafe fn qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
@@ -120,8 +120,8 @@ pub unsafe fn qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 ///
 /// Returns the 16-bit signed equivalent of
 ///
-/// res[0] = a[0] + b[0]
-/// res[1] = a[1] + b[1]
+/// res\[0\] = a\[0\] + b\[0\]
+/// res\[1\] = a\[1\] + b\[1\]
 #[inline]
 #[cfg_attr(test, assert_instr(qadd16))]
 pub unsafe fn qadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
@@ -130,8 +130,8 @@ pub unsafe fn qadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 
 /// Returns the 16-bit signed saturated equivalent of
 ///
-/// res[0] = a[0] - b[1]
-/// res[1] = a[1] + b[0]
+/// res\[0\] = a\[0\] - b\[1\]
+/// res\[1\] = a\[1\] + b\[0\]
 #[inline]
 #[cfg_attr(test, assert_instr(qasx))]
 pub unsafe fn qasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
@@ -140,8 +140,8 @@ pub unsafe fn qasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 
 /// Returns the 16-bit signed saturated equivalent of
 ///
-/// res[0] = a[0] + b[1]
-/// res[1] = a[1] - b[0]
+/// res\[0\] = a\[0\] + b\[1\]
+/// res\[1\] = a\[1\] - b\[0\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsax))]
 pub unsafe fn qsax(a: int16x2_t, b: int16x2_t) -> int16x2_t {
@@ -150,8 +150,8 @@ pub unsafe fn qsax(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 
 /// Returns the 16-bit signed saturated equivalent of
 ///
-/// res[0] = a[0] + b[1]
-/// res[1] = a[1] + b[0]
+/// res\[0\] = a\[0\] + b\[1\]
+/// res\[1\] = a\[1\] + b\[0\]
 ///
 /// and the GE bits of the APSR are set.
 #[inline]
@@ -162,10 +162,10 @@ pub unsafe fn sadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 
 /// Returns the 8-bit signed saturated equivalent of
 ///
-/// res[0] = a[0] + b[1]
-/// res[1] = a[1] + b[0]
-/// res[2] = a[2] + b[2]
-/// res[3] = a[3] + b[3]
+/// res\[0\] = a\[0\] + b\[1\]
+/// res\[1\] = a\[1\] + b\[0\]
+/// res\[2\] = a\[2\] + b\[2\]
+/// res\[3\] = a\[3\] + b\[3\]
 ///
 /// and the GE bits of the APSR are set.
 #[inline]
@@ -176,8 +176,8 @@ pub unsafe fn sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 
 /// Returns the 16-bit signed equivalent of
 ///
-/// res[0] = a[0] - b[1]
-/// res[1] = a[1] + b[0]
+/// res\[0\] = a\[0\] - b\[1\]
+/// res\[1\] = a\[1\] + b\[0\]
 ///
 /// and the GE bits of the APSR are set.
 #[inline]
@@ -188,10 +188,10 @@ pub unsafe fn sasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 
 /// Returns the equivalent of
 ///
-/// res[0] = GE[0] ? a[0] : b[0]
-/// res[1] = GE[1] ? a[1] : b[1]
-/// res[2] = GE[2] ? a[2] : b[2]
-/// res[3] = GE[3] ? a[3] : b[3]
+/// res\[0\] = GE\[0\] ? a\[0\] : b\[0\]
+/// res\[1\] = GE\[1\] ? a\[1\] : b\[1\]
+/// res\[2\] = GE\[2\] ? a\[2\] : b\[2\]
+/// res\[3\] = GE\[3\] ? a\[3\] : b\[3\]
 ///
 /// where GE are bits of APSR
 #[inline]
