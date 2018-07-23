@@ -31,6 +31,12 @@ use crate::utils::{in_macro, is_copy, is_self, span_lint_and_sugg, snippet};
 /// The configuration option `trivial_copy_size_limit` can be set to override
 /// this limit for a project.
 ///
+/// This lint attempts to allow passing arguments by reference if a reference
+/// to that argument is returned. This is implemented by comparing the lifetime
+/// of the argument and return value for equality. However, this can cause
+/// false positives in cases involving multiple lifetimes that are bounded by
+/// each other.
+///
 /// **Example:**
 /// ```rust
 /// fn foo(v: &u32) {
