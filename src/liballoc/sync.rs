@@ -238,8 +238,9 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.
-    // `Weak::new` sets this to a dangling pointer so that it doesn’t need
-    // to allocate space on the heap.
+    // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
+    // to allocate space on the heap.  That's not a value a real poiner
+    // will ever have because RcBox has alignment at least 4.
     ptr: NonNull<ArcInner<T>>,
 }
 
@@ -442,7 +443,11 @@ impl<T: ?Sized> Arc<T> {
             // synchronize with the write coming from `is_unique`, so that the
             // events prior to that write happen before this read.
             match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
-                Ok(_) => return Weak { ptr: this.ptr },
+                Ok(_) => {
+                    // Make sure we do not create a dangling Weak
+                    debug_assert!(!is_dangling(this.ptr));
+                    return Weak { ptr: this.ptr };
+                }
                 Err(old) => cur = old,
             }
         }
@@ -1033,7 +1038,7 @@ impl<T> Weak<T> {
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
         Weak {
-            ptr: NonNull::dangling(),
+            ptr: NonNull::new(usize::MAX as *mut ArcInner<T>).expect("MAX is not 0"),
         }
     }
 }

@@ -258,6 +258,7 @@ use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
 use core::convert::From;
+use core::usize;
 
 use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
 use string::String;
@@ -449,6 +450,8 @@ impl<T: ?Sized> Rc<T> {
     #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
         this.inc_weak();
+        // Make sure we do not create a dangling Weak
+        debug_assert!(!is_dangling(this.ptr));
         Weak { ptr: this.ptr }
     }
 
@@ -1154,8 +1157,9 @@ impl<T> From<Vec<T>> for Rc<[T]> {
 pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.
-    // `Weak::new` sets this to a dangling pointer so that it doesn’t need
-    // to allocate space on the heap.
+    // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
+    // to allocate space on the heap.  That's not a value a real poiner
+    // will ever have because RcBox has alignment at least 4.
     ptr: NonNull<RcBox<T>>,
 }
 
@@ -1185,15 +1189,14 @@ impl<T> Weak<T> {
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
         Weak {
-            ptr: NonNull::dangling(),
+            ptr: NonNull::new(usize::MAX as *mut RcBox<T>).expect("MAX is not 0"),
         }
     }
 }
 
 pub(crate) fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
     let address = ptr.as_ptr() as *mut () as usize;
-    let align = align_of_val(unsafe { ptr.as_ref() });
-    address == align
+    address == usize::MAX
 }
 
 impl<T: ?Sized> Weak<T> {
