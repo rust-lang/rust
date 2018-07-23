@@ -404,9 +404,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let counter = &mut 1;
         let fr_name = self.give_region_a_name(
-            infcx.tcx, mir, mir_def_id, fr, counter, &mut diag);
+            infcx, mir, mir_def_id, fr, counter, &mut diag);
         let outlived_fr_name = self.give_region_a_name(
-            infcx.tcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
+            infcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
 
         match (category, outlived_fr_is_local, fr_is_local) {
             (ConstraintCategory::Return, true, _) => {

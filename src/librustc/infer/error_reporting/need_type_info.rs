@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
 
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
+    pub fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
         if let ty::TyInfer(ty::TyVar(ty_vid)) = (*ty).sty {
             let ty_vars = self.type_variables.borrow();
             if let TypeVariableOrigin::TypeParameterDefinition(_, name) =

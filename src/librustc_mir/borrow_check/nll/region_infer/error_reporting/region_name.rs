@@ -12,6 +12,7 @@ use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::infer::InferCtxt;
 use rustc::mir::Mir;
 use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
@@ -48,7 +49,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// and then return the name `'1` for us to use.
     crate fn give_region_a_name(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
@@ -59,17 +60,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         assert!(self.universal_regions.is_universal_region(fr));
 
-        self.give_name_from_error_region(tcx, mir_def_id, fr, counter, diag)
+        self.give_name_from_error_region(infcx.tcx, mir_def_id, fr, counter, diag)
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_arguments(
-                    tcx, mir, mir_def_id, fr, counter, diag)
+                    infcx, mir, mir_def_id, fr, counter, diag)
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_upvars(
-                    tcx, mir, fr, counter, diag)
+                    infcx.tcx, mir, fr, counter, diag)
             })
             .or_else(|| {
-                self.give_name_if_anonymous_region_appears_in_output(tcx, mir, fr, counter, diag)
+                self.give_name_if_anonymous_region_appears_in_output(
+                    infcx.tcx, mir, fr, counter, diag)
             })
             .unwrap_or_else(|| span_bug!(mir.span, "can't make a name for free region {:?}", fr))
     }
@@ -130,7 +132,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn give_name_if_anonymous_region_appears_in_arguments(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
@@ -138,12 +140,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
-        let argument_index = self.get_argument_index_for_region(tcx, fr)?;
+        let argument_index = self.get_argument_index_for_region(infcx.tcx, fr)?;
 
         let arg_ty =
             self.universal_regions.unnormalized_input_tys[implicit_inputs + argument_index];
         if let Some(region_name) = self.give_name_if_we_can_match_hir_ty_from_argument(
-            tcx,
+            infcx,
             mir_def_id,
             fr,
             arg_ty,
@@ -169,7 +171,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn give_name_if_we_can_match_hir_ty_from_argument(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -177,17 +179,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
-        let mir_node_id = tcx.hir.as_local_node_id(mir_def_id)?;
-        let fn_decl = tcx.hir.fn_decl(mir_node_id)?;
+        let mir_node_id = infcx.tcx.hir.as_local_node_id(mir_def_id)?;
+        let fn_decl = infcx.tcx.hir.fn_decl(mir_node_id)?;
         let argument_hir_ty: &hir::Ty = &fn_decl.inputs[argument_index];
         match argument_hir_ty.node {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
             // must highlight the variable.
-            hir::TyKind::Infer => None,
+            hir::TyKind::Infer => self.give_name_if_we_cannot_match_hir_ty(
+                infcx,
+                argument_ty,
+                argument_hir_ty,
+                counter,
+                diag,
+            ),
 
             _ => self.give_name_if_we_can_match_hir_ty(
-                tcx,
+                infcx.tcx,
                 needle_fr,
                 argument_ty,
                 argument_hir_ty,
@@ -195,6 +203,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 diag,
             ),
         }
+    }
+
+    /// Attempts to highlight the specific part of a type in an argument
+    /// that has no type annotation.
+    /// For example, we might produce an annotation like this:
+    ///
+    /// ```
+    ///  |     foo(|a, b| b)
+    ///  |          -  -
+    ///  |          |  |
+    ///  |          |  has type `&'1 u32`
+    ///  |          has type `&'2 u32`
+    /// ```
+    fn give_name_if_we_cannot_match_hir_ty(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        argument_ty: Ty<'tcx>,
+        argument_hir_ty: &hir::Ty,
+        counter: &mut usize,
+        diag: &mut DiagnosticBuilder<'_>,
+    ) -> Option<InternedString> {
+        let mut type_name = infcx.extract_type_name(&argument_ty);
+
+        type_name.find("&").map(|index| {
+            let region_name = self.synthesize_region_name(counter).as_str();
+            type_name.insert_str(index + 1, &format!("{} ", region_name));
+
+            diag.span_label(
+                argument_hir_ty.span,
+                format!("has type `{}`", type_name),
+            );
+
+            region_name.as_interned_str()
+        })
     }
 
     /// Attempts to highlight the specific part of a type annotation
