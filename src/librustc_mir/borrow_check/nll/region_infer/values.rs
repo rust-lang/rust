@@ -117,6 +117,65 @@ crate enum RegionElement {
     RootUniversalRegion(RegionVid),
 }
 
+/// When we initially compute liveness, we use a bit matrix storing
+/// points for each region-vid.
+crate struct LivenessValues<N: Idx> {
+    elements: Rc<RegionValueElements>,
+    points: SparseBitMatrix<N, PointIndex>,
+}
+
+impl<N: Idx> LivenessValues<N> {
+    /// Creates a new set of "region values" that tracks causal information.
+    /// Each of the regions in num_region_variables will be initialized with an
+    /// empty set of points and no causal information.
+    crate fn new(elements: &Rc<RegionValueElements>) -> Self {
+        Self {
+            elements: elements.clone(),
+            points: SparseBitMatrix::new(elements.num_points),
+        }
+    }
+
+    /// Iterate through each region that has a value in this set.
+    crate fn rows<'a>(&'a self) -> impl Iterator<Item = N> {
+        self.points.rows()
+    }
+
+    /// Adds the given element to the value for the given region. Returns true if
+    /// the element is newly added (i.e., was not already present).
+    crate fn add_element(
+        &mut self,
+        row: N,
+        location: Location,
+    ) -> bool {
+        debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
+        let index = self.elements.point_from_location(location);
+        self.points.add(row, index)
+    }
+
+    /// Adds all the control-flow points to the values for `r`.
+    crate fn add_all_points(&mut self, row: N) {
+        self.points.add_all(row);
+    }
+
+    /// True if the region `r` contains the given element.
+    crate fn contains(&self, row: N, location: Location) -> bool {
+        let index = self.elements.point_from_location(location);
+        self.points.contains(row, index)
+    }
+
+    /// Returns a "pretty" string value of the region. Meant for debugging.
+    crate fn region_value_str(&self, r: N) -> String {
+        region_value_str(
+            self.points
+                .row(r)
+                .into_iter()
+                .flat_map(|set| set.iter())
+                .map(|p| self.elements.to_location(p))
+                .map(RegionElement::Location)
+        )
+    }
+}
+
 /// Stores the values for a set of regions. These are stored in a
 /// compact `SparseBitMatrix` representation, with one row per region
 /// variable. The columns consist of either universal regions or
@@ -172,21 +231,12 @@ impl<N: Idx> RegionValues<N> {
         elem.contained_in_row(self, r)
     }
 
-    /// Iterate through each region that has a value in this set.
-    crate fn regions_with_points<'a>(&'a self) -> impl Iterator<Item = N> {
-        self.points.rows()
-    }
-
     /// `self[to] |= values[from]`, essentially: that is, take all the
     /// elements for the region `from` from `values` and add them to
     /// the region `to` in `self`.
-    crate fn merge_row<M: Idx>(&mut self, to: N, from: M, values: &RegionValues<M>) {
+    crate fn merge_liveness<M: Idx>(&mut self, to: N, from: M, values: &LivenessValues<M>) {
         if let Some(set) = values.points.row(from) {
             self.points.merge_into(to, set);
-        }
-
-        if let Some(set) = values.free_regions.row(from) {
-            self.free_regions.merge_into(to, set);
         }
     }
 

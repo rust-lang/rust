@@ -15,8 +15,8 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
+use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
-use borrow_check::nll::region_infer::values::{RegionValues, RegionValueElements};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::LocalWithRegion;
@@ -121,7 +121,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
 ) -> MirTypeckRegionConstraints<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
-        liveness_constraints: RegionValues::new(elements),
+        liveness_constraints: LivenessValues::new(elements),
         outlives_constraints: ConstraintSet::default(),
         type_tests: Vec::default(),
     };
@@ -638,7 +638,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    crate liveness_constraints: RegionValues<RegionVid>,
+    crate liveness_constraints: LivenessValues<RegionVid>,
 
     crate outlives_constraints: ConstraintSet,
 

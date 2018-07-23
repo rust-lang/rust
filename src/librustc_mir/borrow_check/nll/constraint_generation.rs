@@ -12,7 +12,7 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::values::RegionValues;
+use borrow_check::nll::region_infer::values::LivenessValues;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
@@ -24,7 +24,7 @@ use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, RegionVid};
 
 pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
-    liveness_constraints: &mut RegionValues<RegionVid>,
+    liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     mir: &Mir<'tcx>,
@@ -48,7 +48,7 @@ struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
-    liveness_constraints: &'cg mut RegionValues<RegionVid>,
+    liveness_constraints: &'cg mut LivenessValues<RegionVid>,
     borrow_set: &'cg BorrowSet<'tcx>,
 }
 

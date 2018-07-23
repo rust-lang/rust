@@ -37,7 +37,7 @@ mod dump_mir;
 mod error_reporting;
 mod graphviz;
 pub mod values;
-use self::values::{RegionValueElements, RegionValues};
+use self::values::{RegionValueElements, RegionValues, LivenessValues};
 
 use super::ToRegionVid;
 
@@ -52,7 +52,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    liveness_constraints: RegionValues<RegionVid>,
+    liveness_constraints: LivenessValues<RegionVid>,
 
     /// The outlives constraints computed by the type-check.
     constraints: Rc<ConstraintSet>,
@@ -199,7 +199,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         _mir: &Mir<'tcx>,
         outlives_constraints: ConstraintSet,
         type_tests: Vec<TypeTest<'tcx>>,
-        liveness_constraints: RegionValues<RegionVid>,
+        liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
     ) -> Self {
         let universal_regions = Rc::new(universal_regions);
@@ -216,9 +216,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mut scc_values = RegionValues::new(elements);
 
-        for region in liveness_constraints.regions_with_points() {
+        for region in liveness_constraints.rows() {
             let scc = constraint_sccs.scc(region);
-            scc_values.merge_row(scc, region, &liveness_constraints);
+            scc_values.merge_liveness(scc, region, &liveness_constraints);
         }
 
         let mut result = Self {
@@ -283,7 +283,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.scc_values.add_all_points(variable_scc);
 
             // Add `end(X)` into the set for X.
-            self.add_live_element(variable, variable);
+            self.add_element_to_scc_of(variable, variable);
         }
     }
 
@@ -314,27 +314,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_values.region_value_str(scc)
     }
 
-    /// Indicates that the region variable `v` is live at the point `point`.
-    ///
-    /// Returns `true` if this constraint is new and `false` is the
-    /// constraint was already present.
-    pub(super) fn add_live_element(
-        &mut self,
-        v: RegionVid,
-        elem: impl ToElementIndex,
-    ) -> bool {
+    /// Adds `elem` to the value of the SCC in which `v` appears.
+    fn add_element_to_scc_of(&mut self, v: RegionVid, elem: impl ToElementIndex) {
         debug!("add_live_element({:?}, {:?})", v, elem);
-
-        // Add to the liveness values for `v`...
-        if self.liveness_constraints.add_element(v, elem) {
-            // ...but also add to the SCC in which `v` appears.
-            let scc = self.constraint_sccs.scc(v);
-            self.scc_values.add_element(scc, elem);
-
-            true
-        } else {
-            false
-        }
+        let scc = self.constraint_sccs.scc(v);
+        self.scc_values.add_element(scc, elem);
     }
 
     /// Perform region inference and report errors if we see any
