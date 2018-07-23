@@ -21,7 +21,6 @@ use syntax_pos::{self, Span};
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
@@ -40,7 +39,6 @@ use doctree::*;
 // framework from syntax?
 
 pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
-    pub cstore: &'a CrateStore,
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
@@ -52,8 +50,7 @@ pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
 }
 
 impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
-    pub fn new(cstore: &'a CrateStore,
-               cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> RustdocVisitor<'a, 'tcx, 'rcx> {
+    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> RustdocVisitor<'a, 'tcx, 'rcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet();
         stack.insert(ast::CRATE_NODE_ID);
@@ -65,7 +62,6 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             inlining: false,
             inside_public_path: true,
             exact_paths: Some(FxHashMap()),
-            cstore,
         }
     }
 
