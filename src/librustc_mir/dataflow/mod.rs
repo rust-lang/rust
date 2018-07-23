@@ -441,11 +441,6 @@ pub struct DataflowState<O: BitDenotation>
 }
 
 impl<O: BitDenotation> DataflowState<O> {
-    pub fn each_bit<F>(&self, words: &IdxSet<O::Idx>, f: F) where F: FnMut(O::Idx)
-    {
-        words.iter().for_each(f)
-    }
-
     pub(crate) fn interpret_set<'c, P>(&self,
                                        o: &'c O,
                                        words: &IdxSet<O::Idx>,
@@ -453,11 +448,7 @@ impl<O: BitDenotation> DataflowState<O> {
                                        -> Vec<DebugFormatted>
         where P: Fn(&O, O::Idx) -> DebugFormatted
     {
-        let mut v = Vec::new();
-        self.each_bit(words, |i| {
-            v.push(render_idx(o, i));
-        });
-        v
+        words.iter().map(|i| render_idx(o, i)).collect()
     }
 }
 
