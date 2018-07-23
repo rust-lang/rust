@@ -15,7 +15,6 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
 use std::rc::Rc;
-use std::ops::Range;
 
 /// Maps between the various kinds of elements of a region value to
 /// the internal indices that w use.
@@ -63,11 +62,6 @@ impl RegionValueElements {
         } = location;
         let start_index = self.statements_before_block[block];
         PointIndex::new(start_index + statement_index)
-    }
-
-    /// Range coverting all point indices.
-    fn all_points(&self) -> Range<PointIndex> {
-        PointIndex::new(0)..PointIndex::new(self.num_points)
     }
 
     /// Converts a particular `RegionElementIndex` to a location, if
@@ -159,10 +153,7 @@ impl<N: Idx> RegionValues<N> {
 
     /// Adds all the control-flow points to the values for `r`.
     crate fn add_all_points(&mut self, r: N) {
-        // FIXME OMG so inefficient. We'll fix later.
-        for p in self.elements.all_points() {
-            self.points.add(r, p);
-        }
+        self.points.add_all(r);
     }
 
     /// Add all elements in `r_from` to `r_to` (because e.g. `r_to:
