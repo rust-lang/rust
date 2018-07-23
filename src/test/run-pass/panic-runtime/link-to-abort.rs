@@ -11,9 +11,11 @@
 // compile-flags:-C panic=abort
 // no-prefer-dynamic
 
+// FIXME(varkor): remove this
+// ignore-macos
+
 #![feature(panic_abort)]
 
 extern crate panic_abort;
 
-fn main() {
-}
+fn main() {}

@@ -11,8 +11,6 @@
 // pretty-expanded FIXME #23616
 // ignore-cloudabi no std::fs
 
-#![feature(fs, net)]
-
 use std::{fs, net};
 
 fn assert_both<T: Send + Sync>() {}

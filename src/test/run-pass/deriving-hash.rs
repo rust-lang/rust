@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(hash_default)]
-
 use std::hash::{Hash, SipHasher, Hasher};
 use std::mem::size_of;
 

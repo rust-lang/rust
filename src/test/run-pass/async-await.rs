@@ -10,6 +10,9 @@
 
 // edition:2018
 
+// FIXME(varkor): `await_macro` isn't visible.
+#![allow(unknown_features)]
+
 #![feature(arbitrary_self_types, async_await, await_macro, futures_api, pin)]
 
 use std::boxed::PinBox;

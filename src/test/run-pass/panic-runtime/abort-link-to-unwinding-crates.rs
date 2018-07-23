@@ -14,6 +14,9 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 
+// FIXME(varkor): remove this
+// ignore-macos
+
 extern crate exit_success_if_unwind;
 
 use std::process::Command;

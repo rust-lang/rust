@@ -13,7 +13,7 @@
 
 // ignore-emscripten no threads support
 #![allow(unknown_features)]
-#![feature(box_syntax, std_misc)]
+#![feature(box_syntax)]
 
 use std::sync::Arc;
 use std::sync::mpsc::channel;

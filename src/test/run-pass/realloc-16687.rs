@@ -13,7 +13,7 @@
 // Ideally this would be revised to use no_std, but for now it serves
 // well enough to reproduce (and illustrate) the bug from #16687.
 
-#![feature(heap_api, allocator_api)]
+#![feature(allocator_api)]
 
 use std::alloc::{Global, Alloc, Layout, handle_alloc_error};
 use std::ptr::{self, NonNull};

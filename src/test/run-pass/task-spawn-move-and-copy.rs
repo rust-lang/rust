@@ -11,7 +11,7 @@
 // ignore-emscripten no threads support
 
 #![allow(unknown_features)]
-#![feature(box_syntax, std_misc)]
+#![feature(box_syntax)]
 
 use std::thread;
 use std::sync::mpsc::channel;

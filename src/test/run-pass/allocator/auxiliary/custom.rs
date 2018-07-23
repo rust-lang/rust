@@ -10,7 +10,7 @@
 
 // no-prefer-dynamic
 
-#![feature(heap_api, allocator_api)]
+#![feature(allocator_api)]
 #![crate_type = "rlib"]
 
 use std::alloc::{GlobalAlloc, System, Layout};

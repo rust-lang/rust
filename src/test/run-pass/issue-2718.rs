@@ -9,8 +9,6 @@
 // except according to those terms.
 //
 
-#![feature(std_misc)]
-
 pub type Task = isize;
 
 // tjc: I don't know why

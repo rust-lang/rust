@@ -10,6 +10,9 @@
 
 // aux-build:unstable-macros.rs
 
+// FIXME(varkor): `unstable_macros` isn't visible.
+#![allow(unknown_features)]
+
 #![feature(unstable_macros)]
 
 #[macro_use] extern crate unstable_macros;
