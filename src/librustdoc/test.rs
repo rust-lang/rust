@@ -232,31 +232,35 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         ..config::basic_options().clone()
     };
 
-    let (libdir, outdir) = driver::spawn_thread_pool(sessopts, |sessopts| {
-        // Shuffle around a few input and output handles here. We're going to pass
-        // an explicit handle into rustc to collect output messages, but we also
-        // want to catch the error message that rustc prints when it fails.
-        //
-        // We take our thread-local stderr (likely set by the test runner) and replace
-        // it with a sink that is also passed to rustc itself. When this function
-        // returns the output of the sink is copied onto the output of our own thread.
-        //
-        // The basic idea is to not use a default Handler for rustc, and then also
-        // not print things by default to the actual stderr.
-        struct Sink(Arc<Mutex<Vec<u8>>>);
-        impl Write for Sink {
-            fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-                Write::write(&mut *self.0.lock().unwrap(), data)
-            }
-            fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    // Shuffle around a few input and output handles here. We're going to pass
+    // an explicit handle into rustc to collect output messages, but we also
+    // want to catch the error message that rustc prints when it fails.
+    //
+    // We take our thread-local stderr (likely set by the test runner) and replace
+    // it with a sink that is also passed to rustc itself. When this function
+    // returns the output of the sink is copied onto the output of our own thread.
+    //
+    // The basic idea is to not use a default Handler for rustc, and then also
+    // not print things by default to the actual stderr.
+    struct Sink(Arc<Mutex<Vec<u8>>>);
+    impl Write for Sink {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            Write::write(&mut *self.0.lock().unwrap(), data)
         }
-        struct Bomb(Arc<Mutex<Vec<u8>>>, Box<Write+Send>);
-        impl Drop for Bomb {
-            fn drop(&mut self) {
-                let _ = self.1.write_all(&self.0.lock().unwrap());
-            }
+        fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    }
+    struct Bomb(Arc<Mutex<Vec<u8>>>, Box<Write+Send>);
+    impl Drop for Bomb {
+        fn drop(&mut self) {
+            let _ = self.1.write_all(&self.0.lock().unwrap());
         }
-        let data = Arc::new(Mutex::new(Vec::new()));
+    }
+    let data = Arc::new(Mutex::new(Vec::new()));
+
+    let old = io::set_panic(Some(box Sink(data.clone())));
+    let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
+
+    let (libdir, outdir, compile_result) = driver::spawn_thread_pool(sessopts, |sessopts| {
         let codemap = Lrc::new(CodeMap::new_doctest(
             sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
         ));
@@ -264,8 +268,6 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
                                                         Some(codemap.clone()),
                                                         false,
                                                         false);
-        let old = io::set_panic(Some(box Sink(data.clone())));
-        let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
         // Compile the code
         let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
@@ -312,28 +314,28 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             Err(_) | Ok(Err(CompileIncomplete::Errored(_))) => Err(())
         };
 
-        match (compile_result, compile_fail) {
-            (Ok(()), true) => {
-                panic!("test compiled while it wasn't supposed to")
-            }
-            (Ok(()), false) => {}
-            (Err(()), true) => {
-                if error_codes.len() > 0 {
-                    let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
-                    error_codes.retain(|err| !out.contains(err));
-                }
-            }
-            (Err(()), false) => {
-                panic!("couldn't compile the test")
-            }
-        }
-
-        if error_codes.len() > 0 {
-            panic!("Some expected error codes were not found: {:?}", error_codes);
-        }
-
-        (libdir, outdir)
+        (libdir, outdir, compile_result)
     });
+
+    match (compile_result, compile_fail) {
+        (Ok(()), true) => {
+            panic!("test compiled while it wasn't supposed to")
+        }
+        (Ok(()), false) => {}
+        (Err(()), true) => {
+            if error_codes.len() > 0 {
+                let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
+                error_codes.retain(|err| !out.contains(err));
+            }
+        }
+        (Err(()), false) => {
+            panic!("couldn't compile the test")
+        }
+    }
+
+    if error_codes.len() > 0 {
+        panic!("Some expected error codes were not found: {:?}", error_codes);
+    }
 
     if no_run { return }
 
@@ -548,7 +550,7 @@ impl Collector {
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
-                name: testing::DynTestName(name),
+                name: testing::DynTestName(name.clone()),
                 ignore: should_ignore,
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
@@ -558,7 +560,7 @@ impl Collector {
                 let panic = io::set_panic(None);
                 let print = io::set_print(None);
                 match {
-                    rustc_driver::in_rustc_thread(move || with_globals(move || {
+                    rustc_driver::in_named_rustc_thread(name, move || with_globals(move || {
                         io::set_panic(panic);
                         io::set_print(print);
                         hygiene::set_default_edition(edition);

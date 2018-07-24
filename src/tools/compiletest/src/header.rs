@@ -392,17 +392,19 @@ impl TestProps {
 
             if let Some(code) = config.parse_failure_status(ln) {
                 self.failure_status = code;
-            } else {
-                self.failure_status = match config.mode {
-                    Mode::RunFail => 101,
-                    _ => 1,
-                };
             }
 
             if !self.run_rustfix {
                 self.run_rustfix = config.parse_run_rustfix(ln);
             }
         });
+
+        if self.failure_status == -1 {
+            self.failure_status = match config.mode {
+                Mode::RunFail => 101,
+                _ => 1,
+            };
+        }
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
