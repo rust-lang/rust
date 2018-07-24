@@ -80,6 +80,9 @@ extern "C" {
 
     #[link_name = "llvm.arm.smusdx"]
     fn arm_smusdx(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.usad8"]
+    fn arm_usad8(a: i32, b: i32) -> u32;
 }
 
 /// Signed saturating addition
@@ -284,6 +287,7 @@ pub unsafe fn shsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res = a\[0\] * b\[0\] + a\[1\] * b\[1\]
 ///
 /// and sets the Q flag if overflow occurs on the addition.
+#[inline]
 #[cfg_attr(test, assert_instr(smuad))]
 pub unsafe fn smuad(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smuad(::mem::transmute(a), ::mem::transmute(b))
@@ -326,6 +330,30 @@ pub unsafe fn smusd(a: int16x2_t, b: int16x2_t) -> i32 {
 #[cfg_attr(test, assert_instr(smusdx))]
 pub unsafe fn smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smusdx(::mem::transmute(a), ::mem::transmute(b))
+}
+
+/// Sum of 8-bit absolute differences.
+///
+/// Returns the 8-bit unsigned equivalent of
+///
+/// res = abs(a\[0\] - b\[0\]) + abs(a\[1\] - b\[1\]) +\
+///          (a\[2\] - b\[2\]) + (a\[3\] - b\[3\])
+#[inline]
+#[cfg_attr(test, assert_instr(usad8))]
+pub unsafe fn usad8(a: int8x4_t, b: int8x4_t) -> u32 {
+    arm_usad8(::mem::transmute(a), ::mem::transmute(b))
+}
+
+/// Sum of 8-bit absolute differences and constant.
+///
+/// Returns the 8-bit unsigned equivalent of
+///
+/// res = abs(a\[0\] - b\[0\]) + abs(a\[1\] - b\[1\]) +\
+///          (a\[2\] - b\[2\]) + (a\[3\] - b\[3\]) + c
+#[inline]
+#[cfg_attr(test, assert_instr(usad8))]
+pub unsafe fn usad8a(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
+    usad8(a, b) + c
 }
 
 #[cfg(test)]
@@ -546,6 +574,27 @@ mod tests {
             let b = i16x2::new(5, 4);
             let r = dsp::smusdx(::mem::transmute(a), ::mem::transmute(b));
             assert_eq!(r, -6);
+        }
+    }
+
+    #[test]
+    fn usad8() {
+        unsafe {
+            let a = i8x4::new(1, 2, 3, 4);
+            let b = i8x4::new(4, 3, 2, 1);
+            let r = dsp::usad8(::mem::transmute(a), ::mem::transmute(b));
+            assert_eq!(r, 8);
+        }
+    }
+
+    #[test]
+    fn usad8a() {
+        unsafe {
+            let a = i8x4::new(1, 2, 3, 4);
+            let b = i8x4::new(4, 3, 2, 1);
+            let c = 10;
+            let r = dsp::usad8a(::mem::transmute(a), ::mem::transmute(b), c);
+            assert_eq!(r, 8 + c);
         }
     }
 }
