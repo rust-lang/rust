@@ -1065,10 +1065,7 @@ impl<'a> Iterator for Ancestors<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.next;
-        self.next = match next {
-            Some(path) => path.parent(),
-            None => None,
-        };
+        self.next = next.and_then(Path::parent);
         next
     }
 }
