@@ -225,12 +225,11 @@ fn format_string(input: String, options: GetOptsOptions) -> Result<i32, failure:
     let mut session = Session::new(config, Some(out));
     format_and_emit_report(&mut session, Input::Text(input));
 
-    let exit_code =
-        if session.summary.has_operational_errors() || session.summary.has_parsing_errors() {
-            1
-        } else {
-            0
-        };
+    let exit_code = if session.has_operational_errors() || session.has_parsing_errors() {
+        1
+    } else {
+        0
+    };
     Ok(exit_code)
 }
 
@@ -254,10 +253,10 @@ fn format(
     for file in files {
         if !file.exists() {
             eprintln!("Error: file `{}` does not exist", file.to_str().unwrap());
-            session.summary.add_operational_error();
+            session.add_operational_error();
         } else if file.is_dir() {
             eprintln!("Error: `{}` is a directory", file.to_str().unwrap());
-            session.summary.add_operational_error();
+            session.add_operational_error();
         } else {
             // Check the file directory if the config-path could not be read or not provided
             if config_path.is_none() {
@@ -290,9 +289,9 @@ fn format(
         file.write_all(toml.as_bytes())?;
     }
 
-    let exit_code = if session.summary.has_operational_errors()
-        || session.summary.has_parsing_errors()
-        || ((session.summary.has_diff || session.summary.has_check_errors()) && options.check)
+    let exit_code = if session.has_operational_errors()
+        || session.has_parsing_errors()
+        || ((session.has_diff() || session.has_check_errors()) && options.check)
     {
         1
     } else {
@@ -322,7 +321,7 @@ fn format_and_emit_report<T: Write>(session: &mut Session<T>, input: Input) {
         }
         Err(msg) => {
             eprintln!("Error writing files: {}", msg);
-            session.summary.add_operational_error();
+            session.add_operational_error();
         }
     }
 }

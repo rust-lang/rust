@@ -46,8 +46,12 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             let config = &self.config.clone();
             let format_result = format_project(input, config, self);
 
-            format_result.map(|(report, summary)| {
-                self.summary.add(summary);
+            format_result.map(|report| {
+                {
+                    let new_errors = &report.internal.borrow().1;
+
+                    self.errors.add(new_errors);
+                }
                 report
             })
         })
@@ -59,8 +63,7 @@ fn format_project<T: FormatHandler>(
     input: Input,
     config: &Config,
     handler: &mut T,
-) -> Result<(FormatReport, Summary), ErrorKind> {
-    let mut summary = Summary::default();
+) -> Result<FormatReport, ErrorKind> {
     let mut timer = Timer::Initialized(Instant::now());
 
     let main_file = input.file_name();
@@ -69,21 +72,15 @@ fn format_project<T: FormatHandler>(
     // Parse the crate.
     let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
     let mut parse_session = make_parse_sess(codemap.clone(), config);
-    let krate = parse_crate(input, &parse_session, config, &mut summary)?;
+    let mut report = FormatReport::new();
+    let krate = parse_crate(input, &parse_session, config, &mut report)?;
     timer = timer.done_parsing();
 
     // Suppress error output if we have to do any further parsing.
     let silent_emitter = silent_emitter(codemap);
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
-    let mut context = FormatContext::new(
-        &krate,
-        FormatReport::new(),
-        summary,
-        parse_session,
-        config,
-        handler,
-    );
+    let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
 
     let files = modules::list_files(&krate, context.parse_session.codemap())?;
     for (path, module) in files {
@@ -104,8 +101,7 @@ fn format_project<T: FormatHandler>(
         )
     });
 
-    context.summarise_errors();
-    Ok((context.report, context.summary))
+    Ok(context.report)
 }
 
 // Used for formatting files.
@@ -113,27 +109,12 @@ fn format_project<T: FormatHandler>(
 struct FormatContext<'a, T: FormatHandler + 'a> {
     krate: &'a ast::Crate,
     report: FormatReport,
-    summary: Summary,
     parse_session: ParseSess,
     config: &'a Config,
     handler: &'a mut T,
 }
 
 impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
-    // Moves errors from the report to the summary.
-    fn summarise_errors(&mut self) {
-        if self.report.has_warnings() {
-            self.summary.add_formatting_error();
-        }
-        let report_errs = &self.report.internal.borrow().1;
-        if report_errs.has_check_errors {
-            self.summary.add_check_error();
-        }
-        if report_errs.has_operational_errors {
-            self.summary.add_operational_error();
-        }
-    }
-
     // Formats a single file/module.
     fn format_file(
         &mut self,
@@ -188,16 +169,22 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
         replace_with_system_newlines(&mut visitor.buffer, &self.config);
 
         if visitor.macro_rewrite_failure {
-            self.summary.add_macro_format_failure();
+            self.report.add_macro_format_failure();
         }
 
-        self.handler.handle_formatted_file(path, visitor.buffer)
+        self.handler
+            .handle_formatted_file(path, visitor.buffer, &mut self.report)
     }
 }
 
 // Handle the results of formatting.
 trait FormatHandler {
-    fn handle_formatted_file(&mut self, path: FileName, result: String) -> Result<(), ErrorKind>;
+    fn handle_formatted_file(
+        &mut self,
+        path: FileName,
+        result: String,
+        report: &mut FormatReport,
+    ) -> Result<(), ErrorKind>;
 }
 
 impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
@@ -206,10 +193,11 @@ impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
         &mut self,
         path: FileName,
         mut result: String,
+        report: &mut FormatReport,
     ) -> Result<(), ErrorKind> {
         if let Some(ref mut out) = self.out {
             match filemap::write_file(&mut result, &path, out, &self.config) {
-                Ok(b) if b => self.summary.add_diff(),
+                Ok(b) if b => report.add_diff(),
                 Err(e) => {
                     // Create a new error with path_str to help users see which files failed
                     let err_msg = format!("{}: {}", path, e);
@@ -298,8 +286,35 @@ pub(crate) type FormatErrorMap = HashMap<FileName, Vec<FormattingError>>;
 
 #[derive(Default, Debug)]
 pub(crate) struct ReportedErrors {
+    // Encountered e.g. an IO error.
     pub(crate) has_operational_errors: bool,
+
+    // Failed to reformat code because of parsing errors.
+    pub(crate) has_parsing_errors: bool,
+
+    // Code is valid, but it is impossible to format it properly.
+    pub(crate) has_formatting_errors: bool,
+
+    // Code contains macro call that was unable to format.
+    pub(crate) has_macro_format_failure: bool,
+
+    // Failed a check, such as the license check or other opt-in checking.
     pub(crate) has_check_errors: bool,
+
+    /// Formatted code differs from existing code (--check only).
+    pub(crate) has_diff: bool,
+}
+
+impl ReportedErrors {
+    /// Combine two summaries together.
+    pub fn add(&mut self, other: &ReportedErrors) {
+        self.has_operational_errors |= other.has_operational_errors;
+        self.has_parsing_errors |= other.has_parsing_errors;
+        self.has_formatting_errors |= other.has_formatting_errors;
+        self.has_macro_format_failure |= other.has_macro_format_failure;
+        self.has_check_errors |= other.has_check_errors;
+        self.has_diff |= other.has_diff;
+    }
 }
 
 /// A single span of changed lines, with 0 or more removed lines
@@ -319,91 +334,6 @@ pub(crate) struct ModifiedChunk {
 pub(crate) struct ModifiedLines {
     /// The set of changed chunks.
     pub chunks: Vec<ModifiedChunk>,
-}
-
-/// A summary of a Rustfmt run.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Summary {
-    // Encountered e.g. an IO error.
-    has_operational_errors: bool,
-
-    // Failed to reformat code because of parsing errors.
-    has_parsing_errors: bool,
-
-    // Code is valid, but it is impossible to format it properly.
-    has_formatting_errors: bool,
-
-    // Code contains macro call that was unable to format.
-    pub(crate) has_macro_format_failure: bool,
-
-    // Failed a check, such as the license check or other opt-in checking.
-    has_check_errors: bool,
-
-    /// Formatted code differs from existing code (--check only).
-    pub has_diff: bool,
-}
-
-impl Summary {
-    pub fn has_operational_errors(&self) -> bool {
-        self.has_operational_errors
-    }
-
-    pub fn has_parsing_errors(&self) -> bool {
-        self.has_parsing_errors
-    }
-
-    pub fn has_formatting_errors(&self) -> bool {
-        self.has_formatting_errors
-    }
-
-    pub fn has_check_errors(&self) -> bool {
-        self.has_check_errors
-    }
-
-    pub(crate) fn has_macro_formatting_failure(&self) -> bool {
-        self.has_macro_format_failure
-    }
-
-    pub fn add_operational_error(&mut self) {
-        self.has_operational_errors = true;
-    }
-
-    pub(crate) fn add_parsing_error(&mut self) {
-        self.has_parsing_errors = true;
-    }
-
-    pub(crate) fn add_formatting_error(&mut self) {
-        self.has_formatting_errors = true;
-    }
-
-    pub(crate) fn add_check_error(&mut self) {
-        self.has_check_errors = true;
-    }
-
-    pub(crate) fn add_diff(&mut self) {
-        self.has_diff = true;
-    }
-
-    pub(crate) fn add_macro_format_failure(&mut self) {
-        self.has_macro_format_failure = true;
-    }
-
-    pub fn has_no_errors(&self) -> bool {
-        !(self.has_operational_errors
-            || self.has_parsing_errors
-            || self.has_formatting_errors
-            || self.has_diff)
-    }
-
-    /// Combine two summaries together.
-    pub fn add(&mut self, other: Summary) {
-        self.has_operational_errors |= other.has_operational_errors;
-        self.has_formatting_errors |= other.has_formatting_errors;
-        self.has_macro_format_failure |= other.has_macro_format_failure;
-        self.has_parsing_errors |= other.has_parsing_errors;
-        self.has_check_errors |= other.has_check_errors;
-        self.has_diff |= other.has_diff;
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -647,7 +577,7 @@ fn parse_crate(
     input: Input,
     parse_session: &ParseSess,
     config: &Config,
-    summary: &mut Summary,
+    report: &mut FormatReport,
 ) -> Result<ast::Crate, ErrorKind> {
     let input_is_stdin = input.is_text();
 
@@ -685,7 +615,7 @@ fn parse_crate(
         }
     }
 
-    summary.add_parsing_error();
+    report.add_parsing_error();
     Err(ErrorKind::ParseError)
 }
 

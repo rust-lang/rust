@@ -21,7 +21,7 @@ use std::str::Chars;
 
 use config::{Color, Config, EmitMode, FileName, ReportTactic};
 use filemap;
-use formatting::{FileMap, ModifiedChunk, Summary};
+use formatting::{FileMap, ModifiedChunk};
 use rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, OutputWriter};
 use {FormatReport, Input, Session};
 
@@ -278,7 +278,7 @@ fn stdin_formatting_smoke_test() {
     {
         let mut session = Session::new(config, Some(&mut buf));
         session.format(input).unwrap();
-        assert!(session.summary.has_no_errors());
+        assert!(session.has_no_errors());
     }
     //eprintln!("{:?}", );
     #[cfg(not(windows))]
@@ -318,7 +318,7 @@ fn format_lines_errors_are_reported() {
     config.set().error_on_line_overflow(true);
     let mut session = Session::<io::Stdout>::new(config, None);
     session.format(input).unwrap();
-    assert!(session.summary.has_formatting_errors());
+    assert!(session.has_formatting_errors());
 }
 
 #[test]
@@ -330,7 +330,7 @@ fn format_lines_errors_are_reported_with_tabs() {
     config.set().hard_tabs(true);
     let mut session = Session::<io::Stdout>::new(config, None);
     session.format(input).unwrap();
-    assert!(session.summary.has_formatting_errors());
+    assert!(session.has_formatting_errors());
 }
 
 // For each file, run rustfmt and collect the output.
@@ -419,7 +419,7 @@ fn format_file<P: Into<PathBuf>>(filepath: P, config: Config) -> (bool, FileMap,
     let input = Input::File(filepath);
     let mut session = Session::<io::Stdout>::new(config, None);
     let result = session.format(input).unwrap();
-    let parsing_errors = session.summary.has_parsing_errors();
+    let parsing_errors = session.has_parsing_errors();
     let mut filemap = FileMap::new();
     mem::swap(&mut session.filemap, &mut filemap);
     (parsing_errors, filemap, result)
@@ -767,8 +767,8 @@ impl ConfigCodeBlock {
         true
     }
 
-    fn has_parsing_errors(&self, error_summary: Summary) -> bool {
-        if error_summary.has_parsing_errors() {
+    fn has_parsing_errors<T: Write>(&self, session: &Session<T>) -> bool {
+        if session.has_parsing_errors() {
             write_message(&format!(
                 "\u{261d}\u{1f3fd} Cannot format {}:{}",
                 CONFIGURATIONS_FILE_NAME,
@@ -819,7 +819,7 @@ impl ConfigCodeBlock {
         {
             let mut session = Session::new(config, Some(&mut buf));
             session.format(input).unwrap();
-            if self.has_parsing_errors(session.summary) {
+            if self.has_parsing_errors(&session) {
                 return false;
             }
         }

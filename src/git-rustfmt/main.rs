@@ -79,7 +79,7 @@ fn fmt_files(files: &[&str]) -> i32 {
         if report.has_warnings() {
             eprintln!("{}", report);
         }
-        if !session.summary.has_no_errors() {
+        if !session.has_no_errors() {
             exit_code = 1;
         }
     }

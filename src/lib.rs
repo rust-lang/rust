@@ -49,7 +49,7 @@ use syntax::ast;
 
 use comment::LineClasses;
 use failure::Fail;
-use formatting::{FileMap, FormatErrorMap, FormattingError, ReportedErrors, Summary};
+use formatting::{FileMap, FormatErrorMap, FormattingError, ReportedErrors};
 use issues::Issue;
 use shape::Indent;
 
@@ -179,6 +179,9 @@ impl FormatReport {
 
     fn track_errors(&self, new_errors: &[FormattingError]) {
         let errs = &mut self.internal.borrow_mut().1;
+        if !new_errors.is_empty() {
+            errs.has_formatting_errors = true;
+        }
         if errs.has_operational_errors && errs.has_check_errors {
             return;
         }
@@ -199,6 +202,18 @@ impl FormatReport {
         }
     }
 
+    fn add_diff(&mut self) {
+        self.internal.borrow_mut().1.has_diff = true;
+    }
+
+    fn add_macro_format_failure(&mut self) {
+        self.internal.borrow_mut().1.has_macro_format_failure = true;
+    }
+
+    fn add_parsing_error(&mut self) {
+        self.internal.borrow_mut().1.has_parsing_errors = true;
+    }
+
     fn warning_count(&self) -> usize {
         self.internal
             .borrow()
@@ -210,7 +225,7 @@ impl FormatReport {
 
     /// Whether any warnings or errors are present in the report.
     pub fn has_warnings(&self) -> bool {
-        self.warning_count() > 0
+        self.internal.borrow().1.has_formatting_errors
     }
 
     /// Print the report to a terminal using colours and potentially other
@@ -351,7 +366,7 @@ fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     {
         let mut session = Session::new(config, Some(&mut out));
         let result = session.format(input);
-        let formatting_error = session.summary.has_macro_formatting_failure()
+        let formatting_error = session.errors.has_macro_format_failure
             || session.out.as_ref().unwrap().is_empty() && !snippet.is_empty();
         if formatting_error || result.is_err() {
             return None;
@@ -443,7 +458,7 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
 pub struct Session<'b, T: Write + 'b> {
     pub config: Config,
     pub out: Option<&'b mut T>,
-    pub summary: Summary,
+    pub(crate) errors: ReportedErrors,
     filemap: FileMap,
 }
 
@@ -456,7 +471,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
         Session {
             config,
             out,
-            summary: Summary::default(),
+            errors: ReportedErrors::default(),
             filemap: FileMap::new(),
         }
     }
@@ -475,6 +490,39 @@ impl<'b, T: Write + 'b> Session<'b, T> {
         let result = f(self);
         mem::swap(&mut config, &mut self.config);
         result
+    }
+
+    pub fn add_operational_error(&mut self) {
+        self.errors.has_operational_errors = true;
+    }
+
+    pub fn has_operational_errors(&self) -> bool {
+        self.errors.has_operational_errors
+    }
+
+    pub fn has_parsing_errors(&self) -> bool {
+        self.errors.has_parsing_errors
+    }
+
+    pub fn has_formatting_errors(&self) -> bool {
+        self.errors.has_formatting_errors
+    }
+
+    pub fn has_check_errors(&self) -> bool {
+        self.errors.has_check_errors
+    }
+
+    pub fn has_diff(&self) -> bool {
+        self.errors.has_diff
+    }
+
+    pub fn has_no_errors(&self) -> bool {
+        !(self.has_operational_errors()
+            || self.has_parsing_errors()
+            || self.has_formatting_errors()
+            || self.has_check_errors()
+            || self.has_diff())
+            || self.errors.has_macro_format_failure
     }
 }
 
