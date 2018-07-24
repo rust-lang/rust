@@ -10,13 +10,13 @@ warning: not reporting region error due to nll
 LL |         self.foo();
    |              ^^^
 
-error: borrowed data escapes outside of closure
+error: borrowed data escapes outside of function
   --> $DIR/issue-17758.rs:17:9
    |
 LL |     fn bar(&self) {
-   |            ----- `self` is a reference that is only valid in the closure body
+   |            ----- `self` is a reference that is only valid in the function body
 LL |         self.foo();
-   |         ^^^^^^^^^^ `self` escapes the closure body here
+   |         ^^^^^^^^^^ `self` escapes the function body here
 
 error: aborting due to previous error
 

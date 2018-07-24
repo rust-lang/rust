@@ -23,18 +23,18 @@ LL | |     });
    = note: number of external vids: 2
    = note: where '_#1r: '_#0r
 
-error: borrowed data escapes outside of closure
+error: borrowed data escapes outside of function
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:5
    |
 LL |   fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-   |                     ------ `cell_a` is a reference that is only valid in the closure body
+   |                     ------ `cell_a` is a reference that is only valid in the function body
 LL | /     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
 LL | |         //~^ ERROR
 LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
 LL | |     });
-   | |______^ `cell_a` escapes the closure body here
+   | |______^ `cell_a` escapes the function body here
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:44:1

@@ -324,8 +324,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match (category, fr_is_local, outlived_fr_is_local) {
             (ConstraintCategory::Assignment, true, false) |
             (ConstraintCategory::CallArgument, true, false) =>
-                self.report_escapes_closure_error(mir, infcx, mir_def_id, fr, outlived_fr,
-                                                  category, span, errors_buffer),
+                self.report_escaping_data_error(mir, infcx, mir_def_id, fr, outlived_fr,
+                                                category, span, errors_buffer),
             _ =>
                 self.report_general_error(mir, infcx, mir_def_id, fr, fr_is_local,
                                           outlived_fr, outlived_fr_is_local,
@@ -333,7 +333,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
     }
 
-    fn report_escapes_closure_error(
+    fn report_escaping_data_error(
         &self,
         mir: &Mir<'tcx>,
         infcx: &InferCtxt<'_, '_, 'tcx>,
@@ -348,22 +348,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let outlived_fr_name_and_span =
             self.get_var_name_and_span_for_region(infcx.tcx, mir, outlived_fr);
 
+        let escapes_from = if infcx.tcx.is_closure(mir_def_id) { "closure" } else { "function" };
+
         if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
             return self.report_general_error(mir, infcx, mir_def_id,
                                              fr, true, outlived_fr, false,
                                              category, span, errors_buffer);
         }
 
-        let mut diag = infcx
-            .tcx
-            .sess
-            .struct_span_err(span, &format!("borrowed data escapes outside of closure"));
+        let mut diag = infcx.tcx.sess.struct_span_err(
+            span, &format!("borrowed data escapes outside of {}", escapes_from),
+        );
 
         if let Some((outlived_fr_name, outlived_fr_span)) = outlived_fr_name_and_span {
             if let Some(name) = outlived_fr_name {
                 diag.span_label(
                     outlived_fr_span,
-                    format!("`{}` is declared here, outside of the closure body", name),
+                    format!("`{}` is declared here, outside of the {} body", name, escapes_from),
                 );
             }
         }
@@ -372,13 +373,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(name) = fr_name {
                 diag.span_label(
                     fr_span,
-                    format!(
-                        "`{}` is a reference that is only valid in the closure body",
-                        name
-                    ),
+                    format!("`{}` is a reference that is only valid in the {} body",
+                            name, escapes_from),
                 );
 
-                diag.span_label(span, format!("`{}` escapes the closure body here", name));
+                diag.span_label(span, format!("`{}` escapes the {} body here",
+                                               name, escapes_from));
             }
         }
 
@@ -409,12 +409,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let outlived_fr_name = self.give_region_a_name(
             infcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
 
+        let mir_def_name = if infcx.tcx.is_closure(mir_def_id) { "closure" } else { "function" };
+
         match (category, outlived_fr_is_local, fr_is_local) {
             (ConstraintCategory::Return, true, _) => {
                 diag.span_label(span, format!(
-                    "closure was supposed to return data with lifetime `{}` but it is returning \
+                    "{} was supposed to return data with lifetime `{}` but it is returning \
                     data with lifetime `{}`",
-                    fr_name, outlived_fr_name,
+                    mir_def_name, fr_name, outlived_fr_name,
                 ));
             },
             _ => {
