@@ -142,6 +142,24 @@ fn return_original_snippet_with_failure_marked(
     Some(context.snippet(span).to_owned())
 }
 
+struct InsideMacroGuard<'a> {
+    context: &'a RewriteContext<'a>,
+    is_nested: bool,
+}
+
+impl<'a> InsideMacroGuard<'a> {
+    fn inside_macro_context(context: &'a RewriteContext) -> InsideMacroGuard<'a> {
+        let is_nested = context.inside_macro.replace(true);
+        InsideMacroGuard { context, is_nested }
+    }
+}
+
+impl<'a> Drop for InsideMacroGuard<'a> {
+    fn drop(&mut self) {
+        self.context.inside_macro.replace(self.is_nested);
+    }
+}
+
 pub fn rewrite_macro(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
@@ -149,12 +167,11 @@ pub fn rewrite_macro(
     shape: Shape,
     position: MacroPosition,
 ) -> Option<String> {
-    context.inside_macro.replace(true);
+    let guard = InsideMacroGuard::inside_macro_context(context);
     let result = rewrite_macro_inner(mac, extra_ident, context, shape, position);
     if result.is_none() {
         context.macro_rewrite_failure.replace(true);
     }
-    context.inside_macro.replace(false);
     result
 }
 
