@@ -3,7 +3,7 @@ use rustc::hir::intravisit;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use rustc::ty;
-use crate::utils::{higher, in_external_macro, span_lint};
+use crate::utils::{higher, span_lint};
 
 /// **What it does:** Checks for instances of `mut mut` references.
 ///
@@ -50,7 +50,7 @@ pub struct MutVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if in_external_macro(self.cx, expr.span) {
+        if in_external_macro(self.cx.sess(), expr.span) {
             return;
         }
 

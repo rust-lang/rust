@@ -19,7 +19,7 @@ use std::str::FromStr;
 use std::rc::Rc;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
-use syntax::codemap::{CompilerDesugaringKind, ExpnFormat, ExpnInfo, Span, DUMMY_SP};
+use syntax::codemap::{CompilerDesugaringKind, ExpnFormat, Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
@@ -75,36 +75,6 @@ pub fn is_range_expression(span: Span) -> bool {
             _ => false,
         }
     })
-}
-
-/// Returns true if the macro that expanded the crate was outside of the
-/// current crate or was a
-/// compiler plugin.
-pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
-    /// Invokes `in_macro` with the expansion info of the given span slightly
-    /// heavy, try to use
-    /// this after other checks have already happened.
-    fn in_macro_ext<'a, T: LintContext<'a>>(cx: &T, info: &ExpnInfo) -> bool {
-        // no ExpnInfo = no macro
-        if let ExpnFormat::MacroAttribute(..) = info.format {
-            // these are all plugins
-            return true;
-        }
-        // no span for the callee = external macro
-        info.def_site.map_or(true, |span| {
-            // no snippet = external macro or compiler-builtin expansion
-            cx.sess()
-                .codemap()
-                .span_to_snippet(span)
-                .ok()
-                .map_or(true, |code| !code.starts_with("macro_rules"))
-        })
-    }
-
-    span.ctxt()
-        .outer()
-        .expn_info()
-        .map_or(false, |info| in_macro_ext(cx, &info))
 }
 
 /// Check if a `DefId`'s path matches the given absolute type path usage.

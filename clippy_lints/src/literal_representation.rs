@@ -6,7 +6,7 @@ use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 use syntax::ast::*;
 use syntax_pos;
-use crate::utils::{in_external_macro, snippet_opt, span_lint_and_sugg};
+use crate::utils::{snippet_opt, span_lint_and_sugg};
 
 /// **What it does:** Warns if a long integral or floating-point constant does
 /// not contain underscores.
@@ -282,7 +282,7 @@ impl LintPass for LiteralDigitGrouping {
 
 impl EarlyLintPass for LiteralDigitGrouping {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx, expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 
@@ -422,7 +422,7 @@ impl LintPass for LiteralRepresentation {
 
 impl EarlyLintPass for LiteralRepresentation {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx, expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 

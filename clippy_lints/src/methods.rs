@@ -10,7 +10,7 @@ use std::fmt;
 use std::iter;
 use syntax::ast;
 use syntax::codemap::{Span, BytePos};
-use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_expn_of, is_self,
+use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self,
             is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
             match_type, method_chain_args, match_var, return_ty, remove_blocks, same_tys, single_segment_path, snippet,
             span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq};
@@ -806,7 +806,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, implitem: &'tcx hir::ImplItem) {
-        if in_external_macro(cx, implitem.span) {
+        if in_external_macro(cx.sess(), implitem.span) {
             return;
         }
         let name = implitem.ident.name;

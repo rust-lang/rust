@@ -23,7 +23,7 @@ use crate::utils::{sugg, sext};
 use crate::utils::usage::mutated_variables;
 use crate::consts::{constant, Constant};
 
-use crate::utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
+use crate::utils::{get_enclosing_block, get_parent_expr, higher, is_integer_literal, is_refutable,
             last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt,
             span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq};
 use crate::utils::paths;
@@ -450,7 +450,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 && arms[1].pats.len() == 1 && arms[1].guard.is_none()
                                 && is_simple_break_expr(&arms[1].body)
                             {
-                                if in_external_macro(cx, expr.span) {
+                                if in_external_macro(cx.sess(), expr.span) {
                                     return;
                                 }
 

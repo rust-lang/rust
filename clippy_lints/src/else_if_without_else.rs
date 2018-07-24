@@ -4,7 +4,7 @@ use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 
-use crate::utils::{in_external_macro, span_lint_and_sugg};
+use crate::utils::span_lint_and_sugg;
 
 /// **What it does:** Checks for usage of if expressions with an `else if` branch,
 /// but without a final `else` branch.
@@ -50,7 +50,7 @@ impl LintPass for ElseIfWithoutElse {
 
 impl EarlyLintPass for ElseIfWithoutElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, mut item: &Expr) {
-        if in_external_macro(cx, item.span) {
+        if in_external_macro(cx.sess(), item.span) {
             return;
         }
 
