@@ -95,7 +95,7 @@ use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
-use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -103,8 +103,6 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use errors::{DiagnosticBuilder, DiagnosticId};
-use rustc_data_structures::accumulate_vec::AccumulateVec;
-use rustc_data_structures::array_vec::ArrayVec;
 
 use require_c_abi_if_variadic;
 use session::{CompileIncomplete, config, Session};
@@ -4282,8 +4280,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         match *qpath {
             hir::QPath::Resolved(ref maybe_qself, ref path) => {
-                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
-                let ty = AstConv::def_to_ty(self, opt_self_ty, path, true);
+                let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
+                let ty = AstConv::def_to_ty(self, self_ty, path, true);
                 (path.def, ty)
             }
             hir::QPath::TypeRelative(ref qself, ref segment) => {
@@ -4873,7 +4871,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // number of type parameters and type.
     pub fn instantiate_value_path(&self,
                                   segments: &[hir::PathSegment],
-                                  opt_self_ty: Option<Ty<'tcx>>,
+                                  self_ty: Option<Ty<'tcx>>,
                                   def: Def,
                                   span: Span,
                                   node_id: ast::NodeId)
@@ -4898,7 +4896,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 if segments.len() == 1 {
                     // `<T>::assoc` will end up here, and so can `T::assoc`.
-                    let self_ty = opt_self_ty.expect("UFCS sugared assoc missing Self");
+                    let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
                     ufcs_associated = Some((container, self_ty));
                 }
             }
@@ -4955,122 +4953,54 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx.generics_of(*def_id).has_self
         }).unwrap_or(false);
 
-        // Collect the segments of the path: we need to substitute arguments
-        // for parameters throughout the entire path (wherever there are
-        // generic parameters).
         let def_id = def.def_id();
-        let mut parent_defs = self.tcx.generics_of(def_id);
-        let count = parent_defs.count();
-        let mut stack = vec![(def_id, parent_defs)];
-        while let Some(def_id) = parent_defs.parent {
-            parent_defs = self.tcx.generics_of(def_id);
-            stack.push((def_id, parent_defs));
-        }
 
-        // We manually build up the substitution, rather than using convenience
-        // methods in subst.rs so that we can iterate over the arguments and
-        // parameters in lock-step linearly, rather than trying to match each pair.
-        let mut substs: AccumulateVec<[Kind<'tcx>; 8]> = if count <= 8 {
-            AccumulateVec::Array(ArrayVec::new())
-        } else {
-            AccumulateVec::Heap(Vec::with_capacity(count))
-        };
-        fn push_kind<'tcx>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>, kind: Kind<'tcx>) {
-            match substs {
-                AccumulateVec::Array(ref mut arr) => arr.push(kind),
-                AccumulateVec::Heap(ref mut vec) => vec.push(kind),
-            }
-        }
-
-        // Iterate over each segment of the path.
-        while let Some((def_id, defs)) = stack.pop() {
-            let mut params = defs.params.iter();
-            let mut next_param = params.next();
-
-            // `Self` is handled first.
-            if has_self {
-                if let Some(param) = next_param {
-                    if param.index == 0 {
-                        if let GenericParamDefKind::Type { .. } = param.kind {
-                            push_kind(&mut substs, opt_self_ty.map(|ty| ty.into())
-                                .unwrap_or_else(|| self.var_for_def(span, param)));
-                            next_param = params.next();
+        let substs = AstConv::create_substs_for_generic_args(
+            self.tcx,
+            span,
+            true,
+            def_id,
+            &[][..],
+            has_self,
+            self_ty,
+            // Provide the generic args, and whether types should be inferred.
+            |def_id| {
+                if let Some(&PathSeg(_, index)) = path_segs.iter().find(|&PathSeg(did, _)| {
+                    *did == def_id
+                }) {
+                    // If we've encountered an `impl Trait`-related error, we're just
+                    // going to infer the arguments for better error messages.
+                    if !supress_errors[&index] {
+                        // Check whether the user has provided generic arguments.
+                        if let Some(ref data) = segments[index].args {
+                            return (Some(data), segments[index].infer_types);
                         }
                     }
+                    return (None, segments[index].infer_types);
                 }
-            }
 
-            let mut infer_types = true;
-            // Check whether this segment takes generic arguments.
-            if let Some(&PathSeg(_, index)) = path_segs
-                .iter()
-                .find(|&PathSeg(did, _)| *did == def_id) {
-                // If we've encountered an `impl Trait`-related error, we're just
-                // going to infer the arguments for better error messages.
-                if !supress_errors[&index] {
-                    infer_types = segments[index].infer_types;
-                    // Check whether the user has provided generic arguments.
-                    if let Some(ref data) = segments[index].args {
-                        let args = &data.args;
-                        // We're going to iterate through the generic arguments that the user
-                        // provided, matching them with the generic parameters we expect.
-                        // Mismatches can occur as a result of elided lifetimes, or for malformed
-                        // input. We try to handle both sensibly.
-                        'args: for arg in args {
-                            while let Some(param) = next_param {
-                                match param.kind {
-                                    GenericParamDefKind::Lifetime => match arg {
-                                        GenericArg::Lifetime(lt) => {
-                                            push_kind(&mut substs,
-                                                AstConv::ast_region_to_region(self, lt, Some(param))
-                                                .into());
-                                            next_param = params.next();
-                                            continue 'args;
-                                        }
-                                        GenericArg::Type(_) => {
-                                            // We expected a lifetime argument, but got a type
-                                            // argument. That means we're inferring the lifetimes.
-                                            push_kind(&mut substs,
-                                                self.re_infer(span, Some(param)).unwrap().into());
-                                            next_param = params.next();
-                                        }
-                                    }
-                                    GenericParamDefKind::Type { .. } => match arg {
-                                        GenericArg::Type(ty) => {
-                                            push_kind(&mut substs, self.to_ty(ty).into());
-                                            next_param = params.next();
-                                            continue 'args;
-                                        }
-                                        GenericArg::Lifetime(_) => {
-                                            // We expected a type argument, but got a lifetime
-                                            // argument. This is an error, but we need to handle it
-                                            // gracefully so we can report sensible errors. In this
-                                            // case, we're simply going to infer the remaining
-                                            // arguments.
-                                            self.tcx.sess.delay_span_bug(span,
-                                                "found a GenericArg::Lifetime where a \
-                                                 GenericArg::Type was expected");
-                                            break 'args;
-                                        }
-                                    }
-                                }
-                            }
-                            // We should never be able to reach this point with well-formed input.
-                            // Getting to this point means the user supplied more arguments than
-                            // there are parameters.
-                            self.tcx.sess.delay_span_bug(span,
-                                "GenericArg did not have matching GenericParamDef");
+                (None, true)
+            },
+            // Provide substitutions for parameters for which (valid) arguments have been provided.
+            |param, arg| {
+                match param.kind {
+                    GenericParamDefKind::Lifetime => match arg {
+                        GenericArg::Lifetime(lt) => {
+                            AstConv::ast_region_to_region(self, lt, Some(param)).into()
                         }
+                        _ => unreachable!(),
+                    }
+                    GenericParamDefKind::Type { .. } => match arg {
+                        GenericArg::Type(ty) => self.to_ty(ty).into(),
+                        _ => unreachable!(),
                     }
                 }
-            }
-
-            // If there are fewer arguments than parameters, it means
-            // we're inferring the remaining arguments.
-            while let Some(param) = next_param {
+            },
+            // Provide substitutions for parameters for which arguments are inferred.
+            |substs, param, infer_types| {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        push_kind(&mut substs, self.re_infer(span, Some(param)).unwrap().into());
+                        self.re_infer(span, Some(param)).unwrap().into()
                     }
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_types && has_default {
@@ -5078,24 +5008,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             // inferring the type arguments: we provide the default where any
                             // is missing.
                             let default = self.tcx.type_of(param.def_id);
-                            let kind = self.normalize_ty(
+                            self.normalize_ty(
                                 span,
-                                default.subst_spanned(self.tcx, &substs, Some(span))
-                            ).into();
-                            push_kind(&mut substs, kind);
+                                default.subst_spanned(self.tcx, substs.unwrap(), Some(span))
+                            ).into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.
                             // a lifetime argument being given instead of a type paramter.
                             // Using inference instead of `TyError` gives better error messages.
-                            push_kind(&mut substs, self.var_for_def(span, param));
+                            self.var_for_def(span, param)
                         }
                     }
                 }
-                next_param = params.next();
-            }
-        }
-        let substs = self.tcx.intern_substs(&substs);
+            },
+        );
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.

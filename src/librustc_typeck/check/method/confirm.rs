@@ -14,7 +14,7 @@ use astconv::AstConv;
 use check::{FnCtxt, PlaceOp, callee, Needs};
 use hir::GenericArg;
 use hir::def_id::DefId;
-use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, GenericParamDefKind};
 use rustc::ty::subst::Subst;
@@ -24,8 +24,6 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
 use syntax_pos::Span;
 use rustc::hir;
-use rustc_data_structures::accumulate_vec::AccumulateVec;
-use rustc_data_structures::array_vec::ArrayVec;
 
 use std::ops::Deref;
 
@@ -325,86 +323,41 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // parameters from the type and those from the method.
         assert_eq!(method_generics.parent_count, parent_substs.len());
 
-        // Collect the segments of the path: we need to substitute arguments
-        // for parameters throughout the entire path (wherever there are
-        // generic parameters).
-        let def_id = pick.item.def_id;
-        let mut parent_defs = self.tcx.generics_of(def_id);
-        let count = parent_defs.count();
-        let mut stack = vec![(def_id, parent_defs)];
-        while let Some(def_id) = parent_defs.parent {
-            parent_defs = self.tcx.generics_of(def_id);
-            stack.push((def_id, parent_defs));
-        }
-
-        // We manually build up the substitution, rather than using convenience
-        // methods in subst.rs so that we can iterate over the arguments and
-        // parameters in lock-step linearly, rather than trying to match each pair.
-        let mut substs: AccumulateVec<[Kind<'tcx>; 8]> = if count <= 8 {
-            AccumulateVec::Array(ArrayVec::new())
-        } else {
-            AccumulateVec::Heap(Vec::with_capacity(count))
-        };
-        fn push_kind<'tcx>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>, kind: Kind<'tcx>) {
-            match substs {
-                AccumulateVec::Array(ref mut arr) => arr.push(kind),
-                AccumulateVec::Heap(ref mut vec) => vec.push(kind),
-            }
-        }
-
-        // Iterate over each segment of the path.
-        while let Some((_, defs)) = stack.pop() {
-            let mut params = defs.params.iter();
-            let mut next_param = params.next();
-
-            while let Some(param) = next_param {
-                if let Some(&kind) = parent_substs.get(param.index as usize) {
-                    push_kind(&mut substs, kind);
-                    next_param = params.next();
+        AstConv::create_substs_for_generic_args(
+            self.tcx,
+            self.span,
+            false,
+            pick.item.def_id,
+            parent_substs,
+            false,
+            None,
+            // Provide the generic args, and whether types should be inferred.
+            |_| {
+                // The last argument of the returned tuple here is unimportant.
+                if let Some(ref data) = segment.args {
+                    (Some(data), false)
                 } else {
-                    break;
+                    (None, false)
                 }
-            }
-
-            if let Some(ref data) = segment.args {
-                let args = &data.args;
-                'args: for arg in args {
-                    while let Some(param) = next_param {
-                        match param.kind {
-                            GenericParamDefKind::Lifetime => match arg {
-                                GenericArg::Lifetime(lt) => {
-                                    push_kind(&mut substs, AstConv::ast_region_to_region(
-                                        self.fcx, lt, Some(param)).into());
-                                    next_param = params.next();
-                                    continue 'args;
-                                }
-                                _ => {
-                                    push_kind(&mut substs, self.var_for_def(self.span, param));
-                                    next_param = params.next();
-                                }
-                            }
-                            GenericParamDefKind::Type { .. } => match arg {
-                                GenericArg::Type(ty) => {
-                                    push_kind(&mut substs, self.to_ty(ty).into());
-                                    next_param = params.next();
-                                    continue 'args;
-                                }
-                                _ => {
-                                    break 'args;
-                                }
-                            }
+            },
+            // Provide substitutions for parameters for which (valid) arguments have been provided.
+            |param, arg| {
+                match param.kind {
+                    GenericParamDefKind::Lifetime => match arg {
+                        GenericArg::Lifetime(lt) => {
+                            AstConv::ast_region_to_region(self.fcx, lt, Some(param)).into()
                         }
+                        _ => unreachable!(),
+                    }
+                    GenericParamDefKind::Type { .. } => match arg {
+                        GenericArg::Type(ty) => self.to_ty(ty).into(),
+                        _ => unreachable!(),
                     }
                 }
-            }
-
-            while let Some(param) = next_param {
-                push_kind(&mut substs, self.var_for_def(self.span, param));
-                next_param = params.next();
-            }
-        }
-
-        self.tcx.intern_substs(&substs)
+            },
+            // Provide substitutions for parameters for which arguments are inferred.
+            |_, param, _| self.var_for_def(self.span, param),
+        )
     }
 
     fn unify_receivers(&mut self, self_ty: Ty<'tcx>, method_self_ty: Ty<'tcx>) {
