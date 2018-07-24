@@ -80,7 +80,7 @@ error: multiple unused formatting arguments
 LL |     format!("", 1, 2);               //~ ERROR: multiple unused formatting arguments
    |             --  ^  ^
    |             |
-   |             multiple missing formatting arguments
+   |             multiple missing formatting specifiers
 
 error: argument never used
   --> $DIR/ifmt-bad-arg.rs:43:22
@@ -118,7 +118,7 @@ error: multiple unused formatting arguments
 LL |     format!("{} {}", 1, 2, foo=1, bar=2);  //~ ERROR: multiple unused formatting arguments
    |             -------            ^      ^
    |             |
-   |             multiple missing formatting arguments
+   |             multiple missing formatting specifiers
 
 error: duplicate argument named `foo`
   --> $DIR/ifmt-bad-arg.rs:50:33

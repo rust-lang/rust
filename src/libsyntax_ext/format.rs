@@ -928,7 +928,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                     errs.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
                     "multiple unused formatting arguments",
                 );
-                diag.span_label(cx.fmtsp, "multiple missing formatting arguments");
+                diag.span_label(cx.fmtsp, "multiple missing formatting specifiers");
                 diag
             }
         };

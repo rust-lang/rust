@@ -4,7 +4,7 @@ error: multiple unused formatting arguments
 LL |     println!("%.*3$s %s!/n", "Hello,", "World", 4); //~ ERROR multiple unused formatting arguments
    |              --------------  ^^^^^^^^  ^^^^^^^  ^
    |              |
-   |              multiple missing formatting arguments
+   |              multiple missing formatting specifiers
    |
    = help: `%.*3$s` should be written as `{:.2$}`
    = help: `%s` should be written as `{}`

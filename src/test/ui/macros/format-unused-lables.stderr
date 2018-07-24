@@ -4,13 +4,13 @@ error: multiple unused formatting arguments
 LL |     println!("Test", 123, 456, 789);
    |              ------  ^^^  ^^^  ^^^
    |              |
-   |              multiple missing formatting arguments
+   |              multiple missing formatting specifiers
 
 error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:16:9
    |
 LL |     println!("Test2",
-   |              ------- multiple missing formatting arguments
+   |              ------- multiple missing formatting specifiers
 LL |         123,  //~ ERROR multiple unused formatting arguments
    |         ^^^
 LL |         456,
@@ -28,7 +28,7 @@ error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:24:9
    |
 LL |     println!("Some more $STUFF",
-   |              ------------------ multiple missing formatting arguments
+   |              ------------------ multiple missing formatting specifiers
 LL |         "woo!",  //~ ERROR multiple unused formatting arguments
    |         ^^^^^^
 LL |             STUFF=
