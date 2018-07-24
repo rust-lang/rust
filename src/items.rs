@@ -801,17 +801,12 @@ fn format_impl_ref_and_type(
         result.push_str(format_defaultness(defaultness));
         result.push_str(format_unsafety(unsafety));
 
-        let lo = context.snippet_provider.span_after(item.span, "impl");
-        let hi = match *trait_ref {
-            Some(ref tr) => tr.path.span.lo(),
-            None => self_ty.span.lo(),
-        };
         let shape = generics_shape_from_config(
             context.config,
             Shape::indented(offset + last_line_width(&result), context.config),
             0,
         )?;
-        let generics_str = rewrite_generics(context, "impl", generics, shape, mk_sp(lo, hi))?;
+        let generics_str = rewrite_generics(context, "impl", generics, shape)?;
         result.push_str(&generics_str);
 
         let polarity_str = if polarity == ast::ImplPolarity::Negative {
@@ -986,13 +981,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let body_lo = context.snippet_provider.span_after(item.span, "{");
 
         let shape = Shape::indented(offset, context.config).offset_left(result.len())?;
-        let generics_str = rewrite_generics(
-            context,
-            rewrite_ident(context, item.ident),
-            generics,
-            shape,
-            mk_sp(item.span.lo(), body_lo),
-        )?;
+        let generics_str =
+            rewrite_generics(context, rewrite_ident(context, item.ident), generics, shape)?;
         result.push_str(&generics_str);
 
         // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
@@ -1138,7 +1128,7 @@ pub fn format_trait_alias(
     let alias = rewrite_ident(context, ident);
     // 6 = "trait ", 2 = " ="
     let g_shape = shape.offset_left(6)?.sub_width(2)?;
-    let generics_str = rewrite_generics(context, &alias, generics, g_shape, generics.span)?;
+    let generics_str = rewrite_generics(context, &alias, generics, g_shape)?;
     let lhs = format!("trait {} =", generics_str);
     // 1 = ";"
     rewrite_assign_rhs(context, lhs, generic_bounds, shape.sub_width(1)?).map(|s| s + ";")
@@ -1340,8 +1330,7 @@ fn format_tuple_struct(
         Some(generics) => {
             let budget = context.budget(last_line_width(&header_str));
             let shape = Shape::legacy(budget, offset);
-            let g_span = mk_sp(span.lo(), body_lo);
-            let generics_str = rewrite_generics(context, "", generics, shape, g_span)?;
+            let generics_str = rewrite_generics(context, "", generics, shape)?;
             result.push_str(&generics_str);
 
             let where_budget = context.budget(last_line_width(&result));
@@ -1418,7 +1407,7 @@ fn rewrite_type_prefix(
         let g_shape = Shape::indented(indent, context.config)
             .offset_left(result.len())?
             .sub_width(2)?;
-        let generics_str = rewrite_generics(context, ident_str, generics, g_shape, generics.span)?;
+        let generics_str = rewrite_generics(context, ident_str, generics, g_shape)?;
         result.push_str(&generics_str);
     }
 
@@ -1942,13 +1931,11 @@ fn rewrite_fn_base(
         offset: used_width,
     };
     let fd = fn_sig.decl;
-    let g_span = mk_sp(span.lo(), fd.output.span().lo());
     let generics_str = rewrite_generics(
         context,
         rewrite_ident(context, ident),
         fn_sig.generics,
         shape,
-        g_span,
     )?;
     result.push_str(&generics_str);
 
@@ -2466,7 +2453,6 @@ fn rewrite_generics(
     ident: &str,
     generics: &ast::Generics,
     shape: Shape,
-    span: Span,
 ) -> Option<String> {
     // FIXME: convert bounds to where clauses where they get too big or if
     // there is a where clause at all.
@@ -2476,7 +2462,7 @@ fn rewrite_generics(
     }
 
     let params = &generics.params.iter().map(|e| &*e).collect::<Vec<_>>();
-    overflow::rewrite_with_angle_brackets(context, ident, params, shape, span)
+    overflow::rewrite_with_angle_brackets(context, ident, params, shape, generics.span)
 }
 
 pub fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) -> Option<Shape> {
@@ -2764,7 +2750,7 @@ fn format_generics(
     used_width: usize,
 ) -> Option<String> {
     let shape = Shape::legacy(context.budget(used_width + offset.width()), offset);
-    let mut result = rewrite_generics(context, "", generics, shape, span)?;
+    let mut result = rewrite_generics(context, "", generics, shape)?;
 
     let same_line_brace = if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
         let budget = context.budget(last_line_used_width(&result, offset.width()));
