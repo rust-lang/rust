@@ -164,7 +164,7 @@ pub unsafe fn __set_PRIMASK(pri_mask: u32) {
     asm!("msr PRIMASK, $0" : : "r"(pri_mask) : : "volatile");
 }
 
-#[cfg(target_feature = "v7")]
+#[cfg(any(target_feature = "v7", dox))]
 mod v7 {
     /// Enable FIQ
     ///
@@ -245,7 +245,7 @@ mod v7 {
     }
 }
 
-#[cfg(target_feature = "v7")]
+#[cfg(any(target_feature = "v7", dox))]
 pub use self::v7::*;
 
 /* Core instruction access */

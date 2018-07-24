@@ -7,9 +7,9 @@
 //! [arm_dat]: https://developer.arm.com/technologies/neon/intrinsics
 #![allow(non_camel_case_types)]
 
-#[cfg(target_feature = "mclass")]
+#[cfg(any(target_feature = "mclass", dox))]
 mod cmsis;
-#[cfg(target_feature = "mclass")]
+#[cfg(any(target_feature = "mclass", dox))]
 pub use self::cmsis::*;
 
 mod v6;
@@ -20,9 +20,9 @@ mod v7;
 #[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
 pub use self::v7::*;
 
-#[cfg(all(target_feature = "v7", not(target_feature = "mclass")))]
+#[cfg(any(all(target_feature = "v7", not(target_feature = "mclass")), dox))]
 mod dsp;
-#[cfg(all(target_feature = "v7", not(target_feature = "mclass")))]
+#[cfg(any(all(target_feature = "v7", not(target_feature = "mclass")), dox))]
 pub use self::dsp::*;
 
 // NEON is supported on AArch64, and on ARM when built with the v7 and neon
