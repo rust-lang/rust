@@ -168,7 +168,7 @@ pub fn rewrite_macro(
     position: MacroPosition,
 ) -> Option<String> {
     let guard = InsideMacroGuard::inside_macro_context(context);
-    let result = rewrite_macro_inner(mac, extra_ident, context, shape, position);
+    let result = rewrite_macro_inner(mac, extra_ident, context, shape, position, guard.is_nested);
     if result.is_none() {
         context.macro_rewrite_failure.replace(true);
     }
@@ -181,6 +181,7 @@ pub fn rewrite_macro_inner(
     context: &RewriteContext,
     shape: Shape,
     position: MacroPosition,
+    is_nested_macro: bool,
 ) -> Option<String> {
     if context.config.use_try_shorthand() {
         if let Some(expr) = convert_try_mac(mac, context) {
@@ -193,7 +194,7 @@ pub fn rewrite_macro_inner(
 
     let macro_name = rewrite_macro_name(context, &mac.node.path, extra_ident);
 
-    let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
+    let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) && !is_nested_macro {
         DelimToken::Bracket
     } else {
         original_style
@@ -326,7 +327,7 @@ pub fn rewrite_macro_inner(
                 } else {
                     Some(SeparatorTactic::Never)
                 };
-                if FORCED_BRACKET_MACROS.contains(macro_name) {
+                if FORCED_BRACKET_MACROS.contains(macro_name) && !is_nested_macro {
                     context.inside_macro.replace(false);
                     if context.use_block_indent() {
                         force_trailing_comma = Some(SeparatorTactic::Vertical);
