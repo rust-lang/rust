@@ -1,7 +1,7 @@
-- Feature Name: associated_type_bounds
+- Feature Name: `associated_type_bounds`
 - Start Date: 2018-01-13
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2289](https://github.com/rust-lang/rfcs/pull/2289)
+- Rust Issue: [rust-lang/rust#52662](https://github.com/rust-lang/rust/issues/52662)
 
 # Summary
 [summary]: #summary
