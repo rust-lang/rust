@@ -140,6 +140,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             mir::Place::Static(ref s) => AbsPlace::Static(s.def_id),
             mir::Place::Projection(ref p) =>
                 AbsPlace::Projection(Box::new(self.abstract_place_projection(&*p)?)),
+            _ => unimplemented!("validation is not currently maintained"),
         })
     }
 

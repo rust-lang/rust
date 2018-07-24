@@ -344,7 +344,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                                 ty::layout::Abi::Scalar(_) => Value::Scalar(Scalar::null()),
                                 _ => {
                                     // FIXME(oli-obk): pass TyLayout to alloc_ptr instead of Ty
-                                    let ptr = this.alloc_ptr(dest_layout.ty)?;
+                                    let ptr = this.alloc_ptr(dest_layout)?;
                                     let ptr = Scalar::Ptr(ptr);
                                     this.memory.write_repeat(ptr, 0, size)?;
                                     Value::ByRef(ptr, dest_layout.align)
