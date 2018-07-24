@@ -340,6 +340,7 @@ impl TokenStream {
     }
 }
 
+#[derive(Clone)]
 pub struct TokenStreamBuilder(Vec<TokenStream>);
 
 impl TokenStreamBuilder {

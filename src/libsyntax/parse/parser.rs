@@ -288,8 +288,8 @@ struct TokenCursorFrame {
 /// on the parser.
 #[derive(Clone)]
 enum LastToken {
-    Collecting(Vec<TokenTree>),
-    Was(Option<TokenTree>),
+    Collecting(Vec<TokenStream>),
+    Was(Option<TokenStream>),
 }
 
 impl TokenCursorFrame {
@@ -326,8 +326,8 @@ impl TokenCursor {
             };
 
             match self.frame.last_token {
-                LastToken::Collecting(ref mut v) => v.push(tree.clone()),
-                LastToken::Was(ref mut t) => *t = Some(tree.clone()),
+                LastToken::Collecting(ref mut v) => v.push(tree.clone().into()),
+                LastToken::Was(ref mut t) => *t = Some(tree.clone().into()),
             }
 
             match tree {
@@ -6723,11 +6723,49 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_item_(
+        &mut self,
+        attrs: Vec<Attribute>,
+        macros_allowed: bool,
+        attributes_allowed: bool,
+    ) -> PResult<'a, Option<P<Item>>> {
+        let (ret, tokens) = self.collect_tokens(|this| {
+            this.parse_item_implementation(attrs, macros_allowed, attributes_allowed)
+        })?;
+
+        // Once we've parsed an item and recorded the tokens we got while
+        // parsing we may want to store `tokens` into the item we're about to
+        // return. Note, though, that we specifically didn't capture tokens
+        // related to outer attributes. The `tokens` field here may later be
+        // used with procedural macros to convert this item back into a token
+        // stream, but during expansion we may be removing attributes as we go
+        // along.
+        //
+        // If we've got inner attributes then the `tokens` we've got above holds
+        // these inner attributes. If an inner attribute is expanded we won't
+        // actually remove it from the token stream, so we'll just keep yielding
+        // it (bad!). To work around this case for now we just avoid recording
+        // `tokens` if we detect any inner attributes. This should help keep
+        // expansion correct, but we should fix this bug one day!
+        Ok(ret.map(|item| {
+            item.map(|mut i| {
+                if !i.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
+                    i.tokens = Some(tokens);
+                }
+                i
+            })
+        }))
+    }
+
     /// Parse one of the items allowed by the flags.
     /// NB: this function no longer parses the items inside an
     /// extern crate.
-    fn parse_item_(&mut self, attrs: Vec<Attribute>,
-                   macros_allowed: bool, attributes_allowed: bool) -> PResult<'a, Option<P<Item>>> {
+    fn parse_item_implementation(
+        &mut self,
+        attrs: Vec<Attribute>,
+        macros_allowed: bool,
+        attributes_allowed: bool,
+    ) -> PResult<'a, Option<P<Item>>> {
         maybe_whole!(self, NtItem, |item| {
             let mut item = item.into_inner();
             let mut attrs = attrs;
@@ -7260,12 +7298,15 @@ impl<'a> Parser<'a> {
     {
         // Record all tokens we parse when parsing this item.
         let mut tokens = Vec::new();
-        match self.token_cursor.frame.last_token {
-            LastToken::Collecting(_) => {
-                panic!("cannot collect tokens recursively yet")
+        let prev_collecting = match self.token_cursor.frame.last_token {
+            LastToken::Collecting(ref mut list) => {
+                Some(mem::replace(list, Vec::new()))
             }
-            LastToken::Was(ref mut last) => tokens.extend(last.take()),
-        }
+            LastToken::Was(ref mut last) => {
+                tokens.extend(last.take());
+                None
+            }
+        };
         self.token_cursor.frame.last_token = LastToken::Collecting(tokens);
         let prev = self.token_cursor.stack.len();
         let ret = f(self);
@@ -7274,7 +7315,9 @@ impl<'a> Parser<'a> {
         } else {
             &mut self.token_cursor.stack[prev].last_token
         };
-        let mut tokens = match *last_token {
+
+        // Pull our the toekns that we've collected from the call to `f` above
+        let mut collected_tokens = match *last_token {
             LastToken::Collecting(ref mut v) => mem::replace(v, Vec::new()),
             LastToken::Was(_) => panic!("our vector went away?"),
         };
@@ -7282,44 +7325,34 @@ impl<'a> Parser<'a> {
         // If we're not at EOF our current token wasn't actually consumed by
         // `f`, but it'll still be in our list that we pulled out. In that case
         // put it back.
-        if self.token == token::Eof {
-            *last_token = LastToken::Was(None);
+        let extra_token = if self.token != token::Eof {
+            collected_tokens.pop()
         } else {
-            *last_token = LastToken::Was(tokens.pop());
+            None
+        };
+
+        // If we were previously collecting tokens, then this was a recursive
+        // call. In that case we need to record all the tokens we collected in
+        // our parent list as well. To do that we push a clone of our stream
+        // onto the previous list.
+        let stream = collected_tokens.into_iter().collect::<TokenStream>();
+        match prev_collecting {
+            Some(mut list) => {
+                list.push(stream.clone());
+                list.extend(extra_token);
+                *last_token = LastToken::Collecting(list);
+            }
+            None => {
+                *last_token = LastToken::Was(extra_token);
+            }
         }
 
-        Ok((ret?, tokens.into_iter().collect()))
+        Ok((ret?, stream))
     }
 
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
         let attrs = self.parse_outer_attributes()?;
-
-        let (ret, tokens) = self.collect_tokens(|this| {
-            this.parse_item_(attrs, true, false)
-        })?;
-
-        // Once we've parsed an item and recorded the tokens we got while
-        // parsing we may want to store `tokens` into the item we're about to
-        // return. Note, though, that we specifically didn't capture tokens
-        // related to outer attributes. The `tokens` field here may later be
-        // used with procedural macros to convert this item back into a token
-        // stream, but during expansion we may be removing attributes as we go
-        // along.
-        //
-        // If we've got inner attributes then the `tokens` we've got above holds
-        // these inner attributes. If an inner attribute is expanded we won't
-        // actually remove it from the token stream, so we'll just keep yielding
-        // it (bad!). To work around this case for now we just avoid recording
-        // `tokens` if we detect any inner attributes. This should help keep
-        // expansion correct, but we should fix this bug one day!
-        Ok(ret.map(|item| {
-            item.map(|mut i| {
-                if !i.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                    i.tokens = Some(tokens);
-                }
-                i
-            })
-        }))
+        self.parse_item_(attrs, true, false)
     }
 
     /// `::{` or `::*`
