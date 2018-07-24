@@ -449,7 +449,8 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn subsystem(&mut self, subsystem: &str) {
-        self.linker_arg(&format!("--subsystem={}", subsystem));
+        self.linker_arg("--subsystem");
+        self.linker_arg(&subsystem);
     }
 
     fn finalize(&mut self) -> Command {
