@@ -40,7 +40,7 @@ impl DepNodeFilter {
     /// Tests whether `node` meets the filter, returning true if so.
     pub fn test(&self, node: &DepNode) -> bool {
         let debug_str = format!("{:?}", node);
-        self.text.split("&")
+        self.text.split('&')
                  .map(|s| s.trim())
                  .all(|f| debug_str.contains(f))
     }

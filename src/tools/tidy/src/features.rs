@@ -257,7 +257,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 None
             } else {
                 next_feature_is_rustc_internal = false;
-                let s = issue_str.split("(").nth(1).unwrap().split(")").nth(0).unwrap();
+                let s = issue_str.split('(').nth(1).unwrap().split(')').nth(0).unwrap();
                 Some(s.parse().unwrap())
             };
             Some((name.to_owned(),
