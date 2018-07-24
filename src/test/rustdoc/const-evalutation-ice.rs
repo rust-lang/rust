@@ -10,8 +10,6 @@
 
 // Just check if we don't get an ICE for the _S type.
 
-#![feature(const_size_of)]
-
 use std::cell::Cell;
 use std::mem;
 
