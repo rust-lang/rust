@@ -302,7 +302,7 @@ trait ChainFormatter {
     // foo.bar
     //     .baz()
     // ```
-    // If `bar` were not part of the root, then baz would be orphaned and 'float'.
+    // If `bar` were not part of the root, then foo would be orphaned and 'float'.
     fn format_root(
         &mut self,
         parent: &ChainItem,

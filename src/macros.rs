@@ -1118,22 +1118,21 @@ fn indent_macro_snippet(
         }).min()?;
 
     Some(
-        first_line + "\n"
-            + &trimmed_lines
-                .iter()
-                .map(
-                    |&(trimmed, ref line, prefix_space_width)| match prefix_space_width {
-                        _ if !trimmed => line.to_owned(),
-                        Some(original_indent_width) => {
-                            let new_indent_width = indent.width()
-                                + original_indent_width.saturating_sub(min_prefix_space_width);
-                            let new_indent = Indent::from_width(context.config, new_indent_width);
-                            format!("{}{}", new_indent.to_string(context.config), line.trim())
-                        }
-                        None => String::new(),
-                    },
-                ).collect::<Vec<_>>()
-                .join("\n"),
+        first_line + "\n" + &trimmed_lines
+            .iter()
+            .map(
+                |&(trimmed, ref line, prefix_space_width)| match prefix_space_width {
+                    _ if !trimmed => line.to_owned(),
+                    Some(original_indent_width) => {
+                        let new_indent_width = indent.width() + original_indent_width
+                            .saturating_sub(min_prefix_space_width);
+                        let new_indent = Indent::from_width(context.config, new_indent_width);
+                        format!("{}{}", new_indent.to_string(context.config), line.trim())
+                    }
+                    None => String::new(),
+                },
+            ).collect::<Vec<_>>()
+            .join("\n"),
     )
 }
 
