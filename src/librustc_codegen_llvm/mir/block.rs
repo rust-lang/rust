@@ -454,6 +454,38 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     return;
                 }
 
+                if let Some(intrinsic) = intrinsic {
+                    if let Some(trans) = bx.cx.plugin_intrinsics.get(intrinsic) {
+                        // Get the extra statements from the plugin:
+                        let &(ref dest, target) = destination
+                          .as_ref()
+                          .unwrap();
+
+                        let mut extra_stmts = Vec::new();
+                        trans.codegen_simple_intrinsic(bx.tcx(),
+                                                       terminator.source_info,
+                                                       &sig,
+                                                       self.mir,
+                                                       self.param_substs,
+                                                       args,
+                                                       dest.clone(),
+                                                       &mut extra_stmts);
+
+                        // Now, codegen:
+                        for stmt_kind in extra_stmts.into_iter() {
+                            let stmt = mir::Statement {
+                                source_info: terminator.source_info,
+                                kind: stmt_kind,
+                            };
+                            bx = self.codegen_statement(bx, &stmt);
+                        }
+
+                        // Lastly, jump to the target block:
+                        funclet_br(self, bx, target);
+                        return;
+                    }
+                }
+
                 let extra_args = &args[sig.inputs().len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
                     let op_ty = op_arg.ty(self.mir, bx.tcx());

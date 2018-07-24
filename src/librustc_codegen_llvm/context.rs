@@ -26,6 +26,7 @@ use type_of::PointeeInfo;
 
 use rustc_data_structures::base_n;
 use rustc::mir::mono::Stats;
+use rustc::mir::PluginIntrinsics;
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
@@ -102,6 +103,7 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     pub rust_try_fn: Cell<Option<ValueRef>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
+    pub plugin_intrinsics: Arc<PluginIntrinsics>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -306,6 +308,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
                 eh_unwind_resume: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
+                plugin_intrinsics: tcx.sess.plugin_intrinsics.get(),
                 local_gen_sym_counter: Cell::new(0),
             };
             cx.isize_ty = Type::isize(&cx);

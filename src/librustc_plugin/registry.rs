@@ -11,6 +11,7 @@
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
 use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
+use rustc::mir::{PluginIntrinsics, PluginIntrinsicCodegen};
 use rustc::session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
@@ -61,6 +62,9 @@ pub struct Registry<'a> {
     #[doc(hidden)]
     pub attributes: Vec<(String, AttributeType)>,
 
+    #[doc(hidden)]
+    pub intrinsics: PluginIntrinsics,
+
     whitelisted_custom_derives: Vec<ast::Name>,
 }
 
@@ -77,6 +81,7 @@ impl<'a> Registry<'a> {
             lint_groups: HashMap::new(),
             llvm_passes: vec![],
             attributes: vec![],
+            intrinsics: HashMap::new(),
             whitelisted_custom_derives: Vec::new(),
         }
     }
@@ -93,6 +98,17 @@ impl<'a> Registry<'a> {
     /// with `--extra-plugins`
     pub fn args<'b>(&'b self) -> &'b [ast::NestedMetaItem] {
         self.args_hidden.as_ref().map(|v| &v[..]).unwrap_or(&[])
+    }
+
+    /// Register a plugin intrinsic. Ignored if `name` is a normal Rust intrinsic.
+    ///
+    /// When a function call to the named intrinsic is made, codegen (only LLVM, currently)
+    /// will replace the usual function call with the extra statements provided by the passed
+    /// trait object. It will then branch directly to the exit block. It is highly unsafe. Do not
+    /// use lightly.
+    pub fn register_intrinsic(&mut self, name: String,
+                              codegen: Box<PluginIntrinsicCodegen>) {
+        self.intrinsics.insert(name, codegen);
     }
 
     /// Register a syntax extension of any kind.

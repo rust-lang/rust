@@ -50,7 +50,7 @@ use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use rustc_data_structures::sync::{self, Lrc, Lock};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, };
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
@@ -896,6 +896,7 @@ where
         lint_groups,
         llvm_passes,
         attributes,
+        intrinsics,
         ..
     } = registry;
 
@@ -914,6 +915,7 @@ where
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
+        sess.plugin_intrinsics.set(Arc::new(intrinsics));
     })?;
 
     // Lint plugins are registered; now we can process command line flags.

@@ -319,12 +319,20 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             ref other => {
-                struct_span_err!(tcx.sess, it.span, E0093,
+                let plugin_intrinsics = tcx.sess.plugin_intrinsics.get();
+                if let Some(plugin) = plugin_intrinsics.get(*other) {
+                  (plugin.generic_parameter_count(tcx),
+                   plugin.inputs(tcx),
+                   plugin.output(tcx))
+                } else {
+                    struct_span_err!(tcx.sess, it.span, E0093,
                                 "unrecognized intrinsic function: `{}`",
                                 *other)
                                 .span_label(it.span, "unrecognized intrinsic")
                                 .emit();
-                return;
+                    return;
+
+                }
             }
         };
         (n_tps, inputs, output)

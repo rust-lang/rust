@@ -39,6 +39,7 @@ use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, atomic::AtomicPtr, atomic, };
 use owning_ref::{Erased, OwningRef};
 
 pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
@@ -749,5 +750,57 @@ impl<T> DerefMut for OneThread<T> {
     fn deref_mut(&mut self) -> &mut T {
         self.check();
         &mut self.inner
+    }
+}
+
+/// Provides atomic mutability by replacing the value inside this `ArcCell`.
+/// Similar to the `crossbeam` structure of the same name.
+#[derive(Debug)]
+pub struct ArcCell<T>(AtomicPtr<T>);
+impl<T> ArcCell<T> {
+    pub fn new(v: Arc<T>) -> Self {
+        ArcCell(AtomicPtr::new(Arc::into_raw(v) as *mut _))
+    }
+    pub fn get(&self) -> Arc<T> {
+        let ptr = self.0.load(atomic::Ordering::Acquire);
+        let arc = unsafe { Arc::from_raw(ptr as *const T) };
+        let ret = arc.clone();
+        // don't drop our copy:
+        ::std::mem::forget(arc);
+        ret
+    }
+    /// Update the value, returning the previous value.
+    pub fn set(&self, v: Arc<T>) -> Arc<T> {
+        let new = Arc::into_raw(v) as *mut _;
+        let mut expected = self.0.load(atomic::Ordering::Acquire);
+        loop {
+            match self.0.compare_exchange_weak(expected, new,
+                                               atomic::Ordering::SeqCst,
+                                               atomic::Ordering::Acquire) {
+                Ok(old) => {
+                    return unsafe { Arc::from_raw(old as *const T) };
+                },
+                Err(v) => {
+                    expected = v;
+                },
+            }
+        }
+    }
+}
+impl<T> Drop for ArcCell<T> {
+    fn drop(&mut self) {
+        let ptr = self.0.load(atomic::Ordering::Acquire);
+        // drop our copy of the arc:
+        unsafe { Arc::from_raw(ptr as *const _) };
+    }
+}
+impl<T> Clone for ArcCell<T> {
+    fn clone(&self) -> Self {
+        ArcCell::new(self.get())
+    }
+}
+impl<T> From<Arc<T>> for ArcCell<T> {
+    fn from(v: Arc<T>) -> Self {
+        Self::new(v)
     }
 }
