@@ -138,17 +138,13 @@ pub fn nil_ty<'r>() -> Ty<'r> {
 }
 
 fn mk_lifetime(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
-    match *lt {
-        Some(s) => Some(cx.lifetime(span, Ident::from_str(s))),
-        None => None,
-    }
+    lt.map(|s|
+        cx.lifetime(span, Ident::from_str(s))
+    )
 }
 
 fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
-    match *lt {
-        Some(s) => vec![cx.lifetime(span, Ident::from_str(s))],
-        None => vec![],
-    }
+    mk_lifetime(cx, span, lt).into_iter().collect()
 }
 
 impl<'a> Ty<'a> {
