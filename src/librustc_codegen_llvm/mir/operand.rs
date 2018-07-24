@@ -276,6 +276,10 @@ impl<'a, 'tcx> OperandValue {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
     }
 
+    pub fn unaligned_volatile_store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+        self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
+    }
+
     pub fn nontemporal_store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
