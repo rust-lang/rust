@@ -73,8 +73,8 @@ pub type Node = BasicBlock;
 pub struct Edge { source: BasicBlock, index: usize }
 
 fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
-    mir[bb].terminator().successors().enumerate()
-        .map(|(index, _)| Edge { source: bb, index: index}).collect()
+    (0..mir[bb].terminator().successors().count())
+        .map(|index| Edge { source: bb, index: index}).collect()
 }
 
 impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
