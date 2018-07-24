@@ -22,6 +22,231 @@ use {filemap, modules, ErrorKind, FormatReport, Input, Session};
 pub(crate) type FileMap = Vec<FileRecord>;
 pub(crate) type FileRecord = (FileName, String);
 
+impl<'b, T: Write + 'b> Session<'b, T> {
+    pub(crate) fn format_input_inner(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
+        if !self.config.version_meets_requirement() {
+            return Err(ErrorKind::VersionMismatch);
+        }
+
+        syntax::with_globals(|| {
+            syntax_pos::hygiene::set_default_edition(
+                self.config.edition().to_libsyntax_pos_edition(),
+            );
+
+            if self.config.disable_all_formatting() {
+                // When the input is from stdin, echo back the input.
+                if let Input::Text(ref buf) = input {
+                    if let Err(e) = io::stdout().write_all(buf.as_bytes()) {
+                        return Err(From::from(e));
+                    }
+                }
+                return Ok(FormatReport::new());
+            }
+
+            let config = &self.config.clone();
+            let format_result = format_project(input, config, self);
+
+            format_result.map(|(report, summary)| {
+                self.summary.add(summary);
+                report
+            })
+        })
+    }
+}
+
+// Format an entire crate (or subset of the module tree).
+fn format_project<T: FormatHandler>(
+    input: Input,
+    config: &Config,
+    handler: &mut T,
+) -> Result<(FormatReport, Summary), ErrorKind> {
+    let mut summary = Summary::default();
+    let mut timer = Timer::Initialized(Instant::now());
+
+    let input_is_stdin = input.is_text();
+    let main_file = match input {
+        Input::File(ref file) => FileName::Real(file.clone()),
+        Input::Text(..) => FileName::Stdin,
+    };
+
+    // Parse the crate.
+    let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
+    let mut parse_session = make_parse_sess(codemap.clone(), config);
+    let krate = match parse_input(input, &parse_session, config) {
+        Ok(krate) => krate,
+        Err(err) => {
+            match err {
+                ParseError::Error(mut diagnostic) => diagnostic.emit(),
+                ParseError::Panic => {
+                    // Note that if you see this message and want more information,
+                    // then go to `parse_input` and run the parse function without
+                    // `catch_unwind` so rustfmt panics and you can get a backtrace.
+                    should_emit_verbose(!input_is_stdin, config, || {
+                        println!("The Rust parser panicked")
+                    });
+                }
+                ParseError::Recovered => {}
+            }
+            summary.add_parsing_error();
+            return Err(ErrorKind::ParseError);
+        }
+    };
+    timer = timer.done_parsing();
+
+    // Suppress error output if we have to do any further parsing.
+    let silent_emitter = Box::new(EmitterWriter::new(
+        Box::new(Vec::new()),
+        Some(codemap.clone()),
+        false,
+        false,
+    ));
+    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
+
+    let mut context = FormatContext::new(
+        &krate,
+        FormatReport::new(),
+        summary,
+        parse_session,
+        config,
+        handler,
+    );
+
+    let files = modules::list_files(&krate, context.parse_session.codemap())?;
+    for (path, module) in files {
+        if (config.skip_children() && path != main_file) || config.ignore().skip_file(&path) {
+            continue;
+        }
+        should_emit_verbose(!input_is_stdin, config, || println!("Formatting {}", path));
+        let is_root = path == main_file;
+        context.format_file(path, module, is_root)?;
+    }
+    timer = timer.done_formatting();
+
+    should_emit_verbose(!input_is_stdin, config, || {
+        println!(
+            "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
+            timer.get_parse_time(),
+            timer.get_format_time(),
+        )
+    });
+
+    if context.report.has_warnings() {
+        context.summary.add_formatting_error();
+    }
+    {
+        let report_errs = &context.report.internal.borrow().1;
+        if report_errs.has_check_errors {
+            context.summary.add_check_error();
+        }
+        if report_errs.has_operational_errors {
+            context.summary.add_operational_error();
+        }
+    }
+
+    Ok((context.report, context.summary))
+}
+
+// Used for formatting files.
+#[derive(new)]
+struct FormatContext<'a, T: FormatHandler + 'a> {
+    krate: &'a ast::Crate,
+    report: FormatReport,
+    summary: Summary,
+    parse_session: ParseSess,
+    config: &'a Config,
+    handler: &'a mut T,
+}
+
+impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
+    // Formats a single file/module.
+    fn format_file(
+        &mut self,
+        path: FileName,
+        module: &ast::Mod,
+        is_root: bool,
+    ) -> Result<(), ErrorKind> {
+        let filemap = self
+            .parse_session
+            .codemap()
+            .lookup_char_pos(module.inner.lo())
+            .file;
+        let big_snippet = filemap.src.as_ref().unwrap();
+        let snippet_provider = SnippetProvider::new(filemap.start_pos, big_snippet);
+        let mut visitor = FmtVisitor::from_codemap(
+            &self.parse_session,
+            &self.config,
+            &snippet_provider,
+            self.report.clone(),
+        );
+        // Format inner attributes if available.
+        if !self.krate.attrs.is_empty() && is_root {
+            visitor.skip_empty_lines(filemap.end_pos);
+            if visitor.visit_attrs(&self.krate.attrs, ast::AttrStyle::Inner) {
+                visitor.push_rewrite(module.inner, None);
+            } else {
+                visitor.format_separate_mod(module, &*filemap);
+            }
+        } else {
+            visitor.last_pos = filemap.start_pos;
+            visitor.skip_empty_lines(filemap.end_pos);
+            visitor.format_separate_mod(module, &*filemap);
+        };
+
+        debug_assert_eq!(
+            visitor.line_number,
+            ::utils::count_newlines(&visitor.buffer)
+        );
+
+        // For some reason, the codemap does not include terminating
+        // newlines so we must add one on for each file. This is sad.
+        filemap::append_newline(&mut visitor.buffer);
+
+        format_lines(
+            &mut visitor.buffer,
+            &path,
+            &visitor.skipped_range,
+            &self.config,
+            &self.report,
+        );
+        replace_with_system_newlines(&mut visitor.buffer, &self.config);
+
+        if visitor.macro_rewrite_failure {
+            self.summary.add_macro_format_failure();
+        }
+
+        self.handler.handle_formatted_file(path, visitor.buffer)
+    }
+}
+
+// Handle the results of formatting.
+trait FormatHandler {
+    fn handle_formatted_file(&mut self, path: FileName, result: String) -> Result<(), ErrorKind>;
+}
+
+impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
+    // Called for each formatted file.
+    fn handle_formatted_file(
+        &mut self,
+        path: FileName,
+        mut result: String,
+    ) -> Result<(), ErrorKind> {
+        if let Some(ref mut out) = self.out {
+            match filemap::write_file(&mut result, &path, out, &self.config) {
+                Ok(b) if b => self.summary.add_diff(),
+                Err(e) => {
+                    // Create a new error with path_str to help users see which files failed
+                    let err_msg = format!("{}: {}", path, e);
+                    return Err(io::Error::new(e.kind(), err_msg).into());
+                }
+                _ => {}
+            }
+        }
+
+        self.filemap.push((path, result));
+        Ok(())
+    }
+}
+
 pub(crate) struct FormattingError {
     pub(crate) line: usize,
     pub(crate) kind: ErrorKind,
@@ -99,6 +324,161 @@ pub(crate) type FormatErrorMap = HashMap<FileName, Vec<FormattingError>>;
 pub(crate) struct ReportedErrors {
     pub(crate) has_operational_errors: bool,
     pub(crate) has_check_errors: bool,
+}
+
+/// A single span of changed lines, with 0 or more removed lines
+/// and a vector of 0 or more inserted lines.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ModifiedChunk {
+    /// The first to be removed from the original text
+    pub line_number_orig: u32,
+    /// The number of lines which have been replaced
+    pub lines_removed: u32,
+    /// The new lines
+    pub lines: Vec<String>,
+}
+
+/// Set of changed sections of a file.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ModifiedLines {
+    /// The set of changed chunks.
+    pub chunks: Vec<ModifiedChunk>,
+}
+
+/// A summary of a Rustfmt run.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Summary {
+    // Encountered e.g. an IO error.
+    has_operational_errors: bool,
+
+    // Failed to reformat code because of parsing errors.
+    has_parsing_errors: bool,
+
+    // Code is valid, but it is impossible to format it properly.
+    has_formatting_errors: bool,
+
+    // Code contains macro call that was unable to format.
+    pub(crate) has_macro_format_failure: bool,
+
+    // Failed a check, such as the license check or other opt-in checking.
+    has_check_errors: bool,
+
+    /// Formatted code differs from existing code (--check only).
+    pub has_diff: bool,
+}
+
+impl Summary {
+    pub fn has_operational_errors(&self) -> bool {
+        self.has_operational_errors
+    }
+
+    pub fn has_parsing_errors(&self) -> bool {
+        self.has_parsing_errors
+    }
+
+    pub fn has_formatting_errors(&self) -> bool {
+        self.has_formatting_errors
+    }
+
+    pub fn has_check_errors(&self) -> bool {
+        self.has_check_errors
+    }
+
+    pub(crate) fn has_macro_formatting_failure(&self) -> bool {
+        self.has_macro_format_failure
+    }
+
+    pub fn add_operational_error(&mut self) {
+        self.has_operational_errors = true;
+    }
+
+    pub(crate) fn add_parsing_error(&mut self) {
+        self.has_parsing_errors = true;
+    }
+
+    pub(crate) fn add_formatting_error(&mut self) {
+        self.has_formatting_errors = true;
+    }
+
+    pub(crate) fn add_check_error(&mut self) {
+        self.has_check_errors = true;
+    }
+
+    pub(crate) fn add_diff(&mut self) {
+        self.has_diff = true;
+    }
+
+    pub(crate) fn add_macro_format_failure(&mut self) {
+        self.has_macro_format_failure = true;
+    }
+
+    pub fn has_no_errors(&self) -> bool {
+        !(self.has_operational_errors
+            || self.has_parsing_errors
+            || self.has_formatting_errors
+            || self.has_diff)
+    }
+
+    /// Combine two summaries together.
+    pub fn add(&mut self, other: Summary) {
+        self.has_operational_errors |= other.has_operational_errors;
+        self.has_formatting_errors |= other.has_formatting_errors;
+        self.has_macro_format_failure |= other.has_macro_format_failure;
+        self.has_parsing_errors |= other.has_parsing_errors;
+        self.has_check_errors |= other.has_check_errors;
+        self.has_diff |= other.has_diff;
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Timer {
+    Initialized(Instant),
+    DoneParsing(Instant, Instant),
+    DoneFormatting(Instant, Instant, Instant),
+}
+
+impl Timer {
+    fn done_parsing(self) -> Self {
+        match self {
+            Timer::Initialized(init_time) => Timer::DoneParsing(init_time, Instant::now()),
+            _ => panic!("Timer can only transition to DoneParsing from Initialized state"),
+        }
+    }
+
+    fn done_formatting(self) -> Self {
+        match self {
+            Timer::DoneParsing(init_time, parse_time) => {
+                Timer::DoneFormatting(init_time, parse_time, Instant::now())
+            }
+            _ => panic!("Timer can only transition to DoneFormatting from DoneParsing state"),
+        }
+    }
+
+    /// Returns the time it took to parse the source files in seconds.
+    fn get_parse_time(&self) -> f32 {
+        match *self {
+            Timer::DoneParsing(init, parse_time) | Timer::DoneFormatting(init, parse_time, _) => {
+                // This should never underflow since `Instant::now()` guarantees monotonicity.
+                Self::duration_to_f32(parse_time.duration_since(init))
+            }
+            Timer::Initialized(..) => unreachable!(),
+        }
+    }
+
+    /// Returns the time it took to go from the parsed AST to the formatted output. Parsing time is
+    /// not included.
+    fn get_format_time(&self) -> f32 {
+        match *self {
+            Timer::DoneFormatting(_init, parse_time, format_time) => {
+                Self::duration_to_f32(format_time.duration_since(parse_time))
+            }
+            Timer::DoneParsing(..) | Timer::Initialized(..) => unreachable!(),
+        }
+    }
+
+    fn duration_to_f32(d: Duration) -> f32 {
+        d.as_secs() as f32 + d.subsec_nanos() as f32 / 1_000_000_000f32
+    }
 }
 
 fn should_emit_verbose<F>(is_stdin: bool, config: &Config, f: F)
@@ -295,231 +675,6 @@ enum ParseError<'sess> {
     Panic,
 }
 
-impl<'b, T: Write + 'b> Session<'b, T> {
-    pub(crate) fn format_input_inner(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
-        if !self.config.version_meets_requirement() {
-            return Err(ErrorKind::VersionMismatch);
-        }
-
-        syntax::with_globals(|| {
-            syntax_pos::hygiene::set_default_edition(
-                self.config.edition().to_libsyntax_pos_edition(),
-            );
-
-            if self.config.disable_all_formatting() {
-                // When the input is from stdin, echo back the input.
-                if let Input::Text(ref buf) = input {
-                    if let Err(e) = io::stdout().write_all(buf.as_bytes()) {
-                        return Err(From::from(e));
-                    }
-                }
-                return Ok(FormatReport::new());
-            }
-
-            let config = &self.config.clone();
-            let format_result = format_project(input, config, self);
-
-            format_result.map(|(report, summary)| {
-                self.summary.add(summary);
-                report
-            })
-        })
-    }
-}
-
-// Handle the results of formatting.
-trait FormatHandler {
-    fn handle_formatted_file(&mut self, path: FileName, result: String) -> Result<(), ErrorKind>;
-}
-
-impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
-    // Called for each formatted file.
-    fn handle_formatted_file(
-        &mut self,
-        path: FileName,
-        mut result: String,
-    ) -> Result<(), ErrorKind> {
-        if let Some(ref mut out) = self.out {
-            match filemap::write_file(&mut result, &path, out, &self.config) {
-                Ok(b) if b => self.summary.add_diff(),
-                Err(e) => {
-                    // Create a new error with path_str to help users see which files failed
-                    let err_msg = format!("{}: {}", path, e);
-                    return Err(io::Error::new(e.kind(), err_msg).into());
-                }
-                _ => {}
-            }
-        }
-
-        self.filemap.push((path, result));
-        Ok(())
-    }
-}
-
-// Format an entire crate (or subset of the module tree).
-fn format_project<T: FormatHandler>(
-    input: Input,
-    config: &Config,
-    handler: &mut T,
-) -> Result<(FormatReport, Summary), ErrorKind> {
-    let mut summary = Summary::default();
-    let mut timer = Timer::Initialized(Instant::now());
-
-    let input_is_stdin = input.is_text();
-    let main_file = match input {
-        Input::File(ref file) => FileName::Real(file.clone()),
-        Input::Text(..) => FileName::Stdin,
-    };
-
-    // Parse the crate.
-    let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
-    let mut parse_session = make_parse_sess(codemap.clone(), config);
-    let krate = match parse_input(input, &parse_session, config) {
-        Ok(krate) => krate,
-        Err(err) => {
-            match err {
-                ParseError::Error(mut diagnostic) => diagnostic.emit(),
-                ParseError::Panic => {
-                    // Note that if you see this message and want more information,
-                    // then go to `parse_input` and run the parse function without
-                    // `catch_unwind` so rustfmt panics and you can get a backtrace.
-                    should_emit_verbose(!input_is_stdin, config, || {
-                        println!("The Rust parser panicked")
-                    });
-                }
-                ParseError::Recovered => {}
-            }
-            summary.add_parsing_error();
-            return Err(ErrorKind::ParseError);
-        }
-    };
-    timer = timer.done_parsing();
-
-    // Suppress error output if we have to do any further parsing.
-    let silent_emitter = Box::new(EmitterWriter::new(
-        Box::new(Vec::new()),
-        Some(codemap.clone()),
-        false,
-        false,
-    ));
-    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
-
-    let mut context = FormatContext::new(
-        &krate,
-        FormatReport::new(),
-        summary,
-        parse_session,
-        config,
-        handler,
-    );
-
-    let files = modules::list_files(&krate, context.parse_session.codemap())?;
-    for (path, module) in files {
-        if (config.skip_children() && path != main_file) || config.ignore().skip_file(&path) {
-            continue;
-        }
-        should_emit_verbose(!input_is_stdin, config, || println!("Formatting {}", path));
-        let is_root = path == main_file;
-        context.format_file(path, module, is_root)?;
-    }
-    timer = timer.done_formatting();
-
-    should_emit_verbose(!input_is_stdin, config, || {
-        println!(
-            "Spent {0:.3} secs in the parsing phase, and {1:.3} secs in the formatting phase",
-            timer.get_parse_time(),
-            timer.get_format_time(),
-        )
-    });
-
-    if context.report.has_warnings() {
-        context.summary.add_formatting_error();
-    }
-    {
-        let report_errs = &context.report.internal.borrow().1;
-        if report_errs.has_check_errors {
-            context.summary.add_check_error();
-        }
-        if report_errs.has_operational_errors {
-            context.summary.add_operational_error();
-        }
-    }
-
-    Ok((context.report, context.summary))
-}
-
-// Used for formatting files.
-#[derive(new)]
-struct FormatContext<'a, T: FormatHandler + 'a> {
-    krate: &'a ast::Crate,
-    report: FormatReport,
-    summary: Summary,
-    parse_session: ParseSess,
-    config: &'a Config,
-    handler: &'a mut T,
-}
-
-impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
-    // Formats a single file/module.
-    fn format_file(
-        &mut self,
-        path: FileName,
-        module: &ast::Mod,
-        is_root: bool,
-    ) -> Result<(), ErrorKind> {
-        let filemap = self
-            .parse_session
-            .codemap()
-            .lookup_char_pos(module.inner.lo())
-            .file;
-        let big_snippet = filemap.src.as_ref().unwrap();
-        let snippet_provider = SnippetProvider::new(filemap.start_pos, big_snippet);
-        let mut visitor = FmtVisitor::from_codemap(
-            &self.parse_session,
-            &self.config,
-            &snippet_provider,
-            self.report.clone(),
-        );
-        // Format inner attributes if available.
-        if !self.krate.attrs.is_empty() && is_root {
-            visitor.skip_empty_lines(filemap.end_pos);
-            if visitor.visit_attrs(&self.krate.attrs, ast::AttrStyle::Inner) {
-                visitor.push_rewrite(module.inner, None);
-            } else {
-                visitor.format_separate_mod(module, &*filemap);
-            }
-        } else {
-            visitor.last_pos = filemap.start_pos;
-            visitor.skip_empty_lines(filemap.end_pos);
-            visitor.format_separate_mod(module, &*filemap);
-        };
-
-        debug_assert_eq!(
-            visitor.line_number,
-            ::utils::count_newlines(&visitor.buffer)
-        );
-
-        // For some reason, the codemap does not include terminating
-        // newlines so we must add one on for each file. This is sad.
-        filemap::append_newline(&mut visitor.buffer);
-
-        format_lines(
-            &mut visitor.buffer,
-            &path,
-            &visitor.skipped_range,
-            &self.config,
-            &self.report,
-        );
-        replace_with_system_newlines(&mut visitor.buffer, &self.config);
-
-        if visitor.macro_rewrite_failure {
-            self.summary.add_macro_format_failure();
-        }
-
-        self.handler.handle_formatted_file(path, visitor.buffer)
-    }
-}
-
 fn make_parse_sess(codemap: Rc<CodeMap>, config: &Config) -> ParseSess {
     let tty_handler = if config.hide_parse_errors() {
         let silent_emitter = Box::new(EmitterWriter::new(
@@ -567,160 +722,5 @@ fn replace_with_system_newlines(text: &mut String, config: &Config) -> () {
             *text = transformed;
         }
         NewlineStyle::Native => unreachable!(),
-    }
-}
-
-/// A single span of changed lines, with 0 or more removed lines
-/// and a vector of 0 or more inserted lines.
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ModifiedChunk {
-    /// The first to be removed from the original text
-    pub line_number_orig: u32,
-    /// The number of lines which have been replaced
-    pub lines_removed: u32,
-    /// The new lines
-    pub lines: Vec<String>,
-}
-
-/// Set of changed sections of a file.
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ModifiedLines {
-    /// The set of changed chunks.
-    pub chunks: Vec<ModifiedChunk>,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Timer {
-    Initialized(Instant),
-    DoneParsing(Instant, Instant),
-    DoneFormatting(Instant, Instant, Instant),
-}
-
-impl Timer {
-    fn done_parsing(self) -> Self {
-        match self {
-            Timer::Initialized(init_time) => Timer::DoneParsing(init_time, Instant::now()),
-            _ => panic!("Timer can only transition to DoneParsing from Initialized state"),
-        }
-    }
-
-    fn done_formatting(self) -> Self {
-        match self {
-            Timer::DoneParsing(init_time, parse_time) => {
-                Timer::DoneFormatting(init_time, parse_time, Instant::now())
-            }
-            _ => panic!("Timer can only transition to DoneFormatting from DoneParsing state"),
-        }
-    }
-
-    /// Returns the time it took to parse the source files in seconds.
-    fn get_parse_time(&self) -> f32 {
-        match *self {
-            Timer::DoneParsing(init, parse_time) | Timer::DoneFormatting(init, parse_time, _) => {
-                // This should never underflow since `Instant::now()` guarantees monotonicity.
-                Self::duration_to_f32(parse_time.duration_since(init))
-            }
-            Timer::Initialized(..) => unreachable!(),
-        }
-    }
-
-    /// Returns the time it took to go from the parsed AST to the formatted output. Parsing time is
-    /// not included.
-    fn get_format_time(&self) -> f32 {
-        match *self {
-            Timer::DoneFormatting(_init, parse_time, format_time) => {
-                Self::duration_to_f32(format_time.duration_since(parse_time))
-            }
-            Timer::DoneParsing(..) | Timer::Initialized(..) => unreachable!(),
-        }
-    }
-
-    fn duration_to_f32(d: Duration) -> f32 {
-        d.as_secs() as f32 + d.subsec_nanos() as f32 / 1_000_000_000f32
-    }
-}
-
-/// A summary of a Rustfmt run.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Summary {
-    // Encountered e.g. an IO error.
-    has_operational_errors: bool,
-
-    // Failed to reformat code because of parsing errors.
-    has_parsing_errors: bool,
-
-    // Code is valid, but it is impossible to format it properly.
-    has_formatting_errors: bool,
-
-    // Code contains macro call that was unable to format.
-    pub(crate) has_macro_format_failure: bool,
-
-    // Failed a check, such as the license check or other opt-in checking.
-    has_check_errors: bool,
-
-    /// Formatted code differs from existing code (--check only).
-    pub has_diff: bool,
-}
-
-impl Summary {
-    pub fn has_operational_errors(&self) -> bool {
-        self.has_operational_errors
-    }
-
-    pub fn has_parsing_errors(&self) -> bool {
-        self.has_parsing_errors
-    }
-
-    pub fn has_formatting_errors(&self) -> bool {
-        self.has_formatting_errors
-    }
-
-    pub fn has_check_errors(&self) -> bool {
-        self.has_check_errors
-    }
-
-    pub(crate) fn has_macro_formatting_failure(&self) -> bool {
-        self.has_macro_format_failure
-    }
-
-    pub fn add_operational_error(&mut self) {
-        self.has_operational_errors = true;
-    }
-
-    pub(crate) fn add_parsing_error(&mut self) {
-        self.has_parsing_errors = true;
-    }
-
-    pub(crate) fn add_formatting_error(&mut self) {
-        self.has_formatting_errors = true;
-    }
-
-    pub(crate) fn add_check_error(&mut self) {
-        self.has_check_errors = true;
-    }
-
-    pub(crate) fn add_diff(&mut self) {
-        self.has_diff = true;
-    }
-
-    pub(crate) fn add_macro_format_failure(&mut self) {
-        self.has_macro_format_failure = true;
-    }
-
-    pub fn has_no_errors(&self) -> bool {
-        !(self.has_operational_errors
-            || self.has_parsing_errors
-            || self.has_formatting_errors
-            || self.has_diff)
-    }
-
-    /// Combine two summaries together.
-    pub fn add(&mut self, other: Summary) {
-        self.has_operational_errors |= other.has_operational_errors;
-        self.has_formatting_errors |= other.has_formatting_errors;
-        self.has_macro_format_failure |= other.has_macro_format_failure;
-        self.has_parsing_errors |= other.has_parsing_errors;
-        self.has_check_errors |= other.has_check_errors;
-        self.has_diff |= other.has_diff;
     }
 }
