@@ -73,7 +73,7 @@ use syntax::tokenstream::{Delimited, TokenStream, TokenTree};
 use syntax::parse::token::Token;
 use syntax::util::small_vector::SmallVector;
 use syntax::visit::{self, Visitor};
-use syntax_pos::Span;
+use syntax_pos::{Span, MultiSpan};
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -2071,7 +2071,7 @@ impl<'a> LoweringContext<'a> {
                         if current_lt_name != name {
                             struct_span_err!(
                                 self.context.sess,
-                                current_lt_span.between(lifetime.span),
+                                MultiSpan::from_spans(vec![current_lt_span, lifetime.span]),
                                 E0709,
                                 "multiple different lifetimes used in arguments of `async fn`",
                             )
@@ -2083,7 +2083,7 @@ impl<'a> LoweringContext<'a> {
                         } else if current_lt_name.is_elided() && name.is_elided() {
                             struct_span_err!(
                                 self.context.sess,
-                                current_lt_span.between(lifetime.span),
+                                MultiSpan::from_spans(vec![current_lt_span, lifetime.span]),
                                 E0707,
                                 "multiple elided lifetimes used in arguments of `async fn`",
                             )
