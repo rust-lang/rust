@@ -23,6 +23,7 @@ mod nvptx;
 mod nvptx64;
 mod powerpc;
 mod powerpc64;
+mod riscv;
 mod s390x;
 mod sparc;
 mod sparc64;
@@ -500,6 +501,8 @@ impl<'a, Ty> FnType<'a, Ty> {
             "nvptx" => nvptx::compute_abi_info(self),
             "nvptx64" => nvptx64::compute_abi_info(self),
             "hexagon" => hexagon::compute_abi_info(self),
+            "riscv32" => riscv::compute_abi_info(self, 32),
+            "riscv64" => riscv::compute_abi_info(self, 64),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a))
         }
 
