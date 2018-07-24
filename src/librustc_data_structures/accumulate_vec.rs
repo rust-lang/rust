@@ -224,7 +224,7 @@ impl<A> Encodable for AccumulateVec<A>
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                try!(s.emit_seq_elt(i, |s| e.encode(s)));
+                s.emit_seq_elt(i, |s| e.encode(s))?;
             }
             Ok(())
         })
@@ -236,8 +236,7 @@ impl<A> Decodable for AccumulateVec<A>
           A::Element: Decodable {
     fn decode<D: Decoder>(d: &mut D) -> Result<AccumulateVec<A>, D::Error> {
         d.read_seq(|d, len| {
-            Ok(try!((0..len).map(|i| d.read_seq_elt(i, |d| Decodable::decode(d))).collect()))
+            (0..len).map(|i| d.read_seq_elt(i, |d| Decodable::decode(d))).collect()
         })
     }
 }
-
