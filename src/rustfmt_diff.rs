@@ -193,13 +193,15 @@ where
     W: Write,
 {
     for mismatch in diff {
-        let (num_removed, num_added) = mismatch.lines.iter().fold((0, 0), |(rem, add), line| {
-            match *line {
-                DiffLine::Context(_) => panic!("No Context expected"),
-                DiffLine::Expected(_) => (rem, add + 1),
-                DiffLine::Resulting(_) => (rem + 1, add),
-            }
-        });
+        let (num_removed, num_added) =
+            mismatch
+                .lines
+                .iter()
+                .fold((0, 0), |(rem, add), line| match *line {
+                    DiffLine::Context(_) => panic!("No Context expected"),
+                    DiffLine::Expected(_) => (rem, add + 1),
+                    DiffLine::Resulting(_) => (rem + 1, add),
+                });
         // Write a header with enough information to separate the modified lines.
         writeln!(
             out,

@@ -117,8 +117,7 @@ impl Cursor {
                     debug_assert_eq!(n, -1);
                     None
                 }
-            })
-            .or_else(|| {
+            }).or_else(|| {
                 let canonical = self.canonical();
                 if canonical != *self {
                     canonical.num_template_args()

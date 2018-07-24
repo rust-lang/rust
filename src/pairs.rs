@@ -125,7 +125,7 @@ fn rewrite_pairs_multiline<T: Rewrite>(
         IndentStyle::Visual => shape.visual_indent(0),
         IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
     }).with_max_width(&context.config)
-        .sub_width(rhs_offset)?;
+    .sub_width(rhs_offset)?;
 
     let indent_str = nested_shape.indent.to_string_with_newline(context.config);
     let mut result = String::new();

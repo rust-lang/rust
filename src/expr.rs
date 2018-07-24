@@ -39,9 +39,9 @@ use spanned::Spanned;
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{
-    colon_spaces, contains_skip, count_newlines, first_line_width, inner_attributes,
-    last_line_extendable, last_line_width, mk_sp, outer_attributes, ptr_vec_to_ref_vec,
-    semicolon_for_stmt, wrap_str,
+    colon_spaces, contains_skip, count_newlines, first_line_ends_with, first_line_width,
+    inner_attributes, last_line_extendable, last_line_width, mk_sp, outer_attributes,
+    ptr_vec_to_ref_vec, semicolon_for_stmt, wrap_str,
 };
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
@@ -1212,8 +1212,7 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
                             new_indent.to_string(context.config),
                             line.trim_left()
                         )
-                    })
-                    .collect::<Vec<_>>()
+                    }).collect::<Vec<_>>()
                     .join("\n")
                     .trim_left(),
             );
@@ -1953,6 +1952,9 @@ pub fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str, rhs_tactics: RhsTac
     rhs_tactics == RhsTactics::ForceNextLineWithoutIndent
         || !next_line_rhs.contains('\n')
         || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
+        || first_line_ends_with(orig_rhs, '(') && !first_line_ends_with(next_line_rhs, '(')
+        || first_line_ends_with(orig_rhs, '{') && !first_line_ends_with(next_line_rhs, '{')
+        || first_line_ends_with(orig_rhs, '[') && !first_line_ends_with(next_line_rhs, '[')
 }
 
 fn rewrite_expr_addrof(

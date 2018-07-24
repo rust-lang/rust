@@ -141,8 +141,7 @@ fn issue_1450() {
             Relaxed,
             Release,
             Relaxed,
-        )
-        .is_ok()
+        ).is_ok()
     {
         return;
     }

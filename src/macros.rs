@@ -1115,8 +1115,7 @@ fn indent_macro_snippet(
             };
             trimmed_lines.push((trimmed, line, prefix_space_width));
             prefix_space_width
-        })
-        .min()?;
+        }).min()?;
 
     Some(
         first_line + "\n" + &trimmed_lines
@@ -1132,8 +1131,7 @@ fn indent_macro_snippet(
                     }
                     None => String::new(),
                 },
-            )
-            .collect::<Vec<_>>()
+            ).collect::<Vec<_>>()
             .join("\n"),
     )
 }
@@ -1296,8 +1294,7 @@ impl MacroBranch {
                     }
                     (s + l + "\n", !kind.is_string() || l.ends_with('\\'))
                 },
-            )
-            .0;
+            ).0;
 
         // Undo our replacement of macro variables.
         // FIXME: this could be *much* more efficient.

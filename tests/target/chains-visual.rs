@@ -15,16 +15,16 @@ fn main() {
     // Test case where first chain element isn't a path, but is shorter than
     // the size of a tab.
     x().y(|| match cond() {
-        true => (),
-        false => (),
-    });
+           true => (),
+           false => (),
+       });
 
     loong_func().quux(move || if true { 1 } else { 2 });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
-        let x = c;
-        x
-    });
+                               let x = c;
+                               x
+                           });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
                                let x = c;
@@ -59,7 +59,7 @@ fn floaters() {
 
     let x = Foo { field1: val1,
                   field2: val2, }.method_call()
-            .method_call();
+                                 .method_call();
 
     let y = if cond { val1 } else { val2 }.method_call();
 
@@ -80,7 +80,7 @@ fn floaters() {
     } else {
         none();
     }.bar()
-    .baz();
+     .baz();
 
     Foo { x: val }.baz(|| {
                            force();
@@ -90,10 +90,10 @@ fn floaters() {
 
     Foo { y: i_am_multi_line,
           z: ok, }.baz(|| {
-             force();
-             multiline();
-         })
-    .quux();
+                           force();
+                           multiline();
+                       })
+                  .quux();
 
     a + match x {
             true => "yay!",
@@ -137,9 +137,9 @@ fn issue1434() {
     for _ in 0..100 {
         let prototype_id =
             PrototypeIdData::from_reader::<_, B>(&mut self.file_cursor).chain_err(|| {
-                format!("could not read prototype ID at offset {:#010x}",
-                        current_offset)
-            })?;
+                           format!("could not read prototype ID at offset {:#010x}",
+                                   current_offset)
+                       })?;
     }
 }
 

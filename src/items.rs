@@ -1669,7 +1669,7 @@ fn rewrite_static(
             &**expr,
             Shape::legacy(remaining_width, offset.block_only()),
         ).and_then(|res| recover_comment_removed(res, static_parts.span, context))
-            .map(|s| if s.ends_with(';') { s } else { s + ";" })
+        .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
         Some(format!("{}{};", prefix, ty_str))
     }
@@ -2783,17 +2783,15 @@ impl Rewrite for ast::ForeignItem {
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
         let item_str = match self.node {
-            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => {
-                rewrite_fn_base(
-                    context,
-                    shape.indent,
-                    self.ident,
-                    &FnSig::new(fn_decl, generics, self.vis.clone()),
-                    span,
-                    false,
-                    false,
-                ).map(|(s, _)| format!("{};", s))
-            }
+            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => rewrite_fn_base(
+                context,
+                shape.indent,
+                self.ident,
+                &FnSig::new(fn_decl, generics, self.vis.clone()),
+                span,
+                false,
+                false,
+            ).map(|(s, _)| format!("{};", s)),
             ast::ForeignItemKind::Static(ref ty, is_mutable) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.

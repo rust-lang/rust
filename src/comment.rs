@@ -348,8 +348,7 @@ fn rewrite_comment_inner(
             }
 
             line
-        })
-        .map(|s| left_trim_comment_line(s, &style))
+        }).map(|s| left_trim_comment_line(s, &style))
         .map(|(line, has_leading_whitespace)| {
             if orig.starts_with("/*") && line_breaks == 0 {
                 (
@@ -517,8 +516,7 @@ fn trim_custom_comment_prefix(s: &str) -> String {
             } else {
                 line
             }
-        })
-        .collect::<Vec<_>>()
+        }).collect::<Vec<_>>()
         .join("\n")
 }
 
@@ -606,8 +604,7 @@ fn light_rewrite_comment(
             };
             // Preserve markdown's double-space line break syntax in doc comment.
             trim_right_unless_two_whitespaces(left_trimmed, is_doc_comment)
-        })
-        .collect();
+        }).collect();
     Some(lines.join(&format!("\n{}", offset.to_string(config))))
 }
 
@@ -1341,8 +1338,7 @@ mod test {
             .filter_map(|(s, c)| match s {
                 FullCodeCharKind::Normal | FullCodeCharKind::InString => Some(c),
                 _ => None,
-            })
-            .collect()
+            }).collect()
     }
 
     #[test]
