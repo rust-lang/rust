@@ -227,7 +227,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("report_error: categorized_path={:?}", categorized_path);
 
         // Find what appears to be the most interesting path to report to the user.
-        categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
+        categorized_path.sort_unstable_by(|p0, p1| p0.0.cmp(&p1.0));
         debug!("report_error: sorted_path={:?}", categorized_path);
 
         // Get a span
