@@ -12,7 +12,7 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-use fmt;
+use {fmt, mem};
 use marker::Unpin;
 use ptr::NonNull;
 
@@ -166,9 +166,10 @@ impl From<LocalWaker> for Waker {
 impl Clone for LocalWaker {
     #[inline]
     fn clone(&self) -> Self {
-        unsafe {
-            LocalWaker { inner: self.inner.as_ref().clone_raw().inner }
-        }
+        let waker = unsafe { self.inner.as_ref().clone_raw() };
+        let inner = waker.inner;
+        mem::forget(waker);
+        LocalWaker { inner }
     }
 }
 

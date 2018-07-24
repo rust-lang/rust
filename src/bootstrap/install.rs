@@ -75,7 +75,7 @@ fn install_sh(
     let libdir_default = PathBuf::from("lib");
     let mandir_default = datadir_default.join("man");
     let prefix = builder.config.prefix.as_ref().map_or(prefix_default, |p| {
-        fs::canonicalize(p).expect(&format!("could not canonicalize {}", p.display()))
+        fs::canonicalize(p).unwrap_or_else(|_| panic!("could not canonicalize {}", p.display()))
     });
     let sysconfdir = builder.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
     let datadir = builder.config.datadir.as_ref().unwrap_or(&datadir_default);
