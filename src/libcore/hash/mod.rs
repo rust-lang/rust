@@ -542,6 +542,16 @@ impl<H> Default for BuildHasherDefault<H> {
     }
 }
 
+#[stable(since = "1.29.0", feature = "build_hasher_eq")]
+impl<H> PartialEq for BuildHasherDefault<H> {
+    fn eq(&self, _other: &BuildHasherDefault<H>) -> bool {
+        true
+    }
+}
+
+#[stable(since = "1.29.0", feature = "build_hasher_eq")]
+impl<H> Eq for BuildHasherDefault<H> {}
+
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {
