@@ -14,8 +14,104 @@ use std::fs;
 use std::io::{self, StdoutLock, Write};
 use std::time::Instant;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ProfileCategory {
+macro_rules! define_categories {
+    ($($name:ident,)*) => {
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        pub enum ProfileCategory {
+            $($name),*
+        }
+
+        #[allow(bad_style)]
+        struct Categories<T> {
+            $($name: T),*
+        }
+
+        impl<T: Default> Categories<T> {
+            fn new() -> Categories<T> {
+                Categories {
+                    $($name: T::default()),*
+                }
+            }
+        }
+
+        impl<T> Categories<T> {
+            fn get(&self, category: ProfileCategory) -> &T {
+                match category {
+                    $(ProfileCategory::$name => &self.$name),*
+                }
+            }
+
+            fn set(&mut self, category: ProfileCategory, value: T) {
+                match category {
+                    $(ProfileCategory::$name => self.$name = value),*
+                }
+            }
+        }
+
+        struct CategoryData {
+            times: Categories<u64>,
+            query_counts: Categories<(u64, u64)>,
+        }
+
+        impl CategoryData {
+            fn new() -> CategoryData {
+                CategoryData {
+                    times: Categories::new(),
+                    query_counts: Categories::new(),
+                }
+            }
+
+            fn print(&self, lock: &mut StdoutLock) {
+                writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |")
+                    .unwrap();
+                writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |")
+                    .unwrap();
+
+                $(
+                    let (hits, total) = self.query_counts.$name;
+                    let (hits, total) = if total > 0 {
+                        (format!("{:.2}",
+                        (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
+                    } else {
+                        ("".into(), "".into())
+                    };
+
+                    writeln!(
+                        lock,
+                        "| {0: <16} | {1: <14} | {2: <14} | {3: <8} |",
+                        stringify!($name),
+                        self.times.$name / 1_000_000,
+                        total,
+                        hits
+                    ).unwrap();
+                )*
+            }
+
+            fn json(&self) -> String {
+                let mut json = String::from("[");
+
+                $(
+                    let (hits, total) = self.query_counts.$name;
+
+                    json.push_str(&format!(
+                        "{{ \"category\": {}, \"time_ms\": {},
+                            \"query_count\": {}, \"query_hits\": {} }}",
+                        stringify!($name),
+                        self.times.$name / 1_000_000,
+                        total,
+                        format!("{:.2}", (((hits as f32) / (total as f32)) * 100.0))
+                    ));
+                )*
+
+                json.push(']');
+
+                json
+            }
+        }
+    }
+}
+
+define_categories! {
     Parsing,
     Expansion,
     TypeChecking,
@@ -23,141 +119,6 @@ pub enum ProfileCategory {
     Codegen,
     Linking,
     Other,
-}
-
-struct Categories<T> {
-    parsing: T,
-    expansion: T,
-    type_checking: T,
-    borrow_checking: T,
-    codegen: T,
-    linking: T,
-    other: T,
-}
-
-impl<T: Default> Categories<T> {
-    fn new() -> Categories<T> {
-        Categories {
-            parsing: T::default(),
-            expansion: T::default(),
-            type_checking: T::default(),
-            borrow_checking: T::default(),
-            codegen: T::default(),
-            linking: T::default(),
-            other: T::default(),
-        }
-    }
-}
-
-impl<T> Categories<T> {
-    fn get(&self, category: ProfileCategory) -> &T {
-        match category {
-            ProfileCategory::Parsing => &self.parsing,
-            ProfileCategory::Expansion => &self.expansion,
-            ProfileCategory::TypeChecking => &self.type_checking,
-            ProfileCategory::BorrowChecking => &self.borrow_checking,
-            ProfileCategory::Codegen => &self.codegen,
-            ProfileCategory::Linking => &self.linking,
-            ProfileCategory::Other => &self.other,
-        }
-    }
-
-    fn set(&mut self, category: ProfileCategory, value: T) {
-        match category {
-            ProfileCategory::Parsing => self.parsing = value,
-            ProfileCategory::Expansion => self.expansion = value,
-            ProfileCategory::TypeChecking => self.type_checking = value,
-            ProfileCategory::BorrowChecking => self.borrow_checking = value,
-            ProfileCategory::Codegen => self.codegen = value,
-            ProfileCategory::Linking => self.linking = value,
-            ProfileCategory::Other => self.other = value,
-        }
-    }
-}
-
-struct CategoryData {
-    times: Categories<u64>,
-    query_counts: Categories<(u64, u64)>,
-}
-
-impl CategoryData {
-    fn new() -> CategoryData {
-        CategoryData {
-            times: Categories::new(),
-            query_counts: Categories::new(),
-        }
-    }
-
-    fn print(&self, lock: &mut StdoutLock) {
-        macro_rules! p {
-            ($name:tt, $rustic_name:ident) => {
-                let (hits, total) = self.query_counts.$rustic_name;
-                let (hits, total) = if total > 0 {
-                    (format!("{:.2}",
-                     (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
-                } else {
-                    ("".into(), "".into())
-                };
-
-                writeln!(
-                   lock,
-                   "| {0: <16} | {1: <14} | {2: <14} | {3: <8} |",
-                   $name,
-                   self.times.$rustic_name / 1_000_000,
-                   total,
-                   hits
-                ).unwrap();
-            };
-        }
-
-        writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |")
-            .unwrap();
-        writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |")
-            .unwrap();
-
-        p!("Parsing", parsing);
-        p!("Expansion", expansion);
-        p!("TypeChecking", type_checking);
-        p!("BorrowChecking", borrow_checking);
-        p!("Codegen", codegen);
-        p!("Linking", linking);
-        p!("Other", other);
-    }
-
-    fn json(&self) -> String {
-        macro_rules! j {
-            ($category:tt, $rustic_name:ident) => {{
-                let (hits, total) = self.query_counts.$rustic_name;
-
-                format!(
-                    "{{ \"category\": {}, \"time_ms\": {},
-                        \"query_count\": {}, \"query_hits\": {} }}",
-                    stringify!($category),
-                    self.times.$rustic_name / 1_000_000,
-                    total,
-                    format!("{:.2}", (((hits as f32) / (total as f32)) * 100.0))
-                )
-            }}
-        }
-
-        format!("[
-            {},
-            {},
-            {},
-            {},
-            {},
-            {},
-            {}
-        ]",
-            j!("Parsing", parsing),
-            j!("Expansion", expansion),
-            j!("TypeChecking", type_checking),
-            j!("BorrowChecking", borrow_checking),
-            j!("Codegen", codegen),
-            j!("Linking", linking),
-            j!("Other", other)
-        )
-    }
 }
 
 pub struct SelfProfiler {
