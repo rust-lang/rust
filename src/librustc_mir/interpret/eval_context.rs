@@ -15,6 +15,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::mir::interpret::{
     GlobalId, Value, Scalar, FrameInfo, AllocType,
     EvalResult, EvalErrorKind, Pointer, ConstValue,
+    ScalarMaybeUndef,
 };
 
 use syntax::codemap::{self, Span};
@@ -105,9 +106,7 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     /// `[return_ptr, arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
-    ///
-    /// Before being initialized, arguments are `Value::Scalar(Scalar::undef())` and other locals are `None`.
-    pub locals: IndexVec<mir::Local, Option<Value>>,
+    pub locals: IndexVec<mir::Local, LocalValue>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -118,6 +117,21 @@ pub struct Frame<'mir, 'tcx: 'mir> {
 
     /// The index of the currently evaluated statement.
     pub stmt: usize,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum LocalValue {
+    Dead,
+    Live(Value),
+}
+
+impl LocalValue {
+    pub fn access(self) -> EvalResult<'static, Value> {
+        match self {
+            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Live(val) => Ok(val),
+        }
+    }
 }
 
 impl<'mir, 'tcx: 'mir> Eq for Frame<'mir, 'tcx> {}
@@ -395,8 +409,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let id = self.memory.allocate_value(alloc.clone(), MemoryKind::Stack)?;
                 Ok(Value::ByRef(Pointer::new(id, offset).into(), alloc.align))
             },
-            ConstValue::ScalarPair(a, b) => Ok(Value::ScalarPair(a, b)),
-            ConstValue::Scalar(val) => Ok(Value::Scalar(val)),
+            ConstValue::ScalarPair(a, b) => Ok(Value::ScalarPair(a.into(), b.into())),
+            ConstValue::Scalar(val) => Ok(Value::Scalar(val.into())),
         }
     }
 
@@ -538,8 +552,26 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
-        let locals = if mir.local_decls.len() > 1 {
-            let mut locals = IndexVec::from_elem(Some(Value::Scalar(Scalar::undef())), &mir.local_decls);
+        // first push a stack frame so we have access to the local substs
+        self.stack.push(Frame {
+            mir,
+            block: mir::START_BLOCK,
+            return_to_block,
+            return_place,
+            // empty local array, we fill it in below, after we are inside the stack frame and
+            // all methods actually know about the frame
+            locals: IndexVec::new(),
+            span,
+            instance,
+            stmt: 0,
+        });
+
+        // don't allocate at all for trivial constants
+        if mir.local_decls.len() > 1 {
+            let mut locals = IndexVec::from_elem(LocalValue::Dead, &mir.local_decls);
+            for (local, decl) in locals.iter_mut().zip(mir.local_decls.iter()) {
+                *local = LocalValue::Live(self.init_value(decl.ty)?);
+            }
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
                 Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
@@ -550,29 +582,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             use rustc::mir::StatementKind::{StorageDead, StorageLive};
                             match stmt.kind {
                                 StorageLive(local) |
-                                StorageDead(local) => locals[local] = None,
+                                StorageDead(local) => locals[local] = LocalValue::Dead,
                                 _ => {}
                             }
                         }
                     }
                 },
             }
-            locals
-        } else {
-            // don't allocate at all for trivial constants
-            IndexVec::new()
-        };
-
-        self.stack.push(Frame {
-            mir,
-            block: mir::START_BLOCK,
-            return_to_block,
-            return_place,
-            locals,
-            span,
-            instance,
-            stmt: 0,
-        });
+            self.frame_mut().locals = locals;
+        }
 
         self.memory.cur_frame = self.cur_frame();
 
@@ -598,7 +616,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 if let Place::Ptr { ptr, .. } = frame.return_place {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
                     self.memory.mark_static_initialized(
-                        ptr.to_ptr()?.alloc_id,
+                        ptr.read()?.to_ptr()?.alloc_id,
                         mutable,
                     )?
                 } else {
@@ -616,8 +634,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
-    pub fn deallocate_local(&mut self, local: Option<Value>) -> EvalResult<'tcx> {
-        if let Some(Value::ByRef(ptr, _align)) = local {
+    pub fn deallocate_local(&mut self, local: LocalValue) -> EvalResult<'tcx> {
+        // FIXME: should we tell the user that there was a local which was never written to?
+        if let LocalValue::Live(Value::ByRef(ptr, _align)) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
@@ -637,6 +656,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         let dest = self.eval_place(place)?;
         let dest_ty = self.place_ty(place);
+        let dest_layout = self.layout_of(dest_ty)?;
 
         use rustc::mir::Rvalue::*;
         match *rvalue {
@@ -675,7 +695,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
             UnaryOp(un_op, ref operand) => {
                 let val = self.eval_operand_to_scalar(operand)?;
-                let val = self.unary_op(un_op, val, dest_ty)?;
+                let val = self.unary_op(un_op, val, dest_layout)?;
                 self.write_scalar(
                     dest,
                     val,
@@ -724,6 +744,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
 
                 if length > 0 {
+                    let dest = dest.read()?;
                     //write the first value
                     self.write_value_to_ptr(value, dest, dest_align, elem_ty)?;
 
@@ -739,12 +760,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let src = self.eval_place(place)?;
                 let ty = self.place_ty(place);
                 let (_, len) = src.elem_ty_and_len(ty, self.tcx.tcx);
-                let defined = self.memory.pointer_size().bits() as u8;
+                let size = self.memory.pointer_size().bytes() as u8;
                 self.write_scalar(
                     dest,
                     Scalar::Bits {
                         bits: len as u128,
-                        defined,
+                        size,
                     },
                     dest_ty,
                 )?;
@@ -757,7 +778,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let (ptr, _align, extra) = self.force_allocation(src)?.to_ptr_align_extra();
 
                 let val = match extra {
-                    PlaceExtra::None => ptr.to_value(),
+                    PlaceExtra::None => Value::Scalar(ptr),
                     PlaceExtra::Length(len) => ptr.to_value_with_len(len, self.tcx.tcx),
                     PlaceExtra::Vtable(vtable) => ptr.to_value_with_vtable(vtable),
                     PlaceExtra::DowncastVariant(..) => {
@@ -781,12 +802,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let layout = self.layout_of(ty)?;
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");
-                let defined = self.memory.pointer_size().bits() as u8;
+                let size = self.memory.pointer_size().bytes() as u8;
                 self.write_scalar(
                     dest,
                     Scalar::Bits {
                         bits: layout.size.bytes() as u128,
-                        defined,
+                        size,
                     },
                     dest_ty,
                 )?;
@@ -803,10 +824,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let layout = self.layout_of(ty)?;
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant_value(place, layout)?;
-                let defined = self.layout_of(dest_ty).unwrap().size.bits() as u8;
+                let size = self.layout_of(dest_ty).unwrap().size.bytes() as u8;
                 self.write_scalar(dest, Scalar::Bits {
                     bits: discr_val,
-                    defined,
+                    size,
                 }, dest_ty)?;
             }
         }
@@ -957,10 +978,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         assert!(variants_start == variants_end);
                         dataful_variant as u128
                     },
-                    Scalar::Bits { bits: raw_discr, defined } => {
-                        if defined < discr.size.bits() as u8 {
-                            return err!(ReadUndefBytes);
-                        }
+                    Scalar::Bits { bits: raw_discr, size } => {
+                        assert_eq!(size as u64, discr.size.bytes());
                         let discr = raw_discr.wrapping_sub(niche_start)
                             .wrapping_add(variants_start);
                         if variants_start <= discr && discr <= variants_end {
@@ -1002,14 +1021,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = tag.value.size(self.tcx.tcx).bits();
-                let shift = 128 - size;
+                let size = tag.value.size(self.tcx.tcx);
+                let shift = 128 - size.bits();
                 let discr_val = (discr_val << shift) >> shift;
 
                 let (discr_dest, tag) = self.place_field(dest, mir::Field::new(0), layout)?;
                 self.write_scalar(discr_dest, Scalar::Bits {
                     bits: discr_val,
-                    defined: size as u8,
+                    size: size.bytes() as u8,
                 }, tag.ty)?;
             }
             layout::Variants::NicheFilling {
@@ -1025,7 +1044,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         .wrapping_add(niche_start);
                     self.write_scalar(niche_dest, Scalar::Bits {
                         bits: niche_value,
-                        defined: niche.size.bits() as u8,
+                        size: niche.size.bytes() as u8,
                     }, niche.ty)?;
                 }
             }
@@ -1072,22 +1091,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
         let new_place = match place {
             Place::Local { frame, local } => {
-                match self.stack[frame].locals[local] {
-                    None => return err!(DeadLocal),
-                    Some(Value::ByRef(ptr, align)) => {
+                match self.stack[frame].locals[local].access()? {
+                    Value::ByRef(ptr, align) => {
                         Place::Ptr {
-                            ptr,
+                            ptr: ptr.into(),
                             align,
                             extra: PlaceExtra::None,
                         }
                     }
-                    Some(val) => {
+                    val => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
                         let layout = self.layout_of(ty)?;
                         let ptr = self.alloc_ptr(layout)?;
                         self.stack[frame].locals[local] =
-                            Some(Value::ByRef(ptr.into(), layout.align)); // it stays live
+                            LocalValue::Live(Value::ByRef(ptr.into(), layout.align)); // it stays live
+
                         let place = Place::from_ptr(ptr, layout.align);
                         self.write_value(ValTy { value: val, ty }, place)?;
                         place
@@ -1137,11 +1156,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn write_scalar(
         &mut self,
         dest: Place,
-        val: Scalar,
+        val: impl Into<ScalarMaybeUndef>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         let valty = ValTy {
-            value: Value::Scalar(val),
+            value: Value::Scalar(val.into()),
             ty: dest_ty,
         };
         self.write_value(valty, dest)
@@ -1160,15 +1179,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         match dest {
             Place::Ptr { ptr, align, extra } => {
                 assert_eq!(extra, PlaceExtra::None);
-                self.write_value_to_ptr(src_val, ptr, align, dest_ty)
+                self.write_value_to_ptr(src_val, ptr.read()?, align, dest_ty)
             }
 
             Place::Local { frame, local } => {
-                let dest = self.stack[frame].get_local(local)?;
+                let old_val = self.stack[frame].locals[local].access()?;
                 self.write_value_possibly_by_val(
                     src_val,
                     |this, val| this.stack[frame].set_local(local, val),
-                    dest,
+                    old_val,
                     dest_ty,
                 )
             }
@@ -1183,6 +1202,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         old_dest_val: Value,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
+        // FIXME: this should be a layout check, not underlying value
         if let Value::ByRef(dest_ptr, align) = old_dest_val {
             // If the value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
@@ -1239,10 +1259,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         layout::Primitive::Int(_, signed) => signed,
                         _ => false,
                     },
-                    _ => match scalar {
-                        Scalar::Bits { defined: 0, .. } => false,
-                        _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout),
-                    }
+                    _ => false,
                 };
                 self.memory.write_scalar(dest, dest_align, scalar, layout.size, signed)
             }
@@ -1278,20 +1295,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         pointee_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         let ptr_size = self.memory.pointer_size();
-        let p: Scalar = self.memory.read_ptr_sized(ptr, ptr_align)?.into();
+        let p: ScalarMaybeUndef = self.memory.read_ptr_sized(ptr, ptr_align)?;
         if self.type_is_sized(pointee_ty) {
-            Ok(p.to_value())
+            Ok(Value::Scalar(p))
         } else {
             trace!("reading fat pointer extra of type {}", pointee_ty);
             let extra = ptr.offset(ptr_size, self)?;
             match self.tcx.struct_tail(pointee_ty).sty {
-                ty::TyDynamic(..) => Ok(p.to_value_with_vtable(
-                    self.memory.read_ptr_sized(extra, ptr_align)?.to_ptr()?,
+                ty::TyDynamic(..) => Ok(Value::ScalarPair(
+                    p,
+                    self.memory.read_ptr_sized(extra, ptr_align)?,
                 )),
                 ty::TySlice(..) | ty::TyStr => {
                     let len = self
                         .memory
                         .read_ptr_sized(extra, ptr_align)?
+                        .read()?
                         .to_bits(ptr_size)?;
                     Ok(p.to_value_with_len(len as u64, self.tcx.tcx))
                 },
@@ -1347,8 +1366,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         match ty.sty {
             ty::TyChar => {
                 assert_eq!(size.bytes(), 4);
-                if ::std::char::from_u32(bits as u32).is_none() {
-                    return err!(InvalidChar(bits));
+                let c = self.memory.read_scalar(ptr, ptr_align, Size::from_bytes(4))?.read()?.to_bits(Size::from_bytes(4))? as u32;
+                match ::std::char::from_u32(c) {
+                    Some(..) => (),
+                    None => return err!(InvalidChar(c as u128)),
                 }
             }
             _ => {},
@@ -1534,7 +1555,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         self.memory.check_align(ptr, ptr_align)?;
 
         if layout.size.bytes() == 0 {
-            return Ok(Some(Value::Scalar(Scalar::undef())));
+            return Ok(Some(Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { bits: 0, size: 0 }))));
         }
 
         let ptr = ptr.to_ptr()?;
@@ -1670,7 +1691,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     }
                     let (src_f_value, src_field) = match src {
                         Value::ByRef(ptr, align) => {
-                            let src_place = Place::from_scalar_ptr(ptr, align);
+                            let src_place = Place::from_scalar_ptr(ptr.into(), align);
                             let (src_f_place, src_field) =
                                 self.place_field(src_place, mir::Field::new(i), src_layout)?;
                             (self.read_place(src_f_place)?, src_field)
@@ -1717,7 +1738,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
                 write!(msg, ":").unwrap();
 
-                match self.stack[frame].get_local(local) {
+                match self.stack[frame].locals[local].access() {
                     Err(err) => {
                         if let EvalErrorKind::DeadLocal = err.kind {
                             write!(msg, " is dead").unwrap();
@@ -1736,16 +1757,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     }
                     Ok(Value::Scalar(val)) => {
                         write!(msg, " {:?}", val).unwrap();
-                        if let Scalar::Ptr(ptr) = val {
+                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val {
                             allocs.push(ptr.alloc_id);
                         }
                     }
                     Ok(Value::ScalarPair(val1, val2)) => {
                         write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
-                        if let Scalar::Ptr(ptr) = val1 {
+                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val1 {
                             allocs.push(ptr.alloc_id);
                         }
-                        if let Scalar::Ptr(ptr) = val2 {
+                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val2 {
                             allocs.push(ptr.alloc_id);
                         }
                     }
@@ -1756,7 +1777,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
             Place::Ptr { ptr, align, .. } => {
                 match ptr {
-                    Scalar::Ptr(ptr) => {
+                    ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
                         trace!("by align({}) ref:", align.abi());
                         self.memory.dump_alloc(ptr.alloc_id);
                     }
@@ -1764,21 +1785,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
             }
         }
-    }
-
-    /// Convenience function to ensure correct usage of locals
-    pub fn modify_local<F>(&mut self, frame: usize, local: mir::Local, f: F) -> EvalResult<'tcx>
-    where
-        F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
-    {
-        let val = self.stack[frame].get_local(local)?;
-        let new_val = f(self, val)?;
-        self.stack[frame].set_local(local, new_val)?;
-        // FIXME(solson): Run this when setting to Undef? (See previous version of this code.)
-        // if let Value::ByRef(ptr) = self.stack[frame].get_local(local) {
-        //     self.memory.deallocate(ptr)?;
-        // }
-        Ok(())
     }
 
     pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> (Vec<FrameInfo>, Span) {
@@ -1819,12 +1825,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         (frames, self.tcx.span)
     }
 
-    pub fn sign_extend(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-        super::sign_extend(self.tcx.tcx, value, ty)
+    pub fn sign_extend(&self, value: u128, ty: TyLayout<'_>) -> u128 {
+        super::sign_extend(value, ty)
     }
 
-    pub fn truncate(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-        super::truncate(self.tcx.tcx, value, ty)
+    pub fn truncate(&self, value: u128, ty: TyLayout<'_>) -> u128 {
+        super::truncate(value, ty)
     }
 
     fn write_field_name(&self, s: &mut String, ty: Ty<'tcx>, i: usize, variant: usize) -> ::std::fmt::Result {
@@ -1893,34 +1899,45 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
         }
     }
+
+    pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, LocalValue> {
+        trace!("{:?} is now live", local);
+
+        let ty = self.frame().mir.local_decls[local].ty;
+        let init = self.init_value(ty)?;
+        // StorageLive *always* kills the value that's currently stored
+        Ok(mem::replace(&mut self.frame_mut().locals[local], LocalValue::Live(init)))
+    }
+
+    fn init_value(&mut self, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+        let ty = self.monomorphize(ty, self.substs());
+        let layout = self.layout_of(ty)?;
+        Ok(match layout.abi {
+            layout::Abi::Scalar(..) => Value::Scalar(ScalarMaybeUndef::Undef),
+            layout::Abi::ScalarPair(..) => Value::ScalarPair(
+                ScalarMaybeUndef::Undef,
+                ScalarMaybeUndef::Undef,
+            ),
+            _ => Value::ByRef(self.alloc_ptr(ty)?.into(), layout.align),
+        })
+    }
 }
 
 impl<'mir, 'tcx> Frame<'mir, 'tcx> {
-    pub fn get_local(&self, local: mir::Local) -> EvalResult<'tcx, Value> {
-        self.locals[local].ok_or_else(|| EvalErrorKind::DeadLocal.into())
-    }
-
     fn set_local(&mut self, local: mir::Local, value: Value) -> EvalResult<'tcx> {
         match self.locals[local] {
-            None => err!(DeadLocal),
-            Some(ref mut local) => {
+            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Live(ref mut local) => {
                 *local = value;
                 Ok(())
             }
         }
     }
 
-    pub fn storage_live(&mut self, local: mir::Local) -> Option<Value> {
-        trace!("{:?} is now live", local);
-
-        // StorageLive *always* kills the value that's currently stored
-        mem::replace(&mut self.locals[local], Some(Value::Scalar(Scalar::undef())))
-    }
-
     /// Returns the old value of the local
-    pub fn storage_dead(&mut self, local: mir::Local) -> Option<Value> {
+    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue {
         trace!("{:?} is now dead", local);
 
-        self.locals[local].take()
+        mem::replace(&mut self.locals[local], LocalValue::Dead)
     }
 }

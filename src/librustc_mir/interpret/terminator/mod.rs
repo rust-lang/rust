@@ -4,7 +4,7 @@ use rustc::ty::layout::{LayoutOf, Size};
 use syntax::codemap::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, Scalar};
+use rustc::mir::interpret::{EvalResult, Scalar, Value};
 use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -47,7 +47,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op
-                    let const_int = Scalar::Bits { bits: const_int, defined: 128 };
+                    let const_int = Scalar::Bits { bits: const_int, size: discr_layout.size.bytes() as u8 };
                     let res = self.binary_op(mir::BinOp::Eq,
                         discr_prim, discr_val.ty,
                         const_int, discr_val.ty
@@ -392,12 +392,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let fn_ptr = self.memory.read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
                     ptr_align
-                )?.to_ptr()?;
+                )?.read()?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
                 let mut args = args.to_vec();
                 let ty = self.layout_of(args[0].ty)?.field(&self, 0)?.ty;
                 args[0].ty = ty;
-                args[0].value = ptr.to_value();
+                args[0].value = Value::Scalar(ptr);
                 // recurse with concrete function
                 self.eval_fn_call(instance, destination, &args, span, sig)
             }

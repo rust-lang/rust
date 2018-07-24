@@ -17,7 +17,7 @@ use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
-use rustc::mir::interpret::{ConstEvalErr, EvalErrorKind};
+use rustc::mir::interpret::{ConstEvalErr, EvalErrorKind, ScalarMaybeUndef};
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, Scalar, GlobalId, EvalResult};
 use interpret::EvalContext;
@@ -368,7 +368,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some((
                     Value::Scalar(Scalar::Bits {
                         bits: n as u128,
-                        defined: self.tcx.data_layout.pointer_size.bits() as u8,
+                        size: self.tcx.data_layout.pointer_size.bytes() as u8,
                     }),
                     self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
                     span,
@@ -390,7 +390,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 let prim = self.use_ecx(source_info, |this| {
                     this.ecx.value_to_scalar(ValTy { value: val.0, ty: val.1.ty })
                 })?;
-                let val = self.use_ecx(source_info, |this| this.ecx.unary_op(op, prim, val.1.ty))?;
+                let val = self.use_ecx(source_info, |this| this.ecx.unary_op(op, prim, val.1))?;
                 Some((Value::Scalar(val), place_layout, span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
@@ -449,8 +449,8 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Value::ScalarPair(
-                        val,
-                        Scalar::from_bool(overflow),
+                        val.into(),
+                        Scalar::from_bool(overflow).into(),
                     )
                 } else {
                     if overflow {
@@ -458,7 +458,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
                     }
-                    Value::Scalar(val)
+                    Value::Scalar(val.into())
                 };
                 Some((val, place_layout, span))
             },
@@ -576,7 +576,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond, source_info) {
                 trace!("assertion on {:?} should be {:?}", value, expected);
-                if Value::Scalar(Scalar::from_bool(*expected)) != value.0 {
+                if Value::Scalar(Scalar::from_bool(*expected).into()) != value.0 {
                     // poison all places this operand references so that further code
                     // doesn't use the invalid value
                     match cond {
@@ -613,14 +613,18 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                                 .eval_operand(len, source_info)
                                 .expect("len must be const");
                             let len = match len.0 {
-                                Value::Scalar(Scalar::Bits { bits, ..}) => bits,
+                                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
+                                    bits, ..
+                                })) => bits,
                                 _ => bug!("const len not primitive: {:?}", len),
                             };
                             let index = self
                                 .eval_operand(index, source_info)
                                 .expect("index must be const");
                             let index = match index.0 {
-                                Value::Scalar(Scalar::Bits { bits, .. }) => bits,
+                                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
+                                    bits, ..
+                                })) => bits,
                                 _ => bug!("const index not primitive: {:?}", index),
                             };
                             format!(

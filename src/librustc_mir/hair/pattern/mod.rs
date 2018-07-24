@@ -19,7 +19,7 @@ pub(crate) use self::check_match::check_match;
 use interpret::{const_val_field, const_variant_index, self};
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, Value};
+use rustc::mir::interpret::{Scalar, GlobalId, ConstValue};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -1080,8 +1080,9 @@ pub fn compare_const_vals<'a, 'tcx>(
                 l.partial_cmp(&r)
             },
             ty::TyInt(_) => {
-                let a = interpret::sign_extend(tcx, a, ty.value).expect("layout error for TyInt");
-                let b = interpret::sign_extend(tcx, b, ty.value).expect("layout error for TyInt");
+                let layout = tcx.layout_of(ty).ok()?;
+                let a = interpret::sign_extend(a, layout);
+                let b = interpret::sign_extend(b, layout);
                 Some((a as i128).cmp(&(b as i128)))
             },
             _ => Some(a.cmp(&b)),
@@ -1090,16 +1091,16 @@ pub fn compare_const_vals<'a, 'tcx>(
 
     if let ty::TyRef(_, rty, _) = ty.value.sty {
         if let ty::TyStr = rty.sty {
-            match (a.to_byval_value(), b.to_byval_value()) {
+            match (a.val, b.val) {
                 (
-                    Some(Value::ScalarPair(
+                    ConstValue::ScalarPair(
                         Scalar::Ptr(ptr_a),
                         len_a,
-                    )),
-                    Some(Value::ScalarPair(
+                    ),
+                    ConstValue::ScalarPair(
                         Scalar::Ptr(ptr_b),
                         len_b,
-                    ))
+                    ),
                 ) if ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 => {
                     if let Ok(len_a) = len_a.to_bits(tcx.data_layout.pointer_size) {
                         if let Ok(len_b) = len_b.to_bits(tcx.data_layout.pointer_size) {
@@ -1142,7 +1143,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
             let value = Scalar::Ptr(id.into()).to_value_with_len(s.len() as u64, tcx);
-            ConstValue::from_byval_value(value)
+            ConstValue::from_byval_value(value).unwrap()
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
@@ -1150,7 +1151,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         },
         LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
             bits: n as u128,
-            defined: 8,
+            size: 1,
         }),
         LitKind::Int(n, _) => {
             enum Int {
@@ -1188,10 +1189,10 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 Int::Signed(IntTy::I128)| Int::Unsigned(UintTy::U128) => n,
                 _ => bug!(),
             };
-            let defined = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bits() as u8;
+            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bytes() as u8;
             ConstValue::Scalar(Scalar::Bits {
                 bits: n,
-                defined,
+                size,
             })
         },
         LitKind::Float(n, fty) => {
@@ -1204,14 +1205,8 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             };
             parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
         }
-        LitKind::Bool(b) => ConstValue::Scalar(Scalar::Bits {
-            bits: b as u128,
-            defined: 8,
-        }),
-        LitKind::Char(c) => ConstValue::Scalar(Scalar::Bits {
-            bits: c as u128,
-            defined: 32,
-        }),
+        LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
+        LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
     };
     Ok(ty::Const::from_const_value(tcx, lit, ty))
 }
@@ -1224,7 +1219,7 @@ pub fn parse_float<'tcx>(
     let num = num.as_str();
     use rustc_apfloat::ieee::{Single, Double};
     use rustc_apfloat::Float;
-    let (bits, defined) = match fty {
+    let (bits, size) = match fty {
         ast::FloatTy::F32 => {
             num.parse::<f32>().map_err(|_| ())?;
             let mut f = num.parse::<Single>().unwrap_or_else(|e| {
@@ -1233,7 +1228,7 @@ pub fn parse_float<'tcx>(
             if neg {
                 f = -f;
             }
-            (f.to_bits(), 32)
+            (f.to_bits(), 4)
         }
         ast::FloatTy::F64 => {
             num.parse::<f64>().map_err(|_| ())?;
@@ -1243,9 +1238,9 @@ pub fn parse_float<'tcx>(
             if neg {
                 f = -f;
             }
-            (f.to_bits(), 64)
+            (f.to_bits(), 8)
         }
     };
 
-    Ok(ConstValue::Scalar(Scalar::Bits { bits, defined }))
+    Ok(ConstValue::Scalar(Scalar::Bits { bits, size }))
 }

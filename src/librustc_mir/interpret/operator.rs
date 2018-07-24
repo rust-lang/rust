@@ -1,7 +1,7 @@
 use rustc::mir;
 use rustc::ty::{self, Ty, layout};
 use syntax::ast::FloatTy;
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 
@@ -32,7 +32,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        let val = Value::ScalarPair(val, Scalar::from_bool(overflowed));
+        let val = Value::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
         let valty = ValTy {
             value: val,
             ty: dest_ty,
@@ -97,13 +97,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             let signed = left_layout.abi.is_signed();
             let mut oflo = (r as u32 as u128) != r;
             let mut r = r as u32;
-            let size = left_layout.size.bits() as u32;
-            oflo |= r >= size;
+            let size = left_layout.size;
+            oflo |= r >= size.bits() as u32;
             if oflo {
-                r %= size;
+                r %= size.bits() as u32;
             }
             let result = if signed {
-                let l = self.sign_extend(l, left_ty)? as i128;
+                let l = self.sign_extend(l, left_layout) as i128;
                 let result = match bin_op {
                     Shl => l << r,
                     Shr => l >> r,
@@ -117,10 +117,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     _ => bug!("it has already been checked that this is a shift op"),
                 }
             };
-            let truncated = self.truncate(result, left_ty)?;
+            let truncated = self.truncate(result, left_layout);
             return Ok((Scalar::Bits {
                 bits: truncated,
-                defined: size as u8,
+                size: size.bytes() as u8,
             }, oflo));
         }
 
@@ -145,8 +145,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 _ => None,
             };
             if let Some(op) = op {
-                let l = self.sign_extend(l, left_ty)? as i128;
-                let r = self.sign_extend(r, right_ty)? as i128;
+                let l = self.sign_extend(l, left_layout) as i128;
+                let r = self.sign_extend(r, right_layout) as i128;
                 return Ok((Scalar::from_bool(op(&l, &r)), false));
             }
             let op: Option<fn(i128, i128) -> (i128, bool)> = match bin_op {
@@ -160,14 +160,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 _ => None,
             };
             if let Some(op) = op {
-                let l128 = self.sign_extend(l, left_ty)? as i128;
-                let r = self.sign_extend(r, right_ty)? as i128;
-                let size = left_layout.size.bits();
+                let l128 = self.sign_extend(l, left_layout) as i128;
+                let r = self.sign_extend(r, right_layout) as i128;
+                let size = left_layout.size;
                 match bin_op {
                     Rem | Div => {
                         // int_min / -1
-                        if r == -1 && l == (1 << (size - 1)) {
-                            return Ok((Scalar::Bits { bits: l, defined: size as u8 }, true));
+                        if r == -1 && l == (1 << (size.bits() - 1)) {
+                            return Ok((Scalar::Bits { bits: l, size: size.bytes() as u8 }, true));
                         }
                     },
                     _ => {},
@@ -175,27 +175,27 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 trace!("{}, {}, {}", l, l128, r);
                 let (result, mut oflo) = op(l128, r);
                 trace!("{}, {}", result, oflo);
-                if !oflo && size != 128 {
-                    let max = 1 << (size - 1);
+                if !oflo && size.bits() != 128 {
+                    let max = 1 << (size.bits() - 1);
                     oflo = result >= max || result < -max;
                 }
                 let result = result as u128;
-                let truncated = self.truncate(result, left_ty)?;
+                let truncated = self.truncate(result, left_layout);
                 return Ok((Scalar::Bits {
                     bits: truncated,
-                    defined: size as u8,
+                    size: size.bytes() as u8,
                 }, oflo));
             }
         }
 
         if let ty::TyFloat(fty) = left_ty.sty {
             macro_rules! float_math {
-                ($ty:path, $bitsize:expr) => {{
+                ($ty:path, $size:expr) => {{
                     let l = <$ty>::from_bits(l);
                     let r = <$ty>::from_bits(r);
                     let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>| Scalar::Bits {
                         bits: res.value.to_bits(),
-                        defined: $bitsize,
+                        size: $size,
                     };
                     let val = match bin_op {
                         Eq => Scalar::from_bool(l == r),
@@ -215,12 +215,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }};
             }
             match fty {
-                FloatTy::F32 => float_math!(Single, 32),
-                FloatTy::F64 => float_math!(Double, 64),
+                FloatTy::F32 => float_math!(Single, 4),
+                FloatTy::F64 => float_math!(Double, 8),
             }
         }
 
-        let bit_width = self.layout_of(left_ty).unwrap().size.bits() as u8;
+        let size = self.layout_of(left_ty).unwrap().size.bytes() as u8;
 
         // only ints left
         let val = match bin_op {
@@ -232,9 +232,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Gt => Scalar::from_bool(l > r),
             Ge => Scalar::from_bool(l >= r),
 
-            BitOr => Scalar::Bits { bits: l | r, defined: bit_width },
-            BitAnd => Scalar::Bits { bits: l & r, defined: bit_width },
-            BitXor => Scalar::Bits { bits: l ^ r, defined: bit_width },
+            BitOr => Scalar::Bits { bits: l | r, size },
+            BitAnd => Scalar::Bits { bits: l & r, size },
+            BitXor => Scalar::Bits { bits: l ^ r, size },
 
             Add | Sub | Mul | Rem | Div => {
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
@@ -248,10 +248,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     _ => bug!(),
                 };
                 let (result, oflo) = op(l, r);
-                let truncated = self.truncate(result, left_ty)?;
+                let truncated = self.truncate(result, left_layout);
                 return Ok((Scalar::Bits {
                     bits: truncated,
-                    defined: bit_width,
+                    size,
                 }, oflo || truncated != result));
             }
 
@@ -275,17 +275,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &self,
         un_op: mir::UnOp,
         val: Scalar,
-        ty: Ty<'tcx>,
+        layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
         use rustc::mir::UnOp::*;
         use rustc_apfloat::ieee::{Single, Double};
         use rustc_apfloat::Float;
 
-        let size = self.layout_of(ty)?.size;
+        let size = layout.size;
         let bytes = val.to_bits(size)?;
-        let size = size.bits();
 
-        let result_bytes = match (un_op, &ty.sty) {
+        let result_bytes = match (un_op, &layout.ty.sty) {
 
             (Not, ty::TyBool) => !val.to_bool()? as u128,
 
@@ -294,13 +293,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             (Neg, ty::TyFloat(FloatTy::F32)) => Single::to_bits(-Single::from_bits(bytes)),
             (Neg, ty::TyFloat(FloatTy::F64)) => Double::to_bits(-Double::from_bits(bytes)),
 
-            (Neg, _) if bytes == (1 << (size - 1)) => return err!(OverflowNeg),
+            (Neg, _) if bytes == (1 << (size.bits() - 1)) => return err!(OverflowNeg),
             (Neg, _) => (-(bytes as i128)) as u128,
         };
 
         Ok(Scalar::Bits {
-            bits: self.truncate(result_bytes, ty)?,
-            defined: size as u8,
+            bits: self.truncate(result_bytes, layout),
+            size: size.bytes() as u8,
         })
     }
 }

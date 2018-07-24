@@ -7,7 +7,7 @@ use rustc::ty::Instance;
 use rustc::ty::ParamEnv;
 use rustc::ty::query::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
-use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, Value,
+use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, Value, ScalarMaybeUndef,
                             EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType};
 pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
@@ -272,10 +272,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 let alloc = self.get(ptr.alloc_id)?;
                 (ptr.offset.bytes(), alloc.align)
             }
-            Scalar::Bits { bits, defined } => {
-                if (defined as u64) < self.pointer_size().bits() {
-                    return err!(ReadUndefBytes);
-                }
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, self.pointer_size().bytes());
                 // FIXME: what on earth does this line do? docs or fix needed!
                 let v = ((bits as u128) % (1 << self.pointer_size().bytes())) as u64;
                 if v == 0 {
@@ -756,7 +754,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, Scalar> {
+    pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, ScalarMaybeUndef> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianness = self.endianness();
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
@@ -764,7 +762,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
             // this inflates undefined bytes to the entire scalar, even if only a few bytes are undefined
-            return Ok(Scalar::undef().into());
+            return Ok(ScalarMaybeUndef::Undef);
         }
         // Now we do the actual reading
         let bits = read_target_uint(endianness, bytes).unwrap();
@@ -776,44 +774,52 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         } else {
             let alloc = self.get(ptr.alloc_id)?;
             match alloc.relocations.get(&ptr.offset) {
-                Some(&alloc_id) => return Ok(Pointer::new(alloc_id, Size::from_bytes(bits as u64)).into()),
+                Some(&alloc_id) => return Ok(ScalarMaybeUndef::Scalar(Pointer::new(alloc_id, Size::from_bytes(bits as u64)).into())),
                 None => {},
             }
         }
         // We don't. Just return the bits.
-        Ok(Scalar::Bits {
+        Ok(ScalarMaybeUndef::Scalar(Scalar::Bits {
             bits,
-            defined: size.bits() as u8,
-        })
+            size: size.bytes() as u8,
+        }))
     }
 
-    pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align) -> EvalResult<'tcx, Scalar> {
+    pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align) -> EvalResult<'tcx, ScalarMaybeUndef> {
         self.read_scalar(ptr, ptr_align, self.pointer_size())
     }
 
-    pub fn write_scalar(&mut self, ptr: Scalar, ptr_align: Align, val: Scalar, size: Size, signed: bool) -> EvalResult<'tcx> {
+    pub fn write_scalar(&mut self, ptr: Scalar, ptr_align: Align, val: ScalarMaybeUndef, type_size: Size, signed: bool) -> EvalResult<'tcx> {
         let endianness = self.endianness();
+
+        let val = match val {
+            ScalarMaybeUndef::Scalar(scalar) => scalar,
+            ScalarMaybeUndef::Undef => return self.mark_definedness(ptr, type_size, false),
+        };
 
         let bytes = match val {
             Scalar::Ptr(val) => {
-                assert_eq!(size, self.pointer_size());
+                assert_eq!(type_size, self.pointer_size());
                 val.offset.bytes() as u128
             }
 
-            Scalar::Bits { bits, defined } if defined as u64 >= size.bits() && size.bits() != 0 => bits,
-
-            Scalar::Bits { .. } => {
-                self.check_align(ptr.into(), ptr_align)?;
-                self.mark_definedness(ptr, size, false)?;
+            Scalar::Bits { size: 0, .. } => {
+                // nothing to do for ZSTs
+                assert_eq!(type_size.bytes(), 0);
                 return Ok(());
             }
+
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, type_size.bytes());
+                bits
+            },
         };
 
         let ptr = ptr.to_ptr()?;
 
         {
-            let align = self.int_align(size);
-            let dst = self.get_bytes_mut(ptr, size, ptr_align.min(align))?;
+            let align = self.int_align(type_size);
+            let dst = self.get_bytes_mut(ptr, type_size, ptr_align.min(align))?;
             if signed {
                 write_target_int(endianness, dst, bytes as i128).unwrap();
             } else {
@@ -835,7 +841,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn write_ptr_sized_unsigned(&mut self, ptr: Pointer, ptr_align: Align, val: Scalar) -> EvalResult<'tcx> {
+    pub fn write_ptr_sized_unsigned(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
         self.write_scalar(ptr.into(), ptr_align, val, ptr_size, false)
     }
@@ -984,7 +990,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn into_ptr(
         &self,
         value: Value,
-    ) -> EvalResult<'tcx, Scalar> {
+    ) -> EvalResult<'tcx, ScalarMaybeUndef> {
         Ok(match value {
             Value::ByRef(ptr, align) => {
                 self.memory().read_ptr_sized(ptr.to_ptr()?, align)?
@@ -997,7 +1003,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn into_ptr_vtable_pair(
         &self,
         value: Value,
-    ) -> EvalResult<'tcx, (Scalar, Pointer)> {
+    ) -> EvalResult<'tcx, (ScalarMaybeUndef, Pointer)> {
         match value {
             Value::ByRef(ref_ptr, align) => {
                 let mem = self.memory();
@@ -1005,11 +1011,11 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 let vtable = mem.read_ptr_sized(
                     ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
-                )?.to_ptr()?;
+                )?.read()?.to_ptr()?;
                 Ok((ptr, vtable))
             }
 
-            Value::ScalarPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
+            Value::ScalarPair(ptr, vtable) => Ok((ptr, vtable.read()?.to_ptr()?)),
             _ => bug!("expected ptr and vtable, got {:?}", value),
         }
     }
@@ -1017,7 +1023,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn into_slice(
         &self,
         value: Value,
-    ) -> EvalResult<'tcx, (Scalar, u64)> {
+    ) -> EvalResult<'tcx, (ScalarMaybeUndef, u64)> {
         match value {
             Value::ByRef(ref_ptr, align) => {
                 let mem = self.memory();
@@ -1025,12 +1031,12 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 let len = mem.read_ptr_sized(
                     ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
-                )?.to_bits(mem.pointer_size())? as u64;
+                )?.read()?.to_bits(mem.pointer_size())? as u64;
                 Ok((ptr, len))
             }
             Value::ScalarPair(ptr, val) => {
-                let len = val.to_bits(self.memory().pointer_size())?;
-                Ok((ptr.into(), len as u64))
+                let len = val.read()?.to_bits(self.memory().pointer_size())?;
+                Ok((ptr, len as u64))
             }
             Value::Scalar(_) => bug!("expected ptr and length, got {:?}", value),
         }

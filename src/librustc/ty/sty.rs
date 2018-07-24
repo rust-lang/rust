@@ -1888,21 +1888,12 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn from_byval_value(
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        val: Value,
-        ty: Ty<'tcx>,
-    ) -> &'tcx Self {
-        Self::from_const_value(tcx, ConstValue::from_byval_value(val), ty)
-    }
-
-    #[inline]
     pub fn from_scalar(
         tcx: TyCtxt<'_, '_, 'tcx>,
         val: Scalar,
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
-        Self::from_const_value(tcx, ConstValue::from_scalar(val), ty)
+        Self::from_const_value(tcx, ConstValue::Scalar(val), ty)
     }
 
     #[inline]
@@ -1918,12 +1909,12 @@ impl<'tcx> Const<'tcx> {
         let shift = 128 - size.bits();
         let truncated = (bits << shift) >> shift;
         assert_eq!(truncated, bits, "from_bits called with untruncated value");
-        Self::from_scalar(tcx, Scalar::Bits { bits, defined: size.bits() as u8 }, ty.value)
+        Self::from_scalar(tcx, Scalar::Bits { bits, size: size.bytes() as u8 }, ty.value)
     }
 
     #[inline]
     pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_scalar(tcx, Scalar::undef(), ty)
+        Self::from_scalar(tcx, Scalar::Bits { bits: 0, size: 0 }, ty)
     }
 
     #[inline]
@@ -1958,11 +1949,6 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn to_byval_value(&self) -> Option<Value> {
         self.val.to_byval_value()
-    }
-
-    #[inline]
-    pub fn to_scalar(&self) -> Option<Scalar> {
-        self.val.to_scalar()
     }
 
     #[inline]

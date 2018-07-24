@@ -17,7 +17,7 @@ use hir::def::CtorKind;
 use hir::def_id::DefId;
 use hir::{self, HirId, InlineAsm};
 use middle::region;
-use mir::interpret::{EvalErrorKind, Scalar, Value};
+use mir::interpret::{EvalErrorKind, Scalar, Value, ScalarMaybeUndef};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -1465,10 +1465,10 @@ impl<'tcx> TerminatorKind<'tcx> {
                     .map(|&u| {
                         let mut s = String::new();
                         print_miri_value(
-                            Value::Scalar(Scalar::Bits {
+                            Scalar::Bits {
                                 bits: u,
-                                defined: size.bits() as u8,
-                            }),
+                                size: size.bytes() as u8,
+                            }.to_value(),
                             switch_ty,
                             &mut s,
                         ).unwrap();
@@ -2225,45 +2225,58 @@ pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Resul
 
 pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
     use ty::TypeVariants::*;
-    match (value, &ty.sty) {
-        (Value::Scalar(Scalar::Bits { bits: 0, .. }), &TyBool) => write!(f, "false"),
-        (Value::Scalar(Scalar::Bits { bits: 1, .. }), &TyBool) => write!(f, "true"),
-        (Value::Scalar(Scalar::Bits { bits, .. }), &TyFloat(ast::FloatTy::F32)) => {
-            write!(f, "{}f32", Single::from_bits(bits))
-        }
-        (Value::Scalar(Scalar::Bits { bits, .. }), &TyFloat(ast::FloatTy::F64)) => {
-            write!(f, "{}f64", Double::from_bits(bits))
-        }
-        (Value::Scalar(Scalar::Bits { bits, .. }), &TyUint(ui)) => write!(f, "{:?}{}", bits, ui),
-        (Value::Scalar(Scalar::Bits { bits, .. }), &TyInt(i)) => {
-            let bit_width = ty::tls::with(|tcx| {
-                let ty = tcx.lift_to_global(&ty).unwrap();
-                tcx.layout_of(ty::ParamEnv::empty().and(ty))
-                    .unwrap()
-                    .size
-                    .bits()
-            });
-            let shift = 128 - bit_width;
-            write!(f, "{:?}{}", ((bits as i128) << shift) >> shift, i)
-        }
-        (Value::Scalar(Scalar::Bits { bits, .. }), &TyChar) => {
-            write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap())
-        }
-        (_, &TyFnDef(did, _)) => write!(f, "{}", item_path_str(did)),
-        (
-            Value::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: len, .. }),
-            &TyRef(_, &ty::TyS { sty: TyStr, .. }, _),
-        ) => ty::tls::with(|tcx| match tcx.alloc_map.lock().get(ptr.alloc_id) {
-            Some(interpret::AllocType::Memory(alloc)) => {
-                assert_eq!(len as usize as u128, len);
-                let slice = &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
-                let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
-                write!(f, "{:?}", s)
+    // print some primitives
+    if let Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { bits, .. })) = value {
+        match ty.sty {
+            TyBool if bits == 0 => return write!(f, "false"),
+            TyBool if bits == 1 => return write!(f, "true"),
+            TyFloat(ast::FloatTy::F32) => return write!(f, "{}f32", Single::from_bits(bits)),
+            TyFloat(ast::FloatTy::F64) => return write!(f, "{}f64", Double::from_bits(bits)),
+            TyUint(ui) => return write!(f, "{:?}{}", bits, ui),
+            TyInt(i) => {
+                let bit_width = ty::tls::with(|tcx| {
+                    let ty = tcx.lift_to_global(&ty).unwrap();
+                    tcx.layout_of(ty::ParamEnv::empty().and(ty))
+                        .unwrap()
+                        .size
+                        .bits()
+                });
+                let shift = 128 - bit_width;
+                return write!(f, "{:?}{}", ((bits as i128) << shift) >> shift, i);
             }
-            _ => write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len),
-        }),
-        _ => write!(f, "{:?}:{}", value, ty),
+            TyChar => return write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
+            _ => {},
+        }
     }
+    // print function definitons
+    if let TyFnDef(did, _) = ty.sty {
+        return write!(f, "{}", item_path_str(did));
+    }
+    // print string literals
+    if let Value::ScalarPair(ptr, len) = value {
+        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = ptr {
+            if let ScalarMaybeUndef::Scalar(Scalar::Bits { bits: len, .. }) = len {
+                if let TyRef(_, &ty::TyS { sty: TyStr, .. }, _) = ty.sty {
+                    return ty::tls::with(|tcx| {
+                        let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
+                        if let Some(interpret::AllocType::Memory(alloc)) = alloc {
+                            assert_eq!(len as usize as u128, len);
+                            let slice = &alloc
+                                .bytes
+                                    [(ptr.offset.bytes() as usize)..]
+                                    [..(len as usize)];
+                            let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
+                            write!(f, "{:?}", s)
+                        } else {
+                             write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
+                        }
+                    });
+                }
+            }
+        }
+    }
+    // just raw dump everything else
+    write!(f, "{:?}:{}", value, ty)
 }
 
 fn item_path_str(def_id: DefId) -> String {

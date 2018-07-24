@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
-use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, Pointer};
+use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, Pointer, ScalarMaybeUndef};
 use super::{EvalContext, Machine, ValTy};
 use interpret::memory::HasMemory;
 
@@ -14,7 +14,7 @@ pub enum Place {
         /// A place may have an invalid (integral or undef) pointer,
         /// since it might be turned back into a reference
         /// before ever being dereferenced.
-        ptr: Scalar,
+        ptr: ScalarMaybeUndef,
         align: Align,
         extra: PlaceExtra,
     },
@@ -35,10 +35,10 @@ pub enum PlaceExtra {
 impl<'tcx> Place {
     /// Produces a Place that will error if attempted to be read from
     pub fn undef() -> Self {
-        Self::from_scalar_ptr(Scalar::undef().into(), Align::from_bytes(1, 1).unwrap())
+        Self::from_scalar_ptr(ScalarMaybeUndef::Undef, Align::from_bytes(1, 1).unwrap())
     }
 
-    pub fn from_scalar_ptr(ptr: Scalar, align: Align) -> Self {
+    pub fn from_scalar_ptr(ptr: ScalarMaybeUndef, align: Align) -> Self {
         Place::Ptr {
             ptr,
             align,
@@ -47,10 +47,10 @@ impl<'tcx> Place {
     }
 
     pub fn from_ptr(ptr: Pointer, align: Align) -> Self {
-        Self::from_scalar_ptr(ptr.into(), align)
+        Self::from_scalar_ptr(ScalarMaybeUndef::Scalar(ptr.into()), align)
     }
 
-    pub fn to_ptr_align_extra(self) -> (Scalar, Align, PlaceExtra) {
+    pub fn to_ptr_align_extra(self) -> (ScalarMaybeUndef, Align, PlaceExtra) {
         match self {
             Place::Ptr { ptr, align, extra } => (ptr, align, extra),
             _ => bug!("to_ptr_and_extra: expected Place::Ptr, got {:?}", self),
@@ -58,17 +58,17 @@ impl<'tcx> Place {
         }
     }
 
-    pub fn to_ptr_align(self) -> (Scalar, Align) {
+    pub fn to_ptr_align(self) -> (ScalarMaybeUndef, Align) {
         let (ptr, align, _extra) = self.to_ptr_align_extra();
         (ptr, align)
     }
-
+/*
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         // At this point, we forget about the alignment information -- the place has been turned into a reference,
         // and no matter where it came from, it now must be aligned.
         self.to_ptr_align().0.to_ptr()
     }
-
+*/
     pub(super) fn elem_ty_and_len(
         self,
         ty: Ty<'tcx>,
@@ -106,7 +106,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             // Might allow this in the future, right now there's no way to do this from Rust code anyway
             Local(mir::RETURN_PLACE) => err!(ReadFromReturnPointer),
             // Directly reading a local will always succeed
-            Local(local) => self.frame().get_local(local).map(Some),
+            Local(local) => self.frame().locals[local].access().map(Some),
             // No fast path for statics. Reading from statics is rare and would require another
             // Machine function to handle differently in miri.
             Promoted(_) |
@@ -129,7 +129,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let field = base_layout.field(self, field_index)?;
         if field.size.bytes() == 0 {
             return Ok((
-                Value::Scalar(Scalar::undef()),
+                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { bits: 0, size: 0 })),
                 field,
             ));
         }
@@ -197,9 +197,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match place {
             Place::Ptr { ptr, align, extra } => {
                 assert_eq!(extra, PlaceExtra::None);
-                Ok(Value::ByRef(ptr, align))
+                Ok(Value::ByRef(ptr.read()?, align))
             }
-            Place::Local { frame, local } => self.stack[frame].get_local(local),
+            Place::Local { frame, local } => self.stack[frame].locals[local].access(),
         }
     }
 
@@ -220,7 +220,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 })?;
                 if let Value::ByRef(ptr, align) = val {
                     Place::Ptr {
-                        ptr,
+                        ptr: ptr.into(),
                         align,
                         extra: PlaceExtra::None,
                     }
@@ -238,7 +238,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let alloc = Machine::init_static(self, cid)?;
                 Place::Ptr {
-                    ptr: Scalar::Ptr(alloc.into()),
+                    ptr: ScalarMaybeUndef::Scalar(Scalar::Ptr(alloc.into())),
                     align: layout.align,
                     extra: PlaceExtra::None,
                 }
@@ -276,14 +276,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let (base_ptr, base_align, base_extra) = match base {
             Place::Ptr { ptr, align, extra } => (ptr, align, extra),
             Place::Local { frame, local } => {
-                match (&self.stack[frame].get_local(local)?, &base_layout.abi) {
+                match (self.stack[frame].locals[local].access()?, &base_layout.abi) {
                     // in case the field covers the entire type, just return the value
-                    (&Value::Scalar(_), &layout::Abi::Scalar(_)) |
-                    (&Value::ScalarPair(..), &layout::Abi::ScalarPair(..))
-                        if offset.bytes() == 0 && field.size == base_layout.size =>
-                    {
-                        return Ok((base, field));
-                    }
+                    (Value::Scalar(_), &layout::Abi::Scalar(_)) |
+                    (Value::ScalarPair(..), &layout::Abi::ScalarPair(..))
+                    if offset.bytes() == 0 && field.size == base_layout.size => {
+                        return Ok((base, field))
+                    },
                     _ => self.force_allocation(base)?.to_ptr_align_extra(),
                 }
             }
@@ -413,7 +412,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
 
             Index(local) => {
-                let value = self.frame().get_local(local)?;
+                let value = self.frame().locals[local].access()?;
                 let ty = self.tcx.types.usize;
                 let n = self
                     .value_to_scalar(ValTy { value, ty })?
