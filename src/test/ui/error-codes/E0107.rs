@@ -29,5 +29,4 @@ struct Baz<'a, 'b, 'c> {
     //~| 2 unexpected lifetime parameters
 }
 
-fn main() {
-}
+fn main() {}

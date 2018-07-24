@@ -13,12 +13,13 @@
 //! is parameterized by an instance of `AstConv`.
 
 use rustc_data_structures::accumulate_vec::AccumulateVec;
+use rustc_data_structures::array_vec::ArrayVec;
 use hir::{self, GenericArg};
 use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
@@ -270,85 +271,133 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             false
         };
 
-        let self_offset = self_ty.is_some() as usize;
-        let substs = Substs::for_item(tcx, def_id, |param, substs| {
-            if param.index == 0 {
-                if let Some(ty) = self_ty {
-                    if let GenericParamDefKind::Type { .. } = param.kind {
-                        // Handle `Self` first.
-                        return ty.into();
+        // Collect the segments of the path: we need to substitute arguments
+        // for parameters throughout the entire path (wherever there are
+        // generic parameters).
+        let mut parent_defs = self.tcx().generics_of(def_id);
+        let count = parent_defs.count();
+        let mut stack = vec![(def_id, parent_defs)];
+        while let Some(def_id) = parent_defs.parent {
+            parent_defs = self.tcx().generics_of(def_id);
+            stack.push((def_id, parent_defs));
+        }
+
+        // We manually build up the substitution, rather than using convenience
+        // methods in subst.rs so that we can iterate over the arguments and
+        // parameters in lock-step linearly, rather than trying to match each pair.
+        let mut substs: AccumulateVec<[Kind<'tcx>; 8]> = if count <= 8 {
+            AccumulateVec::Array(ArrayVec::new())
+        } else {
+            AccumulateVec::Heap(Vec::with_capacity(count))
+        };
+        fn push_kind<'tcx>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>, kind: Kind<'tcx>) {
+            match substs {
+                AccumulateVec::Array(ref mut arr) => arr.push(kind),
+                AccumulateVec::Heap(ref mut vec) => vec.push(kind),
+            }
+        }
+
+        // Iterate over each segment of the path.
+        while let Some((_, defs)) = stack.pop() {
+            let mut params = defs.params.iter();
+            let mut next_param = params.next();
+
+            // `Self` is handled first.
+            if let Some(ty) = self_ty {
+                if let Some(param) = next_param {
+                    if param.index == 0 {
+                        if let GenericParamDefKind::Type { .. } = param.kind {
+                            push_kind(&mut substs, ty.into());
+                            next_param = params.next();
+                        }
                     }
                 }
             }
 
-            let inferred_lifetimes = if lt_provided == 0 {
-                lt_accepted
-            } else {
-                0
-            };
+            let args = &generic_args.args;
+            'args: for arg in args {
+                while let Some(param) = next_param {
+                    match param.kind {
+                        GenericParamDefKind::Lifetime => match arg {
+                            GenericArg::Lifetime(lt) => {
+                                push_kind(&mut substs,
+                                    self.ast_region_to_region(&lt, Some(param)).into());
+                                next_param = params.next();
+                                continue 'args;
+                            }
+                            GenericArg::Type(_) => {
+                                // We expected a lifetime argument, but got a type
+                                // argument. That means we're inferring the lifetimes.
+                                push_kind(&mut substs, tcx.types.re_static.into());
+                                next_param = params.next();
+                            }
+                        }
+                        GenericParamDefKind::Type { .. } => match arg {
+                            GenericArg::Type(ty) => {
+                                push_kind(&mut substs, self.ast_ty_to_ty(&ty).into());
+                                next_param = params.next();
+                                continue 'args;
+                            }
+                            GenericArg::Lifetime(_) => {
+                                break 'args;
+                            }
+                        }
+                    }
+                }
+            }
 
-            let param_idx = (param.index as usize - self_offset).saturating_sub(inferred_lifetimes);
-
-            if let Some(arg) = generic_args.args.get(param_idx) {
+            while let Some(param) = next_param {
                 match param.kind {
-                    GenericParamDefKind::Lifetime => match arg {
-                        GenericArg::Lifetime(lt) => {
-                            return self.ast_region_to_region(lt, Some(param)).into();
-                        }
-                        _ => {}
+                    GenericParamDefKind::Lifetime => {
+                        push_kind(&mut substs, tcx.types.re_static.into());
                     }
-                    GenericParamDefKind::Type { .. } => match arg {
-                        GenericArg::Type(ty) => return self.ast_ty_to_ty(ty).into(),
-                        _ => {}
-                    }
-                }
-            }
+                    GenericParamDefKind::Type { has_default, .. } => {
+                        if infer_types {
+                            // No type parameters were provided, we can infer all.
+                            push_kind(&mut substs, if !default_needs_object_self(param) {
+                                self.ty_infer_for_def(param, span).into()
+                            } else {
+                                self.ty_infer(span).into()
+                            });
+                        } else if has_default {
+                            // No type parameter provided, but a default exists.
 
-            match param.kind {
-                GenericParamDefKind::Lifetime => tcx.types.re_static.into(),
-                GenericParamDefKind::Type { has_default, .. } => {
-                    if infer_types {
-                        // No type parameters were provided, we can infer all.
-                        if !default_needs_object_self(param) {
-                            self.ty_infer_for_def(param, span).into()
+                            // If we are converting an object type, then the
+                            // `Self` parameter is unknown. However, some of the
+                            // other type parameters may reference `Self` in their
+                            // defaults. This will lead to an ICE if we are not
+                            // careful!
+                            if default_needs_object_self(param) {
+                                struct_span_err!(tcx.sess, span, E0393,
+                                                    "the type parameter `{}` must be explicitly \
+                                                    specified",
+                                                    param.name)
+                                    .span_label(span,
+                                                format!("missing reference to `{}`", param.name))
+                                    .note(&format!("because of the default `Self` reference, \
+                                                    type parameters must be specified on object \
+                                                    types"))
+                                    .emit();
+                                push_kind(&mut substs, tcx.types.err.into());
+                            } else {
+                                // This is a default type parameter.
+                                let kind = self.normalize_ty(
+                                    span,
+                                    tcx.at(span).type_of(param.def_id)
+                                        .subst_spanned(tcx, &substs, Some(span))
+                                ).into();
+                                push_kind(&mut substs, kind);
+                            }
                         } else {
-                            self.ty_infer(span).into()
+                            // We've already errored above about the mismatch.
+                            push_kind(&mut substs, tcx.types.err.into());
                         }
-                    } else if has_default {
-                        // No type parameter provided, but a default exists.
-
-                        // If we are converting an object type, then the
-                        // `Self` parameter is unknown. However, some of the
-                        // other type parameters may reference `Self` in their
-                        // defaults. This will lead to an ICE if we are not
-                        // careful!
-                        if default_needs_object_self(param) {
-                            struct_span_err!(tcx.sess, span, E0393,
-                                                "the type parameter `{}` must be explicitly \
-                                                specified",
-                                                param.name)
-                                .span_label(span,
-                                            format!("missing reference to `{}`", param.name))
-                                .note(&format!("because of the default `Self` reference, \
-                                                type parameters must be specified on object \
-                                                types"))
-                                .emit();
-                            tcx.types.err.into()
-                        } else {
-                            // This is a default type parameter.
-                            self.normalize_ty(
-                                span,
-                                tcx.at(span).type_of(param.def_id)
-                                    .subst_spanned(tcx, substs, Some(span))
-                            ).into()
-                        }
-                    } else {
-                        // We've already errored above about the mismatch.
-                        tcx.types.err.into()
                     }
-                }
+                };
+                next_param = params.next();
             }
-        });
+        }
+        let substs = self.tcx().intern_substs(&substs);
 
         let assoc_bindings = generic_args.bindings.iter().map(|binding| {
             ConvertedBinding {
