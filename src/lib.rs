@@ -8,8 +8,12 @@ extern crate rustc_mir;
 extern crate rustc_codegen_utils;
 extern crate rustc_target;
 extern crate rustc_incremental;
+#[macro_use]
 extern crate rustc_data_structures;
 
+extern crate ar;
+extern crate faerie;
+//extern crate goblin;
 extern crate target_lexicon;
 extern crate cranelift;
 extern crate cranelift_module;
@@ -20,7 +24,6 @@ use std::any::Any;
 use std::sync::{mpsc, Arc};
 use std::path::Path;
 use std::fs::File;
-use std::io::Write;
 
 use syntax::symbol::Symbol;
 use rustc::session::{
@@ -35,7 +38,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::ty::query::Providers;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::{out_filename, build_link_meta};
-use rustc_data_structures::owning_ref;
+use rustc_data_structures::owning_ref::{self, OwningRef};
 
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
@@ -91,19 +94,53 @@ pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
 struct CraneliftMetadataLoader;
 
 impl MetadataLoader for CraneliftMetadataLoader {
-    fn get_rlib_metadata(&self, target: &rustc_target::spec::Target, path: &Path) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
-        self.get_dylib_metadata(target, path)
+    fn get_rlib_metadata(&self, _target: &rustc_target::spec::Target, path: &Path) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
+        let mut archive = ar::Archive::new(File::open(path).map_err(|e|format!("{:?}", e))?);
+        // Iterate over all entries in the archive:
+        while let Some(entry_result) = archive.next_entry() {
+            let mut entry = entry_result.map_err(|e|format!("{:?}", e))?;
+            if entry.header().identifier() == b".rustc.clif_metadata" {
+                let mut buf = Vec::new();
+                ::std::io::copy(&mut entry, &mut buf).map_err(|e|format!("{:?}", e))?;
+                let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
+                return Ok(rustc_erase_owner!(buf.map_owner_box()));
+            }
+        }
+
+        Err("couldn't find metadata entry".to_string())
+        //self.get_dylib_metadata(target, path)
     }
 
     fn get_dylib_metadata(&self, _target: &rustc_target::spec::Target, _path: &Path) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
-        Err("metadata loading is not yet supported".to_string())
+        //use goblin::Object;
+
+        //let buffer = ::std::fs::read(path).map_err(|e|format!("{:?}", e))?;
+        /*match Object::parse(&buffer).map_err(|e|format!("{:?}", e))? {
+            Object::Elf(elf) => {
+                println!("elf: {:#?}", &elf);
+            },
+            Object::PE(pe) => {
+                println!("pe: {:#?}", &pe);
+            },
+            Object::Mach(mach) => {
+                println!("mach: {:#?}", &mach);
+            },
+            Object::Archive(archive) => {
+                return Err(format!("archive: {:#?}", &archive));
+            },
+            Object::Unknown(magic) => {
+                return Err(format!("unknown magic: {:#x}", magic))
+            }
+        }*/
+        Err("dylib metadata loading is not yet supported".to_string())
     }
 }
 
 struct CraneliftCodegenBackend;
 
 struct OngoingCodegen {
-    translated_module: Module<cranelift_faerie::FaerieBackend>,
+    product: cranelift_faerie::FaerieProduct,
+    metadata: Vec<u8>,
     crate_name: Symbol,
 }
 
@@ -231,7 +268,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             module.finish();
         }
 
-        let mut translated_module = Module::new(
+        let mut translated_module: Module<FaerieBackend> = Module::new(
             FaerieBuilder::new(
                 isa,
                 "some_file.o".to_string(),
@@ -241,13 +278,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .unwrap()
         );
 
-        let metadata_id = translated_module.declare_data(".rustc.metadata", Linkage::Export, false).unwrap();
-        let mut data_ctx = DataContext::new();
-        data_ctx.define(metadata.raw_data.clone().into_boxed_slice(), Writability::Readonly);
-        translated_module.define_data(metadata_id, &data_ctx).unwrap();
-
         Box::new(::OngoingCodegen {
-            translated_module,
+            product: translated_module.finish(),
+            metadata: metadata.raw_data,
             crate_name: tcx.crate_name(LOCAL_CRATE),
         })
     }
@@ -261,7 +294,19 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> Result<(), CompileIncomplete> {
         let ongoing_codegen = *ongoing_codegen.downcast::<OngoingCodegen>()
             .expect("Expected CraneliftCodegenBackend's OngoingCodegen, found Box<Any>");
-        let artifact = ongoing_codegen.translated_module.finish().artifact;
+
+        let mut artifact = ongoing_codegen.product.artifact;
+        let metadata = ongoing_codegen.metadata;
+
+        artifact.declare_with(
+            ".rustc.clif_metadata",
+            faerie::artifact::Decl::Data {
+                global: true,
+                writeable: false
+            },
+            metadata.clone(),
+        ).unwrap();
+
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::CrateTypeRlib /*&& crate_type != CrateType::CrateTypeDylib*/ {
                 sess.fatal(&format!("Unsupported crate type: {:?}", crate_type));
@@ -269,7 +314,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let output_name =
                 out_filename(sess, crate_type, &outputs, &ongoing_codegen.crate_name.as_str());
             let file = File::create(&output_name).unwrap();
-            artifact.write(file).unwrap();
+            let mut builder = ar::Builder::new(file);
+            builder.append(&ar::Header::new(b".rustc.clif_metadata".to_vec(), metadata.len() as u64), ::std::io::Cursor::new(metadata.clone())).unwrap();
+            //artifact.write(file).unwrap();
         }
 
         sess.abort_if_errors();

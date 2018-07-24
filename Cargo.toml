@@ -17,3 +17,6 @@ cranelift-module = { path = "./cranelift/lib/module" }
 cranelift-simplejit = { path = "./cranelift/lib/simplejit" }
 cranelift-faerie = { path = "./cranelift/lib/faerie" }
 target-lexicon = "0.0.3"
+#goblin = "0.0.17"
+faerie = "0.4.4"
+ar = "0.6.0"
