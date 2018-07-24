@@ -1,6 +1,6 @@
 ### The `#[test]` attribute
-Today, rust programmers rely on a built in attribute called `#[test]`.
-All you have to do is mark a function as a test and include some asserts like so:
+Today, rust programmers rely on a built in attribute called `#[test]`. All
+you have to do is mark a function as a test and include some asserts like so:
 
 ```rust,ignore
 #[test]
@@ -36,10 +36,11 @@ rewrites the crate in 3 steps:
 
 #### Step 1: Re-Exporting
 
-As mentioned earlier, tests can exist inside private modules, so we need a way of
-exposing them to the main function, without breaking any existing code. To that end,
-`libsyntax` will create local modules called `__test_reexports` that recursively reexport tests.
-This expansion translates the above example into:
+As mentioned earlier, tests can exist inside private modules, so we need a
+way of exposing them to the main function, without breaking any existing
+code. To that end, `libsyntax` will create local modules called
+`__test_reexports` that recursively reexport tests. This expansion translates
+the above example into:
 
 ```rust,ignore
 mod my_priv_mod {
@@ -76,8 +77,8 @@ collision during code generation and is the foundation of Rust's macro
 hygiene.
 
 #### Step 2: Harness Generation
-Now that our tests are accessible from the root of our crate, we need to do something with them.
-`libsyntax` generates a module like so:
+Now that our tests are accessible from the root of our crate, we need to do
+something with them. `libsyntax` generates a module like so:
 
 ```rust,ignore
 pub mod __test {
@@ -91,15 +92,19 @@ pub mod __test {
 }
 ```
 
-While this transformation is simple, it gives us a lot of insight into how tests are actually run.
-The tests are aggregated into an array and passed to a test runner called `test_static_main`.
-We'll come back to exactly what `TestDescAndFn` is, but for now, the key takeaway is that there is a crate
-called [`test`][test] that is part of Rust core, that implements all of the runtime for testing. `test`'s interface is unstable,
-so the only stable way to interact with it is through the `#[test]` macro.
+While this transformation is simple, it gives us a lot of insight into how
+tests are actually run. The tests are aggregated into an array and passed to
+a test runner called `test_static_main`. We'll come back to exactly what
+`TestDescAndFn` is, but for now, the key takeaway is that there is a crate
+called [`test`][test] that is part of Rust core, that implements all of the
+runtime for testing. `test`'s interface is unstable, so the only stable way
+to interact with it is through the `#[test]` macro.
 
 #### Step 3: Test Object Generation
-If you've written tests in Rust before, you may be familiar with some of the optional attributes available on test functions.
-For example, a test can be annotated with `#[should_panic]` if we expect the test to cause a panic. It looks something like this:
+If you've written tests in Rust before, you may be familiar with some of the
+optional attributes available on test functions. For example, a test can be
+annotated with `#[should_panic]` if we expect the test to cause a panic. It
+looks something like this:
 
 ```rust,ignore
 #[test]
@@ -109,10 +114,13 @@ fn foo() {
 }
 ```
 
-This means our tests are more than just simple functions, they have configuration information as well. `test` encodes this configuration
-data into a struct called [`TestDesc`][TestDesc]. For each test function in a crate, `libsyntax` will parse its attributes and generate a `TestDesc` instance.
-It then combines the `TestDesc` and test function into the predictably named `TestDescAndFn` struct, that `test_static_main` operates on.
-For a given test, the generated `TestDescAndFn` instance looks like so:
+This means our tests are more than just simple functions, they have
+configuration information as well. `test` encodes this configuration data
+into a struct called [`TestDesc`][TestDesc]. For each test function in a
+crate, `libsyntax` will parse its attributes and generate a `TestDesc`
+instance. It then combines the `TestDesc` and test function into the
+predictably named `TestDescAndFn` struct, that `test_static_main` operates
+on. For a given test, the generated `TestDescAndFn` instance looks like so:
 
 ```rust,ignore
 self::test::TestDescAndFn{
@@ -131,7 +139,8 @@ Once we've constructed an array of these test objects, they're passed to the
 test runner via the harness generated in step 2.
 
 ### Inspecting the generated code
-On nightly rust, there's an unstable flag called `unpretty` that you can use to print out the module source after macro expansion:
+On nightly rust, there's an unstable flag called `unpretty` that you can use
+to print out the module source after macro expansion:
 
 ```bash
 $ rustc my_mod.rs -Z unpretty=hir
