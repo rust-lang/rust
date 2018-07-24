@@ -229,7 +229,7 @@ enum WarningType {
 }
 
 impl WarningType {
-    crate fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: syntax_pos::Span) {
+    crate fn display(&self, grouping_hint: &str, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
         match self {
             WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,
@@ -281,7 +281,7 @@ impl LintPass for LiteralDigitGrouping {
 }
 
 impl EarlyLintPass for LiteralDigitGrouping {
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if in_external_macro(cx, expr.span) {
             return;
         }
@@ -293,7 +293,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
 }
 
 impl LiteralDigitGrouping {
-    fn check_lit(self, cx: &EarlyContext, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         match lit.node {
             LitKind::Int(..) => {
                 // Lint integral literals.
@@ -421,7 +421,7 @@ impl LintPass for LiteralRepresentation {
 }
 
 impl EarlyLintPass for LiteralRepresentation {
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if in_external_macro(cx, expr.span) {
             return;
         }
@@ -438,7 +438,7 @@ impl LiteralRepresentation {
             threshold,
         }
     }
-    fn check_lit(self, cx: &EarlyContext, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         // Lint integral literals.
         if_chain! {
             if let LitKind::Int(..) = lit.node;

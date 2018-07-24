@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn expr_eq_name(cx: &LateContext, expr: &Expr, id: ast::Ident) -> bool {
+fn expr_eq_name(cx: &LateContext<'_, '_>, expr: &Expr, id: ast::Ident) -> bool {
     match expr.node {
         ExprKind::Path(QPath::Resolved(None, ref path)) => {
             let arg_segment = [
@@ -116,7 +116,7 @@ fn expr_eq_name(cx: &LateContext, expr: &Expr, id: ast::Ident) -> bool {
     }
 }
 
-fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static str> {
+fn get_type_name(cx: &LateContext<'_, '_>, expr: &Expr, arg: &Expr) -> Option<&'static str> {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         Some("iterator")
     } else if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(arg)), &paths::OPTION) {
@@ -126,7 +126,7 @@ fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static s
     }
 }
 
-fn only_derefs(cx: &LateContext, expr: &Expr, id: ast::Ident) -> bool {
+fn only_derefs(cx: &LateContext<'_, '_>, expr: &Expr, id: ast::Ident) -> bool {
     match expr.node {
         ExprKind::Unary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => only_derefs(cx, subexpr, id),
         _ => expr_eq_name(cx, expr, id),

@@ -4,7 +4,7 @@ error: using `writeln!(v, "")`
 9 |     writeln!(&mut v, "");
   |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(v)`
   |
-  = note: `-D write-with-newline` implied by `-D warnings`
+  = note: `-D writeln-empty-string` implied by `-D warnings`
 
 error: aborting due to previous error
 

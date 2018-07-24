@@ -226,7 +226,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 }
 
-fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
+fn is_relevant_item(tcx: TyCtxt<'_, '_, '_>, item: &Item) -> bool {
     if let ItemKind::Fn(_, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
     } else {
@@ -234,14 +234,14 @@ fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
     }
 }
 
-fn is_relevant_impl(tcx: TyCtxt, item: &ImplItem) -> bool {
+fn is_relevant_impl(tcx: TyCtxt<'_, '_, '_>, item: &ImplItem) -> bool {
     match item.node {
         ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait(tcx: TyCtxt, item: &TraitItem) -> bool {
+fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
     match item.node {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
@@ -251,7 +251,7 @@ fn is_relevant_trait(tcx: TyCtxt, item: &TraitItem) -> bool {
     }
 }
 
-fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> bool {
+fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match stmt.node {
             StmtKind::Decl(_, _) => true,
@@ -262,7 +262,7 @@ fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> b
     }
 }
 
-fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool {
+fn is_relevant_expr(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
     match expr.node {
         ExprKind::Block(ref block, _) => is_relevant_block(tcx, tables, block),
         ExprKind::Ret(Some(ref e)) => is_relevant_expr(tcx, tables, e),
@@ -280,7 +280,7 @@ fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool
     }
 }
 
-fn check_attrs(cx: &LateContext, span: Span, name: Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attribute]) {
     if in_macro(span) {
         return;
     }
@@ -331,7 +331,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: Name, attrs: &[Attribute]) {
     }
 }
 
-fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
+fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
     if let LitKind::Str(ref is, _) = lit.node {
         if Version::parse(&is.as_str()).is_ok() {
             return;
@@ -358,7 +358,7 @@ fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
 // sources that the user has no control over.
 // For some reason these attributes don't have any expansion info on them, so
 // we have to check it this way until there is a better way.
-fn is_present_in_source(cx: &LateContext, span: Span) -> bool {
+fn is_present_in_source(cx: &LateContext<'_, '_>, span: Span) -> bool {
     if let Some(snippet) = snippet_opt(cx, span) {
         if snippet.is_empty() {
             return false;

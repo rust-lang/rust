@@ -67,7 +67,7 @@ impl MissingDoc {
             .expect("empty doc_hidden_stack")
     }
 
-    fn check_missing_docs_attrs(&self, cx: &LateContext, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
+    fn check_missing_docs_attrs(&self, cx: &LateContext<'_, '_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
         if cx.sess().opts.test {

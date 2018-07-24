@@ -80,14 +80,14 @@ impl LintPass for CollapsibleIf {
 }
 
 impl EarlyLintPass for CollapsibleIf {
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if !in_macro(expr.span) {
             check_if(cx, expr)
         }
     }
 }
 
-fn check_if(cx: &EarlyContext, expr: &ast::Expr) {
+fn check_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     match expr.node {
         ast::ExprKind::If(ref check, ref then, ref else_) => if let Some(ref else_) = *else_ {
             check_collapsible_maybe_if_let(cx, else_);
@@ -101,7 +101,7 @@ fn check_if(cx: &EarlyContext, expr: &ast::Expr) {
     }
 }
 
-fn check_collapsible_maybe_if_let(cx: &EarlyContext, else_: &ast::Expr) {
+fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
     if_chain! {
         if let ast::ExprKind::Block(ref block, _) = else_.node;
         if let Some(else_) = expr_block(block);
@@ -122,7 +122,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext, else_: &ast::Expr) {
     }
 }
 
-fn check_collapsible_no_if_let(cx: &EarlyContext, expr: &ast::Expr, check: &ast::Expr, then: &ast::Block) {
+fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &ast::Expr, then: &ast::Block) {
     if_chain! {
         if let Some(inner) = expr_block(then);
         if let ast::ExprKind::If(ref check_inner, ref content, None) = inner.node;

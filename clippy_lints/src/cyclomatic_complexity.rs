@@ -187,7 +187,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
 
 #[cfg(feature = "debugging")]
 #[allow(too_many_arguments)]
-fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, _: NodeId) {
+fn report_cc_bug(_: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, _: NodeId) {
     span_bug!(
         span,
         "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
@@ -201,7 +201,7 @@ fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, re
 }
 #[cfg(not(feature = "debugging"))]
 #[allow(too_many_arguments)]
-fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, id: NodeId) {
+fn report_cc_bug(cx: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, id: NodeId) {
     if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, id) {
         cx.sess().span_note_without_error(
             span,

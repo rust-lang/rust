@@ -38,7 +38,7 @@ impl LintPass for ByteCount {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
             if let ExprKind::MethodCall(ref count, _, ref count_args) = expr.node;
             if count.ident.name == "count";

@@ -26,6 +26,23 @@ help: instead of prefixing all patterns with `&`, you can dereference the expres
 32 |             None => println!("none"),
    |
 
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/matches.rs:40:5
+   |
+40 | /     match tup {
+41 | |         &(v, 1) => println!("{}", v),
+42 | |         _ => println!("none"),
+43 | |     }
+   | |_____^
+help: try this
+   |
+40 |     if let &(v, 1) = tup {
+41 | # [ cfg ( not ( stage0 ) ) ] {
+42 | ( $ crate :: io :: _print ( format_args_nl ! ( $ ( $ arg ) * ) ) ) ; } # [
+43 | cfg ( stage0 ) ] { print ! ( "{}/n" , format_args ! ( $ ( $ arg ) * ) ) } } else {
+44 | ( $ crate :: io :: _print ( format_args_nl ! ( $ ( $ arg ) * ) ) ) ; }
+   |
+
 error: you don't need to add `&` to all patterns
   --> $DIR/matches.rs:40:5
    |
@@ -350,5 +367,5 @@ error: use as_mut() instead
 221 | |     };
     | |_____^ help: try this: `mut_owned.as_mut()`
 
-error: aborting due to 25 previous errors
+error: aborting due to 26 previous errors
 

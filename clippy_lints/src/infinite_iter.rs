@@ -140,7 +140,7 @@ static HEURISTICS: &[(&str, usize, Heuristic, Finiteness)] = &[
     ("scan", 3, First, MaybeInfinite),
 ];
 
-fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
+fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
     match expr.node {
         ExprKind::MethodCall(ref method, _, ref args) => {
             for &(name, len, heuristic, cap) in HEURISTICS.iter() {
@@ -204,7 +204,7 @@ static COMPLETING_METHODS: &[(&str, usize)] = &[
     ("product", 1),
 ];
 
-fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> Finiteness {
+fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
     match expr.node {
         ExprKind::MethodCall(ref method, _, ref args) => {
             for &(name, len) in COMPLETING_METHODS.iter() {

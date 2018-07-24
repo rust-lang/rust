@@ -37,7 +37,7 @@ impl LintPass for Precedence {
 }
 
 impl EarlyLintPass for Precedence {
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if in_macro(expr.span) {
             return;
         }

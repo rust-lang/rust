@@ -138,7 +138,7 @@ impl LintPass for TypePass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
-    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext<'_, '_>, _: FnKind<'_>, decl: &FnDecl, _: &Body, _: Span, id: NodeId) {
         // skip trait implementations, see #605
         if let Some(map::NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(id)) {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
@@ -149,11 +149,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
         check_fn_decl(cx, decl);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &StructField) {
         check_ty(cx, &field.ty, false);
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &TraitItem) {
         match item.node {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty, false),
             TraitItemKind::Method(ref sig, _) => check_fn_decl(cx, &sig.decl),
@@ -161,14 +161,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext, local: &Local) {
+    fn check_local(&mut self, cx: &LateContext<'_, '_>, local: &Local) {
         if let Some(ref ty) = local.ty {
             check_ty(cx, ty, true);
         }
     }
 }
 
-fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
+fn check_fn_decl(cx: &LateContext<'_, '_>, decl: &FnDecl) {
     for input in &decl.inputs {
         check_ty(cx, input, false);
     }
@@ -179,7 +179,7 @@ fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
 }
 
 /// Check if `qpath` has last segment with type parameter matching `path`
-fn match_type_parameter(cx: &LateContext, qpath: &QPath, path: &[&str]) -> bool {
+fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) -> bool {
     let last = last_path_segment(qpath);
     if_chain! {
         if let Some(ref params) = last.args;
@@ -203,7 +203,7 @@ fn match_type_parameter(cx: &LateContext, qpath: &QPath, path: &[&str]) -> bool 
 ///
 /// The parameter `is_local` distinguishes the context of the type; types from
 /// local bindings should only be checked for the `BORROWED_BOX` lint.
-fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
+fn check_ty(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool) {
     if in_macro(ast_ty.span) {
         return;
     }
@@ -294,7 +294,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
     }
 }
 
-fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
+fn check_ty_rptr(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool, lt: &Lifetime, mut_ty: &MutTy) {
     match mut_ty.ty.node {
         TyKind::Path(ref qpath) => {
             let hir_id = cx.tcx.hir.node_to_hir_id(mut_ty.ty.id);
@@ -378,7 +378,7 @@ declare_clippy_lint! {
     "creating a let binding to a value of unit type, which usually can't be used afterwards"
 }
 
-fn check_let_unit(cx: &LateContext, decl: &Decl) {
+fn check_let_unit(cx: &LateContext<'_, '_>, decl: &Decl) {
     if let DeclKind::Local(ref local) = decl.node {
         if is_unit(cx.tables.pat_ty(&local.pat)) {
             if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
@@ -548,7 +548,7 @@ fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
     }
 }
 
-fn is_unit(ty: Ty) -> bool {
+fn is_unit(ty: Ty<'_>) -> bool {
     match ty.sty {
         ty::TyTuple(slice) if slice.is_empty() => true,
         _ => false,
@@ -753,7 +753,7 @@ declare_clippy_lint! {
 
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
-fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
+fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_, '_, '_>) -> u64 {
     match typ.sty {
         ty::TyInt(i) => match i {
             IntTy::Isize => tcx.data_layout.pointer_size.bits(),
@@ -775,14 +775,14 @@ fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
     }
 }
 
-fn is_isize_or_usize(typ: Ty) -> bool {
+fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     match typ.sty {
         ty::TyInt(IntTy::Isize) | ty::TyUint(UintTy::Usize) => true,
         _ => false,
     }
 }
 
-fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_to_f64: bool) {
+fn span_precision_loss_lint(cx: &LateContext<'_, '_>, expr: &Expr, cast_from: Ty<'_>, cast_to_f64: bool) {
     let mantissa_nbits = if cast_to_f64 { 52 } else { 23 };
     let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
     let arch_dependent_str = "on targets with 64-bit wide pointers ";
@@ -822,7 +822,7 @@ fn should_strip_parens(op: &Expr, snip: &str) -> bool {
     false
 }
 
-fn span_lossless_lint(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_to: Ty) {
+fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
     if in_constant(cx, expr.id) { return }
     // The suggestion is to use a function call, so if the original expression
@@ -854,7 +854,7 @@ enum ArchSuffix {
     None,
 }
 
-fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_to: Ty) {
+fn check_truncation_and_wrapping(cx: &LateContext<'_, '_>, expr: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     let arch_64_suffix = " on targets with 64-bit wide pointers";
     let arch_32_suffix = " on targets with 32-bit wide pointers";
     let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
@@ -925,7 +925,7 @@ fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: Ty, c
     }
 }
 
-fn check_lossless(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_to: Ty) {
+fn check_lossless(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     let cast_signed_to_unsigned = cast_from.is_signed() && !cast_to.is_signed();
     let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
     let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
@@ -1183,7 +1183,7 @@ impl<'a, 'tcx> TypeComplexityPass {
         }
     }
 
-    fn check_type(&self, cx: &LateContext, ty: &hir::Ty) {
+    fn check_type(&self, cx: &LateContext<'_, '_>, ty: &hir::Ty) {
         if in_macro(ty.span) {
             return;
         }
@@ -1562,7 +1562,7 @@ impl Ord for FullInt {
 }
 
 
-fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
+fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
     use syntax::ast::{IntTy, UintTy};
     use std::*;
 
@@ -1628,7 +1628,7 @@ fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr)
     }
 }
 
-fn err_upcast_comparison(cx: &LateContext, span: Span, expr: &Expr, always: bool) {
+fn err_upcast_comparison(cx: &LateContext<'_, '_>, span: Span, expr: &Expr, always: bool) {
     if let ExprKind::Cast(ref cast_val, _) = expr.node {
         span_lint(
             cx,
@@ -1750,11 +1750,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
 
         fn suggestion<'a, 'tcx>(
             cx: &LateContext<'a, 'tcx>,
-            db: &mut DiagnosticBuilder,
+            db: &mut DiagnosticBuilder<'_>,
             generics_span: Span,
             generics_suggestion_span: Span,
-            target: &ImplicitHasherType,
-            vis: ImplicitHasherConstructorVisitor,
+            target: &ImplicitHasherType<'_>,
+            vis: ImplicitHasherConstructorVisitor<'_, '_, '_>,
         ) {
             let generics_snip = snippet(cx, generics_span, "");
             // trim `<` `>`

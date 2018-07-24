@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Swap {
 }
 
 /// Implementation of the `MANUAL_SWAP` lint.
-fn check_manual_swap(cx: &LateContext, block: &Block) {
+fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
@@ -84,7 +84,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             if SpanlessEq::new(cx).ignore_fn().eq_expr(rhs1, lhs2);
             then {
                 fn check_for_slice<'a>(
-                    cx: &LateContext,
+                    cx: &LateContext<'_, '_>,
                     lhs1: &'a Expr,
                     lhs2: &'a Expr,
                 ) -> Option<(&'a Expr, &'a Expr, &'a Expr)> {
@@ -145,7 +145,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
 }
 
 /// Implementation of the `ALMOST_SWAPPED` lint.
-fn check_suspicious_swap(cx: &LateContext, block: &Block) {
+fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
     for w in block.stmts.windows(2) {
         if_chain! {
             if let StmtKind::Semi(ref first, _) = w[0].node;

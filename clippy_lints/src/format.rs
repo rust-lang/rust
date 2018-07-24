@@ -105,7 +105,7 @@ fn check_single_piece(expr: &Expr) -> bool {
 /// ```
 /// and that type of `__arg0` is `&str` or `String`
 /// then returns the span of first element of the matched tuple
-fn get_single_string_arg(cx: &LateContext, expr: &Expr) -> Option<Span> {
+fn get_single_string_arg(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Span> {
     if_chain! {
         if let ExprKind::AddrOf(_, ref expr) = expr.node;
         if let ExprKind::Match(ref match_expr, ref arms, _) = expr.node;

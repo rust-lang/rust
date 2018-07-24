@@ -189,7 +189,7 @@ impl LintPass for MiscEarly {
 }
 
 impl EarlyLintPass for MiscEarly {
-    fn check_generics(&mut self, cx: &EarlyContext, gen: &Generics) {
+    fn check_generics(&mut self, cx: &EarlyContext<'_>, gen: &Generics) {
         for param in &gen.params {
             if let GenericParamKind::Type { .. } = param.kind {
                 let name = param.ident.as_str();
@@ -205,7 +205,7 @@ impl EarlyLintPass for MiscEarly {
         }
     }
 
-    fn check_pat(&mut self, cx: &EarlyContext, pat: &Pat) {
+    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
         if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
             let type_name = npat.segments
@@ -266,7 +266,7 @@ impl EarlyLintPass for MiscEarly {
         }
     }
 
-    fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, decl: &FnDecl, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, _: FnKind<'_>, decl: &FnDecl, _: Span, _: NodeId) {
         let mut registered_names: HashMap<String, Span> = HashMap::new();
 
         for arg in &decl.inputs {
@@ -293,7 +293,7 @@ impl EarlyLintPass for MiscEarly {
         }
     }
 
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if in_external_macro(cx, expr.span) {
             return;
         }
@@ -325,7 +325,7 @@ impl EarlyLintPass for MiscEarly {
         }
     }
 
-    fn check_block(&mut self, cx: &EarlyContext, block: &Block) {
+    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
         for w in block.stmts.windows(2) {
             if_chain! {
                 if let StmtKind::Local(ref local) = w[0].node;
@@ -352,7 +352,7 @@ impl EarlyLintPass for MiscEarly {
 }
 
 impl MiscEarly {
-    fn check_lit(self, cx: &EarlyContext, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         if_chain! {
             if let LitKind::Int(value, ..) = lit.node;
             if let Some(src) = snippet_opt(cx, lit.span);

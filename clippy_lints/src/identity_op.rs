@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
 }
 
 #[allow(cast_possible_wrap)]
-fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
+fn check(cx: &LateContext<'_, '_>, e: &Expr, m: i8, span: Span, arg: Span) {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.tables, e) {
         let check = match cx.tables.expr_ty(e).sty {
             ty::TyInt(ity) => unsext(cx.tcx, -1i128, ity),

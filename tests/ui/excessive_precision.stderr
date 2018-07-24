@@ -43,10 +43,10 @@ error: float has excessive precision
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.1`
 
 error: float has excessive precision
-  --> $DIR/excessive_precision.rs:25:20
+  --> $DIR/excessive_precision.rs:25:22
    |
-25 |     println!("{}", 8.888_888_888_888_888_888_888);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `8.888_888_888_888_89`
+25 |     println!("{:?}", 8.888_888_888_888_888_888_888);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `8.888_888_888_888_89`
 
 error: float has excessive precision
   --> $DIR/excessive_precision.rs:36:22

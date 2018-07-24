@@ -52,11 +52,11 @@ impl LintPass for Doc {
 }
 
 impl EarlyLintPass for Doc {
-    fn check_crate(&mut self, cx: &EarlyContext, krate: &ast::Crate) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
         check_attrs(cx, &self.valid_idents, &krate.attrs);
     }
 
-    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         check_attrs(cx, &self.valid_idents, &item.attrs);
     }
 }
@@ -139,7 +139,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
     panic!("not a doc-comment: {}", comment);
 }
 
-pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [ast::Attribute]) {
+pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &[String], attrs: &'a [ast::Attribute]) {
     let mut doc = String::new();
     let mut spans = vec![];
 
@@ -186,7 +186,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
 }
 
 fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
-    cx: &EarlyContext,
+    cx: &EarlyContext<'_>,
     valid_idents: &[String],
     docs: Events,
     spans: &[(usize, Span)],
@@ -232,7 +232,7 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
     }
 }
 
-fn check_text(cx: &EarlyContext, valid_idents: &[String], text: &str, span: Span) {
+fn check_text(cx: &EarlyContext<'_>, valid_idents: &[String], text: &str, span: Span) {
     for word in text.split_whitespace() {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
@@ -255,7 +255,7 @@ fn check_text(cx: &EarlyContext, valid_idents: &[String], text: &str, span: Span
     }
 }
 
-fn check_word(cx: &EarlyContext, word: &str, span: Span) {
+fn check_word(cx: &EarlyContext<'_>, word: &str, span: Span) {
     /// Checks if a string is camel-case, ie. contains at least two uppercase
     /// letter (`Clippy` is
     /// ok) and one lower-case letter (`NASA` is ok). Plural are also excluded

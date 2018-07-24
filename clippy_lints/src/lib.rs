@@ -16,38 +16,39 @@
 
 use toml;
 use rustc_plugin;
+use rustc;
 
 
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, correctness, $description:tt } => {
-        declare_lint! { pub $name, Deny, $description }
+        declare_lint! { pub $name, Deny, $description, report_in_external_macro: true }
     };
     { pub $name:tt, complexity, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, perf, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, pedantic, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, restriction, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, cargo, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, nursery, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, internal, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, internal_warn, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
 }
 
@@ -175,8 +176,12 @@ mod reexport {
     crate use syntax::ast::{Name, NodeId};
 }
 
+pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore) {
+    store.register_pre_expansion_pass(Some(session), box write::Pass);
+}
+
 #[cfg_attr(rustfmt, rustfmt_skip)]
-pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
+pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     let conf = match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
@@ -320,7 +325,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
-    reg.register_late_lint_pass(box write::Pass);
     reg.register_late_lint_pass(box vec::Pass);
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold: conf.single_char_binding_names_threshold,

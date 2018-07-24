@@ -876,10 +876,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 /// Checks for the `OR_FUN_CALL` lint.
-fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
+fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
     /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
     fn check_unwrap_or_default(
-        cx: &LateContext,
+        cx: &LateContext<'_, '_>,
         name: &str,
         fun: &hir::Expr,
         self_expr: &hir::Expr,
@@ -924,7 +924,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
     /// Check for `*or(foo())`.
     #[allow(too_many_arguments)]
     fn check_general_case(
-        cx: &LateContext,
+        cx: &LateContext<'_, '_>,
         name: &str,
         method_span: Span,
         fun_span: Span,
@@ -967,7 +967,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
             return;
         }
 
-        let sugg: Cow<_> = match (fn_has_arguments, !or_has_args) {
+        let sugg: Cow<'_, _> = match (fn_has_arguments, !or_has_args) {
             (true, _) => format!("|_| {}", snippet(cx, arg.span, "..")).into(),
             (false, false) => format!("|| {}", snippet(cx, arg.span, "..")).into(),
             (false, true) => snippet(cx, fun_span, ".."),
@@ -1000,7 +1000,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
 }
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
-fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
+fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
     fn extract_format_args(arg: &hir::Expr) -> Option<&hir::HirVec<hir::Expr>> {
         if let hir::ExprKind::AddrOf(_, ref addr_of) = arg.node {
             if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = addr_of.node {
@@ -1015,7 +1015,7 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
         None
     }
 
-    fn generate_format_arg_snippet(cx: &LateContext, a: &hir::Expr) -> String {
+    fn generate_format_arg_snippet(cx: &LateContext<'_, '_>, a: &hir::Expr) -> String {
         if let hir::ExprKind::AddrOf(_, ref format_arg) = a.node {
             if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.node {
                 if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.node {
@@ -1028,7 +1028,7 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
     }
 
     fn check_general_case(
-        cx: &LateContext,
+        cx: &LateContext<'_, '_>,
         name: &str,
         method_span: Span,
         self_expr: &hir::Expr,
@@ -1079,7 +1079,7 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
             return;
         }
 
-        let sugg: Cow<_> = snippet(cx, arg.span, "..");
+        let sugg: Cow<'_, _> = snippet(cx, arg.span, "..");
 
         span_lint_and_sugg(
             cx,
@@ -1100,7 +1100,7 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
 }
 
 /// Checks for the `CLONE_ON_COPY` lint.
-fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_ty: Ty) {
+fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Expr, arg_ty: Ty<'_>) {
     let ty = cx.tables.expr_ty(expr);
     if let ty::TyRef(_, inner, _) = arg_ty.sty {
         if let ty::TyRef(_, innermost, _) = inner.sty {
@@ -1168,7 +1168,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
     }
 }
 
-fn lint_clone_on_ref_ptr(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr) {
+fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Expr) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(arg));
 
     if let ty::TyAdt(_, subst) = obj_ty.sty {
@@ -1194,7 +1194,7 @@ fn lint_clone_on_ref_ptr(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr) {
 }
 
 
-fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
+fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
     let arg = &args[1];
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
@@ -1223,14 +1223,14 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
     }
 }
 
-fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
+fn lint_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
     if match_type(cx, obj_ty, &paths::STRING) {
         lint_string_extend(cx, expr, args);
     }
 }
 
-fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwrap: &hir::Expr) {
+fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, new: &hir::Expr, unwrap: &hir::Expr) {
     if_chain! {
         if let hir::ExprKind::Call(ref fun, ref args) = new.node;
         if args.len() == 1;
@@ -1251,7 +1251,7 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
     }
 }
 
-fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr]) {
+fn lint_iter_cloned_collect(cx: &LateContext<'_, '_>, expr: &hir::Expr, iter_args: &[hir::Expr]) {
     if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC)
         && derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some()
     {
@@ -1265,7 +1265,7 @@ fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir
     }
 }
 
-fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
+fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: &[hir::Expr]) {
     // Check that this is a call to Iterator::fold rather than just some function called fold
     if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
@@ -1275,7 +1275,7 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
         "Expected fold_args to have three entries - the receiver, the initial value and the closure");
 
     fn check_fold_with_op(
-        cx: &LateContext,
+        cx: &LateContext<'_, '_>,
         fold_args: &[hir::Expr],
         op: hir::BinOpKind,
         replacement_method_name: &str,
@@ -1353,7 +1353,7 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
     };
 }
 
-fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr], is_mut: bool) {
+fn lint_iter_nth(cx: &LateContext<'_, '_>, expr: &hir::Expr, iter_args: &[hir::Expr], is_mut: bool) {
     let mut_str = if is_mut { "_mut" } else { "" };
     let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
         "slice"
@@ -1377,7 +1377,7 @@ fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr], is
     );
 }
 
-fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &[hir::Expr], is_mut: bool) {
+fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::Expr], is_mut: bool) {
     // Note: we don't want to lint `get_mut().unwrap` for HashMap or BTreeMap,
     // because they do not implement `IndexMut`
     let expr_ty = cx.tables.expr_ty(&get_args[0]);
@@ -1416,7 +1416,7 @@ fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &[hir::Expr], i
     );
 }
 
-fn lint_iter_skip_next(cx: &LateContext, expr: &hir::Expr) {
+fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
     // lint if caller of skip is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         span_lint(
@@ -1428,8 +1428,8 @@ fn lint_iter_skip_next(cx: &LateContext, expr: &hir::Expr) {
     }
 }
 
-fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::Sugg<'static>> {
-    fn may_slice(cx: &LateContext, ty: Ty) -> bool {
+fn derefs_to_slice(cx: &LateContext<'_, '_>, expr: &hir::Expr, ty: Ty<'_>) -> Option<sugg::Sugg<'static>> {
+    fn may_slice(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
             ty::TyAdt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
@@ -1461,7 +1461,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::S
 }
 
 /// lint use of `unwrap()` for `Option`s and `Result`s
-fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
+fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&unwrap_args[0]));
 
     let mess = if match_type(cx, obj_ty, &paths::OPTION) {
@@ -1489,7 +1489,7 @@ fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
 }
 
 /// lint use of `ok().expect()` for `Result`s
-fn lint_ok_expect(cx: &LateContext, expr: &hir::Expr, ok_args: &[hir::Expr]) {
+fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr, ok_args: &[hir::Expr]) {
     // lint if the caller of `ok()` is a `Result`
     if match_type(cx, cx.tables.expr_ty(&ok_args[0]), &paths::RESULT) {
         let result_type = cx.tables.expr_ty(&ok_args[0]);
@@ -1507,7 +1507,7 @@ fn lint_ok_expect(cx: &LateContext, expr: &hir::Expr, ok_args: &[hir::Expr]) {
 }
 
 /// lint use of `map().unwrap_or()` for `Option`s
-fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr], unwrap_args: &[hir::Expr]) {
+fn lint_map_unwrap_or(cx: &LateContext<'_, '_>, expr: &hir::Expr, map_args: &[hir::Expr], unwrap_args: &[hir::Expr]) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
         // get snippets for args to map() and unwrap_or()
@@ -1765,7 +1765,7 @@ struct BinaryExprInfo<'a> {
 }
 
 /// Checks for the `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
-fn lint_binary_expr_with_method_call<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, info: &mut BinaryExprInfo) {
+fn lint_binary_expr_with_method_call(cx: &LateContext<'_, '_>, info: &mut BinaryExprInfo<'_>) {
     macro_rules! lint_with_both_lhs_and_rhs {
         ($func:ident, $cx:expr, $info:ident) => {
             if !$func($cx, $info) {
@@ -1784,9 +1784,9 @@ fn lint_binary_expr_with_method_call<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, i
 }
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_NEXT_CMP` lints.
-fn lint_chars_cmp<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    info: &BinaryExprInfo,
+fn lint_chars_cmp(
+    cx: &LateContext<'_, '_>,
+    info: &BinaryExprInfo<'_>,
     chain_methods: &[&str],
     lint: &'static Lint,
     suggest: &str,
@@ -1824,12 +1824,12 @@ fn lint_chars_cmp<'a, 'tcx>(
 }
 
 /// Checks for the `CHARS_NEXT_CMP` lint.
-fn lint_chars_next_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo) -> bool {
+fn lint_chars_next_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
     lint_chars_cmp(cx, info, &["chars", "next"], CHARS_NEXT_CMP, "starts_with")
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint.
-fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo) -> bool {
+fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
     if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_NEXT_CMP, "ends_with") {
         true
     } else {
@@ -1840,7 +1840,7 @@ fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprIn
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints with `unwrap()`.
 fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    info: &BinaryExprInfo,
+    info: &BinaryExprInfo<'_>,
     chain_methods: &[&str],
     lint: &'static Lint,
     suggest: &str,
@@ -1871,12 +1871,12 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
 }
 
 /// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
-fn lint_chars_next_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo) -> bool {
+fn lint_chars_next_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
     lint_chars_cmp_with_unwrap(cx, info, &["chars", "next", "unwrap"], CHARS_NEXT_CMP, "starts_with")
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint with `unwrap()`.
-fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo) -> bool {
+fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
     if lint_chars_cmp_with_unwrap(cx, info, &["chars", "last", "unwrap"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
@@ -1907,7 +1907,7 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hi
 }
 
 /// Checks for the `USELESS_ASREF` lint.
-fn lint_asref(cx: &LateContext, expr: &hir::Expr, call_name: &str, as_ref_args: &[hir::Expr]) {
+fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_ref_args: &[hir::Expr]) {
     // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
     // check if the call is to the actual `AsRef` or `AsMut` trait
     if match_trait_method(cx, expr, &paths::ASREF_TRAIT) || match_trait_method(cx, expr, &paths::ASMUT_TRAIT) {
@@ -1931,7 +1931,7 @@ fn lint_asref(cx: &LateContext, expr: &hir::Expr, call_name: &str, as_ref_args: 
 }
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
-fn get_error_type<'a>(cx: &LateContext, ty: Ty<'a>) -> Option<Ty<'a>> {
+fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     if let ty::TyAdt(_, substs) = ty.sty {
         if match_type(cx, ty, &paths::RESULT) {
             substs.types().nth(1)
@@ -2033,7 +2033,7 @@ enum SelfKind {
 impl SelfKind {
     fn matches(
         self,
-        cx: &LateContext,
+        cx: &LateContext<'_, '_>,
         ty: &hir::Ty,
         arg: &hir::Arg,
         self_ty: &hir::Ty,
@@ -2160,7 +2160,7 @@ impl Convention {
 }
 
 impl fmt::Display for Convention {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match *self {
             Convention::Eq(this) => this.fmt(f),
             Convention::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
@@ -2177,7 +2177,7 @@ enum OutType {
 }
 
 impl OutType {
-    fn matches(self, cx: &LateContext, ty: &hir::FunctionRetTy) -> bool {
+    fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FunctionRetTy) -> bool {
         let is_unit = |ty: &hir::Ty| SpanlessEq::new(cx).eq_ty_kind(&ty.node, &hir::TyKind::Tup(vec![].into()));
         match (self, ty) {
             (OutType::Unit, &hir::DefaultReturn(_)) => true,
