@@ -27,8 +27,8 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
 use utils::{
-    colon_spaces, extra_offset, first_line_width, format_abi, format_mutability, last_line_width,
-    mk_sp, rewrite_ident,
+    colon_spaces, extra_offset, first_line_width, format_abi, format_mutability,
+    last_line_extendable, last_line_width, mk_sp, rewrite_ident,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -733,15 +733,28 @@ fn rewrite_bare_fn(
     Some(result)
 }
 
-fn join_bounds<T>(
+fn is_generic_bounds_in_order(generic_bounds: &[ast::GenericBound]) -> bool {
+    let is_trait = |b: &ast::GenericBound| match b {
+        ast::GenericBound::Outlives(..) => false,
+        ast::GenericBound::Trait(..) => true,
+    };
+    let is_lifetime = |b: &ast::GenericBound| !is_trait(b);
+    let last_trait_index = generic_bounds.iter().rposition(is_trait);
+    let first_lifetime_index = generic_bounds.iter().position(is_lifetime);
+    match (last_trait_index, first_lifetime_index) {
+        (Some(last_trait_index), Some(first_lifetime_index)) => {
+            last_trait_index < first_lifetime_index
+        }
+        _ => true,
+    }
+}
+
+fn join_bounds(
     context: &RewriteContext,
     shape: Shape,
-    items: &[T],
+    items: &[ast::GenericBound],
     need_indent: bool,
-) -> Option<String>
-where
-    T: Rewrite,
-{
+) -> Option<String> {
     // Try to join types in a single line
     let joiner = match context.config.type_punctuation_density() {
         TypeDensity::Compressed => "+",
@@ -752,7 +765,7 @@ where
         .map(|item| item.rewrite(context, shape))
         .collect::<Option<Vec<_>>>()?;
     let result = type_strs.join(joiner);
-    if items.len() == 1 || (!result.contains('\n') && result.len() <= shape.width) {
+    if items.len() <= 1 || (!result.contains('\n') && result.len() <= shape.width) {
         return Some(result);
     }
 
@@ -769,8 +782,26 @@ where
         (type_strs, shape.indent)
     };
 
-    let joiner = format!("{}+ ", offset.to_string_with_newline(context.config));
-    Some(type_strs.join(&joiner))
+    let is_bound_extendable = |s: &str, b: &ast::GenericBound| match b {
+        ast::GenericBound::Outlives(..) => true,
+        ast::GenericBound::Trait(..) => last_line_extendable(s),
+    };
+    let mut result = String::with_capacity(128);
+    result.push_str(&type_strs[0]);
+    let mut can_be_put_on_the_same_line = is_bound_extendable(&result, &items[0]);
+    let generic_bounds_in_order = is_generic_bounds_in_order(items);
+    for (bound, bound_str) in items[1..].iter().zip(type_strs[1..].iter()) {
+        if generic_bounds_in_order && can_be_put_on_the_same_line {
+            result.push_str(joiner);
+        } else {
+            result.push_str(&offset.to_string_with_newline(context.config));
+            result.push_str("+ ");
+        }
+        result.push_str(bound_str);
+        can_be_put_on_the_same_line = is_bound_extendable(bound_str, bound);
+    }
+
+    Some(result)
 }
 
 pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize) -> bool {
