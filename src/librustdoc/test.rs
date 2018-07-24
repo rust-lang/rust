@@ -550,7 +550,7 @@ impl Collector {
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
-                name: testing::DynTestName(name),
+                name: testing::DynTestName(name.clone()),
                 ignore: should_ignore,
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
@@ -560,7 +560,7 @@ impl Collector {
                 let panic = io::set_panic(None);
                 let print = io::set_print(None);
                 match {
-                    rustc_driver::in_rustc_thread(move || with_globals(move || {
+                    rustc_driver::in_named_rustc_thread(name, move || with_globals(move || {
                         io::set_panic(panic);
                         io::set_print(print);
                         hygiene::set_default_edition(edition);

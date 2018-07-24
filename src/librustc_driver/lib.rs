@@ -1497,10 +1497,12 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
     }
 }
 
-/// Runs `f` in a suitable thread for running `rustc`; returns a
-/// `Result` with either the return value of `f` or -- if a panic
-/// occurs -- the panic value.
-pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
+/// Runs `f` in a suitable thread for running `rustc`; returns a `Result` with either the return
+/// value of `f` or -- if a panic occurs -- the panic value.
+///
+/// This version applies the given name to the thread. This is used by rustdoc to ensure consistent
+/// doctest output across platforms and executions.
+pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any + Send>>
     where F: FnOnce() -> R + Send + 'static,
           R: Send + 'static,
 {
@@ -1564,7 +1566,7 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
 
     // The or condition is added from backward compatibility.
     if spawn_thread || env::var_os("RUST_MIN_STACK").is_some() {
-        let mut cfg = thread::Builder::new().name("rustc".to_string());
+        let mut cfg = thread::Builder::new().name(name);
 
         // FIXME: Hacks on hacks. If the env is trying to override the stack size
         // then *don't* set it explicitly.
@@ -1578,6 +1580,16 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
         let f = panic::AssertUnwindSafe(f);
         panic::catch_unwind(f)
     }
+}
+
+/// Runs `f` in a suitable thread for running `rustc`; returns a
+/// `Result` with either the return value of `f` or -- if a panic
+/// occurs -- the panic value.
+pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
+    where F: FnOnce() -> R + Send + 'static,
+          R: Send + 'static,
+{
+    in_named_rustc_thread("rustc".to_string(), f)
 }
 
 /// Get a list of extra command-line flags provided by the user, as strings.
