@@ -393,3 +393,36 @@ macro_rules! bar {
         $m!([a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z]);
     };
 }
+
+// #2830
+// Preserve trailing comma-less/ness inside nested macro.
+named!(
+    do_parse_gsv<GsvData>,
+    map_res!(
+        do_parse!(
+            number_of_sentences: map_res!(digit, parse_num::<u16>)
+                >> char!(',')
+                >> sentence_index: map_res!(digit, parse_num::<u16>)
+                >> char!(',')
+                >> total_number_of_sats: map_res!(digit, parse_num::<u16>)
+                >> char!(',')
+                >> sat0: opt!(complete!(parse_gsv_sat_info))
+                >> sat1: opt!(complete!(parse_gsv_sat_info))
+                >> sat2: opt!(complete!(parse_gsv_sat_info))
+                >> sat3: opt!(complete!(parse_gsv_sat_info))
+                >> (
+                    number_of_sentences,
+                    sentence_index,
+                    total_number_of_sats,
+                    sat0,
+                    sat1,
+                    sat2,
+                    sat3
+                )
+        ),
+        construct_gsv_data
+    )
+);
+
+// #2857
+convert_args!(vec!(1, 2, 3));
