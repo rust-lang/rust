@@ -13,9 +13,8 @@ use std::sync::Arc;
 use clean::{Crate, Item};
 use clean::cfg::Cfg;
 use fold::DocFolder;
-use plugins::PluginResult;
 
-pub fn propagate_doc_cfg(cr: Crate) -> PluginResult {
+pub fn propagate_doc_cfg(cr: Crate) -> Crate {
     CfgPropagator { parent_cfg: None }.fold_crate(cr)
 }
 

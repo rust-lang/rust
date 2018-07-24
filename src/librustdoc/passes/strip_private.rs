@@ -11,13 +11,12 @@
 use rustc::util::nodemap::DefIdSet;
 
 use clean;
-use plugins;
 use fold::DocFolder;
 use passes::{ImplStripper, ImportStripper, Stripper};
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
-pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
+pub fn strip_private(mut krate: clean::Crate) -> clean::Crate {
     // This stripper collects all *retained* nodes.
     let mut retained = DefIdSet();
     let access_levels = krate.access_levels.clone();

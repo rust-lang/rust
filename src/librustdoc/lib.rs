@@ -90,7 +90,6 @@ pub mod html {
 }
 pub mod markdown;
 pub mod passes;
-pub mod plugins;
 pub mod visit_ast;
 pub mod visit_lib;
 pub mod test;
@@ -750,25 +749,22 @@ where R: 'static + Send,
             eprintln!("WARNING: --plugin-path no longer functions; see CVE-2018-1000622");
         }
 
-        // Load all plugins/passes into a PluginManager
-        let mut pm = plugins::PluginManager::new();
+        info!("Executing passes");
+
         for pass in &passes {
-            let plugin = match passes::PASSES.iter()
-                                             .position(|&(p, ..)| {
-                                                 p == *pass
-                                             }) {
-                Some(i) => passes::PASSES[i].1,
+            // determine if we know about this pass
+            let pass = match passes::PASSES.iter().find(|(p, ..)| p == pass) {
+                Some(pass) => pass.1,
                 None => {
                     error!("unknown pass {}, skipping", *pass);
+
                     continue
                 },
             };
-            pm.add_plugin(plugin);
-        }
 
-        // Run everything!
-        info!("Executing passes/plugins");
-        let krate = pm.run_plugins(krate);
+            // run it
+            krate = pass(krate);
+        }
 
         tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
     }));

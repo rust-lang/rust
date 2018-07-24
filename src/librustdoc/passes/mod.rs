@@ -16,7 +16,6 @@ use std::mem;
 use clean::{self, GetDefId, Item};
 use fold;
 use fold::FoldItem::Strip;
-use plugins;
 
 mod collapse_docs;
 pub use self::collapse_docs::collapse_docs;
@@ -37,7 +36,7 @@ mod propagate_doc_cfg;
 pub use self::propagate_doc_cfg::propagate_doc_cfg;
 
 type Pass = (&'static str,                                      // name
-             fn(clean::Crate) -> plugins::PluginResult,         // fn
+             fn(clean::Crate) -> clean::Crate,                  // fn
              &'static str);                                     // description
 
 pub const PASSES: &'static [Pass] = &[
