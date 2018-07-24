@@ -24,6 +24,7 @@ use util::suggest_ref_mut;
 pub(super) enum AccessKind {
     MutableBorrow,
     Mutate,
+    Move,
 }
 
 impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
@@ -110,6 +111,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     if let Some(desc) = access_place_desc {
                         item_msg = format!("`{}`", desc);
                         reason = match error_access {
+                            AccessKind::Move |
                             AccessKind::Mutate => format!(" which is behind a {}", pointer_type),
                             AccessKind::MutableBorrow => {
                                 format!(", as it is behind a {}", pointer_type)
@@ -160,6 +162,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
 
         let span = match error_access {
+            AccessKind::Move => {
+                err = self.tcx
+                    .cannot_move_out_of(span, &(item_msg + &reason), Origin::Mir);
+                act = "move";
+                acted_on = "moved";
+                span
+            }
             AccessKind::Mutate => {
                 err = self.tcx
                     .cannot_assign(span, &(item_msg + &reason), Origin::Mir);

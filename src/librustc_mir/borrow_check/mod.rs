@@ -338,7 +338,13 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                     // downgrade all the buffered MIR-borrowck errors
                     // to warnings.
                     for err in &mut mbcx.errors_buffer {
-                        if err.is_error() { err.level = Level::Warning; }
+                        if err.is_error() {
+                            err.level = Level::Warning;
+                            err.warn("This error has been downgraded to a warning \
+                                      for backwards compatibility with previous releases.\n\
+                                      It represents potential unsoundness in your code.\n\
+                                      This warning will become a hard error in the future.");
+                        }
                     }
                 }
                 SignalledError::SawSomeError => {
@@ -1768,20 +1774,44 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            Reservation(WriteKind::Move)
-            | Write(WriteKind::Move)
-            | Reservation(WriteKind::StorageDeadOrDrop)
-            | Reservation(WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Write(WriteKind::StorageDeadOrDrop)
-            | Write(WriteKind::MutableBorrow(BorrowKind::Shared)) => {
+            Reservation(wk @ WriteKind::Move)
+            | Write(wk @ WriteKind::Move)
+            | Reservation(wk @ WriteKind::StorageDeadOrDrop)
+            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
+            | Write(wk @ WriteKind::StorageDeadOrDrop)
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared)) => {
                 if let Err(_place_err) = self.is_mutable(place, is_local_mutation_allowed) {
-                    self.tcx.sess.delay_span_bug(
-                        span,
-                        &format!(
-                            "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
-                            place, kind
-                        ),
-                    );
+                    if self.tcx.migrate_borrowck() {
+                        // rust-lang/rust#46908: In pure NLL mode this
+                        // code path should be unreachable (and thus
+                        // we signal an ICE in the else branch
+                        // here). But we can legitimately get here
+                        // under borrowck=migrate mode, so instead of
+                        // ICE'ing we instead report a legitimate
+                        // error (which will then be downgraded to a
+                        // warning by the migrate machinery).
+                        error_access = match wk {
+                            WriteKind::MutableBorrow(_) => AccessKind::MutableBorrow,
+                            WriteKind::Move => AccessKind::Move,
+                            WriteKind::StorageDeadOrDrop |
+                            WriteKind::Mutate => AccessKind::Mutate,
+                        };
+                        self.report_mutability_error(
+                            place,
+                            span,
+                            _place_err,
+                            error_access,
+                            location,
+                        );
+                    } else {
+                        self.tcx.sess.delay_span_bug(
+                            span,
+                            &format!(
+                                "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
+                                place, kind
+                            ),
+                        );
+                    }
                 }
                 return false;
             }
