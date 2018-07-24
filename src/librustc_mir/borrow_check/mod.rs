@@ -1864,8 +1864,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }),
                 }
             }
-            // promoteds may never be mutated
-            Place::Promoted(_) => bug!("encountered mutable promoted"),
+            // The rules for promotion are made by `qualify_consts`, there wouldn't even be a
+            // `Place::Promoted` if the promotion weren't 100% legal. So we just forward this
+            Place::Promoted(_) => Ok(RootPlace {
+                place,
+                is_local_mutation_allowed,
+            }),
             Place::Static(ref static_) => {
                 if self.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
                     Err(place)
