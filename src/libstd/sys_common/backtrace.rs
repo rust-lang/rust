@@ -156,16 +156,15 @@ pub fn log_enabled() -> Option<PrintFormat> {
         _ => return Some(PrintFormat::Full),
     }
 
-    let val = match env::var_os("RUST_BACKTRACE") {
-        Some(x) => if &x == "0" {
+    let val = env::var_os("RUST_BACKTRACE").and_then(|x|
+        if &x == "0" {
             None
         } else if &x == "full" {
             Some(PrintFormat::Full)
         } else {
             Some(PrintFormat::Short)
-        },
-        None => None,
-    };
+        }
+    );
     ENABLED.store(match val {
         Some(v) => v as isize,
         None => 1,
