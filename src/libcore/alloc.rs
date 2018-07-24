@@ -584,6 +584,17 @@ pub unsafe trait GlobalAlloc {
     }
 }
 
+/// A hack so the default impl can condition on the associated type. This `Err`
+/// type ought to just live in the `Alloc` trait.
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub trait AllocHelper {
+
+    /// The type of any errors thrown by the allocator, customarily
+    /// either `AllocErr`, for when error recovery is allowed, or `!`
+    /// to signify that all errors will result in .
+    type Err = AllocErr;
+}
+
 /// An implementation of `Alloc` can allocate, reallocate, and
 /// deallocate arbitrary blocks of data described via `Layout`.
 ///
@@ -664,7 +675,7 @@ pub unsafe trait GlobalAlloc {
 /// Note that this list may get tweaked over time as clarifications are made in
 /// the future.
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub unsafe trait Alloc {
+pub unsafe trait Alloc: AllocHelper {
 
     // (Note: some existing allocators have unspecified but well-defined
     // behavior in response to a zero size allocation request ;
@@ -712,7 +723,7 @@ pub unsafe trait Alloc {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr>;
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, Self::Err>;
 
     /// Deallocate the memory referenced by `ptr`.
     ///
@@ -825,7 +836,7 @@ pub unsafe trait Alloc {
     unsafe fn realloc(&mut self,
                       ptr: NonNull<u8>,
                       layout: Layout,
-                      new_size: usize) -> Result<NonNull<u8>, AllocErr> {
+                      new_size: usize) -> Result<NonNull<u8>, Self::Err> {
         let old_size = layout.size();
 
         if new_size >= old_size {
@@ -868,7 +879,7 @@ pub unsafe trait Alloc {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, Self::Err> {
         let size = layout.size();
         let p = self.alloc(layout);
         if let Ok(p) = p {
@@ -896,7 +907,7 @@ pub unsafe trait Alloc {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
+    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, Self::Err> {
         let usable_size = self.usable_size(&layout);
         self.alloc(layout).map(|p| Excess(p, usable_size.1))
     }
@@ -923,7 +934,7 @@ pub unsafe trait Alloc {
     unsafe fn realloc_excess(&mut self,
                              ptr: NonNull<u8>,
                              layout: Layout,
-                             new_size: usize) -> Result<Excess, AllocErr> {
+                             new_size: usize) -> Result<Excess, Self::Err> {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let usable_size = self.usable_size(&new_layout);
         self.realloc(ptr, layout, new_size)
@@ -1069,16 +1080,8 @@ pub unsafe trait Alloc {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc_one<T>(&mut self) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
-    {
-        let k = Layout::new::<T>();
-        if k.size() > 0 {
-            unsafe { self.alloc(k).map(|p| p.cast()) }
-        } else {
-            Err(AllocErr)
-        }
-    }
+    fn alloc_one<T>(&mut self) -> Result<NonNull<T>, Self::Err>
+        where Self: Sized;
 
     /// Deallocates a block suitable for holding an instance of `T`.
     ///
@@ -1138,18 +1141,8 @@ pub unsafe trait Alloc {
     /// rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc_array<T>(&mut self, n: usize) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
-    {
-        match Layout::array::<T>(n) {
-            Ok(ref layout) if layout.size() > 0 => {
-                unsafe {
-                    self.alloc(layout.clone()).map(|p| p.cast())
-                }
-            }
-            _ => Err(AllocErr),
-        }
-    }
+    fn alloc_array<T>(&mut self, n: usize) -> Result<NonNull<T>, Self::Err>
+        where Self: Sized;
 
     /// Reallocates a block previously suitable for holding `n_old`
     /// instances of `T`, returning a block suitable for holding
@@ -1188,19 +1181,8 @@ pub unsafe trait Alloc {
     unsafe fn realloc_array<T>(&mut self,
                                ptr: NonNull<T>,
                                n_old: usize,
-                               n_new: usize) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
-    {
-        match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
-            (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
-                debug_assert!(k_old.align() == k_new.align());
-                self.realloc(ptr.cast(), k_old.clone(), k_new.size()).map(NonNull::cast)
-            }
-            _ => {
-                Err(AllocErr)
-            }
-        }
-    }
+                               n_new: usize) -> Result<NonNull<T>, Self::Err>
+        where Self: Sized;
 
     /// Deallocates a block suitable for holding `n` instances of `T`.
     ///
@@ -1222,12 +1204,59 @@ pub unsafe trait Alloc {
     /// constraints.
     ///
     /// Always returns `Err` on arithmetic overflow.
-    unsafe fn dealloc_array<T>(&mut self, ptr: NonNull<T>, n: usize) -> Result<(), AllocErr>
-        where Self: Sized
+    unsafe fn dealloc_array<T>(&mut self, ptr: NonNull<T>, n: usize) -> Result<(), Self::Err>
+        where Self: Sized;
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+default unsafe impl<A: AllocHelper<Err = AllocErr>> Alloc for A {
+    fn alloc_one<T>(&mut self) -> Result<NonNull<T>, Self::Err>
+    where Self: Sized
+    {
+        let k = Layout::new::<T>();
+        if k.size() > 0 {
+            unsafe { self.alloc(k).map(|p| p.cast()) }
+        } else {
+            Err(AllocErr)
+        }
+    }
+
+    fn alloc_array<T>(&mut self, n: usize) -> Result<NonNull<T>, Self::Err>
+    where Self: Sized
+    {
+        match Layout::array::<T>(n) {
+            Ok(ref layout) if layout.size() > 0 => {
+                unsafe {
+                    self.alloc(layout.clone()).map(|p| p.cast())
+                }
+            }
+            _ => Err(AllocErr),
+        }
+    }
+
+    unsafe fn dealloc_array<T>(&mut self, ptr: NonNull<T>, n: usize) -> Result<(), Self::Err>
+    where Self: Sized
     {
         match Layout::array::<T>(n) {
             Ok(ref k) if k.size() > 0 => {
                 Ok(self.dealloc(ptr.cast(), k.clone()))
+            }
+            _ => {
+                Err(AllocErr)
+            }
+        }
+    }
+
+    unsafe fn realloc_array<T>(&mut self,
+                               ptr: NonNull<T>,
+                               n_old: usize,
+                               n_new: usize) -> Result<NonNull<T>, Self::Err>
+    where Self: Sized
+    {
+        match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
+            (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
+                debug_assert!(k_old.align() == k_new.align());
+                self.realloc(ptr.cast(), k_old.clone(), k_new.size()).map(NonNull::cast)
             }
             _ => {
                 Err(AllocErr)

@@ -80,6 +80,7 @@ use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
 
+use alloc::AllocErr;
 use collections::CollectionAllocErr;
 use borrow::ToOwned;
 use borrow::Cow;
@@ -461,7 +462,7 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
-        self.buf.reserve(self.len, additional);
+        let Ok(()) = self.buf.reserve(self.len, additional);
     }
 
     /// Reserves the minimum capacity for exactly `additional` more elements to
@@ -486,7 +487,7 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
-        self.buf.reserve_exact(self.len, additional);
+        let Ok(()) = self.buf.reserve_exact(self.len, additional);
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -522,7 +523,7 @@ impl<T> Vec<T> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr<AllocErr>> {
         self.buf.try_reserve(self.len, additional)
     }
 
@@ -562,7 +563,7 @@ impl<T> Vec<T> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>  {
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr<AllocErr>>  {
         self.buf.try_reserve_exact(self.len, additional)
     }
 
@@ -583,7 +584,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         if self.capacity() != self.len {
-            self.buf.shrink_to_fit(self.len);
+            let Ok(()) = self.buf.shrink_to_fit(self.len);
         }
     }
 
@@ -609,7 +610,7 @@ impl<T> Vec<T> {
     /// ```
     #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
+        let Ok(()) = self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
     }
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
@@ -2679,7 +2680,7 @@ impl<'a, T> Drain<'a, T> {
     unsafe fn move_tail(&mut self, extra_capacity: usize) {
         let vec = self.vec.as_mut();
         let used_capacity = self.tail_start + self.tail_len;
-        vec.buf.reserve(used_capacity, extra_capacity);
+        let Ok(()) = vec.buf.reserve(used_capacity, extra_capacity);
 
         let new_tail_start = self.tail_start + extra_capacity;
         let src = vec.as_ptr().offset(self.tail_start as isize);
