@@ -1400,36 +1400,27 @@ fn format_tuple_struct(
     Some(result)
 }
 
-pub fn rewrite_type_alias(
+fn rewrite_type_prefix(
     context: &RewriteContext,
     indent: Indent,
+    prefix: &str,
     ident: ast::Ident,
-    ty: &ast::Ty,
     generics: &ast::Generics,
-    vis: &ast::Visibility,
-    span: Span,
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
-
-    result.push_str(&format_visibility(context, vis));
-    result.push_str("type ");
+    result.push_str(prefix);
+    let ident_str = rewrite_ident(context, ident);
 
     // 2 = `= `
-    let g_shape = Shape::indented(indent, context.config)
-        .offset_left(result.len())?
-        .sub_width(2)?;
-    let g_span = mk_sp(
-        context.snippet_provider.span_after(span, "type"),
-        ty.span.lo(),
-    );
-    let generics_str = rewrite_generics(
-        context,
-        rewrite_ident(context, ident),
-        generics,
-        g_shape,
-        g_span,
-    )?;
-    result.push_str(&generics_str);
+    if generics.params.is_empty() {
+        result.push_str(ident_str)
+    } else {
+        let g_shape = Shape::indented(indent, context.config)
+            .offset_left(result.len())?
+            .sub_width(2)?;
+        let generics_str = rewrite_generics(context, ident_str, generics, g_shape, generics.span)?;
+        result.push_str(&generics_str);
+    }
 
     let where_budget = context.budget(last_line_width(&result));
     let option = WhereClauseOption::snuggled(&result);
@@ -1440,24 +1431,76 @@ pub fn rewrite_type_alias(
         Shape::legacy(where_budget, indent),
         Density::Vertical,
         "=",
-        Some(span.hi()),
+        None,
         generics.span.hi(),
         option,
         false,
     )?;
     result.push_str(&where_clause_str);
-    if where_clause_str.is_empty() {
-        result.push_str(" =");
+
+    Some(result)
+}
+
+fn rewrite_type_item<R: Rewrite>(
+    context: &RewriteContext,
+    indent: Indent,
+    prefix: &str,
+    suffix: &str,
+    ident: ast::Ident,
+    rhs: &R,
+    generics: &ast::Generics,
+    vis: &ast::Visibility,
+) -> Option<String> {
+    let mut result = String::with_capacity(128);
+    result.push_str(&rewrite_type_prefix(
+        context,
+        indent,
+        &format!("{}{} ", format_visibility(context, vis), prefix),
+        ident,
+        generics,
+    )?);
+
+    if generics.where_clause.predicates.is_empty() {
+        result.push_str(suffix);
     } else {
-        result.push_str(&format!(
-            "{}=",
-            indent.to_string_with_newline(context.config)
-        ));
+        result.push_str(&indent.to_string_with_newline(context.config));
+        result.push_str(suffix.trim_left());
     }
 
     // 1 = ";"
-    let ty_shape = Shape::indented(indent, context.config).sub_width(1)?;
-    rewrite_assign_rhs(context, result, ty, ty_shape).map(|s| s + ";")
+    let rhs_shape = Shape::indented(indent, context.config).sub_width(1)?;
+    rewrite_assign_rhs(context, result, rhs, rhs_shape).map(|s| s + ";")
+}
+
+pub fn rewrite_type_alias(
+    context: &RewriteContext,
+    indent: Indent,
+    ident: ast::Ident,
+    ty: &ast::Ty,
+    generics: &ast::Generics,
+    vis: &ast::Visibility,
+) -> Option<String> {
+    rewrite_type_item(context, indent, "type", " =", ident, ty, generics, vis)
+}
+
+pub fn rewrite_existential_type(
+    context: &RewriteContext,
+    indent: Indent,
+    ident: ast::Ident,
+    generic_bounds: &ast::GenericBounds,
+    generics: &ast::Generics,
+    vis: &ast::Visibility,
+) -> Option<String> {
+    rewrite_type_item(
+        context,
+        indent,
+        "existential type",
+        ":",
+        ident,
+        generic_bounds,
+        generics,
+        vis,
+    )
 }
 
 fn type_annotation_spacing(config: &Config) -> (&str, &str) {
@@ -1704,6 +1747,16 @@ pub fn rewrite_associated_type(
     } else {
         Some(format!("{}{};", prefix, type_bounds_str))
     }
+}
+
+pub fn rewrite_existential_impl_type(
+    context: &RewriteContext,
+    ident: ast::Ident,
+    generic_bounds: &ast::GenericBounds,
+    indent: Indent,
+) -> Option<String> {
+    rewrite_associated_type(ident, None, Some(generic_bounds), context, indent)
+        .map(|s| format!("existential {}", s))
 }
 
 pub fn rewrite_associated_impl_type(

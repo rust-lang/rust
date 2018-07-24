@@ -19,8 +19,9 @@ use comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
 use config::{BraceStyle, Config};
 use items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
-    rewrite_associated_impl_type, rewrite_associated_type, rewrite_extern_crate,
-    rewrite_type_alias, FnSig, StaticParts, StructParts,
+    rewrite_associated_impl_type, rewrite_associated_type, rewrite_existential_impl_type,
+    rewrite_existential_type, rewrite_extern_crate, rewrite_type_alias, FnSig, StaticParts,
+    StructParts,
 };
 use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
@@ -412,7 +413,17 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     ty,
                     generics,
                     &item.vis,
-                    item.span,
+                );
+                self.push_rewrite(item.span, rewrite);
+            }
+            ast::ItemKind::Existential(ref generic_bounds, ref generics) => {
+                let rewrite = rewrite_existential_type(
+                    &self.get_context(),
+                    self.block_indent,
+                    item.ident,
+                    generic_bounds,
+                    generics,
+                    &item.vis,
                 );
                 self.push_rewrite(item.span, rewrite);
             }
@@ -506,6 +517,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     Some(ty),
                     None,
                     &self.get_context(),
+                    self.block_indent,
+                );
+                self.push_rewrite(ii.span, rewrite);
+            }
+            ast::ImplItemKind::Existential(ref generic_bounds) => {
+                let rewrite = rewrite_existential_impl_type(
+                    &self.get_context(),
+                    ii.ident,
+                    generic_bounds,
                     self.block_indent,
                 );
                 self.push_rewrite(ii.span, rewrite);
