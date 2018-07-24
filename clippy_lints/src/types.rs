@@ -14,7 +14,7 @@ use std::borrow::Cow;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
-use crate::utils::{comparisons, differing_macro_contexts, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
+use crate::utils::{comparisons, differing_macro_contexts, higher, in_constant, in_macro, last_path_segment, match_def_path, match_path,
             match_type, multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
             span_lint_and_sugg, span_lint_and_then, clip, unsext, sext, int_bits};
 use crate::utils::paths;
@@ -381,7 +381,7 @@ declare_clippy_lint! {
 fn check_let_unit(cx: &LateContext<'_, '_>, decl: &Decl) {
     if let DeclKind::Local(ref local) = decl.node {
         if is_unit(cx.tables.pat_ty(&local.pat)) {
-            if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
+            if in_external_macro(cx.sess(), decl.span) || in_macro(local.pat.span) {
                 return;
             }
             if higher::is_from_for_desugar(decl) {
@@ -959,7 +959,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                 use syntax::ast::{LitIntType, LitKind};
                 match lit.node {
                     LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::FloatUnsuffixed(_) => {},
-                    _ => if cast_from.sty == cast_to.sty && !in_external_macro(cx, expr.span) {
+                    _ => if cast_from.sty == cast_to.sty && !in_external_macro(cx.sess(), expr.span) {
                         span_lint(
                             cx,
                             UNNECESSARY_CAST,
@@ -969,7 +969,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                     },
                 }
             }
-            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
+            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);

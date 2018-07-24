@@ -8,7 +8,7 @@ use std::collections::Bound;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use crate::utils::paths;
-use crate::utils::{expr_block, in_external_macro, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg,
+use crate::utils::{expr_block, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg,
             remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};
 use crate::utils::sugg::Sugg;
 use crate::consts::{constant, Constant};
@@ -183,7 +183,7 @@ impl LintPass for MatchPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if in_external_macro(cx, expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
         if let ExprKind::Match(ref ex, ref arms, MatchSource::Normal) = expr.node {

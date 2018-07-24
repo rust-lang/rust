@@ -77,12 +77,6 @@ pub fn is_range_expression(span: Span) -> bool {
     })
 }
 
-/// Returns true if the macro that expanded the crate was outside of the
-/// current crate or was a compiler plugin.
-pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
-    ::rustc::lint::in_external_macro(cx.sess(), span)
-}
-
 /// Check if a `DefId`'s path matches the given absolute type path usage.
 ///
 /// # Examples

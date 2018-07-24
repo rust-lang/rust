@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use if_chain::if_chain;
 
-use crate::utils::{self, paths, span_lint, in_external_macro};
+use crate::utils::{self, paths, span_lint};
 
 /// **What it does:**
 /// Checks for the usage of negated comparision operators on types which only implement
@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
 
-            if !in_external_macro(cx, expr.span);
+            if !in_external_macro(cx.sess(), expr.span);
             if let ExprKind::Unary(UnOp::UnNot, ref inner) = expr.node;
             if let ExprKind::Binary(ref op, ref left, _) = inner.node;
             if let BinOpKind::Le | BinOpKind::Ge | BinOpKind::Lt | BinOpKind::Gt = op.node;

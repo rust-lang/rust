@@ -5,7 +5,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
 
-use crate::utils::{in_external_macro, in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
+use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 
 /// **What it does:** Checks for return statements at the end of a block.
 ///
@@ -90,7 +90,7 @@ impl ReturnPass {
     }
 
     fn emit_return_lint(&mut self, cx: &EarlyContext<'_>, ret_span: Span, inner_span: Span) {
-        if in_external_macro(cx, inner_span) || in_macro(inner_span) {
+        if in_external_macro(cx.sess(), inner_span) || in_macro(inner_span) {
             return;
         }
         span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
@@ -117,7 +117,7 @@ impl ReturnPass {
             if let ast::PatKind::Ident(_, ident, _) = local.pat.node;
             if let ast::ExprKind::Path(_, ref path) = retexpr.node;
             if match_path_ast(path, &[&ident.as_str()]);
-            if !in_external_macro(cx, initexpr.span);
+            if !in_external_macro(cx.sess(), initexpr.span);
             then {
                     span_note_and_lint(cx,
                                        LET_AND_RETURN,

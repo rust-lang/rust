@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 use crate::utils::paths;
-use crate::utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint_and_then};
+use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_and_then};
 use crate::utils::sugg::DiagnosticBuilderExt;
 
 /// **What it does:** Checks for types with a `fn new() -> Self` method and no
@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
             for assoc_item in items {
                 if let hir::AssociatedItemKind::Method { has_self: false } = assoc_item.kind {
                     let impl_item = cx.tcx.hir.impl_item(assoc_item.id);
-                    if in_external_macro(cx, impl_item.span) {
+                    if in_external_macro(cx.sess(), impl_item.span) {
                         return;
                     }
                     if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {

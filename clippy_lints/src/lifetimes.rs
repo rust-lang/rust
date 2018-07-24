@@ -7,7 +7,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::*;
 use std::collections::{HashMap, HashSet};
 use syntax::codemap::Span;
-use crate::utils::{in_external_macro, last_path_segment, span_lint};
+use crate::utils::{last_path_segment, span_lint};
 use syntax::symbol::keywords;
 
 /// **What it does:** Checks for lifetime annotations which can be removed by
@@ -98,7 +98,7 @@ fn check_fn_inner<'a, 'tcx>(
     generics: &'tcx Generics,
     span: Span,
 ) {
-    if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
+    if in_external_macro(cx.sess(), span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
 

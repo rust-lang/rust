@@ -6,7 +6,7 @@ use std::char;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use crate::utils::{constants, in_external_macro, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
+use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
@@ -294,7 +294,7 @@ impl EarlyLintPass for MiscEarly {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx, expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
         match expr.node {

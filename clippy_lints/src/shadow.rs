@@ -5,7 +5,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::ty;
 use syntax::codemap::Span;
-use crate::utils::{contains_name, higher, in_external_macro, iter_input_pats, snippet, span_lint_and_then};
+use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for bindings that shadow other bindings already in
 /// scope, while just changing reference level or mutability.
@@ -90,7 +90,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: Span,
         _: NodeId,
     ) {
-        if in_external_macro(cx, body.value.span) {
+        if in_external_macro(cx.sess(), body.value.span) {
             return;
         }
         check_fn(cx, decl, body);
@@ -122,7 +122,7 @@ fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, binding
 }
 
 fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: &mut Vec<(Name, Span)>) {
-    if in_external_macro(cx, decl.span) {
+    if in_external_macro(cx.sess(), decl.span) {
         return;
     }
     if higher::is_from_for_desugar(decl) {
@@ -303,7 +303,7 @@ fn lint_shadow<'a, 'tcx: 'a>(
 }
 
 fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: &mut Vec<(Name, Span)>) {
-    if in_external_macro(cx, expr.span) {
+    if in_external_macro(cx.sess(), expr.span) {
         return;
     }
     match expr.node {
