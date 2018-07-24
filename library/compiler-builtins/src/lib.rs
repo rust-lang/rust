@@ -47,6 +47,8 @@ mod macros;
 pub mod int;
 pub mod float;
 
+#[cfg(any(all(target_arch = "wasm32", target_os = "unknown"),
+          all(target_arch = "arm", target_os = "none")))]
 pub mod math;
 pub mod mem;
 
