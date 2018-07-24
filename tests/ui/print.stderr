@@ -1,16 +1,22 @@
 error: use of `Debug`-based formatting
-  --> $DIR/print.rs:13:27
+  --> $DIR/print.rs:13:19
    |
 13 |         write!(f, "{:?}", 43.1415)
-   |                           ^^^^^^^
+   |                   ^^^^^^
    |
    = note: `-D use-debug` implied by `-D warnings`
+
+error: use of `Debug`-based formatting
+  --> $DIR/print.rs:20:19
+   |
+20 |         write!(f, "{:?}", 42.718)
+   |                   ^^^^^^
 
 error: use of `println!`
   --> $DIR/print.rs:25:5
    |
 25 |     println!("Hello");
-   |     ^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^
    |
    = note: `-D print-stdout` implied by `-D warnings`
 
@@ -18,37 +24,37 @@ error: use of `print!`
   --> $DIR/print.rs:26:5
    |
 26 |     print!("Hello");
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^
 
 error: use of `print!`
   --> $DIR/print.rs:28:5
    |
 28 |     print!("Hello {}", "World");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `print!`
   --> $DIR/print.rs:30:5
    |
 30 |     print!("Hello {:?}", "World");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
-  --> $DIR/print.rs:30:26
+  --> $DIR/print.rs:30:12
    |
 30 |     print!("Hello {:?}", "World");
-   |                          ^^^^^^^
+   |            ^^^^^^^^^^^^
 
 error: use of `print!`
   --> $DIR/print.rs:32:5
    |
 32 |     print!("Hello {:#?}", "#orld");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `Debug`-based formatting
-  --> $DIR/print.rs:32:27
+  --> $DIR/print.rs:32:12
    |
 32 |     print!("Hello {:#?}", "#orld");
-   |                           ^^^^^^^
+   |            ^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

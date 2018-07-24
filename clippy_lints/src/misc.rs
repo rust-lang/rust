@@ -433,7 +433,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
+fn check_nan(cx: &LateContext<'_, '_>, path: &Path, expr: &Expr) {
     if !in_constant(cx, expr.id) {
         if let Some(seg) = path.segments.last() {
             if seg.ident.name == "NAN" {
@@ -464,11 +464,11 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
     }
 }
 
-fn is_float(cx: &LateContext, expr: &Expr) -> bool {
+fn is_float(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     matches!(walk_ptrs_ty(cx.tables.expr_ty(expr)).sty, ty::TyFloat(_))
 }
 
-fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
+fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
     let (arg_ty, snip) = match expr.node {
         ExprKind::MethodCall(.., ref args) if args.len() == 1 => {
             if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
@@ -542,7 +542,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
 /// Heuristic to see if an expression is used. Should be compatible with
 /// `unused_variables`'s idea
 /// of what it means for an expression to be "used".
-fn is_used(cx: &LateContext, expr: &Expr) -> bool {
+fn is_used(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         match parent.node {
             ExprKind::Assign(_, ref rhs) | ExprKind::AssignOp(_, _, ref rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
@@ -565,14 +565,14 @@ fn in_attributes_expansion(expr: &Expr) -> bool {
 }
 
 /// Test whether `def` is a variable defined outside a macro.
-fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
+fn non_macro_local(cx: &LateContext<'_, '_>, def: &def::Def) -> bool {
     match *def {
         def::Def::Local(id) | def::Def::Upvar(id, _, _) => !in_macro(cx.tcx.hir.span(id)),
         _ => false,
     }
 }
 
-fn check_cast(cx: &LateContext, span: Span, e: &Expr, ty: &Ty) {
+fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr, ty: &Ty) {
     if_chain! {
         if let TyKind::Ptr(MutTy { mutbl, .. }) = ty.node;
         if let ExprKind::Lit(ref lit) = e.node;

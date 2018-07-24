@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
     }
 }
 
-fn get_atomic_name(ty: Ty) -> Option<(&'static str)> {
+fn get_atomic_name(ty: Ty<'_>) -> Option<(&'static str)> {
     match ty.sty {
         ty::TyBool => Some("AtomicBool"),
         ty::TyUint(_) => Some("AtomicUsize"),

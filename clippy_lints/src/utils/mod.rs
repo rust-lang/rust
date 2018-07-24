@@ -48,7 +48,7 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.ctxt() != lhs.ctxt()
 }
 
-pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
+pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
     let parent_id = cx.tcx.hir.get_parent(id);
     match cx.tcx.hir.body_owner_kind(parent_id) {
         hir::BodyOwnerKind::Fn => false,
@@ -115,7 +115,7 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
 /// ```
 ///
 /// See also the `paths` module.
-pub fn match_def_path(tcx: TyCtxt, def_id: DefId, path: &[&str]) -> bool {
+pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> bool {
     use syntax::symbol;
 
     struct AbsolutePathBuffer {
@@ -145,7 +145,7 @@ pub fn match_def_path(tcx: TyCtxt, def_id: DefId, path: &[&str]) -> bool {
 }
 
 /// Check if type is struct, enum or union type with given def path.
-pub fn match_type(cx: &LateContext, ty: Ty, path: &[&str]) -> bool {
+pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
         ty::TyAdt(adt, _) => match_def_path(cx.tcx, adt.did, path),
         _ => false,
@@ -153,7 +153,7 @@ pub fn match_type(cx: &LateContext, ty: Ty, path: &[&str]) -> bool {
 }
 
 /// Check if the method call given in `expr` belongs to given type.
-pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
+pub fn match_impl_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) -> bool {
     let method_call = cx.tables.type_dependent_defs()[expr.hir_id];
     let trt_id = cx.tcx.impl_of_method(method_call.def_id());
     if let Some(trt_id) = trt_id {
@@ -164,7 +164,7 @@ pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
 }
 
 /// Check if the method call given in `expr` belongs to given trait.
-pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
+pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) -> bool {
     let method_call = cx.tables.type_dependent_defs()[expr.hir_id];
     let trt_id = cx.tcx.trait_of_item(method_call.def_id());
     if let Some(trt_id) = trt_id {
@@ -244,7 +244,7 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 }
 
 /// Get the definition associated to a path.
-pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
+pub fn path_to_def(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<def::Def> {
     let crates = cx.tcx.crates();
     let krate = crates
         .iter()
@@ -280,7 +280,7 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
-pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
+pub fn get_trait_def_id(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<DefId> {
     let def = match path_to_def(cx, path) {
         Some(def) => def,
         None => return None,
@@ -308,7 +308,7 @@ pub fn implements_trait<'a, 'tcx>(
 }
 
 /// Check whether this type implements Drop.
-pub fn has_drop(cx: &LateContext, expr: &Expr) -> bool {
+pub fn has_drop(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     let struct_ty = cx.tables.expr_ty(expr);
     match struct_ty.ty_adt_def() {
         Some(def) => def.has_dtor(cx.tcx),
@@ -317,7 +317,7 @@ pub fn has_drop(cx: &LateContext, expr: &Expr) -> bool {
 }
 
 /// Resolve the definition of a node from its `HirId`.
-pub fn resolve_node(cx: &LateContext, qpath: &QPath, id: HirId) -> def::Def {
+pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> def::Def {
     cx.tables.qpath_def(qpath, id)
 }
 
@@ -352,7 +352,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 
 
 /// Get the name of the item the expression is in, if available.
-pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
+pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.hir.get_parent(expr.id);
     match cx.tcx.hir.find(parent_id) {
         Some(Node::NodeItem(&Item { ref name, .. })) => Some(*name),
@@ -458,13 +458,13 @@ pub fn expr_block<'a, 'b, T: LintContext<'b>>(
 
 /// Trim indentation from a multiline string with possibility of ignoring the
 /// first line.
-pub fn trim_multiline(s: Cow<str>, ignore_first: bool) -> Cow<str> {
+pub fn trim_multiline(s: Cow<'_, str>, ignore_first: bool) -> Cow<'_, str> {
     let s_space = trim_multiline_inner(s, ignore_first, ' ');
     let s_tab = trim_multiline_inner(s_space, ignore_first, '\t');
     trim_multiline_inner(s_tab, ignore_first, ' ')
 }
 
-fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
+fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_, str> {
     let x = s.lines()
         .skip(ignore_first as usize)
         .filter_map(|l| {
@@ -502,7 +502,7 @@ fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
 }
 
 /// Get a parent expressions if any – this is useful to constrain a lint.
-pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
+pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.hir;
     let node_id: NodeId = e.id;
     let parent_id: NodeId = map.get_parent_node(node_id);
@@ -642,7 +642,7 @@ pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
 /// appear once per
 /// replacement. In human-readable format though, it only appears once before
 /// the whole suggestion.
-pub fn multispan_sugg<I>(db: &mut DiagnosticBuilder, help_msg: String, sugg: I)
+pub fn multispan_sugg<I>(db: &mut DiagnosticBuilder<'_>, help_msg: String, sugg: I)
 where
     I: IntoIterator<Item = (Span, String)>,
 {
@@ -675,7 +675,7 @@ pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
 }
 
 /// Return the base type for references and raw pointers.
-pub fn walk_ptrs_ty(ty: Ty) -> Ty {
+pub fn walk_ptrs_ty(ty: Ty<'_>) -> Ty<'_> {
     match ty.sty {
         ty::TyRef(_, ty, _) => walk_ptrs_ty(ty),
         _ => ty,
@@ -684,8 +684,8 @@ pub fn walk_ptrs_ty(ty: Ty) -> Ty {
 
 /// Return the base type for references and raw pointers, and count reference
 /// depth.
-pub fn walk_ptrs_ty_depth(ty: Ty) -> (Ty, usize) {
-    fn inner(ty: Ty, depth: usize) -> (Ty, usize) {
+pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
+    fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
         match ty.sty {
             ty::TyRef(_, ty, _) => inner(ty, depth + 1),
             _ => (ty, depth),
@@ -705,7 +705,7 @@ pub fn is_integer_literal(expr: &Expr, value: u128) -> bool {
     false
 }
 
-pub fn is_adjusted(cx: &LateContext, e: &Expr) -> bool {
+pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     cx.tables.adjustments().get(e.hir_id).is_some()
 }
 
@@ -898,15 +898,15 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 /// Return whether a pattern is refutable.
-pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
-    fn is_enum_variant(cx: &LateContext, qpath: &QPath, id: HirId) -> bool {
+pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat) -> bool {
+    fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> bool {
         matches!(
             cx.tables.qpath_def(qpath, id),
             def::Def::Variant(..) | def::Def::VariantCtor(..)
         )
     }
 
-    fn are_refutable<'a, I: Iterator<Item = &'a Pat>>(cx: &LateContext, mut i: I) -> bool {
+    fn are_refutable<'a, I: Iterator<Item = &'a Pat>>(cx: &LateContext<'_, '_>, mut i: I) -> bool {
         i.any(|pat| is_refutable(cx, pat))
     }
 
@@ -1065,7 +1065,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 /// Returns true if the lint is allowed in the current context
 ///
 /// Useful for skipping long running code when it's unnecessary
-pub fn is_allowed(cx: &LateContext, lint: &'static Lint, id: NodeId) -> bool {
+pub fn is_allowed(cx: &LateContext<'_, '_>, lint: &'static Lint, id: NodeId) -> bool {
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
@@ -1085,24 +1085,24 @@ pub fn get_arg_ident(pat: &Pat) -> Option<ast::Ident> {
     }
 }
 
-pub fn int_bits(tcx: TyCtxt, ity: ast::IntTy) -> u64 {
+pub fn int_bits(tcx: TyCtxt<'_, '_, '_>, ity: ast::IntTy) -> u64 {
     layout::Integer::from_attr(tcx, attr::IntType::SignedInt(ity)).size().bits()
 }
 
 /// Turn a constant int byte representation into an i128
-pub fn sext(tcx: TyCtxt, u: u128, ity: ast::IntTy) -> i128 {
+pub fn sext(tcx: TyCtxt<'_, '_, '_>, u: u128, ity: ast::IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
 /// clip unused bytes
-pub fn unsext(tcx: TyCtxt, u: i128, ity: ast::IntTy) -> u128 {
+pub fn unsext(tcx: TyCtxt<'_, '_, '_>, u: i128, ity: ast::IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as u128) << amt) >> amt
 }
 
 /// clip unused bytes
-pub fn clip(tcx: TyCtxt, u: u128, ity: ast::UintTy) -> u128 {
+pub fn clip(tcx: TyCtxt<'_, '_, '_>, u: u128, ity: ast::UintTy) -> u128 {
     let bits = layout::Integer::from_attr(tcx, attr::IntType::UnsignedInt(ity)).size().bits();
     let amt = 128 - bits;
     (u << amt) >> amt
@@ -1141,7 +1141,7 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
     without
 }
 
-pub fn any_parent_is_automatically_derived(tcx: TyCtxt, node: NodeId) -> bool {
+pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_, '_>, node: NodeId) -> bool {
     let map = &tcx.hir;
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;

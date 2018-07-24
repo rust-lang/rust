@@ -68,7 +68,7 @@ declare_clippy_lint! {
 
 pub struct MissingInline;
 
-fn check_missing_inline_attrs(cx: &LateContext,
+fn check_missing_inline_attrs(cx: &LateContext<'_, '_>,
                               attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
     let has_inline = attrs
         .iter()

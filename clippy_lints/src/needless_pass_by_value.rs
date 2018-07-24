@@ -204,7 +204,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     }
 
                     // Dereference suggestion
-                    let sugg = |db: &mut DiagnosticBuilder| {
+                    let sugg = |db: &mut DiagnosticBuilder<'_>| {
                         if let ty::TypeVariants::TyAdt(def, ..) = ty.sty {
                             if let Some(span) = cx.tcx.hir.span_if_local(def.did) {
                                 if cx.param_env.can_type_implement_copy(cx.tcx, ty).is_ok() {
@@ -396,7 +396,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn borrow(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: ty::Region, _: ty::BorrowKind, _: euv::LoanCause) {}
+    fn borrow(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: ty::Region<'_>, _: ty::BorrowKind, _: euv::LoanCause) {}
 
     fn mutate(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: euv::MutateMode) {}
 

@@ -49,7 +49,7 @@ impl LintPass for ElseIfWithoutElse {
 }
 
 impl EarlyLintPass for ElseIfWithoutElse {
-    fn check_expr(&mut self, cx: &EarlyContext, mut item: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, mut item: &Expr) {
         if in_external_macro(cx, item.span) {
             return;
         }

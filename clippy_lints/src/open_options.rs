@@ -61,7 +61,7 @@ enum OpenOption {
     Append,
 }
 
-fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
+fn get_open_options(cx: &LateContext<'_, '_>, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
     if let ExprKind::MethodCall(ref path, _, ref arguments) = argument.node {
         let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
 
@@ -112,7 +112,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
     }
 }
 
-fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
+fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument)], span: Span) {
     let (mut create, mut append, mut truncate, mut read, mut write) = (false, false, false, false, false);
     let (mut create_arg, mut append_arg, mut truncate_arg, mut read_arg, mut write_arg) =
         (false, false, false, false, false);

@@ -94,7 +94,7 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
     result
 }
 
-fn check_str(cx: &LateContext, span: Span, id: NodeId) {
+fn check_str(cx: &LateContext<'_, '_>, span: Span, id: NodeId) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
         span_help_and_lint(

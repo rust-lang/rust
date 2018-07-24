@@ -86,7 +86,7 @@ fn get_outer_span(expr: &Expr) -> Span {
     }
 }
 
-fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext) {
+fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext<'_, '_>) {
     if_chain! {
         if let ExprKind::Lit(ref lit) = params[0].node;
         if is_direct_expn_of(expr.span, "panic").is_some();

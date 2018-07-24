@@ -110,7 +110,7 @@ impl LintPass for NeedlessContinue {
 }
 
 impl EarlyLintPass for NeedlessContinue {
-    fn check_expr(&mut self, ctx: &EarlyContext, expr: &ast::Expr) {
+    fn check_expr(&mut self, ctx: &EarlyContext<'_>, expr: &ast::Expr) {
         if !in_macro(expr.span) {
             check_and_warn(ctx, expr);
         }
@@ -265,7 +265,7 @@ const DROP_ELSE_BLOCK_MSG: &str = "Consider dropping the else clause, and moving
                                    block, like so:\n";
 
 
-fn emit_warning<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str, typ: LintType) {
+fn emit_warning<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
     // snip    is the whole *help* message that appears after the warning.
     // message is the warning message.
     // expr    is the expression which the lint warning message refers to.
@@ -284,7 +284,7 @@ fn emit_warning<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str, typ: L
     span_help_and_lint(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
 }
 
-fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str) -> String {
+fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str) -> String {
     let cond_code = snippet(ctx, data.if_cond.span, "..");
 
     let if_code = format!("if {} {{\n    continue;\n}}\n", cond_code);
@@ -301,7 +301,7 @@ fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext, data: &'a L
     ret
 }
 
-fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str) -> String {
+fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str) -> String {
     let cond_code = snippet(ctx, data.if_cond.span, "..");
     let mut if_code = format!("if {} {{\n", cond_code);
 
@@ -332,7 +332,7 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext, data: &'a
     ret
 }
 
-fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
+fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
     with_loop_block(expr, |loop_block| {
         for (i, stmt) in loop_block.stmts.iter().enumerate() {
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {

@@ -39,7 +39,7 @@ impl LintPass for UnusedIoAmount {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
-    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
         let expr = match s.node {
             hir::StmtKind::Semi(ref expr, _) | hir::StmtKind::Expr(ref expr, _) => &**expr,
             _ => return,
@@ -70,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
     }
 }
 
-fn check_method_call(cx: &LateContext, call: &hir::Expr, expr: &hir::Expr) {
+fn check_method_call(cx: &LateContext<'_, '_>, call: &hir::Expr, expr: &hir::Expr) {
     if let hir::ExprKind::MethodCall(ref path, _, _) = call.node {
         let symbol = &*path.ident.as_str();
         if match_trait_method(cx, call, &paths::IO_READ) && symbol == "read" {

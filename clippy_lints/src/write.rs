@@ -1,15 +1,9 @@
-use rustc::hir::map::Node::{NodeImplItem, NodeItem};
-use rustc::hir::*;
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
-use if_chain::if_chain;
-use std::ops::Deref;
-use syntax::ast::LitKind;
-use syntax::ptr;
-use syntax::symbol::LocalInternedString;
-use syntax_pos::Span;
-use crate::utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint, span_lint_and_sugg};
-use crate::utils::{opt_def_id, paths, last_path_segment};
+use syntax::ast::*;
+use syntax::tokenstream::{ThinTokenStream, TokenStream};
+use syntax::parse::{token, parser};
+use crate::utils::{span_lint, span_lint_and_sugg};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -173,317 +167,149 @@ impl LintPass for Pass {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        match expr.node {
-            // print!()
-            ExprKind::Call(ref fun, ref args) => {
-                if_chain! {
-                    if let ExprKind::Path(ref qpath) = fun.node;
-                    if let Some(fun_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
-                    then {
-                        check_print_variants(cx, expr, fun_id, args);
-                    }
+impl EarlyLintPass for Pass {
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
+        if mac.node.path == "println" {
+            span_lint(cx, PRINT_STDOUT, mac.span, "use of `println!`");
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false) {
+                if fmtstr == "" {
+                    span_lint_and_sugg(
+                        cx,
+                        PRINTLN_EMPTY_STRING,
+                        mac.span,
+                        "using `println!(\"\")`",
+                        "replace it with",
+                        "println!()".to_string(),
+                    );
                 }
-            },
-            // write!()
-            ExprKind::MethodCall(ref fun, _, ref args) => {
-                if fun.ident.name == "write_fmt" {
-                    check_write_variants(cx, expr, args);
+            }
+        } else if mac.node.path == "print" {
+            span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false) {
+                if fmtstr.ends_with("\\n") {
+                    span_lint(cx, PRINT_WITH_NEWLINE, mac.span,
+                            "using `print!()` with a format string that ends in a \
+                            newline, consider using `println!()` instead");
                 }
-            },
-            _ => (),
+            }
+        } else if mac.node.path == "write" {
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true) {
+                if fmtstr.ends_with("\\n") {
+                    span_lint(cx, WRITE_WITH_NEWLINE, mac.span,
+                            "using `write!()` with a format string that ends in a \
+                            newline, consider using `writeln!()` instead");
+                }
+            }
+        } else if mac.node.path == "writeln" {
+            if let Some(fmtstr) = check_tts(cx, &mac.node.tts, true) {
+                if fmtstr == "" {
+                    span_lint_and_sugg(
+                        cx,
+                        WRITELN_EMPTY_STRING,
+                        mac.span,
+                        "using `writeln!(v, \"\")`",
+                        "replace it with",
+                        "writeln!(v)".to_string(),
+                    );
+                }
+            }
         }
     }
 }
 
-fn check_write_variants<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, write_args: &ptr::P<[Expr]>) {
-    // `writeln!` uses `write!`.
-    if let Some(span) = is_expn_of(expr.span, "write") {
-        let (span, name) = match is_expn_of(span, "writeln") {
-            Some(span) => (span, "writeln"),
-            None => (span, "write"),
+fn check_tts(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> Option<String> {
+    let tts = TokenStream::from(tts.clone());
+    let mut parser = parser::Parser::new(
+        &cx.sess.parse_sess,
+        tts,
+        None,
+        false,
+        false,
+    );
+    if is_write {
+        // skip the initial write target
+        parser.parse_expr().map_err(|mut err| err.cancel()).ok()?;
+        // might be `writeln!(foo)`
+        parser.expect(&token::Comma).map_err(|mut err| err.cancel()).ok()?;
+    }
+    let fmtstr = parser.parse_str().map_err(|mut err| err.cancel()).ok()?.0.to_string();
+    use fmt_macros::*;
+    let tmp = fmtstr.clone();
+    let mut args = vec![];
+    let mut fmt_parser = Parser::new(&tmp, None);
+    while let Some(piece) = fmt_parser.next() {
+        if !fmt_parser.errors.is_empty() {
+            return None;
+        }
+        if let Piece::NextArgument(arg) = piece {
+            if arg.format.ty == "?" {
+                // FIXME: modify rustc's fmt string parser to give us the current span
+                span_lint(cx, USE_DEBUG, parser.prev_span, "use of `Debug`-based formatting");
+            }
+            args.push(arg);
+        }
+    }
+    let lint = if is_write {
+        WRITE_LITERAL
+    } else {
+        PRINT_LITERAL
+    };
+    let mut idx = 0;
+    loop {
+        if !parser.eat(&token::Comma) {
+            assert!(parser.eat(&token::Eof));
+            return Some(fmtstr);
+        }
+        let expr = parser.parse_expr().map_err(|mut err| err.cancel()).ok()?;
+        const SIMPLE: FormatSpec<'_> = FormatSpec {
+            fill: None,
+            align: AlignUnknown,
+            flags: 0,
+            precision: CountImplied,
+            width: CountImplied,
+            ty: "",
         };
-
-        if_chain! {
-            // ensure we're calling Arguments::new_v1 or Arguments::new_v1_formatted
-            if write_args.len() == 2;
-            if let ExprKind::Call(ref args_fun, ref args_args) = write_args[1].node;
-            if let ExprKind::Path(ref qpath) = args_fun.node;
-            if let Some(const_def_id) = opt_def_id(resolve_node(cx, qpath, args_fun.hir_id));
-            if match_def_path(cx.tcx, const_def_id, &paths::FMT_ARGUMENTS_NEWV1) ||
-               match_def_path(cx.tcx, const_def_id, &paths::FMT_ARGUMENTS_NEWV1FORMATTED);
-            then {
-                // Check for literals in the write!/writeln! args
-                check_fmt_args_for_literal(cx, args_args, |span| {
-                    span_lint(cx, WRITE_LITERAL, span, "writing a literal with an empty format string");
-                });
-
-                if_chain! {
-                    if args_args.len() >= 2;
-                    if let ExprKind::AddrOf(_, ref match_expr) = args_args[1].node;
-                    if let ExprKind::Match(ref args, _, _) = match_expr.node;
-                    if let ExprKind::Tup(ref args) = args.node;
-                    if let Some((fmtstr, fmtlen)) = get_argument_fmtstr_parts(&args_args[0]);
-                    then {
-                        match name {
-                            "write" => if has_newline_end(args, fmtstr, fmtlen) {
-                                span_lint(cx, WRITE_WITH_NEWLINE, span,
-                                        "using `write!()` with a format string that ends in a \
-                                        newline, consider using `writeln!()` instead");
+        match &expr.node {
+            ExprKind::Lit(_) => {
+                let mut all_simple = true;
+                let mut seen = false;
+                for arg in &args {
+                    match arg.position {
+                        | ArgumentImplicitlyIs(n)
+                        | ArgumentIs(n)
+                        => if n == idx {
+                            all_simple &= arg.format == SIMPLE;
+                            seen = true;
+                        },
+                        ArgumentNamed(_) => {},
+                    }
+                }
+                if all_simple && seen {
+                    span_lint(cx, lint, expr.span, "literal with an empty format string");
+                }
+                idx += 1;
+            },
+            ExprKind::Assign(lhs, rhs) => {
+                if let ExprKind::Path(_, p) = &lhs.node {
+                    let mut all_simple = true;
+                    let mut seen = false;
+                    for arg in &args {
+                        match arg.position {
+                            | ArgumentImplicitlyIs(_)
+                            | ArgumentIs(_)
+                            => {},
+                            ArgumentNamed(name) => if *p == name {
+                                seen = true;
+                                all_simple &= arg.format == SIMPLE;
                             },
-                            "writeln" => if let Some(final_span) = has_empty_arg(cx, span, fmtstr, fmtlen) {
-                                span_lint_and_sugg(
-                                    cx,
-                                    WRITE_WITH_NEWLINE,
-                                    final_span,
-                                    "using `writeln!(v, \"\")`",
-                                    "replace it with",
-                                    "writeln!(v)".to_string(),
-                                );
-                            },
-                            _ => (),
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-fn check_print_variants<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx Expr,
-    fun_id: def_id::DefId,
-    args: &ptr::P<[Expr]>,
-) {
-    // Search for `std::io::_print(..)` which is unique in a
-    // `print!` expansion.
-    if match_def_path(cx.tcx, fun_id, &paths::IO_PRINT) {
-        if let Some(span) = is_expn_of(expr.span, "print") {
-            // `println!` uses `print!`.
-            let (span, name) = match is_expn_of(span, "println") {
-                Some(span) => (span, "println"),
-                None => (span, "print"),
-            };
-
-            span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
-            if_chain! {
-                // ensure we're calling Arguments::new_v1
-                if args.len() == 1;
-                if let ExprKind::Call(ref args_fun, ref args_args) = args[0].node;
-                then {
-                    // Check for literals in the print!/println! args
-                    check_fmt_args_for_literal(cx, args_args, |span| {
-                        span_lint(cx, PRINT_LITERAL, span, "printing a literal with an empty format string");
-                    });
-
-                    if_chain! {
-                        if let ExprKind::Path(ref qpath) = args_fun.node;
-                        if let Some(const_def_id) = opt_def_id(resolve_node(cx, qpath, args_fun.hir_id));
-                        if match_def_path(cx.tcx, const_def_id, &paths::FMT_ARGUMENTS_NEWV1);
-                        if args_args.len() == 2;
-                        if let ExprKind::AddrOf(_, ref match_expr) = args_args[1].node;
-                        if let ExprKind::Match(ref args, _, _) = match_expr.node;
-                        if let ExprKind::Tup(ref args) = args.node;
-                        if let Some((fmtstr, fmtlen)) = get_argument_fmtstr_parts(&args_args[0]);
-                        then {
-                            match name {
-                                "print" =>
-                                    if has_newline_end(args, fmtstr, fmtlen) {
-                                        span_lint(cx, PRINT_WITH_NEWLINE, span,
-                                                "using `print!()` with a format string that ends in a \
-                                                newline, consider using `println!()` instead");
-                                    },
-                                "println" =>
-                                    if let Some(final_span) = has_empty_arg(cx, span, fmtstr, fmtlen) {
-                                        span_lint_and_sugg(
-                                            cx,
-                                            PRINT_WITH_NEWLINE,
-                                            final_span,
-                                            "using `println!(\"\")`",
-                                            "replace it with",
-                                            "println!()".to_string(),
-                                        );
-                                    },
-                                _ => (),
-                            }
-                        }
+                    if all_simple && seen {
+                        span_lint(cx, lint, rhs.span, "literal with an empty format string");
                     }
                 }
-            }
+            },
+            _ => idx += 1,
         }
     }
-    // Search for something like
-    // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
-    else if args.len() == 2 && match_def_path(cx.tcx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
-        if let ExprKind::Path(ref qpath) = args[1].node {
-            if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, args[1].hir_id)) {
-                if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr)
-                    && is_expn_of(expr.span, "panic").is_none()
-                {
-                    span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
-                }
-            }
-        }
-    }
-}
-
-// Check for literals in write!/writeln! and print!/println! args
-// ensuring the format string for the literal is `DISPLAY_FMT_METHOD`
-// e.g., `writeln!(buf, "... {} ...", "foo")`
-//                                    ^ literal in `writeln!`
-// e.g., `println!("... {} ...", "foo")`
-//                                ^ literal in `println!`
-fn check_fmt_args_for_literal<'a, 'tcx, F>(cx: &LateContext<'a, 'tcx>, args: &HirVec<Expr>, lint_fn: F)
-where
-    F: Fn(Span),
-{
-    if_chain! {
-        if args.len() >= 2;
-
-        // the match statement
-        if let ExprKind::AddrOf(_, ref match_expr) = args[1].node;
-        if let ExprKind::Match(ref matchee, ref arms, _) = match_expr.node;
-        if let ExprKind::Tup(ref tup) = matchee.node;
-        if arms.len() == 1;
-        if let ExprKind::Array(ref arm_body_exprs) = arms[0].body.node;
-        then {
-            // it doesn't matter how many args there are in the `write!`/`writeln!`,
-            // if there's one literal, we should warn the user
-            for (idx, tup_arg) in tup.iter().enumerate() {
-                if_chain! {
-                    // first, make sure we're dealing with a literal (i.e., an ExprKind::Lit)
-                    if let ExprKind::AddrOf(_, ref tup_val) = tup_arg.node;
-                    if let ExprKind::Lit(_) = tup_val.node;
-
-                    // next, check the corresponding match arm body to ensure
-                    // this is DISPLAY_FMT_METHOD
-                    if let ExprKind::Call(_, ref body_args) = arm_body_exprs[idx].node;
-                    if body_args.len() == 2;
-                    if let ExprKind::Path(ref body_qpath) = body_args[1].node;
-                    if let Some(fun_def_id) = opt_def_id(resolve_node(cx, body_qpath, body_args[1].hir_id));
-                    if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
-                    then {
-                        if args.len() == 2 {
-                            lint_fn(tup_val.span);
-                        }
-
-                        // ensure the format str has no options (e.g., width, precision, alignment, etc.)
-                        // and is just "{}"
-                        if_chain! {
-                            if args.len() == 3;
-                            if let ExprKind::AddrOf(_, ref format_expr) = args[2].node;
-                            if let ExprKind::Array(ref format_exprs) = format_expr.node;
-                            if format_exprs.len() >= 1;
-                            if let ExprKind::Struct(_, ref fields, _) = format_exprs[idx].node;
-                            if let Some(format_field) = fields.iter().find(|f| f.ident.name == "format");
-                            if check_unformatted(&format_field.expr);
-                            then {
-                                lint_fn(tup_val.span);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// Check for fmtstr = "... \n"
-fn has_newline_end(args: &HirVec<Expr>, fmtstr: LocalInternedString, fmtlen: usize) -> bool {
-    if_chain! {
-        // check the final format string part
-        if let Some('\n') = fmtstr.chars().last();
-
-        // "foo{}bar" is made into two strings + one argument,
-        // if the format string starts with `{}` (eg. "{}foo"),
-        // the string array is prepended an empty string "".
-        // We only want to check the last string after any `{}`:
-        if args.len() < fmtlen;
-        then {
-            return true
-        }
-    }
-    false
-}
-
-/// Check for writeln!(v, "") / println!("")
-fn has_empty_arg<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: LocalInternedString, fmtlen: usize) -> Option<Span> {
-    if_chain! {
-        // check that the string is empty
-        if fmtlen == 1;
-        if fmtstr.deref() == "\n";
-
-        // check the presence of that string
-        if let Ok(snippet) = cx.sess().codemap().span_to_snippet(span);
-        if snippet.contains("\"\"");
-        then {
-            if snippet.ends_with(';') {
-                return Some(cx.sess().codemap().span_until_char(span, ';'));
-            }
-            return Some(span)
-        }
-    }
-    None
-}
-
-/// Returns the slice of format string parts in an `Arguments::new_v1` call.
-fn get_argument_fmtstr_parts(expr: &Expr) -> Option<(LocalInternedString, usize)> {
-    if_chain! {
-        if let ExprKind::AddrOf(_, ref expr) = expr.node; // &["…", "…", …]
-        if let ExprKind::Array(ref exprs) = expr.node;
-        if let Some(expr) = exprs.last();
-        if let ExprKind::Lit(ref lit) = expr.node;
-        if let LitKind::Str(ref lit, _) = lit.node;
-        then {
-            return Some((lit.as_str(), exprs.len()));
-        }
-    }
-    None
-}
-
-fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
-    let map = &cx.tcx.hir;
-
-    // `fmt` method
-    if let Some(NodeImplItem(item)) = map.find(map.get_parent(expr.id)) {
-        // `Debug` impl
-        if let Some(NodeItem(item)) = map.find(map.get_parent(item.id)) {
-            if let ItemKind::Impl(_, _, _, _, Some(ref tr), _, _) = item.node {
-                return match_path(&tr.path, &["Debug"]);
-            }
-        }
-    }
-    false
-}
-
-/// Checks if the expression matches
-/// ```rust,ignore
-/// &[_ {
-///    format: _ {
-///         width: _::Implied,
-///         ...
-///    },
-///    ...,
-/// }]
-/// ```
-pub fn check_unformatted(format_field: &Expr) -> bool {
-    if_chain! {
-        if let ExprKind::Struct(_, ref fields, _) = format_field.node;
-        if let Some(width_field) = fields.iter().find(|f| f.ident.name == "width");
-        if let ExprKind::Path(ref qpath) = width_field.expr.node;
-        if last_path_segment(qpath).ident.name == "Implied";
-        if let Some(align_field) = fields.iter().find(|f| f.ident.name == "align");
-        if let ExprKind::Path(ref qpath) = align_field.expr.node;
-        if last_path_segment(qpath).ident.name == "Unknown";
-        if let Some(precision_field) = fields.iter().find(|f| f.ident.name == "precision");
-        if let ExprKind::Path(ref qpath_precision) = precision_field.expr.node;
-        if last_path_segment(qpath_precision).ident.name == "Implied";
-        then {
-            return true;
-        }
-    }
-
-    false
 }

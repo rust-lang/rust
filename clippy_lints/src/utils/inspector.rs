@@ -141,7 +141,7 @@ fn has_attr(attrs: &[Attribute]) -> bool {
     get_attr(attrs, "dump").count() > 0
 }
 
-fn print_decl(cx: &LateContext, decl: &hir::Decl) {
+fn print_decl(cx: &LateContext<'_, '_>, decl: &hir::Decl) {
     match decl.node {
         hir::DeclKind::Local(ref local) => {
             println!("local variable of type {}", cx.tables.node_id_to_type(local.hir_id));
@@ -156,7 +156,7 @@ fn print_decl(cx: &LateContext, decl: &hir::Decl) {
     }
 }
 
-fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
+fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
     println!("{}ty: {}", ind, cx.tables.expr_ty(expr));
@@ -342,7 +342,7 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
     }
 }
 
-fn print_item(cx: &LateContext, item: &hir::Item) {
+fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
     let did = cx.tcx.hir.local_def_id(item.id);
     println!("item `{}`", item.name);
     match item.vis.node {
@@ -414,7 +414,7 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
     }
 }
 
-fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
+fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
     match pat.node {

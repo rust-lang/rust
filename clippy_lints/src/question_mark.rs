@@ -52,7 +52,7 @@ impl QuestionMarkPass {
     /// ```
     ///
     /// If it matches, it will suggest to use the question mark operator instead
-    fn check_is_none_and_early_return_none(cx: &LateContext, expr: &Expr) {
+    fn check_is_none_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
             if let ExprKind::If(ref if_expr, ref body, _) = expr.node;
             if let ExprKind::MethodCall(ref segment, _, ref args) = if_expr.node;
@@ -81,13 +81,13 @@ impl QuestionMarkPass {
         }
     }
 
-    fn is_option(cx: &LateContext, expression: &Expr) -> bool {
+    fn is_option(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
         let expr_ty = cx.tables.expr_ty(expression);
 
         match_type(cx, expr_ty, &OPTION)
     }
 
-    fn expression_returns_none(cx: &LateContext, expression: &Expr) -> bool {
+    fn expression_returns_none(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
         match expression.node {
             ExprKind::Block(ref block, _) => {
                 if let Some(return_expression) = Self::return_expression(block) {

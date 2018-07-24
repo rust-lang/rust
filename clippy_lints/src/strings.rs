@@ -117,11 +117,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     }
 }
 
-fn is_string(cx: &LateContext, e: &Expr) -> bool {
+fn is_string(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(e)), &paths::STRING)
 }
 
-fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
+fn is_add(cx: &LateContext<'_, '_>, src: &Expr, target: &Expr) -> bool {
     match src.node {
         ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
         ExprKind::Block(ref block, _) => {

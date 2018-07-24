@@ -148,7 +148,7 @@ fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: 
     }
 }
 
-fn is_binding(cx: &LateContext, pat_id: HirId) -> bool {
+fn is_binding(cx: &LateContext<'_, '_>, pat_id: HirId) -> bool {
     let var_ty = cx.tables.node_id_to_type(pat_id);
     match var_ty.sty {
         ty::TyAdt(..) => false,
