@@ -647,10 +647,12 @@ impl<'a, 'tcx> CrateMetadata {
 
     /// Iterates over all the stability attributes in the given crate.
     pub fn get_lib_features(&self) -> Vec<(ast::Name, Option<ast::Name>)> {
-        self.root
+        let mut features: Vec<_> = self.root
             .lib_features
             .decode(self)
-            .collect()
+            .collect();
+        features.sort_unstable_by_key(|f| f.0.as_str());
+        features
     }
 
     /// Iterates over the language items in the given crate.
