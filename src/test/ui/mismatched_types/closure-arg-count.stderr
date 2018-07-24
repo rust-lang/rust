@@ -2,8 +2,10 @@ error[E0593]: closure is expected to take 2 arguments, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:15:15
    |
 LL |     [1, 2, 3].sort_by(|| panic!());
-   |               ^^^^^^^ -- takes 0 arguments
-   |               |
+   |               ^^^^^^^ --
+   |               |       |
+   |               |       takes 0 arguments
+   |               |       help: change the closure to take and ignore the arguments: `|_, _|`
    |               expected closure that takes 2 arguments
 
 error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
@@ -42,8 +44,10 @@ error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:23:5
    |
 LL |     f(|| panic!());
-   |     ^ -- takes 0 arguments
-   |     |
+   |     ^ --
+   |     | |
+   |     | takes 0 arguments
+   |     | help: change the closure to take and ignore the argument: `|_|`
    |     expected closure that takes 1 argument
    |
 note: required by `f`
