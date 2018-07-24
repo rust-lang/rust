@@ -499,6 +499,13 @@ impl Input {
             Input::Text(_) => true,
         }
     }
+
+    fn file_name(&self) -> FileName {
+        match *self {
+            Input::File(ref file) => FileName::Real(file.clone()),
+            Input::Text(..) => FileName::Stdin,
+        }
+    }
 }
 
 #[cfg(test)]

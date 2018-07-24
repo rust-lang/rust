@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use syntax::ast;
 use syntax::codemap::{CodeMap, FilePathMapping, Span};
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
-use syntax::errors::{DiagnosticBuilder, Handler};
+use syntax::errors::Handler;
 use syntax::parse::{self, ParseSess};
 
 use comment::{CharClasses, FullCodeCharKind};
@@ -63,43 +63,17 @@ fn format_project<T: FormatHandler>(
     let mut summary = Summary::default();
     let mut timer = Timer::Initialized(Instant::now());
 
-    let input_is_stdin = input.is_text();
-    let main_file = match input {
-        Input::File(ref file) => FileName::Real(file.clone()),
-        Input::Text(..) => FileName::Stdin,
-    };
+    let main_file = input.file_name();
+    let input_is_stdin = main_file == FileName::Stdin;
 
     // Parse the crate.
     let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
     let mut parse_session = make_parse_sess(codemap.clone(), config);
-    let krate = match parse_input(input, &parse_session, config) {
-        Ok(krate) => krate,
-        Err(err) => {
-            match err {
-                ParseError::Error(mut diagnostic) => diagnostic.emit(),
-                ParseError::Panic => {
-                    // Note that if you see this message and want more information,
-                    // then go to `parse_input` and run the parse function without
-                    // `catch_unwind` so rustfmt panics and you can get a backtrace.
-                    should_emit_verbose(!input_is_stdin, config, || {
-                        println!("The Rust parser panicked")
-                    });
-                }
-                ParseError::Recovered => {}
-            }
-            summary.add_parsing_error();
-            return Err(ErrorKind::ParseError);
-        }
-    };
+    let krate = parse_crate(input, &parse_session, config, &mut summary)?;
     timer = timer.done_parsing();
 
     // Suppress error output if we have to do any further parsing.
-    let silent_emitter = Box::new(EmitterWriter::new(
-        Box::new(Vec::new()),
-        Some(codemap.clone()),
-        false,
-        false,
-    ));
+    let silent_emitter = silent_emitter(codemap);
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
     let mut context = FormatContext::new(
@@ -130,19 +104,7 @@ fn format_project<T: FormatHandler>(
         )
     });
 
-    if context.report.has_warnings() {
-        context.summary.add_formatting_error();
-    }
-    {
-        let report_errs = &context.report.internal.borrow().1;
-        if report_errs.has_check_errors {
-            context.summary.add_check_error();
-        }
-        if report_errs.has_operational_errors {
-            context.summary.add_operational_error();
-        }
-    }
-
+    context.summarise_errors();
     Ok((context.report, context.summary))
 }
 
@@ -158,6 +120,20 @@ struct FormatContext<'a, T: FormatHandler + 'a> {
 }
 
 impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
+    // Moves errors from the report to the summary.
+    fn summarise_errors(&mut self) {
+        if self.report.has_warnings() {
+            self.summary.add_formatting_error();
+        }
+        let report_errs = &self.report.internal.borrow().1;
+        if report_errs.has_check_errors {
+            self.summary.add_check_error();
+        }
+        if report_errs.has_operational_errors {
+            self.summary.add_operational_error();
+        }
+    }
+
     // Formats a single file/module.
     fn format_file(
         &mut self,
@@ -178,6 +154,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             &snippet_provider,
             self.report.clone(),
         );
+
         // Format inner attributes if available.
         if !self.krate.attrs.is_empty() && is_root {
             visitor.skip_empty_lines(filemap.end_pos);
@@ -481,41 +458,6 @@ impl Timer {
     }
 }
 
-fn should_emit_verbose<F>(is_stdin: bool, config: &Config, f: F)
-where
-    F: Fn(),
-{
-    if config.verbose() == Verbosity::Verbose && !is_stdin {
-        f();
-    }
-}
-
-/// Returns true if the line with the given line number was skipped by `#[rustfmt::skip]`.
-fn is_skipped_line(line_number: usize, skipped_range: &[(usize, usize)]) -> bool {
-    skipped_range
-        .iter()
-        .any(|&(lo, hi)| lo <= line_number && line_number <= hi)
-}
-
-fn should_report_error(
-    config: &Config,
-    char_kind: FullCodeCharKind,
-    is_string: bool,
-    error_kind: &ErrorKind,
-) -> bool {
-    let allow_error_report = if char_kind.is_comment() || is_string || error_kind.is_comment() {
-        config.error_on_unformatted()
-    } else {
-        true
-    };
-
-    match error_kind {
-        ErrorKind::LineOverflow(..) => config.error_on_line_overflow() && allow_error_report,
-        ErrorKind::TrailingWhitespace | ErrorKind::LostComment => allow_error_report,
-        _ => true,
-    }
-}
-
 // Formatting done on a char by char or line by line basis.
 // FIXME(#20) other stuff for parity with make tidy
 fn format_lines(
@@ -525,115 +467,191 @@ fn format_lines(
     config: &Config,
     report: &FormatReport,
 ) {
-    let mut last_was_space = false;
-    let mut line_len = 0;
-    let mut cur_line = 1;
-    let mut newline_count = 0;
-    let mut errors = vec![];
-    let mut issue_seeker = BadIssueSeeker::new(config.report_todo(), config.report_fixme());
-    let mut line_buffer = String::with_capacity(config.max_width() * 2);
-    let mut is_string = false; // true if the current line contains a string literal.
-    let mut format_line = config.file_lines().contains_line(name, cur_line);
-    let allow_issue_seek = !issue_seeker.is_disabled();
+    let mut formatter = FormatLines::new(name, skipped_range, config);
+    formatter.check_license(text);
+    formatter.iterate(text);
 
-    // Check license.
-    if let Some(ref license_template) = config.license_template {
-        if !license_template.is_match(text) {
-            errors.push(FormattingError {
-                line: cur_line,
-                kind: ErrorKind::LicenseCheck,
-                is_comment: false,
-                is_string: false,
-                line_buffer: String::new(),
-            });
+    if formatter.newline_count > 1 {
+        debug!("track truncate: {} {}", text.len(), formatter.newline_count);
+        let line = text.len() - formatter.newline_count + 1;
+        text.truncate(line);
+    }
+
+    report.append(name.clone(), formatter.errors);
+}
+
+struct FormatLines<'a> {
+    name: &'a FileName,
+    skipped_range: &'a [(usize, usize)],
+    last_was_space: bool,
+    line_len: usize,
+    cur_line: usize,
+    newline_count: usize,
+    errors: Vec<FormattingError>,
+    issue_seeker: BadIssueSeeker,
+    line_buffer: String,
+    // true if the current line contains a string literal.
+    is_string: bool,
+    format_line: bool,
+    allow_issue_seek: bool,
+    config: &'a Config,
+}
+
+impl<'a> FormatLines<'a> {
+    fn new(
+        name: &'a FileName,
+        skipped_range: &'a [(usize, usize)],
+        config: &'a Config,
+    ) -> FormatLines<'a> {
+        let issue_seeker = BadIssueSeeker::new(config.report_todo(), config.report_fixme());
+        FormatLines {
+            name,
+            skipped_range,
+            last_was_space: false,
+            line_len: 0,
+            cur_line: 1,
+            newline_count: 0,
+            errors: vec![],
+            allow_issue_seek: !issue_seeker.is_disabled(),
+            issue_seeker,
+            line_buffer: String::with_capacity(config.max_width() * 2),
+            is_string: false,
+            format_line: config.file_lines().contains_line(name, 1),
+            config,
         }
     }
 
-    // Iterate over the chars in the file map.
-    for (kind, c) in CharClasses::new(text.chars()) {
-        if c == '\r' {
-            continue;
-        }
-
-        if allow_issue_seek && format_line {
-            // Add warnings for bad todos/ fixmes
-            if let Some(issue) = issue_seeker.inspect(c) {
-                errors.push(FormattingError {
-                    line: cur_line,
-                    kind: ErrorKind::BadIssue(issue),
+    fn check_license(&mut self, text: &mut String) {
+        if let Some(ref license_template) = self.config.license_template {
+            if !license_template.is_match(text) {
+                self.errors.push(FormattingError {
+                    line: self.cur_line,
+                    kind: ErrorKind::LicenseCheck,
                     is_comment: false,
                     is_string: false,
                     line_buffer: String::new(),
                 });
             }
         }
+    }
 
-        if c == '\n' {
-            if format_line {
-                // Check for (and record) trailing whitespace.
-                if last_was_space {
-                    if should_report_error(config, kind, is_string, &ErrorKind::TrailingWhitespace)
-                        && !is_skipped_line(cur_line, skipped_range)
-                    {
-                        errors.push(FormattingError {
-                            line: cur_line,
-                            kind: ErrorKind::TrailingWhitespace,
-                            is_comment: kind.is_comment(),
-                            is_string: kind.is_string(),
-                            line_buffer: line_buffer.clone(),
-                        });
-                    }
-                    line_len -= 1;
-                }
+    // Iterate over the chars in the file map.
+    fn iterate(&mut self, text: &mut String) {
+        for (kind, c) in CharClasses::new(text.chars()) {
+            if c == '\r' {
+                continue;
+            }
 
-                // Check for any line width errors we couldn't correct.
-                let error_kind = ErrorKind::LineOverflow(line_len, config.max_width());
-                if line_len > config.max_width()
-                    && !is_skipped_line(cur_line, skipped_range)
-                    && should_report_error(config, kind, is_string, &error_kind)
-                {
-                    errors.push(FormattingError {
-                        line: cur_line,
-                        kind: error_kind,
-                        is_comment: kind.is_comment(),
-                        is_string,
-                        line_buffer: line_buffer.clone(),
-                    });
+            if self.allow_issue_seek && self.format_line {
+                // Add warnings for bad todos/ fixmes
+                if let Some(issue) = self.issue_seeker.inspect(c) {
+                    self.push_err(ErrorKind::BadIssue(issue), false, false);
                 }
             }
 
-            line_len = 0;
-            cur_line += 1;
-            format_line = config.file_lines().contains_line(name, cur_line);
-            newline_count += 1;
-            last_was_space = false;
-            line_buffer.clear();
-            is_string = false;
-        } else {
-            newline_count = 0;
-            line_len += if c == '\t' { config.tab_spaces() } else { 1 };
-            last_was_space = c.is_whitespace();
-            line_buffer.push(c);
-            if kind.is_string() {
-                is_string = true;
+            if c == '\n' {
+                self.new_line(kind);
+            } else {
+                self.char(c, kind);
             }
         }
     }
 
-    if newline_count > 1 {
-        debug!("track truncate: {} {}", text.len(), newline_count);
-        let line = text.len() - newline_count + 1;
-        text.truncate(line);
+    fn new_line(&mut self, kind: FullCodeCharKind) {
+        if self.format_line {
+            // Check for (and record) trailing whitespace.
+            if self.last_was_space {
+                if self.should_report_error(kind, &ErrorKind::TrailingWhitespace)
+                    && !self.is_skipped_line()
+                {
+                    self.push_err(
+                        ErrorKind::TrailingWhitespace,
+                        kind.is_comment(),
+                        kind.is_string(),
+                    );
+                }
+                self.line_len -= 1;
+            }
+
+            // Check for any line width errors we couldn't correct.
+            let error_kind = ErrorKind::LineOverflow(self.line_len, self.config.max_width());
+            if self.line_len > self.config.max_width()
+                && !self.is_skipped_line()
+                && self.should_report_error(kind, &error_kind)
+            {
+                self.push_err(error_kind, kind.is_comment(), self.is_string);
+            }
+        }
+
+        self.line_len = 0;
+        self.cur_line += 1;
+        self.format_line = self
+            .config
+            .file_lines()
+            .contains_line(self.name, self.cur_line);
+        self.newline_count += 1;
+        self.last_was_space = false;
+        self.line_buffer.clear();
+        self.is_string = false;
     }
 
-    report.append(name.clone(), errors);
+    fn char(&mut self, c: char, kind: FullCodeCharKind) {
+        self.newline_count = 0;
+        self.line_len += if c == '\t' {
+            self.config.tab_spaces()
+        } else {
+            1
+        };
+        self.last_was_space = c.is_whitespace();
+        self.line_buffer.push(c);
+        if kind.is_string() {
+            self.is_string = true;
+        }
+    }
+
+    fn push_err(&mut self, kind: ErrorKind, is_comment: bool, is_string: bool) {
+        self.errors.push(FormattingError {
+            line: self.cur_line,
+            kind,
+            is_comment,
+            is_string,
+            line_buffer: self.line_buffer.clone(),
+        });
+    }
+
+    fn should_report_error(&self, char_kind: FullCodeCharKind, error_kind: &ErrorKind) -> bool {
+        let allow_error_report =
+            if char_kind.is_comment() || self.is_string || error_kind.is_comment() {
+                self.config.error_on_unformatted()
+            } else {
+                true
+            };
+
+        match error_kind {
+            ErrorKind::LineOverflow(..) => {
+                self.config.error_on_line_overflow() && allow_error_report
+            }
+            ErrorKind::TrailingWhitespace | ErrorKind::LostComment => allow_error_report,
+            _ => true,
+        }
+    }
+
+    /// Returns true if the line with the given line number was skipped by `#[rustfmt::skip]`.
+    fn is_skipped_line(&self) -> bool {
+        self.skipped_range
+            .iter()
+            .any(|&(lo, hi)| lo <= self.cur_line && self.cur_line <= hi)
+    }
 }
 
-fn parse_input<'sess>(
+fn parse_crate(
     input: Input,
-    parse_session: &'sess ParseSess,
+    parse_session: &ParseSess,
     config: &Config,
-) -> Result<ast::Crate, ParseError<'sess>> {
+    summary: &mut Summary,
+) -> Result<ast::Crate, ErrorKind> {
+    let input_is_stdin = input.is_text();
+
     let mut parser = match input {
         Input::File(file) => parse::new_parser_from_file(parse_session, &file),
         Input::Text(text) => parse::new_parser_from_source_str(
@@ -653,36 +671,37 @@ fn parse_input<'sess>(
 
     match result {
         Ok(Ok(c)) => {
-            if parse_session.span_diagnostic.has_errors() {
-                // Bail out if the parser recovered from an error.
-                Err(ParseError::Recovered)
-            } else {
-                Ok(c)
+            if !parse_session.span_diagnostic.has_errors() {
+                return Ok(c);
             }
         }
-        Ok(Err(e)) => Err(ParseError::Error(e)),
-        Err(_) => Err(ParseError::Panic),
+        Ok(Err(mut e)) => e.emit(),
+        Err(_) => {
+            // Note that if you see this message and want more information,
+            // then run the `parse_crate_mod` function above without
+            // `catch_unwind` so rustfmt panics and you can get a backtrace.
+            should_emit_verbose(!input_is_stdin, config, || {
+                println!("The Rust parser panicked")
+            });
+        }
     }
+
+    summary.add_parsing_error();
+    Err(ErrorKind::ParseError)
 }
 
-/// All the ways that parsing can fail.
-enum ParseError<'sess> {
-    /// There was an error, but the parser recovered.
-    Recovered,
-    /// There was an error (supplied) and parsing failed.
-    Error(DiagnosticBuilder<'sess>),
-    /// The parser panicked.
-    Panic,
+fn silent_emitter(codemap: Rc<CodeMap>) -> Box<EmitterWriter> {
+    Box::new(EmitterWriter::new(
+        Box::new(Vec::new()),
+        Some(codemap),
+        false,
+        false,
+    ))
 }
 
 fn make_parse_sess(codemap: Rc<CodeMap>, config: &Config) -> ParseSess {
     let tty_handler = if config.hide_parse_errors() {
-        let silent_emitter = Box::new(EmitterWriter::new(
-            Box::new(Vec::new()),
-            Some(codemap.clone()),
-            false,
-            false,
-        ));
+        let silent_emitter = silent_emitter(codemap.clone());
         Handler::with_emitter(true, false, silent_emitter)
     } else {
         let supports_color = term::stderr().map_or(false, |term| term.supports_color());
@@ -722,5 +741,14 @@ fn replace_with_system_newlines(text: &mut String, config: &Config) -> () {
             *text = transformed;
         }
         NewlineStyle::Native => unreachable!(),
+    }
+}
+
+fn should_emit_verbose<F>(is_stdin: bool, config: &Config, f: F)
+where
+    F: Fn(),
+{
+    if config.verbose() == Verbosity::Verbose && !is_stdin {
+        f();
     }
 }
