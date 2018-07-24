@@ -14,7 +14,7 @@ pub mod printf {
     /// Represents a single `printf`-style substitution.
     #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {
-        /// A formatted output substitution.
+        /// A formatted output substitution with its internal byte offset.
         Format(Format<'a>),
         /// A literal `%%` escape.
         Escape,
@@ -27,6 +27,23 @@ pub mod printf {
                 Substitution::Escape => "%%",
             }
         }
+
+        pub fn position(&self) -> Option<(usize, usize)> {
+            match *self {
+                Substitution::Format(ref fmt) => Some(fmt.position),
+                _ => None,
+            }
+        }
+
+        pub fn set_position(&mut self, start: usize, end: usize) {
+            match self {
+                Substitution::Format(ref mut fmt) => {
+                    fmt.position = (start, end);
+                }
+                _ => {}
+            }
+        }
+
 
         /// Translate this substitution into an equivalent Rust formatting directive.
         ///
@@ -57,6 +74,8 @@ pub mod printf {
         pub length: Option<&'a str>,
         /// Type of parameter being converted.
         pub type_: &'a str,
+        /// Byte offset for the start and end of this formatting directive.
+        pub position: (usize, usize),
     }
 
     impl<'a> Format<'a> {
@@ -257,19 +276,28 @@ pub mod printf {
     pub fn iter_subs(s: &str) -> Substitutions {
         Substitutions {
             s,
+            pos: 0,
         }
     }
 
     /// Iterator over substitutions in a string.
     pub struct Substitutions<'a> {
         s: &'a str,
+        pos: usize,
     }
 
     impl<'a> Iterator for Substitutions<'a> {
         type Item = Substitution<'a>;
         fn next(&mut self) -> Option<Self::Item> {
-            let (sub, tail) = parse_next_substitution(self.s)?;
+            let (mut sub, tail) = parse_next_substitution(self.s)?;
             self.s = tail;
+            match sub {
+                Substitution::Format(_) => if let Some((start, end)) = sub.position() {
+                    sub.set_position(start + self.pos, end + self.pos);
+                    self.pos += end;
+                }
+                Substitution::Escape => self.pos += 2,
+            }
             Some(sub)
         }
 
@@ -301,7 +329,9 @@ pub mod printf {
                 _ => {/* fall-through */},
             }
 
-            Cur::new_at_start(&s[start..])
+            //let _ = Cur::new_at_start_with_pos(&s[..], start);
+            //Cur::new_at_start(&s[start..])
+            Cur::new_at_start_with_pos(&s[..], start)
         };
 
         // This is meant to be a translation of the following regex:
@@ -355,6 +385,7 @@ pub mod printf {
                     precision: None,
                     length: None,
                     type_: at.slice_between(next).unwrap(),
+                    position: (start.at, next.at),
                 }),
                 next.slice_after()
             ));
@@ -541,6 +572,7 @@ pub mod printf {
         drop(next);
 
         end = at;
+        let position = (start.at, end.at);
 
         let f = Format {
             span: start.slice_between(end).unwrap(),
@@ -550,6 +582,7 @@ pub mod printf {
             precision,
             length,
             type_,
+            position,
         };
         Some((Substitution::Format(f), end.slice_after()))
     }
@@ -755,6 +788,12 @@ pub mod shell {
             }
         }
 
+        pub fn position(&self) -> Option<(usize, usize)> {
+            match *self {
+                _ => None,
+            }
+        }
+
         pub fn translate(&self) -> Option<String> {
             match *self {
                 Substitution::Ordinal(n) => Some(format!("{{{}}}", n)),
@@ -918,7 +957,7 @@ mod strcursor {
 
     pub struct StrCursor<'a> {
         s: &'a str,
-        at: usize,
+        pub at: usize,
     }
 
     impl<'a> StrCursor<'a> {
@@ -926,6 +965,13 @@ mod strcursor {
             StrCursor {
                 s,
                 at: 0,
+            }
+        }
+
+        pub fn new_at_start_with_pos(s: &'a str, at: usize) -> StrCursor<'a> {
+            StrCursor {
+                s,
+                at,
             }
         }
 

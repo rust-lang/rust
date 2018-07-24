@@ -948,6 +948,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                 ($kind:ident) => {{
                     let mut show_doc_note = false;
 
+                    let mut suggestions = vec![];
                     for sub in foreign::$kind::iter_subs(fmt_str) {
                         let trn = match sub.translate() {
                             Some(trn) => trn,
@@ -956,6 +957,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                             None => continue,
                         };
 
+                        let pos = sub.position();
                         let sub = String::from(sub.as_str());
                         if explained.contains(&sub) {
                             continue;
@@ -967,7 +969,14 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                             show_doc_note = true;
                         }
 
-                        diag.help(&format!("`{}` should be written as `{}`", sub, trn));
+                        if let Some((start, end)) = pos {
+                            // account for `"` and account for raw strings `r#`
+                            let padding = str_style.map(|i| i + 2).unwrap_or(1);
+                            let sp = fmt_sp.from_inner_byte_pos(start + padding, end + padding);
+                            suggestions.push((sp, trn));
+                        } else {
+                            diag.help(&format!("`{}` should be written as `{}`", sub, trn));
+                        }
                     }
 
                     if show_doc_note {
@@ -975,6 +984,12 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                             stringify!($kind),
                             " formatting not supported; see the documentation for `std::fmt`",
                         ));
+                    }
+                    if suggestions.len() > 0 {
+                        diag.multipart_suggestion(
+                            "format specifiers in Rust are written using `{}`",
+                            suggestions,
+                        );
                     }
                 }};
             }

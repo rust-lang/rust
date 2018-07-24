@@ -178,9 +178,10 @@ error: argument never used
   --> $DIR/ifmt-bad-arg.rs:66:27
    |
 LL |     format!("foo %s baz", "bar"); //~ ERROR: argument never used
-   |                           ^^^^^
+   |                  --       ^^^^^
+   |                  |
+   |                  help: format specifiers in Rust are written using `{}`: `{}`
    |
-   = help: `%s` should be written as `{}`
    = note: printf formatting not supported; see the documentation for `std::fmt`
 
 error: there is no argument named `foo`
