@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-
 trait U {}
 trait T<X: U> { fn get(self) -> X; }
 

@@ -13,9 +13,7 @@
 // us from approximating the lifetimes of `field1` and `field2` to a
 // common intersection.
 
-
 #![allow(dead_code)]
-#![feature(core)]
 
 struct List<'l> {
     field1: &'l i32,
