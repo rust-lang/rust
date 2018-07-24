@@ -824,17 +824,14 @@ impl<'a> Context<'a> {
         if rlib.is_none() && rmeta.is_none() && dylib.is_none() {
             return None;
         }
-        match slot {
-            Some((_, metadata)) => {
-                Some(Library {
-                    dylib,
-                    rlib,
-                    rmeta,
-                    metadata,
-                })
+        slot.map(|(_, metadata)|
+            Library {
+                dylib,
+                rlib,
+                rmeta,
+                metadata,
             }
-            None => None,
-        }
+        )
     }
 }
 
