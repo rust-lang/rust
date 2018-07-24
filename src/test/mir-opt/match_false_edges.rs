@@ -54,8 +54,7 @@ fn main() {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      _3 = discriminant(_2);
-//      _14 = promoted[1];
-//      _4 = &(*_14);
+//      _4 = &(promoted[1]: std::option::Option<i32>);
 //      _9 = discriminant(_2);
 //      switchInt(move _9) -> [0isize: bb5, 1isize: bb3, otherwise: bb7];
 //  }
@@ -86,8 +85,7 @@ fn main() {
 //  }
 //  bb8: { // binding1 and guard
 //      StorageLive(_7);
-//      _13 = promoted[0];
-//      _7 = &(((*_13) as Some).0: i32);
+//      _7 = &(((promoted[0]: std::option::Option<i32>) as Some).0: i32);
 //      StorageLive(_10);
 //      _10 = const guard() -> [return: bb9, unwind: bb1];
 //  }

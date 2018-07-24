@@ -222,6 +222,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             &Place::Local(..) => {
                 // locals are safe
             }
+            &Place::Promoted(_) => {
+                bug!("unsafety checking should happen before promotion")
+            }
             &Place::Static(box Static { def_id, ty: _ }) => {
                 if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                     self.require_unsafe("use of mutable static",

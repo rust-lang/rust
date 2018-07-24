@@ -178,7 +178,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     let ptr = ptr.into();
     // always try to read the value and report errors
     let value = match ecx.try_read_value(ptr, layout.align, layout.ty)? {
-        Some(val) if is_static.is_none() => val,
+        Some(val) if is_static.is_none() && cid.promoted.is_none() => val,
         // point at the allocation
         _ => Value::ByRef(ptr, layout.align),
     };
@@ -561,7 +561,7 @@ pub fn const_eval_provider<'a, 'tcx>(
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
     res.and_then(|(mut val, _, miri_ty)| {
-        if tcx.is_static(def_id).is_none() {
+        if tcx.is_static(def_id).is_none() && cid.promoted.is_none() {
             val = ecx.try_read_by_ref(val, miri_ty)?;
         }
         Ok(value_to_const_value(&ecx, val, miri_ty))

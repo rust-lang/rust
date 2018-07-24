@@ -242,9 +242,11 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
     g
 }
 
-pub fn codegen_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                                def_id: DefId,
-                                is_mutable: bool) {
+pub fn codegen_static<'a, 'tcx>(
+    cx: &CodegenCx<'a, 'tcx>,
+    def_id: DefId,
+    is_mutable: bool,
+) {
     unsafe {
         let attrs = cx.tcx.codegen_fn_attrs(def_id);
 

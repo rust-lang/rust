@@ -716,6 +716,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
         match *place {
+            Place::Promoted(_) => {
+                buf.push_str("promoted");
+            }
             Place::Local(local) => {
                 self.append_local_to_string(local, buf)?;
             }
@@ -858,6 +861,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let local = &self.mir.local_decls[local];
                 self.describe_field_from_ty(&local.ty, field)
             }
+            Place::Promoted(ref prom) => self.describe_field_from_ty(&prom.1, field),
             Place::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Deref => self.describe_field(&proj.base, field),
@@ -928,6 +932,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let local = &self.mir.local_decls[*local];
                 Some(local.ty)
             }
+            Place::Promoted(ref prom) => Some(prom.1),
             Place::Static(ref st) => Some(st.ty),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(_, ty) => Some(ty),

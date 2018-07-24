@@ -449,6 +449,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     location: Location) {
         match *place {
             Place::Local(ref local) => self.visit_local(local, context, location),
+            Place::Promoted(_) => bug!("promoting already promoted MIR"),
             Place::Static(ref global) => {
                 if self.tcx
                        .get_attrs(global.def_id)
@@ -558,12 +559,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
             Operand::Constant(ref constant) => {
-                if let Literal::Value {
-                    value: &ty::Const { val: ConstValue::Unevaluated(def_id, _), ty, .. }
-                } = constant.literal {
+                if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
                     if self.tcx.trait_of_item(def_id).is_some() {
-                        self.add_type(ty);
+                        self.add_type(constant.literal.ty);
                     } else {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
 
@@ -573,7 +572,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         // Just in case the type is more specific than
                         // the definition, e.g. impl associated const
                         // with type parameters, take it into account.
-                        self.qualif.restrict(ty, self.tcx, self.param_env);
+                        self.qualif.restrict(constant.literal.ty, self.tcx, self.param_env);
                     }
                 }
             }

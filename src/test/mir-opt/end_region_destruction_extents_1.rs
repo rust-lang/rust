@@ -122,19 +122,15 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //     let mut _6: &'10s S1;
 //     let mut _7: &'10s S1;
 //     let mut _8: S1;
-//     let mut _9: &'10s S1;
-//     let mut _10: &'12ds S1;
 //     bb0: {
 //         StorageLive(_2);
 //         StorageLive(_3);
 //         StorageLive(_4);
-//         _10 = promoted[1];
-//         _4 = &'12ds (*_10);
+//         _4 = &'12ds (promoted[1]: S1);
 //         _3 = &'12ds (*_4);
 //         StorageLive(_6);
 //         StorageLive(_7);
-//         _9 = promoted[0];
-//         _7 = &'10s (*_9);
+//         _7 = &'10s (promoted[0]: S1);
 //         _6 = &'10s (*_7);
 //         _2 = D1<'12ds, '10s>::{{constructor}}(move _3, move _6);
 //         EndRegion('10s);

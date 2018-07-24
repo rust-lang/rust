@@ -22,12 +22,8 @@ fn main() {
     const Y: u32 = foo(0-1);
     //~^ WARN this constant cannot be used
     println!("{} {}", X, Y);
-    //~^ WARN this expression will panic at runtime
-    //~| WARN this expression will panic at runtime
-    //~| ERROR erroneous constant used
+    //~^ ERROR erroneous constant used
     //~| ERROR erroneous constant used
     //~| ERROR E0080
     //~| ERROR E0080
-    //~| WARN referenced constant
-    //~| WARN referenced constant
 }

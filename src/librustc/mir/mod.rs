@@ -1701,6 +1701,9 @@ pub enum Place<'tcx> {
     /// static or static mut variable
     Static(Box<Static<'tcx>>),
 
+    /// Constant code promoted to an injected static
+    Promoted(Box<(Promoted, Ty<'tcx>)>),
+
     /// projection out of a place (access a field, deref a pointer, etc)
     Projection(Box<PlaceProjection<'tcx>>),
 }
@@ -1810,6 +1813,7 @@ impl<'tcx> Debug for Place<'tcx> {
                 ty::tls::with(|tcx| tcx.item_path_str(def_id)),
                 ty
             ),
+            Promoted(ref promoted) => write!(fmt, "({:?}: {:?})", promoted.0, promoted.1),
             Projection(ref data) => match data.elem {
                 ProjectionElem::Downcast(ref adt_def, index) => {
                     write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].name)
@@ -1910,9 +1914,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(box Constant {
             span,
             ty,
-            literal: Literal::Value {
-                value: ty::Const::zero_sized(tcx, ty),
-            },
+            literal: ty::Const::zero_sized(tcx, ty),
         })
     }
 
@@ -2200,38 +2202,15 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub literal: Literal<'tcx>,
+    pub literal: &'tcx ty::Const<'tcx>,
 }
 
 newtype_index!(Promoted { DEBUG_FORMAT = "promoted[{}]" });
 
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub enum Literal<'tcx> {
-    Value {
-        value: &'tcx ty::Const<'tcx>,
-    },
-    Promoted {
-        // Index into the `promoted` vector of `Mir`.
-        index: Promoted,
-    },
-}
-
 impl<'tcx> Debug for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        write!(fmt, "{:?}", self.literal)
-    }
-}
-
-impl<'tcx> Debug for Literal<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        use self::Literal::*;
-        match *self {
-            Value { value } => {
-                write!(fmt, "const ")?;
-                fmt_const_val(fmt, value)
-            }
-            Promoted { index } => write!(fmt, "{:?}", index),
-        }
+        write!(fmt, "const ")?;
+        fmt_const_val(fmt, self.literal)
     }
 }
 
@@ -2916,22 +2895,5 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.ty.visit_with(visitor) || self.literal.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            Literal::Value { value } => Literal::Value {
-                value: value.fold_with(folder),
-            },
-            Literal::Promoted { index } => Literal::Promoted { index },
-        }
-    }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            Literal::Value { value } => value.visit_with(visitor),
-            Literal::Promoted { .. } => false,
-        }
     }
 }

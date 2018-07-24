@@ -26,6 +26,7 @@ crate trait PlaceExt<'tcx> {
 impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
     fn is_unsafe_place(&self, tcx: TyCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) -> bool {
         match self {
+            Place::Promoted(_) |
             Place::Local(_) => false,
             Place::Static(static_) => {
                 tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable)
@@ -52,6 +53,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
         loop {
             match p {
                 Place::Projection(pi) => p = &pi.base,
+                Place::Promoted(_) |
                 Place::Static(_) => return None,
                 Place::Local(l) => return Some(*l),
             }

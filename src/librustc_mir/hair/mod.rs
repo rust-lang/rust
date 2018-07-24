@@ -14,11 +14,11 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp};
+use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
-use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty};
+use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty, Const};
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
@@ -271,7 +271,7 @@ pub enum ExprKind<'tcx> {
         movability: Option<hir::GeneratorMovability>,
     },
     Literal {
-        literal: Literal<'tcx>,
+        literal: &'tcx Const<'tcx>,
     },
     InlineAsm {
         asm: &'tcx hir::InlineAsm,

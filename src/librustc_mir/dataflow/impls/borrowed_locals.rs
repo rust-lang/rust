@@ -93,6 +93,7 @@ struct BorrowedLocalsVisitor<'b, 'c: 'b> {
 fn find_local<'tcx>(place: &Place<'tcx>) -> Option<Local> {
     match *place {
         Place::Local(l) => Some(l),
+        Place::Promoted(_) |
         Place::Static(..) => None,
         Place::Projection(ref proj) => {
             match proj.elem {

@@ -282,6 +282,7 @@ fn unroll_place<'tcx, R>(
             op,
         ),
 
+        Place::Promoted(_) |
         Place::Local(_) | Place::Static(_) => {
             let list = PlaceComponents {
                 component: place,
@@ -326,8 +327,21 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 Overlap::EqualOrDisjoint
             }
         }
+        (Place::Promoted(p1), Place::Promoted(p2)) => {
+            if p1.0 == p2.0 {
+                // the same promoted - base case, equal
+                debug!("place_element_conflict: DISJOINT-OR-EQ-PROMOTED");
+                Overlap::EqualOrDisjoint
+            } else {
+                // different promoteds - base case, disjoint
+                debug!("place_element_conflict: DISJOINT-PROMOTED");
+                Overlap::Disjoint
+            }
+        }
+        (Place::Local(_), Place::Promoted(_)) | (Place::Promoted(_), Place::Local(_)) |
+        (Place::Promoted(_), Place::Static(_)) | (Place::Static(_), Place::Promoted(_)) |
         (Place::Local(_), Place::Static(_)) | (Place::Static(_), Place::Local(_)) => {
-            debug!("place_element_conflict: DISJOINT-STATIC-LOCAL");
+            debug!("place_element_conflict: DISJOINT-STATIC-LOCAL-PROMOTED");
             Overlap::Disjoint
         }
         (Place::Projection(pi1), Place::Projection(pi2)) => {

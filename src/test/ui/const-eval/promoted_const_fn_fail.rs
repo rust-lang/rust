@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
+
 #![feature(const_fn)]
 
 #![deny(const_err)]
@@ -23,15 +25,13 @@ const fn bar() -> u8 {
         // is run on a system whose pointers need more
         // than 8 bits
         Bar { a: &42 }.b as u8
-        //~^ ERROR this expression will panic at runtime
-        //~| ERROR this expression will panic at runtime
     }
 }
 
 fn main() {
-    // FIXME(oli-obk): this should compile but panic at runtime
-    // if we change the `const_err` lint to allow this will actually compile, but then
-    // continue with undefined values.
+    // FIXME(oli-obk): this should panic at runtime
+    // this will actually compile, but then
+    // abort at runtime (not panic, hard abort).
     let x: &'static u8 = &(bar() + 1);
     let y = *x;
     unreachable!();

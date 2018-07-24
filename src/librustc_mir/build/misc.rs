@@ -35,7 +35,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn literal_operand(&mut self,
                            span: Span,
                            ty: Ty<'tcx>,
-                           literal: Literal<'tcx>)
+                           literal: &'tcx ty::Const<'tcx>)
                            -> Operand<'tcx> {
         let constant = box Constant {
             span,
@@ -52,9 +52,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // Returns a zero literal operand for the appropriate type, works for
     // bool, char and integers.
     pub fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = Literal::Value {
-            value: ty::Const::from_bits(self.hir.tcx(), 0, ty::ParamEnv::empty().and(ty))
-        };
+        let literal = ty::Const::from_bits(self.hir.tcx(), 0, ty::ParamEnv::empty().and(ty));
 
         self.literal_operand(span, ty, literal)
     }
