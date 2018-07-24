@@ -52,6 +52,7 @@ use std::path::{Path, PathBuf};
 use rustc_data_structures::sync::{self, Lrc, Lock};
 use std::sync::mpsc;
 use syntax::{self, ast, attr, diagnostics, visit};
+use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
@@ -1064,6 +1065,15 @@ where
             crate_name.to_string(),
             sess.diagnostic(),
         )
+    });
+
+    // Add all buffered lints from the `ParseSess` to the `Session`.
+    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+        info!("{} parse sess buffered_lints", buffered_lints.len());
+        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
+            let lint = lint::Lint::from_parser_lint_id(lint_id);
+            sess.buffer_lint(lint, id, span, &msg);
+        }
     });
 
     // Done with macro expansion!

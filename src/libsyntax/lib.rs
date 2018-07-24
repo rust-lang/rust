@@ -181,6 +181,8 @@ pub mod ext {
     }
 }
 
+pub mod early_buffered_lints;
+
 #[cfg(test)]
 mod test_snippet;
 

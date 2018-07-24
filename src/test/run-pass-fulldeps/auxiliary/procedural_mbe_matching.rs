@@ -20,7 +20,7 @@ extern crate rustc_plugin;
 
 use syntax::feature_gate::Features;
 use syntax::parse::token::{NtExpr, NtPat};
-use syntax::ast::{Ident, Pat};
+use syntax::ast::{Ident, Pat, NodeId};
 use syntax::tokenstream::{TokenTree};
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::ext::build::AstBuilder;
@@ -29,10 +29,8 @@ use syntax::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use syntax::ext::tt::macro_parser::{Success, Failure, Error};
 use syntax::ext::tt::macro_parser::parse_failure_msg;
 use syntax::ptr::P;
-use syntax_pos::Span;
+use syntax_pos::{Span, edition::Edition};
 use rustc_plugin::Registry;
-
-use std::cell::RefCell;
 
 fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
@@ -42,7 +40,10 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
                                     true,
                                     cx.parse_sess,
                                     &Features::new(),
-                                    &[]);
+                                    &[],
+                                    Edition::Edition2015,
+                                    // not used...
+                                    NodeId::new(0));
     let map = match TokenTree::parse(cx, &mbe_matcher, args.iter().cloned().collect()) {
         Success(map) => map,
         Failure(_, tok) => {
