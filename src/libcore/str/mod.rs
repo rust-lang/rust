@@ -696,13 +696,10 @@ impl<'a> Iterator for CharIndices<'a> {
 impl<'a> DoubleEndedIterator for CharIndices<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(usize, char)> {
-        match self.iter.next_back() {
-            None => None,
-            Some(ch) => {
-                let index = self.front_offset + self.iter.iter.len();
-                Some((index, ch))
-            }
-        }
+        self.iter.next_back().map(|ch| {
+            let index = self.front_offset + self.iter.iter.len();
+            (index, ch)
+        })
     }
 }
 
