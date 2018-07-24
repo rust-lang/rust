@@ -14,6 +14,8 @@ macro_rules! no_mangle {
     }
 }
 
+// only for the wasm32-unknown-unknown target
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 no_mangle! {
     fn acos(x: f64) -> f64;
     fn asin(x: f64) -> f64;
@@ -49,4 +51,13 @@ no_mangle! {
     fn fmodf(x: f32, y: f32) -> f32;
     fn fma(x: f64, y: f64, z: f64) -> f64;
     fn fmaf(x: f32, y: f32, z: f32) -> f32;
+}
+
+// only for the thumb*-none-eabi* targets
+#[cfg(all(target_arch = "arm", target_os = "none"))]
+no_mangle! {
+    // `f64 % f64`
+    fn fmod(x: f64, y: f64) -> f64;
+    // `f32 % f32`
+    fn fmodf(x: f32, y: f32) -> f32;
 }
