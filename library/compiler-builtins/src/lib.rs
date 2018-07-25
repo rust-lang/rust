@@ -47,10 +47,10 @@ mod macros;
 pub mod int;
 pub mod float;
 
-pub mod mem;
-// only for the wasm32-unknown-unknown target
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(any(all(target_arch = "wasm32", target_os = "unknown"),
+          all(target_arch = "arm", target_os = "none")))]
 pub mod math;
+pub mod mem;
 
 #[cfg(target_arch = "arm")]
 pub mod arm;
