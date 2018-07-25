@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::Span;
@@ -71,7 +72,7 @@ impl LintPass for Unicode {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprLit(ref lit) = expr.node {
+        if let ExprKind::Lit(ref lit) = expr.node {
             if let LitKind::Str(_, _) = lit.node {
                 check_str(cx, lit.span, expr.id)
             }
@@ -93,7 +94,7 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
     result
 }
 
-fn check_str(cx: &LateContext, span: Span, id: NodeId) {
+fn check_str(cx: &LateContext<'_, '_>, span: Span, id: NodeId) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
         span_help_and_lint(

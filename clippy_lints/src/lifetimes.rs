@@ -1,11 +1,13 @@
 use crate::reexport::*;
+use matches::matches;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::hir::intravisit::*;
 use std::collections::{HashMap, HashSet};
 use syntax::codemap::Span;
-use crate::utils::{in_external_macro, last_path_segment, span_lint};
+use crate::utils::{last_path_segment, span_lint};
 use syntax::symbol::keywords;
 
 /// **What it does:** Checks for lifetime annotations which can be removed by
@@ -59,7 +61,7 @@ impl LintPass for LifetimePass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemFn(ref decl, _, ref generics, id) = item.node {
+        if let ItemKind::Fn(ref decl, _, ref generics, id) = item.node {
             check_fn_inner(cx, decl, Some(id), generics, item.span);
         }
     }
@@ -96,7 +98,7 @@ fn check_fn_inner<'a, 'tcx>(
     generics: &'tcx Generics,
     span: Span,
 ) {
-    if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
+    if in_external_macro(cx.sess(), span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
 
@@ -126,7 +128,7 @@ fn check_fn_inner<'a, 'tcx>(
                         GenericArg::Type(_) => None,
                     });
                     for bound in lifetimes {
-                        if bound.name.ident().name != "'static" && !bound.is_elided() {
+                        if bound.name != LifetimeName::Static && !bound.is_elided() {
                             return;
                         }
                         bounds_lts.push(bound);
@@ -251,7 +253,7 @@ fn allowed_lts_from(named_generics: &[GenericParam]) -> HashSet<RefLt> {
 
 fn lts_from_bounds<'a, T: Iterator<Item = &'a Lifetime>>(mut vec: Vec<RefLt>, bounds_lts: T) -> Vec<RefLt> {
     for lt in bounds_lts {
-        if lt.name.ident().name != "'static" {
+        if lt.name != LifetimeName::Static {
             vec.push(RefLt::Named(lt.name.ident().name));
         }
     }
@@ -282,7 +284,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
 
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let Some(ref lt) = *lifetime {
-            if lt.name.ident().name == "'static" {
+            if lt.name == LifetimeName::Static {
                 self.lts.push(RefLt::Static);
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
@@ -338,22 +340,29 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty) {
         match ty.node {
-            TyRptr(ref lt, _) if lt.is_elided() => {
+            TyKind::Rptr(ref lt, _) if lt.is_elided() => {
                 self.record(&None);
             },
-            TyPath(ref path) => {
-                self.collect_anonymous_lifetimes(path, ty);
-            },
-            TyImplTraitExistential(exist_ty_id, _, _) => {
-                if let ItemExistential(ref exist_ty) = self.cx.tcx.hir.expect_item(exist_ty_id.id).node {
-                    for bound in &exist_ty.bounds {
-                        if let GenericBound::Outlives(_) = *bound {
-                            self.record(&None);
+            TyKind::Path(ref path) => {
+                if let QPath::Resolved(_, ref path) = *path {
+                    if let Def::Existential(def_id) = path.def {
+                        let node_id = self.cx.tcx.hir.as_local_node_id(def_id).unwrap();
+                        if let ItemKind::Existential(ref exist_ty) = self.cx.tcx.hir.expect_item(node_id).node {
+                            for bound in &exist_ty.bounds {
+                                if let GenericBound::Outlives(_) = *bound {
+                                    self.record(&None);
+                                }
+                            }
+                        } else {
+                            unreachable!()
                         }
+                        walk_ty(self, ty);
+                        return;
                     }
                 }
+                self.collect_anonymous_lifetimes(path, ty);
             }
-            TyTraitObject(ref bounds, ref lt) => {
+            TyKind::TraitObject(ref bounds, ref lt) => {
                 if !lt.is_elided() {
                     self.abort = true;
                 }

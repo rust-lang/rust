@@ -2,9 +2,10 @@
 //! on the condition
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 
-use crate::utils::{in_external_macro, span_help_and_lint};
+use crate::utils::span_help_and_lint;
 
 /// **What it does:** Checks for usage of `!` or `!=` in an if condition with an
 /// else branch.
@@ -46,8 +47,8 @@ impl LintPass for IfNotElse {
 }
 
 impl EarlyLintPass for IfNotElse {
-    fn check_expr(&mut self, cx: &EarlyContext, item: &Expr) {
-        if in_external_macro(cx, item.span) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
+        if in_external_macro(cx.sess(), item.span) {
             return;
         }
         if let ExprKind::If(ref cond, _, Some(ref els)) = item.node {

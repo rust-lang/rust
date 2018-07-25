@@ -5,6 +5,8 @@ use rustc::hir::*;
 use rustc::hir::map::NodeItem;
 use rustc::hir::QPath;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
@@ -103,7 +105,7 @@ impl LintPass for PointerPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemFn(ref decl, _, _, body_id) = item.node {
+        if let ItemKind::Fn(ref decl, _, _, body_id) = item.node {
             check_fn(cx, decl, item.id, Some(body_id));
         }
     }
@@ -111,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, body_id) = item.node {
             if let Some(NodeItem(it)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(item.id)) {
-                if let ItemImpl(_, _, _, _, Some(_), _, _) = it.node {
+                if let ItemKind::Impl(_, _, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls
                 }
             }
@@ -131,8 +133,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprBinary(ref op, ref l, ref r) = expr.node {
-            if (op.node == BiEq || op.node == BiNe) && (is_null_path(l) || is_null_path(r)) {
+        if let ExprKind::Binary(ref op, ref l, ref r) = expr.node {
+            if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(l) || is_null_path(r)) {
                 span_lint(
                     cx,
                     CMP_NULL,
@@ -144,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     }
 }
 
-fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<BodyId>) {
+fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<BodyId>) {
     let fn_def_id = cx.tcx.hir.local_def_id(fn_id);
     let sig = cx.tcx.fn_sig(fn_def_id);
     let fn_ty = sig.skip_binder();
@@ -159,7 +161,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
             if match_type(cx, ty, &paths::VEC) {
                 let mut ty_snippet = None;
                 if_chain! {
-                    if let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
+                    if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
                     if let Some(&PathSegment{args: Some(ref parameters), ..}) = path.segments.last();
                     then {
                         let types: Vec<_> = parameters.args.iter().filter_map(|arg| match arg {
@@ -219,8 +221,8 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                 }
             } else if match_type(cx, ty, &paths::COW) {
                 if_chain! {
-                    if let TyRptr(_, MutTy { ref ty, ..} ) = arg.node;
-                    if let TyPath(ref path) = ty.node;
+                    if let TyKind::Rptr(_, MutTy { ref ty, ..} ) = arg.node;
+                    if let TyKind::Path(ref path) = ty.node;
                     if let QPath::Resolved(None, ref pp) = *path;
                     if let [ref bx] = *pp.segments;
                     if let Some(ref params) = bx.args;
@@ -273,7 +275,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
 }
 
 fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
-    if let Ty_::TyRptr(ref lt, ref m) = ty.node {
+    if let TyKind::Rptr(ref lt, ref m) = ty.node {
         Some((lt, m.mutbl, ty.span))
     } else {
         None
@@ -281,9 +283,9 @@ fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
 }
 
 fn is_null_path(expr: &Expr) -> bool {
-    if let ExprCall(ref pathexp, ref args) = expr.node {
+    if let ExprKind::Call(ref pathexp, ref args) = expr.node {
         if args.is_empty() {
-            if let ExprPath(ref path) = pathexp.node {
+            if let ExprKind::Path(ref path) = pathexp.node {
                 return match_qpath(path, &paths::PTR_NULL) || match_qpath(path, &paths::PTR_NULL_MUT);
             }
         }

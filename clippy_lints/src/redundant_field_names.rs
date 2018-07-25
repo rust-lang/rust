@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use crate::utils::{in_macro, is_range_expression, match_var, span_lint_and_sugg};
 
@@ -43,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
             return;
         }
 
-        if let ExprStruct(_, ref fields, _) = expr.node {
+        if let ExprKind::Struct(_, ref fields, _) = expr.node {
             for field in fields {
                 let name = field.ident.name;
 

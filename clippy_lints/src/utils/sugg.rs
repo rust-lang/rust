@@ -3,6 +3,7 @@
 // currently ignores lifetimes and generics
 #![allow(use_self)]
 
+use matches::matches;
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
 use rustc_errors;
@@ -31,8 +32,8 @@ pub enum Sugg<'a> {
 /// Literal constant `1`, for convenience.
 pub const ONE: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("1"));
 
-impl<'a> Display for Sugg<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+impl Display for Sugg<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match *self {
             Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) | Sugg::BinOp(_, ref s) => s.fmt(f),
         }
@@ -42,51 +43,51 @@ impl<'a> Display for Sugg<'a> {
 #[allow(wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
-    pub fn hir_opt(cx: &LateContext, expr: &hir::Expr) -> Option<Self> {
+    pub fn hir_opt(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<Self> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
             match expr.node {
-                hir::ExprAddrOf(..) |
-                hir::ExprBox(..) |
-                hir::ExprClosure(.., _) |
-                hir::ExprIf(..) |
-                hir::ExprUnary(..) |
-                hir::ExprMatch(..) => Sugg::MaybeParen(snippet),
-                hir::ExprContinue(..) |
-                hir::ExprYield(..) |
-                hir::ExprArray(..) |
-                hir::ExprBlock(..) |
-                hir::ExprBreak(..) |
-                hir::ExprCall(..) |
-                hir::ExprField(..) |
-                hir::ExprIndex(..) |
-                hir::ExprInlineAsm(..) |
-                hir::ExprLit(..) |
-                hir::ExprLoop(..) |
-                hir::ExprMethodCall(..) |
-                hir::ExprPath(..) |
-                hir::ExprRepeat(..) |
-                hir::ExprRet(..) |
-                hir::ExprStruct(..) |
-                hir::ExprTup(..) |
-                hir::ExprWhile(..) => Sugg::NonParen(snippet),
-                hir::ExprAssign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
-                hir::ExprAssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
-                hir::ExprBinary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
-                hir::ExprCast(..) => Sugg::BinOp(AssocOp::As, snippet),
-                hir::ExprType(..) => Sugg::BinOp(AssocOp::Colon, snippet),
+                hir::ExprKind::AddrOf(..) |
+                hir::ExprKind::Box(..) |
+                hir::ExprKind::Closure(.., _) |
+                hir::ExprKind::If(..) |
+                hir::ExprKind::Unary(..) |
+                hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+                hir::ExprKind::Continue(..) |
+                hir::ExprKind::Yield(..) |
+                hir::ExprKind::Array(..) |
+                hir::ExprKind::Block(..) |
+                hir::ExprKind::Break(..) |
+                hir::ExprKind::Call(..) |
+                hir::ExprKind::Field(..) |
+                hir::ExprKind::Index(..) |
+                hir::ExprKind::InlineAsm(..) |
+                hir::ExprKind::Lit(..) |
+                hir::ExprKind::Loop(..) |
+                hir::ExprKind::MethodCall(..) |
+                hir::ExprKind::Path(..) |
+                hir::ExprKind::Repeat(..) |
+                hir::ExprKind::Ret(..) |
+                hir::ExprKind::Struct(..) |
+                hir::ExprKind::Tup(..) |
+                hir::ExprKind::While(..) => Sugg::NonParen(snippet),
+                hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
+                hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
+                hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
+                hir::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
+                hir::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
             }
         })
     }
 
     /// Convenience function around `hir_opt` for suggestions with a default
     /// text.
-    pub fn hir(cx: &LateContext, expr: &hir::Expr, default: &'a str) -> Self {
+    pub fn hir(cx: &LateContext<'_, '_>, expr: &hir::Expr, default: &'a str) -> Self {
         Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
     }
 
     /// Prepare a suggestion from an expression.
-    pub fn ast(cx: &EarlyContext, expr: &ast::Expr, default: &'a str) -> Self {
+    pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use syntax::ast::RangeLimits;
 
         let snippet = snippet(cx, expr.span, default);
@@ -240,7 +241,7 @@ impl<T> ParenHelper<T> {
 }
 
 impl<T: Display> Display for ParenHelper<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         if self.paren {
             write!(f, "({})", self.wrapped)
         } else {
@@ -254,7 +255,7 @@ impl<T: Display> Display for ParenHelper<T> {
 /// For convenience, the operator is taken as a string because all unary
 /// operators have the same
 /// precedence.
-pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
+pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
     Sugg::MaybeParen(format!("{}{}", op, expr.maybe_par()).into())
 }
 
@@ -263,7 +264,7 @@ pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
 /// Precedence of shift operator relative to other arithmetic operation is
 /// often confusing so
 /// parenthesis will always be added for a mix of these.
-pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
+pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     /// Whether the operator is a shift operator `<<` or `>>`.
     fn is_shift(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
@@ -334,7 +335,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
 }
 
 /// Convinience wrapper arround `make_assoc` and `AssocOp::from_ast_binop`.
-pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
+pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     make_assoc(AssocOp::from_ast_binop(op), lhs, rhs)
 }
 
@@ -382,21 +383,29 @@ fn associativity(op: &AssocOp) -> Associativity {
 
 /// Convert a `hir::BinOp` to the corresponding assigning binary operator.
 fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
-    use rustc::hir::BinOp_::*;
     use syntax::parse::token::BinOpToken::*;
 
     AssocOp::AssignOp(match op.node {
-        BiAdd => Plus,
-        BiBitAnd => And,
-        BiBitOr => Or,
-        BiBitXor => Caret,
-        BiDiv => Slash,
-        BiMul => Star,
-        BiRem => Percent,
-        BiShl => Shl,
-        BiShr => Shr,
-        BiSub => Minus,
-        BiAnd | BiEq | BiGe | BiGt | BiLe | BiLt | BiNe | BiOr => panic!("This operator does not exist"),
+        hir::BinOpKind::Add => Plus,
+        hir::BinOpKind::BitAnd => And,
+        hir::BinOpKind::BitOr => Or,
+        hir::BinOpKind::BitXor => Caret,
+        hir::BinOpKind::Div => Slash,
+        hir::BinOpKind::Mul => Star,
+        hir::BinOpKind::Rem => Percent,
+        hir::BinOpKind::Shl => Shl,
+        hir::BinOpKind::Shr => Shr,
+        hir::BinOpKind::Sub => Minus,
+
+        | hir::BinOpKind::And
+        | hir::BinOpKind::Eq
+        | hir::BinOpKind::Ge
+        | hir::BinOpKind::Gt
+        | hir::BinOpKind::Le
+        | hir::BinOpKind::Lt
+        | hir::BinOpKind::Ne
+        | hir::BinOpKind::Or
+        => panic!("This operator does not exist"),
     })
 }
 

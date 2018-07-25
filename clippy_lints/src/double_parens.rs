@@ -1,5 +1,6 @@
 use syntax::ast::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
+use rustc::{declare_lint, lint_array};
 
 /// **What it does:** Checks for unnecessary double parentheses.
 ///
@@ -30,7 +31,7 @@ impl LintPass for DoubleParens {
 }
 
 impl EarlyLintPass for DoubleParens {
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         match expr.node {
             ExprKind::Paren(ref in_paren) => match in_paren.node {
                 ExprKind::Paren(_) | ExprKind::Tup(_) => {

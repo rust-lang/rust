@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir;
 use crate::utils::{is_try, match_qpath, match_trait_method, paths, span_lint};
 
@@ -38,16 +39,16 @@ impl LintPass for UnusedIoAmount {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
-    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
         let expr = match s.node {
-            hir::StmtSemi(ref expr, _) | hir::StmtExpr(ref expr, _) => &**expr,
+            hir::StmtKind::Semi(ref expr, _) | hir::StmtKind::Expr(ref expr, _) => &**expr,
             _ => return,
         };
 
         match expr.node {
-            hir::ExprMatch(ref res, _, _) if is_try(expr).is_some() => {
-                if let hir::ExprCall(ref func, ref args) = res.node {
-                    if let hir::ExprPath(ref path) = func.node {
+            hir::ExprKind::Match(ref res, _, _) if is_try(expr).is_some() => {
+                if let hir::ExprKind::Call(ref func, ref args) = res.node {
+                    if let hir::ExprKind::Path(ref path) = func.node {
                         if match_qpath(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {
                             check_method_call(cx, &args[0], expr);
                         }
@@ -57,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
                 }
             },
 
-            hir::ExprMethodCall(ref path, _, ref args) => match &*path.ident.as_str() {
+            hir::ExprKind::MethodCall(ref path, _, ref args) => match &*path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
                     check_method_call(cx, &args[0], expr);
                 },
@@ -69,8 +70,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
     }
 }
 
-fn check_method_call(cx: &LateContext, call: &hir::Expr, expr: &hir::Expr) {
-    if let hir::ExprMethodCall(ref path, _, _) = call.node {
+fn check_method_call(cx: &LateContext<'_, '_>, call: &hir::Expr, expr: &hir::Expr) {
+    if let hir::ExprKind::MethodCall(ref path, _, _) = call.node {
         let symbol = &*path.ident.as_str();
         if match_trait_method(cx, call, &paths::IO_READ) && symbol == "read" {
             span_lint(

@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
 use std::collections::HashMap;
@@ -69,10 +70,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
 impl<'a, 'tcx: 'a> Visitor<'tcx> for UnusedLabelVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprBreak(destination, _) | hir::ExprContinue(destination) => if let Some(label) = destination.label {
+            hir::ExprKind::Break(destination, _) | hir::ExprKind::Continue(destination) => if let Some(label) = destination.label {
                 self.labels.remove(&label.ident.as_str());
             },
-            hir::ExprLoop(_, Some(label), _) | hir::ExprWhile(_, _, Some(label)) => {
+            hir::ExprKind::Loop(_, Some(label), _) | hir::ExprKind::While(_, _, Some(label)) => {
                 self.labels.insert(label.ident.as_str(), expr.span);
             },
             _ => (),

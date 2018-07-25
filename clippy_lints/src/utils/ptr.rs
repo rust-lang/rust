@@ -7,7 +7,7 @@ use syntax::codemap::Span;
 use crate::utils::{get_pat_name, match_var, snippet};
 
 pub fn get_spans(
-    cx: &LateContext,
+    cx: &LateContext<'_, '_>,
     opt_body_id: Option<BodyId>,
     idx: usize,
     replacements: &'static [(&'static str, &'static str)],
@@ -54,7 +54,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
         if self.abort {
             return;
         }
-        if let ExprMethodCall(ref seg, _, ref args) = expr.node {
+        if let ExprKind::MethodCall(ref seg, _, ref args) = expr.node {
             if args.len() == 1 && match_var(&args[0], self.name) {
                 if seg.ident.name == "capacity" {
                     self.abort = true;

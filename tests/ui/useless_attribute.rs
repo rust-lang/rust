@@ -6,6 +6,8 @@
 #[cfg_attr(feature = "cargo-clippy", allow(dead_code, unused_extern_crates))]
 #[cfg_attr(feature = "cargo-clippy",
            allow(dead_code, unused_extern_crates))]
+#[allow(unused_imports)]
+#[macro_use]
 extern crate clippy_lints;
 
 // don't lint on unused_import for `use` items

@@ -3,6 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Spanned;
@@ -60,7 +61,7 @@ impl LintPass for NeedlessBool {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use self::Expression::*;
-        if let ExprIf(ref pred, ref then_block, Some(ref else_expr)) = e.node {
+        if let ExprKind::If(ref pred, ref then_block, Some(ref else_expr)) = e.node {
             let reduce = |ret, not| {
                 let snip = Sugg::hir(cx, pred, "<predicate>");
                 let snip = if not { !snip } else { snip };
@@ -80,7 +81,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                     hint,
                 );
             };
-            if let ExprBlock(ref then_block, _) = then_block.node {
+            if let ExprKind::Block(ref then_block, _) = then_block.node {
                 match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                     (RetBool(true), RetBool(true)) | (Bool(true), Bool(true)) => {
                         span_lint(
@@ -105,7 +106,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                     _ => (),
                 }
             } else {
-                panic!("IfExpr 'then' node is not an ExprBlock");
+                panic!("IfExpr 'then' node is not an ExprKind::Block");
             }
         }
     }
@@ -123,7 +124,7 @@ impl LintPass for BoolComparison {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use self::Expression::*;
-        if let ExprBinary(Spanned { node: BiEq, .. }, ref left_side, ref right_side) = e.node {
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Eq, .. }, ref left_side, ref right_side) = e.node {
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
                 (Bool(true), Other) => {
                     let hint = snippet(cx, right_side.span, "..").into_owned();
@@ -184,8 +185,8 @@ enum Expression {
 fn fetch_bool_block(block: &Block) -> Expression {
     match (&*block.stmts, block.expr.as_ref()) {
         (&[], Some(e)) => fetch_bool_expr(&**e),
-        (&[ref e], None) => if let StmtSemi(ref e, _) = e.node {
-            if let ExprRet(_) = e.node {
+        (&[ref e], None) => if let StmtKind::Semi(ref e, _) = e.node {
+            if let ExprKind::Ret(_) = e.node {
                 fetch_bool_expr(&**e)
             } else {
                 Expression::Other
@@ -199,13 +200,13 @@ fn fetch_bool_block(block: &Block) -> Expression {
 
 fn fetch_bool_expr(expr: &Expr) -> Expression {
     match expr.node {
-        ExprBlock(ref block, _) => fetch_bool_block(block),
-        ExprLit(ref lit_ptr) => if let LitKind::Bool(value) = lit_ptr.node {
+        ExprKind::Block(ref block, _) => fetch_bool_block(block),
+        ExprKind::Lit(ref lit_ptr) => if let LitKind::Bool(value) = lit_ptr.node {
             Expression::Bool(value)
         } else {
             Expression::Other
         },
-        ExprRet(Some(ref expr)) => match fetch_bool_expr(expr) {
+        ExprKind::Ret(Some(ref expr)) => match fetch_bool_expr(expr) {
             Expression::Bool(value) => Expression::RetBool(value),
             _ => Expression::Other,
         },

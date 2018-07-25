@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use crate::utils::{get_trait_def_id, paths, span_lint};
 
@@ -29,7 +30,7 @@ impl LintPass for Serde {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Serde {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemImpl(_, _, _, _, Some(ref trait_ref), _, ref items) = item.node {
+        if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, ref items) = item.node {
             let did = trait_ref.path.def.def_id();
             if let Some(visit_did) = get_trait_def_id(cx, &paths::SERDE_DE_VISITOR) {
                 if did == visit_did {

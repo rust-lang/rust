@@ -48,8 +48,6 @@ matrix:
     - env: INTEGRATION=serde-rs/serde
     - env: INTEGRATION=Geal/nom
     - env: INTEGRATION=hyperium/hyper
-    - env: INTEGRATION=rust-lang/cargo
-    - env: INTEGRATION=rust-lang-nursery/rls
 
 script:
   - |

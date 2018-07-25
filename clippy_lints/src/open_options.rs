@@ -1,5 +1,6 @@
-use rustc::hir::{Expr, ExprLit, ExprMethodCall};
+use rustc::hir::{Expr, ExprKind};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
 use crate::utils::{match_type, paths, span_lint, walk_ptrs_ty};
@@ -33,7 +34,7 @@ impl LintPass for NonSensical {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSensical {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprMethodCall(ref path, _, ref arguments) = e.node {
+        if let ExprKind::MethodCall(ref path, _, ref arguments) = e.node {
             let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
             if path.ident.name == "open" && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
@@ -60,14 +61,14 @@ enum OpenOption {
     Append,
 }
 
-fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
-    if let ExprMethodCall(ref path, _, ref arguments) = argument.node {
+fn get_open_options(cx: &LateContext<'_, '_>, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
+    if let ExprKind::MethodCall(ref path, _, ref arguments) = argument.node {
         let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
         if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {
             let argument_option = match arguments[1].node {
-                ExprLit(ref span) => {
+                ExprKind::Lit(ref span) => {
                     if let Spanned {
                         node: LitKind::Bool(lit),
                         ..
@@ -111,7 +112,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
     }
 }
 
-fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
+fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument)], span: Span) {
     let (mut create, mut append, mut truncate, mut read, mut write) = (false, false, false, false, false);
     let (mut create_arg, mut append_arg, mut truncate_arg, mut read_arg, mut write_arg) =
         (false, false, false, false, false);

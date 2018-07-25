@@ -2,6 +2,7 @@
 
 use rustc::cfg::CFG;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -147,14 +148,14 @@ struct CCHelper<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr) {
         match e.node {
-            ExprMatch(_, ref arms, _) => {
+            ExprKind::Match(_, ref arms, _) => {
                 walk_expr(self, e);
                 let arms_n: u64 = arms.iter().map(|arm| arm.pats.len() as u64).sum();
                 if arms_n > 1 {
                     self.match_arms += arms_n - 2;
                 }
             },
-            ExprCall(ref callee, _) => {
+            ExprKind::Call(ref callee, _) => {
                 walk_expr(self, e);
                 let ty = self.cx.tables.node_id_to_type(callee.hir_id);
                 match ty.sty {
@@ -167,15 +168,15 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
                     _ => (),
                 }
             },
-            ExprClosure(.., _) => (),
-            ExprBinary(op, _, _) => {
+            ExprKind::Closure(.., _) => (),
+            ExprKind::Binary(op, _, _) => {
                 walk_expr(self, e);
                 match op.node {
-                    BiAnd | BiOr => self.short_circuits += 1,
+                    BinOpKind::And | BinOpKind::Or => self.short_circuits += 1,
                     _ => (),
                 }
             },
-            ExprRet(_) => self.returns += 1,
+            ExprKind::Ret(_) => self.returns += 1,
             _ => walk_expr(self, e),
         }
     }
@@ -186,7 +187,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
 
 #[cfg(feature = "debugging")]
 #[allow(too_many_arguments)]
-fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, _: NodeId) {
+fn report_cc_bug(_: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, _: NodeId) {
     span_bug!(
         span,
         "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
@@ -200,7 +201,7 @@ fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, re
 }
 #[cfg(not(feature = "debugging"))]
 #[allow(too_many_arguments)]
-fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, id: NodeId) {
+fn report_cc_bug(cx: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, id: NodeId) {
     if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, id) {
         cx.sess().span_note_without_error(
             span,

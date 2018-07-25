@@ -1,6 +1,8 @@
 //! lint when items are used after statements
 
+use matches::matches;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use crate::utils::{in_macro, span_lint};
 
@@ -41,7 +43,7 @@ impl LintPass for ItemsAfterStatements {
 }
 
 impl EarlyLintPass for ItemsAfterStatements {
-    fn check_block(&mut self, cx: &EarlyContext, item: &Block) {
+    fn check_block(&mut self, cx: &EarlyContext<'_>, item: &Block) {
         if in_macro(item.span) {
             return;
         }

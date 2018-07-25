@@ -1,9 +1,12 @@
 use std::cmp;
 
+use matches::matches;
 use rustc::hir::*;
 use rustc::hir::map::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::TypeVariants;
 use rustc::session::config::Config as SessionConfig;
 use rustc_target::spec::abi::Abi;
@@ -27,6 +30,12 @@ use crate::utils::{in_macro, is_copy, is_self, span_lint_and_sugg, snippet};
 ///
 /// The configuration option `trivial_copy_size_limit` can be set to override
 /// this limit for a project.
+///
+/// This lint attempts to allow passing arguments by reference if a reference
+/// to that argument is returned. This is implemented by comparing the lifetime
+/// of the argument and return value for equality. However, this can cause
+/// false positives in cases involving multiple lifetimes that are bounded by
+/// each other.
 ///
 /// **Example:**
 /// ```rust
@@ -100,8 +109,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
 
         // Exclude non-inherent impls
         if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(node_id)) {
-            if matches!(item.node, ItemImpl(_, _, _, _, Some(_), _, _) |
-                ItemTrait(..))
+            if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
+                ItemKind::Trait(..))
             {
                 return;
             }
@@ -112,6 +121,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
+        // Use lifetimes to determine if we're returning a reference to the
+        // argument. In that case we can't switch to pass-by-value as the
+        // argument will not live long enough.
+        let output_lt = if let TypeVariants::TyRef(output_lt, _, _) = fn_sig.output().sty {
+            Some(output_lt)
+        } else {
+            None
+        };
+
         for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
             // All spans generated from a proc-macro invocation are the same...
             if span == input.span {
@@ -119,11 +137,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
             }
 
             if_chain! {
-                if let TypeVariants::TyRef(_, ty, Mutability::MutImmutable) = ty.sty;
+                if let TypeVariants::TyRef(input_lt, ty, Mutability::MutImmutable) = ty.sty;
+                if Some(input_lt) != output_lt;
                 if is_copy(cx, ty);
                 if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                 if size <= self.limit;
-                if let Ty_::TyRptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
+                if let TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
                 then {
                     let value_type = if is_self(arg) {
                         "self".into()

@@ -1,6 +1,7 @@
 //! checks for `#[inline]` on trait methods without bodies
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::{Attribute, Name};
 use crate::utils::span_lint_and_then;
@@ -43,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn check_attrs(cx: &LateContext, name: Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_, '_>, name: Name, attrs: &[Attribute]) {
     for attr in attrs {
         if attr.name() != "inline" {
             continue;

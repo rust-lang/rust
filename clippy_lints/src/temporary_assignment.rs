@@ -1,5 +1,6 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::hir::{Expr, ExprAssign, ExprField, ExprStruct, ExprTup};
+use rustc::{declare_lint, lint_array};
+use rustc::hir::{Expr, ExprKind};
 use crate::utils::is_adjusted;
 use crate::utils::span_lint;
 
@@ -23,7 +24,7 @@ declare_clippy_lint! {
 
 fn is_temporary(expr: &Expr) -> bool {
     match expr.node {
-        ExprStruct(..) | ExprTup(..) => true,
+        ExprKind::Struct(..) | ExprKind::Tup(..) => true,
         _ => false,
     }
 }
@@ -39,8 +40,8 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprAssign(ref target, _) = expr.node {
-            if let ExprField(ref base, _) = target.node {
+        if let ExprKind::Assign(ref target, _) = expr.node {
+            if let ExprKind::Field(ref base, _) = target.node {
                 if is_temporary(base) && !is_adjusted(cx, base) {
                     span_lint(cx, TEMPORARY_ASSIGNMENT, expr.span, "assignment to temporary");
                 }

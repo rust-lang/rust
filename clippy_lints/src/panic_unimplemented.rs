@@ -1,5 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use syntax::ast::LitKind;
 use syntax::ptr::P;
 use syntax::ext::quote::rt::Span;
@@ -52,10 +54,10 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
-            if let ExprBlock(ref block, _) = expr.node;
+            if let ExprKind::Block(ref block, _) = expr.node;
             if let Some(ref ex) = block.expr;
-            if let ExprCall(ref fun, ref params) = ex.node;
-            if let ExprPath(ref qpath) = fun.node;
+            if let ExprKind::Call(ref fun, ref params) = ex.node;
+            if let ExprKind::Path(ref qpath) = fun.node;
             if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
             if match_def_path(cx.tcx, fun_def_id, &paths::BEGIN_PANIC);
             if params.len() == 2;
@@ -84,9 +86,9 @@ fn get_outer_span(expr: &Expr) -> Span {
     }
 }
 
-fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext) {
+fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext<'_, '_>) {
     if_chain! {
-        if let ExprLit(ref lit) = params[0].node;
+        if let ExprKind::Lit(ref lit) = params[0].node;
         if is_direct_expn_of(expr.span, "panic").is_some();
         if let LitKind::Str(ref string, _) = lit.node;
         let string = string.as_str().replace("{{", "").replace("}}", "");

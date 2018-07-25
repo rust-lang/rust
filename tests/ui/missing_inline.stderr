@@ -1,0 +1,40 @@
+error: missing `#[inline]` for a function
+  --> $DIR/missing_inline.rs:31:1
+   |
+31 | pub fn pub_foo() {} // missing #[inline]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D missing-inline-in-public-items` implied by `-D warnings`
+
+error: missing `#[inline]` for a default trait method
+  --> $DIR/missing_inline.rs:46:5
+   |
+46 |     fn PubBar_b() {} // missing #[inline]
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> $DIR/missing_inline.rs:59:5
+   |
+59 |     fn PubBar_a() {} // missing #[inline]
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> $DIR/missing_inline.rs:60:5
+   |
+60 |     fn PubBar_b() {} // missing #[inline]
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> $DIR/missing_inline.rs:61:5
+   |
+61 |     fn PubBar_c() {} // missing #[inline]
+   |     ^^^^^^^^^^^^^^^^
+
+error: missing `#[inline]` for a method
+  --> $DIR/missing_inline.rs:71:5
+   |
+71 |     pub fn PubFooImpl() {} // missing #[inline]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

@@ -1,4 +1,6 @@
+use matches::matches;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use crate::utils::*;
@@ -56,10 +58,10 @@ struct ExVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if let ExprClosure(_, _, eid, _, _) = expr.node {
+        if let ExprKind::Closure(_, _, eid, _, _) = expr.node {
             let body = self.cx.tcx.hir.body(eid);
             let ex = &body.value;
-            if matches!(ex.node, ExprBlock(_, _)) {
+            if matches!(ex.node, ExprKind::Block(_, _)) {
                 self.found_block = Some(ex);
                 return;
             }
@@ -77,8 +79,8 @@ const COMPLEX_BLOCK_MESSAGE: &str = "in an 'if' condition, avoid complex blocks 
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprIf(ref check, ref then, _) = expr.node {
-            if let ExprBlock(ref block, _) = check.node {
+        if let ExprKind::If(ref check, ref then, _) = expr.node {
+            if let ExprKind::Block(ref block, _) = check.node {
                 if block.rules == DefaultBlock {
                     if block.stmts.is_empty() {
                         if let Some(ref ex) = block.expr {

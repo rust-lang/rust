@@ -14,54 +14,41 @@
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_idioms)]
 
-#[macro_use]
-extern crate rustc;
-
 use toml;
 use rustc_plugin;
+use rustc;
 
-#[macro_use]
-extern crate matches as matches_macro;
-
-#[macro_use]
-extern crate serde_derive;
-
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
-extern crate if_chain;
 
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, correctness, $description:tt } => {
-        declare_lint! { pub $name, Deny, $description }
+        declare_lint! { pub $name, Deny, $description, report_in_external_macro: true }
     };
     { pub $name:tt, complexity, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, perf, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
     { pub $name:tt, pedantic, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, restriction, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, cargo, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, nursery, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, internal, $description:tt } => {
-        declare_lint! { pub $name, Allow, $description }
+        declare_lint! { pub $name, Allow, $description, report_in_external_macro: true }
     };
     { pub $name:tt, internal_warn, $description:tt } => {
-        declare_lint! { pub $name, Warn, $description }
+        declare_lint! { pub $name, Warn, $description, report_in_external_macro: true }
     };
 }
 
@@ -134,6 +121,7 @@ pub mod minmax;
 pub mod misc;
 pub mod misc_early;
 pub mod missing_doc;
+pub mod missing_inline;
 pub mod multiple_crate_versions;
 pub mod mut_mut;
 pub mod mut_reference;
@@ -188,8 +176,12 @@ mod reexport {
     crate use syntax::ast::{Name, NodeId};
 }
 
+pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore) {
+    store.register_pre_expansion_pass(Some(session), box write::Pass);
+}
+
 #[cfg_attr(rustfmt, rustfmt_skip)]
-pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
+pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     let conf = match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
@@ -333,7 +325,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
-    reg.register_late_lint_pass(box write::Pass);
     reg.register_late_lint_pass(box vec::Pass);
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
@@ -364,6 +355,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box let_if_seq::LetIfSeq);
     reg.register_late_lint_pass(box eval_order_dependence::EvalOrderDependence);
     reg.register_late_lint_pass(box missing_doc::MissingDoc::new());
+    reg.register_late_lint_pass(box missing_inline::MissingInline);
     reg.register_late_lint_pass(box ok_if_let::Pass);
     reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
@@ -422,6 +414,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::WRONG_PUB_SELF_CONVENTION,
         misc::FLOAT_CMP_CONST,
         missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
+        missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
         panic_unimplemented::UNIMPLEMENTED,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,

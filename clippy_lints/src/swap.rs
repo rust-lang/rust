@@ -1,5 +1,8 @@
+use matches::matches;
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty;
 use crate::utils::{differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
 use crate::utils::sugg::Sugg;
@@ -57,23 +60,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Swap {
 }
 
 /// Implementation of the `MANUAL_SWAP` lint.
-fn check_manual_swap(cx: &LateContext, block: &Block) {
+fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
-            if let StmtDecl(ref tmp, _) = w[0].node;
-            if let DeclLocal(ref tmp) = tmp.node;
+            if let StmtKind::Decl(ref tmp, _) = w[0].node;
+            if let DeclKind::Local(ref tmp) = tmp.node;
             if let Some(ref tmp_init) = tmp.init;
             if let PatKind::Binding(_, _, ident, None) = tmp.pat.node;
 
             // foo() = bar();
-            if let StmtSemi(ref first, _) = w[1].node;
-            if let ExprAssign(ref lhs1, ref rhs1) = first.node;
+            if let StmtKind::Semi(ref first, _) = w[1].node;
+            if let ExprKind::Assign(ref lhs1, ref rhs1) = first.node;
 
             // bar() = t;
-            if let StmtSemi(ref second, _) = w[2].node;
-            if let ExprAssign(ref lhs2, ref rhs2) = second.node;
-            if let ExprPath(QPath::Resolved(None, ref rhs2)) = rhs2.node;
+            if let StmtKind::Semi(ref second, _) = w[2].node;
+            if let ExprKind::Assign(ref lhs2, ref rhs2) = second.node;
+            if let ExprKind::Path(QPath::Resolved(None, ref rhs2)) = rhs2.node;
             if rhs2.segments.len() == 1;
 
             if ident.as_str() == rhs2.segments[0].ident.as_str();
@@ -81,12 +84,12 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             if SpanlessEq::new(cx).ignore_fn().eq_expr(rhs1, lhs2);
             then {
                 fn check_for_slice<'a>(
-                    cx: &LateContext,
+                    cx: &LateContext<'_, '_>,
                     lhs1: &'a Expr,
                     lhs2: &'a Expr,
                 ) -> Option<(&'a Expr, &'a Expr, &'a Expr)> {
-                    if let ExprIndex(ref lhs1, ref idx1) = lhs1.node {
-                        if let ExprIndex(ref lhs2, ref idx2) = lhs2.node {
+                    if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.node {
+                        if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.node {
                             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
                                 let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
 
@@ -142,14 +145,14 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
 }
 
 /// Implementation of the `ALMOST_SWAPPED` lint.
-fn check_suspicious_swap(cx: &LateContext, block: &Block) {
+fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block) {
     for w in block.stmts.windows(2) {
         if_chain! {
-            if let StmtSemi(ref first, _) = w[0].node;
-            if let StmtSemi(ref second, _) = w[1].node;
+            if let StmtKind::Semi(ref first, _) = w[0].node;
+            if let StmtKind::Semi(ref second, _) = w[1].node;
             if !differing_macro_contexts(first.span, second.span);
-            if let ExprAssign(ref lhs0, ref rhs0) = first.node;
-            if let ExprAssign(ref lhs1, ref rhs1) = second.node;
+            if let ExprKind::Assign(ref lhs0, ref rhs0) = first.node;
+            if let ExprKind::Assign(ref lhs1, ref rhs1) = second.node;
             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs0, rhs1);
             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, rhs0);
             then {

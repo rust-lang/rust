@@ -1,5 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::LitKind;
 use syntax_pos::Span;
@@ -46,9 +48,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             match expr.node {
 
                 // `format!("{}", foo)` expansion
-                ExprCall(ref fun, ref args) => {
+                ExprKind::Call(ref fun, ref args) => {
                     if_chain! {
-                        if let ExprPath(ref qpath) = fun.node;
+                        if let ExprKind::Path(ref qpath) = fun.node;
                         if args.len() == 3;
                         if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
                         if match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1FORMATTED);
@@ -64,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     }
                 },
                 // `format!("foo")` expansion contains `match () { () => [], }`
-                ExprMatch(ref matchee, _, _) => if let ExprTup(ref tup) = matchee.node {
+                ExprKind::Match(ref matchee, _, _) => if let ExprKind::Tup(ref tup) = matchee.node {
                     if tup.is_empty() {
                         let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
                         span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
@@ -81,10 +83,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 /// Checks if the expressions matches `&[""]`
 fn check_single_piece(expr: &Expr) -> bool {
     if_chain! {
-        if let ExprAddrOf(_, ref expr) = expr.node; // &[""]
-        if let ExprArray(ref exprs) = expr.node; // [""]
+        if let ExprKind::AddrOf(_, ref expr) = expr.node; // &[""]
+        if let ExprKind::Array(ref exprs) = expr.node; // [""]
         if exprs.len() == 1;
-        if let ExprLit(ref lit) = exprs[0].node;
+        if let ExprKind::Lit(ref lit) = exprs[0].node;
         if let LitKind::Str(ref lit, _) = lit.node;
         then {
             return lit.as_str().is_empty();
@@ -103,25 +105,25 @@ fn check_single_piece(expr: &Expr) -> bool {
 /// ```
 /// and that type of `__arg0` is `&str` or `String`
 /// then returns the span of first element of the matched tuple
-fn get_single_string_arg(cx: &LateContext, expr: &Expr) -> Option<Span> {
+fn get_single_string_arg(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Span> {
     if_chain! {
-        if let ExprAddrOf(_, ref expr) = expr.node;
-        if let ExprMatch(ref match_expr, ref arms, _) = expr.node;
+        if let ExprKind::AddrOf(_, ref expr) = expr.node;
+        if let ExprKind::Match(ref match_expr, ref arms, _) = expr.node;
         if arms.len() == 1;
         if arms[0].pats.len() == 1;
         if let PatKind::Tuple(ref pat, None) = arms[0].pats[0].node;
         if pat.len() == 1;
-        if let ExprArray(ref exprs) = arms[0].body.node;
+        if let ExprKind::Array(ref exprs) = arms[0].body.node;
         if exprs.len() == 1;
-        if let ExprCall(_, ref args) = exprs[0].node;
+        if let ExprKind::Call(_, ref args) = exprs[0].node;
         if args.len() == 2;
-        if let ExprPath(ref qpath) = args[1].node;
+        if let ExprKind::Path(ref qpath) = args[1].node;
         if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, args[1].hir_id));
         if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
             if ty.sty == ty::TyStr || match_type(cx, ty, &paths::STRING) {
-                if let ExprTup(ref values) = match_expr.node {
+                if let ExprKind::Tup(ref values) = match_expr.node {
                     return Some(values[0].span);
                 }
             }
@@ -143,14 +145,14 @@ fn get_single_string_arg(cx: &LateContext, expr: &Expr) -> Option<Span> {
 /// ```
 fn check_unformatted(expr: &Expr) -> bool {
     if_chain! {
-        if let ExprAddrOf(_, ref expr) = expr.node;
-        if let ExprArray(ref exprs) = expr.node;
+        if let ExprKind::AddrOf(_, ref expr) = expr.node;
+        if let ExprKind::Array(ref exprs) = expr.node;
         if exprs.len() == 1;
-        if let ExprStruct(_, ref fields, _) = exprs[0].node;
+        if let ExprKind::Struct(_, ref fields, _) = exprs[0].node;
         if let Some(format_field) = fields.iter().find(|f| f.ident.name == "format");
-        if let ExprStruct(_, ref fields, _) = format_field.expr.node;
+        if let ExprKind::Struct(_, ref fields, _) = format_field.expr.node;
         if let Some(align_field) = fields.iter().find(|f| f.ident.name == "width");
-        if let ExprPath(ref qpath) = align_field.expr.node;
+        if let ExprKind::Path(ref qpath) = align_field.expr.node;
         if last_path_segment(qpath).ident.name == "Implied";
         then {
             return true;

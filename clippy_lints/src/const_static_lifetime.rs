@@ -1,5 +1,6 @@
 use syntax::ast::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
 use crate::utils::{in_macro, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for constants with an explicit `'static` lifetime.
@@ -34,7 +35,7 @@ impl LintPass for StaticConst {
 
 impl StaticConst {
     // Recursively visit types
-    fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext) {
+    fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext<'_>) {
         match ty.node {
             // Be careful of nested structures (arrays and tuples)
             TyKind::Array(ref ty, _) => {
@@ -78,7 +79,7 @@ impl StaticConst {
 }
 
 impl EarlyLintPass for StaticConst {
-    fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if !in_macro(item.span) {
             // Match only constants...
             if let ItemKind::Const(ref var_type, _) = item.node {

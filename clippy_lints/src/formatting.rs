@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast;
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use syntax::ptr::P;
@@ -82,7 +83,7 @@ impl LintPass for Formatting {
 }
 
 impl EarlyLintPass for Formatting {
-    fn check_block(&mut self, cx: &EarlyContext, block: &ast::Block) {
+    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         for w in block.stmts.windows(2) {
             match (&w[0].node, &w[1].node) {
                 (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Expr(ref second)) |
@@ -94,7 +95,7 @@ impl EarlyLintPass for Formatting {
         }
     }
 
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         check_assign(cx, expr);
         check_else_if(cx, expr);
         check_array(cx, expr);
@@ -102,7 +103,7 @@ impl EarlyLintPass for Formatting {
 }
 
 /// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
-fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
+fn check_assign(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if let ast::ExprKind::Assign(ref lhs, ref rhs) = expr.node {
         if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(lhs.span) {
             let eq_span = lhs.span.between(rhs.span);
@@ -131,7 +132,7 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
 }
 
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for weird `else if`.
-fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
+fn check_else_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if let Some((then, &Some(ref else_))) = unsugar_if(expr) {
         if unsugar_if(else_).is_some() && !differing_macro_contexts(then.span, else_.span) && !in_macro(then.span) {
             // this will be a span from the closing ‘}’ of the “then” block (excluding) to
@@ -163,7 +164,7 @@ fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
 }
 
 /// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array
-fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
+fn check_array(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if let ast::ExprKind::Array(ref array) = expr.node {
         for element in array {
             if let ast::ExprKind::Binary(ref op, ref lhs, _) = element.node {
@@ -189,7 +190,7 @@ fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
 }
 
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for consecutive ifs.
-fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Expr) {
+fn check_consecutive_ifs(cx: &EarlyContext<'_>, first: &ast::Expr, second: &ast::Expr) {
     if !differing_macro_contexts(first.span, second.span) && !in_macro(first.span) && unsugar_if(first).is_some()
         && unsugar_if(second).is_some()
     {

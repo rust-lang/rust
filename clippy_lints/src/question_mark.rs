@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use crate::utils::sugg::Sugg;
@@ -50,10 +52,10 @@ impl QuestionMarkPass {
     /// ```
     ///
     /// If it matches, it will suggest to use the question mark operator instead
-    fn check_is_none_and_early_return_none(cx: &LateContext, expr: &Expr) {
+    fn check_is_none_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
-            if let ExprIf(ref if_expr, ref body, _) = expr.node;
-            if let ExprMethodCall(ref segment, _, ref args) = if_expr.node;
+            if let ExprKind::If(ref if_expr, ref body, _) = expr.node;
+            if let ExprKind::MethodCall(ref segment, _, ref args) = if_expr.node;
             if segment.ident.name == "is_none";
             if Self::expression_returns_none(cx, body);
             if let Some(subject) = args.get(0);
@@ -79,25 +81,25 @@ impl QuestionMarkPass {
         }
     }
 
-    fn is_option(cx: &LateContext, expression: &Expr) -> bool {
+    fn is_option(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
         let expr_ty = cx.tables.expr_ty(expression);
 
         match_type(cx, expr_ty, &OPTION)
     }
 
-    fn expression_returns_none(cx: &LateContext, expression: &Expr) -> bool {
+    fn expression_returns_none(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
         match expression.node {
-            ExprBlock(ref block, _) => {
+            ExprKind::Block(ref block, _) => {
                 if let Some(return_expression) = Self::return_expression(block) {
                     return Self::expression_returns_none(cx, &return_expression);
                 }
 
                 false
             },
-            ExprRet(Some(ref expr)) => {
+            ExprKind::Ret(Some(ref expr)) => {
                 Self::expression_returns_none(cx, expr)
             },
-            ExprPath(ref qp) => {
+            ExprKind::Path(ref qp) => {
                 if let Def::VariantCtor(def_id, _) = cx.tables.qpath_def(qp, expression.hir_id) {
                     return match_def_path(cx.tcx, def_id,  &OPTION_NONE);
                 }
@@ -113,8 +115,8 @@ impl QuestionMarkPass {
         if_chain! {
             if block.stmts.len() == 1;
             if let Some(expr) = block.stmts.iter().last();
-            if let StmtSemi(ref expr, _) = expr.node;
-            if let ExprRet(ref ret_expr) = expr.node;
+            if let StmtKind::Semi(ref expr, _) = expr.node;
+            if let ExprKind::Ret(ref ret_expr) = expr.node;
             if let &Some(ref ret_expr) = ret_expr;
 
             then {

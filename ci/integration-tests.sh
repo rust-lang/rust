@@ -1,4 +1,5 @@
 set -x
+rm ~/.cargo/bin/cargo-clippy
 cargo install --force --path .
 
 echo "Running integration test for crate ${INTEGRATION}"

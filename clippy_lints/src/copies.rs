@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::Ty;
 use rustc::hir::*;
 use std::collections::HashMap;
@@ -115,7 +116,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
         if !in_macro(expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(&Expr {
-                node: ExprIf(_, _, Some(ref else_expr)),
+                node: ExprKind::If(_, _, Some(ref else_expr)),
                 ..
             }) = get_parent_expr(cx, expr)
             {
@@ -133,7 +134,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
 }
 
 /// Implementation of `IF_SAME_THEN_ELSE`.
-fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
+fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block]) {
     let eq: &dyn Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
 
     if let Some((i, j)) = search_same_sequenced(blocks, eq) {
@@ -149,7 +150,7 @@ fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
 }
 
 /// Implementation of `IFS_SAME_COND`.
-fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
+fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
     let hash: &dyn Fn(&&Expr) -> u64 = &|expr| -> u64 {
         let mut h = SpanlessHash::new(cx, cx.tables);
         h.hash_expr(expr);
@@ -171,8 +172,8 @@ fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
 }
 
 /// Implementation of `MATCH_SAME_ARMS`.
-fn lint_match_arms(cx: &LateContext, expr: &Expr) {
-    if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
+fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
+    if let ExprKind::Match(_, ref arms, MatchSource::Normal) = expr.node {
         let hash = |&(_, arm): &(usize, &Arm)| -> u64 {
             let mut h = SpanlessHash::new(cx, cx.tables);
             h.hash_expr(&arm.body);
@@ -236,12 +237,12 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
     let mut conds = SmallVector::new();
     let mut blocks: SmallVector<&Block> = SmallVector::new();
 
-    while let ExprIf(ref cond, ref then_expr, ref else_expr) = expr.node {
+    while let ExprKind::If(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
-        if let ExprBlock(ref block, _) = then_expr.node {
+        if let ExprKind::Block(ref block, _) = then_expr.node {
             blocks.push(block);
         } else {
-            panic!("ExprIf node is not an ExprBlock");
+            panic!("ExprKind::If node is not an ExprKind::Block");
         }
 
         if let Some(ref else_expr) = *else_expr {
@@ -253,7 +254,7 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 
     // final `else {..}`
     if !blocks.is_empty() {
-        if let ExprBlock(ref block, _) = expr.node {
+        if let ExprKind::Block(ref block, _) = expr.node {
             blocks.push(&**block);
         }
     }

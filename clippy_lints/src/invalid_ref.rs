@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty;
 use rustc::hir::*;
 use crate::utils::{match_def_path, opt_def_id, paths, span_help_and_lint};
@@ -35,8 +37,8 @@ impl LintPass for InvalidRef {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
-            if let ExprCall(ref path, ref args) = expr.node;
-            if let ExprPath(ref qpath) = path.node;
+            if let ExprKind::Call(ref path, ref args) = expr.node;
+            if let ExprKind::Path(ref qpath) = path.node;
             if args.len() == 0;
             if let ty::TyRef(..) = cx.tables.expr_ty(expr).sty;
             if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path.hir_id));

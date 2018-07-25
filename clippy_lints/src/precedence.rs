@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax::codemap::Spanned;
 use crate::utils::{in_macro, snippet, span_lint_and_sugg};
@@ -36,7 +37,7 @@ impl LintPass for Precedence {
 }
 
 impl EarlyLintPass for Precedence {
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if in_macro(expr.span) {
             return;
         }

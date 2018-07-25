@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use std::borrow::Cow;
@@ -215,8 +217,8 @@ impl LintPass for Transmute {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprCall(ref path_expr, ref args) = e.node {
-            if let ExprPath(ref qpath) = path_expr.node {
+        if let ExprKind::Call(ref path_expr, ref args) = e.node {
+            if let ExprKind::Path(ref qpath) = path_expr.node {
                 if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, path_expr.hir_id)) {
                     if match_def_path(cx.tcx, def_id, &paths::TRANSMUTE) {
                         let from_ty = cx.tables.expr_ty(&args[0]);
@@ -452,7 +454,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
 /// the type's `ToString` implementation. In weird cases it could lead to types
 /// with invalid `'_`
 /// lifetime, but it should be rare.
-fn get_type_snippet(cx: &LateContext, path: &QPath, to_ref_ty: Ty) -> String {
+fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath, to_ref_ty: Ty<'_>) -> String {
     let seg = last_path_segment(path);
     if_chain! {
         if let Some(ref params) = seg.args;
@@ -461,7 +463,7 @@ fn get_type_snippet(cx: &LateContext, path: &QPath, to_ref_ty: Ty) -> String {
             GenericArg::Type(ty) => Some(ty),
             GenericArg::Lifetime(_) => None,
         }).nth(1);
-        if let TyRptr(_, ref to_ty) = to_ty.node;
+        if let TyKind::Rptr(_, ref to_ty) = to_ty.node;
         then {
             return snippet(cx, to_ty.ty.span, &to_ref_ty.to_string()).to_string();
         }

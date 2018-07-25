@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::BindingAnnotation;
 use rustc::hir::def::Def;
@@ -65,20 +67,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
         while let Some(stmt) = it.next() {
             if_chain! {
                 if let Some(expr) = it.peek();
-                if let hir::StmtDecl(ref decl, _) = stmt.node;
-                if let hir::DeclLocal(ref decl) = decl.node;
+                if let hir::StmtKind::Decl(ref decl, _) = stmt.node;
+                if let hir::DeclKind::Local(ref decl) = decl.node;
                 if let hir::PatKind::Binding(mode, canonical_id, ident, None) = decl.pat.node;
-                if let hir::StmtExpr(ref if_, _) = expr.node;
-                if let hir::ExprIf(ref cond, ref then, ref else_) = if_.node;
+                if let hir::StmtKind::Expr(ref if_, _) = expr.node;
+                if let hir::ExprKind::If(ref cond, ref then, ref else_) = if_.node;
                 if !used_in_expr(cx, canonical_id, cond);
-                if let hir::ExprBlock(ref then, _) = then.node;
+                if let hir::ExprKind::Block(ref then, _) = then.node;
                 if let Some(value) = check_assign(cx, canonical_id, &*then);
                 if !used_in_expr(cx, canonical_id, value);
                 then {
                     let span = stmt.span.to(if_.span);
 
                     let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
-                        if let hir::ExprBlock(ref else_, _) = else_.node {
+                        if let hir::ExprKind::Block(ref else_, _) = else_.node {
                             if let Some(default) = check_assign(cx, canonical_id, else_) {
                                 (else_.stmts.len() > 1, default)
                             } else if let Some(ref default) = decl.init {
@@ -140,7 +142,7 @@ struct UsedVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if_chain! {
-            if let hir::ExprPath(ref qpath) = expr.node;
+            if let hir::ExprKind::Path(ref qpath) = expr.node;
             if let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id);
             if self.id == local_id;
             then {
@@ -163,9 +165,9 @@ fn check_assign<'a, 'tcx>(
     if_chain! {
         if block.expr.is_none();
         if let Some(expr) = block.stmts.iter().last();
-        if let hir::StmtSemi(ref expr, _) = expr.node;
-        if let hir::ExprAssign(ref var, ref value) = expr.node;
-        if let hir::ExprPath(ref qpath) = var.node;
+        if let hir::StmtKind::Semi(ref expr, _) = expr.node;
+        if let hir::ExprKind::Assign(ref var, ref value) = expr.node;
+        if let hir::ExprKind::Path(ref qpath) = var.node;
         if let Def::Local(local_id) = cx.tables.qpath_def(qpath, var.hir_id);
         if decl == local_id;
         then {

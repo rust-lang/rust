@@ -1,5 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, paths, span_lint};
 
 /// **What it does:** Checks for iteration that is guaranteed to be infinite.
@@ -139,9 +140,9 @@ static HEURISTICS: &[(&str, usize, Heuristic, Finiteness)] = &[
     ("scan", 3, First, MaybeInfinite),
 ];
 
-fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
+fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
     match expr.node {
-        ExprMethodCall(ref method, _, ref args) => {
+        ExprKind::MethodCall(ref method, _, ref args) => {
             for &(name, len, heuristic, cap) in HEURISTICS.iter() {
                 if method.ident.name == name && args.len() == len {
                     return (match heuristic {
@@ -153,21 +154,21 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
                 }
             }
             if method.ident.name == "flat_map" && args.len() == 2 {
-                if let ExprClosure(_, _, body_id, _, _) = args[1].node {
+                if let ExprKind::Closure(_, _, body_id, _, _) = args[1].node {
                     let body = cx.tcx.hir.body(body_id);
                     return is_infinite(cx, &body.value);
                 }
             }
             Finite
         },
-        ExprBlock(ref block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
-        ExprBox(ref e) | ExprAddrOf(_, ref e) => is_infinite(cx, e),
-        ExprCall(ref path, _) => if let ExprPath(ref qpath) = path.node {
+        ExprKind::Block(ref block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
+        ExprKind::Box(ref e) | ExprKind::AddrOf(_, ref e) => is_infinite(cx, e),
+        ExprKind::Call(ref path, _) => if let ExprKind::Path(ref qpath) = path.node {
             match_qpath(qpath, &paths::REPEAT).into()
         } else {
             Finite
         },
-        ExprStruct(..) => higher::range(cx, expr)
+        ExprKind::Struct(..) => higher::range(cx, expr)
             .map_or(false, |r| r.end.is_none())
             .into(),
         _ => Finite,
@@ -203,9 +204,9 @@ static COMPLETING_METHODS: &[(&str, usize)] = &[
     ("product", 1),
 ];
 
-fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> Finiteness {
+fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
     match expr.node {
-        ExprMethodCall(ref method, _, ref args) => {
+        ExprKind::MethodCall(ref method, _, ref args) => {
             for &(name, len) in COMPLETING_METHODS.iter() {
                 if method.ident.name == name && args.len() == len {
                     return is_infinite(cx, &args[0]);
@@ -224,11 +225,11 @@ fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> Finiteness {
                 }
             }
         },
-        ExprBinary(op, ref l, ref r) => if op.node.is_comparison() {
+        ExprKind::Binary(op, ref l, ref r) => if op.node.is_comparison() {
             return is_infinite(cx, l)
                 .and(is_infinite(cx, r))
                 .and(MaybeInfinite);
-        }, // TODO: ExprLoop + Match
+        }, // TODO: ExprKind::Loop + Match
         _ => (),
     }
     Finite

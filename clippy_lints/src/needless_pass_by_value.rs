@@ -1,7 +1,10 @@
+use matches::matches;
 use rustc::hir::*;
 use rustc::hir::map::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::traits;
 use rustc::middle::expr_use_visitor as euv;
@@ -88,8 +91,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         // Exclude non-inherent impls
         if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(node_id)) {
-            if matches!(item.node, ItemImpl(_, _, _, _, Some(_), _, _) |
-                ItemTrait(..))
+            if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
+                ItemKind::Trait(..))
             {
                 return;
             }
@@ -201,7 +204,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     }
 
                     // Dereference suggestion
-                    let sugg = |db: &mut DiagnosticBuilder| {
+                    let sugg = |db: &mut DiagnosticBuilder<'_>| {
                         if let ty::TypeVariants::TyAdt(def, ..) = ty.sty {
                             if let Some(span) = cx.tcx.hir.span_if_local(def.did) {
                                 if cx.param_env.can_type_implement_copy(cx.tcx, ty).is_ok() {
@@ -215,7 +218,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             if match_type(cx, ty, &paths::VEC);
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
-                            if let TyPath(QPath::Resolved(_, ref path)) = input.node;
+                            if let TyKind::Path(QPath::Resolved(_, ref path)) = input.node;
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.ident.name == "Vec")
                                 .and_then(|ps| ps.args.as_ref())
@@ -339,7 +342,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                     match node {
                         map::Node::NodeExpr(e) => {
                             // `match` and `if let`
-                            if let ExprMatch(ref c, ..) = e.node {
+                            if let ExprKind::Match(ref c, ..) = e.node {
                                 self.spans_need_deref
                                     .entry(vid)
                                     .or_insert_with(HashSet::new)
@@ -350,8 +353,8 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                         map::Node::NodeStmt(s) => {
                             // `let <pat> = x;`
                             if_chain! {
-                                if let StmtDecl(ref decl, _) = s.node;
-                                if let DeclLocal(ref local) = decl.node;
+                                if let StmtKind::Decl(ref decl, _) = s.node;
+                                if let DeclKind::Local(ref local) = decl.node;
                                 then {
                                     self.spans_need_deref
                                         .entry(vid)
@@ -393,7 +396,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn borrow(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: ty::Region, _: ty::BorrowKind, _: euv::LoanCause) {}
+    fn borrow(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: ty::Region<'_>, _: ty::BorrowKind, _: euv::LoanCause) {}
 
     fn mutate(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: euv::MutateMode) {}
 

@@ -1,7 +1,9 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 
-use crate::utils::{self, paths, span_lint, in_external_macro};
+use crate::utils::{self, paths, span_lint};
 
 /// **What it does:**
 /// Checks for the usage of negated comparison operators on types which only implement
@@ -22,16 +24,16 @@ use crate::utils::{self, paths, span_lint, in_external_macro};
 /// // Bad
 /// let a = 1.0;
 /// let b = std::f64::NAN;
-/// 
+///
 /// let _not_less_or_equal = !(a <= b);
 ///
 /// // Good
 /// let a = 1.0;
 /// let b = std::f64::NAN;
-/// 
+///
 /// let _not_less_or_equal = match a.partial_cmp(&b) {
 ///     None | Some(Ordering::Greater) => true,
-///     _ => false, 
+///     _ => false,
 /// };
 /// ```
 declare_clippy_lint! {
@@ -53,10 +55,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
 
-            if !in_external_macro(cx, expr.span);
-            if let Expr_::ExprUnary(UnOp::UnNot, ref inner) = expr.node;
-            if let Expr_::ExprBinary(ref op, ref left, _) = inner.node;
-            if let BinOp_::BiLe | BinOp_::BiGe | BinOp_::BiLt | BinOp_::BiGt = op.node;
+            if !in_external_macro(cx.sess(), expr.span);
+            if let ExprKind::Unary(UnOp::UnNot, ref inner) = expr.node;
+            if let ExprKind::Binary(ref op, ref left, _) = inner.node;
+            if let BinOpKind::Le | BinOpKind::Ge | BinOpKind::Lt | BinOpKind::Gt = op.node;
 
             then {
 

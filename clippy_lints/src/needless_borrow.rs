@@ -3,7 +3,9 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc::hir::{BindingAnnotation, Expr, ExprAddrOf, MutImmutable, Pat, PatKind};
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
+use rustc::hir::{BindingAnnotation, Expr, ExprKind, MutImmutable, Pat, PatKind};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};
 use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
@@ -40,7 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         if in_macro(e.span) {
             return;
         }
-        if let ExprAddrOf(MutImmutable, ref inner) = e.node {
+        if let ExprKind::AddrOf(MutImmutable, ref inner) = e.node {
             if let ty::TyRef(..) = cx.tables.expr_ty(inner).sty {
                 for adj3 in cx.tables.expr_adjustments(e).windows(3) {
                     if let [Adjustment {

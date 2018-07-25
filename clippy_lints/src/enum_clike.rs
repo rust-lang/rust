@@ -2,6 +2,7 @@
 //! don't fit into an `i32`
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::ty::subst::Substs;
@@ -47,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
         if cx.tcx.data_layout.pointer_size.bits() != 64 {
             return;
         }
-        if let ItemEnum(ref def, _) = item.node {
+        if let ItemKind::Enum(ref def, _) = item.node {
             for var in &def.variants {
                 let variant = &var.node;
                 if let Some(ref anon_const) = variant.disr_expr {

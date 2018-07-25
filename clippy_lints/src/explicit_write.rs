@@ -1,5 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use crate::utils::{is_expn_of, match_def_path, resolve_node, span_lint};
 use crate::utils::opt_def_id;
 
@@ -35,17 +37,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             // match call to unwrap
-            if let ExprMethodCall(ref unwrap_fun, _, ref unwrap_args) = expr.node;
+            if let ExprKind::MethodCall(ref unwrap_fun, _, ref unwrap_args) = expr.node;
             if unwrap_fun.ident.name == "unwrap";
             // match call to write_fmt
             if unwrap_args.len() > 0;
-            if let ExprMethodCall(ref write_fun, _, ref write_args) =
+            if let ExprKind::MethodCall(ref write_fun, _, ref write_args) =
                 unwrap_args[0].node;
             if write_fun.ident.name == "write_fmt";
             // match calls to std::io::stdout() / std::io::stderr ()
             if write_args.len() > 0;
-            if let ExprCall(ref dest_fun, _) = write_args[0].node;
-            if let ExprPath(ref qpath) = dest_fun.node;
+            if let ExprKind::Call(ref dest_fun, _) = write_args[0].node;
+            if let ExprKind::Path(ref qpath) = dest_fun.node;
             if let Some(dest_fun_id) =
                 opt_def_id(resolve_node(cx, qpath, dest_fun.hir_id));
             if let Some(dest_name) = if match_def_path(cx.tcx, dest_fun_id, &["std", "io", "stdio", "stdout"]) {

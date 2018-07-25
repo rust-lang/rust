@@ -2,6 +2,7 @@
 #![allow(float_cmp)]
 
 use rustc::lint::LateContext;
+use rustc::{span_bug, bug};
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::ty::{self, Ty, TyCtxt, Instance};
@@ -13,7 +14,6 @@ use std::mem;
 use std::rc::Rc;
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
-use rustc::middle::const_val::ConstVal;
 use crate::utils::{sext, unsext, clip};
 
 #[derive(Debug, Copy, Clone)]
@@ -123,7 +123,7 @@ impl Hash for Constant {
 }
 
 impl Constant {
-    pub fn partial_cmp(tcx: TyCtxt, cmp_type: &ty::TypeVariants, left: &Self, right: &Self) -> Option<Ordering> {
+    pub fn partial_cmp(tcx: TyCtxt<'_, '_, '_>, cmp_type: &ty::TypeVariants<'_>, left: &Self, right: &Self) -> Option<Ordering> {
         match (left, right) {
             (&Constant::Str(ref ls), &Constant::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
@@ -212,31 +212,31 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
-            ExprPath(ref qpath) => self.fetch_path(qpath, e.hir_id),
-            ExprBlock(ref block, _) => self.block(block),
-            ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
-            ExprLit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty(e))),
-            ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),
-            ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
-            ExprRepeat(ref value, _) => {
+            ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id),
+            ExprKind::Block(ref block, _) => self.block(block),
+            ExprKind::If(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
+            ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty(e))),
+            ExprKind::Array(ref vec) => self.multi(vec).map(Constant::Vec),
+            ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
+            ExprKind::Repeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
                     ty::TyArray(_, n) => n.assert_usize(self.tcx).expect("array length"),
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n as u64))
             },
-            ExprUnary(op, ref operand) => self.expr(operand).and_then(|o| match op {
+            ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
                 UnNot => self.constant_not(&o, self.tables.expr_ty(e)),
                 UnNeg => self.constant_negate(&o, self.tables.expr_ty(e)),
                 UnDeref => Some(o),
             }),
-            ExprBinary(op, ref left, ref right) => self.binop(op, left, right),
+            ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
             // TODO: add other expressions
             _ => None,
         }
     }
 
-    fn constant_not(&self, o: &Constant, ty: ty::Ty) -> Option<Constant> {
+    fn constant_not(&self, o: &Constant, ty: ty::Ty<'_>) -> Option<Constant> {
         use self::Constant::*;
         match *o {
             Bool(b) => Some(Bool(!b)),
@@ -252,7 +252,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
-    fn constant_negate(&self, o: &Constant, ty: ty::Ty) -> Option<Constant> {
+    fn constant_negate(&self, o: &Constant, ty: ty::Ty<'_>) -> Option<Constant> {
         use self::Constant::*;
         match *o {
             Int(value) => {
@@ -280,7 +280,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             .collect::<Option<_>>()
     }
 
-    /// lookup a possibly constant expression from a ExprPath
+    /// lookup a possibly constant expression from a ExprKind::Path
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
         let def = self.tables.qpath_def(qpath, id);
         match def {
@@ -341,43 +341,43 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                         let r = sext(self.tcx, r, ity);
                         let zext = |n: i128| Constant::Int(unsext(self.tcx, n, ity));
                         match op.node {
-                            BiAdd => l.checked_add(r).map(zext),
-                            BiSub => l.checked_sub(r).map(zext),
-                            BiMul => l.checked_mul(r).map(zext),
-                            BiDiv if r != 0 => l.checked_div(r).map(zext),
-                            BiRem if r != 0 => l.checked_rem(r).map(zext),
-                            BiShr => l.checked_shr(r as u128 as u32).map(zext),
-                            BiShl => l.checked_shl(r as u128 as u32).map(zext),
-                            BiBitXor => Some(zext(l ^ r)),
-                            BiBitOr => Some(zext(l | r)),
-                            BiBitAnd => Some(zext(l & r)),
-                            BiEq => Some(Constant::Bool(l == r)),
-                            BiNe => Some(Constant::Bool(l != r)),
-                            BiLt => Some(Constant::Bool(l < r)),
-                            BiLe => Some(Constant::Bool(l <= r)),
-                            BiGe => Some(Constant::Bool(l >= r)),
-                            BiGt => Some(Constant::Bool(l > r)),
+                            BinOpKind::Add => l.checked_add(r).map(zext),
+                            BinOpKind::Sub => l.checked_sub(r).map(zext),
+                            BinOpKind::Mul => l.checked_mul(r).map(zext),
+                            BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
+                            BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
+                            BinOpKind::Shr => l.checked_shr(r as u128 as u32).map(zext),
+                            BinOpKind::Shl => l.checked_shl(r as u128 as u32).map(zext),
+                            BinOpKind::BitXor => Some(zext(l ^ r)),
+                            BinOpKind::BitOr => Some(zext(l | r)),
+                            BinOpKind::BitAnd => Some(zext(l & r)),
+                            BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                            BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                            BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                            BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                            BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                            BinOpKind::Gt => Some(Constant::Bool(l > r)),
                             _ => None,
                         }
                     }
                     ty::TyUint(_) => {
                         match op.node {
-                            BiAdd => l.checked_add(r).map(Constant::Int),
-                            BiSub => l.checked_sub(r).map(Constant::Int),
-                            BiMul => l.checked_mul(r).map(Constant::Int),
-                            BiDiv => l.checked_div(r).map(Constant::Int),
-                            BiRem => l.checked_rem(r).map(Constant::Int),
-                            BiShr => l.checked_shr(r as u32).map(Constant::Int),
-                            BiShl => l.checked_shl(r as u32).map(Constant::Int),
-                            BiBitXor => Some(Constant::Int(l ^ r)),
-                            BiBitOr => Some(Constant::Int(l | r)),
-                            BiBitAnd => Some(Constant::Int(l & r)),
-                            BiEq => Some(Constant::Bool(l == r)),
-                            BiNe => Some(Constant::Bool(l != r)),
-                            BiLt => Some(Constant::Bool(l < r)),
-                            BiLe => Some(Constant::Bool(l <= r)),
-                            BiGe => Some(Constant::Bool(l >= r)),
-                            BiGt => Some(Constant::Bool(l > r)),
+                            BinOpKind::Add => l.checked_add(r).map(Constant::Int),
+                            BinOpKind::Sub => l.checked_sub(r).map(Constant::Int),
+                            BinOpKind::Mul => l.checked_mul(r).map(Constant::Int),
+                            BinOpKind::Div => l.checked_div(r).map(Constant::Int),
+                            BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
+                            BinOpKind::Shr => l.checked_shr(r as u32).map(Constant::Int),
+                            BinOpKind::Shl => l.checked_shl(r as u32).map(Constant::Int),
+                            BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
+                            BinOpKind::BitOr => Some(Constant::Int(l | r)),
+                            BinOpKind::BitAnd => Some(Constant::Int(l & r)),
+                            BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                            BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                            BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                            BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                            BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                            BinOpKind::Gt => Some(Constant::Bool(l > r)),
                             _ => None,
                         }
                     },
@@ -385,40 +385,40 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 }
             },
             (Constant::F32(l), Some(Constant::F32(r))) => match op.node {
-                BiAdd => Some(Constant::F32(l + r)),
-                BiSub => Some(Constant::F32(l - r)),
-                BiMul => Some(Constant::F32(l * r)),
-                BiDiv => Some(Constant::F32(l / r)),
-                BiRem => Some(Constant::F32(l % r)),
-                BiEq => Some(Constant::Bool(l == r)),
-                BiNe => Some(Constant::Bool(l != r)),
-                BiLt => Some(Constant::Bool(l < r)),
-                BiLe => Some(Constant::Bool(l <= r)),
-                BiGe => Some(Constant::Bool(l >= r)),
-                BiGt => Some(Constant::Bool(l > r)),
+                BinOpKind::Add => Some(Constant::F32(l + r)),
+                BinOpKind::Sub => Some(Constant::F32(l - r)),
+                BinOpKind::Mul => Some(Constant::F32(l * r)),
+                BinOpKind::Div => Some(Constant::F32(l / r)),
+                BinOpKind::Rem => Some(Constant::F32(l % r)),
+                BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                BinOpKind::Gt => Some(Constant::Bool(l > r)),
                 _ => None,
             },
             (Constant::F64(l), Some(Constant::F64(r))) => match op.node {
-                BiAdd => Some(Constant::F64(l + r)),
-                BiSub => Some(Constant::F64(l - r)),
-                BiMul => Some(Constant::F64(l * r)),
-                BiDiv => Some(Constant::F64(l / r)),
-                BiRem => Some(Constant::F64(l % r)),
-                BiEq => Some(Constant::Bool(l == r)),
-                BiNe => Some(Constant::Bool(l != r)),
-                BiLt => Some(Constant::Bool(l < r)),
-                BiLe => Some(Constant::Bool(l <= r)),
-                BiGe => Some(Constant::Bool(l >= r)),
-                BiGt => Some(Constant::Bool(l > r)),
+                BinOpKind::Add => Some(Constant::F64(l + r)),
+                BinOpKind::Sub => Some(Constant::F64(l - r)),
+                BinOpKind::Mul => Some(Constant::F64(l * r)),
+                BinOpKind::Div => Some(Constant::F64(l / r)),
+                BinOpKind::Rem => Some(Constant::F64(l % r)),
+                BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                BinOpKind::Gt => Some(Constant::Bool(l > r)),
                 _ => None,
             },
             (l, r) => match (op.node, l, r) {
-                (BiAnd, Constant::Bool(false), _) => Some(Constant::Bool(false)),
-                (BiOr, Constant::Bool(true), _) => Some(Constant::Bool(true)),
-                (BiAnd, Constant::Bool(true), Some(r)) | (BiOr, Constant::Bool(false), Some(r)) => Some(r),
-                (BiBitXor, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l ^ r)),
-                (BiBitAnd, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l & r)),
-                (BiBitOr, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l | r)),
+                (BinOpKind::And, Constant::Bool(false), _) => Some(Constant::Bool(false)),
+                (BinOpKind::Or, Constant::Bool(true), _) => Some(Constant::Bool(true)),
+                (BinOpKind::And, Constant::Bool(true), Some(r)) | (BinOpKind::Or, Constant::Bool(false), Some(r)) => Some(r),
+                (BinOpKind::BitXor, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l ^ r)),
+                (BinOpKind::BitAnd, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l & r)),
+                (BinOpKind::BitOr, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l | r)),
                 _ => None,
             },
         }
@@ -428,7 +428,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'tcx>) -> Option<Constant> {
     use rustc::mir::interpret::{Scalar, ConstValue};
     match result.val {
-        ConstVal::Value(ConstValue::Scalar(Scalar::Bits{ bits: b, ..})) => match result.ty.sty {
+        ConstValue::Scalar(Scalar::Bits{ bits: b, ..}) => match result.ty.sty {
             ty::TyBool => Some(Constant::Bool(b == 1)),
             ty::TyUint(_) | ty::TyInt(_) => Some(Constant::Int(b)),
             ty::TyFloat(FloatTy::F32) => Some(Constant::F32(f32::from_bits(b as u32))),
@@ -436,7 +436,7 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             // FIXME: implement other conversion
             _ => None,
         },
-        ConstVal::Value(ConstValue::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: n, .. })) => match result.ty.sty {
+        ConstValue::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: n, .. }) => match result.ty.sty {
             ty::TyRef(_, tam, _) => match tam.sty {
                 ty::TyStr => {
                     let alloc = tcx

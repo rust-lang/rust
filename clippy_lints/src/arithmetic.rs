@@ -1,6 +1,7 @@
 use crate::utils::span_lint;
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::codemap::Span;
 
 /// **What it does:** Checks for plain integer arithmetic.
@@ -55,21 +56,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
             return;
         }
         match expr.node {
-            hir::ExprBinary(ref op, ref l, ref r) => {
+            hir::ExprKind::Binary(ref op, ref l, ref r) => {
                 match op.node {
-                    hir::BiAnd
-                    | hir::BiOr
-                    | hir::BiBitAnd
-                    | hir::BiBitOr
-                    | hir::BiBitXor
-                    | hir::BiShl
-                    | hir::BiShr
-                    | hir::BiEq
-                    | hir::BiLt
-                    | hir::BiLe
-                    | hir::BiNe
-                    | hir::BiGe
-                    | hir::BiGt => return,
+                    hir::BinOpKind::And
+                    | hir::BinOpKind::Or
+                    | hir::BinOpKind::BitAnd
+                    | hir::BinOpKind::BitOr
+                    | hir::BinOpKind::BitXor
+                    | hir::BinOpKind::Shl
+                    | hir::BinOpKind::Shr
+                    | hir::BinOpKind::Eq
+                    | hir::BinOpKind::Lt
+                    | hir::BinOpKind::Le
+                    | hir::BinOpKind::Ne
+                    | hir::BinOpKind::Ge
+                    | hir::BinOpKind::Gt => return,
                     _ => (),
                 }
                 let (l_ty, r_ty) = (cx.tables.expr_ty(l), cx.tables.expr_ty(r));
@@ -81,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                     self.span = Some(expr.span);
                 }
             },
-            hir::ExprUnary(hir::UnOp::UnNeg, ref arg) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref arg) => {
                 let ty = cx.tables.expr_ty(arg);
                 if ty.is_integral() {
                     span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");

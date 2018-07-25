@@ -1,5 +1,7 @@
 use syntax::ast::{Expr, ExprKind, UnOp};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use crate::utils::{snippet, span_lint_and_sugg};
 
 /// **What it does:** Checks for usage of `*&` and `*&mut` in expressions.
@@ -37,7 +39,7 @@ fn without_parens(mut e: &Expr) -> &Expr {
 }
 
 impl EarlyLintPass for Pass {
-    fn check_expr(&mut self, cx: &EarlyContext, e: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if_chain! {
             if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.node;
             if let ExprKind::AddrOf(_, ref addrof_target) = without_parens(deref_target).node;
@@ -82,7 +84,7 @@ impl LintPass for DerefPass {
 }
 
 impl EarlyLintPass for DerefPass {
-    fn check_expr(&mut self, cx: &EarlyContext, e: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if_chain! {
             if let ExprKind::Field(ref object, ref field_name) = e.node;
             if let ExprKind::Paren(ref parened) = object.node;
