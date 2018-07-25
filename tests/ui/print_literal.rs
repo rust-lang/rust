@@ -8,6 +8,7 @@ fn main() {
     println!("Hello");
     let world = "world";
     println!("Hello {}", world);
+    println!("Hello {world}", world=world);
     println!("3 in hex is {:X}", 3);
     println!("2 + 1 = {:.4}", 3);
     println!("2 + 1 = {:5.4}", 3);

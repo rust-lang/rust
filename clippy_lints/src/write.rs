@@ -290,22 +290,24 @@ fn check_tts(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> Op
                 idx += 1;
             },
             ExprKind::Assign(lhs, rhs) => {
-                if let ExprKind::Path(_, p) = &lhs.node {
-                    let mut all_simple = true;
-                    let mut seen = false;
-                    for arg in &args {
-                        match arg.position {
-                            | ArgumentImplicitlyIs(_)
-                            | ArgumentIs(_)
-                            => {},
-                            ArgumentNamed(name) => if *p == name {
-                                seen = true;
-                                all_simple &= arg.format == SIMPLE;
-                            },
+                if let ExprKind::Lit(_) = rhs.node {
+                    if let ExprKind::Path(_, p) = &lhs.node {
+                        let mut all_simple = true;
+                        let mut seen = false;
+                        for arg in &args {
+                            match arg.position {
+                                | ArgumentImplicitlyIs(_)
+                                | ArgumentIs(_)
+                                => {},
+                                ArgumentNamed(name) => if *p == name {
+                                    seen = true;
+                                    all_simple &= arg.format == SIMPLE;
+                                },
+                            }
                         }
-                    }
-                    if all_simple && seen {
-                        span_lint(cx, lint, rhs.span, "literal with an empty format string");
+                        if all_simple && seen {
+                            span_lint(cx, lint, rhs.span, "literal with an empty format string");
+                        }
                     }
                 }
             },
