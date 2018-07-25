@@ -319,6 +319,17 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             E0053,
                                             "method `{}` has an incompatible type for trait",
                                             trait_m.ident);
+            if let TypeError::Mutability = terr {
+                if let Some(trait_err_span) = trait_err_span {
+                    if let Ok(trait_err_str) = tcx.sess.codemap().span_to_snippet(trait_err_span) {
+                        diag.span_suggestion(
+                            impl_err_span,
+                            "consider change the type to match the mutability in trait",
+                            format!("{}", trait_err_str),
+                        );
+                    }
+                }
+            }
 
             infcx.note_type_err(&mut diag,
                                 &cause,
