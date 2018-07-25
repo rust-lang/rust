@@ -10,7 +10,7 @@
 
 // compile-flags: --edition 2018
 
-#![feature(catch_expr)]
+#![feature(try_blocks)]
 
 fn foo() -> Option<()> { Some(()) }
 

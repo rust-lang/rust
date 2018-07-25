@@ -1,4 +1,4 @@
-# `catch_expr`
+# `try_blocks`
 
 The tracking issue for this feature is: [#31436]
 
@@ -6,13 +6,13 @@ The tracking issue for this feature is: [#31436]
 
 ------------------------
 
-The `catch_expr` feature adds support for `try` blocks. A `try`
+The `try_blocks` feature adds support for `try` blocks. A `try`
 block creates a new scope one can use the `?` operator in.
 
 ```rust,ignore
 // This code needs the 2018 edition
 
-#![feature(catch_expr)]
+#![feature(try_blocks)]
 
 use std::num::ParseIntError;
 

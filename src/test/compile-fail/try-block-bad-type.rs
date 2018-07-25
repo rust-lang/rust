@@ -10,7 +10,7 @@
 
 // compile-flags: --edition 2018
 
-#![feature(catch_expr)]
+#![feature(try_blocks)]
 
 pub fn main() {
     let res: Result<u32, i32> = try {

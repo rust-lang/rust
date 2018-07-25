@@ -10,7 +10,7 @@
 
 // compile-flags: --edition 2018
 
-#![feature(catch_expr)]
+#![feature(try_blocks)]
 
 // This test checks that borrows made and returned inside try blocks are properly constrained
 pub fn main() {

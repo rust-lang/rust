@@ -65,7 +65,6 @@
 #![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(vec_remove_item)]
-#![feature(catch_expr)]
 #![feature(step_trait)]
 #![feature(integer_atomics)]
 #![feature(test)]

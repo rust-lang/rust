@@ -1,5 +1,5 @@
 error[E0658]: `try` expression is experimental (see issue #31436)
-  --> $DIR/feature-gate-catch_expr.rs:14:33
+  --> $DIR/feature-gate-try_blocks.rs:14:33
    |
 LL |       let try_result: Option<_> = try { //~ ERROR `try` expression is experimental
    |  _________________________________^
@@ -8,7 +8,7 @@ LL | |         x
 LL | |     };
    | |_____^
    |
-   = help: add #![feature(catch_expr)] to the crate attributes to enable
+   = help: add #![feature(try_blocks)] to the crate attributes to enable
 
 error: aborting due to previous error
 
