@@ -1405,9 +1405,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn borrowck_mode(&self) -> BorrowckMode {
         match self.sess.opts.borrowck_mode {
             mode @ BorrowckMode::Mir |
-            mode @ BorrowckMode::Migrate |
             mode @ BorrowckMode::Compare => mode,
 
+            // `BorrowckMode::Ast` is synonymous with no `-Z
+            // borrowck=...` flag at all. Therefore, we definitely
+            // want `#![feature(nll)]` to override it.
             mode @ BorrowckMode::Ast => {
                 if self.features().nll {
                     BorrowckMode::Mir
@@ -1416,6 +1418,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+            // `BorrowckMode::Migrate` is modelling the behavior one
+            // will eventually specify via `--edition 2018`. We want
+            // to allow developers on the Nightly channel to opt back
+            // into the "hard error" mode for NLL, which they can do
+            // via specifying `#![feature(nll)]` explicitly in their
+            // crate.
+            mode @ BorrowckMode::Migrate => {
+                if self.features().nll {
+                    BorrowckMode::Mir
+                } else {
+                    mode
+                }
+            }
         }
     }
 
