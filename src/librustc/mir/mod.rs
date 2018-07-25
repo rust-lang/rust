@@ -523,11 +523,12 @@ impl BorrowKind {
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
-newtype_index!(Local
-    {
+newtype_index! {
+    pub struct Local {
         DEBUG_FORMAT = "_{}",
         const RETURN_PLACE = 0,
-    });
+    }
+}
 
 /// Classifies locals into categories. See `Mir::local_kind`.
 #[derive(PartialEq, Eq, Debug)]
@@ -852,7 +853,11 @@ pub struct UpvarDecl {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock
 
-newtype_index!(BasicBlock { DEBUG_FORMAT = "bb{}" });
+newtype_index! {
+    pub struct BasicBlock {
+        DEBUG_FORMAT = "bb{}"
+    }
+}
 
 impl BasicBlock {
     pub fn start_location(self) -> Location {
@@ -1822,7 +1827,11 @@ pub type PlaceProjection<'tcx> = Projection<'tcx, Place<'tcx>, Local, Ty<'tcx>>;
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
-newtype_index!(Field { DEBUG_FORMAT = "field[{}]" });
+newtype_index! {
+    pub struct Field {
+        DEBUG_FORMAT = "field[{}]"
+    }
+}
 
 impl<'tcx> Place<'tcx> {
     pub fn field(self, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
@@ -1895,11 +1904,12 @@ impl<'tcx> Debug for Place<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-newtype_index!(SourceScope
-    {
+newtype_index! {
+    pub struct SourceScope {
         DEBUG_FORMAT = "scope[{}]",
         const OUTERMOST_SOURCE_SCOPE = 0,
-    });
+    }
+}
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct SourceScopeData {
@@ -2271,7 +2281,11 @@ pub struct Constant<'tcx> {
     pub literal: &'tcx ty::Const<'tcx>,
 }
 
-newtype_index!(Promoted { DEBUG_FORMAT = "promoted[{}]" });
+newtype_index! {
+    pub struct Promoted {
+        DEBUG_FORMAT = "promoted[{}]"
+    }
+}
 
 impl<'tcx> Debug for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {

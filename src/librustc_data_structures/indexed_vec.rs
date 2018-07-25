@@ -53,20 +53,22 @@ macro_rules! newtype_index {
     // ---- public rules ----
 
     // Use default constants
-    ($name:ident) => (
+    ($v:vis struct $name:ident { .. }) => (
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
             @max          [::std::u32::MAX]
+            @vis          [$v]
             @debug_format ["{}"]);
     );
 
     // Define any constants
-    ($name:ident { $($tokens:tt)+ }) => (
+    ($v:vis struct $name:ident { $($tokens:tt)+ }) => (
         newtype_index!(
             // Leave out derives marker so we can use its absence to ensure it comes first
             @type         [$name]
             @max          [::std::u32::MAX]
+            @vis          [$v]
             @debug_format ["{}"]
                           $($tokens)+);
     );
@@ -78,9 +80,10 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]) => (
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
-        pub struct $type($($pub)* u32);
+        $v struct $type($($pub)* u32);
 
         impl Idx for $type {
             #[inline]
@@ -170,6 +173,7 @@ macro_rules! newtype_index {
     // Handle the case where someone wants to make the internal field public
     (@type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    pub idx
                    $($tokens:tt)*) => (
@@ -177,6 +181,7 @@ macro_rules! newtype_index {
             @pub          [pub]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
@@ -184,12 +189,14 @@ macro_rules! newtype_index {
     // The default case is that the internal field is private
     (@type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $($tokens:tt)*) => (
         newtype_index!(
             @pub          []
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
@@ -198,6 +205,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    derive [$($derives:ident),*]
                    $($tokens:tt)*) => (
@@ -205,6 +213,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           derive [$($derives,)*]
                           $($tokens)*);
@@ -215,6 +224,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    derive [$($derives:ident,)+]
                    ENCODABLE = custom
@@ -224,6 +234,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
@@ -233,6 +244,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    derive [$($derives:ident,)+]
                    $($tokens:tt)*) => (
@@ -241,6 +253,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
@@ -250,6 +263,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    ENCODABLE = custom
                    $($tokens:tt)*) => (
@@ -258,6 +272,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
@@ -266,6 +281,7 @@ macro_rules! newtype_index {
     (@pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $($tokens:tt)*) => (
         newtype_index!(
@@ -273,6 +289,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
@@ -282,6 +299,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $name:ident = $constant:expr) => (
         newtype_index!(
@@ -289,6 +307,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $name = $constant,);
     );
@@ -298,6 +317,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$_max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $(#[doc = $doc:expr])*
                    const $name:ident = $constant:expr) => (
@@ -306,6 +326,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $(#[doc = $doc])* const $name = $constant,);
     );
@@ -315,6 +336,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$_max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    MAX = $max:expr,
                    $($tokens:tt)*) => (
@@ -323,6 +345,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
@@ -332,6 +355,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$_debug_format:tt]
                    DEBUG_FORMAT = $debug_format:tt,
                    $($tokens:tt)*) => (
@@ -340,6 +364,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );
@@ -349,6 +374,7 @@ macro_rules! newtype_index {
      @pub          [$($pub:tt)*]
      @type         [$type:ident]
      @max          [$max:expr]
+     @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $(#[doc = $doc:expr])*
                    const $name:ident = $constant:expr,
@@ -360,6 +386,7 @@ macro_rules! newtype_index {
             @pub          [$($pub)*]
             @type         [$type]
             @max          [$max]
+            @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
     );

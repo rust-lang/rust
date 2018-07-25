@@ -15,8 +15,8 @@ use serialize;
 use std::fmt;
 use std::u32;
 
-newtype_index!(CrateNum
-    {
+newtype_index! {
+    pub struct CrateNum {
         ENCODABLE = custom
         DEBUG_FORMAT = "crate{}",
 
@@ -35,7 +35,8 @@ newtype_index!(CrateNum
         /// A special CrateNum that we use for the tcx.rcache when decoding from
         /// the incr. comp. cache.
         const RESERVED_FOR_INCR_COMP_CACHE = u32::MAX - 2,
-    });
+    }
+}
 
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {

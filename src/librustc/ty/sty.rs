@@ -1034,11 +1034,12 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
-newtype_index!(DebruijnIndex
-    {
+newtype_index! {
+    pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
-    });
+    }
+}
 
 pub type Region<'tcx> = &'tcx RegionKind;
 
@@ -1176,11 +1177,12 @@ pub struct FloatVid {
     pub index: u32,
 }
 
-newtype_index!(RegionVid
-    {
+newtype_index! {
+    pub struct RegionVid {
         pub idx
         DEBUG_FORMAT = custom,
-    });
+    }
+}
 
 impl Atom for RegionVid {
     fn index(self) -> usize {
@@ -1217,7 +1219,9 @@ pub enum InferTy {
     CanonicalTy(CanonicalVar),
 }
 
-newtype_index!(CanonicalVar);
+newtype_index! {
+    pub struct CanonicalVar { .. }
+}
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]

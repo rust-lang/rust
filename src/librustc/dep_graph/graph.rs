@@ -39,7 +39,9 @@ pub struct DepGraph {
     fingerprints: Lrc<Lock<IndexVec<DepNodeIndex, Fingerprint>>>
 }
 
-newtype_index!(DepNodeIndex);
+newtype_index! {
+    pub struct DepNodeIndex { .. }
+}
 
 impl DepNodeIndex {
     const INVALID: DepNodeIndex = DepNodeIndex(::std::u32::MAX);
