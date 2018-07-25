@@ -17,6 +17,9 @@ matrix:
     - env: TARGET=x86_64-unknown-linux-gnu
     - env: TARGET=cargo-fmt
       rust: beta
+      # no-panic link test
+    - env: TARGET=armv7-unknown-linux-gnueabihf
+      rust: nightly
 
 before_install: set -e
 

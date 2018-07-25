@@ -6,18 +6,17 @@ main() {
         return
     fi
 
+    # test that the functions don't contain invocations of `panic!`
+    if [ $TRAVIS_RUST_VERSION ]; then
+        cross build --release --target $TARGET --example no-panic
+        return
+    fi
+
     # quick check
     cargo check
 
     # check that we can source import libm into compiler-builtins
     cargo check --package cb
-
-    # test that the functions don't contain invocations of `panic!`
-    case $TARGET in
-        armv7-unknown-linux-gnueabihf)
-            cross build --release --target $TARGET --example no-panic
-            ;;
-    esac
 
     # run unit tests
     cross test --lib --features checked --target $TARGET --release
