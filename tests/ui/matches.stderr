@@ -164,7 +164,7 @@ error: Err(_) will match all errors, maybe not a good idea
     |         ^^^^^^
     |
     = note: `-D match-wild-err-arm` implied by `-D warnings`
-    = note: to remove this warning, match each error seperately or use unreachable macro
+    = note: to remove this warning, match each error separately or use unreachable macro
 
 error: this `match` has identical arm bodies
    --> $DIR/matches.rs:131:18
@@ -191,7 +191,7 @@ error: Err(_) will match all errors, maybe not a good idea
 138 |         Err(_) => {panic!()}
     |         ^^^^^^
     |
-    = note: to remove this warning, match each error seperately or use unreachable macro
+    = note: to remove this warning, match each error separately or use unreachable macro
 
 error: this `match` has identical arm bodies
    --> $DIR/matches.rs:137:18
@@ -217,7 +217,7 @@ error: Err(_) will match all errors, maybe not a good idea
 144 |         Err(_) => {panic!();}
     |         ^^^^^^
     |
-    = note: to remove this warning, match each error seperately or use unreachable macro
+    = note: to remove this warning, match each error separately or use unreachable macro
 
 error: this `match` has identical arm bodies
    --> $DIR/matches.rs:143:18

@@ -9,7 +9,7 @@ fn foob() -> bool { unimplemented!() }
 
 #[allow(many_single_char_names)]
 fn immutable_condition() {
-    // Should warn when all vars mentionned are immutable
+    // Should warn when all vars mentioned are immutable
     let y = 0;
     while y < 10 {
         println!("KO - y is immutable");
@@ -69,11 +69,11 @@ fn unused_var() {
 
     while i < 3 {
         j = 3;
-        println!("KO - i not mentionned");
+        println!("KO - i not mentioned");
     }
 
     while i < 3 && j > 0 {
-        println!("KO - i and j not mentionned");
+        println!("KO - i and j not mentioned");
     }
 
     while i < 3 {
@@ -84,7 +84,7 @@ fn unused_var() {
 
     while i < 3 && j > 0 {
         i = 5;
-        println!("OK - i in cond and mentionned");
+        println!("OK - i in cond and mentioned");
     }
 }
 
