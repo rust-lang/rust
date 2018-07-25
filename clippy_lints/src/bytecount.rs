@@ -1,5 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty;
 use syntax::ast::{Name, UintTy};
 use crate::utils::{contains_name, get_pat_name, match_type, paths, single_segment_path, snippet, span_lint_and_sugg,
@@ -36,7 +38,7 @@ impl LintPass for ByteCount {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
-    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
             if let ExprKind::MethodCall(ref count, _, ref count_args) = expr.node;
             if count.ident.name == "count";

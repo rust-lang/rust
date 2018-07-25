@@ -7,6 +7,8 @@ use crate::utils::{
 };
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
@@ -39,22 +41,31 @@ declare_clippy_lint! {
 }
 
 /// **What it does:** Checks for `extern crate` and `use` items annotated with
-/// lint attributes
+/// lint attributes.
+///
+/// This lint whitelists `#[allow(unused_imports)]` and `#[allow(deprecated)]` on
+/// `use` items and `#[allow(unused_imports)]` on `extern crate` items with a
+/// `#[macro_use]` attribute.
 ///
 /// **Why is this bad?** Lint attributes have no effect on crate imports. Most
-/// likely a `!` was
-/// forgotten
+/// likely a `!` was forgotten.
 ///
-/// **Known problems:** Technically one might allow `unused_import` on a `use`
-/// item,
-/// but it's easier to remove the unused item.
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
+/// // Bad
 /// #[deny(dead_code)]
 /// extern crate foo;
-/// #[allow(unused_import)]
+/// #[forbid(dead_code)]
 /// use foo::bar;
+///
+/// // Ok
+/// #[allow(unused_imports)]
+/// use foo::baz;
+/// #[allow(unused_imports)]
+/// #[macro_use]
+/// extern crate baz;
 /// ```
 declare_clippy_lint! {
     pub USELESS_ATTRIBUTE,
@@ -154,17 +165,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             check_attrs(cx, item.span, item.name, &item.attrs)
         }
         match item.node {
-            ItemKind::ExternCrate(_) | ItemKind::Use(_, _) => {
+            ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
+                let skip_unused_imports = item.attrs.iter().any(|attr| attr.name() == "macro_use");
+
                 for attr in &item.attrs {
                     if let Some(ref lint_list) = attr.meta_item_list() {
                         match &*attr.name().as_str() {
                             "allow" | "warn" | "deny" | "forbid" => {
-                                // whitelist `unused_imports` and `deprecated`
+                                // whitelist `unused_imports` and `deprecated` for `use` items
+                                // and `unused_imports` for `extern crate` items with `macro_use`
                                 for lint in lint_list {
-                                    if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
-                                        if let ItemKind::Use(_, _) = item.node {
-                                            return;
-                                        }
+                                    match item.node {
+                                        ItemKind::Use(..) => if is_word(lint, "unused_imports")
+                                                                || is_word(lint, "deprecated") {
+                                                return
+                                        },
+                                        ItemKind::ExternCrate(..) => if is_word(lint, "unused_imports")
+                                                                        && skip_unused_imports {
+                                                return
+                                        },
+                                        _ => {},
                                     }
                                 }
                                 let line_span = last_line_of_span(cx, attr.span);
@@ -206,7 +226,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 }
 
-fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
+fn is_relevant_item(tcx: TyCtxt<'_, '_, '_>, item: &Item) -> bool {
     if let ItemKind::Fn(_, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
     } else {
@@ -214,14 +234,14 @@ fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
     }
 }
 
-fn is_relevant_impl(tcx: TyCtxt, item: &ImplItem) -> bool {
+fn is_relevant_impl(tcx: TyCtxt<'_, '_, '_>, item: &ImplItem) -> bool {
     match item.node {
         ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait(tcx: TyCtxt, item: &TraitItem) -> bool {
+fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
     match item.node {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
@@ -231,7 +251,7 @@ fn is_relevant_trait(tcx: TyCtxt, item: &TraitItem) -> bool {
     }
 }
 
-fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> bool {
+fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match stmt.node {
             StmtKind::Decl(_, _) => true,
@@ -242,7 +262,7 @@ fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> b
     }
 }
 
-fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool {
+fn is_relevant_expr(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
     match expr.node {
         ExprKind::Block(ref block, _) => is_relevant_block(tcx, tables, block),
         ExprKind::Ret(Some(ref e)) => is_relevant_expr(tcx, tables, e),
@@ -260,7 +280,7 @@ fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool
     }
 }
 
-fn check_attrs(cx: &LateContext, span: Span, name: Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attribute]) {
     if in_macro(span) {
         return;
     }
@@ -311,7 +331,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: Name, attrs: &[Attribute]) {
     }
 }
 
-fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
+fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
     if let LitKind::Str(ref is, _) = lit.node {
         if Version::parse(&is.as_str()).is_ok() {
             return;
@@ -338,7 +358,7 @@ fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
 // sources that the user has no control over.
 // For some reason these attributes don't have any expansion info on them, so
 // we have to check it this way until there is a better way.
-fn is_present_in_source(cx: &LateContext, span: Span) -> bool {
+fn is_present_in_source(cx: &LateContext<'_, '_>, span: Span) -> bool {
     if let Some(snippet) = snippet_opt(cx, span) {
         if snippet.is_empty() {
             return false;

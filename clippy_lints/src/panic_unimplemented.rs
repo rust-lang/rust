@@ -1,5 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use syntax::ast::LitKind;
 use syntax::ptr::P;
 use syntax::ext::quote::rt::Span;
@@ -84,7 +86,7 @@ fn get_outer_span(expr: &Expr) -> Span {
     }
 }
 
-fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext) {
+fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext<'_, '_>) {
     if_chain! {
         if let ExprKind::Lit(ref lit) = params[0].node;
         if is_direct_expn_of(expr.span, "panic").is_some();

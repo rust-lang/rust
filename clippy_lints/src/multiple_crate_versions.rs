@@ -1,6 +1,7 @@
 //! lint on multiple versions of a crate being used
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 
 use cargo_metadata;
@@ -38,7 +39,7 @@ impl LintPass for Pass {
 }
 
 impl EarlyLintPass for Pass {
-    fn check_crate(&mut self, cx: &EarlyContext, krate: &Crate) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
         let metadata = match cargo_metadata::metadata_deps(None, true) {
             Ok(metadata) => metadata,
             Err(_) => {

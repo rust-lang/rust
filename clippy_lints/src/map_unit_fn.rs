@@ -1,5 +1,7 @@
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty;
 use rustc_errors::Applicability;
 use syntax::codemap::Span;
@@ -82,7 +84,7 @@ impl LintPass for Pass {
     }
 }
 
-fn is_unit_type(ty: ty::Ty) -> bool {
+fn is_unit_type(ty: ty::Ty<'_>) -> bool {
     match ty.sty {
         ty::TyTuple(slice) => slice.is_empty(),
         ty::TyNever => true,
@@ -90,7 +92,7 @@ fn is_unit_type(ty: ty::Ty) -> bool {
     }
 }
 
-fn is_unit_function(cx: &LateContext, expr: &hir::Expr) -> bool {
+fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
 
     if let ty::TyFnDef(id, _) = ty.sty {
@@ -101,7 +103,7 @@ fn is_unit_function(cx: &LateContext, expr: &hir::Expr) -> bool {
     false
 }
 
-fn is_unit_expression(cx: &LateContext, expr: &hir::Expr) -> bool {
+fn is_unit_expression(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> bool {
     is_unit_type(cx.tables.expr_ty(expr))
 }
 
@@ -109,7 +111,7 @@ fn is_unit_expression(cx: &LateContext, expr: &hir::Expr) -> bool {
 /// semicolons, which causes problems when generating a suggestion. Given an
 /// expression that evaluates to '()' or '!', recursively remove useless braces
 /// and semi-colons until is suitable for including in the suggestion template
-fn reduce_unit_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Span> {
+fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr) -> Option<Span> {
     if !is_unit_expression(cx, expr) {
         return None;
     }
@@ -173,7 +175,7 @@ fn unit_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Op
 /// `y` => `_y`
 ///
 /// Anything else will return `_`.
-fn let_binding_name(cx: &LateContext, var_arg: &hir::Expr) -> String {
+fn let_binding_name(cx: &LateContext<'_, '_>, var_arg: &hir::Expr) -> String {
     match &var_arg.node {
         hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
         hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
@@ -189,7 +191,7 @@ fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     )
 }
 
-fn lint_map_unit_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_args: &[hir::Expr]) {
+fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr, map_args: &[hir::Expr]) {
     let var_arg = &map_args[0];
     let fn_arg = &map_args[1];
 
@@ -242,7 +244,7 @@ fn lint_map_unit_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_ar
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_stmt(&mut self, cx: &LateContext, stmt: &hir::Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &hir::Stmt) {
         if in_macro(stmt.span) {
             return;
         }

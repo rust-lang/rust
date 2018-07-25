@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use syntax::ast;
@@ -161,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
 }
 
 fn check_binop<'a>(
-    cx: &LateContext,
+    cx: &LateContext<'_, '_>,
     expr: &hir::Expr,
     binop: hir::BinOpKind,
     traits: &[&'a str],

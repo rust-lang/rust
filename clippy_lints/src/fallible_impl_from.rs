@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir;
 use rustc::ty;
 use syntax_pos::Span;
@@ -126,7 +128,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     }
 }
 
-fn match_type(tcx: ty::TyCtxt, ty: ty::Ty, path: &[&str]) -> bool {
+fn match_type(tcx: ty::TyCtxt<'_, '_, '_>, ty: ty::Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
         ty::TyAdt(adt, _) => match_def_path(tcx, adt.did, path),
         _ => false,

@@ -3,6 +3,7 @@
 
 #![deny(missing_docs_in_private_items)]
 
+use if_chain::if_chain;
 use rustc::{hir, ty};
 use rustc::lint::LateContext;
 use syntax::ast;
@@ -211,7 +212,7 @@ pub enum VecArgs<'a> {
 
 /// Returns the arguments of the `vec!` macro if this expression was expanded
 /// from `vec!`.
-pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e>> {
+pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr) -> Option<VecArgs<'e>> {
     if_chain! {
         if let hir::ExprKind::Call(ref fun, ref args) = expr.node;
         if let hir::ExprKind::Path(ref path) = fun.node;

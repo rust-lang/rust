@@ -10,7 +10,7 @@
 use rustc_plugin::Registry;
 
 #[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
+pub fn plugin_registrar(reg: &mut Registry<'_>) {
     reg.sess.lint_store.with_read_lock(|lint_store| {
         for (lint, _, _) in lint_store.get_lint_groups() {
             reg.sess

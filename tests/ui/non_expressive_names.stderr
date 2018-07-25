@@ -1,3 +1,23 @@
+error: using `println!("")`
+  --> $DIR/non_expressive_names.rs:60:14
+   |
+60 |         _ => println!(""),
+   |              ^^^^^^^^^^^^ help: replace it with: `println!()`
+   |
+   = note: `-D println-empty-string` implied by `-D warnings`
+
+error: using `println!("")`
+   --> $DIR/non_expressive_names.rs:128:18
+    |
+128 |             1 => println!(""),
+    |                  ^^^^^^^^^^^^ help: replace it with: `println!()`
+
+error: using `println!("")`
+   --> $DIR/non_expressive_names.rs:132:18
+    |
+132 |             1 => println!(""),
+    |                  ^^^^^^^^^^^^ help: replace it with: `println!()`
+
 error: binding's name is too similar to existing binding
   --> $DIR/non_expressive_names.rs:18:9
    |
@@ -167,5 +187,5 @@ error: consider choosing a more descriptive name
 151 |         let __1___2 = 12;
     |             ^^^^^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 20 previous errors
 

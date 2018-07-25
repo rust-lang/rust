@@ -2,9 +2,11 @@
 //! floating-point literal expressions.
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use syntax::ast::*;
 use syntax_pos;
-use crate::utils::{in_external_macro, snippet_opt, span_lint_and_sugg};
+use crate::utils::{snippet_opt, span_lint_and_sugg};
 
 /// **What it does:** Warns if a long integral or floating-point constant does
 /// not contain underscores.
@@ -227,7 +229,7 @@ enum WarningType {
 }
 
 impl WarningType {
-    crate fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: syntax_pos::Span) {
+    crate fn display(&self, grouping_hint: &str, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
         match self {
             WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,
@@ -279,8 +281,8 @@ impl LintPass for LiteralDigitGrouping {
 }
 
 impl EarlyLintPass for LiteralDigitGrouping {
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
-        if in_external_macro(cx, expr.span) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 
@@ -291,7 +293,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
 }
 
 impl LiteralDigitGrouping {
-    fn check_lit(self, cx: &EarlyContext, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         match lit.node {
             LitKind::Int(..) => {
                 // Lint integral literals.
@@ -419,8 +421,8 @@ impl LintPass for LiteralRepresentation {
 }
 
 impl EarlyLintPass for LiteralRepresentation {
-    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
-        if in_external_macro(cx, expr.span) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 
@@ -436,7 +438,7 @@ impl LiteralRepresentation {
             threshold,
         }
     }
-    fn check_lit(self, cx: &EarlyContext, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         // Lint integral literals.
         if_chain! {
             if let LitKind::Int(..) = lit.node;

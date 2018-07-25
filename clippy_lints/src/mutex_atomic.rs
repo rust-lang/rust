@@ -3,6 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
 use rustc::ty::{self, Ty};
 use rustc::hir::Expr;
 use syntax::ast;
@@ -79,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
     }
 }
 
-fn get_atomic_name(ty: Ty) -> Option<(&'static str)> {
+fn get_atomic_name(ty: Ty<'_>) -> Option<(&'static str)> {
     match ty.sty {
         ty::TyBool => Some("AtomicBool"),
         ty::TyUint(_) => Some("AtomicUsize"),

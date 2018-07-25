@@ -44,7 +44,7 @@ struct MutVarsDelegate {
 }
 
 impl<'tcx> MutVarsDelegate {
-    fn update(&mut self, cat: &'tcx Categorization) {
+    fn update(&mut self, cat: &'tcx Categorization<'_>) {
         match *cat {
             Categorization::Local(id) => {
                 self.used_mutably.insert(id);
@@ -68,7 +68,7 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
 
     fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt.cat)
         }

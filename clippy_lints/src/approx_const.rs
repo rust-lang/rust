@@ -1,6 +1,7 @@
 use crate::utils::span_lint;
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use std::f64::consts as f64;
 use syntax::ast::{FloatTy, Lit, LitKind};
 use syntax::symbol;
@@ -69,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
+fn check_lit(cx: &LateContext<'_, '_>, lit: &Lit, e: &Expr) {
     match lit.node {
         LitKind::Float(s, FloatTy::F32) => check_known_consts(cx, e, s, "f32"),
         LitKind::Float(s, FloatTy::F64) => check_known_consts(cx, e, s, "f64"),
@@ -78,7 +79,7 @@ fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
     }
 }
 
-fn check_known_consts(cx: &LateContext, e: &Expr, s: symbol::Symbol, module: &str) {
+fn check_known_consts(cx: &LateContext<'_, '_>, e: &Expr, s: symbol::Symbol, module: &str) {
     let s = s.as_str();
     if s.parse::<f64>().is_ok() {
         for &(constant, name, min_digits) in KNOWN_CONSTS {

@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def::Def;
 use crate::utils::{match_def_path, span_lint_and_sugg};

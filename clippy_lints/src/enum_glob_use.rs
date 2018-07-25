@@ -3,6 +3,7 @@
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use crate::utils::span_lint;
@@ -43,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
 }
 
 impl EnumGlobUse {
-    fn lint_item(&self, cx: &LateContext, item: &Item) {
+    fn lint_item(&self, cx: &LateContext<'_, '_>, item: &Item) {
         if item.vis.node.is_pub() {
             return; // re-exports are fine
         }

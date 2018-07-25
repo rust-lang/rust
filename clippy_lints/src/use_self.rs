@@ -1,8 +1,10 @@
 use crate::utils::{in_macro, span_lint_and_sugg};
+use if_chain::if_chain;
 use rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::NodeId;
 use syntax_pos::symbol::keywords::SelfType;
 

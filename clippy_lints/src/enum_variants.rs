@@ -1,6 +1,7 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::symbol::LocalInternedString;
@@ -148,7 +149,7 @@ fn partial_rmatch(post: &str, name: &str) -> usize {
 // FIXME: #600
 #[allow(while_let_on_iterator)]
 fn check_variant(
-    cx: &EarlyContext,
+    cx: &EarlyContext<'_>,
     threshold: u64,
     def: &EnumDef,
     item_name: &str,
@@ -239,12 +240,12 @@ fn to_camel_case(item_name: &str) -> String {
 }
 
 impl EarlyLintPass for EnumVariantNames {
-    fn check_item_post(&mut self, _cx: &EarlyContext, _item: &Item) {
+    fn check_item_post(&mut self, _cx: &EarlyContext<'_>, _item: &Item) {
         let last = self.modules.pop();
         assert!(last.is_some());
     }
 
-    fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         let item_name = item.ident.as_str();
         let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);

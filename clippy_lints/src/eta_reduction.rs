@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use rustc::hir::*;
 use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};
@@ -45,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
     }
 }
 
-fn check_closure(cx: &LateContext, expr: &Expr) {
+fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
     if let ExprKind::Closure(_, ref decl, eid, _, _) = expr.node {
         let body = cx.tcx.hir.body(eid);
         let ex = &body.value;

@@ -1,12 +1,14 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use std::cmp::Ordering;
 use std::collections::Bound;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use crate::utils::paths;
-use crate::utils::{expr_block, in_external_macro, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg,
+use crate::utils::{expr_block, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg,
             remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};
 use crate::utils::sugg::Sugg;
 use crate::consts::{constant, Constant};
@@ -181,7 +183,7 @@ impl LintPass for MatchPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if in_external_macro(cx, expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
         if let ExprKind::Match(ref ex, ref arms, MatchSource::Normal) = expr.node {
@@ -198,7 +200,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 &&
       arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
       arms[1].pats.len() == 1 && arms[1].guard.is_none() {
@@ -220,13 +222,13 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     }
 }
 
-fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
+fn check_single_match_single_pattern(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
     if is_wild(&arms[1].pats[0]) {
         report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
 }
 
-fn report_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
+fn report_single_match_single_pattern(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
     let lint = if els.is_some() {
         SINGLE_MATCH_ELSE
     } else {
@@ -250,7 +252,7 @@ fn report_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm],
     );
 }
 
-fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, ty: Ty, els: Option<&Expr>) {
+fn check_single_match_opt_like(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr, ty: Ty<'_>, els: Option<&Expr>) {
     // list of candidate Enums we know will never get any more members
     let candidates = &[
         (&paths::COW, "Borrowed"),
@@ -282,7 +284,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
     }
 }
 
-fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     // type of expression == bool
     if cx.tables.expr_ty(ex).sty == ty::TyBool {
         span_lint_and_then(
@@ -363,7 +365,7 @@ fn is_wild(pat: &impl std::ops::Deref<Target = Pat>) -> bool {
     }
 }
 
-fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
+fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
     if match_type(cx, ex_ty, &paths::RESULT) {
         for arm in arms {
@@ -403,7 +405,7 @@ fn is_panic_block(block: &Block) -> bool {
     }
 }
 
-fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if has_only_ref_pats(arms) {
         let mut suggs = Vec::new();
         let (title, msg) = if let ExprKind::AddrOf(Mutability::MutImmutable, ref inner) = ex.node {
@@ -434,7 +436,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) 
     }
 }
 
-fn check_match_as_ref(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 &&
         arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
         arms[1].pats.len() == 1 && arms[1].guard.is_none() {

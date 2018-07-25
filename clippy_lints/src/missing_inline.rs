@@ -11,6 +11,7 @@
 
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -67,7 +68,7 @@ declare_clippy_lint! {
 
 pub struct MissingInline;
 
-fn check_missing_inline_attrs(cx: &LateContext,
+fn check_missing_inline_attrs(cx: &LateContext<'_, '_>,
                               attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
     let has_inline = attrs
         .iter()
@@ -165,7 +166,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         let desc = match impl_item.node {
             hir::ImplItemKind::Method(..) => "a method",
             hir::ImplItemKind::Const(..) |
-            hir::ImplItemKind::Type(_) => return,
+            hir::ImplItemKind::Type(_) |
+            hir::ImplItemKind::Existential(_) => return,
         };
 
         let def_id = cx.tcx.hir.local_def_id(impl_item.id);

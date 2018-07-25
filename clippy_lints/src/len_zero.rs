@@ -1,6 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use std::collections::HashSet;
 use syntax::ast::{Lit, LitKind, Name};
@@ -105,8 +106,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     }
 }
 
-fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[TraitItemRef]) {
-    fn is_named_self(cx: &LateContext, item: &TraitItemRef, name: &str) -> bool {
+fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items: &[TraitItemRef]) {
+    fn is_named_self(cx: &LateContext<'_, '_>, item: &TraitItemRef, name: &str) -> bool {
         item.ident.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
             has_self && {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
@@ -118,7 +119,7 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
     }
 
     // fill the set with current and super traits
-    fn fill_trait_set(traitt: DefId, set: &mut HashSet<DefId>, cx: &LateContext) {
+    fn fill_trait_set(traitt: DefId, set: &mut HashSet<DefId>, cx: &LateContext<'_, '_>) {
         if set.insert(traitt) {
             for supertrait in ::rustc::traits::supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
@@ -153,8 +154,8 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
     }
 }
 
-fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
-    fn is_named_self(cx: &LateContext, item: &ImplItemRef, name: &str) -> bool {
+fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplItemRef]) {
+    fn is_named_self(cx: &LateContext<'_, '_>, item: &ImplItemRef, name: &str) -> bool {
         item.ident.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
             has_self && {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
@@ -193,7 +194,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
     }
 }
 
-fn check_cmp(cx: &LateContext, span: Span, method: &Expr, lit: &Expr, op: &str, compare_to: u32) {
+fn check_cmp(cx: &LateContext<'_, '_>, span: Span, method: &Expr, lit: &Expr, op: &str, compare_to: u32) {
     if let (&ExprKind::MethodCall(ref method_path, _, ref args), &ExprKind::Lit(ref lit)) = (&method.node, &lit.node) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
@@ -206,7 +207,7 @@ fn check_cmp(cx: &LateContext, span: Span, method: &Expr, lit: &Expr, op: &str, 
     }
 }
 
-fn check_len(cx: &LateContext, span: Span, method_name: Name, args: &[Expr], lit: &Lit, op: &str, compare_to: u32) {
+fn check_len(cx: &LateContext<'_, '_>, span: Span, method_name: Name, args: &[Expr], lit: &Lit, op: &str, compare_to: u32) {
     if let Spanned {
         node: LitKind::Int(lit, _),
         ..
@@ -231,9 +232,9 @@ fn check_len(cx: &LateContext, span: Span, method_name: Name, args: &[Expr], lit
 }
 
 /// Check if this type has an `is_empty` method.
-fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
+fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     /// Get an `AssociatedItem` and return true if it matches `is_empty(self)`.
-    fn is_is_empty(cx: &LateContext, item: &ty::AssociatedItem) -> bool {
+    fn is_is_empty(cx: &LateContext<'_, '_>, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
             if item.ident.name == "is_empty" {
                 let sig = cx.tcx.fn_sig(item.def_id);
@@ -248,7 +249,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     }
 
     /// Check the inherent impl's items for an `is_empty(self)` method.
-    fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
+    fn has_is_empty_impl(cx: &LateContext<'_, '_>, id: DefId) -> bool {
         cx.tcx.inherent_impls(id).iter().any(|imp| {
             cx.tcx
                 .associated_items(*imp)

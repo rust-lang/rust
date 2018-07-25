@@ -4,7 +4,7 @@ error: using `println!("")`
 3 |     println!("");
   |     ^^^^^^^^^^^^ help: replace it with: `println!()`
   |
-  = note: `-D print-with-newline` implied by `-D warnings`
+  = note: `-D println-empty-string` implied by `-D warnings`
 
 error: using `println!("")`
  --> $DIR/println_empty_string.rs:6:14

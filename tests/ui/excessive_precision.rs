@@ -22,7 +22,7 @@ fn main() {
     const BAD64_3: f64 = 0.100_000_000_000_000_000_1;
 
     // Literal as param
-    println!("{}", 8.888_888_888_888_888_888_888);
+    println!("{:?}", 8.888_888_888_888_888_888_888);
 
     // // TODO add inferred type tests for f32
     // Locals

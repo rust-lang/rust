@@ -6,6 +6,8 @@ use rustc::hir::def_id;
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::middle::region;
 // use rustc::middle::region::CodeExtent;
 use rustc::middle::expr_use_visitor::*;
@@ -21,7 +23,7 @@ use crate::utils::{sugg, sext};
 use crate::utils::usage::mutated_variables;
 use crate::consts::{constant, Constant};
 
-use crate::utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
+use crate::utils::{get_enclosing_block, get_parent_expr, higher, is_integer_literal, is_refutable,
             last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt,
             span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq};
 use crate::utils::paths;
@@ -448,7 +450,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 && arms[1].pats.len() == 1 && arms[1].guard.is_none()
                                 && is_simple_break_expr(&arms[1].body)
                             {
-                                if in_external_macro(cx, expr.span) {
+                                if in_external_macro(cx.sess(), expr.span) {
                                     return;
                                 }
 
@@ -741,7 +743,7 @@ struct FixedOffsetVar {
     offset: Offset,
 }
 
-fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty) -> bool {
+fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
     let is_slice = match ty.sty {
         ty::TyRef(_, subty, _) => is_slice_like(cx, subty),
         ty::TySlice(..) | ty::TyArray(..) => true,
@@ -1183,7 +1185,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
     }
 }
 
-fn lint_iter_method(cx: &LateContext, args: &[Expr], arg: &Expr, method_name: &str) {
+fn lint_iter_method(cx: &LateContext<'_, '_>, args: &[Expr], arg: &Expr, method_name: &str) {
     let object = snippet(cx, args[0].span, "_");
     let muta = if method_name == "iter_mut" {
         "mut "
@@ -1201,7 +1203,7 @@ fn lint_iter_method(cx: &LateContext, args: &[Expr], arg: &Expr, method_name: &s
     )
 }
 
-fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
+fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Expr) {
     let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
     if let ExprKind::MethodCall(ref method, _, ref args) = arg.node {
         // just the receiver, no arguments
@@ -1256,7 +1258,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
 }
 
 /// Check for `for` loops over `Option`s and `Results`
-fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
+fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr) {
     let ty = cx.tables.expr_ty(arg);
     if match_type(cx, ty, &paths::OPTION) {
         span_help_and_lint(
@@ -1418,7 +1420,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
 
     fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, _: NodeId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, _: NodeId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let Categorization::Local(id) = cmt.cat {
                 if Some(id) == self.node_id_low {
@@ -1451,7 +1453,7 @@ impl<'tcx> MutatePairDelegate {
     }
 }
 
-fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr) {
+fn check_for_mut_range_bound(cx: &LateContext<'_, '_>, arg: &Expr, body: &Expr) {
     if let Some(higher::Range {
         start: Some(start),
         end: Some(end),
@@ -1470,7 +1472,7 @@ fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr) {
     }
 }
 
-fn mut_warn_with_span(cx: &LateContext, span: Option<Span>) {
+fn mut_warn_with_span(cx: &LateContext<'_, '_>, span: Option<Span>) {
     if let Some(sp) = span {
         span_lint(
             cx,
@@ -1481,7 +1483,7 @@ fn mut_warn_with_span(cx: &LateContext, span: Option<Span>) {
     }
 }
 
-fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
+fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId> {
     if_chain! {
         if let ExprKind::Path(ref qpath) = bound.node;
         if let QPath::Resolved(None, _) = *qpath;
@@ -1503,7 +1505,7 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
     None
 }
 
-fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: &[Option<NodeId>]) -> (Option<Span>, Option<Span>) {
+fn check_for_mutation(cx: &LateContext<'_, '_>, body: &Expr, bound_ids: &[Option<NodeId>]) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutatePairDelegate {
         node_id_low: bound_ids[0],
         node_id_high: bound_ids[1],
@@ -1780,7 +1782,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
 /// Return true if the type of expr is one that provides `IntoIterator` impls
 /// for `&T` and `&mut T`, such as `Vec`.
 #[cfg_attr(rustfmt, rustfmt_skip)]
-fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
+fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards
     let ty = cx.tables.expr_ty(e);
@@ -1795,7 +1797,7 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     match_type(cx, ty, &paths::BTREESET)
 }
 
-fn is_iterable_array(ty: Ty, cx: &LateContext) -> bool {
+fn is_iterable_array(ty: Ty<'_>, cx: &LateContext<'_, '_>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
         ty::TyArray(_, n) => (0..=32).contains(&n.assert_usize(cx.tcx).expect("array length")),
@@ -2004,7 +2006,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     }
 }
 
-fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
+fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<NodeId> {
     if let ExprKind::Path(ref qpath) = expr.node {
         let path_res = cx.tables.qpath_def(qpath, expr.hir_id);
         if let Def::Local(node_id) = path_res {
@@ -2028,7 +2030,7 @@ fn is_conditional(expr: &Expr) -> bool {
     }
 }
 
-fn is_nested(cx: &LateContext, match_expr: &Expr, iter_expr: &Expr) -> bool {
+fn is_nested(cx: &LateContext<'_, '_>, match_expr: &Expr, iter_expr: &Expr) -> bool {
     if_chain! {
         if let Some(loop_block) = get_enclosing_block(cx, match_expr.id);
         if let Some(map::Node::NodeExpr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id));
@@ -2039,7 +2041,7 @@ fn is_nested(cx: &LateContext, match_expr: &Expr, iter_expr: &Expr) -> bool {
     false
 }
 
-fn is_loop_nested(cx: &LateContext, loop_expr: &Expr, iter_expr: &Expr) -> bool {
+fn is_loop_nested(cx: &LateContext<'_, '_>, loop_expr: &Expr, iter_expr: &Expr) -> bool {
     let mut id = loop_expr.id;
     let iter_name = if let Some(name) = path_name(iter_expr) {
         name

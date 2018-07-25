@@ -1,6 +1,7 @@
 //! lint when there is a large size difference between variants on an enum
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use crate::utils::{snippet_opt, span_lint_and_then};
 use rustc::ty::layout::LayoutOf;
@@ -47,7 +48,7 @@ impl LintPass for LargeEnumVariant {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
-    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item) {
         let did = cx.tcx.hir.local_def_id(item.id);
         if let ItemKind::Enum(ref def, _) = item.node {
             let ty = cx.tcx.type_of(did);

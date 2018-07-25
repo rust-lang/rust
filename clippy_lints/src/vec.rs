@@ -1,5 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 use crate::utils::{higher, is_copy, snippet, span_lint_and_sugg};
@@ -92,7 +94,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
 }
 
 /// Return the item type of the vector (ie. the `T` in `Vec<T>`).
-fn vec_type(ty: Ty) -> Ty {
+fn vec_type(ty: Ty<'_>) -> Ty<'_> {
     if let ty::TyAdt(_, substs) = ty.sty {
         substs.type_at(0)
     } else {

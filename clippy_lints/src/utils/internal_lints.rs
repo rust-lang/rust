@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -63,7 +64,7 @@ impl LintPass for Clippy {
 }
 
 impl EarlyLintPass for Clippy {
-    fn check_crate(&mut self, cx: &EarlyContext, krate: &AstCrate) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &AstCrate) {
         if let Some(utils) = krate
             .module
             .items

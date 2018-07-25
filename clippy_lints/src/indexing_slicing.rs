@@ -6,6 +6,7 @@ use crate::utils::higher;
 use crate::utils::higher::Range;
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use syntax::ast::RangeLimits;
 
@@ -154,7 +155,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
 /// the range.
 fn to_const_range<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    range: Range,
+    range: Range<'_>,
     array_size: u128,
 ) -> Option<(u128, u128)> {
     let s = range

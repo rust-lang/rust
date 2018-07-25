@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc::hir::*;

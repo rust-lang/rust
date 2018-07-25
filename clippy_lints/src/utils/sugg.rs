@@ -3,6 +3,7 @@
 // currently ignores lifetimes and generics
 #![allow(use_self)]
 
+use matches::matches;
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
 use rustc_errors;
@@ -31,8 +32,8 @@ pub enum Sugg<'a> {
 /// Literal constant `1`, for convenience.
 pub const ONE: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("1"));
 
-impl<'a> Display for Sugg<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+impl Display for Sugg<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match *self {
             Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) | Sugg::BinOp(_, ref s) => s.fmt(f),
         }
@@ -42,7 +43,7 @@ impl<'a> Display for Sugg<'a> {
 #[allow(wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
-    pub fn hir_opt(cx: &LateContext, expr: &hir::Expr) -> Option<Self> {
+    pub fn hir_opt(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<Self> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
             match expr.node {
@@ -81,12 +82,12 @@ impl<'a> Sugg<'a> {
 
     /// Convenience function around `hir_opt` for suggestions with a default
     /// text.
-    pub fn hir(cx: &LateContext, expr: &hir::Expr, default: &'a str) -> Self {
+    pub fn hir(cx: &LateContext<'_, '_>, expr: &hir::Expr, default: &'a str) -> Self {
         Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
     }
 
     /// Prepare a suggestion from an expression.
-    pub fn ast(cx: &EarlyContext, expr: &ast::Expr, default: &'a str) -> Self {
+    pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use syntax::ast::RangeLimits;
 
         let snippet = snippet(cx, expr.span, default);
@@ -240,7 +241,7 @@ impl<T> ParenHelper<T> {
 }
 
 impl<T: Display> Display for ParenHelper<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         if self.paren {
             write!(f, "({})", self.wrapped)
         } else {
@@ -254,7 +255,7 @@ impl<T: Display> Display for ParenHelper<T> {
 /// For convenience, the operator is taken as a string because all unary
 /// operators have the same
 /// precedence.
-pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
+pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
     Sugg::MaybeParen(format!("{}{}", op, expr.maybe_par()).into())
 }
 
@@ -263,7 +264,7 @@ pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
 /// Precedence of shift operator relative to other arithmetic operation is
 /// often confusing so
 /// parenthesis will always be added for a mix of these.
-pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
+pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     /// Whether the operator is a shift operator `<<` or `>>`.
     fn is_shift(op: &AssocOp) -> bool {
         matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
@@ -334,7 +335,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
 }
 
 /// Convinience wrapper arround `make_assoc` and `AssocOp::from_ast_binop`.
-pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
+pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     make_assoc(AssocOp::from_ast_binop(op), lhs, rhs)
 }
 

@@ -1,6 +1,7 @@
 //! lint on blocks unnecessarily using >= with a + 1 or - 1
 
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::ast::*;
 
 use crate::utils::{snippet_opt, span_lint_and_then};
@@ -60,7 +61,7 @@ impl IntPlusOne {
         false
     }
 
-    fn check_binop(&self, cx: &EarlyContext, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
+    fn check_binop(&self, cx: &EarlyContext<'_>, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
         match (binop, &lhs.node, &rhs.node) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
             (BinOpKind::Ge, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _) => {
@@ -126,7 +127,7 @@ impl IntPlusOne {
 
     fn generate_recommendation(
         &self,
-        cx: &EarlyContext,
+        cx: &EarlyContext<'_>,
         binop: BinOpKind,
         node: &Expr,
         other_side: &Expr,
@@ -149,7 +150,7 @@ impl IntPlusOne {
         None
     }
 
-    fn emit_warning(&self, cx: &EarlyContext, block: &Expr, recommendation: String) {
+    fn emit_warning(&self, cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
         span_lint_and_then(cx, INT_PLUS_ONE, block.span, "Unnecessary `>= y + 1` or `x - 1 >=`", |db| {
             db.span_suggestion(block.span, "change `>= y + 1` to `> y` as shown", recommendation);
         });
@@ -157,7 +158,7 @@ impl IntPlusOne {
 }
 
 impl EarlyLintPass for IntPlusOne {
-    fn check_expr(&mut self, cx: &EarlyContext, item: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
         if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = item.node {
             if let Some(ref rec) = self.check_binop(cx, kind.node, lhs, rhs) {
                 self.emit_warning(cx, item, rec.clone());

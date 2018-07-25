@@ -1,4 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint, lint_array};
 use rustc::hir::def::Def;
 use rustc::hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
 use crate::utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sugg};
@@ -40,7 +41,7 @@ declare_clippy_lint! {
     "outer expressions with no effect"
 }
 
-fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
+fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if in_macro(expr.span) {
         return false;
     }
@@ -127,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 
-fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Expr>> {
+fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec<&'a Expr>> {
     if in_macro(expr.span) {
         return None;
     }

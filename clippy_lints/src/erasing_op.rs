@@ -1,6 +1,7 @@
 use crate::consts::{constant_simple, Constant};
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use syntax::codemap::Span;
 use crate::utils::{in_macro, span_lint};
 
@@ -49,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
     }
 }
 
-fn check(cx: &LateContext, e: &Expr, span: Span) {
+fn check(cx: &LateContext<'_, '_>, e: &Expr, span: Span) {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.tables, e) {
         if v == 0 {
             span_lint(

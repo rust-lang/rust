@@ -3,6 +3,8 @@ use crate::utils::{higher, sugg};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use syntax::ast;
 
 /// **What it does:** Checks for compound assignment operations (`+=` and
@@ -49,8 +51,10 @@ declare_clippy_lint! {
 /// **Why is this bad?** Most likely these are bugs where one meant to write `a
 /// op= b`.
 ///
-/// **Known problems:** Someone might actually mean `a op= a op b`, but that
-/// should rather be written as `a = (2 * a) op b` where applicable.
+/// **Known problems:** Clippy cannot know for sure if `a op= a op b` should have
+/// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore it suggests both.
+/// If `a op= a op b` is really the correct behaviour it should be
+/// written as `a = a op a op b` as it's less confusing.
 ///
 /// **Example:**
 /// ```rust

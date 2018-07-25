@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use rustc::hir::*;
 use syntax::ast::RangeLimits;
 use syntax::codemap::Spanned;
@@ -174,7 +176,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
+fn has_step_by(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     // No need for walk_ptrs_ty here because step_by moves self, so it
     // can't be called on a borrowed range.
     let ty = cx.tables.expr_ty_adjusted(expr);

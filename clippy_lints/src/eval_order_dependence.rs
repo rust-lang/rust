@@ -2,6 +2,8 @@ use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
+use if_chain::if_chain;
 use syntax::ast;
 use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
 
@@ -173,7 +175,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
 ///   logical operators are considered to have a defined evaluation order.
 ///
 /// When such a read is found, the lint is triggered.
-fn check_for_unsequenced_reads(vis: &mut ReadVisitor) {
+fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
     let map = &vis.cx.tcx.hir;
     let mut cur_id = vis.write_expr.id;
     loop {
@@ -346,7 +348,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 }
 
 /// Returns true if `expr` is the LHS of an assignment, like `expr = ...`.
-fn is_in_assignment_position(cx: &LateContext, expr: &Expr) -> bool {
+fn is_in_assignment_position(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         if let ExprKind::Assign(ref lhs, _) = parent.node {
             return lhs.id == expr.id;

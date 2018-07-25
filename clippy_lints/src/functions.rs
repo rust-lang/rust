@@ -1,6 +1,8 @@
+use matches::matches;
 use rustc::hir::intravisit;
 use rustc::hir;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use rustc::ty;
 use rustc::hir::def::Def;
 use std::collections::HashSet;
@@ -126,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
 }
 
 impl<'a, 'tcx> Functions {
-    fn check_arg_number(self, cx: &LateContext, decl: &hir::FnDecl, span: Span) {
+    fn check_arg_number(self, cx: &LateContext<'_, '_>, decl: &hir::FnDecl, span: Span) {
         let args = decl.inputs.len() as u64;
         if args > self.threshold {
             span_lint(

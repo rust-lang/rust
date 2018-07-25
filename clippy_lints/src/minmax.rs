@@ -2,6 +2,7 @@ use crate::consts::{constant_simple, Constant};
 use crate::utils::{match_def_path, opt_def_id, paths, span_lint};
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::{declare_lint, lint_array};
 use std::cmp::Ordering;
 
 /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
@@ -65,7 +66,7 @@ enum MinMax {
     Max,
 }
 
-fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'a Expr)> {
+fn min_max<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<(MinMax, Constant, &'a Expr)> {
     if let ExprKind::Call(ref path, ref args) = expr.node {
         if let ExprKind::Path(ref qpath) = path.node {
             opt_def_id(cx.tables.qpath_def(qpath, path.hir_id)).and_then(|def_id| {
@@ -85,7 +86,7 @@ fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'
     }
 }
 
-fn fetch_const<'a>(cx: &LateContext, args: &'a [Expr], m: MinMax) -> Option<(MinMax, Constant, &'a Expr)> {
+fn fetch_const<'a>(cx: &LateContext<'_, '_>, args: &'a [Expr], m: MinMax) -> Option<(MinMax, Constant, &'a Expr)> {
     if args.len() != 2 {
         return None;
     }
