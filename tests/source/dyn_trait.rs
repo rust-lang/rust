@@ -1,5 +1,7 @@
 #![feature(dyn_trait)]
+
 fn main() {
+    // #2506
     // checks rustfmt doesn't remove dyn
     trait MyTrait {
         fn method(&self) -> u64;
@@ -13,4 +15,6 @@ fn main() {
 
     fn f2(a: Box<dyn Very_______________________Long__________________Name____________________Trait+ 'static,>) {}
 
+    // #2582
+    let _: &dyn (::std::any::Any) = &msg;
 }
