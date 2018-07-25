@@ -17,7 +17,13 @@ git commit -m "Bump the version"
 
 set +e
 
+echo "Running \`cargo fmt\`.."
+
 cd clippy_lints && cargo fmt -- --write-mode=overwrite && cd ..
 cargo fmt -- --write-mode=overwrite
 
-echo "remember to add a git tag and running 'cargo test' before committing the rustfmt changes"
+echo "Running tests to make sure \`cargo fmt\` did not break anything.."
+
+cargo test
+
+echo "If the tests passed, review and commit the formatting changes and remember to add a git tag."
