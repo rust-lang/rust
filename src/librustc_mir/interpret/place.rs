@@ -18,7 +18,6 @@ use rustc::ich::StableHashingContext;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
 use rustc::mir::interpret::{

@@ -16,7 +16,6 @@ use rustc::mir::{LocalDecl, LocalKind, Location, Operand, Place};
 use rustc::mir::{ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;

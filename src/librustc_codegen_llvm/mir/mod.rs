@@ -32,7 +32,7 @@ use syntax::symbol::keywords;
 use std::iter;
 
 use rustc_data_structures::bitvec::BitArray;
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::indexed_vec::IndexVec;
 
 pub use self::constant::codegen_static_initializer;
 

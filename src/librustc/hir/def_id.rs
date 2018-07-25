@@ -53,7 +53,7 @@ impl CrateNum {
     }
 
     pub fn as_u32(&self) -> u32 {
-        self.0
+        u32::from(*self)
     }
 
     pub fn as_def_id(&self) -> DefId { DefId { krate: *self, index: CRATE_DEF_INDEX } }

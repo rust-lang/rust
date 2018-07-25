@@ -49,8 +49,8 @@ impl UnifyValue for RegionVidKey {
 
 impl UnifyKey for ty::RegionVid {
     type Value = RegionVidKey;
-    fn index(&self) -> u32 { self.0 }
-    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid(i) }
+    fn index(&self) -> u32 { u32::from(*self) }
+    fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid::from(i) }
     fn tag() -> &'static str { "RegionVid" }
 }
 

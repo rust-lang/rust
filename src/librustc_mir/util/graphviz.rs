@@ -15,8 +15,6 @@ use rustc::ty::TyCtxt;
 use std::fmt::Debug;
 use std::io::{self, Write};
 
-use rustc_data_structures::indexed_vec::Idx;
-
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.

@@ -15,7 +15,6 @@
 use super::*;
 use borrow_check::nll::constraints::OutlivesConstraint;
 use dot::{self, IntoCow};
-use rustc_data_structures::indexed_vec::Idx;
 use std::borrow::Cow;
 use std::io::{self, Write};
 

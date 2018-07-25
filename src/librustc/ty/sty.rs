@@ -1179,7 +1179,6 @@ pub struct FloatVid {
 
 newtype_index! {
     pub struct RegionVid {
-        pub idx
         DEBUG_FORMAT = custom,
     }
 }
@@ -1187,18 +1186,6 @@ newtype_index! {
 impl Atom for RegionVid {
     fn index(self) -> usize {
         Idx::index(self)
-    }
-}
-
-impl From<usize> for RegionVid {
-    fn from(i: usize) -> RegionVid {
-        RegionVid::new(i)
-    }
-}
-
-impl From<RegionVid> for usize {
-    fn from(vid: RegionVid) -> usize {
-        Idx::index(vid)
     }
 }
 

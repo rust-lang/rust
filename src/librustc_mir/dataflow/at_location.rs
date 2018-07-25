@@ -13,7 +13,6 @@
 
 use rustc::mir::{BasicBlock, Location};
 use rustc_data_structures::indexed_set::{HybridIdxSet, IdxSet, Iter};
-use rustc_data_structures::indexed_vec::Idx;
 
 use dataflow::{BitDenotation, BlockSets, DataflowResults};
 use dataflow::move_paths::{HasMoveData, MovePathIndex};
