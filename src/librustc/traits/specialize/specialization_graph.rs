@@ -385,7 +385,11 @@ impl<'a, 'gcx, 'tcx> Ancestors {
                 | (Type, Existential)
                 => tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id),
 
-                _ => false,
+                | (Const, _)
+                | (Method, _)
+                | (Type, _)
+                | (Existential, _)
+                => false,
             }).map(move |item| NodeItem { node: node, item: item })
         })
     }
