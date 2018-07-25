@@ -163,6 +163,19 @@ fn main() {
             cmd.arg("-C").arg("panic=abort");
         }
 
+        // When a panic occurs inside the compiler, we don't need destructors to
+        // run, as we're going to exit and shutdown the process momentarily
+        // (which frees memory, for example). This is somewhat non-standard, but
+        // nets wins of 3-6% on most benchmarks so is quite worth it for the
+        // small code change.
+        //
+        // Specifically, note that this does not affect the "normal" case where
+        // the compiler issues no panics. It also doesn't affect the compiler's
+        // ability to explicitly catch panics.
+        if env::var_os("RUSTC_NO_LANDING_PADS").map_or(false, |e| *e == *"1") {
+            cmd.arg("-Z").arg("no-landing-pads");
+        }
+
         // Set various options from config.toml to configure how we're building
         // code.
         if env::var("RUSTC_DEBUGINFO") == Ok("true".to_string()) {

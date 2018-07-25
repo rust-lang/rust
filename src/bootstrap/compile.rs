@@ -582,6 +582,7 @@ pub fn rustc_cargo_env(builder: &Builder, cargo: &mut Command) {
     if builder.config.rustc_parallel_queries {
         cargo.env("RUSTC_PARALLEL_QUERIES", "1");
     }
+    cargo.env("RUSTC_NO_LANDING_PADS", "1");
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
