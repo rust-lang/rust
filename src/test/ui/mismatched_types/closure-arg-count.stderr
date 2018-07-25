@@ -5,7 +5,7 @@ LL |     [1, 2, 3].sort_by(|| panic!());
    |               ^^^^^^^ -- takes 0 arguments
    |               |
    |               expected closure that takes 2 arguments
-help: change the closure to take and ignore the expected arguments
+help: consider changing the closure to take and ignore the expected arguments
    |
 LL |     [1, 2, 3].sort_by(|_, _| panic!());
    |                       ^^^^^^
@@ -55,7 +55,7 @@ note: required by `f`
    |
 LL | fn f<F: Fn<usize>>(_: F) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
-help: change the closure to take and ignore the expected argument
+help: consider changing the closure to take and ignore the expected argument
    |
 LL |     f(|_| panic!());
    |       ^^^
