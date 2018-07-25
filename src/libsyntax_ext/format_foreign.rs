@@ -649,6 +649,7 @@ pub mod printf {
                 ($in_:expr, {
                     $param:expr, $flags:expr,
                     $width:expr, $prec:expr, $len:expr, $type_:expr,
+                    $pos:expr,
                 }) => {
                     assert_eq!(
                         pns(concat!($in_, "!")),
@@ -661,6 +662,7 @@ pub mod printf {
                                 precision: $prec,
                                 length: $len,
                                 type_: $type_,
+                                position: $pos,
                             }),
                             "!"
                         ))
@@ -669,53 +671,53 @@ pub mod printf {
             }
 
             assert_pns_eq_sub!("%!",
-                { None, "", None, None, None, "!", });
+                { None, "", None, None, None, "!", (0, 2), });
             assert_pns_eq_sub!("%c",
-                { None, "", None, None, None, "c", });
+                { None, "", None, None, None, "c", (0, 2), });
             assert_pns_eq_sub!("%s",
-                { None, "", None, None, None, "s", });
+                { None, "", None, None, None, "s", (0, 2), });
             assert_pns_eq_sub!("%06d",
-                { None, "0", Some(N::Num(6)), None, None, "d", });
+                { None, "0", Some(N::Num(6)), None, None, "d", (0, 4), });
             assert_pns_eq_sub!("%4.2f",
-                { None, "", Some(N::Num(4)), Some(N::Num(2)), None, "f", });
+                { None, "", Some(N::Num(4)), Some(N::Num(2)), None, "f", (0, 5), });
             assert_pns_eq_sub!("%#x",
-                { None, "#", None, None, None, "x", });
+                { None, "#", None, None, None, "x", (0, 3), });
             assert_pns_eq_sub!("%-10s",
-                { None, "-", Some(N::Num(10)), None, None, "s", });
+                { None, "-", Some(N::Num(10)), None, None, "s", (0, 5), });
             assert_pns_eq_sub!("%*s",
-                { None, "", Some(N::Next), None, None, "s", });
+                { None, "", Some(N::Next), None, None, "s", (0, 3), });
             assert_pns_eq_sub!("%-10.*s",
-                { None, "-", Some(N::Num(10)), Some(N::Next), None, "s", });
+                { None, "-", Some(N::Num(10)), Some(N::Next), None, "s", (0, 7), });
             assert_pns_eq_sub!("%-*.*s",
-                { None, "-", Some(N::Next), Some(N::Next), None, "s", });
+                { None, "-", Some(N::Next), Some(N::Next), None, "s", (0, 6), });
             assert_pns_eq_sub!("%.6i",
-                { None, "", None, Some(N::Num(6)), None, "i", });
+                { None, "", None, Some(N::Num(6)), None, "i", (0, 4), });
             assert_pns_eq_sub!("%+i",
-                { None, "+", None, None, None, "i", });
+                { None, "+", None, None, None, "i", (0, 3), });
             assert_pns_eq_sub!("%08X",
-                { None, "0", Some(N::Num(8)), None, None, "X", });
+                { None, "0", Some(N::Num(8)), None, None, "X", (0, 4), });
             assert_pns_eq_sub!("%lu",
-                { None, "", None, None, Some("l"), "u", });
+                { None, "", None, None, Some("l"), "u", (0, 3), });
             assert_pns_eq_sub!("%Iu",
-                { None, "", None, None, Some("I"), "u", });
+                { None, "", None, None, Some("I"), "u", (0, 3), });
             assert_pns_eq_sub!("%I32u",
-                { None, "", None, None, Some("I32"), "u", });
+                { None, "", None, None, Some("I32"), "u", (0, 5), });
             assert_pns_eq_sub!("%I64u",
-                { None, "", None, None, Some("I64"), "u", });
+                { None, "", None, None, Some("I64"), "u", (0, 5), });
             assert_pns_eq_sub!("%'d",
-                { None, "'", None, None, None, "d", });
+                { None, "'", None, None, None, "d", (0, 3), });
             assert_pns_eq_sub!("%10s",
-                { None, "", Some(N::Num(10)), None, None, "s", });
+                { None, "", Some(N::Num(10)), None, None, "s", (0, 4), });
             assert_pns_eq_sub!("%-10.10s",
-                { None, "-", Some(N::Num(10)), Some(N::Num(10)), None, "s", });
+                { None, "-", Some(N::Num(10)), Some(N::Num(10)), None, "s", (0, 8), });
             assert_pns_eq_sub!("%1$d",
-                { Some(1), "", None, None, None, "d", });
+                { Some(1), "", None, None, None, "d", (0, 4), });
             assert_pns_eq_sub!("%2$.*3$d",
-                { Some(2), "", None, Some(N::Arg(3)), None, "d", });
+                { Some(2), "", None, Some(N::Arg(3)), None, "d", (0, 8), });
             assert_pns_eq_sub!("%1$*2$.*3$d",
-                { Some(1), "", Some(N::Arg(2)), Some(N::Arg(3)), None, "d", });
+                { Some(1), "", Some(N::Arg(2)), Some(N::Arg(3)), None, "d", (0, 11), });
             assert_pns_eq_sub!("%-8ld",
-                { None, "-", Some(N::Num(8)), None, Some("l"), "d", });
+                { None, "-", Some(N::Num(8)), None, Some("l"), "d", (0, 5), });
         }
 
         #[test]
