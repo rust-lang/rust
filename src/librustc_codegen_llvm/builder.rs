@@ -54,6 +54,7 @@ bitflags! {
     pub struct MemFlags: u8 {
         const VOLATILE = 1 << 0;
         const NONTEMPORAL = 1 << 1;
+        const UNALIGNED = 1 << 2;
     }
 }
 
@@ -602,7 +603,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let ptr = self.check_store(val, ptr);
         unsafe {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
-            llvm::LLVMSetAlignment(store, align.abi() as c_uint);
+            let align = if flags.contains(MemFlags::UNALIGNED) {
+                1
+            } else {
+                align.abi() as c_uint
+            };
+            llvm::LLVMSetAlignment(store, align);
             if flags.contains(MemFlags::VOLATILE) {
                 llvm::LLVMSetVolatile(store, llvm::True);
             }

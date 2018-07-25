@@ -2697,15 +2697,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.opt_associated_item(def_id)
         };
 
-        match item {
-            Some(trait_item) => {
-                match trait_item.container {
-                    TraitContainer(_) => None,
-                    ImplContainer(def_id) => Some(def_id),
-                }
+        item.and_then(|trait_item|
+            match trait_item.container {
+                TraitContainer(_) => None,
+                ImplContainer(def_id) => Some(def_id),
             }
-            None => None
-        }
+        )
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`

@@ -190,11 +190,10 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    options.contains(&(c.name().as_str().to_string(),
-                                      match c.value_str().map(|s| s.as_str().to_string()) {
-                                          Some(s) => Some(s),
-                                          None => None
-                                      }))
+                    options.contains(&(
+                        c.name().as_str().to_string(),
+                        c.value_str().map(|s| s.as_str().to_string())
+                    ))
                 }) {
                     debug!("evaluate: skipping {:?} due to condition", command);
                     continue

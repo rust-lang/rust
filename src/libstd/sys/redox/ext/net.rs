@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "unix_socket_redox", reason = "new feature", issue="51553")]
+#![stable(feature = "unix_socket_redox", since = "1.29")]
 
 //! Unix-specific networking functionality
 
@@ -37,6 +37,7 @@ use sys::{cvt, fd::FileDesc, syscall};
 /// let addr = socket.local_addr().expect("Couldn't get local address");
 /// ```
 #[derive(Clone)]
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 pub struct SocketAddr(());
 
 impl SocketAddr {
@@ -64,6 +65,7 @@ impl SocketAddr {
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// assert_eq!(addr.as_pathname(), None);
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn as_pathname(&self) -> Option<&Path> {
         None
     }
@@ -91,10 +93,12 @@ impl SocketAddr {
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// assert_eq!(addr.is_unnamed(), true);
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn is_unnamed(&self) -> bool {
         false
     }
 }
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl fmt::Debug for SocketAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "SocketAddr")
@@ -115,8 +119,10 @@ impl fmt::Debug for SocketAddr {
 /// stream.read_to_string(&mut response).unwrap();
 /// println!("{}", response);
 /// ```
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 pub struct UnixStream(FileDesc);
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl fmt::Debug for UnixStream {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixStream");
@@ -147,6 +153,7 @@ impl UnixStream {
     ///     }
     /// };
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
         if let Some(s) = path.as_ref().to_str() {
             cvt(syscall::open(format!("chan:{}", s), syscall::O_CLOEXEC))
@@ -177,6 +184,7 @@ impl UnixStream {
     ///     }
     /// };
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn pair() -> io::Result<(UnixStream, UnixStream)> {
         let server = cvt(syscall::open("chan:", syscall::O_CREAT | syscall::O_CLOEXEC))
             .map(FileDesc::new)?;
@@ -200,6 +208,7 @@ impl UnixStream {
     /// let socket = UnixStream::connect("/tmp/sock").unwrap();
     /// let sock_copy = socket.try_clone().expect("Couldn't clone socket");
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn try_clone(&self) -> io::Result<UnixStream> {
         self.0.duplicate().map(UnixStream)
     }
@@ -214,6 +223,7 @@ impl UnixStream {
     /// let socket = UnixStream::connect("/tmp/sock").unwrap();
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         Err(Error::new(ErrorKind::Other, "UnixStream::local_addr unimplemented on redox"))
     }
@@ -228,6 +238,7 @@ impl UnixStream {
     /// let socket = UnixStream::connect("/tmp/sock").unwrap();
     /// let addr = socket.peer_addr().expect("Couldn't get peer address");
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         Err(Error::new(ErrorKind::Other, "UnixStream::peer_addr unimplemented on redox"))
     }
@@ -266,6 +277,7 @@ impl UnixStream {
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn set_read_timeout(&self, _timeout: Option<Duration>) -> io::Result<()> {
         Err(Error::new(ErrorKind::Other, "UnixStream::set_read_timeout unimplemented on redox"))
     }
@@ -304,6 +316,7 @@ impl UnixStream {
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn set_write_timeout(&self, _timeout: Option<Duration>) -> io::Result<()> {
         Err(Error::new(ErrorKind::Other, "UnixStream::set_write_timeout unimplemented on redox"))
     }
@@ -320,6 +333,7 @@ impl UnixStream {
     /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
     /// assert_eq!(socket.read_timeout().unwrap(), Some(Duration::new(1, 0)));
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         Err(Error::new(ErrorKind::Other, "UnixStream::read_timeout unimplemented on redox"))
     }
@@ -336,6 +350,7 @@ impl UnixStream {
     /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
     /// assert_eq!(socket.write_timeout().unwrap(), Some(Duration::new(1, 0)));
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         Err(Error::new(ErrorKind::Other, "UnixStream::write_timeout unimplemented on redox"))
     }
@@ -350,6 +365,7 @@ impl UnixStream {
     /// let socket = UnixStream::connect("/tmp/sock").unwrap();
     /// socket.set_nonblocking(true).expect("Couldn't set nonblocking");
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
@@ -369,6 +385,7 @@ impl UnixStream {
     ///
     /// # Platform specific
     /// On Redox this always returns None.
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
@@ -390,11 +407,13 @@ impl UnixStream {
     /// let socket = UnixStream::connect("/tmp/sock").unwrap();
     /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn shutdown(&self, _how: Shutdown) -> io::Result<()> {
         Err(Error::new(ErrorKind::Other, "UnixStream::shutdown unimplemented on redox"))
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl io::Read for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::Read::read(&mut &*self, buf)
@@ -406,6 +425,7 @@ impl io::Read for UnixStream {
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl<'a> io::Read for &'a UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
@@ -417,6 +437,7 @@ impl<'a> io::Read for &'a UnixStream {
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl io::Write for UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         io::Write::write(&mut &*self, buf)
@@ -427,6 +448,7 @@ impl io::Write for UnixStream {
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl<'a> io::Write for &'a UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
@@ -437,18 +459,21 @@ impl<'a> io::Write for &'a UnixStream {
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl AsRawFd for UnixStream {
     fn as_raw_fd(&self) -> RawFd {
         self.0.raw()
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl FromRawFd for UnixStream {
     unsafe fn from_raw_fd(fd: RawFd) -> UnixStream {
         UnixStream(FileDesc::new(fd))
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl IntoRawFd for UnixStream {
     fn into_raw_fd(self) -> RawFd {
         self.0.into_raw()
@@ -483,8 +508,10 @@ impl IntoRawFd for UnixStream {
 ///     }
 /// }
 /// ```
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 pub struct UnixListener(FileDesc);
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl fmt::Debug for UnixListener {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixListener");
@@ -512,6 +539,7 @@ impl UnixListener {
     ///     }
     /// };
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         if let Some(s) = path.as_ref().to_str() {
             cvt(syscall::open(format!("chan:{}", s), syscall::O_CREAT | syscall::O_CLOEXEC))
@@ -545,6 +573,7 @@ impl UnixListener {
     ///     Err(e) => println!("accept function failed: {:?}", e),
     /// }
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         self.0.duplicate_path(b"listen").map(|fd| (UnixStream(fd), SocketAddr(())))
     }
@@ -564,6 +593,7 @@ impl UnixListener {
     ///
     /// let listener_copy = listener.try_clone().expect("try_clone failed");
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn try_clone(&self) -> io::Result<UnixListener> {
         self.0.duplicate().map(UnixListener)
     }
@@ -579,6 +609,7 @@ impl UnixListener {
     ///
     /// let addr = listener.local_addr().expect("Couldn't get local address");
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         Err(Error::new(ErrorKind::Other, "UnixListener::local_addr unimplemented on redox"))
     }
@@ -594,6 +625,7 @@ impl UnixListener {
     ///
     /// listener.set_nonblocking(true).expect("Couldn't set non blocking");
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
@@ -614,6 +646,7 @@ impl UnixListener {
     ///
     /// # Platform specific
     /// On Redox this always returns None.
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
@@ -649,29 +682,34 @@ impl UnixListener {
     ///     }
     /// }
     /// ```
+    #[stable(feature = "unix_socket_redox", since = "1.29")]
     pub fn incoming<'a>(&'a self) -> Incoming<'a> {
         Incoming { listener: self }
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl AsRawFd for UnixListener {
     fn as_raw_fd(&self) -> RawFd {
         self.0.raw()
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl FromRawFd for UnixListener {
     unsafe fn from_raw_fd(fd: RawFd) -> UnixListener {
         UnixListener(FileDesc::new(fd))
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl IntoRawFd for UnixListener {
     fn into_raw_fd(self) -> RawFd {
         self.0.into_raw()
     }
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl<'a> IntoIterator for &'a UnixListener {
     type Item = io::Result<UnixStream>;
     type IntoIter = Incoming<'a>;
@@ -712,10 +750,12 @@ impl<'a> IntoIterator for &'a UnixListener {
 /// }
 /// ```
 #[derive(Debug)]
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 pub struct Incoming<'a> {
     listener: &'a UnixListener,
 }
 
+#[stable(feature = "unix_socket_redox", since = "1.29")]
 impl<'a> Iterator for Incoming<'a> {
     type Item = io::Result<UnixStream>;
 

@@ -591,7 +591,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of an allocated object.
+    ///   byte past the end of *the same* allocated object.
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -643,9 +643,15 @@ impl<T: ?Sized> *const T {
     ///
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
+    /// In particular, the resulting pointer may *not* be used to access a
+    /// different allocated object than the one `self` points to. In other
+    /// words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
+    /// *not* the same as `y`, and dereferencing it is undefined behavior
+    /// unless `x` and `y` point into the same allocated object.
     ///
     /// Always use `.offset(count)` instead when possible, because `offset`
-    /// allows the compiler to optimize better.
+    /// allows the compiler to optimize better.  If you need to cross object
+    /// boundaries, cast the pointer to an integer and do the arithmetic there.
     ///
     /// # Examples
     ///
@@ -1340,7 +1346,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of an allocated object.
+    ///   byte past the end of *the same* allocated object.
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -1391,9 +1397,15 @@ impl<T: ?Sized> *mut T {
     ///
     /// The resulting pointer does not need to be in bounds, but it is
     /// potentially hazardous to dereference (which requires `unsafe`).
+    /// In particular, the resulting pointer may *not* be used to access a
+    /// different allocated object than the one `self` points to. In other
+    /// words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
+    /// *not* the same as `y`, and dereferencing it is undefined behavior
+    /// unless `x` and `y` point into the same allocated object.
     ///
     /// Always use `.offset(count)` instead when possible, because `offset`
-    /// allows the compiler to optimize better.
+    /// allows the compiler to optimize better.  If you need to cross object
+    /// boundaries, cast the pointer to an integer and do the arithmetic there.
     ///
     /// # Examples
     ///

@@ -53,10 +53,7 @@ impl<'a> Parser<'a> {
         F: FnOnce(&mut Parser) -> Option<T>,
     {
         self.read_atomically(move |p| {
-            match cb(p) {
-                Some(x) => if p.is_eof() {Some(x)} else {None},
-                None => None,
-            }
+            cb(p).filter(|_| p.is_eof())
         })
     }
 
