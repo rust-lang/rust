@@ -202,14 +202,13 @@ fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec
 
 pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetric>) {
     use rustc::util::common::duration_to_secs_str;
-    use std::cmp::Ordering;
+    use std::cmp::Reverse;
 
     let mut data = vec![];
     for (ref cons, ref qm) in counts.iter() {
         data.push((cons.clone(), qm.count.clone(), qm.dur_total.clone(), qm.dur_self.clone()));
     };
-    data.sort_by(|&(_,_,_,self1),&(_,_,_,self2)|
-                 if self1 > self2 { Ordering::Less } else { Ordering::Greater } );
+    data.sort_by_key(|&k| Reverse(k.3));
     for (cons, count, dur_total, dur_self) in data {
         write!(count_file, "{}, {}, {}, {}\n",
                cons, count,
