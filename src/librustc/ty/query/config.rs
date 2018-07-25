@@ -375,25 +375,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::trait_of_item<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::const_is_rvalue_promotable_to_static<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
-        format!("const checking if rvalue is promotable to static `{}`",
-            tcx.item_path_str(def_id))
-    }
-
-    #[inline]
-    fn cache_on_disk(_: Self::Key) -> bool {
-        true
-    }
-
-    #[inline]
-    fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          id: SerializedDepNodeIndex)
-                          -> Option<Self::Value> {
-        tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::rvalue_promotable_map<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("checking which parts of `{}` are promotable to static",
@@ -842,7 +823,6 @@ macro_rules! impl_disk_cacheable_query(
 impl_disk_cacheable_query!(unsafety_check_result, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(borrowck, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(mir_borrowck, |def_id| def_id.is_local());
-impl_disk_cacheable_query!(mir_const_qualif, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(check_match, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(def_symbol_name, |_| true);
 impl_disk_cacheable_query!(type_of, |def_id| def_id.is_local());

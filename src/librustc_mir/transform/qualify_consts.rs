@@ -20,11 +20,9 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::ConstValue;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
-use rustc::ty::query::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor};
@@ -279,7 +277,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Qualify a whole const, static initializer or const fn.
-    fn qualify_const(&mut self) -> (Qualif, Lrc<IdxSetBuf<Local>>) {
+    fn qualify_const(&mut self) -> Lrc<IdxSetBuf<Local>> {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
@@ -398,7 +396,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        (self.qualif, Lrc::new(promoted_temps))
+        Lrc::new(promoted_temps)
     }
 }
 
@@ -558,24 +556,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     );
                 }
             }
-            Operand::Constant(ref constant) => {
-                if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
-                    // Don't peek inside trait associated constants.
-                    if self.tcx.trait_of_item(def_id).is_some() {
-                        self.add_type(constant.literal.ty);
-                    } else {
-                        let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
-
-                        let qualif = Qualif::from_bits(bits).expect("invalid mir_const_qualif");
-                        self.add(qualif);
-
-                        // Just in case the type is more specific than
-                        // the definition, e.g. impl associated const
-                        // with type parameters, take it into account.
-                        self.qualif.restrict(constant.literal.ty, self.tcx, self.param_env);
-                    }
-                }
-            }
+            Operand::Constant(ref constant) => self.add_type(constant.literal.ty),
         }
     }
 
@@ -838,15 +819,29 @@ This does not pose a problem by itself because they can't be accessed directly."
                     Abi::PlatformIntrinsic => {
                         assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id).as_str()[..] {
+                            // DANGER_ZONE
+                            // Do not add anything to this list without consulting
+                            // @eddyb, @nikomatsakis and @oli-obk
+                            //
+                            // Any intrinsic which has arguments can potentially cause
+                            // a mismatch between what becomes promoted to `'static` and
+                            // what can be evaluated at compile-time
                             | "size_of"
                             | "min_align_of"
-                            | "type_id"
+                            | "type_id" => is_const_fn = Some(def_id),
+                            // END(DANGER_ZONE)
+
+                            // If you add anything to this list, make sure to also implement it
+                            // in `rustc_mir::interpret::const_eval`
                             | "bswap"
                             | "ctpop"
                             | "cttz"
                             | "cttz_nonzero"
                             | "ctlz"
-                            | "ctlz_nonzero" => is_const_fn = Some(def_id),
+                            | "ctlz_nonzero" => {
+                                self.add(Qualif::NOT_PROMOTABLE);
+                                is_const_fn = Some(def_id)
+                            },
 
                             name if name.starts_with("simd_shuffle") => {
                                 is_shuffle = true;
@@ -858,6 +853,10 @@ This does not pose a problem by itself because they can't be accessed directly."
                     _ => {
                         if self.tcx.is_const_fn(def_id) {
                             is_const_fn = Some(def_id);
+                            // do not promote unsafe function calls
+                            if fn_ty.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
+                                self.add(Qualif::NOT_PROMOTABLE);
+                            }
                         }
                     }
                 }
@@ -1095,30 +1094,18 @@ This does not pose a problem by itself because they can't be accessed directly."
     }
 }
 
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        mir_const_qualif,
-        ..*providers
-    };
-}
-
-fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              def_id: DefId)
-                              -> (u8, Lrc<IdxSetBuf<Local>>) {
-    // NB: This `borrow()` is guaranteed to be valid (i.e., the value
-    // cannot yet be stolen), because `mir_validated()`, which steals
-    // from `mir_const(), forces this query to execute before
-    // performing the steal.
-    let mir = &tcx.mir_const(def_id).borrow();
-
+fn mir_const_qualif<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    mir: &mut Mir<'tcx>,
+) -> Lrc<IdxSetBuf<Local>> {
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (Qualif::NOT_CONST.bits(), Lrc::new(IdxSetBuf::new_empty(0)));
+        return Lrc::new(IdxSetBuf::new_empty(0));
     }
 
     let mut qualifier = Qualifier::new(tcx, def_id, mir, Mode::Const);
-    let (qualif, promoted_temps) = qualifier.qualify_const();
-    (qualif.bits(), promoted_temps)
+    qualifier.qualify_const()
 }
 
 pub struct QualifyAndPromoteConstants;
@@ -1150,7 +1137,7 @@ impl MirPass for QualifyAndPromoteConstants {
                 }
             }
             hir::BodyOwnerKind::Const => {
-                const_promoted_temps = Some(tcx.mir_const_qualif(def_id).1);
+                const_promoted_temps = Some(mir_const_qualif(tcx, def_id, mir));
                 Mode::Const
             }
             hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
@@ -1181,7 +1168,7 @@ impl MirPass for QualifyAndPromoteConstants {
                 // Already computed by `mir_const_qualif`.
                 const_promoted_temps.unwrap()
             } else {
-                Qualifier::new(tcx, def_id, mir, mode).qualify_const().1
+                Qualifier::new(tcx, def_id, mir, mode).qualify_const()
             };
 
             // In `const` and `static` everything without `StorageDead`

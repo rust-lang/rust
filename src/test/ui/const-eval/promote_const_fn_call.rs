@@ -8,26 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Unsigned {
-    const MAX: u8;
+// compile-pass
+
+#![feature(const_fn)]
+
+const fn max() -> usize { !0 }
+
+trait Foo {
+    const BAR: usize;
 }
 
-struct U8(u8);
-impl Unsigned for U8 {
-    const MAX: u8 = 0xff;
-}
-
-struct Sum<A,B>(A,B);
-
-impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A,B> {
-    const MAX: u8 = A::MAX + B::MAX;
-}
-
-fn foo<T>(_: T) -> &'static u8 {
-    &Sum::<U8,U8>::MAX //~ ERROR erroneous constant
-    //~^ ERROR referenced constant
+impl Foo for u32 {
+    const BAR: usize = 42;
 }
 
 fn main() {
-    foo(0);
+    let x: &'static usize = &max();
+    let y: &'static usize = &std::usize::MAX;
+    let z: &'static usize = &u32::BAR;
 }

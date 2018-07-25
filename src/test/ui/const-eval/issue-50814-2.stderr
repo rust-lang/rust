@@ -4,13 +4,13 @@ error[E0080]: referenced constant has errors
 LL |     const BAR: usize = [5, 6, 7][T::BOO];
    |                        ----------------- index out of bounds: the len is 3 but the index is 42
 ...
-LL |     &<A<T> as Foo<T>>::BAR //~ ERROR erroneous constant used
+LL |     &<A<T> as Foo<T>>::BAR //~ ERROR referenced constant
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: erroneous constant used
   --> $DIR/issue-50814-2.rs:26:5
    |
-LL |     &<A<T> as Foo<T>>::BAR //~ ERROR erroneous constant used
+LL |     &<A<T> as Foo<T>>::BAR //~ ERROR referenced constant
    |     ^---------------------
    |      |
    |      referenced constant has errors

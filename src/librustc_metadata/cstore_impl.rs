@@ -42,7 +42,6 @@ use syntax::edition::Edition;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION, FileName};
-use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc::hir;
 
 macro_rules! provide {
@@ -140,9 +139,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         mir
     }
-    mir_const_qualif => {
-        (cdata.mir_const_qualif(def_id.index), Lrc::new(IdxSetBuf::new_empty(0)))
-    }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { Lrc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_const_fn => { cdata.is_const_fn(def_id.index) }
@@ -164,9 +160,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
-    const_is_rvalue_promotable_to_static => {
-        cdata.const_is_rvalue_promotable_to_static(def_id.index)
-    }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { Lrc::new(cdata.get_dylib_dependency_formats()) }

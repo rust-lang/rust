@@ -44,10 +44,9 @@ use traits::Clauses;
 use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use ty::steal::Steal;
 use ty::subst::Substs;
-use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
+use util::nodemap::{DefIdSet, DefIdMap, ItemLocalMap};
 use util::common::{ErrorReported};
 
-use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -203,11 +202,6 @@ define_queries! { <'tcx>
         /// constructors.
         [] fn mir_keys: mir_keys(CrateNum) -> Lrc<DefIdSet>,
 
-        /// Maps DefId's that have an associated Mir to the result
-        /// of the MIR qualify_consts pass. The actual meaning of
-        /// the value isn't known except to the pass itself.
-        [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<IdxSetBuf<mir::Local>>),
-
         /// Fetch the MIR for a given def-id right after it's built - this includes
         /// unreachable code.
         [] fn mir_built: MirBuilt(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
@@ -332,8 +326,8 @@ define_queries! { <'tcx>
 
     TypeChecking {
         [] fn trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
-        [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
-        [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Lrc<ItemLocalSet>,
+        [] fn rvalue_promotable_map: RvaluePromotableMap(DefId)
+                                   -> Lrc<ItemLocalMap<ty::Promotability>>,
     },
 
     Codegen {

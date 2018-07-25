@@ -532,7 +532,7 @@ pub fn const_eval_provider<'a, 'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
 
-    if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+    if def_id.is_local() {
         let tables = tcx.typeck_tables_of(def_id);
         let span = tcx.def_span(def_id);
 
@@ -543,10 +543,6 @@ pub fn const_eval_provider<'a, 'tcx>(
                 stacktrace: vec![],
                 span,
             }.into());
-        }
-
-        if let hir::BodyOwnerKind::Const = tcx.hir.body_owner_kind(id) {
-            tcx.mir_const_qualif(def_id);
         }
 
         // Do not continue into miri if typeck errors occurred; it will fail horribly

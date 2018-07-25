@@ -2978,7 +2978,7 @@ impl<'test> TestCx<'test> {
 
     fn delete_file(&self, file: &PathBuf) {
         if let Err(e) = ::std::fs::remove_file(file) {
-            self.fatal(&format!(
+            self.error(&format!(
                 "failed to delete `{}`: {}",
                 file.display(),
                 e,

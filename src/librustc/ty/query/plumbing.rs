@@ -1069,7 +1069,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         },
         DepKind::PrivacyAccessLevels => { force!(privacy_access_levels, LOCAL_CRATE); }
         DepKind::MirBuilt => { force!(mir_built, def_id!()); }
-        DepKind::MirConstQualif => { force!(mir_const_qualif, def_id!()); }
         DepKind::MirConst => { force!(mir_const, def_id!()); }
         DepKind::MirValidated => { force!(mir_validated, def_id!()); }
         DepKind::MirOptimized => { force!(optimized_mir, def_id!()); }
@@ -1120,9 +1119,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::LookupStability => { force!(lookup_stability, def_id!()); }
         DepKind::LookupDeprecationEntry => {
             force!(lookup_deprecation_entry, def_id!());
-        }
-        DepKind::ConstIsRvaluePromotableToStatic => {
-            force!(const_is_rvalue_promotable_to_static, def_id!());
         }
         DepKind::RvaluePromotableMap => { force!(rvalue_promotable_map, def_id!()); }
         DepKind::ImplParent => { force!(impl_parent, def_id!()); }
@@ -1285,9 +1281,7 @@ impl_load_from_cache!(
     UnsafetyCheckResult => unsafety_check_result,
     BorrowCheck => borrowck,
     MirBorrowCheck => mir_borrowck,
-    MirConstQualif => mir_const_qualif,
     SymbolName => def_symbol_name,
-    ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
     CheckMatch => check_match,
     TypeOfItem => type_of,
     GenericsOfItem => generics_of,

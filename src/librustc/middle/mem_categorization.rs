@@ -87,7 +87,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
-use util::nodemap::ItemLocalSet;
+use util::nodemap::ItemLocalMap;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Categorization<'tcx> {
@@ -295,7 +295,7 @@ pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
-    rvalue_promotable_map: Option<Lrc<ItemLocalSet>>,
+    rvalue_promotable_map: Option<Lrc<ItemLocalMap<ty::Promotability>>>,
     infcx: Option<&'a InferCtxt<'a, 'gcx, 'tcx>>,
 }
 
@@ -404,7 +404,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<Lrc<ItemLocalSet>>)
+               rvalue_promotable_map: Option<Lrc<ItemLocalMap<ty::Promotability>>>)
                -> MemCategorizationContext<'a, 'tcx, 'tcx> {
         MemCategorizationContext {
             tcx,
@@ -946,32 +946,35 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             span,
             expr_ty,
         );
-        let promotable = self.rvalue_promotable_map.as_ref().map(|m| m.contains(&hir_id.local_id))
-                                                            .unwrap_or(false);
+        use ty::Promotability::*;
+        let promotability = self
+            .rvalue_promotable_map
+            .as_ref()
+            .and_then(|m| m.get(&hir_id.local_id).cloned())
+            .unwrap_or(NotPromotable);
 
         debug!(
             "cat_rvalue_node: promotable = {:?}",
-            promotable,
+            promotability,
         );
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).
-        let promotable = match expr_ty.sty {
-            ty::TyArray(_, len) if len.assert_usize(self.tcx) == Some(0) => true,
-            _ => promotable,
+        let promotability = match expr_ty.sty {
+            ty::TyArray(_, len) if len.assert_usize(self.tcx) == Some(0) => Promotable,
+            _ => promotability,
         };
 
         debug!(
             "cat_rvalue_node: promotable = {:?} (2)",
-            promotable,
+            promotability,
         );
 
         // Compute maximum lifetime of this rvalue. This is 'static if
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
-        let re = if promotable {
-            self.tcx.types.re_static
-        } else {
-            self.temporary_scope(hir_id.local_id)
+        let re = match promotability {
+            Promotable | NotInspectable => self.tcx.types.re_static,
+            NotPromotable => self.temporary_scope(hir_id.local_id),
         };
         let ret = self.cat_rvalue(hir_id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {:?}", ret);

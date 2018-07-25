@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,26 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Unsigned {
-    const MAX: u8;
+#![allow(const_err)]
+
+// compile-pass
+
+union Bad {
+    usize: usize,
+    ptr: &'static u32,
 }
 
-struct U8(u8);
-impl Unsigned for U8 {
-    const MAX: u8 = 0xff;
-}
+// the constant does something "unconst", so promotion is allowed to fail
+const FOO: usize = unsafe {
+    Bad { ptr: &1 }.usize
+};
 
-struct Sum<A,B>(A,B);
-
-impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A,B> {
-    const MAX: u8 = A::MAX + B::MAX;
-}
-
-fn foo<T>(_: T) -> &'static u8 {
-    &Sum::<U8,U8>::MAX //~ ERROR erroneous constant
-    //~^ ERROR referenced constant
-}
 
 fn main() {
-    foo(0);
+    let x: &'static usize = &FOO;
+    let y: &'static usize = &(FOO % 42);
 }

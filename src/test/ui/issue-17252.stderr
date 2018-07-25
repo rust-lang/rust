@@ -1,10 +1,10 @@
-error[E0391]: cycle detected when processing `FOO`
+error[E0391]: cycle detected when const-evaluating `FOO`
   --> $DIR/issue-17252.rs:11:20
    |
 LL | const FOO: usize = FOO; //~ ERROR E0391
    |                    ^^^
    |
-   = note: ...which again requires processing `FOO`, completing the cycle
+   = note: ...which again requires const-evaluating `FOO`, completing the cycle
 note: cycle used when processing `main::{{constant}}`
   --> $DIR/issue-17252.rs:14:18
    |

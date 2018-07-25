@@ -296,7 +296,7 @@ impl_stable_hash_for!(struct Entry<'tcx> {
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum EntryKind<'tcx> {
-    Const(ConstQualif, Lazy<RenderedConst>),
+    Const(Lazy<RenderedConst>),
     ImmStatic,
     MutStatic,
     ForeignImmStatic,
@@ -322,7 +322,7 @@ pub enum EntryKind<'tcx> {
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
     AssociatedExistential(AssociatedContainer),
-    AssociatedConst(AssociatedContainer, ConstQualif, Lazy<RenderedConst>),
+    AssociatedConst(AssociatedContainer, Lazy<RenderedConst>),
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
@@ -343,8 +343,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::Type => {
                 // Nothing else to hash here.
             }
-            EntryKind::Const(qualif, ref const_data) => {
-                qualif.hash_stable(hcx, hasher);
+            EntryKind::Const(ref const_data) => {
                 const_data.hash_stable(hcx, hasher);
             }
             EntryKind::Enum(ref repr_options) => {
@@ -387,23 +386,13 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::AssociatedType(associated_container) => {
                 associated_container.hash_stable(hcx, hasher);
             }
-            EntryKind::AssociatedConst(associated_container, qualif, ref const_data) => {
+            EntryKind::AssociatedConst(associated_container, ref const_data) => {
                 associated_container.hash_stable(hcx, hasher);
-                qualif.hash_stable(hcx, hasher);
                 const_data.hash_stable(hcx, hasher);
             }
         }
     }
 }
-
-/// Additional data for EntryKind::Const and EntryKind::AssociatedConst
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
-pub struct ConstQualif {
-    pub mir: u8,
-    pub ast_promotable: bool,
-}
-
-impl_stable_hash_for!(struct ConstQualif { mir, ast_promotable });
 
 /// Contains a constant which has been rendered to a String.
 /// Used by rustdoc.
