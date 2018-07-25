@@ -104,7 +104,48 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             categorized_path
         );
 
-        // Find what appears to be the most interesting path to report to the user.
+        // To find the best span to cite, we first try to look for the
+        // final constraint that is interesting and where the `sup` is
+        // not unified with the ultimate target region. The reason
+        // for this is that we have a chain of constraints that lead
+        // from the source to the target region, something like:
+        //
+        //    '0: '1 ('0 is the source)
+        //    '1: '2
+        //    '2: '3
+        //    '3: '4
+        //    '4: '5
+        //    '5: '6 ('6 is the target)
+        //
+        // Some of those regions are unified with `'6` (in the same
+        // SCC).  We want to screen those out. After that point, the
+        // "closest" constraint we have to the end is going to be the
+        // most likely to be the point where the value escapes -- but
+        // we still want to screen for an "interesting" point to
+        // highlight (e.g., a call site or something).
+        let target_scc = self.constraint_sccs.scc(target_region);
+        let best_choice = (0..path.len()).rev().find(|&i| {
+            let constraint = &self.constraints[path[i]];
+
+            let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
+            if constraint_sup_scc == target_scc {
+                return false;
+            }
+
+            match categorized_path[i].0 {
+                ConstraintCategory::Boring => false,
+                _ => true,
+            }
+        });
+        if let Some(i) = best_choice {
+            let (category, span) = categorized_path[i];
+            return (category, span, target_region);
+        }
+
+        // If that search fails, that is.. unusual. Maybe everything
+        // is in the same SCC or something. In that case, find what
+        // appears to be the most interesting point to report to the
+        // user via an even more ad-hoc guess.
         categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
         debug!("best_blame_constraint: sorted_path={:#?}", categorized_path);
 

@@ -10,19 +10,21 @@ warning: not reporting region error due to nll
 LL |         self.x.iter().map(|a| a.0)
    |                ^^^^
 
-error: unsatisfied lifetime constraints
+error: borrowed data escapes outside of closure
   --> $DIR/static-return-lifetime-infered.rs:17:9
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-   |                         - let's call the lifetime of this reference `'1`
+   |                         ----- `self` is a reference that is only valid in the closure body
 LL |         self.x.iter().map(|a| a.0)
-   |         ^^^^^^ cast requires that `'1` must outlive `'static`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ `self` escapes the closure body here
 
-error: unsatisfied lifetime constraints
+error: borrowed data escapes outside of closure
   --> $DIR/static-return-lifetime-infered.rs:21:9
    |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                        -------- `self` is a reference that is only valid in the closure body
 LL |         self.x.iter().map(|a| a.0)
-   |         ^^^^^^ cast requires that `'a` must outlive `'static`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ `self` escapes the closure body here
 
 error: aborting due to 2 previous errors
 

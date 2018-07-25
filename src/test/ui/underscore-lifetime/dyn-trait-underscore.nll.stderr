@@ -23,13 +23,16 @@ LL |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/dyn-trait-underscore.rs:18:5
+  --> $DIR/dyn-trait-underscore.rs:16:52
    |
-LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
-   |                - let's call the lifetime of this reference `'1`
-LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
-LL |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
-   |     ^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'1` must outlive `'static`
+LL |   fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
+   |  ________________-___________________________________^
+   | |                |
+   | |                let's call the lifetime of this reference `'1`
+LL | |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
+LL | |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
+LL | | }
+   | |_^ return requires that `'1` must outlive `'static`
 
 error: aborting due to previous error
 

@@ -35,22 +35,22 @@ LL |     let mut out = Struct { head: x, _tail: [()] };
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0621]: explicit lifetime required in the type of `y`
-  --> $DIR/issue-40288-2.rs:16:31
+  --> $DIR/issue-40288-2.rs:17:9
    |
 LL | fn lifetime_transmute_slice<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
    |                                                      - consider changing the type of `y` to `&'a T`
 ...
-LL |         let slice: &mut [_] = &mut out;
-   |                               ^^^^^^^^ lifetime `'a` required
+LL |         slice[0] = y;
+   |         ^^^^^^^^^^^^ lifetime `'a` required
 
 error[E0621]: explicit lifetime required in the type of `y`
-  --> $DIR/issue-40288-2.rs:31:41
+  --> $DIR/issue-40288-2.rs:32:9
    |
 LL | fn lifetime_transmute_struct<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
    |                                                       - consider changing the type of `y` to `&'a T`
 ...
-LL |         let dst: &mut Struct<_, [()]> = &mut out;
-   |                                         ^^^^^^^^ lifetime `'a` required
+LL |         dst.head = y;
+   |         ^^^^^^^^^^^^ lifetime `'a` required
 
 error: aborting due to 2 previous errors
 
