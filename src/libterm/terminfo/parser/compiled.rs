@@ -164,7 +164,7 @@ pub static stringnames: &'static[&'static str] = &[ "cbt", "_", "cr", "csr", "tb
     "OTG3", "OTG1", "OTG4", "OTGR", "OTGL", "OTGU", "OTGD", "OTGH", "OTGV", "OTGC", "meml", "memu",
     "box1"];
 
-fn read_le_u16(r: &mut io::Read) -> io::Result<u16> {
+fn read_le_u16(r: &mut dyn io::Read) -> io::Result<u16> {
     let mut b = [0; 2];
     let mut amt = 0;
     while amt < b.len() {
@@ -176,7 +176,7 @@ fn read_le_u16(r: &mut io::Read) -> io::Result<u16> {
     Ok((b[0] as u16) | ((b[1] as u16) << 8))
 }
 
-fn read_byte(r: &mut io::Read) -> io::Result<u8> {
+fn read_byte(r: &mut dyn io::Read) -> io::Result<u8> {
     match r.bytes().next() {
         Some(s) => s,
         None => Err(io::Error::new(io::ErrorKind::Other, "end of file")),
@@ -185,7 +185,7 @@ fn read_byte(r: &mut io::Read) -> io::Result<u8> {
 
 /// Parse a compiled terminfo entry, using long capability names if `longnames`
 /// is true
-pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
+pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, String> {
     macro_rules! t( ($e:expr) => (
         match $e {
             Ok(e) => e,

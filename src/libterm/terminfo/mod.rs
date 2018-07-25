@@ -58,7 +58,7 @@ impl error::Error for Error {
         "failed to create TermInfo"
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         use self::Error::*;
         match self {
             &IoError(ref e) => Some(e),
