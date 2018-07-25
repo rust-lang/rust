@@ -1061,7 +1061,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                       .join(", ");
                 err.span_suggestion_with_applicability(
                     found_span,
-                    &format!("change the closure to take and ignore the argument{}",
+                    &format!("change the closure to take and ignore the expected argument{}",
                             if expected_args.len() < 2 {
                                 ""
                             } else {
