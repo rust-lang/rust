@@ -1051,8 +1051,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             err.span_label(found_span, format!("takes {}", found_str));
 
             // Suggest to take and ignore the arguments with expected_args_length `_`s if
-            // found arguments is empty(Suppose the user just wants to ignore args in this case).
-            // like `|_, _|` for closure with 2 expected args.
+            // found arguments is empty (assume the user just wants to ignore args in this case).
+            // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
                 let mut underscores = "_".repeat(expected_args.len())
                                       .split("")
@@ -1061,12 +1061,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                       .join(", ");
                 err.span_suggestion_with_applicability(
                     found_span,
-                    &format!("change the closure to take and ignore the expected argument{}",
-                            if expected_args.len() < 2 {
-                                ""
-                            } else {
-                                "s"
-                            }
+                    &format!(
+                        "consider changing the closure to take and ignore the expected argument{}",
+                        if expected_args.len() < 2 {
+                            ""
+                        } else {
+                            "s"
+                        }
                     ),
                     format!("|{}|", underscores),
                     Applicability::MachineApplicable,
