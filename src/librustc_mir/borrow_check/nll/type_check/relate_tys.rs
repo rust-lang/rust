@@ -410,11 +410,11 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
         );
 
         if self.ambient_covariance() {
-            // Covariance, so we want `for<'a> A <: for<'b...> B` --
-            // therefore we replace all of the `'b...` regions with
-            // placeholders and then replace `'a...` with
-            // existentials. We then check if any instantiation of A
-            // can match against the placeholders in B.
+            // Covariance, so we want `for<..> A <: for<..> B` --
+            // therefore we compare any instantiation of A (i.e., A
+            // instantiated with existentials) against every
+            // instantiation of B (i.e., B instantiated with
+            // universals).
 
             let b_scope = self.create_scope(b, UniversallyQuantified(true));
             let a_scope = self.create_scope(a, UniversallyQuantified(false));
@@ -443,9 +443,11 @@ impl<'cx, 'bccx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx>
         }
 
         if self.ambient_contravariance() {
-            // Contravariance, so we want `for<'a> A :> for<'b...> B`
-            // -- do the opposite, therefore, of covariant. Replace
-            // the `'a...` placeholders with `'b...` variables.
+            // Contravariance, so we want `for<..> A :> for<..> B`
+            // -- therefore we compare every instantiation of A (i.e.,
+            // A instantiated with universals) against any
+            // instantiation of B (i.e., B instantiated with
+            // existentials). Opposite of above.
 
             let a_scope = self.create_scope(a, UniversallyQuantified(true));
             let b_scope = self.create_scope(b, UniversallyQuantified(false));
