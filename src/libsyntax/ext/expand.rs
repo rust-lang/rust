@@ -15,6 +15,7 @@ use codemap::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
 use config::{is_test_or_bench, StripUnconfigured};
 use errors::{Applicability, FatalError};
 use ext::base::*;
+use ext::build::AstBuilder;
 use ext::derive::{add_derived_markers, collect_derives};
 use ext::hygiene::{self, Mark, SyntaxContext};
 use ext::placeholders::{placeholder, PlaceholderExpander};
@@ -1354,12 +1355,29 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
             // Ensure that test functions are accessible from the test harness.
             ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
                 if item.attrs.iter().any(|attr| is_test_or_bench(attr)) {
+                    let orig_vis = item.vis.clone();
+
+                    // Publicize the item under gensymed name to avoid pollution
                     item = item.map(|mut item| {
                         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
+                        item.ident = Ident::from_interned_str(
+                                                item.ident.as_interned_str()).gensym();
                         item
                     });
+
+                    // Use the gensymed name under the item's original visibility
+                    let use_item = self.cx.item_use_simple_(
+                        item.ident.span,
+                        orig_vis,
+                        Some(Ident::from_interned_str(item.ident.as_interned_str())),
+                        self.cx.path(item.ident.span, vec![item.ident]));
+
+                    SmallVector::many(
+                        noop_fold_item(item, self).into_iter()
+                            .chain(noop_fold_item(use_item, self)))
+                } else {
+                    noop_fold_item(item, self)
                 }
-                noop_fold_item(item, self)
             }
             _ => noop_fold_item(item, self),
         }
