@@ -2762,6 +2762,7 @@ impl<T: ?Sized> Unique<T> {
     }
 
     /// Acquires the underlying `*mut` pointer.
+    #[inline]
     pub fn as_ptr(self) -> *mut T {
         self.pointer.0 as *mut T
     }
