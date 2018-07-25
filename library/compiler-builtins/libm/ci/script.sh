@@ -7,7 +7,7 @@ main() {
     fi
 
     # test that the functions don't contain invocations of `panic!`
-    if [ $TRAVIS_RUST_VERSION ]; then
+    if [ $TRAVIS_RUST_VERSION = nightly ]; then
         cross build --release --target $TARGET --example no-panic
         return
     fi
