@@ -38,3 +38,47 @@ impl CombineTypes {
         self.query_callbacks()(&query_id)
     }
 }
+
+// #2859
+pub fn do_something<'a, T: Trait1 + Trait2 + 'a>(&fooo: u32) -> impl Future<
+    Item = (
+        impl Future<Item = (
+        ), Error =   SomeError> + 'a,
+        impl Future<Item = (), Error = SomeError> + 'a,
+impl Future<Item = (), Error = SomeError > + 'a,
+    ),
+    Error = SomeError,
+    >
+    +
+    'a {
+}
+
+pub fn do_something<'a, T: Trait1 + Trait2 + 'a>(    &fooo: u32,
+) -> impl Future<
+    Item = (
+impl Future<Item = (), Error = SomeError> + 'a,
+        impl Future<Item = (), Error = SomeError> + 'a,
+        impl Future<Item = (), Error = SomeError> + 'a,
+    ),
+    Error = SomeError,
+    >
+    + Future<
+    Item = (
+        impl Future<Item = (), Error = SomeError> + 'a,
+impl Future<Item = (), Error = SomeError> + 'a,
+        impl Future<Item = (), Error = SomeError> + 'a,
+    ),
+    Error = SomeError,
+        >
+    + Future<
+    Item = (
+        impl Future<Item = (), Error = SomeError> + 'a,
+   impl Future<Item = (), Error = SomeError> + 'a,
+        impl Future<Item = (), Error = SomeError> + 'a,
+    ),
+    Error = SomeError,
+        >
+    +
+    'a + 'b +
+    'c {
+}

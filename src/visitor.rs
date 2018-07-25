@@ -515,7 +515,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     ii.ident,
                     ii.defaultness,
                     Some(ty),
-                    None,
                     &self.get_context(),
                     self.block_indent,
                 );

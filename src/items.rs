@@ -1752,11 +1752,10 @@ pub fn rewrite_associated_impl_type(
     ident: ast::Ident,
     defaultness: ast::Defaultness,
     ty_opt: Option<&ptr::P<ast::Ty>>,
-    generic_bounds_opt: Option<&ast::GenericBounds>,
     context: &RewriteContext,
     indent: Indent,
 ) -> Option<String> {
-    let result = rewrite_associated_type(ident, ty_opt, generic_bounds_opt, context, indent)?;
+    let result = rewrite_associated_type(ident, ty_opt, None, context, indent)?;
 
     match defaultness {
         ast::Defaultness::Default => Some(format!("default {}", result)),
