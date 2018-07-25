@@ -183,7 +183,7 @@ impl<N: Idx> LivenessValues<N> {
 ///
 /// Example:
 ///
-/// ```rust
+/// ```text
 /// fn foo(x: &'a u32) -> &'a u32 {
 ///    let y: &'0 u32 = x; // let's call this `'0`
 ///    y
