@@ -2386,6 +2386,11 @@ impl<'a> Parser<'a> {
                         BlockCheckMode::Unsafe(ast::UserProvided),
                         attrs);
                 }
+                if self.is_do_catch_block() {
+                    let mut db = self.fatal("found removed `do catch` syntax");
+                    db.help("Following RFC #2388, the new non-placeholder syntax is `try`");
+                    return Err(db);
+                }
                 if self.is_try_block() {
                     let lo = self.span;
                     assert!(self.eat_keyword(keywords::Try));
@@ -4404,6 +4409,13 @@ impl<'a> Parser<'a> {
                 self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace))
             )
         )
+    }
+
+    fn is_do_catch_block(&mut self) -> bool {
+        self.token.is_keyword(keywords::Do) &&
+        self.look_ahead(1, |t| t.is_keyword(keywords::Catch)) &&
+        self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace)) &&
+        !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
 
     fn is_try_block(&mut self) -> bool {
