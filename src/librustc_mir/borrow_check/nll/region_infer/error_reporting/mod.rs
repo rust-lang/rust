@@ -81,7 +81,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let (path, target_region) = self
             .find_constraint_paths_between_regions(from_region, target_test)
             .unwrap();
-        debug!("best_blame_constraint: path={:#?}", path);
+        debug!(
+            "best_blame_constraint: path={:#?}",
+            path.iter()
+                .map(|&ci| format!(
+                    "{:?}: {:?} ({:?}: {:?})",
+                    ci,
+                    &self.constraints[ci],
+                    self.constraint_sccs.scc(self.constraints[ci].sup),
+                    self.constraint_sccs.scc(self.constraints[ci].sub),
+                ))
+                .collect::<Vec<_>>()
+        );
 
         // Classify each of the constraints along the path.
         let mut categorized_path: Vec<(ConstraintCategory, Span)> = path
@@ -89,13 +100,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|&index| self.classify_constraint(index, mir))
             .collect();
         debug!(
-            "best_blame_constraint: categorized_path={:?}",
+            "best_blame_constraint: categorized_path={:#?}",
             categorized_path
         );
 
         // Find what appears to be the most interesting path to report to the user.
         categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
-        debug!("best_blame_constraint: sorted_path={:?}", categorized_path);
+        debug!("best_blame_constraint: sorted_path={:#?}", categorized_path);
 
         let &(category, span) = categorized_path.first().unwrap();
 
