@@ -13,6 +13,7 @@
 // no-prefer-dynamic
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-macos
 
 extern crate exit_success_if_unwind;
 

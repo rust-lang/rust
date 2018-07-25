@@ -74,9 +74,10 @@
 #![needs_allocator]
 #![deny(missing_debug_implementations)]
 
-#![cfg_attr(test, allow(deprecated))] // rand
+#![cfg_attr(not(test), feature(fn_traits))]
 #![cfg_attr(not(test), feature(generator_trait))]
-#![cfg_attr(test, feature(rand, test))]
+#![cfg_attr(test, feature(test))]
+
 #![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
@@ -116,9 +117,6 @@
 #![feature(exact_chunks)]
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
-
-#![cfg_attr(not(test), feature(fn_traits))]
-#![cfg_attr(test, feature(test))]
 
 // Allow testing this library
 

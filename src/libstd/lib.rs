@@ -232,6 +232,7 @@
 
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
+#![cfg_attr(test, feature(test, update_panic_count))]
 #![feature(alloc)]
 #![feature(alloc_error_handler)]
 #![feature(alloc_system)]
@@ -302,7 +303,6 @@
 #![feature(doc_cfg)]
 #![feature(doc_masked)]
 #![feature(doc_spotlight)]
-#![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
 #![feature(doc_alias)]
 #![feature(doc_keyword)]

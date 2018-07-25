@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(test_feature)]
+#![feature(unstable_test_feature)]
 
 extern crate bar;
 

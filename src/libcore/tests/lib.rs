@@ -26,7 +26,6 @@
 #![feature(refcell_map_split)]
 #![feature(refcell_replace_swap)]
 #![feature(slice_patterns)]
-#![feature(slice_rotate)]
 #![feature(sort_internals)]
 #![feature(specialization)]
 #![feature(step_trait)]
