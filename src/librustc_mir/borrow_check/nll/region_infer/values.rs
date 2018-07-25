@@ -47,6 +47,7 @@ impl RegionValueElements {
         }
     }
 
+    /// Converts a `Location` into a `PointIndex`. O(1).
     fn point_from_location(&self, location: Location) -> PointIndex {
         let Location {
             block,
@@ -56,8 +57,8 @@ impl RegionValueElements {
         PointIndex::new(start_index + statement_index)
     }
 
-    /// Converts a particular `RegionElementIndex` to a location, if
-    /// that is what it represents. Returns `None` otherwise.
+    /// Converts a `PointIndex` back to a location. O(N) where N is
+    /// the number of blocks; could be faster if we ever cared.
     crate fn to_location(&self, i: PointIndex) -> Location {
         let point_index = i.index();
 
