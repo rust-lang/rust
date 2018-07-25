@@ -6,6 +6,58 @@ macro_rules! force_eval {
     };
 }
 
+#[cfg(not(feature = "checked"))]
+macro_rules! i {
+    ($array:expr, $index:expr) => {
+        unsafe { *$array.get_unchecked($index) }
+    };
+    ($array:expr, $index:expr, = , $rhs:expr) => {
+        unsafe {
+            *$array.get_unchecked_mut($index) = $rhs;
+        }
+    };
+    ($array:expr, $index:expr, += , $rhs:expr) => {
+        unsafe {
+            *$array.get_unchecked_mut($index) += $rhs;
+        }
+    };
+    ($array:expr, $index:expr, -= , $rhs:expr) => {
+        unsafe {
+            *$array.get_unchecked_mut($index) -= $rhs;
+        }
+    };
+    ($array:expr, $index:expr, &= , $rhs:expr) => {
+        unsafe {
+            *$array.get_unchecked_mut($index) &= $rhs;
+        }
+    };
+    ($array:expr, $index:expr, == , $rhs:expr) => {
+        unsafe { *$array.get_unchecked_mut($index) == $rhs }
+    };
+}
+
+#[cfg(feature = "checked")]
+macro_rules! i {
+    ($array:expr, $index:expr) => {
+        *$array.get($index).unwrap()
+    };
+    ($array:expr, $index:expr, = , $rhs:expr) => {
+        *$array.get_mut($index).unwrap() = $rhs;
+    };
+    ($array:expr, $index:expr, -= , $rhs:expr) => {
+        *$array.get_mut($index).unwrap() -= $rhs;
+    };
+    ($array:expr, $index:expr, += , $rhs:expr) => {
+        *$array.get_mut($index).unwrap() += $rhs;
+    };
+    ($array:expr, $index:expr, &= , $rhs:expr) => {
+        *$array.get_mut($index).unwrap() &= $rhs;
+    };
+    ($array:expr, $index:expr, == , $rhs:expr) => {
+        *$array.get_mut($index).unwrap() == $rhs
+    };
+}
+
 // Public modules
 mod acos;
 mod acosf;

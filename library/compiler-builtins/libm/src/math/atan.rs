@@ -124,7 +124,7 @@ pub fn atan(x: f64) -> f64 {
         return x - x * (s1 + s2);
     }
 
-    let z = ATANHI[id as usize] - (x * (s1 + s2) - ATANLO[id as usize] - x);
+    let z = i!(ATANHI, id as usize) - (x * (s1 + s2) - i!(ATANLO, id as usize) - x);
 
     if sign != 0 {
         -z
