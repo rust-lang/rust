@@ -259,8 +259,6 @@ impl<N: Idx> RegionValues<N> {
     /// True if `sup_region` contains all the CFG points that
     /// `sub_region` contains. Ignores universal regions.
     crate fn contains_points(&self, sup_region: N, sub_region: N) -> bool {
-        // This could be done faster by comparing the bitsets. But I
-        // am lazy.
         if let Some(sub_row) = self.points.row(sub_region) {
             if let Some(sup_row) = self.points.row(sup_region) {
                 sup_row.contains_all(sub_row)
