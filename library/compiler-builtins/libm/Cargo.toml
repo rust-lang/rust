@@ -9,5 +9,9 @@ name = "libm"
 repository = "https://github.com/japaric/libm"
 version = "0.1.2"
 
+[features]
+# only used to run our test suite
+checked = []
+
 [workspace]
 members = ["cb", "test-generator"]

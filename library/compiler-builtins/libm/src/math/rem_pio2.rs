@@ -177,7 +177,7 @@ pub fn rem_pio2(x: f64) -> (i32, f64, f64) {
     tx[2] = z;
     /* skip zero terms, first term is non-zero */
     let mut i = 2;
-    while tx[i] == 0.0 {
+    while i != 0 && tx[i] == 0.0 {
         i -= 1;
     }
     let mut ty = [0.0; 3];

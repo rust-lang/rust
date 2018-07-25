@@ -1,3 +1,4 @@
+#![allow(unused_unsafe)]
 /* origin: FreeBSD /usr/src/lib/msun/src/k_rem_pio2.c */
 /*
  * ====================================================
@@ -257,17 +258,21 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
     let mut j = (jv - jx) as i32;
     let m = jx + jk;
     for i in 0..=m {
-        f[i] = if j < 0 { 0. } else { IPIO2[j as usize] as f64 };
-        j += 1
+        i!(f, i, =, if j < 0 {
+            0.
+        } else {
+            i!(IPIO2, j as usize) as f64
+        });
+        j += 1;
     }
 
     /* compute q[0],q[1],...q[jk] */
     for i in 0..=jk {
         fw = 0f64;
         for j in 0..=jx {
-            fw += x[j] * f[jx + i - j];
+            fw += i!(x, j) * i!(f, jx + i - j);
         }
-        q[i] = fw;
+        i!(q, i, =, fw);
     }
 
     let mut jz = jk;
@@ -275,11 +280,11 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
     'recompute: loop {
         /* distill q[] into iq[] reversingly */
         let mut i = 0i32;
-        z = q[jz];
+        z = i!(q, jz);
         for j in (1..=jz).rev() {
             fw = (x1p_24 * z) as i32 as f64;
-            iq[i as usize] = (z - x1p24 * fw) as i32;
-            z = q[j - 1] + fw;
+            i!(iq, i as usize, =, (z - x1p24 * fw) as i32);
+            z = i!(q, j - 1) + fw;
             i += 1;
         }
 
@@ -291,12 +296,12 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
         ih = 0;
         if q0 > 0 {
             /* need iq[jz-1] to determine n */
-            i = iq[jz - 1] >> (24 - q0);
+            i = i!(iq, jz - 1) >> (24 - q0);
             n += i;
-            iq[jz - 1] -= i << (24 - q0);
-            ih = iq[jz - 1] >> (23 - q0);
+            i!(iq, jz - 1, -=, i << (24 - q0));
+            ih = i!(iq, jz - 1) >> (23 - q0);
         } else if q0 == 0 {
-            ih = iq[jz - 1] >> 23;
+            ih = i!(iq, jz - 1) >> 23;
         } else if z >= 0.5 {
             ih = 2;
         }
@@ -307,24 +312,24 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
             let mut carry = 0i32;
             for i in 0..jz {
                 /* compute 1-q */
-                let j = iq[i];
+                let j = i!(iq, i);
                 if carry == 0 {
                     if j != 0 {
                         carry = 1;
-                        iq[i] = 0x1000000 - j;
+                        i!(iq, i, =, 0x1000000 - j);
                     }
                 } else {
-                    iq[i] = 0xffffff - j;
+                    i!(iq, i, =, 0xffffff - j);
                 }
             }
             if q0 > 0 {
                 /* rare case: chance is 1 in 12 */
                 match q0 {
                     1 => {
-                        iq[jz - 1] &= 0x7fffff;
+                        i!(iq, jz - 1, &=, 0x7fffff);
                     }
                     2 => {
-                        iq[jz - 1] &= 0x3fffff;
+                        i!(iq, jz - 1, &=, 0x3fffff);
                     }
                     _ => {}
                 }
@@ -341,23 +346,23 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
         if z == 0. {
             let mut j = 0;
             for i in (jk..=jz - 1).rev() {
-                j |= iq[i];
+                j |= i!(iq, i);
             }
             if j == 0 {
                 /* need recomputation */
                 let mut k = 1;
-                while iq[jk - k] == 0 {
+                while i!(iq, jk - k, ==, 0) {
                     k += 1; /* k = no. of terms needed */
                 }
 
                 for i in (jz + 1)..=(jz + k) {
                     /* add q[jz+1] to q[jz+k] */
-                    f[jx + i] = IPIO2[jv + i] as f64;
+                    i!(f, jx + i, =, i!(IPIO2, jv + i) as f64);
                     fw = 0f64;
                     for j in 0..=jx {
-                        fw += x[j] * f[jx + i - j];
+                        fw += i!(x, j) * i!(f, jx + i - j);
                     }
-                    q[i] = fw;
+                    i!(q, i, =, fw);
                 }
                 jz += k;
                 continue 'recompute;
@@ -371,7 +376,7 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
     if z == 0. {
         jz -= 1;
         q0 -= 24;
-        while iq[jz] == 0 {
+        while i!(iq, jz) == 0 {
             jz -= 1;
             q0 -= 24;
         }
@@ -380,19 +385,19 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
         z = scalbn(z, -q0);
         if z >= x1p24 {
             fw = (x1p_24 * z) as i32 as f64;
-            iq[jz] = (z - x1p24 * fw) as i32;
+            i!(iq, jz, =, (z - x1p24 * fw) as i32);
             jz += 1;
             q0 += 24;
-            iq[jz] = fw as i32;
+            i!(iq, jz, =, fw as i32);
         } else {
-            iq[jz] = z as i32;
+            i!(iq, jz, =, z as i32);
         }
     }
 
     /* convert integer "bit" chunk to floating-point value */
     fw = scalbn(1., q0);
     for i in (0..=jz).rev() {
-        q[i] = fw * (iq[i] as f64);
+        i!(q, i, =, fw * (i!(iq, i) as f64));
         fw *= x1p_24;
     }
 
@@ -401,10 +406,10 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
         fw = 0f64;
         let mut k = 0;
         while (k <= jp) && (k <= jz - i) {
-            fw += PIO2[k] * q[i + k];
+            fw += i!(PIO2, k) * i!(q, i + k);
             k += 1;
         }
-        fq[jz - i] = fw;
+        i!(fq, jz - i, =, fw);
     }
 
     /* compress fq[] into y[] */
@@ -412,51 +417,54 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
         0 => {
             fw = 0f64;
             for i in (0..=jz).rev() {
-                fw += fq[i];
+                fw += i!(fq, i);
             }
-            y[0] = if ih == 0 { fw } else { -fw };
+            i!(y, 0, =, if ih == 0 { fw } else { -fw });
         }
         1 | 2 => {
             fw = 0f64;
             for i in (0..=jz).rev() {
-                fw += fq[i];
+                fw += i!(fq, i);
             }
             // TODO: drop excess precision here once double_t is used
             fw = fw as f64;
-            y[0] = if ih == 0 { fw } else { -fw };
-            fw = fq[0] - fw;
+            i!(y, 0, =, if ih == 0 { fw } else { -fw });
+            fw = i!(fq, 0) - fw;
             for i in 1..=jz {
-                fw += fq[i];
+                fw += i!(fq, i);
             }
-            y[1] = if ih == 0 { fw } else { -fw };
+            i!(y, 1, =, if ih == 0 { fw } else { -fw });
         }
         3 => {
             /* painful */
             for i in (1..=jz).rev() {
-                fw = fq[i - 1] + fq[i];
-                fq[i] += fq[i - 1] - fw;
-                fq[i - 1] = fw;
+                fw = i!(fq, i - 1) + i!(fq, i);
+                i!(fq, i, +=, i!(fq, i - 1) - fw);
+                i!(fq, i - 1, =, fw);
             }
             for i in (2..=jz).rev() {
-                fw = fq[i - 1] + fq[i];
-                fq[i] += fq[i - 1] - fw;
-                fq[i - 1] = fw;
+                fw = i!(fq, i - 1) + i!(fq, i);
+                i!(fq, i, +=, i!(fq, i - 1) - fw);
+                i!(fq, i - 1, =, fw);
             }
             fw = 0f64;
             for i in (2..=jz).rev() {
-                fw += fq[i];
+                fw += i!(fq, i);
             }
             if ih == 0 {
-                y[0] = fq[0];
-                y[1] = fq[1];
-                y[2] = fw;
+                i!(y, 0, =, i!(fq, 0));
+                i!(y, 1, =, i!(fq, 1));
+                i!(y, 2, =, fw);
             } else {
-                y[0] = -fq[0];
-                y[1] = -fq[1];
-                y[2] = -fw;
+                i!(y, 0, =, -i!(fq, 0));
+                i!(y, 1, =, -i!(fq, 1));
+                i!(y, 2, =, -fw);
             }
         }
+        #[cfg(feature = "checked")]
         _ => unreachable!(),
+        #[cfg(not(feature = "checked"))]
+        _ => {},
     }
     n & 7
 }
