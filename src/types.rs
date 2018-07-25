@@ -521,7 +521,24 @@ impl Rewrite for ast::GenericBound {
 
 impl Rewrite for ast::GenericBounds {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        join_bounds(context, shape, self, true)
+        if self.is_empty() {
+            return Some(String::new());
+        }
+
+        let span = mk_sp(self.get(0)?.span().lo(), self.last()?.span().hi());
+        let has_paren = context.snippet(span).starts_with("(");
+        let bounds_shape = if has_paren {
+            shape.offset_left(1)?.sub_width(1)?
+        } else {
+            shape
+        };
+        join_bounds(context, bounds_shape, self, true).map(|s| {
+            if has_paren {
+                format!("({})", s)
+            } else {
+                s
+            }
+        })
     }
 }
 
