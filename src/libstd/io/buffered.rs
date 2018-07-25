@@ -61,7 +61,8 @@ pub struct BufReader<R> {
 }
 
 impl<R: Read> BufReader<R> {
-    /// Creates a new `BufReader` with a default buffer capacity.
+    /// Creates a new `BufReader` with a default buffer capacity. The default is currently 8 KB,
+    /// but may change in the future.
     ///
     /// # Examples
     ///
@@ -454,7 +455,8 @@ pub struct BufWriter<W: Write> {
 pub struct IntoInnerError<W>(W, Error);
 
 impl<W: Write> BufWriter<W> {
-    /// Creates a new `BufWriter` with a default buffer capacity.
+    /// Creates a new `BufWriter` with a default buffer capacity. The default is currently 8 KB,
+    /// but may change in the future.
     ///
     /// # Examples
     ///
