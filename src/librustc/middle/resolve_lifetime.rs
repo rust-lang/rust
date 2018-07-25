@@ -2741,9 +2741,7 @@ fn insert_late_bound_lifetimes(
         constrained_by_input.visit_ty(arg_ty);
     }
 
-    let mut appears_in_output = AllCollector {
-        regions: Default::default(),
-    };
+    let mut appears_in_output = AllCollector::default();
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
 
     debug!(
@@ -2755,9 +2753,7 @@ fn insert_late_bound_lifetimes(
     //
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
-    let mut appears_in_where_clause = AllCollector {
-        regions: Default::default(),
-    };
+    let mut appears_in_where_clause = AllCollector::default();
     appears_in_where_clause.visit_generics(generics);
 
     for param in &generics.params {
@@ -2854,6 +2850,7 @@ fn insert_late_bound_lifetimes(
         }
     }
 
+    #[derive(Default)]
     struct AllCollector {
         regions: FxHashSet<hir::LifetimeName>,
     }

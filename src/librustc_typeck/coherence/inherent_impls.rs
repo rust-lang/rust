@@ -22,7 +22,6 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::{self, CrateInherentImpls, TyCtxt};
-use rustc::util::nodemap::DefIdMap;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
@@ -37,9 +36,7 @@ pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let krate = tcx.hir.krate();
     let mut collect = InherentCollect {
         tcx,
-        impls_map: CrateInherentImpls {
-            inherent_impls: DefIdMap::default()
-        }
+        impls_map: Default::default(),
     };
     krate.visit_all_item_likes(&mut collect);
     Lrc::new(collect.impls_map)

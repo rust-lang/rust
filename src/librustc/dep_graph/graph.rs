@@ -101,11 +101,11 @@ impl DepGraph {
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
-                dep_node_debug: Lock::new(Default::default()),
+                dep_node_debug: Default::default(),
                 current: Lock::new(CurrentDepGraph::new()),
                 previous: prev_graph,
                 colors: Lock::new(DepNodeColorMap::new(prev_graph_node_count)),
-                loaded_from_cache: Lock::new(Default::default()),
+                loaded_from_cache: Default::default(),
             })),
             fingerprints: Lrc::new(Lock::new(fingerprints)),
         }

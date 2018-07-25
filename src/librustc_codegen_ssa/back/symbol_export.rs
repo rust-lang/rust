@@ -64,7 +64,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
-        return Lrc::new(Default::default())
+        return Default::default();
     }
 
     // Check to see if this crate is a "special runtime crate". These

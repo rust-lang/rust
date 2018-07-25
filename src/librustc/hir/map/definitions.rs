@@ -36,6 +36,7 @@ use util::nodemap::NodeMap;
 /// Internally the DefPathTable holds a tree of DefKeys, where each DefKey
 /// stores the DefIndex of its parent.
 /// There is one DefPathTable for each crate.
+#[derive(Default)]
 pub struct DefPathTable {
     index_to_key: [Vec<DefKey>; 2],
     def_path_hashes: [Vec<DefPathHash>; 2],
@@ -153,7 +154,7 @@ impl Decodable for DefPathTable {
 /// The definition table containing node definitions.
 /// It holds the DefPathTable for local DefIds/DefPaths and it also stores a
 /// mapping from NodeIds to local DefIds.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Definitions {
     table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
@@ -412,20 +413,8 @@ impl Definitions {
     ///     ascending order.
     ///
     /// FIXME: there is probably a better place to put this comment.
-    pub fn new() -> Definitions {
-        Definitions {
-            table: DefPathTable {
-                index_to_key: [vec![], vec![]],
-                def_path_hashes: [vec![], vec![]],
-            },
-            node_to_def_index: Default::default(),
-            def_index_to_node: [vec![], vec![]],
-            node_to_hir_id: IndexVec::new(),
-            parent_modules_of_macro_defs: Default::default(),
-            expansions_that_defined: Default::default(),
-            next_disambiguator: Default::default(),
-            def_index_to_span: Default::default(),
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn def_path_table(&self) -> &DefPathTable {

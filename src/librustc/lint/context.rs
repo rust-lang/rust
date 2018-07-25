@@ -1233,7 +1233,7 @@ pub fn check_ast_crate(
     let (passes, buffered) = if pre_expansion {
         (
             sess.lint_store.borrow_mut().pre_expansion_passes.take(),
-            LintBuffer::new(),
+            LintBuffer::default(),
         )
     } else {
         (

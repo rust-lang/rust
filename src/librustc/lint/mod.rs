@@ -490,15 +490,12 @@ mod levels;
 
 pub use self::levels::{LintLevelSets, LintLevelMap};
 
+#[derive(Default)]
 pub struct LintBuffer {
     map: NodeMap<Vec<BufferedEarlyLint>>,
 }
 
 impl LintBuffer {
-    pub fn new() -> LintBuffer {
-        LintBuffer { map: ::std::default::Default::default() }
-    }
-
     pub fn add_lint(&mut self,
                     lint: &'static Lint,
                     id: ast::NodeId,
