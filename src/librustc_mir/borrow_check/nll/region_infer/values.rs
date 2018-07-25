@@ -102,7 +102,7 @@ newtype_index!(PointIndex { DEBUG_FORMAT = "PointIndex({})" });
 /// Computed just by subtracting one from `UniverseIndex`; this is
 /// because the `0` value for `UniverseIndex` represents the root
 /// universe, and we don't need/want a bit for that one.
-newtype_index!(PlaceholderIndex { DEBUG_FORMAT = "PointIndex({})" });
+newtype_index!(PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" });
 
 /// An individual element in a region value -- the value of a
 /// particular region variable consists of a set of these elements.
