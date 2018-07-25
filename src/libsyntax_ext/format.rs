@@ -915,12 +915,13 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             errs.push((cx.args[i].span, msg));
         }
     }
-    if errs.len() > 0 {
-        let args_used = cx.arg_types.len() - errs.len();
-        let args_unused = errs.len();
+    let errs_len = errs.len();
+    if errs_len > 0 {
+        let args_used = cx.arg_types.len() - errs_len;
+        let args_unused = errs_len;
 
         let mut diag = {
-            if errs.len() == 1 {
+            if errs_len == 1 {
                 let (sp, msg) = errs.into_iter().next().unwrap();
                 cx.ecx.struct_span_err(sp, msg)
             } else {
@@ -933,6 +934,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             }
         };
 
+        // Used to ensure we only report translations for *one* kind of foreign format.
+        let mut found_foreign = false;
         // Decide if we want to look for foreign formatting directives.
         if args_used < args_unused {
             use super::format_foreign as foreign;
@@ -940,9 +943,6 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             // The set of foreign substitutions we've explained.  This prevents spamming the user
             // with `%d should be written as {}` over and over again.
             let mut explained = HashSet::new();
-
-            // Used to ensure we only report translations for *one* kind of foreign format.
-            let mut found_foreign = false;
 
             macro_rules! check_foreign {
                 ($kind:ident) => {{
@@ -987,7 +987,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                     }
                     if suggestions.len() > 0 {
                         diag.multipart_suggestion(
-                            "format specifiers in Rust are written using `{}`",
+                            "format specifiers use curly braces",
                             suggestions,
                         );
                     }
@@ -998,6 +998,9 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             if !found_foreign {
                 check_foreign!(shell);
             }
+        }
+        if !found_foreign && errs_len == 1 {
+            diag.span_label(cx.fmtsp, "formatting specifier missing");
         }
 
         diag.emit();

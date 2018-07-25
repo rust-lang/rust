@@ -7,7 +7,7 @@ LL |     println!("%.*3$s %s!/n", "Hello,", "World", 4); //~ ERROR multiple unus
    |              multiple missing formatting specifiers
    |
    = note: printf formatting not supported; see the documentation for `std::fmt`
-help: format specifiers in Rust are written using `{}`
+help: format specifiers use curly braces
    |
 LL |     println!("{:.2$} {}!/n", "Hello,", "World", 4); //~ ERROR multiple unused formatting arguments
    |               ^^^^^^ ^^
@@ -18,7 +18,7 @@ error: argument never used
 LL |     println!("%1$*2$.*3$f", 123.456); //~ ERROR never used
    |               -----------   ^^^^^^^
    |               |
-   |               help: format specifiers in Rust are written using `{}`: `{0:1$.2$}`
+   |               help: format specifiers use curly braces: `{0:1$.2$}`
    |
    = note: printf formatting not supported; see the documentation for `std::fmt`
 
@@ -34,7 +34,7 @@ LL | | "###, "Hello,", "World", 4);
    |      multiple missing formatting specifiers
    |
    = note: printf formatting not supported; see the documentation for `std::fmt`
-help: format specifiers in Rust are written using `{}`
+help: format specifiers use curly braces
    |
 LL |     println!(r###"{:.2$}
 LL |         {}!/n
@@ -44,7 +44,9 @@ error: argument never used
   --> $DIR/format-foreign.rs:22:30
    |
 LL |     println!("{} %f", "one", 2.0); //~ ERROR never used
-   |                              ^^^
+   |              -------         ^^^
+   |              |
+   |              formatting specifier missing
 
 error: named argument never used
   --> $DIR/format-foreign.rs:24:39

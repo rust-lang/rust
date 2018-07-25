@@ -22,7 +22,9 @@ error: named argument never used
   --> $DIR/format-unused-lables.rs:21:35
    |
 LL |     println!("Some stuff", UNUSED="args"); //~ ERROR named argument never used
-   |                                   ^^^^^^
+   |              ------------         ^^^^^^
+   |              |
+   |              formatting specifier missing
 
 error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:24:9
