@@ -77,7 +77,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let mut constraints: Vec<_> = self.constraints.iter().collect();
-        constraints.sort();
+        constraints.sort_unstable();
         for constraint in &constraints {
             let OutlivesConstraint {
                 sup,
