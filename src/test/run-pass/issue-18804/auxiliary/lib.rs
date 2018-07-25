@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-asmjs no weak symbol support
-// ignore-emscripten no weak symbol support
-
 #![crate_type = "rlib"]
 #![feature(linkage)]
 
