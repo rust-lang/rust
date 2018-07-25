@@ -1517,7 +1517,8 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     }
     let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
     let ty = if let ty::AssociatedKind::Existential = assoc_ty.item.kind {
-        tcx.mk_anon(assoc_ty.item.def_id, substs)
+        let item_substs = Substs::identity_for_item(tcx, assoc_ty.item.def_id);
+        tcx.mk_anon(assoc_ty.item.def_id, item_substs)
     } else {
         tcx.type_of(assoc_ty.item.def_id)
     };
