@@ -464,7 +464,7 @@ pub fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> i32 {
         #[cfg(feature = "checked")]
         _ => unreachable!(),
         #[cfg(not(feature = "checked"))]
-        _ => {},
+        _ => {}
     }
     n & 7
 }
