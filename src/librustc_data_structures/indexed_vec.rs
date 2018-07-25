@@ -48,6 +48,13 @@ impl Idx for u32 {
     fn index(self) -> usize { self as usize }
 }
 
+/// Creates a struct type `S` that can be used as an index with
+/// `IndexVec` and so on.  This struct can be constructed via `S::new`
+/// (given a `usize`) and converted to a usize with the `index()`
+/// method (from the `Idx` trait). Internally, the index uses a u32,
+/// so the index must not exceed `u32::MAX`. You can also customize
+/// things like the `Debug` impl, what traits are derived, and so
+/// forth.
 #[macro_export]
 macro_rules! newtype_index {
     // ---- public rules ----
