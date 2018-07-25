@@ -11,7 +11,7 @@ use crate::utils::{self, paths, span_lint};
 ///
 /// **Why is this bad?**
 /// These operators make it easy to forget that the underlying types actually allow not only three
-/// potential Orderings (Less, Equal, Greater) but also a forth one (Uncomparable). This is
+/// potential Orderings (Less, Equal, Greater) but also a fourth one (Uncomparable). This is
 /// especially easy to miss if the operator based comparison result is negated.
 ///
 /// **Known problems:** None.

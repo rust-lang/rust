@@ -383,7 +383,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
                                            arm.pats[0].span,
                                            "Err(_) will match all errors, maybe not a good idea",
                                            arm.pats[0].span,
-                                           "to remove this warning, match each error seperately \
+                                           "to remove this warning, match each error separately \
                                             or use unreachable macro");
                     }
                 }

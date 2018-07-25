@@ -334,7 +334,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
     Sugg::BinOp(op, sugg.into())
 }
 
-/// Convinience wrapper arround `make_assoc` and `AssocOp::from_ast_binop`.
+/// Convenience wrapper around `make_assoc` and `AssocOp::from_ast_binop`.
 pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     make_assoc(AssocOp::from_ast_binop(op), lhs, rhs)
 }
