@@ -52,7 +52,7 @@ impl LintPass for UseSelf {
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
-fn span_use_self_lint(cx: &LateContext, path: &Path) {
+fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
     span_lint_and_sugg(
         cx,
         USE_SELF,
@@ -104,7 +104,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     item_path: &'a Path,
     impl_item: &ImplItem,
     impl_decl: &'tcx FnDecl,
-    impl_trait_ref: &ty::TraitRef,
+    impl_trait_ref: &ty::TraitRef<'_>,
 ) {
     let trait_method = cx
         .tcx
