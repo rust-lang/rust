@@ -15,7 +15,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use common;
-use common::Config;
+use common::{Config, Mode};
 use util;
 
 use extract_gdb_version;
