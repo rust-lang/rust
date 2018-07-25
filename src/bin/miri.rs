@@ -228,8 +228,12 @@ fn main() {
         }
     });
 
-    rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
-        default: Box::new(RustcDefaultCalls),
-        start_fn,
-    }), None, None);
+
+    let result = rustc_driver::run(move || {
+        rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
+            default: Box::new(RustcDefaultCalls),
+            start_fn,
+        }), None, None)
+    });
+    std::process::exit(result as i32);
 }
