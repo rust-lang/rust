@@ -142,6 +142,24 @@ fn return_original_snippet_with_failure_marked(
     Some(context.snippet(span).to_owned())
 }
 
+struct InsideMacroGuard<'a> {
+    context: &'a RewriteContext<'a>,
+    is_nested: bool,
+}
+
+impl<'a> InsideMacroGuard<'a> {
+    fn inside_macro_context(context: &'a RewriteContext) -> InsideMacroGuard<'a> {
+        let is_nested = context.inside_macro.replace(true);
+        InsideMacroGuard { context, is_nested }
+    }
+}
+
+impl<'a> Drop for InsideMacroGuard<'a> {
+    fn drop(&mut self) {
+        self.context.inside_macro.replace(self.is_nested);
+    }
+}
+
 pub fn rewrite_macro(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
@@ -149,12 +167,11 @@ pub fn rewrite_macro(
     shape: Shape,
     position: MacroPosition,
 ) -> Option<String> {
-    context.inside_macro.replace(true);
-    let result = rewrite_macro_inner(mac, extra_ident, context, shape, position);
+    let guard = InsideMacroGuard::inside_macro_context(context);
+    let result = rewrite_macro_inner(mac, extra_ident, context, shape, position, guard.is_nested);
     if result.is_none() {
         context.macro_rewrite_failure.replace(true);
     }
-    context.inside_macro.replace(false);
     result
 }
 
@@ -164,6 +181,7 @@ pub fn rewrite_macro_inner(
     context: &RewriteContext,
     shape: Shape,
     position: MacroPosition,
+    is_nested_macro: bool,
 ) -> Option<String> {
     if context.config.use_try_shorthand() {
         if let Some(expr) = convert_try_mac(mac, context) {
@@ -176,7 +194,7 @@ pub fn rewrite_macro_inner(
 
     let macro_name = rewrite_macro_name(context, &mac.node.path, extra_ident);
 
-    let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
+    let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) && !is_nested_macro {
         DelimToken::Bracket
     } else {
         original_style
@@ -309,7 +327,7 @@ pub fn rewrite_macro_inner(
                 } else {
                     Some(SeparatorTactic::Never)
                 };
-                if FORCED_BRACKET_MACROS.contains(macro_name) {
+                if FORCED_BRACKET_MACROS.contains(macro_name) && !is_nested_macro {
                     context.inside_macro.replace(false);
                     if context.use_block_indent() {
                         force_trailing_comma = Some(SeparatorTactic::Vertical);
