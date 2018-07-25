@@ -331,9 +331,7 @@
 // `force_alloc_system` is *only* intended as a workaround for local rebuilds
 // with a rustc without jemalloc.
 // FIXME(#44236) shouldn't need MSVC logic
-#![cfg_attr(all(not(target_env = "msvc"),
-                any(all(stage0, not(test)), feature = "force_alloc_system")),
-            feature(global_allocator))]
+#![cfg_attr(all(not(target_env = "msvc"), stage0, not(test)), feature(global_allocator))]
 #[cfg(all(not(target_env = "msvc"),
           any(all(stage0, not(test)), feature = "force_alloc_system")))]
 #[global_allocator]
