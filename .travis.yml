@@ -13,6 +13,7 @@ matrix:
   include:
     # Images used in testing PR and try-build should be run first.
     - env: IMAGE=x86_64-gnu-llvm-5.0 RUST_BACKTRACE=1
+      if: branch = master
 
 env:
   global:
