@@ -222,16 +222,17 @@ impl Step for Cargo {
             compiler,
             target: self.host,
         });
-        let mut cargo = builder.cargo(compiler, Mode::ToolRustc, self.host, "test");
-        cargo
-            .arg("--manifest-path")
-            .arg(builder.src.join("src/tools/cargo/Cargo.toml"));
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::ToolRustc,
+                                                 self.host,
+                                                 "test",
+                                                 "src/tools/cargo",
+                                                 true);
+
         if !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
-
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
@@ -289,9 +290,6 @@ impl Step for Rls {
                                                  "src/tools/rls",
                                                  true);
 
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
         if try_run(builder, &mut cargo) {
@@ -345,8 +343,6 @@ impl Step for Rustfmt {
                                                  "src/tools/rustfmt",
                                                  true);
 
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
@@ -394,13 +390,14 @@ impl Step for Miri {
             extra_features: Vec::new(),
         });
         if let Some(miri) = miri {
-            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "test");
-            cargo
-                .arg("--manifest-path")
-                .arg(builder.src.join("src/tools/miri/Cargo.toml"));
+            let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::ToolRustc,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/miri",
+                                                 true);
 
-            // Don't build tests dynamically, just a pain to work with
-            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
             cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
@@ -452,13 +449,14 @@ impl Step for Clippy {
             extra_features: Vec::new(),
         });
         if let Some(clippy) = clippy {
-            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "test");
-            cargo
-                .arg("--manifest-path")
-                .arg(builder.src.join("src/tools/clippy/Cargo.toml"));
+            let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::ToolRustc,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/clippy",
+                                                 true);
 
-            // Don't build tests dynamically, just a pain to work with
-            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
             // clippy tests need to know about the stage sysroot
             cargo.env("SYSROOT", builder.sysroot(compiler));
             cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
