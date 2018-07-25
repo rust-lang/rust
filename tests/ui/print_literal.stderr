@@ -1,5 +1,5 @@
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:23:71
+  --> $DIR/print_literal.rs:24:71
    |
 24 |     println!("{} of {:b} people know binary, the other half doesn't", 1, 2);
    |                                                                       ^
@@ -7,79 +7,79 @@ error: literal with an empty format string
    = note: `-D print-literal` implied by `-D warnings`
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:24:24
+  --> $DIR/print_literal.rs:25:24
    |
 25 |     print!("Hello {}", "world");
    |                        ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:25:36
+  --> $DIR/print_literal.rs:26:36
    |
 26 |     println!("Hello {} {}", world, "world");
    |                                    ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:26:26
+  --> $DIR/print_literal.rs:27:26
    |
 27 |     println!("Hello {}", "world");
    |                          ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:27:30
+  --> $DIR/print_literal.rs:28:30
    |
 28 |     println!("10 / 4 is {}", 2.5);
    |                              ^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:28:28
+  --> $DIR/print_literal.rs:29:28
    |
 29 |     println!("2 + 1 = {}", 3);
    |                            ^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:33:25
-   |
-34 |     println!("{0} {1}", "hello", "world");
-   |                         ^^^^^^^
-
-error: literal with an empty format string
-  --> $DIR/print_literal.rs:33:34
-   |
-34 |     println!("{0} {1}", "hello", "world");
-   |                                  ^^^^^^^
-
-error: literal with an empty format string
   --> $DIR/print_literal.rs:34:25
    |
-35 |     println!("{1} {0}", "hello", "world");
+34 |     println!("{0} {1}", "hello", "world");
    |                         ^^^^^^^
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:34:34
    |
+34 |     println!("{0} {1}", "hello", "world");
+   |                                  ^^^^^^^
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:35:25
+   |
+35 |     println!("{1} {0}", "hello", "world");
+   |                         ^^^^^^^
+
+error: literal with an empty format string
+  --> $DIR/print_literal.rs:35:34
+   |
 35 |     println!("{1} {0}", "hello", "world");
    |                                  ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:37:33
+  --> $DIR/print_literal.rs:38:33
    |
 38 |     println!("{foo} {bar}", foo="hello", bar="world");
    |                                 ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:37:46
+  --> $DIR/print_literal.rs:38:46
    |
 38 |     println!("{foo} {bar}", foo="hello", bar="world");
    |                                              ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:38:33
+  --> $DIR/print_literal.rs:39:33
    |
 39 |     println!("{bar} {foo}", foo="hello", bar="world");
    |                                 ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/print_literal.rs:38:46
+  --> $DIR/print_literal.rs:39:46
    |
 39 |     println!("{bar} {foo}", foo="hello", bar="world");
    |                                              ^^^^^^^
