@@ -329,9 +329,7 @@ pub mod printf {
                 _ => {/* fall-through */},
             }
 
-            //let _ = Cur::new_at_start_with_pos(&s[..], start);
-            //Cur::new_at_start(&s[start..])
-            Cur::new_at_start_with_pos(&s[..], start)
+            Cur::new_at(&s[..], start)
         };
 
         // This is meant to be a translation of the following regex:
@@ -970,7 +968,7 @@ mod strcursor {
             }
         }
 
-        pub fn new_at_start_with_pos(s: &'a str, at: usize) -> StrCursor<'a> {
+        pub fn new_at(s: &'a str, at: usize) -> StrCursor<'a> {
             StrCursor {
                 s,
                 at,
