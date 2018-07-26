@@ -1,0 +1,19 @@
+warning: not reporting region error due to nll
+  --> $DIR/mir_check_cast_unsize.rs:19:5
+   |
+LL |     x
+   |     ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/mir_check_cast_unsize.rs:17:46
+   |
+LL |   fn bar<'a>(x: &'a u32) -> &'static dyn Debug {
+   |  ______________________________________________^
+LL | |     //~^ ERROR unsatisfied lifetime constraints
+LL | |     x
+LL | |     //~^ WARNING not reporting region error due to nll
+LL | | }
+   | |_^ return requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+
