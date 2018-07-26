@@ -567,12 +567,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn add_returning_edge(&mut self,
                           _from_expr: &hir::Expr,
                           from_index: CFGIndex) {
-        let mut data = CFGEdgeData {
-            exiting_scopes: vec![],
+        let data = CFGEdgeData {
+            exiting_scopes: self.loop_scopes.iter()
+                                            .rev()
+                                            .map(|&LoopScope { loop_id: id, .. }| id)
+                                            .collect()
         };
-        for &LoopScope { loop_id: id, .. } in self.loop_scopes.iter().rev() {
-            data.exiting_scopes.push(id);
-        }
         self.graph.add_edge(from_index, self.fn_exit, data);
     }
 

@@ -131,8 +131,8 @@ fn decodable_substructure(cx: &mut ExtCtxt,
         StaticEnum(_, ref fields) => {
             let variant = cx.ident_of("i");
 
-            let mut arms = Vec::new();
-            let mut variants = Vec::new();
+            let mut arms = Vec::with_capacity(fields.len() + 1);
+            let mut variants = Vec::with_capacity(fields.len());
             let rvariant_arg = cx.ident_of("read_enum_variant_arg");
 
             for (i, &(ident, v_span, ref parts)) in fields.iter().enumerate() {

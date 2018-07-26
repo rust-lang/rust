@@ -152,9 +152,7 @@ fn path_relative_from(path: &Path, base: &Path) -> Option<PathBuf> {
                 (Some(_), Some(b)) if b == Component::ParentDir => return None,
                 (Some(a), Some(_)) => {
                     comps.push(Component::ParentDir);
-                    for _ in itb {
-                        comps.push(Component::ParentDir);
-                    }
+                    comps.extend(itb.map(|_| Component::ParentDir));
                     comps.push(a);
                     comps.extend(ita.by_ref());
                     break;

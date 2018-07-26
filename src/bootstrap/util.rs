@@ -92,10 +92,7 @@ pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
         file.push_str(".exe");
     }
 
-    for c in components {
-        buf.push(c);
-    }
-
+    buf.extend(components);
     buf.push(file);
 
     buf

@@ -188,6 +188,7 @@ pub use self::StaticFields::*;
 pub use self::SubstructureFields::*;
 
 use std::cell::RefCell;
+use std::iter;
 use std::vec;
 
 use rustc_target::spec::abi::Abi;
@@ -558,15 +559,13 @@ impl<'a> TraitDef<'a> {
                     // type being derived upon
                     self.additional_bounds.iter().map(|p| {
                         cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
-                    }).collect();
-
-                // require the current trait
-                bounds.push(cx.trait_bound(trait_path.clone()));
-
-                // also add in any bounds from the declaration
-                for declared_bound in &param.bounds {
-                    bounds.push((*declared_bound).clone());
-                }
+                    }).chain(
+                        // require the current trait
+                        iter::once(cx.trait_bound(trait_path.clone()))
+                    ).chain(
+                        // also add in any bounds from the declaration
+                        param.bounds.iter().cloned()
+                    ).collect();
 
                 cx.typaram(self.span, param.ident, vec![], bounds, None)
             }

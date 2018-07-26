@@ -3831,9 +3831,9 @@ impl<'a> Resolver<'a> {
             }
             // Add primitive types to the mix
             if filter_fn(Def::PrimTy(TyBool)) {
-                for (name, _) in &self.primitive_type_table.primitive_types {
-                    names.push(*name);
-                }
+                names.extend(
+                    self.primitive_type_table.primitive_types.iter().map(|(name, _)| name)
+                )
             }
         } else {
             // Search in module.

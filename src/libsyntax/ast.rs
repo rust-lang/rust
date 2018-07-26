@@ -500,10 +500,7 @@ impl Pat {
             PatKind::Slice(pats, None, _) if pats.len() == 1 =>
                 pats[0].to_ty().map(TyKind::Slice)?,
             PatKind::Tuple(pats, None) => {
-                let mut tys = Vec::new();
-                for pat in pats {
-                    tys.push(pat.to_ty()?);
-                }
+                let tys = pats.iter().map(|pat| pat.to_ty()).collect::<Option<Vec<_>>>()?;
                 TyKind::Tup(tys)
             }
             _ => return None,
@@ -949,10 +946,7 @@ impl Expr {
             ExprKind::Array(exprs) if exprs.len() == 1 =>
                 exprs[0].to_ty().map(TyKind::Slice)?,
             ExprKind::Tup(exprs) => {
-                let mut tys = Vec::new();
-                for expr in exprs {
-                    tys.push(expr.to_ty()?);
-                }
+                let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<Vec<_>>>()?;
                 TyKind::Tup(tys)
             }
             ExprKind::Binary(binop, lhs, rhs) if binop.node == BinOpKind::Add =>

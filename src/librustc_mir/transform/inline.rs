@@ -406,10 +406,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     local_map.push(idx);
                 }
 
-                for p in callee_mir.promoted.iter().cloned() {
-                    let idx = caller_mir.promoted.push(p);
-                    promoted_map.push(idx);
-                }
+                promoted_map.extend(
+                    callee_mir.promoted.iter().cloned().map(|p| caller_mir.promoted.push(p))
+                );
 
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`

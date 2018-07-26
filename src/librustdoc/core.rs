@@ -203,9 +203,7 @@ pub fn run_core(search_paths: SearchPaths,
                                      intra_link_resolution_failure_name.to_owned(),
                                      missing_docs.to_owned()];
 
-    for (lint, _) in &cmd_lints {
-        whitelisted_lints.push(lint.clone());
-    }
+    whitelisted_lints.extend(cmd_lints.iter().map(|(lint, _)| lint).cloned());
 
     let lints = lint::builtin::HardwiredLints.get_lints()
                     .into_iter()

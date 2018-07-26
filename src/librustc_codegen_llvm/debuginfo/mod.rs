@@ -352,9 +352,10 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
             if let ty::TyTuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
-                for &argument_type in args {
-                    signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
-                }
+                signature.extend(
+                    args.iter().map(|argument_type|
+                        type_metadata(cx, argument_type, syntax_pos::DUMMY_SP))
+                );
             }
         }
 

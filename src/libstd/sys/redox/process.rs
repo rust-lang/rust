@@ -13,6 +13,7 @@ use ffi::OsStr;
 use os::unix::ffi::OsStrExt;
 use fmt;
 use io::{self, Error, ErrorKind};
+use iter;
 use libc::{EXIT_SUCCESS, EXIT_FAILURE};
 use path::{Path, PathBuf};
 use sys::fd::FileDesc;
@@ -296,11 +297,11 @@ impl Command {
             t!(callback());
         }
 
-        let mut args: Vec<[usize; 2]> = Vec::new();
-        args.push([self.program.as_ptr() as usize, self.program.len()]);
-        for arg in self.args.iter() {
-            args.push([arg.as_ptr() as usize, arg.len()]);
-        }
+        let args: Vec<[usize; 2]> = iter::once(
+            [self.program.as_ptr() as usize, self.program.len()]
+        ).chain(
+            self.args.iter().map(|arg| [arg.as_ptr() as usize, arg.len()])
+        ).collect();
 
         self.env.apply();
 

@@ -438,9 +438,9 @@ fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
         }
         pretty_predicates.push(p.to_string());
     }
-    for ty in types_without_default_bounds {
-        pretty_predicates.push(format!("{}: ?Sized", ty));
-    }
+    pretty_predicates.extend(
+        types_without_default_bounds.iter().map(|ty| format!("{}: ?Sized", ty))
+    );
     if !pretty_predicates.is_empty() {
         write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();
     }

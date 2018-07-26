@@ -1588,10 +1588,7 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<dyn Any + Send>>
 /// debugging, since some ICEs only happens with non-default compiler flags
 /// (and the users don't always report them).
 fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
-    let mut args = Vec::new();
-    for arg in env::args_os() {
-        args.push(arg.to_string_lossy().to_string());
-    }
+    let args = env::args_os().map(|arg| arg.to_string_lossy().to_string()).collect::<Vec<_>>();
 
     // Avoid printing help because of empty args. This can suggest the compiler
     // itself is not the program root (consider RLS).

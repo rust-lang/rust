@@ -265,9 +265,7 @@ impl<'a> StringReader<'a> {
                 m.push(c);
             }
             _ => {
-                for c in c.escape_default() {
-                    m.push(c);
-                }
+                m.extend(c.escape_default());
             }
         }
     }
