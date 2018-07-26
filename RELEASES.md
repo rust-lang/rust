@@ -52,6 +52,16 @@ Stabilized APIs
 ---------------
 - [`Iterator::step_by`]
 - [`Path::ancestors`]
+- [`SystemTime::UNIX_EPOCH`]
+- [`alloc::GlobalAlloc`]
+- [`alloc::Layout`]
+- [`alloc::LayoutErr`]
+- [`alloc::System`]
+- [`alloc::alloc`]
+- [`alloc::alloc_zeroed`]
+- [`alloc::dealloc`]
+- [`alloc::realloc`]
+- [`alloc::handle_alloc_error`]
 - [`btree_map::Entry::or_default`]
 - [`fmt::Alignment`]
 - [`hash_map::Entry::or_default`]
@@ -122,6 +132,16 @@ Compatibility Notes
 [cargo/5584]: https://github.com/rust-lang/cargo/pull/5584/
 [`Iterator::step_by`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.step_by
 [`Path::ancestors`]: https://doc.rust-lang.org/std/path/struct.Path.html#method.ancestors
+[`SystemTime::UNIX_EPOCH`]: https://doc.rust-lang.org/std/time/struct.SystemTime.html#associatedconstant.UNIX_EPOCH
+[`alloc::GlobalAlloc`]: https://doc.rust-lang.org/std/alloc/trait.GlobalAlloc.html
+[`alloc::Layout`]: https://doc.rust-lang.org/std/alloc/struct.Layout.html
+[`alloc::LayoutErr`]: https://doc.rust-lang.org/std/alloc/struct.LayoutErr.html
+[`alloc::System`]: https://doc.rust-lang.org/std/alloc/struct.System.html
+[`alloc::alloc`]: https://doc.rust-lang.org/std/alloc/fn.alloc.html
+[`alloc::alloc_zeroed`]: https://doc.rust-lang.org/std/alloc/fn.alloc_zeroed.html
+[`alloc::dealloc`]: https://doc.rust-lang.org/std/alloc/fn.dealloc.html
+[`alloc::realloc`]: https://doc.rust-lang.org/std/alloc/fn.realloc.html
+[`alloc::handle_alloc_error`]: https://doc.rust-lang.org/std/alloc/fn.handle_alloc_error.html
 [`btree_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_default
 [`fmt::Alignment`]: https://doc.rust-lang.org/std/fmt/enum.Alignment.html
 [`hash_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_default
@@ -3162,7 +3182,7 @@ Stabilized APIs
 * [`UnixDatagram::shutdown`](http://doc.rust-lang.org/std/os/unix/net/struct.UnixDatagram.html#method.shutdown)
 * RawFd impls for `UnixDatagram`
 * `{BTree,Hash}Map::values_mut`
-* [`<[_]>::binary_search_by_key`](http://doc.rust-lang.org/beta/std/primitive.slice.html#method.binary_search_by_key)
+* [`<[_]>::binary_search_by_key`](http://doc.rust-lang.org/std/primitive.slice.html#method.binary_search_by_key)
 
 Libraries
 ---------
@@ -4080,7 +4100,7 @@ Compatibility Notes
 [1.6bh]: https://github.com/rust-lang/rust/pull/29811
 [1.6c]: https://github.com/rust-lang/cargo/pull/2192
 [1.6cc]: https://github.com/rust-lang/cargo/pull/2131
-[1.6co]: http://doc.rust-lang.org/beta/core/index.html
+[1.6co]: http://doc.rust-lang.org/core/index.html
 [1.6dv]: https://github.com/rust-lang/rust/pull/30000
 [1.6f]: https://github.com/rust-lang/rust/pull/29129
 [1.6m]: https://github.com/rust-lang/rust/pull/29828

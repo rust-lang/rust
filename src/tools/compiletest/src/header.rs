@@ -15,7 +15,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use common;
-use common::Config;
+use common::{Config, Mode};
 use util;
 
 use extract_gdb_version;
@@ -395,6 +395,13 @@ impl TestProps {
                 self.run_rustfix = config.parse_run_rustfix(ln);
             }
         });
+
+        if self.failure_status == -1 {
+            self.failure_status = match config.mode {
+                Mode::RunFail => 101,
+                _ => 1,
+            };
+        }
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
