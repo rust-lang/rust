@@ -12,7 +12,6 @@
 //! command line options.
 
 pub use self::EntryFnType::*;
-pub use self::Passes::*;
 pub use self::DebugInfoLevel::*;
 
 use std::str::FromStr;
@@ -679,15 +678,15 @@ pub enum CrateType {
 
 #[derive(Clone, Hash)]
 pub enum Passes {
-    SomePasses(Vec<String>),
-    AllPasses,
+    Some(Vec<String>),
+    All,
 }
 
 impl Passes {
     pub fn is_empty(&self) -> bool {
         match *self {
-            SomePasses(ref v) => v.is_empty(),
-            AllPasses => false,
+            Passes::Some(ref v) => v.is_empty(),
+            Passes::All => false,
         }
     }
 }
@@ -822,8 +821,7 @@ macro_rules! options {
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto,
-                    CrossLangLto};
+        use super::{$struct_name, Passes, Sanitizer, Lto, CrossLangLto};
         use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
 
@@ -934,13 +932,13 @@ macro_rules! options {
         fn parse_passes(slot: &mut Passes, v: Option<&str>) -> bool {
             match v {
                 Some("all") => {
-                    *slot = AllPasses;
+                    *slot = Passes::All;
                     true
                 }
                 v => {
                     let mut passes = vec![];
                     if parse_list(&mut passes, v) {
-                        *slot = SomePasses(passes);
+                        *slot = Passes::Some(passes);
                         true
                     } else {
                         false
@@ -1103,7 +1101,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          "extra data to put in each output filename"),
     codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
-    remark: Passes = (SomePasses(Vec::new()), parse_passes, [UNTRACKED],
+    remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED],
         "print remarks for these optimization passes (space separated, or \"all\")"),
     no_stack_check: bool = (false, parse_bool, [UNTRACKED],
         "the --no-stack-check flag is deprecated and does nothing"),
@@ -2946,7 +2944,7 @@ mod tests {
         opts.cg.codegen_units = Some(42);
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-        opts.cg.remark = super::SomePasses(vec![String::from("pass1"), String::from("pass2")]);
+        opts.cg.remark = super::Passes::Some(vec![String::from("pass1"), String::from("pass2")]);
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts.cg.save_temps = true;

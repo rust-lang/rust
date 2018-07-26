@@ -20,8 +20,7 @@ use consts;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
-use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePasses,
-                             AllPasses, Sanitizer, Lto};
+use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitizer, Lto};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
@@ -461,8 +460,8 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
         llvm::diagnostic::Optimization(opt) => {
             let enabled = match cgcx.remark {
-                AllPasses => true,
-                SomePasses(ref v) => v.iter().any(|s| *s == opt.pass_name),
+                Passes::All => true,
+                Passes::Some(ref v) => v.iter().any(|s| *s == opt.pass_name),
             };
 
             if enabled {
