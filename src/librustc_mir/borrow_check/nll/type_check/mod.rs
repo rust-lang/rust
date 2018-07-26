@@ -132,17 +132,16 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         type_tests: Vec::default(),
     };
 
-    let universal_region_relations =
-        Rc::new(free_region_relations::UniversalRegionRelations::create(
-            infcx,
-            mir_def_id,
-            param_env,
-            location_table,
-            Some(implicit_region_bound),
-            universal_regions,
-            &mut constraints,
-            all_facts,
-        ));
+    let universal_region_relations = free_region_relations::create(
+        infcx,
+        mir_def_id,
+        param_env,
+        location_table,
+        Some(implicit_region_bound),
+        universal_regions,
+        &mut constraints,
+        all_facts,
+    );
 
     {
         let mut borrowck_context = BorrowCheckContext {

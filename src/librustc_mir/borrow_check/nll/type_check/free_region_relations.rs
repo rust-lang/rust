@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use borrow_check::location::LocationTable;
-use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::type_check::constraint_conversion;
 use borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use borrow_check::nll::universal_regions::UniversalRegions;
+use borrow_check::nll::ToRegionVid;
 use rustc::hir::def_id::DefId;
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
@@ -53,37 +53,37 @@ crate struct UniversalRegionRelations<'tcx> {
     inverse_outlives: TransitiveRelation<RegionVid>,
 }
 
-impl UniversalRegionRelations<'tcx> {
-    crate fn create(
-        infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir_def_id: DefId,
-        param_env: ty::ParamEnv<'tcx>,
-        location_table: &LocationTable,
-        implicit_region_bound: Option<ty::Region<'tcx>>,
-        universal_regions: &Rc<UniversalRegions<'tcx>>,
-        constraints: &mut MirTypeckRegionConstraints<'tcx>,
-        all_facts: &mut Option<AllFacts>,
-    ) -> Self {
-        let mir_node_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
-        UniversalRegionRelationsBuilder {
-            infcx,
-            mir_def_id,
-            mir_node_id,
-            param_env,
-            implicit_region_bound,
-            constraints,
-            location_table,
-            all_facts,
+crate fn create(
+    infcx: &InferCtxt<'_, '_, 'tcx>,
+    mir_def_id: DefId,
+    param_env: ty::ParamEnv<'tcx>,
+    location_table: &LocationTable,
+    implicit_region_bound: Option<ty::Region<'tcx>>,
+    universal_regions: &Rc<UniversalRegions<'tcx>>,
+    constraints: &mut MirTypeckRegionConstraints<'tcx>,
+    all_facts: &mut Option<AllFacts>,
+) -> Rc<UniversalRegionRelations<'tcx>> {
+    let mir_node_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
+    UniversalRegionRelationsBuilder {
+        infcx,
+        mir_def_id,
+        mir_node_id,
+        param_env,
+        implicit_region_bound,
+        constraints,
+        location_table,
+        all_facts,
+        universal_regions: universal_regions.clone(),
+        relations: UniversalRegionRelations {
             universal_regions: universal_regions.clone(),
-            relations: UniversalRegionRelations {
-                universal_regions: universal_regions.clone(),
-                region_bound_pairs: Vec::new(),
-                outlives: TransitiveRelation::new(),
-                inverse_outlives: TransitiveRelation::new(),
-            },
-        }.create()
-    }
+            region_bound_pairs: Vec::new(),
+            outlives: TransitiveRelation::new(),
+            inverse_outlives: TransitiveRelation::new(),
+        },
+    }.create()
+}
 
+impl UniversalRegionRelations<'tcx> {
     /// Records in the `outlives_relation` (and
     /// `inverse_outlives_relation`) that `fr_a: fr_b`. Invoked by the
     /// builder below.
@@ -212,7 +212,7 @@ struct UniversalRegionRelationsBuilder<'this, 'gcx: 'tcx, 'tcx: 'this> {
 }
 
 impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
-    crate fn create(mut self) -> UniversalRegionRelations<'tcx> {
+    crate fn create(mut self) -> Rc<UniversalRegionRelations<'tcx>> {
         let unnormalized_input_output_tys = self
             .universal_regions
             .unnormalized_input_tys
@@ -277,7 +277,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
             ).convert_all(&data);
         }
 
-        self.relations
+        Rc::new(self.relations)
     }
 
     /// Update the type of a single local, which should represent
