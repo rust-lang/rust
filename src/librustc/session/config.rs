@@ -12,7 +12,6 @@
 //! command line options.
 
 pub use self::EntryFnType::*;
-pub use self::CrateType::*;
 pub use self::Passes::*;
 pub use self::DebugInfoLevel::*;
 
@@ -670,12 +669,12 @@ pub enum EntryFnType {
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
 pub enum CrateType {
-    CrateTypeExecutable,
-    CrateTypeDylib,
-    CrateTypeRlib,
-    CrateTypeStaticlib,
-    CrateTypeCdylib,
-    CrateTypeProcMacro,
+    Executable,
+    Dylib,
+    Rlib,
+    Staticlib,
+    Cdylib,
+    ProcMacro,
 }
 
 #[derive(Clone, Hash)]
@@ -1374,7 +1373,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
 }
 
 pub fn default_lib_output() -> CrateType {
-    CrateTypeRlib
+    CrateType::Rlib
 }
 
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
@@ -1432,7 +1431,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.opts.debug_assertions {
         ret.insert((Symbol::intern("debug_assertions"), None));
     }
-    if sess.opts.crate_types.contains(&CrateTypeProcMacro) {
+    if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
         ret.insert((Symbol::intern("proc_macro"), None));
     }
     return ret;
@@ -2277,12 +2276,12 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {
                 "lib" => default_lib_output(),
-                "rlib" => CrateTypeRlib,
-                "staticlib" => CrateTypeStaticlib,
-                "dylib" => CrateTypeDylib,
-                "cdylib" => CrateTypeCdylib,
-                "bin" => CrateTypeExecutable,
-                "proc-macro" => CrateTypeProcMacro,
+                "rlib" => CrateType::Rlib,
+                "staticlib" => CrateType::Staticlib,
+                "dylib" => CrateType::Dylib,
+                "cdylib" => CrateType::Cdylib,
+                "bin" => CrateType::Executable,
+                "proc-macro" => CrateType::ProcMacro,
                 _ => {
                     return Err(format!("unknown crate type: `{}`", part));
                 }
@@ -2360,12 +2359,12 @@ pub mod nightly_options {
 impl fmt::Display for CrateType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            CrateTypeExecutable => "bin".fmt(f),
-            CrateTypeDylib => "dylib".fmt(f),
-            CrateTypeRlib => "rlib".fmt(f),
-            CrateTypeStaticlib => "staticlib".fmt(f),
-            CrateTypeCdylib => "cdylib".fmt(f),
-            CrateTypeProcMacro => "proc-macro".fmt(f),
+            CrateType::Executable => "bin".fmt(f),
+            CrateType::Dylib => "dylib".fmt(f),
+            CrateType::Rlib => "rlib".fmt(f),
+            CrateType::Staticlib => "staticlib".fmt(f),
+            CrateType::Cdylib => "cdylib".fmt(f),
+            CrateType::ProcMacro => "proc-macro".fmt(f),
         }
     }
 }

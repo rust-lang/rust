@@ -223,7 +223,7 @@ pub fn run_core(search_paths: SearchPaths,
     let sessopts = config::Options {
         maybe_sysroot,
         search_paths,
-        crate_types: vec![config::CrateTypeRlib],
+        crate_types: vec![config::CrateType::Rlib],
         lint_opts: if !allow_warnings {
             lints
         } else {

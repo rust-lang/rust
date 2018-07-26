@@ -32,13 +32,13 @@ use std::sync::Arc;
 
 pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {
-        config::CrateTypeExecutable |
-        config::CrateTypeStaticlib  |
-        config::CrateTypeCdylib     => true,
+        config::CrateType::Executable |
+        config::CrateType::Staticlib  |
+        config::CrateType::Cdylib     => true,
 
-        config::CrateTypeDylib     |
-        config::CrateTypeRlib      |
-        config::CrateTypeProcMacro => false,
+        config::CrateType::Dylib     |
+        config::CrateType::Rlib      |
+        config::CrateType::ProcMacro => false,
     }
 }
 

@@ -15,7 +15,7 @@ use dep_graph::{DepNode, DepConstructor};
 use errors::DiagnosticBuilder;
 use session::Session;
 use session::config::{BorrowckMode, OutputFilenames, OptLevel};
-use session::config::CrateType::*;
+use session::config::CrateType;
 use middle;
 use hir::{TraitCandidate, HirId, ItemLocalId};
 use hir::def::{Def, Export};
@@ -1493,12 +1493,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         self.sess.crate_types.borrow().iter().any(|crate_type| {
             match crate_type {
-                CrateTypeExecutable |
-                CrateTypeStaticlib  |
-                CrateTypeProcMacro  |
-                CrateTypeCdylib     => false,
-                CrateTypeRlib       |
-                CrateTypeDylib      => true,
+                CrateType::Executable |
+                CrateType::Staticlib  |
+                CrateType::ProcMacro  |
+                CrateType::Cdylib     => false,
+                CrateType::Rlib       |
+                CrateType::Dylib      => true,
             }
         })
     }

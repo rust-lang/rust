@@ -875,7 +875,7 @@ pub(crate) struct CompiledModules {
 }
 
 fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
-    sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
+    sess.crate_types.borrow().contains(&config::CrateType::Rlib) &&
     sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
@@ -1341,7 +1341,7 @@ fn execute_work_item(cgcx: &CodegenContext,
                 // anything about it yet until we've got a final product.
                 Lto::Yes | Lto::Fat | Lto::Thin => {
                     cgcx.crate_types.len() != 1 ||
-                        cgcx.crate_types[0] != config::CrateTypeRlib
+                        cgcx.crate_types[0] != config::CrateType::Rlib
                 }
 
                 // When we're automatically doing ThinLTO for multi-codegen-unit
@@ -2346,7 +2346,7 @@ pub(crate) fn submit_codegened_module_to_llvm(tcx: TyCtxt,
 
 fn msvc_imps_needed(tcx: TyCtxt) -> bool {
     tcx.sess.target.target.options.is_like_msvc &&
-        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib)
+        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib)
 }
 
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.

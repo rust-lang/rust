@@ -147,7 +147,7 @@ fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
 
 fn is_any_library(sess: &Session) -> bool {
     sess.crate_types.borrow().iter().any(|ty| {
-        *ty != config::CrateTypeExecutable
+        *ty != config::CrateType::Executable
     })
 }
 

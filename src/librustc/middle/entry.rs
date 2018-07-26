@@ -59,7 +59,7 @@ pub fn find_entry_point(session: &Session,
                         hir_map: &hir_map::Map,
                         crate_name: &str) {
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
-        *ty == config::CrateTypeExecutable
+        *ty == config::CrateType::Executable
     });
     if !any_exe {
         // No need to find a main function

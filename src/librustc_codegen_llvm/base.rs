@@ -645,14 +645,14 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     let kind = tcx.sess.crate_types.borrow().iter().map(|ty| {
         match *ty {
-            config::CrateTypeExecutable |
-            config::CrateTypeStaticlib |
-            config::CrateTypeCdylib => MetadataKind::None,
+            config::CrateType::Executable |
+            config::CrateType::Staticlib |
+            config::CrateType::Cdylib => MetadataKind::None,
 
-            config::CrateTypeRlib => MetadataKind::Uncompressed,
+            config::CrateType::Rlib => MetadataKind::Uncompressed,
 
-            config::CrateTypeDylib |
-            config::CrateTypeProcMacro => MetadataKind::Compressed,
+            config::CrateType::Dylib |
+            config::CrateType::ProcMacro => MetadataKind::Compressed,
         }
     }).max().unwrap_or(MetadataKind::None);
 
@@ -1102,7 +1102,7 @@ impl CrateInfo {
 
         let load_wasm_items = tcx.sess.crate_types.borrow()
             .iter()
-            .any(|c| *c != config::CrateTypeRlib) &&
+            .any(|c| *c != config::CrateType::Rlib) &&
             tcx.sess.opts.target_triple.triple() == "wasm32-unknown-unknown";
 
         if load_wasm_items {

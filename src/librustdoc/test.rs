@@ -73,7 +73,7 @@ pub fn run(input_path: &Path,
         maybe_sysroot: maybe_sysroot.clone().or_else(
             || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
         search_paths: libs.clone(),
-        crate_types: vec![config::CrateTypeDylib],
+        crate_types: vec![config::CrateType::Dylib],
         cg: cg.clone(),
         externs: externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
@@ -216,7 +216,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         maybe_sysroot: maybe_sysroot.or_else(
             || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
         search_paths: libs,
-        crate_types: vec![config::CrateTypeExecutable],
+        crate_types: vec![config::CrateType::Executable],
         output_types: outputs,
         externs,
         cg: config::CodegenOptions {

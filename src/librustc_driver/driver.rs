@@ -1058,7 +1058,7 @@ where
         krate = time(sess, "maybe creating a macro crate", || {
             let crate_types = sess.crate_types.borrow();
             let num_crate_types = crate_types.len();
-            let is_proc_macro_crate = crate_types.contains(&config::CrateTypeProcMacro);
+            let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
             let is_test_crate = sess.opts.test;
             syntax_ext::proc_macro_registrar::modify(
                 &sess.parse_sess,
@@ -1501,13 +1501,13 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
         .filter_map(|a| {
             if a.check_name("crate_type") {
                 match a.value_str() {
-                    Some(ref n) if *n == "rlib" => Some(config::CrateTypeRlib),
-                    Some(ref n) if *n == "dylib" => Some(config::CrateTypeDylib),
-                    Some(ref n) if *n == "cdylib" => Some(config::CrateTypeCdylib),
+                    Some(ref n) if *n == "rlib" => Some(config::CrateType::Rlib),
+                    Some(ref n) if *n == "dylib" => Some(config::CrateType::Dylib),
+                    Some(ref n) if *n == "cdylib" => Some(config::CrateType::Cdylib),
                     Some(ref n) if *n == "lib" => Some(config::default_lib_output()),
-                    Some(ref n) if *n == "staticlib" => Some(config::CrateTypeStaticlib),
-                    Some(ref n) if *n == "proc-macro" => Some(config::CrateTypeProcMacro),
-                    Some(ref n) if *n == "bin" => Some(config::CrateTypeExecutable),
+                    Some(ref n) if *n == "staticlib" => Some(config::CrateType::Staticlib),
+                    Some(ref n) if *n == "proc-macro" => Some(config::CrateType::ProcMacro),
+                    Some(ref n) if *n == "bin" => Some(config::CrateType::Executable),
                     Some(_) => {
                         session.buffer_lint(
                             lint::builtin::UNKNOWN_CRATE_TYPES,
@@ -1534,7 +1534,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
-        return vec![config::CrateTypeExecutable];
+        return vec![config::CrateType::Executable];
     }
 
     // Only check command line flags if present. If no types are specified by
@@ -1598,7 +1598,7 @@ pub fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguator {
     let is_exe = session
         .crate_types
         .borrow()
-        .contains(&config::CrateTypeExecutable);
+        .contains(&config::CrateType::Executable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
     CrateDisambiguator::from(hasher.finish())

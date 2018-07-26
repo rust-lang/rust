@@ -44,7 +44,7 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::map::{Node, NodeTraitItem, NodeImplItem};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::ExternCrate;
-use rustc::session::config::CrateType::CrateTypeExecutable;
+use rustc::session::config::CrateType;
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
 
@@ -1048,7 +1048,7 @@ impl<'a> DumpHandler<'a> {
                 let executable = sess.crate_types
                     .borrow()
                     .iter()
-                    .any(|ct| *ct == CrateTypeExecutable);
+                    .any(|ct| *ct == CrateType::Executable);
                 let mut out_name = if executable {
                     "".to_owned()
                 } else {

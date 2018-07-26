@@ -37,12 +37,12 @@ pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
 
 fn crate_export_threshold(crate_type: config::CrateType) -> SymbolExportLevel {
     match crate_type {
-        config::CrateTypeExecutable |
-        config::CrateTypeStaticlib  |
-        config::CrateTypeProcMacro  |
-        config::CrateTypeCdylib     => SymbolExportLevel::C,
-        config::CrateTypeRlib       |
-        config::CrateTypeDylib      => SymbolExportLevel::Rust,
+        config::CrateType::Executable |
+        config::CrateType::Staticlib  |
+        config::CrateType::ProcMacro  |
+        config::CrateType::Cdylib     => SymbolExportLevel::C,
+        config::CrateType::Rlib       |
+        config::CrateType::Dylib      => SymbolExportLevel::Rust,
     }
 }
 
@@ -235,7 +235,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    if tcx.sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
+    if tcx.sess.crate_types.borrow().contains(&config::CrateType::Dylib) {
         let symbol_name = metadata_symbol_name(tcx);
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
 

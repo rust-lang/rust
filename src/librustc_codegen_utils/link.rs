@@ -114,24 +114,24 @@ pub fn filename_for_input(sess: &Session,
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     match crate_type {
-        config::CrateTypeRlib => {
+        config::CrateType::Rlib => {
             outputs.out_directory.join(&format!("lib{}.rlib", libname))
         }
-        config::CrateTypeCdylib |
-        config::CrateTypeProcMacro |
-        config::CrateTypeDylib => {
+        config::CrateType::Cdylib |
+        config::CrateType::ProcMacro |
+        config::CrateType::Dylib => {
             let (prefix, suffix) = (&sess.target.target.options.dll_prefix,
                                     &sess.target.target.options.dll_suffix);
             outputs.out_directory.join(&format!("{}{}{}", prefix, libname,
                                                 suffix))
         }
-        config::CrateTypeStaticlib => {
+        config::CrateType::Staticlib => {
             let (prefix, suffix) = (&sess.target.target.options.staticlib_prefix,
                                     &sess.target.target.options.staticlib_suffix);
             outputs.out_directory.join(&format!("{}{}{}", prefix, libname,
                                                 suffix))
         }
-        config::CrateTypeExecutable => {
+        config::CrateType::Executable => {
             let suffix = &sess.target.target.options.exe_suffix;
             let out_filename = outputs.path(OutputType::Exe);
             if suffix.is_empty() {
@@ -148,15 +148,15 @@ pub fn filename_for_input(sess: &Session,
 /// Default crate type is used when crate type isn't provided neither
 /// through cmd line arguments nor through crate attributes
 ///
-/// It is CrateTypeExecutable for all platforms but iOS as there is no
+/// It is CrateType::Executable for all platforms but iOS as there is no
 /// way to run iOS binaries anyway without jailbreaking and
 /// interaction with Rust code through static library is the only
 /// option for now
 pub fn default_output_for_target(sess: &Session) -> config::CrateType {
     if !sess.target.target.options.executables {
-        config::CrateTypeStaticlib
+        config::CrateType::Staticlib
     } else {
-        config::CrateTypeExecutable
+        config::CrateType::Executable
     }
 }
 
@@ -164,9 +164,9 @@ pub fn default_output_for_target(sess: &Session) -> config::CrateType {
 pub fn invalid_output_for_target(sess: &Session,
                                  crate_type: config::CrateType) -> bool {
     match crate_type {
-        config::CrateTypeCdylib |
-        config::CrateTypeDylib |
-        config::CrateTypeProcMacro => {
+        config::CrateType::Cdylib |
+        config::CrateType::Dylib |
+        config::CrateType::ProcMacro => {
             if !sess.target.target.options.dynamic_linking {
                 return true
             }
@@ -178,12 +178,12 @@ pub fn invalid_output_for_target(sess: &Session,
     }
     if sess.target.target.options.only_cdylib {
         match crate_type {
-            config::CrateTypeProcMacro | config::CrateTypeDylib => return true,
+            config::CrateType::ProcMacro | config::CrateType::Dylib => return true,
             _ => {}
         }
     }
     if !sess.target.target.options.executables {
-        if crate_type == config::CrateTypeExecutable {
+        if crate_type == config::CrateType::Executable {
             return true
         }
     }

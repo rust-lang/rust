@@ -387,8 +387,8 @@ impl<'a> Linker for GccLinker<'a> {
         // exported symbols to ensure we don't expose any more. The object files
         // have far more public symbols than we actually want to export, so we
         // hide them all here.
-        if crate_type == CrateType::CrateTypeDylib ||
-           crate_type == CrateType::CrateTypeProcMacro {
+        if crate_type == CrateType::Dylib ||
+           crate_type == CrateType::ProcMacro {
             return
         }
 
