@@ -12,7 +12,7 @@
 
 use compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env, add_to_sysroot};
 use builder::{RunConfig, Builder, ShouldRun, Step};
-use tool::{self, prepare_tool_cargo};
+use tool::{self, prepare_tool_cargo, SourceType};
 use {Compiler, Mode};
 use cache::{INTERNER, Interned};
 use std::path::PathBuf;
@@ -223,7 +223,7 @@ impl Step for Rustdoc {
                                            target,
                                            "check",
                                            "src/tools/rustdoc",
-                                           false);
+                                           SourceType::InTree);
 
         let _folder = builder.fold_output(|| format!("stage{}-rustdoc", compiler.stage));
         println!("Checking rustdoc artifacts ({} -> {})", &compiler.host, target);

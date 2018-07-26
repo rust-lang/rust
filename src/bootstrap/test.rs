@@ -30,7 +30,7 @@ use compile;
 use dist;
 use flags::Subcommand;
 use native;
-use tool::{self, Tool};
+use tool::{self, Tool, SourceType};
 use toolstate::ToolState;
 use util::{self, dylib_path, dylib_path_var};
 use Crate as CargoCrate;
@@ -228,7 +228,7 @@ impl Step for Cargo {
                                                  self.host,
                                                  "test",
                                                  "src/tools/cargo",
-                                                 true);
+                                                 SourceType::Submodule);
 
         if !builder.fail_fast {
             cargo.arg("--no-fail-fast");
@@ -288,7 +288,7 @@ impl Step for Rls {
                                                  host,
                                                  "test",
                                                  "src/tools/rls",
-                                                 true);
+                                                 SourceType::Submodule);
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
@@ -341,7 +341,7 @@ impl Step for Rustfmt {
                                                  host,
                                                  "test",
                                                  "src/tools/rustfmt",
-                                                 true);
+                                                 SourceType::Submodule);
 
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
@@ -396,7 +396,7 @@ impl Step for Miri {
                                                  host,
                                                  "test",
                                                  "src/tools/miri",
-                                                 true);
+                                                 SourceType::Submodule);
 
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
@@ -455,7 +455,7 @@ impl Step for Clippy {
                                                  host,
                                                  "test",
                                                  "src/tools/clippy",
-                                                 true);
+                                                 SourceType::Submodule);
 
             // clippy tests need to know about the stage sysroot
             cargo.env("SYSROOT", builder.sysroot(compiler));
@@ -1740,7 +1740,7 @@ impl Step for CrateRustdoc {
                                                  target,
                                                  test_kind.subcommand(),
                                                  "src/tools/rustdoc",
-                                                 false);
+                                                 SourceType::InTree);
         if test_kind.subcommand() == "test" && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }

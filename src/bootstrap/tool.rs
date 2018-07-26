@@ -76,6 +76,12 @@ impl Step for CleanTools {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum SourceType {
+    InTree,
+    Submodule,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
     compiler: Compiler,
     target: Interned<String>,
@@ -83,7 +89,7 @@ struct ToolBuild {
     path: &'static str,
     mode: Mode,
     is_optional_tool: bool,
-    is_external_tool: bool,
+    source_type: SourceType,
     extra_features: Vec<String>,
 }
 
@@ -123,7 +129,7 @@ impl Step for ToolBuild {
             target,
             "build",
             path,
-            self.is_external_tool,
+            self.source_type,
         );
         cargo.arg("--features").arg(self.extra_features.join(" "));
 
@@ -247,7 +253,7 @@ pub fn prepare_tool_cargo(
     target: Interned<String>,
     command: &'static str,
     path: &'static str,
-    is_external_tool: bool,
+    source_type: SourceType,
 ) -> Command {
     let mut cargo = builder.cargo(compiler, mode, target, command);
     let dir = builder.src.join(path);
@@ -257,7 +263,7 @@ pub fn prepare_tool_cargo(
     // stages and such and it's just easier if they're not dynamically linked.
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
-    if is_external_tool {
+    if source_type == SourceType::Submodule {
         cargo.env("RUSTC_EXTERNAL_TOOL", "1");
     }
 
@@ -289,7 +295,7 @@ pub fn prepare_tool_cargo(
 
 macro_rules! tool {
     ($($name:ident, $path:expr, $tool_name:expr, $mode:expr
-        $(,llvm_tools = $llvm:expr)* $(,external_tool = $external:expr)*;)+) => {
+        $(,llvm_tools = $llvm:expr)* $(,is_external_tool = $external:expr)*;)+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
         pub enum Tool {
             $(
@@ -367,7 +373,11 @@ macro_rules! tool {
                     mode: $mode,
                     path: $path,
                     is_optional_tool: false,
-                    is_external_tool: false $(|| $external)*,
+                    source_type: if false $(|| $external)* {
+                        SourceType::Submodule
+                    } else {
+                        SourceType::InTree
+                    },
                     extra_features: Vec::new(),
                 }).expect("expected to build -- essential tool")
             }
@@ -387,7 +397,7 @@ tool!(
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolBootstrap;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolBootstrap;
     RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolBootstrap,
-        external_tool = true;
+        is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::ToolBootstrap;
 );
 
@@ -419,7 +429,7 @@ impl Step for RemoteTestServer {
             mode: Mode::ToolStd,
             path: "src/tools/remote-test-server",
             is_optional_tool: false,
-            is_external_tool: false,
+            source_type: SourceType::InTree,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -474,7 +484,7 @@ impl Step for Rustdoc {
             target,
             "build",
             "src/tools/rustdoc",
-            false,
+            SourceType::InTree,
         );
 
         // Most tools don't get debuginfo, but rustdoc should.
@@ -547,7 +557,7 @@ impl Step for Cargo {
             mode: Mode::ToolRustc,
             path: "src/tools/cargo",
             is_optional_tool: false,
-            is_external_tool: true,
+            source_type: SourceType::Submodule,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -597,7 +607,7 @@ macro_rules! tool_extended {
                     path: $path,
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
-                    is_external_tool: true,
+                    source_type: SourceType::Submodule,
                 })
             }
         }
