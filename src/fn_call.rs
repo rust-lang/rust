@@ -759,7 +759,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         match &path[..] {
             // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
             // Still, we can make many things mostly work by "emulating" or ignoring some functions.
-            "std::io::_print" => {
+            "std::io::_print" |
+            "std::io::_eprint" => {
                 warn!(
                     "Ignoring output.  To run programs that print, make sure you have a libstd with full MIR."
                 );
