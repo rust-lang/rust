@@ -11,8 +11,6 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command line options.
 
-pub use self::DebugInfoLevel::*;
-
 use std::str::FromStr;
 
 use session::{early_error, early_warn, Session};
@@ -110,10 +108,10 @@ impl CrossLangLto {
 }
 
 #[derive(Clone, Copy, PartialEq, Hash)]
-pub enum DebugInfoLevel {
-    NoDebugInfo,
-    LimitedDebugInfo,
-    FullDebugInfo,
+pub enum DebugInfo {
+    None,
+    Limited,
+    Full,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
@@ -378,7 +376,7 @@ top_level_options!(
         // Include the debug_assertions flag into dependency tracking, since it
         // can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
-        debuginfo: DebugInfoLevel [TRACKED],
+        debuginfo: DebugInfo [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED],
         lint_cap: Option<lint::Level> [TRACKED],
         describe_lints: bool [UNTRACKED],
@@ -603,7 +601,7 @@ pub fn basic_options() -> Options {
     Options {
         crate_types: Vec::new(),
         optimize: OptLevel::No,
-        debuginfo: NoDebugInfo,
+        debuginfo: DebugInfo::None,
         lint_opts: Vec::new(),
         lint_cap: None,
         describe_lints: false,
@@ -2080,12 +2078,12 @@ pub fn build_session_options_and_crate_config(
         if cg.debuginfo.is_some() {
             early_error(error_format, "-g and -C debuginfo both provided");
         }
-        FullDebugInfo
+        DebugInfo::Full
     } else {
         match cg.debuginfo {
-            None | Some(0) => NoDebugInfo,
-            Some(1) => LimitedDebugInfo,
-            Some(2) => FullDebugInfo,
+            None | Some(0) => DebugInfo::None,
+            Some(1) => DebugInfo::Limited,
+            Some(2) => DebugInfo::Full,
             Some(arg) => {
                 early_error(
                     error_format,
@@ -2184,7 +2182,7 @@ pub fn build_session_options_and_crate_config(
         Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     };
 
-    if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
+    if !cg.remark.is_empty() && debuginfo == DebugInfo::None {
         early_warn(
             error_format,
             "-C remark will not show source locations without \
@@ -2391,7 +2389,7 @@ mod dep_tracking {
     use std::hash::Hash;
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
-    use super::{CrateType, DebugInfoLevel, ErrorOutputType, Lto, OptLevel, OutputTypes,
+    use super::{CrateType, DebugInfo, ErrorOutputType, Lto, OptLevel, OutputTypes,
                 Passes, Sanitizer, CrossLangLto};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_target::spec::{PanicStrategy, RelroLevel, TargetTriple};
@@ -2448,7 +2446,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Passes);
     impl_dep_tracking_hash_via_hash!(OptLevel);
     impl_dep_tracking_hash_via_hash!(Lto);
-    impl_dep_tracking_hash_via_hash!(DebugInfoLevel);
+    impl_dep_tracking_hash_via_hash!(DebugInfo);
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
     impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);

@@ -46,7 +46,7 @@ use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::middle::exported_symbols;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::util::profiling::ProfileCategory;
-use rustc::session::config::{self, NoDebugInfo, EntryFnType};
+use rustc::session::config::{self, DebugInfo, EntryFnType};
 use rustc::session::Session;
 use rustc_incremental;
 use allocator;
@@ -1249,7 +1249,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             // Finalize debuginfo
-            if cx.sess().opts.debuginfo != NoDebugInfo {
+            if cx.sess().opts.debuginfo != DebugInfo::None {
                 debuginfo::finalize(&cx);
             }
 

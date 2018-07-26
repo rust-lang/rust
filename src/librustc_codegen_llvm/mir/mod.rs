@@ -16,7 +16,7 @@ use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
-use rustc::session::config::FullDebugInfo;
+use rustc::session::config::DebugInfo;
 use base;
 use builder::Builder;
 use common::{CodegenCx, Funclet};
@@ -267,7 +267,7 @@ pub fn codegen_mir(
             if let Some(name) = decl.name {
                 // User variable
                 let debug_scope = fx.scopes[decl.visibility_scope];
-                let dbg = debug_scope.is_valid() && bx.sess().opts.debuginfo == FullDebugInfo;
+                let dbg = debug_scope.is_valid() && bx.sess().opts.debuginfo == DebugInfo::Full;
 
                 if !memory_locals.contains(local) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
@@ -426,7 +426,7 @@ fn arg_local_refs(
 
     // Get the argument scope, if it exists and if we need it.
     let arg_scope = scopes[mir::OUTERMOST_SOURCE_SCOPE];
-    let arg_scope = if bx.sess().opts.debuginfo == FullDebugInfo {
+    let arg_scope = if bx.sess().opts.debuginfo == DebugInfo::Full {
         arg_scope.scope_metadata
     } else {
         None

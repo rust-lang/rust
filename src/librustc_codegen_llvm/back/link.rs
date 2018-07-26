@@ -17,7 +17,7 @@ use super::command::Command;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, PrintRequest};
+use rustc::session::config::{self, DebugInfo, OutputFilenames, OutputType, PrintRequest};
 use rustc::session::config::{RUST_CGU_EXT, Lto};
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
@@ -200,7 +200,7 @@ pub(crate) fn link_binary(sess: &Session,
 /// split-dwarf like schemes.
 fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     // If the objects don't have debuginfo there's nothing to preserve.
-    if sess.opts.debuginfo == NoDebugInfo {
+    if sess.opts.debuginfo == DebugInfo::None {
         return false
     }
 
@@ -834,7 +834,7 @@ fn link_natively(sess: &Session,
     // the symbols. Note, though, that if the object files are being preserved
     // for their debug information there's no need for us to run dsymutil.
     if sess.target.target.options.is_like_osx &&
-        sess.opts.debuginfo != NoDebugInfo &&
+        sess.opts.debuginfo != DebugInfo::None &&
         !preserve_objects_for_their_debuginfo(sess)
     {
         match Command::new("dsymutil").arg(out_filename).output() {

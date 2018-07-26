@@ -21,7 +21,7 @@ use back::symbol_export;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
-use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel,
+use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
                              CrossLangLto};
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
@@ -338,7 +338,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn debuginfo(&mut self) {
         match self.sess.opts.debuginfo {
-            DebugInfoLevel::NoDebugInfo => {
+            DebugInfo::None => {
                 // If we are building without debuginfo enabled and we were called with
                 // `-Zstrip-debuginfo-if-disabled=yes`, tell the linker to strip any debuginfo
                 // found when linking to get rid of symbols from libstd.
@@ -826,9 +826,9 @@ impl<'a> Linker for EmLinker<'a> {
     fn debuginfo(&mut self) {
         // Preserve names or generate source maps depending on debug info
         self.cmd.arg(match self.sess.opts.debuginfo {
-            DebugInfoLevel::NoDebugInfo => "-g0",
-            DebugInfoLevel::LimitedDebugInfo => "-g3",
-            DebugInfoLevel::FullDebugInfo => "-g4"
+            DebugInfo::None => "-g0",
+            DebugInfo::Limited => "-g3",
+            DebugInfo::Full => "-g4"
         });
     }
 

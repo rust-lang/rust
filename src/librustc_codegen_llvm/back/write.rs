@@ -344,7 +344,7 @@ pub struct CodegenContext {
     pub tm_factory: Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
-    debuginfo: config::DebugInfoLevel,
+    debuginfo: config::DebugInfo,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,

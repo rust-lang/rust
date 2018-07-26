@@ -26,7 +26,7 @@ use type_of::PointeeInfo;
 
 use rustc_data_structures::base_n;
 use rustc::mir::mono::Stats;
-use rustc::session::config::{self, NoDebugInfo};
+use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -270,7 +270,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
-        let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
+        let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CrateDebugContext::new(llmod);
             debuginfo::metadata::compile_unit_metadata(tcx,
                                                         &codegen_unit.name().as_str(),
@@ -770,7 +770,7 @@ fn declare_intrinsic(cx: &CodegenCx<'ll, '_>, key: &str) -> Option<&'ll Value> {
     ifn!("llvm.assume", fn(i1) -> void);
     ifn!("llvm.prefetch", fn(i8p, t_i32, t_i32, t_i32) -> void);
 
-    if cx.sess().opts.debuginfo != NoDebugInfo {
+    if cx.sess().opts.debuginfo != DebugInfo::None {
         ifn!("llvm.dbg.declare", fn(Type::metadata(cx), Type::metadata(cx)) -> void);
         ifn!("llvm.dbg.value", fn(Type::metadata(cx), t_i64, Type::metadata(cx)) -> void);
     }

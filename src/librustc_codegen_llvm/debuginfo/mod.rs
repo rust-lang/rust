@@ -32,7 +32,7 @@ use builder::Builder;
 use monomorphize::Instance;
 use rustc::ty::{self, ParamEnv, Ty, InstanceDef};
 use rustc::mir;
-use rustc::session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
+use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use value::Value;
 
@@ -214,7 +214,7 @@ pub fn create_function_debug_context(
     llfn: &'ll Value,
     mir: &mir::Mir,
 ) -> FunctionDebugContext<'ll> {
-    if cx.sess().opts.debuginfo == NoDebugInfo {
+    if cx.sess().opts.debuginfo == DebugInfo::None {
         return FunctionDebugContext::DebugInfoDisabled;
     }
 
@@ -314,7 +314,7 @@ pub fn create_function_debug_context(
         cx: &CodegenCx<'ll, 'tcx>,
         sig: ty::FnSig<'tcx>,
     ) -> &'ll DIArray {
-        if cx.sess().opts.debuginfo == LimitedDebugInfo {
+        if cx.sess().opts.debuginfo == DebugInfo::Limited {
             return create_DIArray(DIB(cx), &[]);
         }
 
@@ -400,7 +400,7 @@ pub fn create_function_debug_context(
         name_to_append_suffix_to.push('>');
 
         // Again, only create type information if full debuginfo is enabled
-        let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
+        let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
             let names = get_parameter_names(cx, generics);
             substs.iter().zip(names).filter_map(|(kind, name)| {
                 if let UnpackedKind::Type(ty) = kind.unpack() {

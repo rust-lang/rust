@@ -15,7 +15,7 @@ use llvm;
 use common::{C_bytes, CodegenCx, C_i32};
 use builder::Builder;
 use declare;
-use rustc::session::config::NoDebugInfo;
+use rustc::session::config::DebugInfo;
 use type_::Type;
 use value::Value;
 
@@ -81,6 +81,6 @@ pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx) -> bool {
                             "omit_gdb_pretty_printer_section");
 
     !omit_gdb_pretty_printer_section &&
-    cx.sess().opts.debuginfo != NoDebugInfo &&
+    cx.sess().opts.debuginfo != DebugInfo::None &&
     cx.sess().target.target.options.emit_debug_gdb_scripts
 }
