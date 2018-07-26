@@ -1120,7 +1120,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     /// ensures this Value is not a ByRef
     pub fn follow_by_ref_value(
-        &self,
+        &mut self,
         value: Value,
         ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
@@ -1133,7 +1133,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn value_to_scalar(
-        &self,
+        &mut self,
         ValTy { value, ty } : ValTy<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
         match self.follow_by_ref_value(value, ty)? {
@@ -1540,7 +1540,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn try_read_by_ref(&self, mut val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn try_read_by_ref(&mut self, mut val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         // Convert to ByVal or ScalarPair if possible
         if let Value::ByRef(ptr, align) = val {
             if let Some(read_val) = self.try_read_value(ptr, align, ty)? {
@@ -1550,8 +1550,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(val)
     }
 
-    pub fn try_read_value(&self, ptr: Scalar, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
-        let layout = self.layout_of(ty)?;
+    pub fn try_read_value(&mut self, ptr: Scalar, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+        let mut layout = self.layout_of(ty)?;
         self.memory.check_align(ptr, ptr_align)?;
 
         if layout.size.bytes() == 0 {
@@ -1560,6 +1560,19 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
         let ptr = ptr.to_ptr()?;
 
+        match layout.variants {
+            layout::Variants::NicheFilling { .. } |
+            layout::Variants::Tagged { .. } => {
+                let variant_index = self.read_discriminant_as_variant_index(
+                    Place::from_ptr(ptr, ptr_align),
+                    layout.ty,
+                )?;
+                layout = layout.for_variant(&self, variant_index);
+                trace!("variant layout: {:#?}", layout);
+            },
+            layout::Variants::Single { .. } => {},
+        }
+
         match layout.abi {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory.read_scalar(ptr, ptr_align, layout.size)?;
@@ -1567,10 +1580,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
                 let (a, b) = (&a.value, &b.value);
-                let (a_size, b_size) = (a.size(self), b.size(self));
+                let (a_size, b_size) = (a.size(&self), b.size(&self));
                 let a_ptr = ptr;
-                let b_offset = a_size.abi_align(b.align(self));
-                let b_ptr = ptr.offset(b_offset, self)?.into();
+                let b_offset = a_size.abi_align(b.align(&self));
+                let b_ptr = ptr.offset(b_offset, &self)?.into();
                 let a_val = self.memory.read_scalar(a_ptr, ptr_align, a_size)?;
                 let b_val = self.memory.read_scalar(b_ptr, ptr_align, b_size)?;
                 Ok(Some(Value::ScalarPair(a_val, b_val)))
