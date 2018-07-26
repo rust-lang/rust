@@ -214,7 +214,7 @@ pub(in borrow_check) fn compute_regions(
 }
 
 fn dump_mir_results(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    infcx: &InferCtxt<'_, '_, 'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
     source: MirSource,
     mir: &Mir<'tcx>,
@@ -321,8 +321,8 @@ fn dump_mir_results(
 }
 
 fn dump_annotation(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    mir: &Mir<'tcx>,
+    infcx: &InferCtxt<'_, '_, '_>,
+    mir: &Mir<'_>,
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext,
     closure_region_requirements: &Option<ClosureRegionRequirements>,
@@ -399,7 +399,7 @@ pub trait ToRegionVid {
     fn to_region_vid(self) -> RegionVid;
 }
 
-impl ToRegionVid for &'_ RegionKind {
+impl ToRegionVid for &RegionKind {
     fn to_region_vid(self) -> RegionVid {
         if let ty::ReVar(vid) = self {
             *vid

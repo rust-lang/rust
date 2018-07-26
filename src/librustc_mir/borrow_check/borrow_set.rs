@@ -150,7 +150,7 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pending_activations: FxHashMap<mir::Local, BorrowIndex>,
 }
 
-impl Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
+impl Visitor<'tcx> for GatherBorrows<'_, 'gcx, 'tcx> {
     fn visit_assign(
         &mut self,
         block: mir::BasicBlock,
@@ -285,7 +285,7 @@ impl Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl GatherBorrows<'a, 'gcx, 'tcx> {
+impl GatherBorrows<'_, 'gcx, 'tcx> {
     /// Returns true if the borrow represented by `kind` is
     /// allowed to be split into separate Reservation and
     /// Activation phases.

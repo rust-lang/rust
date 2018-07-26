@@ -42,7 +42,7 @@ impl ConstraintGraph {
     }
 
     /// Given a region `R`, iterate over all constraints `R: R1`.
-    crate fn outgoing_edges(&'self_ self, region_sup: RegionVid) -> Edges<'self_> {
+    crate fn outgoing_edges(&self, region_sup: RegionVid) -> Edges<'_> {
         let first = self.first_constraints[region_sup];
         Edges {
             graph: self,
