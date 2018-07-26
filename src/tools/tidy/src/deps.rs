@@ -26,6 +26,7 @@ static LICENSES: &'static [&'static str] = &[
     "MIT OR Apache-2.0",
     "MIT",
     "Unlicense/MIT",
+    "Unlicense OR MIT",
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and

@@ -21,7 +21,7 @@ use filetime::FileTime;
 use header::TestProps;
 use json;
 use regex::Regex;
-use rustfix::{apply_suggestions, get_suggestions_from_json};
+use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 use util::{logv, PathBufExt};
 
 use std::collections::hash_map::DefaultHasher;
@@ -2621,7 +2621,11 @@ impl<'test> TestCx<'test> {
             let unfixed_code = self
                 .load_expected_output_from_path(&self.testpaths.file)
                 .unwrap();
-            let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
+            let suggestions = get_suggestions_from_json(
+                &proc_res.stderr,
+                &HashSet::new(),
+                Filter::Everything,
+            ).unwrap();
             let fixed_code = apply_suggestions(&unfixed_code, &suggestions).expect(&format!(
                 "failed to apply suggestions for {:?} with rustfix",
                 self.testpaths.file
