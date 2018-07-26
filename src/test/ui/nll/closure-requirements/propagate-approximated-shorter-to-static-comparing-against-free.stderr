@@ -82,7 +82,7 @@ LL |     let cell = Cell::new(&a);
    |                          ^^ borrowed value does not live long enough
 ...
 LL | }
-   | - borrowed value only lives until here
+   | - `a` dropped here while still borrowed
    |
    = note: borrowed value must be valid for the static lifetime...
 

@@ -5,7 +5,7 @@ LL |         y = borrow(&*x);
    |                    ^^^ borrowed value does not live long enough
 ...
 LL |     }
-   |     - borrowed value only lives until here
+   |     - `*x` dropped here while still borrowed
 LL |     assert!(*y != 0);
    |             -- borrow later used here
 

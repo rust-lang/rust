@@ -7,7 +7,7 @@ LL |     dt = Dt("dt", &c_shortest);
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `c_shortest` dropped here while still borrowed
    | borrow later used here, when `dt` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined

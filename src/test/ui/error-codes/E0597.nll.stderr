@@ -7,7 +7,7 @@ LL |     //~^ `y` does not live long enough [E0597]
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `y` dropped here while still borrowed
    | borrow later used here, when `x` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined

@@ -57,7 +57,7 @@ LL |         &p //~ ERROR `p` does not live long enough
    |         ^^ borrowed value does not live long enough
 LL |         //~^ ERROR let bindings in constants are unstable
 LL |     };
-   |     - borrowed value only lives until here
+   |     - `p` dropped here while still borrowed
    |
    = note: borrowed value must be valid for the static lifetime...
 

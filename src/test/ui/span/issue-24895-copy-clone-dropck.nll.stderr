@@ -6,7 +6,7 @@ LL |     d2 = D(S(&d1, "inner"), "d2");
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `d1` dropped here while still borrowed
    | borrow later used here, when `d2` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined
