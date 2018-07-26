@@ -14,8 +14,8 @@ use borrow_check::nll::constraints::{
     ConstraintIndex, ConstraintSccIndex, ConstraintSet, OutlivesConstraint,
 };
 use borrow_check::nll::region_infer::values::{RegionElement, ToElementIndex};
-use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
+use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::region_constraints::{GenericKind, VarInfos};
@@ -313,8 +313,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for (external_name, variable) in self.universal_regions.named_universal_regions() {
             debug!(
                 "init_universal_regions: region {:?} has external name {:?}",
-                variable,
-                external_name
+                variable, external_name
             );
             self.definitions[variable].external_name = Some(external_name);
         }
@@ -424,10 +423,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
 
         self.check_type_tests(
-            infcx, mir, mir_def_id, outlives_requirements.as_mut(), errors_buffer);
+            infcx,
+            mir,
+            mir_def_id,
+            outlives_requirements.as_mut(),
+            errors_buffer,
+        );
 
         self.check_universal_regions(
-            infcx, mir, mir_def_id, outlives_requirements.as_mut(), errors_buffer);
+            infcx,
+            mir,
+            mir_def_id,
+            outlives_requirements.as_mut(),
+            errors_buffer,
+        );
 
         let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
@@ -586,13 +595,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(lower_bound_region) = lower_bound_region {
                 let region_scope_tree = &tcx.region_scope_tree(mir_def_id);
                 let type_test_span = type_test.locations.span(mir);
-                infcx.construct_generic_bound_failure(
-                    region_scope_tree,
-                    type_test_span,
-                    None,
-                    type_test.generic_kind,
-                    lower_bound_region,
-                ).buffer(errors_buffer);
+                infcx
+                    .construct_generic_bound_failure(
+                        region_scope_tree,
+                        type_test_span,
+                        None,
+                        type_test.generic_kind,
+                        lower_bound_region,
+                    )
+                    .buffer(errors_buffer);
             } else {
                 // FIXME. We should handle this case better. It
                 // indicates that we have e.g. some region variable
@@ -604,10 +615,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // iterating over the universal regions and reporting
                 // an error that multiple bounds are required.
                 let type_test_span = type_test.locations.span(mir);
-                tcx.sess.struct_span_err(
-                    type_test_span,
-                    &format!("`{}` does not live long enough", type_test.generic_kind,),
-                ).buffer(errors_buffer);
+                tcx.sess
+                    .struct_span_err(
+                        type_test_span,
+                        &format!("`{}` does not live long enough", type_test.generic_kind,),
+                    )
+                    .buffer(errors_buffer);
             }
         }
     }
@@ -659,8 +672,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // region, which ensures it can be encoded in a `ClosureOutlivesRequirement`.
         let lower_bound_plus = self.non_local_universal_upper_bound(*lower_bound);
         assert!(self.universal_regions.is_universal_region(lower_bound_plus));
-        assert!(!self.universal_regions
-            .is_local_free_region(lower_bound_plus));
+        assert!(
+            !self
+                .universal_regions
+                .is_local_free_region(lower_bound_plus)
+        );
 
         propagated_outlives_requirements.push(ClosureOutlivesRequirement {
             subject,
@@ -892,7 +908,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return true;
         }
 
-        self.scc_values.contains_points(sup_region_scc, sub_region_scc)
+        self.scc_values
+            .contains_points(sup_region_scc, sub_region_scc)
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -982,7 +999,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // (because `fr` includes `end(o)`).
         for shorter_fr in self.scc_values.universal_regions_outlived_by(longer_fr_scc) {
             // If it is known that `fr: o`, carry on.
-            if self.universal_region_relations.outlives(longer_fr, shorter_fr) {
+            if self
+                .universal_region_relations
+                .outlives(longer_fr, shorter_fr)
+            {
                 continue;
             }
 
@@ -996,14 +1016,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
                 // We'll call that `fr-` -- it's ever so slightly smaller than `fr`.
-                if let Some(fr_minus) = self.universal_region_relations.non_local_lower_bound(longer_fr) {
+                if let Some(fr_minus) = self
+                    .universal_region_relations
+                    .non_local_lower_bound(longer_fr)
+                {
                     debug!("check_universal_region: fr_minus={:?}", fr_minus);
 
                     // Grow `shorter_fr` until we find a non-local
                     // region. (We always will.)  We'll call that
                     // `shorter_fr+` -- it's ever so slightly larger than
                     // `fr`.
-                    let shorter_fr_plus = self.universal_region_relations.non_local_upper_bound(shorter_fr);
+                    let shorter_fr_plus = self
+                        .universal_region_relations
+                        .non_local_upper_bound(shorter_fr);
                     debug!(
                         "check_universal_region: shorter_fr_plus={:?}",
                         shorter_fr_plus
@@ -1026,8 +1051,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Note: in this case, we use the unapproximated regions
             // to report the error. This gives better error messages
             // in some cases.
-            self.report_error(
-                mir, infcx, mir_def_id, longer_fr, shorter_fr, errors_buffer);
+            self.report_error(mir, infcx, mir_def_id, longer_fr, shorter_fr, errors_buffer);
         }
     }
 
