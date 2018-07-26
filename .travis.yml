@@ -181,7 +181,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-distcheck
 
     - env: IMAGE=mingw-check
-
+      if: type = pull_request
 
     # - stage: publish toolstate
 
