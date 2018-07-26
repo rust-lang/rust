@@ -7,8 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use ops::{Mul, Add};
+use ops::{Mul, Add, Try};
 use num::Wrapping;
+
+use super::LoopState;
 
 /// Conversion from an `Iterator`.
 ///
@@ -102,8 +104,11 @@ use num::Wrapping;
 /// assert_eq!(c.0, vec![0, 1, 2, 3, 4]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
-                          built from an iterator over elements of type `{A}`"]
+#[rustc_on_unimplemented(
+    message="a collection of type `{Self}` cannot be built from an iterator \
+             over elements of type `{A}`",
+    label="a collection of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`",
+)]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
     ///
@@ -350,6 +355,13 @@ pub trait Extend<A> {
     fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
 }
 
+#[stable(feature = "extend_for_unit", since = "1.28.0")]
+impl Extend<()> for () {
+    fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
+        iter.into_iter().for_each(drop)
+    }
+}
+
 /// An iterator able to yield elements from both ends.
 ///
 /// Something that implements `DoubleEndedIterator` has one extra capability
@@ -415,6 +427,50 @@ pub trait DoubleEndedIterator: Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
+    /// This is the reverse version of [`try_fold()`]: it takes elements
+    /// starting from the back of the iterator.
+    ///
+    /// [`try_fold()`]: trait.Iterator.html#method.try_fold
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let a = ["1", "2", "3"];
+    /// let sum = a.iter()
+    ///     .map(|&s| s.parse::<i32>())
+    ///     .try_rfold(0, |acc, x| x.and_then(|y| Ok(acc + y)));
+    /// assert_eq!(sum, Ok(6));
+    /// ```
+    ///
+    /// Short-circuiting:
+    ///
+    /// ```
+    /// let a = ["1", "rust", "3"];
+    /// let mut it = a.iter();
+    /// let sum = it
+    ///     .by_ref()
+    ///     .map(|&s| s.parse::<i32>())
+    ///     .try_rfold(0, |acc, x| x.and_then(|y| Ok(acc + y)));
+    /// assert!(sum.is_err());
+    ///
+    /// // Because it short-circuited, the remaining elements are still
+    /// // available through the iterator.
+    /// assert_eq!(it.next_back(), Some(&"1"));
+    /// ```
+    #[inline]
+    #[stable(feature = "iterator_try_fold", since = "1.27.0")]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+        while let Some(x) = self.next_back() {
+            accum = f(accum, x)?;
+        }
+        Try::from_ok(accum)
+    }
+
     /// An iterator method that reduces the iterator's elements to a single,
     /// final value, starting from the back.
     ///
@@ -443,7 +499,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_rfold)]
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of a
@@ -457,7 +512,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// and continuing with each element from the back until the front:
     ///
     /// ```
-    /// #![feature(iter_rfold)]
     /// let numbers = [1, 2, 3, 4, 5];
     ///
     /// let zero = "0".to_string();
@@ -469,17 +523,14 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(result, "(1 + (2 + (3 + (4 + (5 + 0)))))");
     /// ```
     #[inline]
-    #[unstable(feature = "iter_rfold", issue = "44705")]
-    fn rfold<B, F>(mut self, mut accum: B, mut f: F) -> B where
+    #[stable(feature = "iter_rfold", since = "1.27.0")]
+    fn rfold<B, F>(mut self, accum: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
-        while let Some(x) = self.next_back() {
-            accum = f(accum, x);
-        }
-        accum
+        self.try_rfold(accum, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
     }
 
-    /// Searches for an element of an iterator from the right that satisfies a predicate.
+    /// Searches for an element of an iterator from the back that satisfies a predicate.
     ///
     /// `rfind()` takes a closure that returns `true` or `false`. It applies
     /// this closure to each element of the iterator, starting at the end, and if any
@@ -502,8 +553,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_rfind)]
-    ///
     /// let a = [1, 2, 3];
     ///
     /// assert_eq!(a.iter().rfind(|&&x| x == 2), Some(&2));
@@ -514,8 +563,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Stopping at the first `true`:
     ///
     /// ```
-    /// #![feature(iter_rfind)]
-    ///
     /// let a = [1, 2, 3];
     ///
     /// let mut iter = a.iter();
@@ -526,15 +573,15 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(iter.next_back(), Some(&1));
     /// ```
     #[inline]
-    #[unstable(feature = "iter_rfind", issue = "39480")]
+    #[stable(feature = "iter_rfind", since = "1.27.0")]
     fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool
     {
-        while let Some(x) = self.next_back() {
-            if predicate(&x) { return Some(x) }
-        }
-        None
+        self.try_rfold((), move |(), x| {
+            if predicate(&x) { LoopState::Break(x) }
+            else { LoopState::Continue(()) }
+        }).break_value()
     }
 }
 
@@ -550,7 +597,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// that information can be useful. For example, if you want to iterate
 /// backwards, a good start is to know where the end is.
 ///
-/// When implementing an `ExactSizeIterator`, You must also implement
+/// When implementing an `ExactSizeIterator`, you must also implement
 /// [`Iterator`]. When doing so, the implementation of [`size_hint`] *must*
 /// return the exact size of the iterator.
 ///
@@ -661,7 +708,7 @@ pub trait ExactSizeIterator: Iterator {
     /// ```
     /// #![feature(exact_size_is_empty)]
     ///
-    /// let mut one_element = 0..1;
+    /// let mut one_element = std::iter::once(0);
     /// assert!(!one_element.is_empty());
     ///
     /// assert_eq!(one_element.next(), Some(0));
@@ -856,6 +903,15 @@ impl<I, T, E> Iterator for ResultShunt<I, E>
             None => None,
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.error.is_some() {
+            (0, Some(0))
+        } else {
+            let (_, upper) = self.iter.size_hint();
+            (0, upper)
+        }
+    }
 }
 
 #[stable(feature = "iter_arith_traits_result", since="1.16.0")]
@@ -914,10 +970,10 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 /// [`Iterator::fuse`]: ../../std/iter/trait.Iterator.html#method.fuse
 /// [`Fuse`]: ../../std/iter/struct.Fuse.html
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 pub trait FusedIterator: Iterator {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 
 /// An iterator that reports an accurate length using size_hint.
@@ -925,9 +981,11 @@ impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 /// The iterator reports a size hint where it is either exact
 /// (lower bound is equal to upper bound), or the upper bound is [`None`].
 /// The upper bound must only be [`None`] if the actual iterator length is
-/// larger than [`usize::MAX`].
+/// larger than [`usize::MAX`]. In that case, the lower bound must be
+/// [`usize::MAX`], resulting in a [`.size_hint`] of `(usize::MAX, None)`.
 ///
-/// The iterator must produce exactly the number of elements it reported.
+/// The iterator must produce exactly the number of elements it reported
+/// or diverge before reaching the end.
 ///
 /// # Safety
 ///

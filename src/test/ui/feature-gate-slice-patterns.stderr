@@ -1,0 +1,51 @@
+error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
+  --> $DIR/feature-gate-slice-patterns.rs:16:16
+   |
+LL |         [1, 2, ..] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+   |                ^^
+   |
+   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+
+error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
+  --> $DIR/feature-gate-slice-patterns.rs:17:13
+   |
+LL |         [1, .., 5] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+   |             ^^
+   |
+   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+
+error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
+  --> $DIR/feature-gate-slice-patterns.rs:18:10
+   |
+LL |         [.., 4, 5] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+   |          ^^
+   |
+   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+
+error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
+  --> $DIR/feature-gate-slice-patterns.rs:23:11
+   |
+LL |         [ xs.., 4, 5 ] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+   |           ^^
+   |
+   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+
+error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
+  --> $DIR/feature-gate-slice-patterns.rs:24:14
+   |
+LL |         [ 1, xs.., 5 ] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+   |              ^^
+   |
+   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+
+error[E0658]: syntax for subslices in slice patterns is not yet stabilized (see issue #23121)
+  --> $DIR/feature-gate-slice-patterns.rs:25:17
+   |
+LL |         [ 1, 2, xs.. ] => {} //~ ERROR syntax for subslices in slice patterns is not yet stabilized
+   |                 ^^
+   |
+   = help: add #![feature(slice_patterns)] to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

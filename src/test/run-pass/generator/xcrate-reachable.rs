@@ -10,12 +10,12 @@
 
 // aux-build:xcrate-reachable.rs
 
-#![feature(conservative_impl_trait, generator_trait)]
+#![feature(generator_trait)]
 
 extern crate xcrate_reachable as foo;
 
 use std::ops::Generator;
 
 fn main() {
-    foo::foo().resume();
+    unsafe { foo::foo().resume(); }
 }

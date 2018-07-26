@@ -15,7 +15,7 @@ const HIGH_RANGE: char = '9';
 
 fn main() {
     match '5' {
-        LOW_RANGE...HIGH_RANGE => (),
+        LOW_RANGE..=HIGH_RANGE => (),
         _ => ()
     };
 }

@@ -1,0 +1,16 @@
+error[E0220]: associated type `F` not found for `Trait`
+  --> $DIR/E0220.rs:15:18
+   |
+LL | type Foo = Trait<F=i32>; //~ ERROR E0220
+   |                  ^^^^^ associated type `F` not found
+
+error[E0191]: the value of the associated type `Bar` (from the trait `Trait`) must be specified
+  --> $DIR/E0220.rs:15:12
+   |
+LL | type Foo = Trait<F=i32>; //~ ERROR E0220
+   |            ^^^^^^^^^^^^ missing associated type `Bar` value
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0191, E0220.
+For more information about an error, try `rustc --explain E0191`.

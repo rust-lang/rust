@@ -22,8 +22,7 @@ impl<T> Sync for T {}
 #[lang = "copy"]
 trait Copy {}
 #[lang = "freeze"]
-trait Freeze {}
-impl Freeze for .. {}
+auto trait Freeze {}
 
 #[lang = "drop_in_place"]
 #[inline]

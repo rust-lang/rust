@@ -110,9 +110,9 @@ fn check_assoc_const() {
     // A, B, C are resolved as inherent items, their traits don't need to be in scope
     C::A; //~ ERROR associated constant `A` is private
           //~^ ERROR the trait `assoc_const::C` cannot be made into an object
-          //~| ERROR the trait bound `assoc_const::C: assoc_const::A` is not satisfied
+          //~| ERROR the trait bound `dyn assoc_const::C: assoc_const::A` is not satisfied
     C::B; // ERROR the trait `assoc_const::C` cannot be made into an object
-          //~^ ERROR the trait bound `assoc_const::C: assoc_const::B` is not satisfied
+          //~^ ERROR the trait bound `dyn assoc_const::C: assoc_const::B` is not satisfied
     C::C; // OK
 }
 
@@ -131,6 +131,16 @@ fn check_assoc_ty<T: assoc_ty::C>() {
     let _: T::A; //~ ERROR associated type `A` is private
     let _: T::B; // OK
     let _: T::C; // OK
+
+    // Associated types, bindings
+    let _: assoc_ty::B<
+        B = u8, // OK
+    >;
+    let _: C<
+        A = u8, //~ ERROR associated type `A` is private
+        B = u8, // OK
+        C = u8, // OK
+    >;
 }
 
 fn main() {}

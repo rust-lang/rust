@@ -1,0 +1,98 @@
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:16:1
+   |
+LL | extern crate alloc;
+   | ^^^^^^^^^^^^^^^^^^^ help: remove it
+   |
+note: lint level defined here
+  --> $DIR/unnecessary-extern-crate.rs:13:9
+   |
+LL | #![deny(unused_extern_crates)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:19:1
+   |
+LL | extern crate alloc as x;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:26:1
+   |
+LL | pub extern crate test as y;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `pub use`
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:30:1
+   |
+LL | pub extern crate libc;
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `pub use`
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:34:1
+   |
+LL | pub(crate) extern crate libc as a;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `pub(crate) use`
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:38:1
+   |
+LL | crate extern crate libc as b;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `crate use`
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:43:5
+   |
+LL |     pub(in crate::foo) extern crate libc as c;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `pub(in crate::foo) use`
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:47:5
+   |
+LL |     pub(super) extern crate libc as d;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `pub(super) use`
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:51:5
+   |
+LL |     extern crate alloc;
+   |     ^^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:55:5
+   |
+LL |     extern crate alloc as x;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:59:5
+   |
+LL |     pub extern crate test;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `pub use`
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:63:5
+   |
+LL |     pub extern crate test as y;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `pub use`
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:68:9
+   |
+LL |         extern crate alloc;
+   |         ^^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: unused extern crate
+  --> $DIR/unnecessary-extern-crate.rs:72:9
+   |
+LL |         extern crate alloc as x;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+
+error: `extern crate` is not idiomatic in the new edition
+  --> $DIR/unnecessary-extern-crate.rs:76:9
+   |
+LL |         pub(in crate::foo::bar) extern crate libc as e;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `pub(in crate::foo::bar) use`
+
+error: aborting due to 15 previous errors
+

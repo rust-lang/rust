@@ -26,10 +26,10 @@ As a reminder, all contributors are expected to follow our [Code of Conduct][coc
 ## Feature Requests
 [feature-requests]: #feature-requests
 
-To request a change to the way that the Rust language works, please open an
-issue in the [RFCs repository](https://github.com/rust-lang/rfcs/issues/new)
-rather than this one. New features and other significant language changes
-must go through the RFC process.
+To request a change to the way the Rust language works, please head over
+to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the 
+[README](https://github.com/rust-lang/rfcs/blob/master/README.md)
+for instructions.
 
 ## Bug Reports
 [bug-reports]: #bug-reports
@@ -46,6 +46,12 @@ issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),
 as it's possible that someone else has already reported your error. This doesn't
 always work, and sometimes it's hard to know what to search for, so consider this
 extra credit. We won't mind if you accidentally file a duplicate report.
+
+Similarly, to help others who encountered the bug find your issue,
+consider filing an issue with a descriptive title, which contains information that might be unique to it.
+This can be the language or compiler feature used, the conditions that trigger the bug,
+or part of the error message if there is any.
+An example could be: **"impossible case reached" on lifetime inference for impl Trait in return position**.
 
 Opening an issue is as easy as following [this
 link](https://github.com/rust-lang/rust/issues/new) and filling out the fields.
@@ -112,14 +118,18 @@ There are large number of options provided in this config file that will alter t
 configuration used in the build process. Some options to note:
 
 #### `[llvm]`:
+- `assertions = true` = This enables LLVM assertions, which makes LLVM misuse cause an assertion failure instead of weird misbehavior. This also slows down the compiler's runtime by ~20%.
 - `ccache = true` - Use ccache when building llvm
 
 #### `[build]`:
 - `compiler-docs = true` - Build compiler documentation
 
 #### `[rust]`:
-- `debuginfo = true` - Build a compiler with debuginfo
-- `optimize = false` - Disable optimizations to speed up compilation of stage1 rust
+- `debuginfo = true` - Build a compiler with debuginfo. Makes building rustc slower, but then you can use a debugger to debug `rustc`.
+- `debuginfo-lines = true` - An alternative to `debuginfo = true` that doesn't let you use a debugger, but doesn't make building rustc slower and still gives you line numbers in backtraces.
+- `debuginfo-tools = true` - Build the extended tools with debuginfo.
+- `debug-assertions = true` - Makes the log output of `debug!` work.
+- `optimize = false` - Disable optimizations to speed up compilation of stage1 rust, but makes the stage1 compiler x100 slower.
 
 For more options, the `config.toml` file contains commented out defaults, with
 descriptions of what each option will do.
@@ -131,6 +141,8 @@ file. If you still have a `config.mk` file in your directory - from
 
 ### Building
 [building]: #building
+
+A default configuration requires around 3.5 GB of disk space, whereas building a debug configuration may require more than 30 GB.
 
 Dependencies
 - [build dependencies](README.md#building-from-source)
@@ -273,16 +285,37 @@ build, you'll need to build rustdoc specially, since it's not normally built in
 stage 1. `python x.py build --stage 1 src/libstd src/tools/rustdoc` will build
 rustdoc and libstd, which will allow rustdoc to be run with that toolchain.)
 
+### Out-of-tree builds
+[out-of-tree-builds]: #out-of-tree-builds
+
+Rust's `x.py` script fully supports out-of-tree builds - it looks for
+the Rust source code from the directory `x.py` was found in, but it
+reads the `config.toml` configuration file from the directory it's
+run in, and places all build artifacts within a subdirectory named `build`.
+
+This means that if you want to do an out-of-tree build, you can just do it:
+```
+$ cd my/build/dir
+$ cp ~/my-config.toml config.toml # Or fill in config.toml otherwise
+$ path/to/rust/x.py build
+...
+$ # This will use the Rust source code in `path/to/rust`, but build
+$ # artifacts will now be in ./build
+```
+
+It's absolutely fine to have multiple build directories with different
+`config.toml` configurations using the same code.
+
 ## Pull Requests
 [pull-requests]: #pull-requests
 
 Pull requests are the primary mechanism we use to change Rust. GitHub itself
-has some [great documentation][pull-requests] on using the Pull Request feature.
+has some [great documentation][about-pull-requests] on using the Pull Request feature.
 We use the "fork and pull" model [described here][development-models], where
 contributors push changes to their personal fork and create pull requests to
 bring those changes into the source repository.
 
-[pull-requests]: https://help.github.com/articles/about-pull-requests/
+[about-pull-requests]: https://help.github.com/articles/about-pull-requests/
 [development-models]: https://help.github.com/articles/about-collaborative-development-models/
 
 Please make pull requests against the `master` branch.
@@ -336,7 +369,7 @@ will run all the tests on every platform we support. If it all works out,
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found
-[here](https://github.com/rust-lang/rust-wiki-backup/blob/master/Note-testsuite.md).
+[here](https://github.com/rust-lang/rust/blob/master/src/test/COMPILER_TESTS.md).
 
 ### External Dependencies
 [external-dependencies]: #external-dependencies
@@ -345,25 +378,28 @@ Currently building Rust will also build the following external projects:
 
 * [clippy](https://github.com/rust-lang-nursery/rust-clippy)
 * [miri](https://github.com/solson/miri)
+* [rustfmt](https://github.com/rust-lang-nursery/rustfmt)
+* [rls](https://github.com/rust-lang-nursery/rls/)
 
-If your changes break one of these projects, you need to fix them by opening
-a pull request against the broken project asking to put the fix on a branch.
-Then you can disable the tool building via `src/tools/toolstate.toml`.
-Once the branch containing your fix is likely to be merged, you can point
-the affected submodule at this branch.
+We allow breakage of these tools in the nightly channel. Maintainers of these
+projects will be notified of the breakages and should fix them as soon as
+possible.
 
-Don't forget to also add your changes with
+After the external is fixed, one could add the changes with
 
-```
+```sh
 git add path/to/submodule
 ```
 
 outside the submodule.
 
-In order to prepare your PR, you can run the build locally by doing
+In order to prepare your tool-fixing PR, you can run the build locally by doing
 `./x.py build src/tools/TOOL`. If you will be editing the sources
 there, you may wish to set `submodules = false` in the `config.toml`
 to prevent `x.py` from resetting to the original branch.
+
+Breakage is not allowed in the beta and stable channels, and must be addressed
+before the PR is merged.
 
 #### Breaking Tools Built With The Compiler
 [breaking-tools-built-with-the-compiler]: #breaking-tools-built-with-the-compiler
@@ -382,12 +418,12 @@ tests.
 That means that, in the default state, you can't update the compiler without first
 fixing rustfmt, rls and the other tools that the compiler builds.
 
-Luckily, a feature was [added to Rust's build](https://github.com/rust-lang/rust/pull/45243)
-to make all of this easy to handle. The idea is that you mark the tools as "broken",
+Luckily, a feature was [added to Rust's build](https://github.com/rust-lang/rust/issues/45861)
+to make all of this easy to handle. The idea is that we allow these tools to be "broken",
 so that the rust-lang/rust build passes without trying to build them, then land the change
 in the compiler, wait for a nightly, and go update the tools that you broke. Once you're done
-and the tools are working again, you go back in the compiler and change the tools back
-from "broken".
+and the tools are working again, you go back in the compiler and update the tools
+so they can be distributed again.
 
 This should avoid a bunch of synchronization dances and is also much easier on contributors as
 there's no need to block on rls/rustfmt/other tools changes going upstream.
@@ -406,22 +442,17 @@ Here are those same steps in detail:
 4. (optional) Maintainers of these submodules will **not** merge the PR. The PR can't be
    merged because CI will be broken. You'll want to write a message on the PR referencing
    your change, and how the PR should be merged once your change makes it into a nightly.
-5. Update `src/tools/toolstate.toml` to indicate that the tool in question is "broken",
-   that will disable building it on CI. See the documentation in that file for the exact
-   configuration values you can use.
-6. Commit the changes to `src/tools/toolstate.toml`, **do not update submodules in your commit**,
-   and then update the PR you have for rust-lang/rust.
-7. Wait for your PR to merge.
-8. Wait for a nightly
-9. (optional) Help land your PR on the upstream repository now that your changes are in nightly.
-10. (optional) Send a PR to rust-lang/rust updating the submodule, reverting `src/tools/toolstate.toml` back to a "building" or "testing" state.
+5. Wait for your PR to merge.
+6. Wait for a nightly
+7. (optional) Help land your PR on the upstream repository now that your changes are in nightly.
+8. (optional) Send a PR to rust-lang/rust updating the submodule.
 
 #### Updating submodules
 [updating-submodules]: #updating-submodules
 
 These instructions are specific to updating `rustfmt`, however they may apply
 to the other submodules as well. Please help by improving these instructions
-if you find any discrepencies or special cases that need to be addressed.
+if you find any discrepancies or special cases that need to be addressed.
 
 To update the `rustfmt` submodule, start by running the appropriate
 [`git submodule` command](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
@@ -446,14 +477,14 @@ failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --ma
 If you haven't used the `[patch]`
 section of `Cargo.toml` before, there is [some relevant documentation about it
 in the cargo docs](http://doc.crates.io/manifest.html#the-patch-section). In
-addition to that, you should read the 
+addition to that, you should read the
 [Overriding dependencies](http://doc.crates.io/specifying-dependencies.html#overriding-dependencies)
 section of the documentation as well.
 
 Specifically, the following [section in Overriding dependencies](http://doc.crates.io/specifying-dependencies.html#testing-a-bugfix) reveals what the problem is:
 
 > Next up we need to ensure that our lock file is updated to use this new version of uuid so our project uses the locally checked out copy instead of one from crates.io. The way [patch] works is that it'll load the dependency at ../path/to/uuid and then whenever crates.io is queried for versions of uuid it'll also return the local version.
-> 
+>
 > This means that the version number of the local checkout is significant and will affect whether the patch is used. Our manifest declared uuid = "1.0" which means we'll only resolve to >= 1.0.0, < 2.0.0, and Cargo's greedy resolution algorithm also means that we'll resolve to the maximum version within that range. Typically this doesn't matter as the version of the git repository will already be greater or match the maximum version published on crates.io, but it's important to keep this in mind!
 
 This says that when we updated the submodule, the version number in our
@@ -572,7 +603,7 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 [inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
 [eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
-[rfcbot]: https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md
+[rfcbot]: https://github.com/anp/rfcbot-rs/
 
 ## Out-of-tree Contributions
 [out-of-tree-contributions]: #out-of-tree-contributions
@@ -601,6 +632,7 @@ For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information
 are:
 
+* The [rustc guide] contains information about how various parts of the compiler work
 * [Rust Forge][rustforge] contains additional documentation, including write-ups of how to achieve common tasks
 * The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
@@ -613,6 +645,7 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
 [gdfrustc]: http://manishearth.github.io/rust-internals-docs/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org

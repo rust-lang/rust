@@ -16,10 +16,8 @@ struct a {
 impl a {
     fn foo(&self) {
         let a { x, y } = self.d; //~ ERROR no field `d` on type `&a`
-        //~^ ERROR struct `a` does not have a field named `x`
-        //~^^ ERROR struct `a` does not have a field named `y`
-        //~^^^ ERROR pattern does not mention field `b`
-        //~^^^^ ERROR pattern does not mention field `c`
+        //~^ ERROR struct `a` does not have fields named `x`, `y`
+        //~| ERROR pattern does not mention fields `b`, `c`
     }
 }
 

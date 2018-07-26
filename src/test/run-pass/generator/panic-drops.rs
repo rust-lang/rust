@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled as panic=abort by default
+
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
@@ -40,7 +42,7 @@ fn main() {
 
     assert_eq!(A.load(Ordering::SeqCst), 0);
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        foo.resume()
+        unsafe { foo.resume() }
     }));
     assert!(res.is_err());
     assert_eq!(A.load(Ordering::SeqCst), 1);
@@ -55,7 +57,7 @@ fn main() {
 
     assert_eq!(A.load(Ordering::SeqCst), 1);
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        foo.resume()
+        unsafe { foo.resume() }
     }));
     assert!(res.is_err());
     assert_eq!(A.load(Ordering::SeqCst), 1);

@@ -333,9 +333,9 @@ const ASCII_ARRAY: &'static [(char, &'static str)] = &[
     ('=', "Equals Sign"),
     ('>', "Greater-Than Sign"), ];
 
-pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
+crate fn check_for_substitution<'a>(reader: &StringReader<'a>,
                                   ch: char,
-                                  err: &mut DiagnosticBuilder<'a>) {
+                                  err: &mut DiagnosticBuilder<'a>) -> bool {
     UNICODE_ARRAY
     .iter()
     .find(|&&(c, _, _)| c == ch)
@@ -344,14 +344,16 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
         match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
             Some(&(ascii_char, ascii_name)) => {
                 let msg =
-                    format!("unicode character '{}' ({}) looks like '{}' ({}), but it's not",
+                    format!("Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
                             ch, u_name, ascii_char, ascii_name);
-                err.span_help(span, &msg);
+                err.span_suggestion(span, &msg, ascii_char.to_string());
+                true
             },
             None => {
                 let msg = format!("substitution character not found for '{}'", ch);
                 reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
+                false
             }
         }
-    });
+    }).unwrap_or(false)
 }

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that constant ADTs are translated OK, part k of N.
-
-#![feature(slice_patterns)]
+// Check that constant ADTs are codegened OK, part k of N.
 
 enum Bar {
     C

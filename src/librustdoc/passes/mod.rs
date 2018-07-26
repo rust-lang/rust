@@ -16,7 +16,6 @@ use std::mem;
 use clean::{self, GetDefId, Item};
 use fold;
 use fold::FoldItem::Strip;
-use plugins;
 
 mod collapse_docs;
 pub use self::collapse_docs::collapse_docs;
@@ -37,7 +36,7 @@ mod propagate_doc_cfg;
 pub use self::propagate_doc_cfg::propagate_doc_cfg;
 
 type Pass = (&'static str,                                      // name
-             fn(clean::Crate) -> plugins::PluginResult,         // fn
+             fn(clean::Crate) -> clean::Crate,                  // fn
              &'static str);                                     // description
 
 pub const PASSES: &'static [Pass] = &[
@@ -84,6 +83,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 return ret;
             }
             // These items can all get re-exported
+            clean::ExistentialItem(..) |
             clean::TypedefItem(..) | clean::StaticItem(..) |
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TraitItem(..) | clean::FunctionItem(..) |
@@ -116,7 +116,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // handled in the `strip-priv-imports` pass
             clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
 
-            clean::DefaultImplItem(..) | clean::ImplItem(..) => {}
+            clean::ImplItem(..) => {}
 
             // tymethods/macros have no control over privacy
             clean::MacroItem(..) | clean::TyMethodItem(..) => {}
@@ -126,6 +126,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // Associated types are never stripped
             clean::AssociatedTypeItem(..) => {}
+
+            // Keywords are never stripped
+            clean::KeywordItem(..) => {}
         }
 
         let fastreturn = match i.inner {
@@ -182,6 +185,15 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
             if let Some(did) = imp.trait_.def_id() {
                 if did.is_local() && !self.retained.contains(&did) {
                     return None;
+                }
+            }
+            if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
+                for typaram in generics {
+                    if let Some(did) = typaram.def_id() {
+                        if did.is_local() && !self.retained.contains(&did) {
+                            return None;
+                        }
+                    }
                 }
             }
         }

@@ -10,16 +10,16 @@
 
 use os::unix::prelude::*;
 
-use collections::hash_map::{HashMap, Entry};
-use env;
 use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
 use io;
-use libc::{self, c_int, gid_t, uid_t, c_char};
+use libc::{self, c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
 use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use sys::pipe::{self, AnonPipe};
+use sys_common::process::{CommandEnv, DefaultEnvKey};
+use collections::BTreeMap;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -45,9 +45,8 @@ pub struct Command {
     // other keys.
     program: CString,
     args: Vec<CString>,
-    env: Option<HashMap<OsString, (usize, CString)>>,
-    argv: Vec<*const c_char>,
-    envp: Option<Vec<*const c_char>>,
+    argv: Argv,
+    env: CommandEnv<DefaultEnvKey>,
 
     cwd: Option<CString>,
     uid: Option<uid_t>,
@@ -58,6 +57,12 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
 }
+
+// Create a new type for argv, so that we can make it `Send`
+struct Argv(Vec<*const c_char>);
+
+// It is safe to make Argv Send, because it contains pointers to memory owned by `Command.args`
+unsafe impl Send for Argv {}
 
 // passed back to std::process with the pipes connected to the child, if any
 // were requested
@@ -93,11 +98,10 @@ impl Command {
         let mut saw_nul = false;
         let program = os2c(program, &mut saw_nul);
         Command {
-            argv: vec![program.as_ptr(), ptr::null()],
+            argv: Argv(vec![program.as_ptr(), ptr::null()]),
             program,
             args: Vec::new(),
-            env: None,
-            envp: None,
+            env: Default::default(),
             cwd: None,
             uid: None,
             gid: None,
@@ -113,74 +117,12 @@ impl Command {
         // Overwrite the trailing NULL pointer in `argv` and then add a new null
         // pointer.
         let arg = os2c(arg, &mut self.saw_nul);
-        self.argv[self.args.len() + 1] = arg.as_ptr();
-        self.argv.push(ptr::null());
+        self.argv.0[self.args.len() + 1] = arg.as_ptr();
+        self.argv.0.push(ptr::null());
 
         // Also make sure we keep track of the owned value to schedule a
         // destructor for this memory.
         self.args.push(arg);
-    }
-
-    fn init_env_map(&mut self) -> (&mut HashMap<OsString, (usize, CString)>,
-                                   &mut Vec<*const c_char>) {
-        if self.env.is_none() {
-            let mut map = HashMap::new();
-            let mut envp = Vec::new();
-            for (k, v) in env::vars_os() {
-                let s = pair_to_key(&k, &v, &mut self.saw_nul);
-                envp.push(s.as_ptr());
-                map.insert(k, (envp.len() - 1, s));
-            }
-            envp.push(ptr::null());
-            self.env = Some(map);
-            self.envp = Some(envp);
-        }
-        (self.env.as_mut().unwrap(), self.envp.as_mut().unwrap())
-    }
-
-    pub fn env(&mut self, key: &OsStr, val: &OsStr) {
-        let new_key = pair_to_key(key, val, &mut self.saw_nul);
-        let (map, envp) = self.init_env_map();
-
-        // If `key` is already present then we just update `envp` in place
-        // (and store the owned value), but if it's not there we override the
-        // trailing NULL pointer, add a new NULL pointer, and store where we
-        // were located.
-        match map.entry(key.to_owned()) {
-            Entry::Occupied(mut e) => {
-                let (i, ref mut s) = *e.get_mut();
-                envp[i] = new_key.as_ptr();
-                *s = new_key;
-            }
-            Entry::Vacant(e) => {
-                let len = envp.len();
-                envp[len - 1] = new_key.as_ptr();
-                envp.push(ptr::null());
-                e.insert((len - 1, new_key));
-            }
-        }
-    }
-
-    pub fn env_remove(&mut self, key: &OsStr) {
-        let (map, envp) = self.init_env_map();
-
-        // If we actually ended up removing a key, then we need to update the
-        // position of all keys that come after us in `envp` because they're all
-        // one element sooner now.
-        if let Some((i, _)) = map.remove(key) {
-            envp.remove(i);
-
-            for (_, &mut (ref mut j, _)) in map.iter_mut() {
-                if *j >= i {
-                    *j -= 1;
-                }
-            }
-        }
-    }
-
-    pub fn env_clear(&mut self) {
-        self.env = Some(HashMap::new());
-        self.envp = Some(vec![ptr::null()]);
     }
 
     pub fn cwd(&mut self, dir: &OsStr) {
@@ -196,11 +138,8 @@ impl Command {
     pub fn saw_nul(&self) -> bool {
         self.saw_nul
     }
-    pub fn get_envp(&self) -> &Option<Vec<*const c_char>> {
-        &self.envp
-    }
     pub fn get_argv(&self) -> &Vec<*const c_char> {
-        &self.argv
+        &self.argv.0
     }
 
     #[allow(dead_code)]
@@ -237,6 +176,19 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
+    pub fn env_mut(&mut self) -> &mut CommandEnv<DefaultEnvKey> {
+        &mut self.env
+    }
+
+    pub fn capture_env(&mut self) -> Option<CStringArray> {
+        let maybe_env = self.env.capture_if_changed();
+        maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
+    }
+    #[allow(dead_code)]
+    pub fn env_saw_path(&self) -> bool {
+        self.env.have_changed_path()
+    }
+
     pub fn setup_io(&self, default: Stdio, needs_stdin: bool)
                 -> io::Result<(StdioPipes, ChildPipes)> {
         let null = Stdio::Null;
@@ -266,6 +218,53 @@ fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
         *saw_nul = true;
         CString::new("<string-with-nul>").unwrap()
     })
+}
+
+// Helper type to manage ownership of the strings within a C-style array.
+pub struct CStringArray {
+    items: Vec<CString>,
+    ptrs: Vec<*const c_char>
+}
+
+impl CStringArray {
+    pub fn with_capacity(capacity: usize) -> Self {
+        let mut result = CStringArray {
+            items: Vec::with_capacity(capacity),
+            ptrs: Vec::with_capacity(capacity+1)
+        };
+        result.ptrs.push(ptr::null());
+        result
+    }
+    pub fn push(&mut self, item: CString) {
+        let l = self.ptrs.len();
+        self.ptrs[l-1] = item.as_ptr();
+        self.ptrs.push(ptr::null());
+        self.items.push(item);
+    }
+    pub fn as_ptr(&self) -> *const *const c_char {
+        self.ptrs.as_ptr()
+    }
+}
+
+fn construct_envp(env: BTreeMap<DefaultEnvKey, OsString>, saw_nul: &mut bool) -> CStringArray {
+    let mut result = CStringArray::with_capacity(env.len());
+    for (k, v) in env {
+        let mut k: OsString = k.into();
+
+        // Reserve additional space for '=' and null terminator
+        k.reserve_exact(v.len() + 2);
+        k.push("=");
+        k.push(&v);
+
+        // Add the new entry into the array
+        if let Ok(item) = CString::new(k.into_vec()) {
+            result.push(item);
+        } else {
+            *saw_nul = true;
+        }
+    }
+
+    result
 }
 
 impl Stdio {
@@ -337,18 +336,6 @@ impl ChildStdio {
     }
 }
 
-fn pair_to_key(key: &OsStr, value: &OsStr, saw_nul: &mut bool) -> CString {
-    let (key, value) = (key.as_bytes(), value.as_bytes());
-    let mut v = Vec::with_capacity(key.len() + value.len() + 1);
-    v.extend(key);
-    v.push(b'=');
-    v.extend(value);
-    CString::new(v).unwrap_or_else(|_e| {
-        *saw_nul = true;
-        CString::new("foo=bar").unwrap()
-    })
-}
-
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.program)?;
@@ -407,6 +394,19 @@ impl fmt::Display for ExitStatus {
             let signal = self.signal().unwrap();
             write!(f, "signal: {}", signal)
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitCode(u8);
+
+impl ExitCode {
+    pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
+    pub const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
+
+    #[inline]
+    pub fn as_i32(&self) -> i32 {
+        self.0 as i32
     }
 }
 

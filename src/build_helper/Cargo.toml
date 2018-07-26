@@ -6,6 +6,3 @@ authors = ["The Rust Project Developers"]
 [lib]
 name = "build_helper"
 path = "lib.rs"
-
-[dependencies]
-filetime = "0.1"

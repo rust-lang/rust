@@ -1,13 +1,14 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:24:5
+  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:22:27
    |
-22 |         let ss: &isize = &id(1);
-   |                           ----- temporary value created here
-23 |         blah = box ss as Box<Foo>;
-24 |     }
-   |     ^ temporary value dropped here while still borrowed
-25 | }
+LL |         let ss: &isize = &id(1);
+   |                           ^^^^^ temporary value does not live long enough
+...
+LL |     }
+   |     - temporary value dropped here while still borrowed
+LL | }
    | - temporary value needs to live until here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

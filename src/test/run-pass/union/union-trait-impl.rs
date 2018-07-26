@@ -15,7 +15,7 @@ union U {
 }
 
 impl fmt::Display for U {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe { write!(f, "Oh hai {}", self.a) }
     }
 }

@@ -11,11 +11,18 @@
 #![feature(catch_expr)]
 
 pub fn main() {
-    let res: Result<i32, i32> = do catch {
+    let res: Result<u32, i32> = do catch {
         Err("")?; //~ ERROR the trait bound `i32: std::convert::From<&str>` is not satisfied
-        Ok(5)
+        5
     };
+
     let res: Result<i32, i32> = do catch {
-        Ok("") //~ mismatched types
+        "" //~ ERROR type mismatch
     };
+
+    let res: Result<i32, i32> = do catch { }; //~ ERROR type mismatch
+
+    let res: () = do catch { }; //~ the trait bound `(): std::ops::Try` is not satisfied
+
+    let res: i32 = do catch { 5 }; //~ ERROR the trait bound `i32: std::ops::Try` is not satisfied
 }

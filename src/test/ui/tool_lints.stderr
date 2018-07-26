@@ -1,0 +1,9 @@
+error[E0710]: an unknown tool name found in scoped lint: `foo::bar`
+  --> $DIR/tool_lints.rs:13:8
+   |
+LL | #[warn(foo::bar)]
+   |        ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0710`.

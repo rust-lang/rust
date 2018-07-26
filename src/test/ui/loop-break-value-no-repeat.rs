@@ -19,6 +19,6 @@ use std::ptr;
 
 fn main() {
     for _ in &[1,2,3] {
-        break 22
+        break 22 //~ ERROR `break` with value from a `for` loop
     }
 }

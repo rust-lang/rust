@@ -9,9 +9,10 @@
 // except according to those terms.
 
 #![feature(box_patterns)]
-#![feature(slice_patterns)]
 #![feature(box_syntax)]
 #![feature(never_type)]
+#![feature(exhaustive_patterns)]
+#![feature(slice_patterns)]
 #![deny(unreachable_patterns)]
 
 mod foo {

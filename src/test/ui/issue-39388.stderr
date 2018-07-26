@@ -1,0 +1,8 @@
+error: expected `*` or `+`
+  --> $DIR/issue-39388.rs:14:22
+   |
+LL |     (($($a:tt)*) = ($($b:tt))*) => { //~ ERROR expected `*` or `+`
+   |                      ^^^^^^^
+
+error: aborting due to previous error
+

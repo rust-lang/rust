@@ -1,0 +1,15 @@
+error[E0004]: non-exhaustive patterns: `&_` not covered
+  --> $DIR/issue-30240.rs:12:11
+   |
+LL |     match "world" { //~ ERROR non-exhaustive patterns: `&_`
+   |           ^^^^^^^ pattern `&_` not covered
+
+error[E0004]: non-exhaustive patterns: `&_` not covered
+  --> $DIR/issue-30240.rs:16:11
+   |
+LL |     match "world" { //~ ERROR non-exhaustive patterns: `&_`
+   |           ^^^^^^^ pattern `&_` not covered
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

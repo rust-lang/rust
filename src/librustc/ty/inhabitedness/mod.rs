@@ -256,20 +256,21 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             },
 
             TyNever => DefIdForest::full(tcx),
-            TyTuple(ref tys, _) => {
+            TyTuple(ref tys) => {
                 DefIdForest::union(tcx, tys.iter().map(|ty| {
                     ty.uninhabited_from(visited, tcx)
                 }))
             },
             TyArray(ty, len) => {
-                if len.val.to_const_int().and_then(|i| i.to_u64()) == Some(0) {
-                    DefIdForest::empty()
-                } else {
-                    ty.uninhabited_from(visited, tcx)
+                match len.assert_usize(tcx) {
+                    // If the array is definitely non-empty, it's uninhabited if
+                    // the type of its elements is uninhabited.
+                    Some(n) if n != 0 => ty.uninhabited_from(visited, tcx),
+                    _ => DefIdForest::empty()
                 }
             }
-            TyRef(_, ref tm) => {
-                tm.ty.uninhabited_from(visited, tcx)
+            TyRef(_, ty, _) => {
+                ty.uninhabited_from(visited, tcx)
             }
 
             _ => DefIdForest::empty(),

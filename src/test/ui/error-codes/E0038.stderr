@@ -1,0 +1,11 @@
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/E0038.rs:15:1
+   |
+LL | fn call_foo(x: Box<Trait>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |
+   = note: method `foo` references the `Self` type in its arguments or return type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

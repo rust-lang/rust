@@ -1,0 +1,17 @@
+error[E0597]: `first_dropped` does not live long enough
+  --> $DIR/issue28498-reject-passed-to-fn.rs:46:19
+   |
+LL |     foo1 = Foo(1, &first_dropped, Box::new(callback));
+   |                   ^^^^^^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `foo1` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

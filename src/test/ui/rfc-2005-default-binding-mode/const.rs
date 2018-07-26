@@ -10,8 +10,6 @@
 
 // FIXME(tschottdorf): this test should pass.
 
-#![feature(match_default_bindings)]
-
 #[derive(PartialEq, Eq)]
 struct Foo {
     bar: i32,
@@ -23,7 +21,7 @@ fn main() {
     let f = Foo{bar:6};
 
     match &f {
-        FOO => {},
+        FOO => {}, //~ ERROR mismatched types
         _ => panic!(),
     }
 }

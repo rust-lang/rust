@@ -186,9 +186,7 @@ macro_rules! range_exact_iter_impl {
 
 macro_rules! range_incl_exact_iter_impl {
     ($($t:ty)*) => ($(
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
+        #[stable(feature = "inclusive_range", since = "1.26.0")]
         impl ExactSizeIterator for ops::RangeInclusive<$t> { }
     )*)
 }
@@ -202,9 +200,7 @@ macro_rules! range_trusted_len_impl {
 
 macro_rules! range_incl_trusted_len_impl {
     ($($t:ty)*) => ($(
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
+        #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl TrustedLen for ops::RangeInclusive<$t> { }
     )*)
 }
@@ -251,6 +247,21 @@ impl<A: Step> Iterator for ops::Range<A> {
         self.start = self.end.clone();
         None
     }
+
+    #[inline]
+    fn last(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
+
+    #[inline]
+    fn max(mut self) -> Option<A> {
+        self.next_back()
+    }
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
@@ -280,7 +291,7 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::Range<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -307,34 +318,35 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A: Step> TrustedLen for ops::RangeFrom<A> {}
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<A: Step> Iterator for ops::RangeInclusive<A> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        use cmp::Ordering::*;
-
-        match self.start.partial_cmp(&self.end) {
-            Some(Less) => {
-                let n = self.start.add_one();
-                Some(mem::replace(&mut self.start, n))
-            },
-            Some(Equal) => {
-                let last = self.start.replace_one();
-                self.end.replace_zero();
-                Some(last)
-            },
-            _ => None,
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return None;
         }
+        let is_iterating = self.start < self.end;
+        self.is_empty = Some(!is_iterating);
+        Some(if is_iterating {
+            let n = self.start.add_one();
+            mem::replace(&mut self.start, n)
+        } else {
+            self.start.clone()
+        })
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if !(self.start <= self.end) {
+        if self.is_empty() {
             return (0, Some(0));
         }
 
@@ -346,49 +358,66 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return None;
+        }
+
         if let Some(plus_n) = self.start.add_usize(n) {
             use cmp::Ordering::*;
 
             match plus_n.partial_cmp(&self.end) {
                 Some(Less) => {
+                    self.is_empty = Some(false);
                     self.start = plus_n.add_one();
                     return Some(plus_n)
                 }
                 Some(Equal) => {
-                    self.start.replace_one();
-                    self.end.replace_zero();
+                    self.is_empty = Some(true);
                     return Some(plus_n)
                 }
                 _ => {}
             }
         }
 
-        self.start.replace_one();
-        self.end.replace_zero();
+        self.is_empty = Some(true);
         None
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
+
+    #[inline]
+    fn max(mut self) -> Option<A> {
+        self.next_back()
     }
 }
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        use cmp::Ordering::*;
-
-        match self.start.partial_cmp(&self.end) {
-            Some(Less) => {
-                let n = self.end.sub_one();
-                Some(mem::replace(&mut self.end, n))
-            },
-            Some(Equal) => {
-                let last = self.end.replace_zero();
-                self.start.replace_one();
-                Some(last)
-            },
-            _ => None,
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return None;
         }
+        let is_iterating = self.start < self.end;
+        self.is_empty = Some(!is_iterating);
+        Some(if is_iterating {
+            let n = self.end.sub_one();
+            mem::replace(&mut self.end, n)
+        } else {
+            self.end.clone()
+        })
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}

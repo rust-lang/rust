@@ -14,7 +14,6 @@
 // A scenario with significant destruction code extents (which have
 // suffix "dce" in current `-Z identify_regions` rendering).
 
-#![feature(generic_param_attrs)]
 #![feature(dropck_eyepatch)]
 
 fn main() {
@@ -60,102 +59,96 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //        transformation encoding the effects of rvalue-promotion.
 //        This may be the simplest and most-likely option; note in
 //        particular that `StorageDead(_6)` goes away below in
-//        rustc.node4.QualifyAndPromoteConstants.after.mir
+//        rustc.main.QualifyAndPromoteConstants.after.mir
 
 // END RUST SOURCE
 
-// START rustc.node4.QualifyAndPromoteConstants.before.mir
+// START rustc.main.QualifyAndPromoteConstants.before.mir
 // fn main() -> () {
-//     let mut _0: ();
+// let mut _0: ();
 //     let mut _1: &'12ds S1;
-//     let mut _2: &'12ds S1;
-//     let mut _3: D1<'12ds, '10s>;
+//     let mut _2: D1<'12ds, '10s>;
+//     let mut _3: &'12ds S1;
 //     let mut _4: &'12ds S1;
-//     let mut _5: &'12ds S1;
-//     let mut _6: S1;
+//     let mut _5: S1;
+//     let mut _6: &'10s S1;
 //     let mut _7: &'10s S1;
-//     let mut _8: &'10s S1;
-//     let mut _9: S1;
-//
+//     let mut _8: S1;
 //     bb0: {
 //         StorageLive(_2);
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         StorageLive(_5);
+//         _5 = S1::{{constructor}}(const "ex1",);
+//         _4 = &'12ds _5;
+//         _3 = &'12ds (*_4);
 //         StorageLive(_6);
-//         _6 = S1::{{constructor}}(const "ex1",);
-//         _5 = &'12ds _6;
-//         _4 = &'12ds (*_5);
 //         StorageLive(_7);
 //         StorageLive(_8);
-//         StorageLive(_9);
-//         _9 = S1::{{constructor}}(const "dang1",);
-//         _8 = &'10s _9;
-//         _7 = &'10s (*_8);
-//         _3 = D1<'12ds, '10s>::{{constructor}}(_4, _7);
+//         _8 = S1::{{constructor}}(const "dang1",);
+//         _7 = &'10s _8;
+//         _6 = &'10s (*_7);
+//         _2 = D1<'12ds, '10s>::{{constructor}}(move _3, move _6);
 //         EndRegion('10s);
-//         StorageDead(_7);
-//         StorageDead(_4);
-//         _2 = (_3.0: &'12ds S1);
-//         _1 = _2;
-//         StorageDead(_2);
-//         drop(_3) -> bb1;
-//     }
-//
-//     bb1: {
-//         StorageDead(_3);
-//         StorageDead(_8);
-//         StorageDead(_9);
-//         StorageDead(_5);
 //         StorageDead(_6);
+//         StorageDead(_3);
+//         _1 = (_2.0: &'12ds S1);
+//         drop(_2) -> [return: bb2, unwind: bb1];
+//     }
+//     bb1: {
+//         resume;
+//     }
+//     bb2: {
+//         StorageDead(_2);
+//         StorageDead(_7);
+//         StorageDead(_8);
+//         StorageDead(_4);
+//         StorageDead(_5);
 //         EndRegion('12ds);
 //         _0 = ();
 //         return;
 //     }
 // }
-// END rustc.node4.QualifyAndPromoteConstants.before.mir
+// END rustc.main.QualifyAndPromoteConstants.before.mir
 
-// START rustc.node4.QualifyAndPromoteConstants.after.mir
-// fn main() -> () {
+// START rustc.main.QualifyAndPromoteConstants.after.mir
+// fn main() -> (){
 //     let mut _0: ();
 //     let mut _1: &'12ds S1;
-//     let mut _2: &'12ds S1;
-//     let mut _3: D1<'12ds, '10s>;
+//     let mut _2: D1<'12ds, '10s>;
+//     let mut _3: &'12ds S1;
 //     let mut _4: &'12ds S1;
-//     let mut _5: &'12ds S1;
-//     let mut _6: S1;
+//     let mut _5: S1;
+//     let mut _6: &'10s S1;
 //     let mut _7: &'10s S1;
-//     let mut _8: &'10s S1;
-//     let mut _9: S1;
-//
+//     let mut _8: S1;
 //     bb0: {
 //         StorageLive(_2);
 //         StorageLive(_3);
 //         StorageLive(_4);
-//         StorageLive(_5);
-//         _5 = promoted[1];
-//         _4 = &'12ds (*_5);
+//         _4 = &'12ds (promoted[1]: S1);
+//         _3 = &'12ds (*_4);
+//         StorageLive(_6);
 //         StorageLive(_7);
-//         StorageLive(_8);
-//         _8 = promoted[0];
-//         _7 = &'10s (*_8);
-//         _3 = D1<'12ds, '10s>::{{constructor}}(_4, _7);
+//         _7 = &'10s (promoted[0]: S1);
+//         _6 = &'10s (*_7);
+//         _2 = D1<'12ds, '10s>::{{constructor}}(move _3, move _6);
 //         EndRegion('10s);
+//         StorageDead(_6);
+//         StorageDead(_3);
+//         _1 = (_2.0: &'12ds S1);
+//         drop(_2) -> [return: bb2, unwind: bb1];
+//     }
+//     bb1: {
+//         resume;
+//     }
+//     bb2: {
+//         StorageDead(_2);
 //         StorageDead(_7);
 //         StorageDead(_4);
-//         _2 = (_3.0: &'12ds S1);
-//         _1 = _2;
-//         StorageDead(_2);
-//         drop(_3) -> bb1;
-//     }
-//
-//     bb1: {
-//         StorageDead(_3);
-//         StorageDead(_8);
-//         StorageDead(_5);
 //         EndRegion('12ds);
 //         _0 = ();
 //         return;
 //     }
 // }
-// END rustc.node4.QualifyAndPromoteConstants.after.mir
+// END rustc.main.QualifyAndPromoteConstants.after.mir

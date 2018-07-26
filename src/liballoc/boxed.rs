@@ -55,53 +55,22 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use heap::{Heap, Layout, Alloc};
-use raw_vec::RawVec;
-
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
-use core::fmt;
-use core::hash::{self, Hash, Hasher};
-use core::iter::FusedIterator;
-use core::marker::{self, Unsize};
-use core::mem;
-use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
-use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
-use core::ptr::{self, Unique};
 use core::convert::From;
+use core::fmt;
+use core::future::{Future, FutureObj, LocalFutureObj, UnsafeFutureObj};
+use core::hash::{Hash, Hasher};
+use core::iter::FusedIterator;
+use core::marker::{Unpin, Unsize};
+use core::mem::{self, PinMut};
+use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
+use core::ptr::{self, NonNull, Unique};
+use core::task::{Context, Poll};
+
+use raw_vec::RawVec;
 use str::from_boxed_utf8_unchecked;
-
-/// A value that represents the heap. This is the default place that the `box`
-/// keyword allocates into when no place is supplied.
-///
-/// The following two examples are equivalent:
-///
-/// ```
-/// #![feature(box_heap)]
-///
-/// #![feature(box_syntax, placement_in_syntax)]
-/// use std::boxed::HEAP;
-///
-/// fn main() {
-///     let foo: Box<i32> = in HEAP { 5 };
-///     let foo = box 5;
-/// }
-/// ```
-#[unstable(feature = "box_heap",
-           reason = "may be renamed; uncertain about custom allocator design",
-           issue = "27779")]
-pub const HEAP: ExchangeHeapSingleton = ExchangeHeapSingleton { _force_singleton: () };
-
-/// This the singleton type used solely for `boxed::HEAP`.
-#[unstable(feature = "box_heap",
-           reason = "may be renamed; uncertain about custom allocator design",
-           issue = "27779")]
-#[allow(missing_debug_implementations)]
-#[derive(Copy, Clone)]
-pub struct ExchangeHeapSingleton {
-    _force_singleton: (),
-}
 
 /// A pointer type for heap allocation.
 ///
@@ -110,121 +79,6 @@ pub struct ExchangeHeapSingleton {
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Box<T: ?Sized>(Unique<T>);
-
-/// `IntermediateBox` represents uninitialized backing storage for `Box`.
-///
-/// FIXME (pnkfelix): Ideally we would just reuse `Box<T>` instead of
-/// introducing a separate `IntermediateBox<T>`; but then you hit
-/// issues when you e.g. attempt to destructure an instance of `Box`,
-/// since it is a lang item and so it gets special handling by the
-/// compiler.  Easier just to make this parallel type for now.
-///
-/// FIXME (pnkfelix): Currently the `box` protocol only supports
-/// creating instances of sized types. This IntermediateBox is
-/// designed to be forward-compatible with a future protocol that
-/// supports creating instances of unsized types; that is why the type
-/// parameter has the `?Sized` generalization marker, and is also why
-/// this carries an explicit size. However, it probably does not need
-/// to carry the explicit alignment; that is just a work-around for
-/// the fact that the `align_of` intrinsic currently requires the
-/// input type to be Sized (which I do not think is strictly
-/// necessary).
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-#[allow(missing_debug_implementations)]
-pub struct IntermediateBox<T: ?Sized> {
-    ptr: *mut u8,
-    layout: Layout,
-    marker: marker::PhantomData<*mut T>,
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T> Place<T> for IntermediateBox<T> {
-    fn pointer(&mut self) -> *mut T {
-        self.ptr as *mut T
-    }
-}
-
-unsafe fn finalize<T>(b: IntermediateBox<T>) -> Box<T> {
-    let p = b.ptr as *mut T;
-    mem::forget(b);
-    mem::transmute(p)
-}
-
-fn make_place<T>() -> IntermediateBox<T> {
-    let layout = Layout::new::<T>();
-
-    let p = if layout.size() == 0 {
-        mem::align_of::<T>() as *mut u8
-    } else {
-        unsafe {
-            Heap.alloc(layout.clone()).unwrap_or_else(|err| {
-                Heap.oom(err)
-            })
-        }
-    };
-
-    IntermediateBox {
-        ptr: p,
-        layout,
-        marker: marker::PhantomData,
-    }
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T> BoxPlace<T> for IntermediateBox<T> {
-    fn make_place() -> IntermediateBox<T> {
-        make_place()
-    }
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T> InPlace<T> for IntermediateBox<T> {
-    type Owner = Box<T>;
-    unsafe fn finalize(self) -> Box<T> {
-        finalize(self)
-    }
-}
-
-#[unstable(feature = "placement_new_protocol", issue = "27779")]
-impl<T> Boxed for Box<T> {
-    type Data = T;
-    type Place = IntermediateBox<T>;
-    unsafe fn finalize(b: IntermediateBox<T>) -> Box<T> {
-        finalize(b)
-    }
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T> Placer<T> for ExchangeHeapSingleton {
-    type Place = IntermediateBox<T>;
-
-    fn make_place(self) -> IntermediateBox<T> {
-        make_place()
-    }
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T: ?Sized> Drop for IntermediateBox<T> {
-    fn drop(&mut self) {
-        if self.layout.size() > 0 {
-            unsafe {
-                Heap.dealloc(self.ptr, self.layout.clone())
-            }
-        }
-    }
-}
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -269,38 +123,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box::from_unique(Unique::new_unchecked(raw))
-    }
-
-    /// Constructs a `Box` from a `Unique<T>` pointer.
-    ///
-    /// After calling this function, the memory is owned by a `Box` and `T` can
-    /// then be destroyed and released upon drop.
-    ///
-    /// # Safety
-    ///
-    /// A `Unique<T>` can be safely created via [`Unique::new`] and thus doesn't
-    /// necessarily own the data pointed to nor is the data guaranteed to live
-    /// as long as the pointer.
-    ///
-    /// [`Unique::new`]: ../../core/ptr/struct.Unique.html#method.new
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(unique)]
-    ///
-    /// fn main() {
-    ///     let x = Box::new(5);
-    ///     let ptr = Box::into_unique(x);
-    ///     let x = unsafe { Box::from_unique(ptr) };
-    /// }
-    /// ```
-    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
-               issue = "27730")]
-    #[inline]
-    pub unsafe fn from_unique(u: Unique<T>) -> Self {
-        mem::transmute(u)
+        Box(Unique::new_unchecked(raw))
     }
 
     /// Consumes the `Box`, returning the wrapped raw pointer.
@@ -326,43 +149,98 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        Box::into_unique(b).as_ptr()
+        Box::into_raw_non_null(b).as_ptr()
     }
 
-    /// Consumes the `Box`, returning the wrapped pointer as `Unique<T>`.
+    /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
     ///
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
     /// caller should properly destroy `T` and release the memory. The
-    /// proper way to do so is to either convert the `Unique<T>` pointer:
-    ///
-    /// - Into a `Box` with the [`Box::from_unique`] function.
-    ///
-    /// - Into a raw pointer and back into a `Box` with the [`Box::from_raw`]
-    ///   function.
+    /// proper way to do so is to convert the `NonNull<T>` pointer
+    /// into a raw pointer and back into a `Box` with the [`Box::from_raw`]
+    /// function.
     ///
     /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_unique(b)` instead of `b.into_unique()`. This
+    /// to call it as `Box::into_raw_non_null(b)`
+    /// instead of `b.into_raw_non_null()`. This
     /// is so that there is no conflict with a method on the inner type.
     ///
-    /// [`Box::from_unique`]: struct.Box.html#method.from_unique
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(unique)]
+    /// #![feature(box_into_raw_non_null)]
     ///
     /// fn main() {
     ///     let x = Box::new(5);
-    ///     let ptr = Box::into_unique(x);
+    ///     let ptr = Box::into_raw_non_null(x);
     /// }
     /// ```
-    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
-               issue = "27730")]
+    #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
     #[inline]
+    pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
+        Box::into_unique(b).into()
+    }
+
+    #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_raw_non_null instead")]
+    #[inline]
+    #[doc(hidden)]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
-        unsafe { mem::transmute(b) }
+        let unique = b.0;
+        mem::forget(b);
+        unique
+    }
+
+    /// Consumes and leaks the `Box`, returning a mutable reference,
+    /// `&'a mut T`. Note that the type `T` must outlive the chosen lifetime
+    /// `'a`. If the type has only static references, or none at all, then this
+    /// may be chosen to be `'static`.
+    ///
+    /// This function is mainly useful for data that lives for the remainder of
+    /// the program's life. Dropping the returned reference will cause a memory
+    /// leak. If this is not acceptable, the reference should first be wrapped
+    /// with the [`Box::from_raw`] function producing a `Box`. This `Box` can
+    /// then be dropped which will properly destroy `T` and release the
+    /// allocated memory.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::leak(b)` instead of `b.leak()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// Simple usage:
+    ///
+    /// ```
+    /// fn main() {
+    ///     let x = Box::new(41);
+    ///     let static_ref: &'static mut usize = Box::leak(x);
+    ///     *static_ref += 1;
+    ///     assert_eq!(*static_ref, 42);
+    /// }
+    /// ```
+    ///
+    /// Unsized data:
+    ///
+    /// ```
+    /// fn main() {
+    ///     let x = vec![1, 2, 3].into_boxed_slice();
+    ///     let static_ref = Box::leak(x);
+    ///     static_ref[0] = 4;
+    ///     assert_eq!(*static_ref, [4, 2, 3]);
+    /// }
+    /// ```
+    #[stable(feature = "box_leak", since = "1.26.0")]
+    #[inline]
+    pub fn leak<'a>(b: Box<T>) -> &'a mut T
+    where
+        T: 'a // Technically not needed, but kept to be explicit.
+    {
+        unsafe { &mut *Box::into_raw(b) }
     }
 }
 
@@ -487,7 +365,7 @@ impl<T: ?Sized + Eq> Eq for Box<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash> Hash for Box<T> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
 }
@@ -556,6 +434,7 @@ impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl<'a> From<&'a str> for Box<str> {
+    #[inline]
     fn from(s: &'a str) -> Box<str> {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
     }
@@ -563,12 +442,13 @@ impl<'a> From<&'a str> for Box<str> {
 
 #[stable(feature = "boxed_str_conv", since = "1.19.0")]
 impl From<Box<str>> for Box<[u8]> {
+    #[inline]
     fn from(s: Box<str>) -> Self {
         unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }
     }
 }
 
-impl Box<Any> {
+impl Box<dyn Any> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Attempt to downcast the box to a concrete type.
@@ -590,10 +470,10 @@ impl Box<Any> {
     ///     print_if_string(Box::new(0i8));
     /// }
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any>> {
         if self.is::<T>() {
             unsafe {
-                let raw: *mut Any = Box::into_raw(self);
+                let raw: *mut dyn Any = Box::into_raw(self);
                 Ok(Box::from_raw(raw as *mut T))
             }
         } else {
@@ -602,7 +482,7 @@ impl Box<Any> {
     }
 }
 
-impl Box<Any + Send> {
+impl Box<dyn Any + Send> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Attempt to downcast the box to a concrete type.
@@ -624,10 +504,10 @@ impl Box<Any + Send> {
     ///     print_if_string(Box::new(0i8));
     /// }
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any + Send>> {
-        <Box<Any>>::downcast(self).map_err(|s| unsafe {
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<dyn Any + Send>> {
+        <Box<dyn Any>>::downcast(self).map_err(|s| unsafe {
             // reapply the Send marker
-            mem::transmute::<Box<Any>, Box<Any + Send>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut (dyn Any + Send))
         })
     }
 }
@@ -701,7 +581,7 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 
 
@@ -765,7 +645,7 @@ impl<A, F> FnBox<A> for F
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + 'a> {
+impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + 'a> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -775,7 +655,7 @@ impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + 'a> {
 
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-impl<'a, A, R> FnOnce<A> for Box<FnBox<A, Output = R> + Send + 'a> {
+impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + 'a> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -871,7 +751,251 @@ impl<T> Generator for Box<T>
 {
     type Yield = T::Yield;
     type Return = T::Return;
-    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
+    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
         (**self).resume()
+    }
+}
+
+/// A pinned, heap allocated reference.
+#[unstable(feature = "pin", issue = "49150")]
+#[fundamental]
+#[repr(transparent)]
+pub struct PinBox<T: ?Sized> {
+    inner: Box<T>,
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T> PinBox<T> {
+    /// Allocate memory on the heap, move the data into it and pin it.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn new(data: T) -> PinBox<T> {
+        PinBox { inner: Box::new(data) }
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> PinBox<T> {
+    /// Get a pinned reference to the data in this PinBox.
+    #[inline]
+    pub fn as_pin_mut<'a>(&'a mut self) -> PinMut<'a, T> {
+        unsafe { PinMut::new_unchecked(&mut *self.inner) }
+    }
+
+    /// Constructs a `PinBox` from a raw pointer.
+    ///
+    /// After calling this function, the raw pointer is owned by the
+    /// resulting `PinBox`. Specifically, the `PinBox` destructor will call
+    /// the destructor of `T` and free the allocated memory. Since the
+    /// way `PinBox` allocates and releases memory is unspecified, the
+    /// only valid pointer to pass to this function is the one taken
+    /// from another `PinBox` via the [`PinBox::into_raw`] function.
+    ///
+    /// This function is unsafe because improper use may lead to
+    /// memory problems. For example, a double-free may occur if the
+    /// function is called twice on the same raw pointer.
+    ///
+    /// [`PinBox::into_raw`]: struct.PinBox.html#method.into_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(pin)]
+    /// use std::boxed::PinBox;
+    /// let x = PinBox::new(5);
+    /// let ptr = PinBox::into_raw(x);
+    /// let x = unsafe { PinBox::from_raw(ptr) };
+    /// ```
+    #[inline]
+    pub unsafe fn from_raw(raw: *mut T) -> Self {
+        PinBox { inner: Box::from_raw(raw) }
+    }
+
+    /// Consumes the `PinBox`, returning the wrapped raw pointer.
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `PinBox`. In particular, the
+    /// caller should properly destroy `T` and release the memory. The
+    /// proper way to do so is to convert the raw pointer back into a
+    /// `PinBox` with the [`PinBox::from_raw`] function.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `PinBox::into_raw(b)` instead of `b.into_raw()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// [`PinBox::from_raw`]: struct.PinBox.html#method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(pin)]
+    /// use std::boxed::PinBox;
+    /// let x = PinBox::new(5);
+    /// let ptr = PinBox::into_raw(x);
+    /// ```
+    #[inline]
+    pub fn into_raw(b: PinBox<T>) -> *mut T {
+        Box::into_raw(b.inner)
+    }
+
+    /// Get a mutable reference to the data inside this PinBox.
+    ///
+    /// This function is unsafe. Users must guarantee that the data is never
+    /// moved out of this reference.
+    #[inline]
+    pub unsafe fn get_mut<'a>(this: &'a mut PinBox<T>) -> &'a mut T {
+        &mut *this.inner
+    }
+
+    /// Convert this PinBox into an unpinned Box.
+    ///
+    /// This function is unsafe. Users must guarantee that the data is never
+    /// moved out of the box.
+    #[inline]
+    pub unsafe fn unpin(this: PinBox<T>) -> Box<T> {
+        this.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> From<Box<T>> for PinBox<T> {
+    fn from(boxed: Box<T>) -> PinBox<T> {
+        PinBox { inner: boxed }
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: Unpin + ?Sized> From<PinBox<T>> for Box<T> {
+    fn from(pinned: PinBox<T>) -> Box<T> {
+        pinned.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> Deref for PinBox<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &*self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: Unpin + ?Sized> DerefMut for PinBox<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut *self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: fmt::Display + ?Sized> fmt::Display for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&*self.inner, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: fmt::Debug + ?Sized> fmt::Debug for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&*self.inner, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> fmt::Pointer for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // It's not possible to extract the inner Uniq directly from the Box,
+        // instead we cast it to a *const which aliases the Unique
+        let ptr: *const T = &*self.inner;
+        fmt::Pointer::fmt(&ptr, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> Unpin for PinBox<T> {}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<F: ?Sized + Future + Unpin> Future for Box<F> {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
+        PinMut::new(&mut **self).poll(cx)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<F: ?Sized + Future> Future for PinBox<F> {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
+        self.as_pin_mut().poll(cx)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for Box<F>
+    where F: Future<Output = T> + 'a
+{
+    fn into_raw(self) -> *mut () {
+        Box::into_raw(self) as *mut ()
+    }
+
+    unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T> {
+        let ptr = ptr as *mut F;
+        let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
+        pin.poll(cx)
+    }
+
+    unsafe fn drop(ptr: *mut ()) {
+        drop(Box::from_raw(ptr as *mut F))
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for PinBox<F>
+    where F: Future<Output = T> + 'a
+{
+    fn into_raw(self) -> *mut () {
+        PinBox::into_raw(self) as *mut ()
+    }
+
+    unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T> {
+        let ptr = ptr as *mut F;
+        let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
+        pin.poll(cx)
+    }
+
+    unsafe fn drop(ptr: *mut ()) {
+        drop(PinBox::from_raw(ptr as *mut F))
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: Future<Output = ()> + Send + 'a> From<PinBox<F>> for FutureObj<'a, ()> {
+    fn from(boxed: PinBox<F>) -> Self {
+        FutureObj::new(boxed)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: Future<Output = ()> + Send + 'a> From<Box<F>> for FutureObj<'a, ()> {
+    fn from(boxed: Box<F>) -> Self {
+        FutureObj::new(boxed)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: Future<Output = ()> + 'a> From<PinBox<F>> for LocalFutureObj<'a, ()> {
+    fn from(boxed: PinBox<F>) -> Self {
+        LocalFutureObj::new(boxed)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: Future<Output = ()> + 'a> From<Box<F>> for LocalFutureObj<'a, ()> {
+    fn from(boxed: Box<F>) -> Self {
+        LocalFutureObj::new(boxed)
     }
 }

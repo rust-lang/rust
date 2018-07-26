@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 #![allow(unused)]
 
 use m::S;
@@ -19,7 +21,7 @@ mod m {
         use S;
         fn f() {
             S(10);
-            //~^ ERROR private struct constructors are not usable through reexports in outer modules
+            //~^ ERROR private struct constructors are not usable through re-exports in outer modules
             //~| WARN this was previously accepted
         }
     }

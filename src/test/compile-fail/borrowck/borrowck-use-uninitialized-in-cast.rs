@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 // Check that we detect unused values that are cast to other things.
 // The problem was specified to casting to `*`, as creating unsafe
@@ -18,6 +18,5 @@
 fn main() {
     let x: &i32;
     let y = x as *const i32; //[ast]~ ERROR use of possibly uninitialized variable: `*x` [E0381]
-                             //[mir]~^ ERROR (Ast) [E0381]
-                             //[mir]~| ERROR (Mir) [E0381]
+                             //[mir]~^ ERROR [E0381]
 }

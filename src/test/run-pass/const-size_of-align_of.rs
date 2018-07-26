@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn, const_size_of, const_align_of)]
+#![feature(const_fn)]
 
 use std::mem;
 

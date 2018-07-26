@@ -4,6 +4,7 @@ members = [
   "rustc",
   "libstd",
   "libtest",
+  "librustc_codegen_llvm",
   "tools/cargotest",
   "tools/clippy",
   "tools/compiletest",
@@ -20,25 +21,27 @@ members = [
   "tools/rustdoc",
   "tools/rls",
   "tools/rustfmt",
+  "tools/miri",
+  "tools/rustdoc-themes",
   # FIXME(https://github.com/rust-lang/cargo/issues/4089): move these to exclude
+  "tools/rls/test_data/bin_lib",
   "tools/rls/test_data/borrow_error",
   "tools/rls/test_data/common",
+  "tools/rls/test_data/deglob",
   "tools/rls/test_data/features",
   "tools/rls/test_data/find_all_refs_no_cfg_test",
-  "tools/rls/test_data/reformat",
-  "tools/rls/test_data/multiple_bins",
-  "tools/rls/test_data/bin_lib",
-  "tools/rls/test_data/reformat_with_range",
   "tools/rls/test_data/find_impls",
   "tools/rls/test_data/infer_bin",
   "tools/rls/test_data/infer_custom_bin",
   "tools/rls/test_data/infer_lib",
+  "tools/rls/test_data/multiple_bins",
+  "tools/rls/test_data/reformat",
+  "tools/rls/test_data/reformat_with_range",
   "tools/rls/test_data/workspace_symbol",
 ]
 
-# Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit
-# MSVC when running the compile-fail test suite when a should-fail test panics.
-# But hey if this is removed and it gets past the bots, sounds good to me.
+# Curiously, LLVM 7.0 will segfault if compiled with opt-level=3
+# See issue https://github.com/rust-lang/rust/issues/52378
 [profile.release]
 opt-level = 2
 [profile.bench]
@@ -53,8 +56,19 @@ debug-assertions = false
 debug = false
 debug-assertions = false
 
+# We want the RLS to use the version of Cargo that we've got vendored in this
+# repository to ensure that the same exact version of Cargo is used by both the
+# RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
+# so we use a `[patch]` here to override the github repository with our local
+# vendored copy.
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "tools/cargo" }
 
-[patch.crates-io]
+[patch."https://github.com/rust-lang-nursery/rustfmt"]
+# Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
+# that we're shipping as well (to ensure that the rustfmt in RLS and the
+# `rustfmt` executable are the same exact version).
 rustfmt-nightly = { path = "tools/rustfmt" }
+
+[patch."https://github.com/rust-lang-nursery/rust-clippy"]
+clippy_lints = { path = "tools/clippy/clippy_lints" }

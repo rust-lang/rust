@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unsupported cyclic reference between types/traits detected
+// error-pattern: cycle detected
 
 #![feature(const_fn)]
 

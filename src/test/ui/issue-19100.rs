@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+// run-rustfix
 
 #![allow(non_snake_case)]
 #![allow(dead_code)]
@@ -26,12 +27,10 @@ impl Foo {
             &
 Bar if true
 //~^ WARN pattern binding `Bar` is named the same as one of the variants of the type `Foo`
-//~^^ HELP to match on a variant, consider making the path in the pattern qualified: `Foo::Bar`
 => println!("bar"),
             &
 Baz if false
 //~^ WARN pattern binding `Baz` is named the same as one of the variants of the type `Foo`
-//~^^ HELP to match on a variant, consider making the path in the pattern qualified: `Foo::Baz`
 => println!("baz"),
 _ => ()
         }

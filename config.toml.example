@@ -60,10 +60,9 @@
 # LLVM experimental targets to build support for. These targets are specified in
 # the same format as above, but since these targets are experimental, they are
 # not built by default and the experimental Rust compilation targets that depend
-# on them will not work unless the user opts in to building them. Possible
-# experimental LLVM targets include WebAssembly for the
-# wasm32-experimental-emscripten Rust target.
-#experimental-targets = ""
+# on them will not work unless the user opts in to building them. By default the
+# `WebAssembly` target is enabled when compiling LLVM from scratch.
+#experimental-targets = "WebAssembly"
 
 # Cap the number of parallel linker invocations when compiling LLVM.
 # This can be useful when building LLVM with debug info, which significantly
@@ -76,6 +75,10 @@
 # When invoking `llvm-config` this configures whether the `--shared` argument is
 # passed to prefer linking to shared libraries.
 #link-shared = false
+
+# On MSVC you can compile LLVM with clang-cl, but the test suite doesn't pass
+# with clang-cl, so this is special in that it only compiles LLVM with clang-cl
+#clang-cl = '/path/to/clang-cl.exe'
 
 # =============================================================================
 # General build configuration options
@@ -119,6 +122,10 @@
 # Indicate whether submodules are managed and updated automatically.
 #submodules = true
 
+# Update submodules only when the checked out commit in the submodules differs
+# from what is committed in the main rustc repo.
+#fast-submodules = true
+
 # The path to (or name of) the GDB executable to use. This is only used for
 # executing the debuginfo test suite.
 #gdb = "gdb"
@@ -152,6 +159,10 @@
 # default.
 #extended = false
 
+# Installs chosen set of extended tools if enables. By default builds all.
+# If chosen tool failed to build the installation fails.
+#tools = ["cargo", "rls", "rustfmt", "analysis", "src"]
+
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
 #verbose = 0
 
@@ -178,6 +189,10 @@
 # Indicates that a local rebuild is occurring instead of a full bootstrap,
 # essentially skipping stage0 as the local compiler is recompiling itself again.
 #local-rebuild = false
+
+# Print out how long each rustbuild step took (mostly intended for CI and
+# tracking over time)
+#print-step-timings = false
 
 # =============================================================================
 # General install configuration options
@@ -251,6 +266,10 @@
 # standard library.
 #debuginfo-only-std = false
 
+# Enable debuginfo for the extended tools: cargo, rls, rustfmt
+# Adding debuginfo makes them several times larger.
+#debuginfo-tools = false
+
 # Whether or not jemalloc is built and enabled
 #use-jemalloc = true
 
@@ -259,6 +278,12 @@
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
+
+# Whether to always use incremental compilation when building rustc
+#incremental = false
+
+# Build rustc with experimental parallelization
+#experimental-parallel-queries = false
 
 # The default linker that will be hard-coded into the generated compiler for
 # targets that don't specify linker explicitly in their target specifications.
@@ -276,9 +301,9 @@
 # desired in distributions, for example.
 #rpath = true
 
-# Suppresses extraneous output from tests to ensure the output of the test
-# harness is relatively clean.
-#quiet-tests = false
+# Emits extraneous output from tests to ensure that failures of the test
+# harness are debuggable just from logfiles.
+#verbose-tests = false
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag) or
 # with debuginfo (the -g flag)
@@ -291,7 +316,7 @@
 
 # Flag indicating whether git info will be retrieved from .git automatically.
 # Having the git information can cause a lot of rebuilds during development.
-# Note: If this attribute is not explicity set (e.g. if left commented out) it
+# Note: If this attribute is not explicitly set (e.g. if left commented out) it
 # will default to true if channel = "dev", but will default to false otherwise.
 #ignore-git = true
 
@@ -301,6 +326,42 @@
 # Whether to also run the Miri tests suite when running tests.
 # As a side-effect also generates MIR for all libraries.
 #test-miri = false
+
+# After building or testing extended tools (e.g. clippy and rustfmt), append the
+# result (broken, compiling, testing) into this JSON file.
+#save-toolstates = "/path/to/toolstates.json"
+
+# This is an array of the codegen backends that will be compiled for the rustc
+# that's being compiled. The default is to only build the LLVM codegen backend,
+# but you can also optionally enable the "emscripten" backend for asm.js or
+# make this an empty array (but that probably won't get too far in the
+# bootstrap)
+#codegen-backends = ["llvm"]
+
+# This is the name of the directory in which codegen backends will get installed
+#codegen-backends-dir = "codegen-backends"
+
+# Flag indicating whether `libstd` calls an imported function to handle basic IO
+# when targeting WebAssembly. Enable this to debug tests for the `wasm32-unknown-unknown`
+# target, as without this option the test output will not be captured.
+#wasm-syscall = false
+
+# Indicates whether LLD will be compiled and made available in the sysroot for
+# rustc to execute.
+#lld = false
+
+# Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
+# sysroot.
+#llvm-tools = false
+
+# Whether to deny warnings in crates
+#deny-warnings = true
+
+# Print backtrace on internal compiler errors during bootstrap
+#backtrace-on-ice = false
+
+# Whether to verify generated LLVM IR
+#verify-llvm-ir = false
 
 # =============================================================================
 # Options for specific targets
@@ -329,7 +390,7 @@
 #linker = "cc"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
-# against. Note that if this is specifed we don't compile LLVM at all for this
+# against. Note that if this is specified we don't compile LLVM at all for this
 # target.
 #llvm-config = "../path/to/llvm/root/bin/llvm-config"
 

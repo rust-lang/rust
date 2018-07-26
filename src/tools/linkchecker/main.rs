@@ -81,6 +81,7 @@ fn small_url_encode(s: &str) -> String {
      .replace(";", "%3B")
      .replace("[", "%5B")
      .replace("]", "%5D")
+     .replace("\"", "%22")
 }
 
 impl FileEntry {
@@ -131,7 +132,18 @@ fn check(cache: &mut Cache,
     // Unfortunately we're not 100% full of valid links today to we need a few
     // whitelists to get this past `make check` today.
     // FIXME(#32129)
-    if file.ends_with("std/string/struct.String.html") {
+    if file.ends_with("std/string/struct.String.html") ||
+       file.ends_with("interpret/struct.ValTy.html") ||
+       file.ends_with("symbol/struct.InternedString.html") ||
+       file.ends_with("ast/struct.ThinVec.html") ||
+       file.ends_with("util/struct.ThinVec.html") ||
+       file.ends_with("util/struct.RcSlice.html") ||
+       file.ends_with("layout/struct.TyLayout.html") ||
+       file.ends_with("humantime/struct.Timestamp.html") ||
+       file.ends_with("log/index.html") ||
+       file.ends_with("ty/struct.Slice.html") ||
+       file.ends_with("ty/enum.Attributes.html") ||
+       file.ends_with("ty/struct.SymbolName.html") {
         return None;
     }
     // FIXME(#32553)
@@ -143,7 +155,9 @@ fn check(cache: &mut Cache,
        file.ends_with("struct.BTreeSet.html") ||
        file.ends_with("btree_map/struct.BTreeMap.html") ||
        file.ends_with("hash_map/struct.HashMap.html") ||
-       file.ends_with("hash_set/struct.HashSet.html") {
+       file.ends_with("hash_set/struct.HashSet.html") ||
+       file.ends_with("sync/struct.Lrc.html") ||
+       file.ends_with("sync/struct.RwLock.html") {
         return None;
     }
 
@@ -180,7 +194,17 @@ fn check(cache: &mut Cache,
             for part in Path::new(base).join(url).components() {
                 match part {
                     Component::Prefix(_) |
-                    Component::RootDir => panic!(),
+                    Component::RootDir => {
+                        // Avoid absolute paths as they make the docs not
+                        // relocatable by making assumptions on where the docs
+                        // are hosted relative to the site root.
+                        *errors = true;
+                        println!("{}:{}: absolute path - {}",
+                                 pretty_file.display(),
+                                 i + 1,
+                                 Path::new(base).join(url).display());
+                        return;
+                    }
                     Component::CurDir => {}
                     Component::ParentDir => { path.pop(); }
                     Component::Normal(s) => { path.push(s); }
@@ -230,6 +254,11 @@ fn check(cache: &mut Cache,
                 // interpreted by javascript, so we're ignoring these
                 if fragment.splitn(2, '-')
                            .all(|f| f.chars().all(|c| c.is_numeric())) {
+                    return;
+                }
+
+                // These appear to be broken in mdbook right now?
+                if fragment.starts_with("-") {
                     return;
                 }
 

@@ -1,0 +1,9 @@
+error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/mir_check_nonconst.rs:18:19
+   |
+LL | static foo: Foo = bar();
+   |                   ^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

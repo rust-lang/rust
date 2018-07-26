@@ -1,0 +1,30 @@
+error[E0626]: borrow may still be in use when generator yields (Ast)
+  --> $DIR/generator-with-nll.rs:19:23
+   |
+LL |         let _a = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
+   |                       ^^^^
+...
+LL |         yield ();
+   |         -------- possible yield occurs here
+
+error[E0626]: borrow may still be in use when generator yields (Ast)
+  --> $DIR/generator-with-nll.rs:20:22
+   |
+LL |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
+   |                      ^^^^
+LL |         //~^ borrow may still be in use when generator yields (Mir)
+LL |         yield ();
+   |         -------- possible yield occurs here
+
+error[E0626]: borrow may still be in use when generator yields (Mir)
+  --> $DIR/generator-with-nll.rs:20:17
+   |
+LL |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
+   |                 ^^^^^^^^^
+LL |         //~^ borrow may still be in use when generator yields (Mir)
+LL |         yield ();
+   |         -------- possible yield occurs here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0626`.

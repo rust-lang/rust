@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -11,6 +11,10 @@
 
 set -e
 
+if [ -n "$CI_JOB_NAME" ]; then
+  echo "[CI_JOB_NAME=$CI_JOB_NAME]"
+fi
+
 if [ "$NO_CHANGE_USER" = "" ]; then
   if [ "$LOCAL_USER_ID" != "" ]; then
     useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
@@ -20,11 +24,16 @@ if [ "$NO_CHANGE_USER" = "" ]; then
   fi
 fi
 
+# only enable core dump on Linux
+if [ -f /proc/sys/kernel/core_pattern ]; then
+  ulimit -c unlimited
+fi
+
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"
 
-if [ "$TRAVIS" == "true" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-quiet-tests"
+if [ "$TRAVIS" != "true" ] || [ "$TRAVIS_BRANCH" == "auto" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
@@ -37,19 +46,20 @@ if [ "$DIST_SRC" = "" ]; then
 fi
 
 # If we're deploying artifacts then we set the release channel, otherwise if
-# we're not deploying then we want to be sure to enable all assertions becauase
+# we're not deploying then we want to be sure to enable all assertions because
 # we'll be running tests
 #
 # FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
 #        either automatically or manually.
+export RUST_RELEASE_CHANNEL=nightly
 if [ "$DEPLOY$DEPLOY_ALT" != "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=nightly"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   elif [ "$DEPLOY_ALT" != "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
   fi
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
@@ -63,6 +73,19 @@ else
   if [ "$NO_LLVM_ASSERTIONS" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
   fi
+fi
+
+# We've had problems in the past of shell scripts leaking fds into the sccache
+# server (#48192) which causes Cargo to erroneously think that a build script
+# hasn't finished yet. Try to solve that problem by starting a very long-lived
+# sccache server at the start of the build, but no need to worry if this fails.
+SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
+
+if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
+  $SRC/configure --enable-experimental-parallel-queries
+  CARGO_INCREMENTAL=0 python2.7 ../x.py check
+  rm -f config.toml
+  rm -rf build
 fi
 
 travis_fold start configure
@@ -83,11 +106,19 @@ make check-bootstrap
 travis_fold end check-bootstrap
 travis_time_finish
 
+# Display the CPU and memory information. This helps us know why the CI timing
+# is fluctuating.
+travis_fold start log-system-info
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+    system_profiler SPHardwareDataType || true
+    sysctl hw || true
     ncpus=$(sysctl -n hw.ncpu)
 else
+    cat /proc/cpuinfo || true
+    cat /proc/meminfo || true
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
+travis_fold end log-system-info
 
 if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"
@@ -96,7 +127,7 @@ else
     travis_fold start "make-$1"
     travis_time_start
     echo "make -j $ncpus $1"
-    make -j $ncpus "$1"
+    make -j $ncpus $1
     local retval=$?
     travis_fold end "make-$1"
     travis_time_finish

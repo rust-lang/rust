@@ -12,7 +12,6 @@
 
 #![crate_type="dylib"]
 #![feature(plugin_registrar, rustc_private)]
-#![feature(slice_patterns)]
 
 extern crate syntax;
 extern crate syntax_pos;
@@ -29,8 +28,8 @@ use rustc_plugin::Registry;
 // WARNING WARNING WARNING WARNING WARNING
 // =======================================
 //
-// This code also appears in src/doc/guide-plugin.md. Please keep
-// the two copies in sync!  FIXME: have rustdoc read this file
+// This code also appears in src/doc/unstable-book/src/language-features/plugin.md.
+// Please keep the two copies in sync!  FIXME: have rustdoc read this file
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
@@ -49,7 +48,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     }
 
     let text = match args[0] {
-        TokenTree::Token(_, token::Ident(s)) => s.to_string(),
+        TokenTree::Token(_, token::Ident(s, _)) => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
             return DummyResult::any(sp);

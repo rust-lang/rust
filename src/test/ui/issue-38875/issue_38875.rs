@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue_38875_b.rs
+// compile-pass
 
 extern crate issue_38875_b;
 

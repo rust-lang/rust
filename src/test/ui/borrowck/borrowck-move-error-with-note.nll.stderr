@@ -1,0 +1,46 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-error-with-note.rs:21:11
+   |
+LL |     match *f {             //~ ERROR cannot move out of
+   |           ^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider removing this dereference operator: `f`
+LL |                            //~| cannot move out
+LL |         Foo::Foo1(num1,
+   |                   ---- move occurs because num1 has type `std::boxed::Box<u32>`, which does not implement the `Copy` trait
+LL |                   num2) => (),
+   |                   ---- move occurs because num2 has type `std::boxed::Box<u32>`, which does not implement the `Copy` trait
+LL |         Foo::Foo2(num) => (),
+   |                   --- move occurs because num has type `std::boxed::Box<u32>`, which does not implement the `Copy` trait
+
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-error-with-note.rs:39:11
+   |
+LL |     match (S {f: "foo".to_string(), g: "bar".to_string()}) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of here
+help: to prevent move, use ref or ref mut
+   |
+LL |             f: ref _s,
+   |                ^^^^^^
+help: to prevent move, use ref or ref mut
+   |
+LL |             g: ref _t
+   |                ^^^^^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-error-with-note.rs:57:11
+   |
+LL |     match a.a {           //~ ERROR cannot move out of
+   |           ^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider using a reference instead: `&a.a`
+LL |                           //~| cannot move out
+LL |         n => {
+   |         - move occurs because n has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0507, E0509.
+For more information about an error, try `rustc --explain E0507`.

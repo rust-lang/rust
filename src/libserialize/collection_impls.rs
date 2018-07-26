@@ -14,6 +14,8 @@ use std::hash::{Hash, BuildHasher};
 
 use {Decodable, Encodable, Decoder, Encoder};
 use std::collections::{LinkedList, VecDeque, BTreeMap, BTreeSet, HashMap, HashSet};
+use std::rc::Rc;
+use std::sync::Arc;
 
 impl<
     T: Encodable
@@ -65,7 +67,7 @@ impl<T:Decodable> Decodable for VecDeque<T> {
 
 impl<
     K: Encodable + PartialEq + Ord,
-    V: Encodable + PartialEq
+    V: Encodable
 > Encodable for BTreeMap<K, V> {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         e.emit_map(self.len(), |e| {
@@ -82,7 +84,7 @@ impl<
 
 impl<
     K: Decodable + PartialEq + Ord,
-    V: Decodable + PartialEq
+    V: Decodable
 > Decodable for BTreeMap<K, V> {
     fn decode<D: Decoder>(d: &mut D) -> Result<BTreeMap<K, V>, D::Error> {
         d.read_map(|d, len| {
@@ -191,6 +193,52 @@ impl<T, S> Decodable for HashSet<T, S>
                 set.insert(d.read_seq_elt(i, |d| Decodable::decode(d))?);
             }
             Ok(set)
+        })
+    }
+}
+
+impl<T: Encodable> Encodable for Rc<[T]> {
+    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_seq(self.len(), |s| {
+            for (index, e) in self.iter().enumerate() {
+                s.emit_seq_elt(index, |s| e.encode(s))?;
+            }
+            Ok(())
+        })
+    }
+}
+
+impl<T: Decodable> Decodable for Rc<[T]> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Rc<[T]>, D::Error> {
+        d.read_seq(|d, len| {
+            let mut vec = Vec::with_capacity(len);
+            for index in 0..len {
+                vec.push(d.read_seq_elt(index, |d| Decodable::decode(d))?);
+            }
+            Ok(vec.into())
+        })
+    }
+}
+
+impl<T: Encodable> Encodable for Arc<[T]> {
+    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_seq(self.len(), |s| {
+            for (index, e) in self.iter().enumerate() {
+                s.emit_seq_elt(index, |s| e.encode(s))?;
+            }
+            Ok(())
+        })
+    }
+}
+
+impl<T: Decodable> Decodable for Arc<[T]> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Arc<[T]>, D::Error> {
+        d.read_seq(|d, len| {
+            let mut vec = Vec::with_capacity(len);
+            for index in 0..len {
+                vec.push(d.read_seq_elt(index, |d| Decodable::decode(d))?);
+            }
+            Ok(vec.into())
         })
     }
 }

@@ -1,0 +1,19 @@
+warning: not reporting region error due to nll
+  --> $DIR/ex3-both-anon-regions-self-is-anon.rs:17:19
+   |
+LL |         if true { x } else { self } //~ ERROR lifetime mismatch
+   |                   ^
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-self-is-anon.rs:17:9
+   |
+LL |     fn foo<'a>(&self, x: &Foo) -> &Foo {
+   |                          ----     ----
+   |                          |
+   |                          this parameter and the return type are declared with different lifetimes...
+LL |         if true { x } else { self } //~ ERROR lifetime mismatch
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...but data from `x` is returned here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

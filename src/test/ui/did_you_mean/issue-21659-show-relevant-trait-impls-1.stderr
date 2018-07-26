@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `Bar: Foo<usize>` is not satisfied
   --> $DIR/issue-21659-show-relevant-trait-impls-1.rs:34:8
    |
-34 |     f1.foo(1usize);
+LL |     f1.foo(1usize);
    |        ^^^ the trait `Foo<usize>` is not implemented for `Bar`
    |
    = help: the following implementations were found:
@@ -10,3 +10,4 @@ error[E0277]: the trait bound `Bar: Foo<usize>` is not satisfied
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.

@@ -28,6 +28,7 @@ use util::nodemap::FxHashMap;
 
 use syntax::ast;
 use syntax::symbol::Symbol;
+use syntax_pos::Span;
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir;
 
@@ -40,7 +41,7 @@ macro_rules! language_item_table {
 
 
 enum_from_u32! {
-    #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
     pub enum LangItem {
         $($variant,)*
     }
@@ -104,17 +105,18 @@ struct LanguageItemCollector<'a, 'tcx: 'a> {
 
 impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        if let Some(value) = extract(&item.attrs) {
+        if let Some((value, span)) = extract(&item.attrs) {
             let item_index = self.item_refs.get(&*value.as_str()).cloned();
 
             if let Some(item_index) = item_index {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 self.collect_item(item_index, def_id);
             } else {
-                let span = self.tcx.hir.span(item.id);
-                span_err!(self.tcx.sess, span, E0522,
-                          "definition of an unknown language item: `{}`.",
-                          value);
+                let mut err = struct_span_err!(self.tcx.sess, span, E0522,
+                                               "definition of an unknown language item: `{}`",
+                                               value);
+                err.span_label(span, format!("definition of unknown language item `{}`", value));
+                err.emit();
             }
         }
     }
@@ -177,12 +179,16 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 }
 
-pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
+pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     for attribute in attrs {
         if attribute.check_name("lang") {
             if let Some(value) = attribute.value_str() {
-                return Some(value)
+                return Some((value, attribute.span));
             }
+        } else if attribute.check_name("panic_implementation") {
+            return Some((Symbol::intern("panic_impl"), attribute.span))
+        } else if attribute.check_name("alloc_error_handler") {
+            return Some((Symbol::intern("oom"), attribute.span))
         }
     }
 
@@ -211,6 +217,10 @@ language_item_table! {
     CharImplItem,                    "char",                    char_impl;
     StrImplItem,                     "str",                     str_impl;
     SliceImplItem,                   "slice",                   slice_impl;
+    SliceU8ImplItem,                 "slice_u8",                slice_u8_impl;
+    StrAllocImplItem,                "str_alloc",               str_alloc_impl;
+    SliceAllocImplItem,              "slice_alloc",             slice_alloc_impl;
+    SliceU8AllocImplItem,            "slice_u8_alloc",          slice_u8_alloc_impl;
     ConstPtrImplItem,                "const_ptr",               const_ptr_impl;
     MutPtrImplItem,                  "mut_ptr",                 mut_ptr_impl;
     I8ImplItem,                      "i8",                      i8_impl;
@@ -227,8 +237,9 @@ language_item_table! {
     UsizeImplItem,                   "usize",                   usize_impl;
     F32ImplItem,                     "f32",                     f32_impl;
     F64ImplItem,                     "f64",                     f64_impl;
+    F32RuntimeImplItem,              "f32_runtime",             f32_runtime_impl;
+    F64RuntimeImplItem,              "f64_runtime",             f64_runtime_impl;
 
-    SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
@@ -278,6 +289,7 @@ language_item_table! {
     GeneratorTraitLangItem,          "generator",               gen_trait;
 
     EqTraitLangItem,                 "eq",                      eq_trait;
+    PartialOrdTraitLangItem,         "partial_ord",             partial_ord_trait;
     OrdTraitLangItem,                "ord",                     ord_trait;
 
     // A number of panic-related lang items. The `panic` item corresponds to
@@ -291,11 +303,14 @@ language_item_table! {
     // lang item, but do not have it defined.
     PanicFnLangItem,                 "panic",                   panic_fn;
     PanicBoundsCheckFnLangItem,      "panic_bounds_check",      panic_bounds_check_fn;
-    PanicFmtLangItem,                "panic_fmt",               panic_fmt;
+    PanicInfoLangItem,               "panic_info",              panic_info;
+    PanicImplLangItem,               "panic_impl",              panic_impl;
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     BoxFreeFnLangItem,               "box_free",                box_free_fn;
-    DropInPlaceFnLangItem,             "drop_in_place",           drop_in_place_fn;
+    DropInPlaceFnLangItem,           "drop_in_place",           drop_in_place_fn;
+    OomLangItem,                     "oom",                     oom;
+    AllocLayoutLangItem,             "alloc_layout",            alloc_layout;
 
     StartFnLangItem,                 "start",                   start_fn;
 
@@ -310,6 +325,39 @@ language_item_table! {
     NonZeroItem,                     "non_zero",                non_zero;
 
     DebugTraitLangItem,              "debug_trait",             debug_trait;
+
+    // A lang item for each of the 128-bit operators we can optionally lower.
+    I128AddFnLangItem,               "i128_add",                i128_add_fn;
+    U128AddFnLangItem,               "u128_add",                u128_add_fn;
+    I128SubFnLangItem,               "i128_sub",                i128_sub_fn;
+    U128SubFnLangItem,               "u128_sub",                u128_sub_fn;
+    I128MulFnLangItem,               "i128_mul",                i128_mul_fn;
+    U128MulFnLangItem,               "u128_mul",                u128_mul_fn;
+    I128DivFnLangItem,               "i128_div",                i128_div_fn;
+    U128DivFnLangItem,               "u128_div",                u128_div_fn;
+    I128RemFnLangItem,               "i128_rem",                i128_rem_fn;
+    U128RemFnLangItem,               "u128_rem",                u128_rem_fn;
+    I128ShlFnLangItem,               "i128_shl",                i128_shl_fn;
+    U128ShlFnLangItem,               "u128_shl",                u128_shl_fn;
+    I128ShrFnLangItem,               "i128_shr",                i128_shr_fn;
+    U128ShrFnLangItem,               "u128_shr",                u128_shr_fn;
+    // And overflow versions for the operators that are checkable.
+    // While MIR calls these Checked*, they return (T,bool), not Option<T>.
+    I128AddoFnLangItem,              "i128_addo",               i128_addo_fn;
+    U128AddoFnLangItem,              "u128_addo",               u128_addo_fn;
+    I128SuboFnLangItem,              "i128_subo",               i128_subo_fn;
+    U128SuboFnLangItem,              "u128_subo",               u128_subo_fn;
+    I128MuloFnLangItem,              "i128_mulo",               i128_mulo_fn;
+    U128MuloFnLangItem,              "u128_mulo",               u128_mulo_fn;
+    I128ShloFnLangItem,              "i128_shlo",               i128_shlo_fn;
+    U128ShloFnLangItem,              "u128_shlo",               u128_shlo_fn;
+    I128ShroFnLangItem,              "i128_shro",               i128_shro_fn;
+    U128ShroFnLangItem,              "u128_shro",               u128_shro_fn;
+
+    // Align offset for stride != 1, must not panic.
+    AlignOffsetLangItem,             "align_offset",            align_offset_fn;
+
+    TerminationTraitLangItem,        "termination",             termination;
 }
 
 impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {

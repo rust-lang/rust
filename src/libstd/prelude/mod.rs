@@ -52,7 +52,7 @@
 //! # Prelude contents
 //!
 //! The current version of the prelude (version 1) lives in
-//! [`std::prelude::v1`], and reexports the following.
+//! [`std::prelude::v1`], and re-exports the following.
 //!
 //! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`]}. The marker
 //!   traits indicate fundamental properties of types.

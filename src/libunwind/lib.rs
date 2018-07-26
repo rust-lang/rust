@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(bare_trait_objects)]
+
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
-#![deny(warnings)]
 
 #![feature(cfg_target_vendor)]
 #![feature(link_cfg)]
@@ -20,15 +21,22 @@
 
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 
-#[cfg(not(target_env = "msvc"))]
-extern crate libc;
+#[macro_use]
+mod macros;
 
-#[cfg(not(target_env = "msvc"))]
-mod libunwind;
-#[cfg(not(target_env = "msvc"))]
-pub use libunwind::*;
+cfg_if! {
+    if #[cfg(target_env = "msvc")] {
+        // no extra unwinder support needed
+    } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
+        // no unwinder on the system!
+    } else {
+        extern crate libc;
+        mod libunwind;
+        pub use libunwind::*;
+    }
+}
 
-#[cfg(all(target_env = "musl", not(target_arch = "mips")))]
+#[cfg(target_env = "musl")]
 #[link(name = "unwind", kind = "static", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern {}

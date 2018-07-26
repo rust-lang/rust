@@ -18,10 +18,10 @@ pub fn main() {
         let _result: Result<(), &str> = do catch {
             let my_string = String::from("");
             let my_str: & str = & my_string;
+            //~^ ERROR `my_string` does not live long enough
             Err(my_str) ?;
             Err("") ?;
-            Ok(())
-        }; //~ ERROR `my_string` does not live long enough
+        };
     }
 
     {
@@ -31,7 +31,6 @@ pub fn main() {
         let mut j: Result<(), &mut i32> = do catch {
             Err(k) ?;
             i = 10; //~ ERROR cannot assign to `i` because it is borrowed
-            Ok(())
         };
         ::std::mem::drop(k); //~ ERROR use of moved value: `k`
         i = 40; //~ ERROR cannot assign to `i` because it is borrowed

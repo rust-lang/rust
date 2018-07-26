@@ -9,9 +9,14 @@
 // except according to those terms.
 
 fn f() {
-    let x = vec![1].iter();
+    let mut x = vec![1].iter();
+    //~^ ERROR borrowed value does not live long enough
+    x.use_mut();
 }
 
 fn main() {
     f();
 }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

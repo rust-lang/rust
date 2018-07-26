@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-emscripten no processes
 // ignore-android
+// ignore-cloudabi no processes
+// ignore-emscripten no processes
 
 #![feature(libc)]
 

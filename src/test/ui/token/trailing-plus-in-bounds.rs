@@ -18,4 +18,3 @@ fn main() {
 
 FAIL
 //~^ ERROR
-//~| ERROR

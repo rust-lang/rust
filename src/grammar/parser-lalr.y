@@ -1400,7 +1400,6 @@ nonblock_expr
 | BREAK lifetime                                                { $$ = mk_node("ExprBreak", 1, $2); }
 | YIELD                                                         { $$ = mk_node("ExprYield", 0); }
 | YIELD expr                                                    { $$ = mk_node("ExprYield", 1, $2); }
-| nonblock_expr LARROW expr                                     { $$ = mk_node("ExprInPlace", 2, $1, $3); }
 | nonblock_expr '=' expr                                        { $$ = mk_node("ExprAssign", 2, $1, $3); }
 | nonblock_expr SHLEQ expr                                      { $$ = mk_node("ExprAssignShl", 2, $1, $3); }
 | nonblock_expr SHREQ expr                                      { $$ = mk_node("ExprAssignShr", 2, $1, $3); }
@@ -1463,7 +1462,6 @@ expr
 | BREAK ident                                         { $$ = mk_node("ExprBreak", 1, $2); }
 | YIELD                                               { $$ = mk_node("ExprYield", 0); }
 | YIELD expr                                          { $$ = mk_node("ExprYield", 1, $2); }
-| expr LARROW expr                                    { $$ = mk_node("ExprInPlace", 2, $1, $3); }
 | expr '=' expr                                       { $$ = mk_node("ExprAssign", 2, $1, $3); }
 | expr SHLEQ expr                                     { $$ = mk_node("ExprAssignShl", 2, $1, $3); }
 | expr SHREQ expr                                     { $$ = mk_node("ExprAssignShr", 2, $1, $3); }
@@ -1527,7 +1525,6 @@ expr_nostruct
 | BREAK ident                                         { $$ = mk_node("ExprBreak", 1, $2); }
 | YIELD                                               { $$ = mk_node("ExprYield", 0); }
 | YIELD expr                                          { $$ = mk_node("ExprYield", 1, $2); }
-| expr_nostruct LARROW expr_nostruct                  { $$ = mk_node("ExprInPlace", 2, $1, $3); }
 | expr_nostruct '=' expr_nostruct                     { $$ = mk_node("ExprAssign", 2, $1, $3); }
 | expr_nostruct SHLEQ expr_nostruct                   { $$ = mk_node("ExprAssignShl", 2, $1, $3); }
 | expr_nostruct SHREQ expr_nostruct                   { $$ = mk_node("ExprAssignShr", 2, $1, $3); }

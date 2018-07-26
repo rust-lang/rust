@@ -12,11 +12,11 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
+#![deny(bare_trait_objects)]
 
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
 
 #![feature(box_syntax)]
 #![feature(concat_idents)]
@@ -74,22 +74,19 @@ pub fn AddFunctionAttrStringValue(llfn: ValueRef,
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub enum AttributePlace {
+    ReturnValue,
     Argument(u32),
     Function,
 }
 
 impl AttributePlace {
-    pub fn ReturnValue() -> Self {
-        AttributePlace::Argument(0)
-    }
-
     pub fn as_uint(self) -> c_uint {
         match self {
+            AttributePlace::ReturnValue => 0,
+            AttributePlace::Argument(i) => 1 + i,
             AttributePlace::Function => !0,
-            AttributePlace::Argument(i) => i,
         }
     }
 }
@@ -108,7 +105,6 @@ impl FromStr for ArchiveKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "gnu" => Ok(ArchiveKind::K_GNU),
-            "mips64" => Ok(ArchiveKind::K_MIPS64),
             "bsd" => Ok(ArchiveKind::K_BSD),
             "coff" => Ok(ArchiveKind::K_COFF),
             _ => Err(()),
@@ -143,7 +139,7 @@ pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
     }
 }
 
-// Externally visible symbols that might appear in multiple translation units need to appear in
+// Externally visible symbols that might appear in multiple codegen units need to appear in
 // their own comdat section so that the duplicates can be discarded at link time. This can for
 // example happen for generics when using multiple codegen units. This function simply uses the
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
@@ -170,6 +166,11 @@ pub fn SetUnnamedAddr(global: ValueRef, unnamed: bool) {
 pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
     unsafe {
         LLVMSetThreadLocal(global, is_thread_local as Bool);
+    }
+}
+pub fn set_thread_local_mode(global: ValueRef, mode: ThreadLocalMode) {
+    unsafe {
+        LLVMSetThreadLocalMode(global, mode);
     }
 }
 
@@ -219,6 +220,8 @@ fn mk_target_data(string_rep: &str) -> TargetData {
 pub struct ObjectFile {
     pub llof: ObjectFileRef,
 }
+
+unsafe impl Send for ObjectFile {}
 
 impl ObjectFile {
     // This will take ownership of llmb
@@ -294,11 +297,6 @@ pub unsafe fn twine_to_string(tr: TwineRef) -> String {
     build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")
 }
 
-pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
-    build_string(|s| LLVMRustWriteDebugLocToString(c, tr, s))
-        .expect("got a non-UTF8 DebugLoc from LLVM")
-}
-
 pub fn initialize_available_targets() {
     macro_rules! init_target(
         ($cfg:meta, $($method:ident),*) => { {
@@ -334,6 +332,12 @@ pub fn initialize_available_targets() {
                  LLVMInitializeAArch64TargetMC,
                  LLVMInitializeAArch64AsmPrinter,
                  LLVMInitializeAArch64AsmParser);
+    init_target!(llvm_component = "amdgpu",
+                 LLVMInitializeAMDGPUTargetInfo,
+                 LLVMInitializeAMDGPUTarget,
+                 LLVMInitializeAMDGPUTargetMC,
+                 LLVMInitializeAMDGPUAsmPrinter,
+                 LLVMInitializeAMDGPUAsmParser);
     init_target!(llvm_component = "mips",
                  LLVMInitializeMipsTargetInfo,
                  LLVMInitializeMipsTarget,

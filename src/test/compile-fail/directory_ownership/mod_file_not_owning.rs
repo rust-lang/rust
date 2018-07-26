@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: cannot declare a new module at this location
+// error-pattern: mod statements in non-mod.rs files are unstable
 
 mod mod_file_not_owning_aux1;
 

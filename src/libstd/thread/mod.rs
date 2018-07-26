@@ -25,11 +25,15 @@
 //!
 //! Fatal logic errors in Rust cause *thread panic*, during which
 //! a thread will unwind the stack, running destructors and freeing
-//! owned resources. Thread panic is unrecoverable from within
-//! the panicking thread (i.e. there is no 'try/catch' in Rust), but
-//! the panic may optionally be detected from a different thread. If
-//! the main thread panics, the application will exit with a non-zero
-//! exit code.
+//! owned resources. While not meant as a 'try/catch' mechanism, panics
+//! in Rust can nonetheless be caught (unless compiling with `panic=abort`) with
+//! [`catch_unwind`](../../std/panic/fn.catch_unwind.html) and recovered
+//! from, or alternatively be resumed with
+//! [`resume_unwind`](../../std/panic/fn.resume_unwind.html). If the panic
+//! is not caught the thread will exit, but the panic may optionally be
+//! detected from a different thread with [`join`]. If the main thread panics
+//! without the panic being caught, the application will exit with a
+//! non-zero exit code.
 //!
 //! When the main thread of a Rust program terminates, the entire program shuts
 //! down, even if other threads are still running. However, this module provides
@@ -187,7 +191,7 @@ use time::Duration;
 #[macro_use] mod local;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::local::{LocalKey, LocalKeyState, AccessError};
+pub use self::local::{LocalKey, AccessError};
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key
@@ -198,6 +202,9 @@ pub use self::local::{LocalKey, LocalKeyState, AccessError};
 // where fast TLS was not available; end-user code is compiled with fast TLS
 // where available, but both are needed.
 
+#[unstable(feature = "libstd_thread_internals", issue = "0")]
+#[cfg(target_arch = "wasm32")]
+#[doc(hidden)] pub use self::local::statik::Key as __StaticLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[cfg(target_thread_local)]
 #[doc(hidden)] pub use self::local::fast::Key as __FastLocalKeyInner;
@@ -648,7 +655,7 @@ pub fn panicking() -> bool {
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// On Unix platforms this function will not return early due to a
 /// signal being received or a spurious wakeup.
@@ -672,7 +679,7 @@ pub fn sleep_ms(ms: u32) {
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// On Unix platforms this function will not return early due to a
 /// signal being received or a spurious wakeup. Platforms which do not support
@@ -789,7 +796,10 @@ pub fn park() {
     let mut m = thread.inner.lock.lock().unwrap();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
-        Err(NOTIFIED) => return, // notified after we locked
+        Err(NOTIFIED) => {
+            thread.inner.state.store(EMPTY, SeqCst);
+            return;
+        } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park state"),
     }
     loop {
@@ -833,7 +843,7 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// See the [park documentation][park] for more details.
 ///
-/// # Platform behavior
+/// # Platform-specific behavior
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
@@ -875,7 +885,10 @@ pub fn park_timeout(dur: Duration) {
     let m = thread.inner.lock.lock().unwrap();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
-        Err(NOTIFIED) => return, // notified after we locked
+        Err(NOTIFIED) => {
+            thread.inner.state.store(EMPTY, SeqCst);
+            return;
+        } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park_timeout state"),
     }
 
@@ -928,19 +941,16 @@ impl ThreadId {
         static mut COUNTER: u64 = 0;
 
         unsafe {
-            GUARD.lock();
+            let _guard = GUARD.lock();
 
             // If we somehow use up all our bits, panic so that we're not
             // covering up subtle bugs of IDs being reused.
             if COUNTER == ::u64::MAX {
-                GUARD.unlock();
                 panic!("failed to generate unique thread ID: bitspace exhausted");
             }
 
             let id = COUNTER;
             COUNTER += 1;
-
-            GUARD.unlock();
 
             ThreadId(id)
         }

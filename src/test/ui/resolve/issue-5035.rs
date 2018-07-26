@@ -11,7 +11,6 @@
 trait I {}
 type K = I;
 impl K for isize {} //~ ERROR expected trait, found type alias `K`
-                    //~| NOTE type aliases cannot be used for traits
 
 use ImportError; //~ ERROR unresolved import `ImportError` [E0432]
                  //~^ no `ImportError` in the root

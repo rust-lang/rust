@@ -10,7 +10,9 @@
 
 // ignore-emscripten i128 doesn't work
 
-#![feature(i128_type, test)]
+// compile-flags: -Z borrowck=compare
+
+#![feature(test)]
 
 extern crate test;
 use test::black_box as b;

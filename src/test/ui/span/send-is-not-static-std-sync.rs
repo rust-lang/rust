@@ -23,8 +23,10 @@ fn mutex() {
     drop(y); //~ ERROR cannot move out
     {
         let z = 2;
-        *lock.lock().unwrap() = &z; //~ ERROR does not live long enough
+        *lock.lock().unwrap() = &z;
     }
+    //~^^ ERROR `z` does not live long enough
+    lock.use_ref(); // (Mutex is #[may_dangle] so its dtor does not use `z` => needs explicit use)
 }
 
 fn rwlock() {
@@ -35,8 +37,10 @@ fn rwlock() {
     drop(y); //~ ERROR cannot move out
     {
         let z = 2;
-        *lock.write().unwrap() = &z; //~ ERROR does not live long enough
+        *lock.write().unwrap() = &z;
     }
+    //~^^ ERROR `z` does not live long enough
+    lock.use_ref(); // (RwLock is #[may_dangle] so its dtor does not use `z` => needs explicit use)
 }
 
 fn channel() {
@@ -49,8 +53,13 @@ fn channel() {
     drop(y); //~ ERROR cannot move out
     {
         let z = 2;
-        tx.send(&z).unwrap(); //~ ERROR does not live long enough
+        tx.send(&z).unwrap();
     }
+    //~^^ ERROR `z` does not live long enough
+    // (channels lack #[may_dangle], thus their dtors are implicit uses of `z`)
 }
 
 fn main() {}
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

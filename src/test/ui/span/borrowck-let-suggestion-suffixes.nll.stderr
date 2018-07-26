@@ -1,0 +1,36 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:28:14
+   |
+LL |     v3.push(&id('x'));           // statement 6
+   |              ^^^^^^^ - temporary value only lives until here
+   |              |
+   |              temporary value does not live long enough
+...
+LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
+   |              -- borrow later used here
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:38:18
+   |
+LL |         v4.push(&id('y'));
+   |                  ^^^^^^^ - temporary value only lives until here
+   |                  |
+   |                  temporary value does not live long enough
+...
+LL |         v4.use_ref();
+   |         -- borrow later used here
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:49:14
+   |
+LL |     v5.push(&id('z'));
+   |              ^^^^^^^ - temporary value only lives until here
+   |              |
+   |              temporary value does not live long enough
+...
+LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
+   |                                     -- borrow later used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

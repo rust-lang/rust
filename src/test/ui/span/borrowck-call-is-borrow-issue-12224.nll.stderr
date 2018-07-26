@@ -1,0 +1,56 @@
+error[E0499]: cannot borrow `f` as mutable more than once at a time
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:22:16
+   |
+LL |       f(Box::new(|| {
+   |       -          ^^ second mutable borrow occurs here
+   |       |
+   |  _____first mutable borrow occurs here
+   | |
+LL | |     //~^ ERROR: cannot borrow `f` as mutable more than once
+LL | |         f((Box::new(|| {})))
+   | |         - borrow occurs due to use of `f` in closure
+LL | |     }));
+   | |_______- borrow later used here
+
+error[E0596]: cannot borrow `*f` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:35:5
+   |
+LL | fn test2<F>(f: &F) where F: FnMut() {
+   |                -- help: consider changing this to be a mutable reference: `&mut F`
+LL |     (*f)();
+   |     ^^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+
+error[E0596]: cannot borrow `*f.f` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:44:5
+   |
+LL | fn test4(f: &Test) {
+   |             ----- help: consider changing this to be a mutable reference: `&mut Test<'_>`
+LL |     f.f.call_mut(())
+   |     ^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
+   |
+LL |         foo(f);
+   |             ^ cannot move out of captured variable in an `FnMut` closure
+
+error[E0505]: cannot move out of `f` because it is borrowed
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:65:16
+   |
+LL |        f(Box::new(|a| {
+   |   _____-__________^
+   |  |     |
+   |  |_____borrow of `f` occurs here
+   | ||
+LL | ||         foo(f);
+LL | ||         //~^ ERROR cannot move `f` into closure because it is borrowed
+LL | ||         //~| ERROR cannot move out of captured outer variable in an `FnMut` closure
+LL | ||     }), 3);
+   | ||_____^____- borrow later used here
+   |  |_____|
+   |        move out of `f` occurs here
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0499, E0505, E0507, E0596.
+For more information about an error, try `rustc --explain E0499`.

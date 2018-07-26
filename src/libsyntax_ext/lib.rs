@@ -10,21 +10,35 @@
 
 //! Syntax extensions in the Rust compiler.
 
+#![deny(bare_trait_objects)]
+
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
 
 #![feature(proc_macro_internals)]
+#![feature(decl_macro)]
+#![feature(str_escape)]
+
+#![feature(rustc_diagnostic_macros)]
 
 extern crate fmt_macros;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
 extern crate proc_macro;
+extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
+extern crate rustc_target;
+
+mod diagnostics;
+
+#[macro_use]
+// for custom_derive
+pub mod deriving;
 
 mod asm;
+mod assert;
 mod cfg;
 mod compile_error;
 mod concat;
@@ -38,23 +52,22 @@ mod trace_macros;
 
 pub mod proc_macro_registrar;
 
-// for custom_derive
-pub mod deriving;
 
 pub mod proc_macro_impl;
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
+use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
 
-pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
+pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                          user_exts: Vec<NamedSyntaxExtension>,
                          enable_quotes: bool) {
     deriving::register_builtin_derives(resolver);
 
     let mut register = |name, ext| {
-        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
+        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
     };
 
     macro_rules! register {
@@ -65,6 +78,9 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                         def_info: None,
                         allow_internal_unstable: false,
                         allow_internal_unsafe: false,
+                        local_inner_macros: false,
+                        unstable_feature: None,
+                        edition: hygiene::default_edition(),
                     });
         )* }
     }
@@ -109,6 +125,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
         log_syntax: log_syntax::expand_syntax_ext,
         trace_macros: trace_macros::expand_trace_macros,
         compile_error: compile_error::expand_compile_error,
+        assert: assert::expand_assert,
     }
 
     // format_args uses `unstable` things internally.
@@ -118,7 +135,20 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                 def_info: None,
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
+                local_inner_macros: false,
+                unstable_feature: None,
+                edition: hygiene::default_edition(),
             });
+    register(Symbol::intern("format_args_nl"),
+             NormalTT {
+                 expander: Box::new(format::expand_format_args_nl),
+                 def_info: None,
+                 allow_internal_unstable: true,
+                 allow_internal_unsafe: false,
+                 local_inner_macros: false,
+                 unstable_feature: None,
+                 edition: hygiene::default_edition(),
+             });
 
     for (name, ext) in user_exts {
         register(name, ext);

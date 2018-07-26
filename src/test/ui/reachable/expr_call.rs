@@ -7,12 +7,11 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+#![feature(never_type)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![feature(never_type)]
 
 fn foo(x: !, y: usize) { }
 
@@ -20,12 +19,12 @@ fn bar(x: !) { }
 
 fn a() {
     // the `22` is unreachable:
-    foo(return, 22);
+    foo(return, 22); //~ ERROR unreachable
 }
 
 fn b() {
     // the call is unreachable:
-    bar(return);
+    bar(return); //~ ERROR unreachable
 }
 
 fn main() { }

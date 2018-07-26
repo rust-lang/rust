@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(match_default_bindings)]
-
 enum Wrapper {
     Wrap(i32),
 }
@@ -18,17 +16,17 @@ use Wrapper::Wrap;
 
 pub fn main() {
     let Wrap(x) = &Wrap(3);
-    *x += 1;
+    *x += 1; //~ ERROR cannot assign to immutable
 
 
     if let Some(x) = &Some(3) {
-        *x += 1;
+        *x += 1; //~ ERROR cannot assign to immutable
     } else {
         panic!();
     }
 
     while let Some(x) = &Some(3) {
-        *x += 1;
+        *x += 1; //~ ERROR cannot assign to immutable
         break;
     }
 }

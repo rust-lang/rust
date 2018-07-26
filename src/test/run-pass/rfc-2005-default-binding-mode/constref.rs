@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(match_default_bindings)]
-
 const CONST_REF: &[u8; 3] = b"foo";
 
 trait Foo {

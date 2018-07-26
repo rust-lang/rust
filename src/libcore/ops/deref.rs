@@ -18,7 +18,7 @@
 /// Implementing `Deref` for smart pointers makes accessing the data behind them
 /// convenient, which is why they implement `Deref`. On the other hand, the
 /// rules regarding `Deref` and [`DerefMut`] were designed specifically to
-/// accomodate smart pointers. Because of this, **`Deref` should only be
+/// accommodate smart pointers. Because of this, **`Deref` should only be
 /// implemented for smart pointers** to avoid confusion.
 ///
 /// For similar reasons, **this trait should never fail**. Failure during
@@ -35,13 +35,13 @@
 ///
 /// For more details, visit [the chapter in *The Rust Programming Language*]
 /// [book] as well as the reference sections on [the dereference operator]
-/// [ref-deref-op], [the `Deref` trait][ref-deref-trait], and [type coercions].
+/// [ref-deref-op], [method resolution] and [type coercions].
 ///
 /// [book]: ../../book/second-edition/ch15-02-deref.html
 /// [`DerefMut`]: trait.DerefMut.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
-/// [ref-deref-trait]: ../../reference/the-deref-trait.html
+/// [method resolution]: ../../reference/expressions/method-call-expr.html
 /// [type coercions]: ../../reference/type-coercions.html
 ///
 /// # Examples
@@ -68,6 +68,8 @@
 /// assert_eq!('a', *x);
 /// ```
 #[lang = "deref"]
+#[doc(alias = "*")]
+#[doc(alias = "&*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Deref {
     /// The resulting type after dereferencing.
@@ -75,6 +77,7 @@ pub trait Deref {
     type Target: ?Sized;
 
     /// Dereferences the value.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn deref(&self) -> &Self::Target;
 }
@@ -103,7 +106,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// Implementing `DerefMut` for smart pointers makes mutating the data behind
 /// them convenient, which is why they implement `DerefMut`. On the other hand,
 /// the rules regarding [`Deref`] and `DerefMut` were designed specifically to
-/// accomodate smart pointers. Because of this, **`DerefMut` should only be
+/// accommodate smart pointers. Because of this, **`DerefMut` should only be
 /// implemented for smart pointers** to avoid confusion.
 ///
 /// For similar reasons, **this trait should never fail**. Failure during
@@ -122,13 +125,13 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 ///
 /// For more details, visit [the chapter in *The Rust Programming Language*]
 /// [book] as well as the reference sections on [the dereference operator]
-/// [ref-deref-op], [the `Deref` trait][ref-deref-trait], and [type coercions].
+/// [ref-deref-op], [method resolution] and [type coercions].
 ///
 /// [book]: ../../book/second-edition/ch15-02-deref.html
 /// [`Deref`]: trait.Deref.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
-/// [ref-deref-trait]: ../../reference/the-deref-trait.html
+/// [method resolution]: ../../reference/expressions/method-call-expr.html
 /// [type coercions]: ../../reference/type-coercions.html
 ///
 /// # Examples
@@ -162,6 +165,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// assert_eq!('b', *x);
 /// ```
 #[lang = "deref_mut"]
+#[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait DerefMut: Deref {
     /// Mutably dereferences the value.

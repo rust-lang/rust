@@ -49,9 +49,11 @@ use sys::os as os_imp;
 /// ```
 /// use std::env;
 ///
-/// // We assume that we are in a valid directory.
-/// let path = env::current_dir().unwrap();
-/// println!("The current directory is {}", path.display());
+/// fn main() -> std::io::Result<()> {
+///     let path = env::current_dir()?;
+///     println!("The current directory is {}", path.display());
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_dir() -> io::Result<PathBuf> {
@@ -441,15 +443,18 @@ pub struct JoinPathsError {
 /// Joining paths on a Unix-like platform:
 ///
 /// ```
-/// # if cfg!(unix) {
 /// use std::env;
 /// use std::ffi::OsString;
 /// use std::path::Path;
 ///
-/// let paths = [Path::new("/bin"), Path::new("/usr/bin")];
-/// let path_os_string = env::join_paths(paths.iter()).unwrap();
-/// assert_eq!(path_os_string, OsString::from("/bin:/usr/bin"));
+/// fn main() -> Result<(), env::JoinPathsError> {
+/// # if cfg!(unix) {
+///     let paths = [Path::new("/bin"), Path::new("/usr/bin")];
+///     let path_os_string = env::join_paths(paths.iter())?;
+///     assert_eq!(path_os_string, OsString::from("/bin:/usr/bin"));
 /// # }
+///     Ok(())
+/// }
 /// ```
 ///
 /// Joining a path containing a colon on a Unix-like platform results in an error:
@@ -471,11 +476,15 @@ pub struct JoinPathsError {
 /// use std::env;
 /// use std::path::PathBuf;
 ///
-/// if let Some(path) = env::var_os("PATH") {
-///     let mut paths = env::split_paths(&path).collect::<Vec<_>>();
-///     paths.push(PathBuf::from("/home/xyz/bin"));
-///     let new_path = env::join_paths(paths).unwrap();
-///     env::set_var("PATH", &new_path);
+/// fn main() -> Result<(), env::JoinPathsError> {
+///     if let Some(path) = env::var_os("PATH") {
+///         let mut paths = env::split_paths(&path).collect::<Vec<_>>();
+///         paths.push(PathBuf::from("/home/xyz/bin"));
+///         let new_path = env::join_paths(paths)?;
+///         env::set_var("PATH", &new_path);
+///     }
+///
+///     Ok(())
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -503,18 +512,20 @@ impl Error for JoinPathsError {
 ///
 /// # Unix
 ///
-/// Returns the value of the 'HOME' environment variable if it is set
-/// and not equal to the empty string. Otherwise, it tries to determine the
-/// home directory by invoking the `getpwuid_r` function on the UID of the
-/// current user.
+/// - Returns the value of the 'HOME' environment variable if it is set
+///   (including to an empty string).
+/// - Otherwise, it tries to determine the home directory by invoking the `getpwuid_r` function
+///   using the UID of the current user. An empty home directory field returned from the
+///   `getpwuid_r` function is considered to be a valid value.
+/// - Returns `None` if the current user has no entry in the /etc/passwd file.
 ///
 /// # Windows
 ///
-/// Returns the value of the 'HOME' environment variable if it is
-/// set and not equal to the empty string. Otherwise, returns the value of the
-/// 'USERPROFILE' environment variable if it is set and not equal to the empty
-/// string. If both do not exist, [`GetUserProfileDirectory`][msdn] is used to
-/// return the appropriate path.
+/// - Returns the value of the 'HOME' environment variable if it is set
+///   (including to an empty string).
+/// - Otherwise, returns the value of the 'USERPROFILE' environment variable if it is set
+///   (including to an empty string).
+/// - If both do not exist, [`GetUserProfileDirectory`][msdn] is used to return the path.
 ///
 /// [msdn]: https://msdn.microsoft.com/en-us/library/windows/desktop/bb762280(v=vs.85).aspx
 ///
@@ -524,10 +535,13 @@ impl Error for JoinPathsError {
 /// use std::env;
 ///
 /// match env::home_dir() {
-///     Some(path) => println!("{}", path.display()),
+///     Some(path) => println!("Your home directory, probably: {}", path.display()),
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
+#[rustc_deprecated(since = "1.29.0",
+    reason = "This function's behavior is unexpected and probably not what you want. \
+              Consider using the home_dir function from https://crates.io/crates/dirs instead.")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()
@@ -552,17 +566,17 @@ pub fn home_dir() -> Option<PathBuf> {
 ///
 /// [msdn]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992(v=vs.85).aspx
 ///
-/// ```
+/// ```no_run
 /// use std::env;
 /// use std::fs::File;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let mut dir = env::temp_dir();
-/// dir.push("foo.txt");
+/// fn main() -> std::io::Result<()> {
+///     let mut dir = env::temp_dir();
+///     dir.push("foo.txt");
 ///
-/// let f = File::create(dir)?;
-/// # Ok(())
-/// # }
+///     let f = File::create(dir)?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn temp_dir() -> PathBuf {
@@ -571,8 +585,11 @@ pub fn temp_dir() -> PathBuf {
 
 /// Returns the full filesystem path of the current running executable.
 ///
-/// The path returned is not necessarily a "real path" of the executable as
-/// there may be intermediate symlinks.
+/// # Platform-specific behavior
+///
+/// If the executable was invoked through a symbolic link, some platforms will
+/// return the path of the symbolic link and other platforms will return the
+/// path of the symbolic link’s target.
 ///
 /// # Errors
 ///
@@ -599,14 +616,14 @@ pub fn temp_dir() -> PathBuf {
 /// Ok("/home/alex/foo")
 /// ```
 ///
-/// And you make a symbolic link of the program:
+/// And you make a hard link of the program:
 ///
 /// ```bash
 /// $ ln foo bar
 /// ```
 ///
-/// When you run it, you won't get the original executable, you'll get the
-/// symlink:
+/// When you run it, you won’t get the path of the original executable, you’ll
+/// get the path of the hard link:
 ///
 /// ```bash
 /// $ ./bar
@@ -614,9 +631,9 @@ pub fn temp_dir() -> PathBuf {
 /// ```
 ///
 /// This sort of behavior has been known to [lead to privilege escalation] when
-/// used incorrectly, for example.
+/// used incorrectly.
 ///
-/// [lead to privilege escalation]: http://securityvulns.com/Wdocument183.html
+/// [lead to privilege escalation]: https://securityvulns.com/Wdocument183.html
 ///
 /// # Examples
 ///
@@ -625,7 +642,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// match env::current_exe() {
 ///     Ok(exe_path) => println!("Path of this executable is: {}",
-///                               exe_path.display()),
+///                              exe_path.display()),
 ///     Err(e) => println!("failed to get current exe path: {}", e),
 /// };
 /// ```
@@ -670,6 +687,10 @@ pub struct ArgsOs { inner: sys::args::Args }
 /// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and may not even exist. This means this property should
 /// not be relied upon for security purposes.
+///
+/// On Unix systems shell usually expands unquoted arguments with glob patterns
+/// (such as `*` and `?`). On Windows this is not done, and such arguments are
+/// passed as-is.
 ///
 /// # Panics
 ///
@@ -716,6 +737,12 @@ pub fn args_os() -> ArgsOs {
     ArgsOs { inner: sys::args::args() }
 }
 
+#[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
+impl !Send for Args {}
+
+#[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
+impl !Sync for Args {}
+
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for Args {
     type Item = String;
@@ -746,6 +773,12 @@ impl fmt::Debug for Args {
             .finish()
     }
 }
+
+#[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
+impl !Send for ArgsOs {}
+
+#[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
+impl !Sync for ArgsOs {}
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Iterator for ArgsOs {
@@ -949,8 +982,7 @@ mod arch {
 mod tests {
     use super::*;
 
-    use ffi::OsStr;
-    use path::{Path, PathBuf};
+    use path::Path;
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -973,6 +1005,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn split_paths_windows() {
+        use path::PathBuf;
+
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
                 parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
@@ -993,6 +1027,8 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn split_paths_unix() {
+        use path::PathBuf;
+
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
                 parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
@@ -1008,6 +1044,8 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn join_paths_unix() {
+        use ffi::OsStr;
+
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
                 OsStr::new(output)
@@ -1024,6 +1062,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn join_paths_windows() {
+        use ffi::OsStr;
+
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
                 OsStr::new(output)

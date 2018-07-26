@@ -1,0 +1,9 @@
+error[E0396]: raw pointers cannot be dereferenced in constants
+  --> $DIR/E0396.rs:13:28
+   |
+LL | const VALUE: u8 = unsafe { *REG_ADDR }; //~ ERROR E0396
+   |                            ^^^^^^^^^ dereference of raw pointer in constant
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0396`.

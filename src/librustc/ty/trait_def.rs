@@ -20,7 +20,7 @@ use ty::{Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 /// A trait's definition with type information.
 pub struct TraitDef {
@@ -34,7 +34,7 @@ pub struct TraitDef {
     /// be usable with the sugar (or without it).
     pub paren_sugar: bool,
 
-    pub has_default_impl: bool,
+    pub has_auto_impl: bool,
 
     /// The ICH of this trait's DefPath, cached here so it doesn't have to be
     /// recomputed all the time.
@@ -51,14 +51,14 @@ impl<'a, 'gcx, 'tcx> TraitDef {
     pub fn new(def_id: DefId,
                unsafety: hir::Unsafety,
                paren_sugar: bool,
-               has_default_impl: bool,
+               has_auto_impl: bool,
                def_path_hash: DefPathHash)
                -> TraitDef {
         TraitDef {
             def_id,
             paren_sugar,
             unsafety,
-            has_default_impl,
+            has_auto_impl,
             def_path_hash,
         }
     }
@@ -142,7 +142,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_id: DefId)
-                                                -> Rc<TraitImpls> {
+                                                -> Lrc<TraitImpls> {
     let mut remote_impls = Vec::new();
 
     // Traits defined in the current crate can't have impls in upstream
@@ -180,15 +180,15 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    Rc::new(TraitImpls {
+    Lrc::new(TraitImpls {
         blanket_impls: blanket_impls,
         non_blanket_impls: non_blanket_impls,
     })
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for TraitImpls {
+impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let TraitImpls {
             ref blanket_impls,

@@ -29,8 +29,6 @@ fn main() {
         // Causes ICE
         impl Deref for Thing {
             //~^ ERROR E0046
-            //~| NOTE missing `Target` in implementation
-            //~| NOTE `Target` from trait: `type Target;`
             fn deref(&self) -> i8 { self.0 }
         }
 

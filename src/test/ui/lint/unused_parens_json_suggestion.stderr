@@ -1,1 +1,106 @@
-{"message":"unnecessary parentheses around assigned value","code":null,"level":"warning","spans":[{"file_name":"$DIR/unused_parens_json_suggestion.rs","byte_start":1001,"byte_end":1014,"line_start":24,"line_end":24,"column_start":14,"column_end":27,"is_primary":true,"text":[{"text":"    let _a = (1 / (2 + 3));","highlight_start":14,"highlight_end":27}],"label":null,"suggested_replacement":null,"expansion":null}],"children":[{"message":"lint level defined here","code":null,"level":"note","spans":[{"file_name":"$DIR/unused_parens_json_suggestion.rs","byte_start":847,"byte_end":860,"line_start":19,"line_end":19,"column_start":9,"column_end":22,"is_primary":true,"text":[{"text":"#![warn(unused_parens)]","highlight_start":9,"highlight_end":22}],"label":null,"suggested_replacement":null,"expansion":null}],"children":[],"rendered":null},{"message":"remove these parentheses","code":null,"level":"help","spans":[{"file_name":"$DIR/unused_parens_json_suggestion.rs","byte_start":1001,"byte_end":1014,"line_start":24,"line_end":24,"column_start":14,"column_end":27,"is_primary":true,"text":[{"text":"    let _a = (1 / (2 + 3));","highlight_start":14,"highlight_end":27}],"label":null,"suggested_replacement":"1 / (2 + 3)","expansion":null}],"children":[],"rendered":null}],"rendered":null}
+{
+  "message": "unnecessary parentheses around assigned value",
+  "code": {
+    "code": "unused_parens",
+    "explanation": null
+  },
+  "level": "warning",
+  "spans": [
+    {
+      "file_name": "$DIR/unused_parens_json_suggestion.rs",
+      "byte_start": 1043,
+      "byte_end": 1056,
+      "line_start": 25,
+      "line_end": 25,
+      "column_start": 14,
+      "column_end": 27,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    let _a = (1 / (2 + 3));",
+          "highlight_start": 14,
+          "highlight_end": 27
+        }
+      ],
+      "label": null,
+      "suggested_replacement": null,
+      "suggestion_applicability": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "lint level defined here",
+      "code": null,
+      "level": "note",
+      "spans": [
+        {
+          "file_name": "$DIR/unused_parens_json_suggestion.rs",
+          "byte_start": 889,
+          "byte_end": 902,
+          "line_start": 20,
+          "line_end": 20,
+          "column_start": 9,
+          "column_end": 22,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "#![warn(unused_parens)]",
+              "highlight_start": 9,
+              "highlight_end": 22
+            }
+          ],
+          "label": null,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    },
+    {
+      "message": "remove these parentheses",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/unused_parens_json_suggestion.rs",
+          "byte_start": 1043,
+          "byte_end": 1056,
+          "line_start": 25,
+          "line_end": 25,
+          "column_start": 14,
+          "column_end": 27,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "    let _a = (1 / (2 + 3));",
+              "highlight_start": 14,
+              "highlight_end": 27
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "1 / (2 + 3)",
+          "suggestion_applicability": "Unspecified",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "warning: unnecessary parentheses around assigned value
+  --> $DIR/unused_parens_json_suggestion.rs:25:14
+   |
+LL |     let _a = (1 / (2 + 3));
+   |              ^^^^^^^^^^^^^ help: remove these parentheses
+   |
+note: lint level defined here
+  --> $DIR/unused_parens_json_suggestion.rs:20:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+
+"
+}

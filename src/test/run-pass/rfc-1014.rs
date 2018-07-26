@@ -7,6 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+// ignore-cloudabi stdout does not map to file descriptor 1 by default
+// ignore-wasm32-bare no libc
+
 #![feature(libc)]
 
 extern crate libc;

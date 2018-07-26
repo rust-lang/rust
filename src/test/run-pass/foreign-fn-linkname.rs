@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+// ignore-wasm32-bare no libc to test ffi with
 
 #![feature(std_misc, libc)]
 

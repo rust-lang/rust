@@ -112,15 +112,15 @@ fn group_errors_with_same_origin<'tcx>(errors: &Vec<MoveError<'tcx>>)
 
     fn append_to_grouped_errors<'tcx>(grouped_errors: &mut Vec<GroupedMoveErrors<'tcx>>,
                                       error: &MoveError<'tcx>) {
-        let move_from_id = error.move_from.id;
-        debug!("append_to_grouped_errors(move_from_id={})", move_from_id);
+        let move_from_id = error.move_from.hir_id;
+        debug!("append_to_grouped_errors(move_from_id={:?})", move_from_id);
         let move_to = if error.move_to.is_some() {
             vec![error.move_to.clone().unwrap()]
         } else {
             Vec::new()
         };
         for ge in &mut *grouped_errors {
-            if move_from_id == ge.move_from.id && error.move_to.is_some() {
+            if move_from_id == ge.move_from.hir_id && error.move_to.is_some() {
                 debug!("appending move_to to list");
                 ge.move_to_places.extend(move_to);
                 return
@@ -140,7 +140,6 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
                                        -> DiagnosticBuilder<'a> {
     match move_from.cat {
         Categorization::Deref(_, mc::BorrowedPtr(..)) |
-        Categorization::Deref(_, mc::Implicit(..)) |
         Categorization::Deref(_, mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             bccx.cannot_move_out_of(
@@ -148,7 +147,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
         }
         Categorization::Interior(ref b, mc::InteriorElement(ik)) => {
             bccx.cannot_move_out_of_interior_noncopy(
-                move_from.span, b.ty, ik == Kind::Index, Origin::Ast)
+                move_from.span, b.ty, Some(ik == Kind::Index), Origin::Ast)
         }
 
         Categorization::Downcast(ref b, _) |

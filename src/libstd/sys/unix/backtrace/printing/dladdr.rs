@@ -22,7 +22,7 @@ pub fn resolve_symname<F>(frame: Frame,
 {
     unsafe {
         let mut info: Dl_info = intrinsics::init();
-        let symname = if dladdr(frame.exact_position, &mut info) == 0 ||
+        let symname = if dladdr(frame.exact_position as *mut _, &mut info) == 0 ||
                          info.dli_sname.is_null() {
             None
         } else {
@@ -41,6 +41,5 @@ struct Dl_info {
 }
 
 extern {
-    fn dladdr(addr: *const libc::c_void,
-              info: *mut Dl_info) -> libc::c_int;
+    fn dladdr(addr: *const libc::c_void, info: *mut Dl_info) -> libc::c_int;
 }

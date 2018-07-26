@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:needs-panic-runtime.rs
-// aux-build:runtime-depending-on-panic-runtime.rs
+// aux-build:depends.rs
 // error-pattern:cannot depend on a crate that needs a panic runtime
 
-extern crate runtime_depending_on_panic_runtime;
+extern crate depends;

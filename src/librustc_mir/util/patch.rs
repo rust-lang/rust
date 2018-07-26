@@ -23,6 +23,7 @@ pub struct MirPatch<'tcx> {
     new_locals: Vec<LocalDecl<'tcx>>,
     resume_block: BasicBlock,
     next_local: usize,
+    make_nop: Vec<Location>,
 }
 
 impl<'tcx> MirPatch<'tcx> {
@@ -33,7 +34,8 @@ impl<'tcx> MirPatch<'tcx> {
             new_statements: vec![],
             new_locals: vec![],
             next_local: mir.local_decls.len(),
-            resume_block: START_BLOCK
+            resume_block: START_BLOCK,
+            make_nop: vec![]
         };
 
         // make sure the MIR we create has a resume block. It is
@@ -60,7 +62,7 @@ impl<'tcx> MirPatch<'tcx> {
                 terminator: Some(Terminator {
                     source_info: SourceInfo {
                         span: mir.span,
-                        scope: ARGUMENT_VISIBILITY_SCOPE
+                        scope: OUTERMOST_SOURCE_SCOPE
                     },
                     kind: TerminatorKind::Resume
                 }),
@@ -127,11 +129,19 @@ impl<'tcx> MirPatch<'tcx> {
         self.new_statements.push((loc, stmt));
     }
 
-    pub fn add_assign(&mut self, loc: Location, lv: Lvalue<'tcx>, rv: Rvalue<'tcx>) {
-        self.add_statement(loc, StatementKind::Assign(lv, rv));
+    pub fn add_assign(&mut self, loc: Location, place: Place<'tcx>, rv: Rvalue<'tcx>) {
+        self.add_statement(loc, StatementKind::Assign(place, rv));
+    }
+
+    pub fn make_nop(&mut self, loc: Location) {
+        self.make_nop.push(loc);
     }
 
     pub fn apply(self, mir: &mut Mir<'tcx>) {
+        debug!("MirPatch: make nops at: {:?}", self.make_nop);
+        for loc in self.make_nop {
+            mir.make_statement_nop(loc);
+        }
         debug!("MirPatch: {:?} new temps, starting from index {}: {:?}",
                self.new_locals.len(), mir.local_decls.len(), self.new_locals);
         debug!("MirPatch: {} new blocks, starting from index {}",

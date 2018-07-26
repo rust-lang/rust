@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled with panic=abort by default
+
 #![feature(box_syntax)]
 
 fn main() {
@@ -28,12 +30,13 @@ impl Drop for S {
 }
 
 // END RUST SOURCE
-// START rustc.node4.ElaborateDrops.before.mir
+// START rustc.main.ElaborateDrops.before.mir
 //     let mut _0: ();
 //     scope 1 {
+//     }
+//     scope 2 {
 //         let _1: std::boxed::Box<S>;
 //     }
-//     ...
 //     let mut _2: std::boxed::Box<S>;
 //     let mut _3: ();
 //     let mut _4: std::boxed::Box<S>;
@@ -42,27 +45,27 @@ impl Drop for S {
 //         StorageLive(_1);
 //         StorageLive(_2);
 //         _2 = Box(S);
-//         (*_2) = const S::new() -> [return: bb1, unwind: bb3];
+//         (*_2) = const S::new() -> [return: bb2, unwind: bb3];
 //     }
 //
 //     bb1: {
-//         _1 = _2;
-//         drop(_2) -> bb4;
-//     }
-//
-//     bb2: {
 //         resume;
 //     }
 //
+//     bb2: {
+//         _1 = move _2;
+//         drop(_2) -> bb4;
+//     }
+//
 //     bb3: {
-//         drop(_2) -> bb2;
+//         drop(_2) -> bb1;
 //     }
 //
 //     bb4: {
 //         StorageDead(_2);
 //         StorageLive(_4);
-//         _4 = _1;
-//         _3 = const std::mem::drop(_4) -> [return: bb5, unwind: bb7];
+//         _4 = move _1;
+//         _3 = const std::mem::drop(move _4) -> [return: bb5, unwind: bb7];
 //     }
 //
 //     bb5: {
@@ -70,7 +73,7 @@ impl Drop for S {
 //     }
 //
 //     bb6: {
-//         drop(_1) -> bb2;
+//         drop(_1) -> bb1;
 //     }
 //
 //     bb7: {
@@ -88,4 +91,4 @@ impl Drop for S {
 //         return;
 //     }
 // }
-// END rustc.node4.ElaborateDrops.before.mir
+// END rustc.main.ElaborateDrops.before.mir

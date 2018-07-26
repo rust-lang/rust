@@ -13,10 +13,12 @@ use errors::Handler;
 use errors::emitter::EmitterWriter;
 use std::io;
 use std::io::prelude::*;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::str;
 use std::sync::{Arc, Mutex};
+use std::path::Path;
 use syntax_pos::{BytePos, NO_EXPANSION, Span, MultiSpan};
+use with_globals;
 
 /// Identify a position in the text by the Nth occurrence of a string.
 struct Position {
@@ -45,36 +47,39 @@ impl<T: Write> Write for Shared<T> {
 }
 
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
-    let output = Arc::new(Mutex::new(Vec::new()));
+    with_globals(|| {
+        let output = Arc::new(Mutex::new(Vec::new()));
 
-    let code_map = Rc::new(CodeMap::new(FilePathMapping::empty()));
-    code_map.new_filemap_and_lines("test.rs", &file_text);
+        let code_map = Lrc::new(CodeMap::new(FilePathMapping::empty()));
+        code_map.new_filemap(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
-    let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
-    let mut msp = MultiSpan::from_span(primary_span);
-    for span_label in span_labels {
-        let span = make_span(&file_text, &span_label.start, &span_label.end);
-        msp.push_span_label(span, span_label.label.to_string());
-        println!("span: {:?} label: {:?}", span, span_label.label);
-        println!("text: {:?}", code_map.span_to_snippet(span));
-    }
+        let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
+        let mut msp = MultiSpan::from_span(primary_span);
+        for span_label in span_labels {
+            let span = make_span(&file_text, &span_label.start, &span_label.end);
+            msp.push_span_label(span, span_label.label.to_string());
+            println!("span: {:?} label: {:?}", span, span_label.label);
+            println!("text: {:?}", code_map.span_to_snippet(span));
+        }
 
-    let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }),
-                                     Some(code_map.clone()),
-                                     false);
-    let handler = Handler::with_emitter(true, false, Box::new(emitter));
-    handler.span_err(msp, "foo");
+        let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }),
+                                        Some(code_map.clone()),
+                                        false,
+                                        false);
+        let handler = Handler::with_emitter(true, false, Box::new(emitter));
+        handler.span_err(msp, "foo");
 
-    assert!(expected_output.chars().next() == Some('\n'),
-            "expected output should begin with newline");
-    let expected_output = &expected_output[1..];
+        assert!(expected_output.chars().next() == Some('\n'),
+                "expected output should begin with newline");
+        let expected_output = &expected_output[1..];
 
-    let bytes = output.lock().unwrap();
-    let actual_output = str::from_utf8(&bytes).unwrap();
-    println!("expected output:\n------\n{}------", expected_output);
-    println!("actual output:\n------\n{}------", actual_output);
+        let bytes = output.lock().unwrap();
+        let actual_output = str::from_utf8(&bytes).unwrap();
+        println!("expected output:\n------\n{}------", expected_output);
+        println!("actual output:\n------\n{}------", actual_output);
 
-    assert!(expected_output == actual_output)
+        assert!(expected_output == actual_output)
+    })
 }
 
 fn make_span(file_text: &str, start: &Position, end: &Position) -> Span {

@@ -9,8 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![feature(attr_literals)]
-#![feature(repr_align)]
+#![feature(repr_packed)]
 
 #[repr(C)]
 enum A { A }
@@ -37,6 +36,16 @@ struct G(i32); //~ ERROR type has conflicting packed and align representation hi
 #[repr(align(8))]
 #[repr(packed)]
 struct H(i32); //~ ERROR type has conflicting packed and align representation hints
+
+#[repr(packed, packed(2))]
+struct I(i32); //~ ERROR type has conflicting packed representation hints
+
+#[repr(packed(2))]
+#[repr(packed)]
+struct J(i32); //~ ERROR type has conflicting packed representation hints
+
+#[repr(packed, packed(1))]
+struct K(i32);
 
 #[repr(packed, align(8))]
 union X { //~ ERROR type has conflicting packed and align representation hints

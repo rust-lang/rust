@@ -1,0 +1,13 @@
+error: rustc_outlives
+  --> $DIR/explicit-projection.rs:19:1
+   |
+LL | / struct Foo<'a, A, B> where A: Trait<'a, B> //~ ERROR rustc_outlives
+LL | | {
+LL | |     foo: <A as Trait<'a, B>>::Type
+LL | | }
+   | |_^
+   |
+   = note: B : 'a
+
+error: aborting due to previous error
+

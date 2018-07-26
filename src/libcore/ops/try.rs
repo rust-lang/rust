@@ -20,7 +20,7 @@
        any(from_method="from_error", from_method="from_ok"),
        from_desugaring="?"),
       message="the `?` operator can only be used in a \
-               function that returns `Result` \
+               function that returns `Result` or `Option` \
                (or another type that implements `{Try}`)",
       label="cannot use the `?` operator in a function that returns `{Self}`"),
    on(all(from_method="into_result", from_desugaring="?"),
@@ -28,6 +28,7 @@
                that implement `{Try}`",
       label="the `?` operator cannot be applied to type `{Self}`")
 )]
+#[doc(alias = "?")]
 pub trait Try {
     /// The type of this value when viewed as successful.
     #[unstable(feature = "try_trait", issue = "42327")]

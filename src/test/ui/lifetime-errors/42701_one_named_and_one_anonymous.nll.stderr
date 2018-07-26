@@ -1,0 +1,22 @@
+warning: not reporting region error due to nll
+  --> $DIR/42701_one_named_and_one_anonymous.rs:20:9
+   |
+LL |         &*x //~ ERROR explicit lifetime
+   |         ^^^
+
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/42701_one_named_and_one_anonymous.rs:16:5
+   |
+LL |   fn foo2<'a>(a: &'a Foo, x: &i32) -> &'a i32 {
+   |                           - consider changing the type of `x` to `&'a i32`
+LL | /     if true {
+LL | |         let p: &i32 = &a.field;
+LL | |         &*p
+LL | |     } else {
+LL | |         &*x //~ ERROR explicit lifetime
+LL | |     }
+   | |_____^ lifetime `'a` required
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0621`.

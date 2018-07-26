@@ -13,7 +13,7 @@ struct Ref<'a, T: 'a> {
 }
 
 fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
-    x.push(y);
+    x.push(y); //~ ERROR lifetime mismatch
 }
 
 fn main() { }

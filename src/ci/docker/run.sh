@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -10,6 +10,8 @@
 # except according to those terms.
 
 set -e
+
+export MSYS_NO_PATHCONV=1
 
 script=`cd $(dirname $0) && pwd`/`basename $0`
 image=$1
@@ -25,12 +27,53 @@ travis_fold start build_docker
 travis_time_start
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
+    if [ "$CI" != "" ]; then
+      cksum=$(find $docker_dir/$image $docker_dir/scripts -type f | \
+        sort | \
+        xargs cat | \
+        sha512sum | \
+        awk '{print $1}')
+      s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
+      url="https://s3-us-west-1.amazonaws.com/$SCCACHE_BUCKET/docker/$cksum"
+      echo "Attempting to download $s3url"
+      rm -f /tmp/rustci_docker_cache
+      set +e
+      retry curl -f -L -C - -o /tmp/rustci_docker_cache "$url"
+      loaded_images=$(docker load -i /tmp/rustci_docker_cache | sed 's/.* sha/sha/')
+      set -e
+      echo "Downloaded containers:\n$loaded_images"
+    fi
+
+    dockerfile="$docker_dir/$image/Dockerfile"
+    if [ -x /usr/bin/cygpath ]; then
+        context="`cygpath -w $docker_dir`"
+        dockerfile="`cygpath -w $dockerfile`"
+    else
+        context="$docker_dir"
+    fi
     retry docker \
       build \
       --rm \
       -t rust-ci \
-      -f "$docker_dir/$image/Dockerfile" \
-      "$docker_dir"
+      -f "$dockerfile" \
+      "$context"
+
+    if [ "$s3url" != "" ]; then
+      digest=$(docker inspect rust-ci --format '{{.Id}}')
+      echo "Built container $digest"
+      if ! grep -q "$digest" <(echo "$loaded_images"); then
+        echo "Uploading finished image to $s3url"
+        set +e
+        docker history -q rust-ci | \
+          grep -v missing | \
+          xargs docker save | \
+          gzip | \
+          aws s3 cp - $s3url
+        set -e
+      else
+        echo "Looks like docker image is the same as before, not uploading"
+      fi
+    fi
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
     if [ -n "$TRAVIS_OS_NAME" ]; then
         echo Cannot run disabled images on travis!
@@ -56,6 +99,7 @@ objdir=$root_dir/obj
 
 mkdir -p $HOME/.cargo
 mkdir -p $objdir/tmp
+mkdir -p $objdir/cores
 
 args=
 if [ "$SCCACHE_BUCKET" != "" ]; then
@@ -63,8 +107,6 @@ if [ "$SCCACHE_BUCKET" != "" ]; then
     args="$args --env SCCACHE_REGION"
     args="$args --env AWS_ACCESS_KEY_ID"
     args="$args --env AWS_SECRET_ACCESS_KEY"
-    args="$args --env SCCACHE_ERROR_LOG=/tmp/sccache/sccache.log"
-    args="$args --volume $objdir/tmp:/tmp/sccache"
 else
     mkdir -p $HOME/.cache/sccache
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
@@ -76,6 +118,10 @@ fi
 # we'll need `--privileged` for at least the `x86_64-gnu` builder, so this just
 # goes ahead and sets it for all builders.
 args="$args --privileged"
+
+if [ "$CI" != "" ]; then
+    args="$args --dns 8.8.8.8 --dns 8.8.4.4 --dns 1.1.1.1 --dns 1.0.0.1"
+fi
 
 exec docker \
   run \
@@ -90,6 +136,8 @@ exec docker \
   --env LOCAL_USER_ID=`id -u` \
   --env TRAVIS \
   --env TRAVIS_BRANCH \
+  --env TOOLSTATE_REPO_ACCESS_TOKEN \
+  --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --init \

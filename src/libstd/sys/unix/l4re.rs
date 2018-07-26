@@ -437,9 +437,5 @@ pub mod net {
     pub fn lookup_host(_: &str) -> io::Result<LookupHost> {
         unimpl!();
     }
-
-    pub fn res_init_if_glibc_before_2_26() -> io::Result<()> {
-        unimpl!();
-    }
 }
 

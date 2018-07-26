@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generic_param_attrs)]
 #![feature(dropck_eyepatch)]
 
 // This test ensures that a use of `#[may_dangle]` is rejected if

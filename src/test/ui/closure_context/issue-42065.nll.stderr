@@ -1,0 +1,11 @@
+error[E0382]: use of moved value: `debug_dump_dict`
+  --> $DIR/issue-42065.rs:21:5
+   |
+LL |     debug_dump_dict();
+   |     --------------- value moved here
+LL |     debug_dump_dict();
+   |     ^^^^^^^^^^^^^^^ value used here after move
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

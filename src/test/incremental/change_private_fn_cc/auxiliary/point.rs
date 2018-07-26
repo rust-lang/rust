@@ -14,10 +14,10 @@ pub struct Point {
 }
 
 fn distance_squared(this: &Point) -> f32 {
-    #[cfg(rpass1)]
+    #[cfg(cfail1)]
     return this.x + this.y;
 
-    #[cfg(rpass2)]
+    #[cfg(cfail2)]
     return this.x * this.x + this.y * this.y;
 }
 

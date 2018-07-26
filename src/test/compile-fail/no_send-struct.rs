@@ -23,5 +23,5 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Foo { a: 5 };
     bar(x);
-    //~^ ERROR `Foo: std::marker::Send` is not satisfied
+    //~^ ERROR `Foo` cannot be sent between threads safely
 }

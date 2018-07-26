@@ -1,0 +1,12 @@
+error[E0194]: type parameter `T` shadows another type parameter of the same name
+  --> $DIR/E0194.rs:13:26
+   |
+LL | trait Foo<T> {
+   |           - first `T` declared here
+LL |     fn do_something(&self) -> T;
+LL |     fn do_something_else<T: Clone>(&self, bar: T);
+   |                          ^ shadows another type parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0194`.

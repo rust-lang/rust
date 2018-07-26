@@ -1,0 +1,38 @@
+error: expected `}`, found `,`
+  --> $DIR/issue-49257.rs:20:19
+   |
+LL |     let Point { .., y, } = p; //~ ERROR expected `}`, found `,`
+   |                 --^
+   |                 | |
+   |                 | expected `}`
+   |                 `..` must be at the end and cannot have a trailing comma
+help: move the `..` to the end of the field list
+   |
+LL |     let Point {  y, .. } = p; //~ ERROR expected `}`, found `,`
+   |                --   ^^^^
+
+error: expected `}`, found `,`
+  --> $DIR/issue-49257.rs:21:19
+   |
+LL |     let Point { .., y } = p; //~ ERROR expected `}`, found `,`
+   |                 --^
+   |                 | |
+   |                 | expected `}`
+   |                 `..` must be at the end and cannot have a trailing comma
+help: move the `..` to the end of the field list
+   |
+LL |     let Point {  y , .. } = p; //~ ERROR expected `}`, found `,`
+   |                --  ^^^^^^
+
+error: expected `}`, found `,`
+  --> $DIR/issue-49257.rs:22:19
+   |
+LL |     let Point { .., } = p; //~ ERROR expected `}`, found `,`
+   |                 --^
+   |                 | |
+   |                 | expected `}`
+   |                 | help: remove this comma
+   |                 `..` must be at the end and cannot have a trailing comma
+
+error: aborting due to 3 previous errors
+

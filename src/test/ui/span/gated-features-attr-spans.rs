@@ -8,32 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals)]
-
-#[repr(align(16))]
-struct Gem {
-    mohs_hardness: u8,
-    poofed: bool,
-    weapon: Weapon,
-}
-
-#[repr(simd)]
+#[repr(simd)] //~ ERROR are experimental
 struct Weapon {
     name: String,
     damage: u32
-}
-
-impl Gem {
-    #[must_use] fn summon_weapon(&self) -> Weapon { self.weapon }
-}
-
-#[must_use]
-fn bubble(gem: Gem) -> Result<Gem, ()> {
-    if gem.poofed {
-        Ok(gem)
-    } else {
-        Err(())
-    }
 }
 
 fn main() {}

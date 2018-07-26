@@ -20,11 +20,12 @@ trait Message : Send { }
 
 fn object_ref_with_static_bound_not_ok() {
     assert_send::<&'static (Dummy+'static)>();
-    //~^ ERROR : std::marker::Sync` is not satisfied
+    //~^ ERROR `(dyn Dummy + 'static)` cannot be shared between threads safely [E0277]
 }
 
 fn box_object_with_no_bound_not_ok<'a>() {
-    assert_send::<Box<Dummy>>(); //~ ERROR : std::marker::Send` is not satisfied
+    assert_send::<Box<Dummy>>();
+    //~^ ERROR `dyn Dummy` cannot be sent between threads safely
 }
 
 fn object_with_send_bound_ok() {

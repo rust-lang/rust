@@ -30,9 +30,6 @@ use sys_common::mutex::Mutex;
 use sys::{cvt, fd, syscall};
 use vec;
 
-const TMPBUF_SZ: usize = 128;
-static ENV_LOCK: Mutex = Mutex::new();
-
 extern {
     #[link_name = "__errno_location"]
     fn errno_location() -> *mut i32;
@@ -212,4 +209,8 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     syscall::getpid().unwrap() as u32
+}
+
+pub fn getppid() -> u32 {
+    syscall::getppid().unwrap() as u32
 }

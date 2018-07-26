@@ -122,12 +122,10 @@ struct JOBOBJECT_BASIC_LIMIT_INFORMATION {
 }
 
 pub unsafe fn setup(build: &mut Build) {
-    // Tell Windows to not show any UI on errors (such as not finding a required dll
-    // during startup or terminating abnormally).  This is important for running tests,
-    // since some of them use abnormal termination by design.
-    // This mode is inherited by all child processes.
-    let mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
-    SetErrorMode(mode | SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+    // Enable the Windows Error Reporting dialog which msys disables,
+    // so we can JIT debug rustc
+    let mode = SetErrorMode(0);
+    SetErrorMode(mode & !SEM_NOGPFAULTERRORBOX);
 
     // Create a new job object for us to use
     let job = CreateJobObjectW(0 as *mut _, 0 as *const _);
@@ -185,7 +183,7 @@ pub unsafe fn setup(build: &mut Build) {
                             0, FALSE, DUPLICATE_SAME_ACCESS);
 
     // If this failed, well at least we tried! An example of DuplicateHandle
-    // failing in the past has been when the wrong python2 package spawed this
+    // failing in the past has been when the wrong python2 package spawned this
     // build system (e.g. the `python2` package in MSYS instead of
     // `mingw-w64-x86_64-python2`. Not sure why it failed, but the "failure
     // mode" here is that we only clean everything up when the build system

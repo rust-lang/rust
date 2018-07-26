@@ -1,0 +1,15 @@
+error[E0088]: too many lifetime parameters provided: expected at most 0 lifetime parameters, found 1 lifetime parameter
+  --> $DIR/E0088.rs:15:9
+   |
+LL |     f::<'static>(); //~ ERROR E0088
+   |         ^^^^^^^ expected 0 lifetime parameters
+
+error[E0088]: too many lifetime parameters provided: expected at most 1 lifetime parameter, found 2 lifetime parameters
+  --> $DIR/E0088.rs:16:18
+   |
+LL |     g::<'static, 'static>(); //~ ERROR E0088
+   |                  ^^^^^^^ expected 1 lifetime parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0088`.

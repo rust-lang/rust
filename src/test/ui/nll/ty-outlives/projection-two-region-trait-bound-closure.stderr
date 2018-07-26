@@ -1,0 +1,333 @@
+warning: not reporting region error due to nll
+  --> $DIR/projection-two-region-trait-bound-closure.rs:48:39
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/projection-two-region-trait-bound-closure.rs:59:39
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/projection-two-region-trait-bound-closure.rs:80:39
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/projection-two-region-trait-bound-closure.rs:108:39
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^
+
+note: External requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:22 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
+           ]
+   = note: number of external vids: 4
+   = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#2r)>>::AssocType: '_#3r
+
+error[E0309]: the associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
+  --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#5r, '_#6r>>::AssocType: ReFree(DefId(0/0:8 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:18), 'a))`...
+
+note: No external requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:44:1
+   |
+LL | / fn no_relationships_late<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b, 'c>,
+LL | | {
+...  |
+LL | |     //~| ERROR associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:8 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]) with substs [
+               '_#1r,
+               '_#2r,
+               T
+           ]
+
+note: External requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:59:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:27 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_early[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               '_#3r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T))
+           ]
+   = note: number of external vids: 5
+   = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
+
+error[E0309]: the associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+  --> $DIR/projection-two-region-trait-bound-closure.rs:59:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: ReEarlyBound(0, 'a)`...
+
+note: No external requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:54:1
+   |
+LL | / fn no_relationships_early<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b, 'c>,
+LL | |     'a: 'a,
+...  |
+LL | |     //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:9 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_early[0]) with substs [
+               '_#1r,
+               '_#2r,
+               '_#3r,
+               T
+           ]
+
+note: External requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:80:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:32 ~ projection_two_region_trait_bound_closure[317d]::projection_outlives[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               '_#3r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T))
+           ]
+   = note: number of external vids: 5
+   = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
+
+error[E0309]: the associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+  --> $DIR/projection-two-region-trait-bound-closure.rs:80:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: ReEarlyBound(0, 'a)`...
+
+note: No external requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:65:1
+   |
+LL | / fn projection_outlives<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b, 'c>,
+LL | |     T::AssocType: 'a,
+...  |
+LL | |     //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:10 ~ projection_two_region_trait_bound_closure[317d]::projection_outlives[0]) with substs [
+               '_#1r,
+               '_#2r,
+               '_#3r,
+               T
+           ]
+
+note: External requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:91:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:37 ~ projection_two_region_trait_bound_closure[317d]::elements_outlive1[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               '_#3r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T))
+           ]
+   = note: number of external vids: 5
+   = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
+
+note: No external requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:86:1
+   |
+LL | / fn elements_outlive1<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b, 'c>,
+LL | |     'b: 'a,
+LL | | {
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:11 ~ projection_two_region_trait_bound_closure[317d]::elements_outlive1[0]) with substs [
+               '_#1r,
+               '_#2r,
+               '_#3r,
+               T
+           ]
+
+note: External requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:100:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:42 ~ projection_two_region_trait_bound_closure[317d]::elements_outlive2[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               '_#3r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T))
+           ]
+   = note: number of external vids: 5
+   = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
+
+note: No external requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:95:1
+   |
+LL | / fn elements_outlive2<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b, 'c>,
+LL | |     'c: 'a,
+LL | | {
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:12 ~ projection_two_region_trait_bound_closure[317d]::elements_outlive2[0]) with substs [
+               '_#1r,
+               '_#2r,
+               '_#3r,
+               T
+           ]
+
+note: External requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:108:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:46 ~ projection_two_region_trait_bound_closure[317d]::two_regions[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
+           ]
+   = note: number of external vids: 3
+   = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#1r)>>::AssocType: '_#2r
+
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-two-region-trait-bound-closure.rs:108:5
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+
+note: No external requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:104:1
+   |
+LL | / fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b, 'b>,
+LL | | {
+...  |
+LL | |     //~| ERROR
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:13 ~ projection_two_region_trait_bound_closure[317d]::two_regions[0]) with substs [
+               '_#1r,
+               T
+           ]
+
+note: External requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:119:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:50 ~ projection_two_region_trait_bound_closure[317d]::two_regions_outlive[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
+           ]
+   = note: number of external vids: 4
+   = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#2r)>>::AssocType: '_#3r
+
+note: No external requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:114:1
+   |
+LL | / fn two_regions_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'b, 'b>,
+LL | |     'b: 'a,
+LL | | {
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:14 ~ projection_two_region_trait_bound_closure[317d]::two_regions_outlive[0]) with substs [
+               '_#1r,
+               '_#2r,
+               T
+           ]
+
+note: External requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:131:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:53 ~ projection_two_region_trait_bound_closure[317d]::one_region[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
+           ]
+   = note: number of external vids: 3
+   = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#1r)>>::AssocType: '_#2r
+
+note: No external requirements
+  --> $DIR/projection-two-region-trait-bound-closure.rs:123:1
+   |
+LL | / fn one_region<'a, T>(cell: Cell<&'a ()>, t: T)
+LL | | where
+LL | |     T: Anything<'a, 'a>,
+LL | | {
+...  |
+LL | |     with_signature(cell, t, |cell, t| require(cell, t));
+LL | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:15 ~ projection_two_region_trait_bound_closure[317d]::one_region[0]) with substs [
+               '_#1r,
+               T
+           ]
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

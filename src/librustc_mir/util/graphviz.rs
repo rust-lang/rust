@@ -14,7 +14,6 @@ use rustc::mir::*;
 use rustc::ty::TyCtxt;
 use std::fmt::Debug;
 use std::io::{self, Write};
-use syntax::ast::NodeId;
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -28,21 +27,20 @@ pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
     where W: Write
 {
     for def_id in dump_mir_def_ids(tcx, single) {
-        let nodeid = tcx.hir.as_local_node_id(def_id).unwrap();
         let mir = &tcx.optimized_mir(def_id);
-        write_mir_fn_graphviz(tcx, nodeid, mir, w)?;
+        write_mir_fn_graphviz(tcx, def_id, mir, w)?;
     }
     Ok(())
 }
 
 /// Write a graphviz DOT graph of the MIR.
 pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
-                                      nodeid: NodeId,
+                                      def_id: DefId,
                                       mir: &Mir,
                                       w: &mut W) -> io::Result<()>
     where W: Write
 {
-    writeln!(w, "digraph Mir_{} {{", nodeid)?;
+    writeln!(w, "digraph Mir_{} {{", tcx.hir.as_local_node_id(def_id).unwrap())?;
 
     // Global graph properties
     writeln!(w, r#"    graph [fontname="monospace"];"#)?;
@@ -50,7 +48,7 @@ pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
     writeln!(w, r#"    edge [fontname="monospace"];"#)?;
 
     // Graph label
-    write_graph_label(tcx, nodeid, mir, w)?;
+    write_graph_label(tcx, def_id, mir, w)?;
 
     // Nodes
     for (block, _) in mir.basic_blocks().iter_enumerated() {
@@ -127,7 +125,7 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
     let terminator = mir[source].terminator();
     let labels = terminator.kind.fmt_successor_labels();
 
-    for (&target, label) in terminator.successors().iter().zip(labels) {
+    for (&target, label) in terminator.successors().zip(labels) {
         writeln!(w, r#"    {} -> {} [label="{}"];"#, node(source), node(target), label)?;
     }
 
@@ -138,21 +136,21 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
 fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                               nid: NodeId,
+                                               def_id: DefId,
                                                mir: &Mir,
                                                w: &mut W)
                                                -> io::Result<()> {
-    write!(w, "    label=<fn {}(", dot::escape_html(&tcx.node_path_str(nid)))?;
+    write!(w, "    label=<fn {}(", dot::escape_html(&tcx.item_path_str(def_id)))?;
 
     // fn argument types.
     for (i, arg) in mir.args_iter().enumerate() {
         if i > 0 {
             write!(w, ", ")?;
         }
-        write!(w, "{:?}: {}", Lvalue::Local(arg), escape(&mir.local_decls[arg].ty))?;
+        write!(w, "{:?}: {}", Place::Local(arg), escape(&mir.local_decls[arg].ty))?;
     }
 
-    write!(w, ") -&gt; {}", escape(mir.return_ty))?;
+    write!(w, ") -&gt; {}", escape(mir.return_ty()))?;
     write!(w, r#"<br align="left"/>"#)?;
 
     for local in mir.vars_and_temps_iter() {
@@ -165,10 +163,10 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
         if let Some(name) = decl.name {
             write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Lvalue::Local(local), escape(&decl.ty), name)?;
+                   Place::Local(local), escape(&decl.ty), name)?;
         } else {
             write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
-                   Lvalue::Local(local), escape(&decl.ty))?;
+                   Place::Local(local), escape(&decl.ty))?;
         }
     }
 

@@ -1,0 +1,9 @@
+error[E0018]: raw pointers cannot be cast to integers in statics
+  --> $DIR/issue-17458.rs:11:19
+   |
+LL | static X: usize = 0 as *const usize as usize;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0018`.

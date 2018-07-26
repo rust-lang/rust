@@ -12,20 +12,12 @@
 fn broken() {
     let mut x = 3;
     let mut _y = vec![&mut x];
-    //~^ NOTE borrow of `x` occurs here
-    //~| NOTE borrow of `x` occurs here
-    //~| NOTE borrow of `x` occurs here
     while x < 10 { //~ ERROR cannot use `x` because it was mutably borrowed
-        //~^ NOTE use of borrowed `x`
         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
-        //~^ NOTE use of borrowed `x`
-        _y.push(&mut z); //~ ERROR `z` does not live long enough
-        //~^ NOTE does not live long enough
+        _y.push(&mut z);
+        //~^ ERROR `z` does not live long enough
         x += 1; //~ ERROR cannot assign
-        //~^ NOTE assignment to borrowed `x` occurs here
     }
-    //~^ NOTE borrowed value only lives until here
 }
-//~^ NOTE borrowed value needs to live until here
 
 fn main() { }

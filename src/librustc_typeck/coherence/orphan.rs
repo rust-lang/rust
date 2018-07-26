@@ -34,49 +34,55 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let def_id = self.tcx.hir.local_def_id(item.id);
         match item.node {
-            hir::ItemImpl(.., Some(_), _, _) => {
+            hir::ItemKind::Impl(.., Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}",
                        self.tcx.hir.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
+                let cm = self.tcx.sess.codemap();
+                let sp = cm.def_span(item.span);
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => {}
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
                         struct_span_err!(self.tcx.sess,
-                                         item.span,
+                                         sp,
                                          E0117,
                                          "only traits defined in the current crate can be \
                                           implemented for arbitrary types")
-                            .span_label(item.span, "impl doesn't use types inside crate")
-                            .note(&format!("the impl does not reference any types defined in \
-                                            this crate"))
+                            .span_label(sp, "impl doesn't use types inside crate")
+                            .note("the impl does not reference any types defined in this crate")
                             .note("define and implement a trait or new type instead")
                             .emit();
                         return;
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
-                        span_err!(self.tcx.sess,
-                                  item.span,
-                                  E0210,
-                                  "type parameter `{}` must be used as the type parameter for \
-                                   some local type (e.g. `MyStruct<T>`); only traits defined in \
-                                   the current crate can be implemented for a type parameter",
-                                  param_ty);
+                        struct_span_err!(self.tcx.sess,
+                                         sp,
+                                         E0210,
+                                         "type parameter `{}` must be used as the type parameter \
+                                          for some local type (e.g. `MyStruct<{}>`)",
+                                         param_ty,
+                                         param_ty)
+                            .span_label(sp,
+                                        format!("type parameter `{}` must be used as the type \
+                                                 parameter for some local type", param_ty))
+                            .note("only traits defined in the current crate can be implemented \
+                                   for a type parameter")
+                            .emit();
                         return;
                     }
                 }
 
-                // In addition to the above rules, we restrict impls of defaulted traits
+                // In addition to the above rules, we restrict impls of auto traits
                 // so that they can only be implemented on nominal types, such as structs,
                 // enums or foreign types. To see why this restriction exists, consider the
-                // following example (#22978). Imagine that crate A defines a defaulted trait
+                // following example (#22978). Imagine that crate A defines an auto trait
                 // `Foo` and a fn that operates on pairs of types:
                 //
                 // ```
                 // // Crate A
-                // trait Foo { }
-                // impl Foo for .. { }
+                // auto trait Foo { }
                 // fn two_foos<A:Foo,B:Foo>(..) {
                 //     one_foo::<(A,B)>(..)
                 // }
@@ -100,11 +106,11 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                 // This final impl is legal according to the orpan
                 // rules, but it invalidates the reasoning from
                 // `two_foos` above.
-                debug!("trait_ref={:?} trait_def_id={:?} trait_has_default_impl={}",
+                debug!("trait_ref={:?} trait_def_id={:?} trait_is_auto={}",
                        trait_ref,
                        trait_def_id,
-                       self.tcx.trait_has_default_impl(trait_def_id));
-                if self.tcx.trait_has_default_impl(trait_def_id) &&
+                       self.tcx.trait_is_auto(trait_def_id));
+                if self.tcx.trait_is_auto(trait_def_id) &&
                    !trait_def_id.is_local() {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
@@ -122,42 +128,31 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                             if self_def_id.is_local() {
                                 None
                             } else {
-                                Some(format!("cross-crate traits with a default impl, like `{}`, \
-                                              can only be implemented for a struct/enum type \
-                                              defined in the current crate",
-                                             self.tcx.item_path_str(trait_def_id)))
+                                Some((
+                                    format!("cross-crate traits with a default impl, like `{}`, \
+                                             can only be implemented for a struct/enum type \
+                                             defined in the current crate",
+                                            self.tcx.item_path_str(trait_def_id)),
+                                    "can't implement cross-crate trait for type in another crate"
+                                ))
                             }
                         }
                         _ => {
-                            Some(format!("cross-crate traits with a default impl, like `{}`, can \
-                                          only be implemented for a struct/enum type, not `{}`",
-                                         self.tcx.item_path_str(trait_def_id),
-                                         self_ty))
+                            Some((format!("cross-crate traits with a default impl, like `{}`, can \
+                                           only be implemented for a struct/enum type, not `{}`",
+                                          self.tcx.item_path_str(trait_def_id),
+                                          self_ty),
+                                  "can't implement cross-crate trait with a default impl for \
+                                   non-struct/enum type"))
                         }
                     };
 
-                    if let Some(msg) = msg {
-                        span_err!(self.tcx.sess, item.span, E0321, "{}", msg);
+                    if let Some((msg, label)) = msg {
+                        struct_span_err!(self.tcx.sess, sp, E0321, "{}", msg)
+                            .span_label(sp, label)
+                            .emit();
                         return;
                     }
-                }
-            }
-            hir::ItemDefaultImpl(_, ref item_trait_ref) => {
-                // "Trait" impl
-                debug!("coherence2::orphan check: default trait impl {}",
-                       self.tcx.hir.node_to_string(item.id));
-                let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
-                if !trait_ref.def_id.is_local() {
-                    struct_span_err!(self.tcx.sess,
-                                     item_trait_ref.path.span,
-                                     E0318,
-                                     "cannot create default implementations for traits outside \
-                                      the crate they're defined in; define a new trait instead")
-                        .span_label(item_trait_ref.path.span,
-                                    format!("`{}` trait not defined in this crate",
-                            self.tcx.hir.node_to_pretty_string(item_trait_ref.ref_id)))
-                        .emit();
-                    return;
                 }
             }
             _ => {

@@ -1,0 +1,19 @@
+error: cannot find macro `bar!` in this scope
+  --> $DIR/issue-49074.rs:22:4
+   |
+LL |    bar!();
+   |    ^^^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+
+error[E0658]: The attribute `marco_use` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/issue-49074.rs:13:1
+   |
+LL | #[marco_use] // typo
+   | ^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

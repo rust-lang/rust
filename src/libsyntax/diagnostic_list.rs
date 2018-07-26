@@ -37,75 +37,6 @@ More details can be found in [RFC 438].
 [RFC 438]: https://github.com/rust-lang/rfcs/pull/438
 "##,
 
-E0534: r##"
-The `inline` attribute was malformed.
-
-Erroneous code example:
-
-```ignore (compile_fail not working here; see Issue #43707)
-#[inline()] // error: expected one argument
-pub fn something() {}
-
-fn main() {}
-```
-
-The parenthesized `inline` attribute requires the parameter to be specified:
-
-```
-#[inline(always)]
-fn something() {}
-```
-
-or:
-
-```
-#[inline(never)]
-fn something() {}
-```
-
-Alternatively, a paren-less version of the attribute may be used to hint the
-compiler about inlining opportunity:
-
-```
-#[inline]
-fn something() {}
-```
-
-For more information about the inline attribute, read:
-https://doc.rust-lang.org/reference.html#inline-attributes
-"##,
-
-E0535: r##"
-An unknown argument was given to the `inline` attribute.
-
-Erroneous code example:
-
-```ignore (compile_fail not working here; see Issue #43707)
-#[inline(unknown)] // error: invalid argument
-pub fn something() {}
-
-fn main() {}
-```
-
-The `inline` attribute only supports two arguments:
-
- * always
- * never
-
-All other arguments given to the `inline` attribute will return this error.
-Example:
-
-```
-#[inline(never)] // ok!
-pub fn something() {}
-
-fn main() {}
-```
-
-For more information about the inline attribute, https:
-read://doc.rust-lang.org/reference.html#inline-attributes
-"##,
-
 E0536: r##"
 The `not` cfg-predicate was malformed.
 
@@ -160,6 +91,68 @@ pub fn main() {}
 
 For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
+"##,
+
+E0538: r##"
+Attribute contains same meta item more than once.
+
+Erroneous code example:
+
+```compile_fail,E0538
+#[deprecated(
+    since="1.0.0",
+    note="First deprecation note.",
+    note="Second deprecation note." // error: multiple same meta item
+)]
+fn deprecated_function() {}
+```
+
+Meta items are the key-value pairs inside of an attribute. Each key may only be
+used once in each attribute.
+
+To fix the problem, remove all but one of the meta items with the same key.
+
+Example:
+
+```
+#[deprecated(
+    since="1.0.0",
+    note="First deprecation note."
+)]
+fn deprecated_function() {}
+```
+"##,
+
+E0541: r##"
+An unknown meta item was used.
+
+Erroneous code example:
+
+```compile_fail,E0541
+#[deprecated(
+    since="1.0.0",
+    // error: unknown meta item
+    reason="Example invalid meta item. Should be 'note'")
+]
+fn deprecated_function() {}
+```
+
+Meta items are the key-value pairs inside of an attribute. The keys provided
+must be one of the valid keys for the specified attribute.
+
+To fix the problem, either remove the unknown meta item, or rename it if you
+provided the wrong name.
+
+In the erroneous code example above, the wrong name was provided, so changing
+to a correct one it will fix the error. Example:
+
+```
+#[deprecated(
+    since="1.0.0",
+    note="This is a valid meta item for the deprecated attribute."
+)]
+fn deprecated_function() {}
+```
 "##,
 
 E0552: r##"
@@ -287,8 +280,6 @@ An inclusive range was used with no end.
 Erroneous code example:
 
 ```compile_fail,E0586
-#![feature(inclusive_range_syntax)]
-
 fn main() {
     let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
     let x = &tmp[1..=]; // error: inclusive range was used with no end
@@ -308,8 +299,6 @@ fn main() {
 Or put an end to your inclusive range:
 
 ```
-#![feature(inclusive_range_syntax)]
-
 fn main() {
     let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
     let x = &tmp[1..=3]; // ok!
@@ -317,13 +306,79 @@ fn main() {
 ```
 "##,
 
+E0589: r##"
+The value of `N` that was specified for `repr(align(N))` was not a power
+of two, or was greater than 2^29.
+
+```compile_fail,E0589
+#[repr(align(15))] // error: invalid `repr(align)` attribute: not a power of two
+enum Foo {
+    Bar(u64),
+}
+```
+"##,
+
+E0658: r##"
+An unstable feature was used.
+
+Erroneous code example:
+
+```compile_fail,E658
+#[repr(u128)] // error: use of unstable library feature 'repr128'
+enum Foo {
+    Bar(u64),
+}
+```
+
+If you're using a stable or a beta version of rustc, you won't be able to use
+any unstable features. In order to do so, please switch to a nightly version of
+rustc (by using rustup).
+
+If you're using a nightly version of rustc, just add the corresponding feature
+to be able to use it:
+
+```
+#![feature(repr128)]
+
+#[repr(u128)] // ok!
+enum Foo {
+    Bar(u64),
+}
+```
+"##,
+
+E0633: r##"
+The `unwind` attribute was malformed.
+
+Erroneous code example:
+
+```ignore (compile_fail not working here; see Issue #43707)
+#[unwind()] // error: expected one argument
+pub extern fn something() {}
+
+fn main() {}
+```
+
+The `#[unwind]` attribute should be used as follows:
+
+- `#[unwind(aborts)]` -- specifies that if a non-Rust ABI function
+  should abort the process if it attempts to unwind. This is the safer
+  and preferred option.
+
+- `#[unwind(allowed)]` -- specifies that a non-Rust ABI function
+  should be allowed to unwind. This can easily result in Undefined
+  Behavior (UB), so be careful.
+
+NB. The default behavior here is "allowed", but this is unspecified
+and likely to change in the future.
+
+"##,
+
 }
 
 register_diagnostics! {
-    E0538, // multiple [same] items
     E0539, // incorrect meta item
     E0540, // multiple rustc_deprecated attributes
-    E0541, // unknown meta item
     E0542, // missing 'since'
     E0543, // missing 'reason'
     E0544, // multiple stability levels
@@ -338,7 +393,10 @@ register_diagnostics! {
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
     E0584, // file for module `..` found at both .. and ..
-    E0589, // invalid `repr(align)` attribute
     E0629, // missing 'feature' (rustc_const_unstable)
     E0630, // rustc_const_unstable attribute must be paired with stable/unstable attribute
+    E0693, // incorrect `repr(align)` attribute format
+    E0694, // an unknown tool name found in scoped attributes
+    E0703, // invalid ABI
+    E0704, // incorrect visibility restriction
 }

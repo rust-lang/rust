@@ -1,0 +1,47 @@
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:16:27
+   |
+LL |   opt.map(|arg| takes_ref(arg));
+   |       -                   ^^^ expected &Foo, found struct `Foo`
+   |       |
+   |       help: consider using `as_ref` instead: `as_ref().`
+   |
+   = note: expected type `&Foo`
+              found type `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:18:37
+   |
+LL |   opt.and_then(|arg| Some(takes_ref(arg)));
+   |       -                             ^^^ expected &Foo, found struct `Foo`
+   |       |
+   |       help: consider using `as_ref` instead: `as_ref().`
+   |
+   = note: expected type `&Foo`
+              found type `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:21:27
+   |
+LL |   opt.map(|arg| takes_ref(arg));
+   |       -                   ^^^ expected &Foo, found struct `Foo`
+   |       |
+   |       help: consider using `as_ref` instead: `as_ref().`
+   |
+   = note: expected type `&Foo`
+              found type `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:23:35
+   |
+LL |   opt.and_then(|arg| Ok(takes_ref(arg)));
+   |       -                           ^^^ expected &Foo, found struct `Foo`
+   |       |
+   |       help: consider using `as_ref` instead: `as_ref().`
+   |
+   = note: expected type `&Foo`
+              found type `Foo`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

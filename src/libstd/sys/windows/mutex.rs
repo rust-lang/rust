@@ -117,7 +117,7 @@ impl Mutex {
             0 => {}
             n => return n as *mut _,
         }
-        let mut re = Box::new(ReentrantMutex::uninitialized());
+        let mut re = box ReentrantMutex::uninitialized();
         re.init();
         let re = Box::into_raw(re);
         match self.lock.compare_and_swap(0, re as usize, Ordering::SeqCst) {

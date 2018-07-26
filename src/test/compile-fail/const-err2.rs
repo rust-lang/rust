@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// needed because negating int::MIN will behave differently between
+// optimized compilation and unoptimized compilation and thus would
+// lead to different lints being emitted
+// compile-flags: -O
+
 #![feature(rustc_attrs)]
 #![allow(exceeding_bitshifts)]
 #![deny(const_err)]
@@ -18,14 +23,15 @@ fn black_box<T>(_: T) {
 
 fn main() {
     let a = -std::i8::MIN;
-    //~^ ERROR attempt to negate with overflow
+    //~^ ERROR const_err
     let b = 200u8 + 200u8 + 200u8;
-    //~^ ERROR attempt to add with overflow
+    //~^ ERROR const_err
     let c = 200u8 * 4;
-    //~^ ERROR attempt to multiply with overflow
+    //~^ ERROR const_err
     let d = 42u8 - (42u8 + 1);
-    //~^ ERROR attempt to subtract with overflow
+    //~^ ERROR const_err
     let _e = [5u8][1];
+    //~^ ERROR const_err
     black_box(a);
     black_box(b);
     black_box(c);

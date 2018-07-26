@@ -141,6 +141,31 @@ Similar to `--library-path`, `--extern` is about specifying the location
 of a dependency. `--library-path` provides directories to search in, `--extern`
 instead lets you specify exactly which dependency is located where.
 
+## `-C`/`--codegen`: pass codegen options to rustc
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -C target_feature=+avx
+$ rustdoc src/lib.rs --codegen target_feature=+avx
+
+$ rustdoc --test src/lib.rs -C target_feature=+avx
+$ rustdoc --test src/lib.rs --codegen target_feature=+avx
+
+$ rustdoc --test README.md -C target_feature=+avx
+$ rustdoc --test README.md --codegen target_feature=+avx
+```
+
+When rustdoc generates documentation, looks for documentation tests, or executes documentation
+tests, it needs to compile some rust code, at least part-way. This flag allows you to tell rustdoc
+to provide some extra codegen options to rustc when it runs these compilations. Most of the time,
+these options won't affect a regular documentation run, but if something depends on target features
+to be enabled, or documentation tests need to use some additional options, this flag allows you to
+affect that.
+
+The arguments to this flag are the same as those for the `-C` flag on rustc. Run `rustc -C help` to
+get the full list.
+
 ## `--passes`: add more rustdoc passes
 
 Using this flag looks like this:
@@ -279,7 +304,7 @@ $ rustdoc README.md --markdown-playground-url https://play.rust-lang.org/
 ```
 
 When rendering a Markdown file, this flag gives the base URL of the Rust
-Playround, to use for generating `Run` buttons.
+Playground, to use for generating `Run` buttons.
 
 
 ## `--markdown-no-toc`: don't generate a table of contents
@@ -291,7 +316,7 @@ $ rustdoc README.md --markdown-no-toc
 ```
 
 When generating documentation from a Markdown file, by default, `rustdoc` will
-generate a table of contents. This flag supresses that, and no TOC will be
+generate a table of contents. This flag suppresses that, and no TOC will be
 generated.
 
 

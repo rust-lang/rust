@@ -158,8 +158,8 @@ pub fn main() {
 
     // Float edge cases
     t!(format!("{}", -0.0), "0");
-    t!(format!("{:?}", -0.0), "-0");
-    t!(format!("{:?}", 0.0), "0");
+    t!(format!("{:?}", -0.0), "-0.0");
+    t!(format!("{:?}", 0.0), "0.0");
 
     // sign aware zero padding
     t!(format!("{:<3}", 1), "1  ");

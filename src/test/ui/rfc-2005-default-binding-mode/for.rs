@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(match_default_bindings)]
-
 struct Foo {}
 
 pub fn main() {
     let mut tups = vec![(Foo{}, Foo{})];
     // The below desugars to &(ref n, mut m).
     for (n, mut m) in &tups {
+        //~^ ERROR cannot bind by-move and by-ref in the same pattern
     }
 }

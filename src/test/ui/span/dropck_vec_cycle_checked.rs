@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z nll-subminimal-causes
+// (Work around rust-lang/rust#49998 by opting into nll-subminimal-causes.)
+
 // Reject mixing cyclic structure and Drop when using Vec.
 //
 // (Compare against compile-fail/dropck_arr_cycle_checked.rs)
 
-#![feature(const_atomic_usize_new)]
+
 
 use std::cell::Cell;
 use id::Id;
@@ -108,18 +111,18 @@ fn f() {
     c3.v.push(CheckId(Cell::new(None)));
 
     c1.v[0].v.set(Some(&c2));
+    //~^ ERROR `c2` does not live long enough
     c1.v[1].v.set(Some(&c3));
+    //~^ ERROR `c3` does not live long enough
     c2.v[0].v.set(Some(&c2));
+    //~^ ERROR `c2` does not live long enough
     c2.v[1].v.set(Some(&c3));
+    //~^ ERROR `c3` does not live long enough
     c3.v[0].v.set(Some(&c1));
+    //~^ ERROR `c1` does not live long enough
     c3.v[1].v.set(Some(&c2));
+    //~^ ERROR `c2` does not live long enough
 }
-//~^ ERROR `c2` does not live long enough
-//~| ERROR `c3` does not live long enough
-//~| ERROR `c2` does not live long enough
-//~| ERROR `c3` does not live long enough
-//~| ERROR `c1` does not live long enough
-//~| ERROR `c2` does not live long enough
 
 fn main() {
     f();

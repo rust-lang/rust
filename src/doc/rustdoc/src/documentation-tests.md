@@ -19,17 +19,37 @@ running `rustdoc --test foo.rs` will extract this example, and then run it as a 
 Please note that by default, if no language is set for the block code, `rustdoc`
 assumes it is `Rust` code. So the following:
 
+``````markdown
 ```rust
 let x = 5;
 ```
+``````
 
 is strictly equivalent to:
 
+``````markdown
 ```
 let x = 5;
 ```
+``````
 
 There's some subtlety though! Read on for more details.
+
+## Passing or failing a doctest
+
+Like regular unit tests, regular doctests are considered to "pass"
+if they compile and run without panicking.
+So if you want to demonstrate that some computation gives a certain result,
+the `assert!` family of macros works the same as other Rust code:
+
+```rust
+let foo = "foo";
+
+assert_eq!(foo, "foo");
+```
+
+This way, if the computation ever returns something different,
+the code panics and the doctest fails.
 
 ## Pre-processing examples
 
@@ -38,17 +58,19 @@ function! Forcing you to write `main` for every example, no matter how small,
 adds friction. So `rustdoc` processes your examples slightly before
 running them. Here's the full algorithm rustdoc uses to preprocess examples:
 
-1. Any leading `#![foo]` attributes are left intact as crate attributes.
-2. Some common `allow` attributes are inserted, including
+1. Some common `allow` attributes are inserted, including
    `unused_variables`, `unused_assignments`, `unused_mut`,
    `unused_attributes`, and `dead_code`. Small examples often trigger
    these lints.
-3. If the example does not contain `extern crate`, then `extern crate
+2. Any attributes specified with `#![doc(test(attr(...)))]` are added.
+3. Any leading `#![foo]` attributes are left intact as crate attributes.
+4. If the example does not contain `extern crate`, and
+   `#![doc(test(no_crate_inject))]` was not specified, then `extern crate
    <mycrate>;` is inserted (note the lack of `#[macro_use]`).
-4. Finally, if the example does not contain `fn main`, the remainder of the
+5. Finally, if the example does not contain `fn main`, the remainder of the
    text is wrapped in `fn main() { your_code }`.
 
-For more about that caveat in rule 3, see "Documeting Macros" below.
+For more about that caveat in rule 4, see "Documenting Macros" below.
 
 ## Hiding portions of the example
 
@@ -57,8 +79,9 @@ from your example, but are important to make the tests work. Consider
 an example block that looks like this:
 
 ```text
-/// Some documentation.
-# fn foo() {}
+/// /// Some documentation.
+/// # fn foo() {} // this function will be hidden
+/// println!("Hello, World!");
 ```
 
 It will render like this:
@@ -66,6 +89,7 @@ It will render like this:
 ```rust
 /// Some documentation.
 # fn foo() {}
+println!("Hello, World!");
 ```
 
 Yes, that's right: you can add lines that start with `# `, and they will
@@ -116,67 +140,103 @@ To keep each code block testable, we want the whole program in each block, but
 we don't want the reader to see every line every time.  Here's what we put in
 our source code:
 
-```text
-    First, we set `x` to five:
+``````markdown
+First, we set `x` to five:
 
-    ```
-    let x = 5;
-    # let y = 6;
-    # println!("{}", x + y);
-    ```
-
-    Next, we set `y` to six:
-
-    ```
-    # let x = 5;
-    let y = 6;
-    # println!("{}", x + y);
-    ```
-
-    Finally, we print the sum of `x` and `y`:
-
-    ```
-    # let x = 5;
-    # let y = 6;
-    println!("{}", x + y);
-    ```
 ```
+let x = 5;
+# let y = 6;
+# println!("{}", x + y);
+```
+
+Next, we set `y` to six:
+
+```
+# let x = 5;
+let y = 6;
+# println!("{}", x + y);
+```
+
+Finally, we print the sum of `x` and `y`:
+
+```
+# let x = 5;
+# let y = 6;
+println!("{}", x + y);
+```
+``````
 
 By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
 explanation.
 
-Another case where the use of `#` is handy is when you want to ignore
-error handling. Lets say you want the following,
+The `#`-hiding of lines can be prevented by using two consecutive hashes
+`##`. This only needs to be done with with the first `#` which would've
+otherwise caused hiding. If we have a string literal like the following,
+which has a line that starts with a `#`:
+
+```rust
+let s = "foo
+## bar # baz";
+```
+
+We can document it by escaping the initial `#`:
+
+```text
+/// let s = "foo
+/// ## bar # baz";
+```
+
+
+## Using `?` in doc tests
+
+When writing an example, it is rarely useful to include a complete error
+handling, as it would add significant amounts of boilerplate code. Instead, you
+may want the following:
 
 ```ignore
+/// ```
 /// use std::io;
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
+/// ```
 ```
 
-The problem is that `?` returns a `Result<T, E>` and test functions
-don't return anything so this will give a mismatched types error.
+The problem is that `?` returns a `Result<T, E>` and test functions don't
+return anything, so this will give a mismatched types error.
+
+You can get around this limitation by manually adding a `main` that returns
+`Result<T, E>`, because `Result<T, E>` implements the `Termination` trait:
 
 ```ignore
 /// A doc test using ?
 ///
 /// ```
 /// use std::io;
-/// # fn foo() -> io::Result<()> {
+///
+/// fn main() -> io::Result<()> {
+///     let mut input = String::new();
+///     io::stdin().read_line(&mut input)?;
+///     Ok(())
+/// }
+/// ```
+```
+
+Together with the `# ` from the section above, you arrive at a solution that
+appears to the reader as the initial idea but works with doc tests:
+
+```ignore
+/// ```
+/// use std::io;
+/// # fn main() -> io::Result<()> {
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
 /// # Ok(())
 /// # }
 /// ```
-# fn foo() {}
 ```
 
-You can get around this by wrapping the code in a function. This catches
-and swallows the `Result<T, E>` when running tests on the docs. This
-pattern appears regularly in the standard library.
-
-### Documenting macros
+## Documenting macros
 
 Here’s an example of documenting a macro:
 
@@ -246,10 +306,10 @@ not actually pass as a test.
 # fn foo() {}
 ```
 
-`compile_fail` tells `rustdoc` that the compilation should fail. If it
-compiles, then the test will fail. However please note that code failing
-with the current Rust release may work in a future release, as new features
-are added.
+The `no_run` attribute will compile your code, but not run it. This is
+important for examples such as "Here's how to retrieve a web page,"
+which you would want to ensure compiles, but might be run in a test
+environment that has no network access.
 
 ```text
 /// ```compile_fail
@@ -258,7 +318,31 @@ are added.
 /// ```
 ```
 
-The `no_run` attribute will compile your code, but not run it. This is
-important for examples such as "Here's how to retrieve a web page,"
-which you would want to ensure compiles, but might be run in a test
-environment that has no network access.
+`compile_fail` tells `rustdoc` that the compilation should fail. If it
+compiles, then the test will fail. However please note that code failing
+with the current Rust release may work in a future release, as new features
+are added.
+
+## Syntax reference
+
+The *exact* syntax for code blocks, including the edge cases, can be found
+in the [Fenced Code Blocks](https://spec.commonmark.org/0.28/#fenced-code-blocks)
+section of the CommonMark specification.
+
+Rustdoc also accepts *indented* code blocks as an alternative to fenced
+code blocks: instead of surrounding your code with three backticks, you
+can indent each line by four or more spaces.
+
+``````markdown
+    let foo = "foo";
+    assert_eq!(foo, "foo");
+``````
+
+These, too, are documented in the CommonMark specification, in the
+[Indented Code Blocks](https://spec.commonmark.org/0.28/#indented-code-blocks)
+section.
+
+However, it's preferable to use fenced code blocks over indented code blocks.
+Not only are fenced code blocks considered more idiomatic for Rust code,
+but there is no way to use directives such as `ignore` or `should_panic` with
+indented code blocks.

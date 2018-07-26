@@ -72,7 +72,7 @@ macro_rules! vec {
 
 /// Creates a `String` using interpolation of runtime expressions.
 ///
-/// The first argument `format!` recieves is a format string.  This must be a string
+/// The first argument `format!` receives is a format string.  This must be a string
 /// literal.  The power of the formatting string is in the `{}`s contained.
 ///
 /// Additional parameters passed to `format!` replace the `{}`s within the

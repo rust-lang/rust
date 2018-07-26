@@ -10,8 +10,9 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
-log = "0.3"
+log = "0.4"
 rustc = { path = "../librustc" }
-rustc_const_eval = { path = "../librustc_const_eval" }
+rustc_mir = { path = "../librustc_mir"}
+rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }

@@ -1,0 +1,28 @@
+warning: not reporting region error due to nll
+  --> $DIR/ex3-both-anon-regions-one-is-struct-2.rs:14:9
+   |
+LL |     y = x.b; //~ ERROR lifetime mismatch
+   |         ^^^
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-one-is-struct-2.rs:14:5
+   |
+LL | fn foo(mut x: Ref, y: &u32) {
+   |               ---     ----
+   |               |
+   |               these two types are declared with different lifetimes...
+LL |     y = x.b; //~ ERROR lifetime mismatch
+   |     ^^^^^^^ ...but data from `x` flows into `y` here
+
+error[E0384]: cannot assign to immutable argument `y`
+  --> $DIR/ex3-both-anon-regions-one-is-struct-2.rs:14:5
+   |
+LL | fn foo(mut x: Ref, y: &u32) {
+   |                    - consider changing this to `mut y`
+LL |     y = x.b; //~ ERROR lifetime mismatch
+   |     ^^^^^^^ cannot assign to immutable argument
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0384, E0623.
+For more information about an error, try `rustc --explain E0384`.

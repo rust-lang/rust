@@ -17,8 +17,8 @@ use std::ops::Deref;
 use issue_19190_3::Baz;
 
 // @has issue_19190_3/struct.Foo.html
-// @has - '//*[@id="method.count_ones"]' 'fn count_ones(self) -> u32'
-// @!has - '//*[@id="method.min_value"]' 'fn min_value() -> i32'
+// @has - '//*[@id="method.as_str"]' 'fn as_str(&self) -> &str'
+// @!has - '//*[@id="method.new"]' 'fn new() -> String'
 pub use issue_19190_3::Foo;
 
 // @has issue_19190_3/struct.Bar.html

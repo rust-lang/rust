@@ -24,7 +24,7 @@ fn a() {
                 match closure0.take() {
                     Some(c) => {
                         return c();
-                        //~^ ERROR the type of this value must be known in this context
+                        //~^ ERROR type annotations needed
                     }
                     None => { }
                 }

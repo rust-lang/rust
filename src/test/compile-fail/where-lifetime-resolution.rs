@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait1 {}
-trait Trait2 {}
+trait Trait1<'a> {}
+trait Trait2<'a, 'b> {}
 
 fn f() where
     for<'a> Trait1<'a>: Trait1<'a>, // OK

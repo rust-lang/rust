@@ -1,0 +1,14 @@
+error: only foreign functions are allowed to be variadic
+  --> $DIR/invalid-variadic-function.rs:11:26
+   |
+LL | extern "C" fn foo(x: u8, ...);
+   |                          ^^^
+
+error: expected one of `->`, `where`, or `{`, found `;`
+  --> $DIR/invalid-variadic-function.rs:11:30
+   |
+LL | extern "C" fn foo(x: u8, ...);
+   |                              ^ expected one of `->`, `where`, or `{` here
+
+error: aborting due to 2 previous errors
+

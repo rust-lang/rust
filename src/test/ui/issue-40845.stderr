@@ -1,0 +1,14 @@
+error: cannot find macro `m!` in this scope
+  --> $DIR/issue-40845.rs:14:10
+   |
+LL | impl S { m!(); } //~ ERROR cannot find macro `m!` in this scope
+   |          ^
+
+error: cannot find macro `m!` in this scope
+  --> $DIR/issue-40845.rs:11:11
+   |
+LL | trait T { m!(); } //~ ERROR cannot find macro `m!` in this scope
+   |           ^
+
+error: aborting due to 2 previous errors
+

@@ -15,5 +15,4 @@ struct Monster {
 
 fn main() {
     let _m = Monster(); //~ ERROR expected function, found struct `Monster`
-                        //~^ NOTE did you mean `Monster { /* fields */ }`?
 }

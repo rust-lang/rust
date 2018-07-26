@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi can't run commands
 // ignore-emscripten can't run commands
 
 #![feature(libc)]

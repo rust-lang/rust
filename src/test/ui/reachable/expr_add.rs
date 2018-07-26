@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
 #![feature(never_type)]
 #![allow(unused_variables)]
 #![deny(unreachable_code)]
@@ -24,5 +23,5 @@ impl ops::Add<!> for Foo {
 }
 
 fn main() {
-    let x = Foo + return;
+    let x = Foo + return; //~ ERROR unreachable
 }

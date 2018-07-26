@@ -1,0 +1,16 @@
+error[E0594]: cannot assign to captured outer variable in an `Fn` closure
+  --> $DIR/fn-closure-mutable-capture.rs:15:17
+   |
+LL |     bar(move || x = 1);
+   |                 ^^^^^
+   |
+   = note: `Fn` closures cannot capture their enclosing environment for modifications
+help: consider changing this closure to take self by mutable reference
+  --> $DIR/fn-closure-mutable-capture.rs:15:9
+   |
+LL |     bar(move || x = 1);
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0594`.

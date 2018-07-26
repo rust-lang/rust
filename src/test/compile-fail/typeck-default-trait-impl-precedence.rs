@@ -10,13 +10,12 @@
 
 // Test that declaring that `&T` is `Defaulted` if `T:Signed` implies
 // that other `&T` is NOT `Defaulted` if `T:Signed` does not hold. In
-// other words, the `..` impl only applies if there are no existing
+// other words, the auto impl only applies if there are no existing
 // impls whose types unify.
 
 #![feature(optin_builtin_traits)]
 
-trait Defaulted { }
-impl Defaulted for .. { }
+auto trait Defaulted { }
 impl<'a,T:Signed> Defaulted for &'a T { }
 impl<'a,T:Signed> Defaulted for &'a mut T { }
 fn is_defaulted<T:Defaulted>() { }

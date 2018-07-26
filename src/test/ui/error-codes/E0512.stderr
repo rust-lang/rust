@@ -1,0 +1,12 @@
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/E0512.rs:14:23
+   |
+LL |     unsafe { takes_u8(::std::mem::transmute(0u16)); } //~ ERROR E0512
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: u16 (16 bits)
+   = note: target type: u8 (8 bits)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0512`.

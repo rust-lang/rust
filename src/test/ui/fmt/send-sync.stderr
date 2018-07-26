@@ -1,0 +1,43 @@
+error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
+  --> $DIR/send-sync.rs:18:5
+   |
+LL |     send(format_args!("{:?}", c)); //~ ERROR E0277
+   |     ^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
+   |
+   = help: within `[std::fmt::ArgumentV1<'_>]`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`
+   = note: required because it appears within the type `std::marker::PhantomData<*mut (dyn std::ops::Fn() + 'static)>`
+   = note: required because it appears within the type `core::fmt::Void`
+   = note: required because it appears within the type `&core::fmt::Void`
+   = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`
+   = note: required because it appears within the type `[std::fmt::ArgumentV1<'_>]`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `&[std::fmt::ArgumentV1<'_>]`
+   = note: required because it appears within the type `std::fmt::Arguments<'_>`
+note: required by `send`
+  --> $DIR/send-sync.rs:11:1
+   |
+LL | fn send<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
+  --> $DIR/send-sync.rs:19:5
+   |
+LL |     sync(format_args!("{:?}", c)); //~ ERROR E0277
+   |     ^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
+   |
+   = help: within `std::fmt::Arguments<'_>`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`
+   = note: required because it appears within the type `std::marker::PhantomData<*mut (dyn std::ops::Fn() + 'static)>`
+   = note: required because it appears within the type `core::fmt::Void`
+   = note: required because it appears within the type `&core::fmt::Void`
+   = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`
+   = note: required because it appears within the type `[std::fmt::ArgumentV1<'_>]`
+   = note: required because it appears within the type `&[std::fmt::ArgumentV1<'_>]`
+   = note: required because it appears within the type `std::fmt::Arguments<'_>`
+note: required by `sync`
+  --> $DIR/send-sync.rs:12:1
+   |
+LL | fn sync<T: Sync>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

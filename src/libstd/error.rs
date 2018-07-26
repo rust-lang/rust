@@ -9,34 +9,6 @@
 // except according to those terms.
 
 //! Traits for working with Errors.
-//!
-//! # The `Error` trait
-//!
-//! `Error` is a trait representing the basic expectations for error values,
-//! i.e. values of type `E` in [`Result<T, E>`]. At a minimum, errors must provide
-//! a description, but they may optionally provide additional detail (via
-//! [`Display`]) and cause chain information:
-//!
-//! ```
-//! use std::fmt::Display;
-//!
-//! trait Error: Display {
-//!     fn description(&self) -> &str;
-//!
-//!     fn cause(&self) -> Option<&Error> { None }
-//! }
-//! ```
-//!
-//! The [`cause`] method is generally used when errors cross "abstraction
-//! boundaries", i.e.  when a one module must report an error that is "caused"
-//! by an error from a lower-level module. This setup makes it possible for the
-//! high-level module to provide its own errors that do not commit to any
-//! particular implementation, but also reveal some of its implementation for
-//! debugging via [`cause`] chains.
-//!
-//! [`Result<T, E>`]: ../result/enum.Result.html
-//! [`Display`]: ../fmt/trait.Display.html
-//! [`cause`]: trait.Error.html#method.cause
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -51,12 +23,11 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
-use alloc::allocator;
+use alloc::{AllocErr, LayoutErr, CannotReallocInPlace};
 use any::TypeId;
 use borrow::Cow;
 use cell;
 use char;
-use convert;
 use core::array;
 use fmt::{self, Debug, Display};
 use mem::transmute;
@@ -64,33 +35,49 @@ use num;
 use str;
 use string;
 
-/// Base functionality for all errors in Rust.
+/// `Error` is a trait representing the basic expectations for error values,
+/// i.e. values of type `E` in [`Result<T, E>`]. Errors must describe
+/// themselves through the [`Display`] and [`Debug`] traits, and may provide
+/// cause chain information:
+///
+/// The [`cause`] method is generally used when errors cross "abstraction
+/// boundaries", i.e.  when a one module must report an error that is "caused"
+/// by an error from a lower-level module. This setup makes it possible for the
+/// high-level module to provide its own errors that do not commit to any
+/// particular implementation, but also reveal some of its implementation for
+/// debugging via [`cause`] chains.
+///
+/// [`Result<T, E>`]: ../result/enum.Result.html
+/// [`Display`]: ../fmt/trait.Display.html
+/// [`Debug`]: ../fmt/trait.Debug.html
+/// [`cause`]: trait.Error.html#method.cause
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
-    /// A short description of the error.
+    /// **This method is soft-deprecated.**
     ///
-    /// The description should only be used for a simple message.
-    /// It should not contain newlines or sentence-ending punctuation,
-    /// to facilitate embedding in larger user-facing strings.
-    /// For showing formatted error messages with more information see
-    /// [`Display`].
+    /// Although using it won’t cause compilation warning,
+    /// new code should use [`Display`] instead
+    /// and new `impl`s can omit it.
+    ///
+    /// To obtain error description as a string, use `to_string()`.
     ///
     /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::error::Error;
-    ///
     /// match "xc".parse::<u32>() {
     ///     Err(e) => {
-    ///         println!("Error: {}", e.description());
+    ///         // Print `e` itself, not `e.description()`.
+    ///         println!("Error: {}", e);
     ///     }
     ///     _ => println!("No error"),
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn description(&self) -> &str;
+    fn description(&self) -> &str {
+        "description() is deprecated; use Display"
+    }
 
     /// The lower-level cause of this error, if any.
     ///
@@ -234,7 +221,7 @@ impl<'a> From<Cow<'a, str>> for Box<Error> {
     }
 }
 
-#[unstable(feature = "never_type_impls", issue = "35121")]
+#[unstable(feature = "never_type", issue = "35121")]
 impl Error for ! {
     fn description(&self) -> &str { *self }
 }
@@ -242,18 +229,27 @@ impl Error for ! {
 #[unstable(feature = "allocator_api",
            reason = "the precise API and guarantees it provides may be tweaked.",
            issue = "32838")]
-impl Error for allocator::AllocErr {
+impl Error for AllocErr {
     fn description(&self) -> &str {
-        allocator::AllocErr::description(self)
+        "memory allocation failed"
     }
 }
 
 #[unstable(feature = "allocator_api",
            reason = "the precise API and guarantees it provides may be tweaked.",
            issue = "32838")]
-impl Error for allocator::CannotReallocInPlace {
+impl Error for LayoutErr {
     fn description(&self) -> &str {
-        allocator::CannotReallocInPlace::description(self)
+        "invalid parameters to Layout::from_size_align"
+    }
+}
+
+#[unstable(feature = "allocator_api",
+           reason = "the precise API and guarantees it provides may be tweaked.",
+           issue = "32838")]
+impl Error for CannotReallocInPlace {
+    fn description(&self) -> &str {
+        CannotReallocInPlace::description(self)
     }
 }
 
@@ -368,14 +364,6 @@ impl Error for char::CharTryFromError {
 impl Error for char::ParseCharError {
     fn description(&self) -> &str {
         self.__description()
-    }
-}
-
-#[unstable(feature = "try_from", issue = "33417")]
-impl Error for convert::Infallible {
-    fn description(&self) -> &str {
-        match *self {
-        }
     }
 }
 

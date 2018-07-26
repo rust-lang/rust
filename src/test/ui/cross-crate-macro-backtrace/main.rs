@@ -13,5 +13,6 @@
 extern crate extern_macro_crate;
 
 fn main() {
-    myprintln!("{}"); //~ ERROR in this macro
+    myprintln!("{}");
+    //~^ ERROR in format string
 }

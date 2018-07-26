@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare seems unimportant to test
+
 // Issue #2303
 
 #![feature(intrinsics)]
@@ -36,14 +38,16 @@ struct Outer {
 }
 
 
-#[cfg(any(target_os = "linux",
-          target_os = "macos",
-          target_os = "freebsd",
+#[cfg(any(target_os = "android",
+          target_os = "cloudabi",
           target_os = "dragonfly",
+          target_os = "emscripten",
+          target_os = "freebsd",
+          target_os = "linux",
+          target_os = "macos",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "solaris",
-          target_os = "emscripten"))]
+          target_os = "solaris"))]
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {
@@ -76,15 +80,6 @@ mod m {
     }
 
     #[cfg(target_arch = "x86_64")]
-    pub mod m {
-        pub fn align() -> usize { 8 }
-        pub fn size() -> usize { 16 }
-    }
-}
-
-#[cfg(target_os = "android")]
-mod m {
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     pub mod m {
         pub fn align() -> usize { 8 }
         pub fn size() -> usize { 16 }

@@ -65,11 +65,11 @@ pub trait Semantics: Sized {
     /// Number of bits in the significand. This includes the integer bit.
     const PRECISION: usize;
 
-    /// The largest E such that 2^E is representable; this matches the
+    /// The largest E such that 2<sup>E</sup> is representable; this matches the
     /// definition of IEEE 754.
     const MAX_EXP: ExpInt;
 
-    /// The smallest E such that 2^E is a normalized number; this
+    /// The smallest E such that 2<sup>E</sup> is a normalized number; this
     /// matches the definition of IEEE 754.
     const MIN_EXP: ExpInt = -Self::MAX_EXP + 1;
 
@@ -1434,7 +1434,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
         let max_change = S::MAX_EXP as i32 - (S::MIN_EXP as i32 - sig_bits) + 1;
 
         // Clamp to one past the range ends to let normalize handle overflow.
-        let exp_change = cmp::min(cmp::max(exp as i32, (-max_change - 1)), max_change);
+        let exp_change = cmp::min(cmp::max(exp as i32, -max_change - 1), max_change);
         self.exp = self.exp.saturating_add(exp_change as ExpInt);
         self = self.normalize(round, Loss::ExactlyZero).value;
         if self.is_nan() {
@@ -1753,9 +1753,9 @@ impl<S: Semantics> IeeeFloat<S> {
                     } else {
                         loss = Some(match hex_value {
                             0 => Loss::ExactlyZero,
-                            1...7 => Loss::LessThanHalf,
+                            1..=7 => Loss::LessThanHalf,
                             8 => Loss::ExactlyHalf,
-                            9...15 => Loss::MoreThanHalf,
+                            9..=15 => Loss::MoreThanHalf,
                             _ => unreachable!(),
                         });
                     }
@@ -2608,7 +2608,7 @@ mod sig {
     ///
     /// `(n - 1) * (n - 1) + 2 * (n - 1) == (n - 1) * (n + 1)`
     ///
-    /// which is less than n^2.
+    /// which is less than n<sup>2</sup>.
     pub(super) fn widening_mul(a: Limb, b: Limb) -> [Limb; 2] {
         let mut wide = [0, 0];
 

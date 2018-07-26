@@ -11,7 +11,7 @@
 // aux-build:count_compound_ops.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros, proc_macro_non_items)]
 
 extern crate count_compound_ops;
 use count_compound_ops::count_compound_ops;

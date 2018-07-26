@@ -16,6 +16,7 @@ pub trait Foo {
 }
 
 struct Abc;
+
 impl Foo for Abc {
     const X: EFoo = EFoo::B;
 }
@@ -27,8 +28,10 @@ impl Foo for Def {
 
 pub fn test<A: Foo, B: Foo>(arg: EFoo) {
     match arg {
-        A::X => println!("A::X"), //~ error: statics cannot be referenced in patterns [E0158]
-        B::X => println!("B::X"), //~ error: statics cannot be referenced in patterns [E0158]
+        A::X => println!("A::X"),
+        //~^ error: associated consts cannot be referenced in patterns [E0158]
+        B::X => println!("B::X"),
+        //~^ error: associated consts cannot be referenced in patterns [E0158]
         _ => (),
     }
 }

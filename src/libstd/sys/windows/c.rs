@@ -20,11 +20,6 @@ use os::raw::c_ulonglong;
 use libc::{wchar_t, size_t, c_void};
 use ptr;
 
-#[repr(simd)]
-#[repr(C)]
-#[cfg(target_arch = "x86_64")]
-struct u64x2(u64, u64);
-
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
 pub use self::EXCEPTION_DISPOSITION::*;
 
@@ -624,6 +619,24 @@ pub struct ADDRESS64 {
 
 #[repr(C)]
 #[cfg(feature = "backtrace")]
+pub struct STACKFRAME_EX {
+    pub AddrPC: ADDRESS64,
+    pub AddrReturn: ADDRESS64,
+    pub AddrFrame: ADDRESS64,
+    pub AddrStack: ADDRESS64,
+    pub AddrBStore: ADDRESS64,
+    pub FuncTableEntry: *mut c_void,
+    pub Params: [u64; 4],
+    pub Far: BOOL,
+    pub Virtual: BOOL,
+    pub Reserved: [u64; 3],
+    pub KdHelp: KDHELP64,
+    pub StackFrameSize: DWORD,
+    pub InlineFrameContext: DWORD,
+}
+
+#[repr(C)]
+#[cfg(feature = "backtrace")]
 pub struct STACKFRAME64 {
     pub AddrPC: ADDRESS64,
     pub AddrReturn: ADDRESS64,
@@ -700,9 +713,8 @@ pub struct FLOATING_SAVE_AREA {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct CONTEXT {
-    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     pub P1Home: DWORDLONG,
     pub P2Home: DWORDLONG,
     pub P3Home: DWORDLONG,
@@ -760,17 +772,15 @@ pub struct CONTEXT {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct M128A {
-    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     pub Low:  c_ulonglong,
     pub High: c_longlong
 }
 
 #[cfg(target_arch = "x86_64")]
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct FLOATING_SAVE_AREA {
-    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     _Dummy: [u8; 512] // FIXME: Fill this out
 }
 
@@ -1228,7 +1238,7 @@ compat_fn! {
     }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", feature = "backtrace"))]
 mod gnu {
     use super::*;
 
@@ -1256,5 +1266,5 @@ mod gnu {
     }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", feature = "backtrace"))]
 pub use self::gnu::*;

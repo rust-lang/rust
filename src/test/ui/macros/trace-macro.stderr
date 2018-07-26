@@ -1,12 +1,12 @@
 note: trace_macro
-  --> $DIR/trace-macro.rs:14:5
+  --> $DIR/trace-macro.rs:15:5
    |
-14 |     println!("Hello, World!");
+LL |     println!("Hello, World!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `println! { "Hello, World!" }`
-   = note: to `print ! ( concat ! ( "Hello, World!" , "/n" ) )`
-   = note: expanding `print! { concat ! ( "Hello, World!" , "/n" ) }`
-   = note: to `$crate :: io :: _print ( format_args ! ( concat ! ( "Hello, World!" , "/n" ) )
-           )`
+   = note: to `{
+           # [ cfg ( not ( stage0 ) ) ] {
+           ( $crate :: io :: _print ( format_args_nl ! ( "Hello, World!" ) ) ) ; } # [
+           cfg ( stage0 ) ] { print ! ( "{}/n" , format_args ! ( "Hello, World!" ) ) } }`
 

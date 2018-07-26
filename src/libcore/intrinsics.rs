@@ -10,7 +10,7 @@
 
 //! rustc compiler intrinsics.
 //!
-//! The corresponding definitions are in librustc_trans/intrinsic.rs.
+//! The corresponding definitions are in librustc_codegen_llvm/intrinsic.rs.
 //!
 //! # Volatiles
 //!
@@ -638,6 +638,9 @@ extern "rust-intrinsic" {
     /// NB: This is very different from the `unreachable!()` macro: Unlike the
     /// macro, which panics when it is executed, it is *undefined behavior* to
     /// reach code marked with this function.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::hint::unreachable_unchecked`](../../std/hint/fn.unreachable_unchecked.html).
     pub fn unreachable() -> !;
 
     /// Informs the optimizer that a condition is always true.
@@ -714,7 +717,7 @@ extern "rust-intrinsic" {
     /// Reinterprets the bits of a value of one type as another type.
     ///
     /// Both types must have the same size. Neither the original, nor the result,
-    /// may be an [invalid value](../../nomicon/meet-safe-and-unsafe.html).
+    /// may be an [invalid value](../../nomicon/what-unsafe-does.html).
     ///
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
@@ -992,7 +995,7 @@ extern "rust-intrinsic" {
     ///         ptr::copy_nonoverlapping(y, x, 1);
     ///         ptr::copy_nonoverlapping(&t, y, 1);
     ///
-    ///         // y and t now point to the same thing, but we need to completely forget `tmp`
+    ///         // y and t now point to the same thing, but we need to completely forget `t`
     ///         // because it's no longer relevant.
     ///         mem::forget(t);
     ///     }
@@ -1081,6 +1084,15 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`std::ptr::write_volatile`](../../std/ptr/fn.write_volatile.html).
     pub fn volatile_store<T>(dst: *mut T, val: T);
+
+    /// Perform a volatile load from the `src` pointer
+    /// The pointer is not required to be aligned.
+    #[cfg(not(stage0))]
+    pub fn unaligned_volatile_load<T>(src: *const T) -> T;
+    /// Perform a volatile store to the `dst` pointer.
+    /// The pointer is not required to be aligned.
+    #[cfg(not(stage0))]
+    pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
     /// Returns the square root of an `f32`
     pub fn sqrtf32(x: f32) -> f32;
@@ -1292,6 +1304,9 @@ extern "rust-intrinsic" {
     /// Reverses the bytes in an integer type `T`.
     pub fn bswap<T>(x: T) -> T;
 
+    /// Reverses the bits in an integer type `T`.
+    pub fn bitreverse<T>(x: T) -> T;
+
     /// Performs checked integer addition.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_add` method. For example,
@@ -1309,6 +1324,10 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_mul` method. For example,
     /// [`std::u32::overflowing_mul`](../../std/primitive.u32.html#method.overflowing_mul)
     pub fn mul_with_overflow<T>(x: T, y: T) -> (T, bool);
+
+    /// Performs an exact division, resulting in undefined behavior where
+    /// `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`
+    pub fn exact_div<T>(x: T, y: T) -> T;
 
     /// Performs an unchecked division, resulting in undefined behavior
     /// where y = 0 or x = `T::min_value()` and y = -1
@@ -1354,37 +1373,7 @@ extern "rust-intrinsic" {
     /// source as well as std's catch implementation.
     pub fn try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
 
-    /// Computes the byte offset that needs to be applied to `ptr` in order to
-    /// make it aligned to `align`.
-    /// If it is not possible to align `ptr`, the implementation returns
-    /// `usize::max_value()`.
-    ///
-    /// There are no guarantees whatsover that offsetting the pointer will not
-    /// overflow or go beyond the allocation that `ptr` points into.
-    /// It is up to the caller to ensure that the returned offset is correct
-    /// in all terms other than alignment.
-    ///
-    /// # Examples
-    ///
-    /// Accessing adjacent `u8` as `u16`
-    ///
-    /// ```
-    /// # #![feature(core_intrinsics)]
-    /// # fn foo(n: usize) {
-    /// # use std::intrinsics::align_offset;
-    /// # use std::mem::align_of;
-    /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = &x[n] as *const u8;
-    /// let offset = align_offset(ptr as *const (), align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
-    /// } else {
-    ///     // while the pointer can be aligned via `offset`, it would point
-    ///     // outside the allocation
-    /// }
-    /// # } }
-    /// ```
-    pub fn align_offset(ptr: *const (), align: usize) -> usize;
+    /// Emits a `!nontemporal` store according to LLVM (see their docs).
+    /// Probably will never become stable.
+    pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 }

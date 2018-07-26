@@ -16,9 +16,6 @@
 use {Intrinsic, Type};
 use IntrinsicDef::Named;
 
-// The default inlining settings trigger a pathological behaviour in
-// LLVM, which causes makes compilation very slow. See #28273.
-#[inline(never)]
 pub fn find(name: &str) -> Option<Intrinsic> {
     if !name.starts_with("x86") { return None }
     Some(match &name["x86".len()..] {
@@ -354,7 +351,7 @@ pub fn find(name: &str) -> Option<Intrinsic> {
         },
         "_mm256_sad_epu8" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 2] = [&::U8x32, &::U8x32]; &INPUTS },
-            output: &::U8x32,
+            output: &::U64x4,
             definition: Named("llvm.x86.avx2.psad.bw")
         },
         "_mm256_shuffle_epi8" => Intrinsic {

@@ -1,0 +1,13 @@
+error[E0658]: repr with 128-bit type is unstable (see issue #35118)
+  --> $DIR/E0658.rs:12:1
+   |
+LL | / enum Foo { //~ ERROR E0658
+LL | |     Bar(u64),
+LL | | }
+   | |_^
+   |
+   = help: add #![feature(repr128)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

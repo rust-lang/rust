@@ -70,14 +70,6 @@ pub fn super_lattice_tys<'a, 'gcx, 'tcx, L>(this: &mut L,
     let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
     let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
     match (&a.sty, &b.sty) {
-        (&ty::TyInfer(TyVar(..)), &ty::TyInfer(TyVar(..)))
-            if infcx.type_var_diverges(a) && infcx.type_var_diverges(b) => {
-            let v = infcx.next_diverging_ty_var(
-                TypeVariableOrigin::LatticeVariable(this.cause().span));
-            this.relate_bound(v, a, b)?;
-            Ok(v)
-        }
-
         // If one side is known to be a variable and one is not,
         // create a variable (`v`) to represent the LUB. Make sure to
         // relate `v` to the non-type-variable first (by passing it

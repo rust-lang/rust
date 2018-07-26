@@ -14,11 +14,21 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
+use errors::{Applicability, DiagnosticBuilder};
 use lint::{LintPass, LateLintPass, LintArray};
+use session::Session;
+use syntax::ast;
+use syntax::codemap::Span;
+
+declare_lint! {
+    pub EXCEEDING_BITSHIFTS,
+    Deny,
+    "shift exceeds the type's number of bits"
+}
 
 declare_lint! {
     pub CONST_ERR,
-    Warn,
+    Deny,
     "constant evaluation detected erroneous expression"
 }
 
@@ -67,7 +77,8 @@ declare_lint! {
 declare_lint! {
     pub UNREACHABLE_CODE,
     Warn,
-    "detects unreachable code paths"
+    "detects unreachable code paths",
+    report_in_external_macro: true
 }
 
 declare_lint! {
@@ -127,7 +138,7 @@ declare_lint! {
 declare_lint! {
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
-    "detect public reexports of private extern crates"
+    "detect public re-exports of private extern crates"
 }
 
 declare_lint! {
@@ -143,16 +154,15 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
-    Deny,
-    "attempt to resolve a trait on an expression whose type cannot be inferred but which \
-     currently defaults to ()"
-}
-
-declare_lint! {
     pub SAFE_EXTERN_STATICS,
     Deny,
     "safe access to extern statics was erroneously allowed"
+}
+
+declare_lint! {
+    pub SAFE_PACKED_BORROWS,
+    Warn,
+    "safe borrows of fields of packed structs were was erroneously allowed"
 }
 
 declare_lint! {
@@ -162,22 +172,10 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub EXTRA_REQUIREMENT_IN_IMPL,
-    Deny,
-    "detects extra requirements in impls that were erroneously allowed"
-}
-
-declare_lint! {
     pub LEGACY_DIRECTORY_OWNERSHIP,
     Deny,
     "non-inline, non-`#[path]` modules (e.g. `mod foo;`) were erroneously allowed in some files \
      not named `mod.rs`"
-}
-
-declare_lint! {
-    pub LEGACY_IMPORTS,
-    Deny,
-    "detects names that resolve to ambiguous glob imports with RFC 1560"
 }
 
 declare_lint! {
@@ -205,9 +203,22 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub INCOHERENT_FUNDAMENTAL_IMPLS,
+    Deny,
+    "potentially-conflicting impls were erroneously allowed"
+}
+
+declare_lint! {
+    pub BAD_REPR,
+    Warn,
+    "detects incorrect use of `repr` attribute"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
-    "detects use of deprecated items"
+    "detects use of deprecated items",
+    report_in_external_macro: true
 }
 
 declare_lint! {
@@ -222,6 +233,113 @@ declare_lint! {
     "detect mut variables which don't need to be mutable"
 }
 
+declare_lint! {
+    pub SINGLE_USE_LIFETIMES,
+    Allow,
+    "detects lifetime parameters that are only used once"
+}
+
+declare_lint! {
+    pub UNUSED_LIFETIMES,
+    Allow,
+    "detects lifetime parameters that are never used"
+}
+
+declare_lint! {
+    pub TYVAR_BEHIND_RAW_POINTER,
+    Warn,
+    "raw pointer to an inference variable"
+}
+
+declare_lint! {
+    pub ELIDED_LIFETIMES_IN_PATHS,
+    Allow,
+    "hidden lifetime parameters in types are deprecated"
+}
+
+declare_lint! {
+    pub BARE_TRAIT_OBJECTS,
+    Allow,
+    "suggest using `dyn Trait` for trait objects"
+}
+
+declare_lint! {
+    pub ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+    Allow,
+    "fully qualified paths that start with a module name \
+     instead of `crate`, `self`, or an extern crate name"
+}
+
+declare_lint! {
+    pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+    Warn,
+    "floating-point literals cannot be used in patterns"
+}
+
+declare_lint! {
+    pub UNSTABLE_NAME_COLLISIONS,
+    Warn,
+    "detects name collision with an existing but unstable method"
+}
+
+declare_lint! {
+    pub IRREFUTABLE_LET_PATTERNS,
+    Deny,
+    "detects irrefutable patterns in if-let and while-let statements"
+}
+
+declare_lint! {
+    pub UNUSED_LABELS,
+    Allow,
+    "detects labels that are never used"
+}
+
+declare_lint! {
+    pub DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
+    Warn,
+    "warns about duplicate associated type bindings in generics"
+}
+
+declare_lint! {
+    pub DUPLICATE_MACRO_EXPORTS,
+    Deny,
+    "detects duplicate macro exports"
+}
+
+declare_lint! {
+    pub INTRA_DOC_LINK_RESOLUTION_FAILURE,
+    Warn,
+    "warn about documentation intra links resolution failure"
+}
+
+declare_lint! {
+    pub WHERE_CLAUSES_OBJECT_SAFETY,
+    Warn,
+    "checks the object safety of where clauses"
+}
+
+declare_lint! {
+    pub PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+    Warn,
+    "detects proc macro derives using inaccessible names from parent modules"
+}
+
+declare_lint! {
+    pub MACRO_USE_EXTERN_CRATE,
+    Allow,
+    "the `#[macro_use]` attribute is now deprecated in favor of using macros \
+     via the module system"
+}
+
+/// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
+pub mod parser {
+    declare_lint! {
+        pub QUESTION_MARK_MACRO_SEP,
+        Allow,
+        "detects the use of `?` as a macro separator"
+    }
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -230,6 +348,8 @@ pub struct HardwiredLints;
 impl LintPass for HardwiredLints {
     fn get_lints(&self) -> LintArray {
         lint_array!(
+            ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+            EXCEEDING_BITSHIFTS,
             UNUSED_IMPORTS,
             UNUSED_EXTERN_CRATES,
             UNUSED_QUALIFICATIONS,
@@ -251,20 +371,124 @@ impl LintPass for HardwiredLints {
             INVALID_TYPE_PARAM_DEFAULT,
             CONST_ERR,
             RENAMED_AND_REMOVED_LINTS,
-            RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
             SAFE_EXTERN_STATICS,
+            SAFE_PACKED_BORROWS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
-            EXTRA_REQUIREMENT_IN_IMPL,
             LEGACY_DIRECTORY_OWNERSHIP,
-            LEGACY_IMPORTS,
             LEGACY_CONSTRUCTOR_VISIBILITY,
             MISSING_FRAGMENT_SPECIFIER,
             PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
             LATE_BOUND_LIFETIME_ARGUMENTS,
+            INCOHERENT_FUNDAMENTAL_IMPLS,
             DEPRECATED,
             UNUSED_UNSAFE,
-            UNUSED_MUT
+            UNUSED_MUT,
+            SINGLE_USE_LIFETIMES,
+            UNUSED_LIFETIMES,
+            UNUSED_LABELS,
+            TYVAR_BEHIND_RAW_POINTER,
+            ELIDED_LIFETIMES_IN_PATHS,
+            BARE_TRAIT_OBJECTS,
+            ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+            UNSTABLE_NAME_COLLISIONS,
+            IRREFUTABLE_LET_PATTERNS,
+            DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
+            DUPLICATE_MACRO_EXPORTS,
+            INTRA_DOC_LINK_RESOLUTION_FAILURE,
+            WHERE_CLAUSES_OBJECT_SAFETY,
+            PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+            MACRO_USE_EXTERN_CRATE,
+            parser::QUESTION_MARK_MACRO_SEP,
         )
+    }
+}
+
+// this could be a closure, but then implementing derive traits
+// becomes hacky (and it gets allocated)
+#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub enum BuiltinLintDiagnostics {
+    Normal,
+    BareTraitObject(Span, /* is_global */ bool),
+    AbsPathWithModule(Span),
+    DuplicatedMacroExports(ast::Ident, Span, Span),
+    ProcMacroDeriveResolutionFallback(Span),
+    ElidedLifetimesInPaths(usize, Span, bool, Span, String),
+}
+
+impl BuiltinLintDiagnostics {
+    pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder) {
+        match self {
+            BuiltinLintDiagnostics::Normal => (),
+            BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
+                let (sugg, app) = match sess.codemap().span_to_snippet(span) {
+                    Ok(ref s) if is_global => (format!("dyn ({})", s),
+                                               Applicability::MachineApplicable),
+                    Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
+                    Err(_) => (format!("dyn <type>"), Applicability::HasPlaceholders)
+                };
+                db.span_suggestion_with_applicability(span, "use `dyn`", sugg, app);
+            }
+            BuiltinLintDiagnostics::AbsPathWithModule(span) => {
+                let (sugg, app) = match sess.codemap().span_to_snippet(span) {
+                    Ok(ref s) => {
+                        // FIXME(Manishearth) ideally the emitting code
+                        // can tell us whether or not this is global
+                        let opt_colon = if s.trim_left().starts_with("::") {
+                            ""
+                        } else {
+                            "::"
+                        };
+
+                        (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
+                    }
+                    Err(_) => (format!("crate::<path>"), Applicability::HasPlaceholders)
+                };
+                db.span_suggestion_with_applicability(span, "use `crate`", sugg, app);
+            }
+            BuiltinLintDiagnostics::DuplicatedMacroExports(ident, earlier_span, later_span) => {
+                db.span_label(later_span, format!("`{}` already exported", ident));
+                db.span_note(earlier_span, "previous macro export is now shadowed");
+            }
+            BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
+                db.span_label(span, "names from parent modules are not \
+                                     accessible without an explicit import");
+            }
+            BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                n, path_span, incl_angl_brckt, insertion_span, anon_lts
+            ) => {
+                let (replace_span, suggestion) = if incl_angl_brckt {
+                    (insertion_span, anon_lts)
+                } else {
+                    // When possible, prefer a suggestion that replaces the whole
+                    // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
+                    // at a point (which makes for an ugly/confusing label)
+                    if let Ok(snippet) = sess.codemap().span_to_snippet(path_span) {
+                        // But our spans can get out of whack due to macros; if the place we think
+                        // we want to insert `'_` isn't even within the path expression's span, we
+                        // should bail out of making any suggestion rather than panicking on a
+                        // subtract-with-overflow or string-slice-out-out-bounds (!)
+                        // FIXME: can we do better?
+                        if insertion_span.lo().0 < path_span.lo().0 {
+                            return;
+                        }
+                        let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
+                        if insertion_index > snippet.len() {
+                            return;
+                        }
+                        let (before, after) = snippet.split_at(insertion_index);
+                        (path_span, format!("{}{}{}", before, anon_lts, after))
+                    } else {
+                        (insertion_span, anon_lts)
+                    }
+                };
+                db.span_suggestion_with_applicability(
+                    replace_span,
+                    &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
+                    suggestion,
+                    Applicability::MachineApplicable
+                );
+            }
+        }
     }
 }
 

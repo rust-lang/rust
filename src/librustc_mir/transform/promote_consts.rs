@@ -23,16 +23,14 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc::mir::*;
-use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
+use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::TyCtxt;
 use syntax_pos::Span;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
-use std::iter;
-use std::mem;
-use std::usize;
+use std::{iter, mem, usize};
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -71,9 +69,12 @@ pub enum Candidate {
     /// Borrow of a constant temporary.
     Ref(Location),
 
-    /// Array of indices found in the third argument of
-    /// a call to one of the simd_shuffleN intrinsics.
-    ShuffleIndices(BasicBlock)
+    /// Currently applied to function calls where the callee has the unstable
+    /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
+    /// intrinsic. The intrinsic requires the arguments are indeed constant and
+    /// the attribute currently provides the semantic requirement that arguments
+    /// must be constant.
+    Argument { bb: BasicBlock, index: usize },
 }
 
 struct TempCollector<'tcx> {
@@ -85,7 +86,7 @@ struct TempCollector<'tcx> {
 impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
     fn visit_local(&mut self,
                    &index: &Local,
-                   context: LvalueContext<'tcx>,
+                   context: PlaceContext<'tcx>,
                    location: Location) {
         // We're only interested in temporaries
         if self.mir.local_kind(index) != LocalKind::Temp {
@@ -102,8 +103,9 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
         let temp = &mut self.temps[index];
         if *temp == TempState::Undefined {
             match context {
-                LvalueContext::Store |
-                LvalueContext::Call => {
+                PlaceContext::Store |
+                PlaceContext::AsmOutput |
+                PlaceContext::Call => {
                     *temp = TempState::Defined {
                         location,
                         uses: 0
@@ -116,7 +118,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
             // We always allow borrows, even mutable ones, as we need
             // to promote mutable borrows of some ZSTs e.g. `&mut []`.
             let allowed_use = match context {
-                LvalueContext::Borrow {..} => true,
+                PlaceContext::Borrow {..} => true,
                 _ => context.is_nonmutating_use()
             };
             if allowed_use {
@@ -146,6 +148,7 @@ pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> IndexVec<Local, T
 }
 
 struct Promoter<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: &'a mut Mir<'tcx>,
     promoted: Mir<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
@@ -163,7 +166,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             terminator: Some(Terminator {
                 source_info: SourceInfo {
                     span,
-                    scope: ARGUMENT_VISIBILITY_SCOPE
+                    scope: OUTERMOST_SOURCE_SCOPE
                 },
                 kind: TerminatorKind::Return
             }),
@@ -177,9 +180,9 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         data.statements.push(Statement {
             source_info: SourceInfo {
                 span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
-            kind: StatementKind::Assign(Lvalue::Local(dest), rvalue)
+            kind: StatementKind::Assign(Place::Local(dest), rvalue)
         });
     }
 
@@ -268,7 +271,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             func,
                             args,
                             cleanup: None,
-                            destination: Some((Lvalue::Local(new_temp), new_target))
+                            destination: Some((Place::Local(new_temp), new_target))
                         },
                         ..terminator
                     };
@@ -284,39 +287,64 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn promote_candidate(mut self, candidate: Candidate) {
-        let span = self.promoted.span;
-        let new_operand = Operand::Constant(box Constant {
-            span,
-            ty: self.promoted.return_ty,
-            literal: Literal::Promoted {
-                index: Promoted::new(self.source.promoted.len())
-            }
-        });
-        let mut rvalue = match candidate {
-            Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                let ref mut statement = self.source[bb].statements[stmt_idx];
-                match statement.kind {
-                    StatementKind::Assign(_, ref mut rvalue) => {
-                        mem::replace(rvalue, Rvalue::Use(new_operand))
+        let mut operand = {
+            let promoted = &mut self.promoted;
+            let promoted_id = Promoted::new(self.source.promoted.len());
+            let mut promoted_place = |ty, span| {
+                promoted.span = span;
+                promoted.local_decls[RETURN_PLACE] =
+                    LocalDecl::new_return_place(ty, span);
+                Place::Promoted(box (promoted_id, ty))
+            };
+            let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
+            match candidate {
+                Candidate::Ref(loc) => {
+                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    match statement.kind {
+                        StatementKind::Assign(_, Rvalue::Ref(_, _, ref mut place)) => {
+                            // Find the underlying local for this (necessarilly interior) borrow.
+                            // HACK(eddyb) using a recursive function because of mutable borrows.
+                            fn interior_base<'a, 'tcx>(place: &'a mut Place<'tcx>)
+                                                       -> &'a mut Place<'tcx> {
+                                if let Place::Projection(ref mut proj) = *place {
+                                    assert_ne!(proj.elem, ProjectionElem::Deref);
+                                    return interior_base(&mut proj.base);
+                                }
+                                place
+                            }
+                            let place = interior_base(place);
+
+                            let ty = place.ty(local_decls, self.tcx).to_ty(self.tcx);
+                            let span = statement.source_info.span;
+
+                            Operand::Move(mem::replace(place, promoted_place(ty, span)))
+                        }
+                        _ => bug!()
                     }
-                    _ => bug!()
                 }
-            }
-            Candidate::ShuffleIndices(bb) => {
-                match self.source[bb].terminator_mut().kind {
-                    TerminatorKind::Call { ref mut args, .. } => {
-                        Rvalue::Use(mem::replace(&mut args[2], new_operand))
+                Candidate::Argument { bb, index } => {
+                    let terminator = blocks[bb].terminator_mut();
+                    match terminator.kind {
+                        TerminatorKind::Call { ref mut args, .. } => {
+                            let ty = args[index].ty(local_decls, self.tcx);
+                            let span = terminator.source_info.span;
+                            let operand = Operand::Copy(promoted_place(ty, span));
+                            mem::replace(&mut args[index], operand)
+                        }
+                        _ => bug!()
                     }
-                    _ => bug!()
                 }
             }
         };
-        self.visit_rvalue(&mut rvalue, Location {
+
+        assert_eq!(self.new_block(), START_BLOCK);
+        self.visit_operand(&mut operand, Location {
             block: BasicBlock::new(0),
             statement_index: usize::MAX
         });
 
-        self.assign(RETURN_POINTER, rvalue, span);
+        let span = self.promoted.span;
+        self.assign(RETURN_PLACE, Rvalue::Use(operand), span);
         self.source.promoted.push(self.promoted);
     }
 }
@@ -325,7 +353,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _: LvalueContext<'tcx>,
+                   _: PlaceContext<'tcx>,
                    _: Location) {
         if self.source.local_kind(*local) == LocalKind::Temp {
             *local = self.promote_temp(*local);
@@ -339,64 +367,48 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                                     candidates: Vec<Candidate>) {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
-    for candidate in candidates.into_iter().rev() {
-        let (span, ty) = match candidate {
-            Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                let statement = &mir[bb].statements[stmt_idx];
-                let dest = match statement.kind {
-                    StatementKind::Assign(ref dest, _) => dest,
-                    _ => {
-                        span_bug!(statement.source_info.span,
-                                  "expected assignment to promote");
-                    }
-                };
-                if let Lvalue::Local(index) = *dest {
-                    if temps[index] == TempState::PromotedOut {
-                        // Already promoted.
-                        continue;
-                    }
-                }
-                (statement.source_info.span, dest.ty(mir, tcx).to_ty(tcx))
-            }
-            Candidate::ShuffleIndices(bb) => {
-                let terminator = mir[bb].terminator();
-                let ty = match terminator.kind {
-                    TerminatorKind::Call { ref args, .. } => {
-                        args[2].ty(mir, tcx)
-                    }
-                    _ => {
-                        span_bug!(terminator.source_info.span,
-                                  "expected simd_shuffleN call to promote");
-                    }
-                };
-                (terminator.source_info.span, ty)
-            }
-        };
 
-        // Declare return pointer local
-        let initial_locals = iter::once(LocalDecl::new_return_pointer(ty, span))
-            .collect();
+    for candidate in candidates.into_iter().rev() {
+        match candidate {
+            Candidate::Ref(Location { block, statement_index }) => {
+                match mir[block].statements[statement_index].kind {
+                    StatementKind::Assign(Place::Local(local), _) => {
+                        if temps[local] == TempState::PromotedOut {
+                            // Already promoted.
+                            continue;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Candidate::Argument { .. } => {}
+        }
+
+
+        // Declare return place local so that `Mir::new` doesn't complain.
+        let initial_locals = iter::once(
+            LocalDecl::new_return_place(tcx.types.never, mir.span)
+        ).collect();
 
         let mut promoter = Promoter {
             promoted: Mir::new(
                 IndexVec::new(),
                 // FIXME: maybe try to filter this to avoid blowing up
                 // memory usage?
-                mir.visibility_scopes.clone(),
-                mir.visibility_scope_info.clone(),
+                mir.source_scopes.clone(),
+                mir.source_scope_local_data.clone(),
                 IndexVec::new(),
-                ty,
                 None,
                 initial_locals,
                 0,
                 vec![],
-                span
+                mir.span
             ),
+            tcx,
             source: mir,
             temps: &mut temps,
             keep_original: false
         };
-        assert_eq!(promoter.new_block(), START_BLOCK);
         promoter.promote_candidate(candidate);
     }
 
@@ -405,7 +417,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
     for block in mir.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
-                StatementKind::Assign(Lvalue::Local(index), _) |
+                StatementKind::Assign(Place::Local(index), _) |
                 StatementKind::StorageLive(index) |
                 StatementKind::StorageDead(index) => {
                     !promoted(index)
@@ -415,7 +427,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         });
         let terminator = block.terminator_mut();
         match terminator.kind {
-            TerminatorKind::Drop { location: Lvalue::Local(index), target, .. } => {
+            TerminatorKind::Drop { location: Place::Local(index), target, .. } => {
                 if promoted(index) {
                     terminator.kind = TerminatorKind::Goto {
                         target,

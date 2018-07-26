@@ -1,0 +1,22 @@
+warning: not reporting region error due to nll
+  --> $DIR/issue-17758.rs:17:9
+   |
+LL |         self.foo();
+   |         ^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/issue-17758.rs:17:14
+   |
+LL |         self.foo();
+   |              ^^^
+
+error: borrowed data escapes outside of closure
+  --> $DIR/issue-17758.rs:17:9
+   |
+LL |     fn bar(&self) {
+   |            ----- `self` is a reference that is only valid in the closure body
+LL |         self.foo();
+   |         ^^^^^^^^^^ `self` escapes the closure body here
+
+error: aborting due to previous error
+

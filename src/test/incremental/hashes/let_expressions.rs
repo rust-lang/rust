@@ -16,9 +16,9 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// must-compile-successfully
+// compile-pass
 // revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
 
 #![allow(warnings)]
@@ -32,26 +32,9 @@ pub fn change_name() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_clean(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_name() {
     let _y = 2u64;
 }
@@ -65,26 +48,9 @@ pub fn add_type() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_clean(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_clean(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated")]
+#[rustc_clean(cfg="cfail3")]
 pub fn add_type() {
     let _x: u32 = 2u32;
 }
@@ -98,26 +64,9 @@ pub fn change_type() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_type() {
     let _x: u8 = 2;
 }
@@ -131,26 +80,9 @@ pub fn change_mutability_of_reference_type() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_clean(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_reference_type() {
     let _x: &mut u64;
 }
@@ -164,26 +96,9 @@ pub fn change_mutability_of_slot() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_slot() {
     let _x: u64 = 0;
 }
@@ -197,26 +112,9 @@ pub fn change_simple_binding_to_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_simple_binding_to_pattern() {
     let (_a, _b) = (0u8, 'x');
 }
@@ -230,26 +128,9 @@ pub fn change_name_in_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_clean(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_name_in_pattern() {
     let (_a, _c) = (1u8, 'y');
 }
@@ -263,26 +144,9 @@ pub fn add_ref_in_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn add_ref_in_pattern() {
     let (ref _a, _b) = (1u8, 'y');
 }
@@ -296,18 +160,9 @@ pub fn add_amp_in_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn add_amp_in_pattern() {
     let (&_a, _b) = (&1u8, 'y');
 }
@@ -321,26 +176,9 @@ pub fn change_mutability_of_binding_in_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_binding_in_pattern() {
     let (mut _a, _b) = (99u8, 'q');
 }
@@ -354,26 +192,9 @@ pub fn add_initializer() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_dirty(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn add_initializer() {
     let _x: i16 = 3i16;
 }
@@ -387,26 +208,9 @@ pub fn change_initializer() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[rustc_dirty(label="MirValidated", cfg="cfail2")]
-#[rustc_clean(label="MirValidated", cfg="cfail3")]
-#[rustc_dirty(label="MirOptimized", cfg="cfail2")]
-#[rustc_clean(label="MirOptimized", cfg="cfail3")]
-#[rustc_clean(label="TypeckTables", cfg="cfail2")]
-#[rustc_clean(label="TypeckTables", cfg="cfail3")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
-#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
-#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
-#[rustc_clean(label="FnSignature", cfg="cfail2")]
-#[rustc_clean(label="FnSignature", cfg="cfail3")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
-#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_initializer() {
     let _x = 5u16;
 }

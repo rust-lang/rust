@@ -1,0 +1,11 @@
+error[E0658]: the target feature `avx512bw` is currently unstable (see issue #44839)
+  --> $DIR/target-feature-gate.rs:26:18
+   |
+LL | #[target_feature(enable = "avx512bw")]
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(avx512_target_feature)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

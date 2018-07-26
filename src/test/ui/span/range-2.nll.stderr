@@ -1,0 +1,25 @@
+error[E0597]: `b` does not live long enough
+  --> $DIR/range-2.rs:17:13
+   |
+LL |         &a..&b
+   |             ^^ borrowed value does not live long enough
+LL |     };
+   |     - borrowed value only lives until here
+...
+LL |     r.use_ref();
+   |     - borrow later used here
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/range-2.rs:17:9
+   |
+LL |         &a..&b
+   |         ^^ borrowed value does not live long enough
+LL |     };
+   |     - borrowed value only lives until here
+...
+LL |     r.use_ref();
+   |     - borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

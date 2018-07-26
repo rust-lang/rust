@@ -13,12 +13,7 @@ fn main() {
 
     match x {
         (0, ref y) | (y, 0) => {} //~ ERROR E0409
-                                  //~^ NOTE bound in different ways
-                                  //~| NOTE first binding
                                   //~| ERROR E0308
-                                  //~| NOTE expected &{integer}, found integral variable
-                                  //~| NOTE expected type `&{integer}`
-                                  //~| NOTE    found type `{integer}`
         _ => ()
     }
 }

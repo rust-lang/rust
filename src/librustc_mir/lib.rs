@@ -14,23 +14,41 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 */
 
-#![deny(warnings)]
+#![deny(bare_trait_objects)]
 
+#![feature(slice_patterns)]
+#![feature(slice_sort_by_cached_key)]
+#![feature(from_ref)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(conservative_impl_trait)]
+#![feature(catch_expr)]
+#![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
-#![feature(i128_type)]
+#![feature(core_intrinsics)]
+#![feature(decl_macro)]
+#![feature(fs_read_write)]
+#![feature(in_band_lifetimes)]
+#![feature(macro_vis_matcher)]
+#![feature(exhaustive_patterns)]
+#![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(placement_in_syntax)]
-#![feature(collection_placement)]
-#![feature(nonzero)]
-#![feature(underscore_lifetimes)]
+#![feature(crate_visibility_modifier)]
+#![feature(never_type)]
+#![feature(specialization)]
+#![feature(try_trait)]
+#![feature(unicode_internals)]
+#![feature(step_trait)]
+
+#![recursion_limit="256"]
+
+extern crate arena;
 
 #[macro_use]
 extern crate bitflags;
 #[macro_use] extern crate log;
+extern crate either;
 extern crate graphviz as dot;
+extern crate polonius_engine;
 #[macro_use]
 extern crate rustc;
 #[macro_use] extern crate rustc_data_structures;
@@ -39,9 +57,11 @@ extern crate rustc_errors;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
-extern crate rustc_const_math;
-extern crate rustc_const_eval;
-extern crate core; // for NonZero
+extern crate rustc_target;
+extern crate log_settings;
+extern crate rustc_apfloat;
+extern crate byteorder;
+extern crate core;
 
 mod diagnostics;
 
@@ -52,13 +72,19 @@ mod hair;
 mod shim;
 pub mod transform;
 pub mod util;
+pub mod interpret;
+pub mod monomorphize;
 
-use rustc::ty::maps::Providers;
+pub use hair::pattern::check_crate as matchck_crate;
+use rustc::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers) {
     borrow_check::provide(providers);
     shim::provide(providers);
     transform::provide(providers);
+    providers.const_eval = interpret::const_eval_provider;
+    providers.const_value_to_allocation = interpret::const_value_to_allocation_provider;
+    providers.check_match = hair::pattern::check_match;
 }
 
 __build_diagnostic_array! { librustc_mir, DIAGNOSTICS }

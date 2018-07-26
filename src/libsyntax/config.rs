@@ -13,6 +13,7 @@ use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features
 use {fold, attr};
 use ast;
 use codemap::Spanned;
+use edition::Edition;
 use parse::{token, ParseSess};
 
 use ptr::P;
@@ -26,7 +27,7 @@ pub struct StripUnconfigured<'a> {
 }
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool)
+pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, edition: Edition)
                 -> (ast::Crate, Features) {
     let features;
     {
@@ -46,7 +47,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool)
             return (krate, Features::new());
         }
 
-        features = get_features(&sess.span_diagnostic, &krate.attrs);
+        features = get_features(&sess.span_diagnostic, &krate.attrs, edition);
 
         // Avoid reconfiguring malformed `cfg_attr`s
         if err_count == sess.span_diagnostic.err_count() {
@@ -114,7 +115,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    // Determine if a node with the given attributes should be included in this configuation.
+    // Determine if a node with the given attributes should be included in this configuration.
     pub fn in_cfg(&mut self, attrs: &[ast::Attribute]) -> bool {
         attrs.iter().all(|attr| {
             // When not compiling with --test we should not compile the #[test] functions
@@ -148,17 +149,24 @@ impl<'a> StripUnconfigured<'a> {
     fn visit_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
-            if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-                let mut err = feature_err(self.sess,
-                                          "stmt_expr_attributes",
-                                          attr.span,
-                                          GateIssue::Language,
-                                          EXPLAIN_STMT_ATTR_SYNTAX);
-                if attr.is_sugared_doc {
-                    err.help("`///` is for documentation comments. For a plain comment, use `//`.");
-                }
-                err.emit();
+            self.maybe_emit_expr_attr_err(attr);
+        }
+    }
+
+    /// If attributes are not allowed on expressions, emit an error for `attr`
+    pub fn maybe_emit_expr_attr_err(&self, attr: &ast::Attribute) {
+        if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
+            let mut err = feature_err(self.sess,
+                                      "stmt_expr_attributes",
+                                      attr.span,
+                                      GateIssue::Language,
+                                      EXPLAIN_STMT_ATTR_SYNTAX);
+
+            if attr.is_sugared_doc {
+                err.help("`///` is for documentation comments. For a plain comment, use `//`.");
             }
+
+            err.emit();
         }
     }
 
@@ -196,7 +204,7 @@ impl<'a> StripUnconfigured<'a> {
                     self.configure(v).map(|v| {
                         Spanned {
                             node: ast::Variant_ {
-                                name: v.node.name,
+                                ident: v.node.ident,
                                 attrs: v.node.attrs,
                                 data: self.configure_variant_data(v.node.data),
                                 disr_expr: v.node.disr_expr,
@@ -270,6 +278,22 @@ impl<'a> StripUnconfigured<'a> {
             pattern
         })
     }
+
+    // deny #[cfg] on generic parameters until we decide what to do with it.
+    // see issue #51279.
+    pub fn disallow_cfg_on_generic_param(&mut self, param: &ast::GenericParam) {
+        for attr in param.attrs() {
+            let offending_attr = if attr.check_name("cfg") {
+                "cfg"
+            } else if attr.check_name("cfg_attr") {
+                "cfg_attr"
+            } else {
+                continue;
+            };
+            let msg = format!("#[{}] cannot be applied on a generic parameter", offending_attr);
+            self.sess.span_diagnostic.span_err(attr.span, &msg);
+        }
+    }
 }
 
 impl<'a> fold::Folder for StripUnconfigured<'a> {
@@ -284,13 +308,13 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
     }
 
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let mut expr = self.configure_expr(expr).unwrap();
+        let mut expr = self.configure_expr(expr).into_inner();
         expr.node = self.configure_expr_kind(expr.node);
         P(fold::noop_fold_expr(expr, self))
     }
 
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        let mut expr = configure!(self, expr).unwrap();
+        let mut expr = configure!(self, expr).into_inner();
         expr.node = self.configure_expr_kind(expr.node);
         Some(P(fold::noop_fold_expr(expr, self)))
     }

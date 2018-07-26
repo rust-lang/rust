@@ -1,0 +1,26 @@
+warning: not reporting region error due to nll
+  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:11:10
+   |
+LL |   y.push(z); //~ ERROR lifetime mismatch
+   |          ^
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:11:3
+   |
+LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
+   |                               ---      --- these two types are declared with different lifetimes...
+LL |   y.push(z); //~ ERROR lifetime mismatch
+   |   ^^^^^^^^^ ...but data from `z` flows into `y` here
+
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
+  --> $DIR/ex3-both-anon-regions-using-fn-items.rs:11:3
+   |
+LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
+   |                        - help: consider changing this to be mutable: `mut y`
+LL |   y.push(z); //~ ERROR lifetime mismatch
+   |   ^ cannot borrow as mutable
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0596, E0623.
+For more information about an error, try `rustc --explain E0596`.

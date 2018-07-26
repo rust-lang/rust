@@ -21,8 +21,8 @@ fn assert_send<T: ?Sized + Send>() { }
 
 fn main() {
     assert_sync::<A>();
-    //~^ ERROR the trait bound `A: std::marker::Sync` is not satisfied
+    //~^ ERROR `A` cannot be shared between threads safely [E0277]
 
     assert_send::<A>();
-    //~^ ERROR the trait bound `A: std::marker::Send` is not satisfied
+    //~^ ERROR `A` cannot be sent between threads safely [E0277]
 }

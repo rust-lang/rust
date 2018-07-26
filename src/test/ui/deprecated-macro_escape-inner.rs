@@ -12,7 +12,6 @@
 
 mod foo {
     #![macro_escape] //~ WARNING macro_escape is a deprecated synonym for macro_use
-    //~^ HELP consider an outer attribute
 }
 
 fn main() {

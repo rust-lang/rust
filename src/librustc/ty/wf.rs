@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use middle::const_val::{ConstVal, ConstAggregate};
+use mir::interpret::ConstValue;
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
@@ -76,10 +76,6 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     match *predicate {
         ty::Predicate::Trait(ref t) => {
             wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
-        }
-        ty::Predicate::Equate(ref t) => {
-            wf.compute(t.skip_binder().0);
-            wf.compute(t.skip_binder().1);
         }
         ty::Predicate::RegionOutlives(..) => {
         }
@@ -220,39 +216,15 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     /// into `self.out`.
     fn compute_const(&mut self, constant: &'tcx ty::Const<'tcx>) {
         self.require_sized(constant.ty, traits::ConstSized);
-        match constant.val {
-            ConstVal::Integral(_) |
-            ConstVal::Float(_) |
-            ConstVal::Str(_) |
-            ConstVal::ByteStr(_) |
-            ConstVal::Bool(_) |
-            ConstVal::Char(_) |
-            ConstVal::Variant(_) |
-            ConstVal::Function(..) => {}
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                for &(_, v) in fields {
-                    self.compute_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                for v in fields {
-                    self.compute_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-                self.compute_const(v);
-            }
-            ConstVal::Unevaluated(def_id, substs) => {
-                let obligations = self.nominal_obligations(def_id, substs);
-                self.out.extend(obligations);
+        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
+            let obligations = self.nominal_obligations(def_id, substs);
+            self.out.extend(obligations);
 
-                let predicate = ty::Predicate::ConstEvaluatable(def_id, substs);
-                let cause = self.cause(traits::MiscObligation);
-                self.out.push(traits::Obligation::new(cause,
-                                                      self.param_env,
-                                                      predicate));
-            }
+            let predicate = ty::Predicate::ConstEvaluatable(def_id, substs);
+            let cause = self.cause(traits::MiscObligation);
+            self.out.push(traits::Obligation::new(cause,
+                                                    self.param_env,
+                                                    predicate));
         }
     }
 
@@ -283,6 +255,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::TyFloat(..) |
                 ty::TyError |
                 ty::TyStr |
+                ty::TyGeneratorWitness(..) |
                 ty::TyNever |
                 ty::TyParam(_) |
                 ty::TyForeign(..) => {
@@ -299,7 +272,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     self.compute_const(len);
                 }
 
-                ty::TyTuple(ref tys, _) => {
+                ty::TyTuple(ref tys) => {
                     if let Some((_last, rest)) = tys.split_last() {
                         for elem in rest {
                             self.require_sized(elem, traits::TupleElem);
@@ -322,28 +295,64 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     self.out.extend(obligations);
                 }
 
-                ty::TyRef(r, mt) => {
+                ty::TyRef(r, rty, _) => {
                     // WfReference
-                    if !r.has_escaping_regions() && !mt.ty.has_escaping_regions() {
+                    if !r.has_escaping_regions() && !rty.has_escaping_regions() {
                         let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
                         self.out.push(
                             traits::Obligation::new(
                                 cause,
                                 param_env,
                                 ty::Predicate::TypeOutlives(
-                                    ty::Binder(
-                                        ty::OutlivesPredicate(mt.ty, r)))));
+                                    ty::Binder::dummy(
+                                        ty::OutlivesPredicate(rty, r)))));
                     }
                 }
 
-                ty::TyGenerator(..) | ty::TyClosure(..) => {
-                    // the types in a closure or generator are always the types of
-                    // local variables (or possibly references to local
-                    // variables), we'll walk those.
+                ty::TyGenerator(..) => {
+                    // Walk ALL the types in the generator: this will
+                    // include the upvar types as well as the yield
+                    // type. Note that this is mildly distinct from
+                    // the closure case, where we have to be careful
+                    // about the signature of the closure. We don't
+                    // have the problem of implied bounds here since
+                    // generators don't take arguments.
+                }
+
+                ty::TyClosure(def_id, substs) => {
+                    // Only check the upvar types for WF, not the rest
+                    // of the types within. This is needed because we
+                    // capture the signature and it may not be WF
+                    // without the implied bounds. Consider a closure
+                    // like `|x: &'a T|` -- it may be that `T: 'a` is
+                    // not known to hold in the creator's context (and
+                    // indeed the closure may not be invoked by its
+                    // creator, but rather turned to someone who *can*
+                    // verify that).
                     //
-                    // (Though, local variables are probably not
-                    // needed, as they are separately checked w/r/t
-                    // WFedness.)
+                    // The special treatment of closures here really
+                    // ought not to be necessary either; the problem
+                    // is related to #25860 -- there is no way for us
+                    // to express a fn type complete with the implied
+                    // bounds that it is assuming. I think in reality
+                    // the WF rules around fn are a bit messed up, and
+                    // that is the rot problem: `fn(&'a T)` should
+                    // probably always be WF, because it should be
+                    // shorthand for something like `where(T: 'a) {
+                    // fn(&'a T) }`, as discussed in #25860.
+                    //
+                    // Note that we are also skipping the generic
+                    // types. This is consistent with the `outlives`
+                    // code, but anyway doesn't matter: within the fn
+                    // body where they are created, the generics will
+                    // always be WF, and outside of that fn body we
+                    // are not directly inspecting closure types
+                    // anyway, except via auto trait matching (which
+                    // only inspects the upvar types).
+                    subtys.skip_current_subtree(); // subtree handled by compute_projection
+                    for upvar_ty in substs.upvar_tys(def_id, self.infcx.tcx) {
+                        self.compute(upvar_ty);
+                    }
                 }
 
                 ty::TyFnDef(..) | ty::TyFnPtr(_) => {
@@ -351,10 +360,16 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // types appearing in the fn signature
                 }
 
-                ty::TyAnon(..) => {
+                ty::TyAnon(did, substs) => {
                     // all of the requirements on type parameters
                     // should've been checked by the instantiation
                     // of whatever returned this exact `impl Trait`.
+
+                    // for named existential types we still need to check them
+                    if super::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
+                        let obligations = self.nominal_obligations(did, substs);
+                        self.out.extend(obligations);
+                    }
                 }
 
                 ty::TyDynamic(data, r) => {
@@ -480,7 +495,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ObjectTypeBound(ty, explicit_bound));
-                let outlives = ty::Binder(ty::OutlivesPredicate(explicit_bound, implicit_bound));
+                let outlives = ty::Binder::dummy(
+                    ty::OutlivesPredicate(explicit_bound, implicit_bound));
                 self.out.push(traits::Obligation::new(cause,
                                                       self.param_env,
                                                       outlives.to_predicate()));

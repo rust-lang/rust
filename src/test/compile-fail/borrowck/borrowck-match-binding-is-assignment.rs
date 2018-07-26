@@ -9,11 +9,9 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Zemit-end-regions -Zborrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 // Test that immutable pattern bindings cannot be reassigned.
-
-#![feature(slice_patterns)]
 
 enum E {
     Foo(isize)
@@ -27,40 +25,35 @@ pub fn main() {
     match 1 {
         x => {
             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
-                    //[mir]~^ ERROR (Mir) [E0384]
-                    //[mir]~| ERROR (Ast) [E0384]
+                    //[mir]~^ ERROR [E0384]
         }
     }
 
     match E::Foo(1) {
         E::Foo(x) => {
             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
-                    //[mir]~^ ERROR (Mir) [E0384]
-                    //[mir]~| ERROR (Ast) [E0384]
+                    //[mir]~^ ERROR [E0384]
         }
     }
 
     match (S { bar: 1 }) {
         S { bar: x } => {
             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
-                    //[mir]~^ ERROR (Mir) [E0384]
-                    //[mir]~| ERROR (Ast) [E0384]
+                    //[mir]~^ ERROR [E0384]
         }
     }
 
     match (1,) {
         (x,) => {
             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
-                    //[mir]~^ ERROR (Mir) [E0384]
-                    //[mir]~| ERROR (Ast) [E0384]
+                    //[mir]~^ ERROR [E0384]
         }
     }
 
     match [1,2,3] {
         [x,_,_] => {
             x += 1; //[ast]~ ERROR cannot assign twice to immutable variable `x`
-                    //[mir]~^ ERROR (Mir) [E0384]
-                    //[mir]~| ERROR (Ast) [E0384]
+                    //[mir]~^ ERROR [E0384]
         }
     }
 }

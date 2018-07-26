@@ -14,20 +14,44 @@
 // The encoding format for inline spans were obtained by optimizing over crates in rustc/libstd.
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
+use GLOBALS;
 use {BytePos, SpanData};
 use hygiene::SyntaxContext;
 
 use rustc_data_structures::fx::FxHashMap;
-use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
 
 /// A compressed span.
 /// Contains either fields of `SpanData` inline if they are small, or index into span interner.
 /// The primary goal of `Span` is to be as small as possible and fit into other structures
 /// (that's why it uses `packed` as well). Decoding speed is the second priority.
 /// See `SpanData` for the info on span fields in decoded representation.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(packed)]
 pub struct Span(u32);
+
+impl Copy for Span {}
+impl Clone for Span {
+    #[inline]
+    fn clone(&self) -> Span {
+        *self
+    }
+}
+impl PartialEq for Span {
+    #[inline]
+    fn eq(&self, other: &Span) -> bool {
+        let a = self.0;
+        let b = other.0;
+        a == b
+    }
+}
+impl Eq for Span {}
+impl Hash for Span {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let a = self.0;
+        a.hash(state)
+    }
+}
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
 /// This span is kept inline and encoded with format 0.
@@ -59,9 +83,11 @@ const LEN_INDEX: usize = 1;
 const CTXT_INDEX: usize = 2;
 
 // Tag = 0, inline format.
-// -----------------------------------
-// | base 31:8  | len 7:1  | tag 0:0 |
-// -----------------------------------
+// -------------------------------------------------------------
+// | base 31:8  | len 7:1  | ctxt (currently 0 bits) | tag 0:0 |
+// -------------------------------------------------------------
+// Since there are zero bits for ctxt, only SpanData with a 0 SyntaxContext
+// can be inline.
 const INLINE_SIZES: [u32; 3] = [24, 7, 0];
 const INLINE_OFFSETS: [u32; 3] = [8, 1, 1];
 
@@ -74,7 +100,7 @@ const INTERNED_INDEX_OFFSET: u32 = 1;
 
 #[inline]
 fn encode(sd: &SpanData) -> Span {
-    let (base, len, ctxt) = (sd.lo.0, sd.hi.0 - sd.lo.0, sd.ctxt.0);
+    let (base, len, ctxt) = (sd.lo.0, sd.hi.0 - sd.lo.0, sd.ctxt.as_u32());
 
     let val = if (base >> INLINE_SIZES[BASE_INDEX]) == 0 &&
                  (len >> INLINE_SIZES[LEN_INDEX]) == 0 &&
@@ -106,11 +132,11 @@ fn decode(span: Span) -> SpanData {
         let index = extract(INTERNED_INDEX_OFFSET, INTERNED_INDEX_SIZE);
         return with_span_interner(|interner| *interner.get(index));
     };
-    SpanData { lo: BytePos(base), hi: BytePos(base + len), ctxt: SyntaxContext(ctxt) }
+    SpanData { lo: BytePos(base), hi: BytePos(base + len), ctxt: SyntaxContext::from_u32(ctxt) }
 }
 
 #[derive(Default)]
-struct SpanInterner {
+pub struct SpanInterner {
     spans: FxHashMap<SpanData, u32>,
     span_data: Vec<SpanData>,
 }
@@ -133,11 +159,8 @@ impl SpanInterner {
     }
 }
 
-// If an interner exists in TLS, return it. Otherwise, prepare a fresh one.
+// If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_span_interner<T, F: FnOnce(&mut SpanInterner) -> T>(f: F) -> T {
-    thread_local!(static INTERNER: RefCell<SpanInterner> = {
-        RefCell::new(SpanInterner::default())
-    });
-    INTERNER.with(|interner| f(&mut *interner.borrow_mut()))
+    GLOBALS.with(|globals| f(&mut *globals.span_interner.lock()))
 }

@@ -27,7 +27,7 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     item_scope: region::Scope,
                                     span: Span,
                                     cause: euv::LoanCause,
-                                    cmt: mc::cmt<'tcx>,
+                                    cmt: &'a mc::cmt_<'tcx>,
                                     loan_region: ty::Region<'tcx>,
                                     _: ty::BorrowKind)
                                     -> Result<(),()> {
@@ -41,8 +41,8 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                          span,
                                          cause,
                                          loan_region,
-                                         cmt_original: cmt.clone()};
-    ctxt.check(&cmt, None)
+                                         cmt_original: cmt};
+    ctxt.check(cmt, None)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -57,12 +57,11 @@ struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
     span: Span,
     cause: euv::LoanCause,
     loan_region: ty::Region<'tcx>,
-    cmt_original: mc::cmt<'tcx>
+    cmt_original: &'a mc::cmt_<'tcx>
 }
 
 impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
-
-    fn check(&self, cmt: &mc::cmt<'tcx>, discr_scope: Option<ast::NodeId>) -> R {
+    fn check(&self, cmt: &mc::cmt_<'tcx>, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the
         //! "guarantor".  Reports an error if `self.loan_region` is
         //! larger than scope of `cmt`.
@@ -75,7 +74,6 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             Categorization::Local(..) |                     // L-Local
             Categorization::Upvar(..) |
             Categorization::Deref(_, mc::BorrowedPtr(..)) | // L-Deref-Borrowed
-            Categorization::Deref(_, mc::Implicit(..)) |
             Categorization::Deref(_, mc::UnsafePtr(..)) => {
                 self.check_scope(self.scope(cmt))
             }
@@ -102,9 +100,9 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn scope(&self, cmt: &mc::cmt<'tcx>) -> ty::Region<'tcx> {
+    fn scope(&self, cmt: &mc::cmt_<'tcx>) -> ty::Region<'tcx> {
         //! Returns the maximal region scope for the which the
-        //! lvalue `cmt` is guaranteed to be valid without any
+        //! place `cmt` is guaranteed to be valid without any
         //! rooting etc, and presuming `cmt` is not mutated.
 
         match cmt.cat {
@@ -123,8 +121,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             Categorization::Deref(_, mc::UnsafePtr(..)) => {
                 self.bccx.tcx.types.re_static
             }
-            Categorization::Deref(_, mc::BorrowedPtr(_, r)) |
-            Categorization::Deref(_, mc::Implicit(_, r)) => {
+            Categorization::Deref(_, mc::BorrowedPtr(_, r)) => {
                 r
             }
             Categorization::Downcast(ref cmt, _) |
@@ -136,7 +133,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
     }
 
     fn report_error(&self, code: bckerr_code<'tcx>) {
-        self.bccx.report(BckError { cmt: self.cmt_original.clone(),
+        self.bccx.report(BckError { cmt: self.cmt_original,
                                     span: self.span,
                                     cause: BorrowViolation(self.cause),
                                     code: code });

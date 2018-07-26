@@ -1,0 +1,20 @@
+error[E0308]: match arms have incompatible types
+  --> $DIR/issue-11319.rs:12:5
+   |
+LL | /     match Some(10) {
+LL | |     //~^ ERROR match arms have incompatible types
+LL | |     //~| expected type `bool`
+LL | |     //~| found type `()`
+...  |
+LL | |         None    => (),
+   | |                    -- match arm with an incompatible type
+LL | |         _       => true
+LL | |     }
+   | |_____^ expected bool, found ()
+   |
+   = note: expected type `bool`
+              found type `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

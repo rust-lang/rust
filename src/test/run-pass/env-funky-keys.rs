@@ -12,6 +12,7 @@
 
 // ignore-android
 // ignore-windows
+// ignore-cloudabi no execve
 // ignore-emscripten no execve
 // no-prefer-dynamic
 

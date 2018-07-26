@@ -11,8 +11,10 @@
 //! This file builds up the `ScopeTree`, which describes
 //! the parent links in the region hierarchy.
 //!
-//! Most of the documentation on regions can be found in
-//! `middle/infer/region_inference/README.md`
+//! For more information about how MIR-based region-checking works,
+//! see the [rustc guide].
+//!
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir/borrowck.html
 
 use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -20,18 +22,17 @@ use ty;
 
 use std::fmt;
 use std::mem;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::codemap;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::TyCtxt;
-use ty::maps::Providers;
+use ty::query::Providers;
 
 use hir;
 use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
-use mir::transform::MirSource;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
@@ -54,9 +55,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// expression for the indexed statement, until the end of the block.
 ///
 /// So: the following code can be broken down into the scopes beneath:
-/// ```
+///
+/// ```text
 /// let a = f().g( 'b: { let x = d(); let y = d(); x.h(y)  }   ) ;
-/// ```
 ///
 ///                                                              +-+ (D12.)
 ///                                                        +-+       (D11.)
@@ -83,6 +84,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// (R10.): Remainder scope for block `'b:`, stmt 1 (let y = ...).
 /// (D11.): DestructionScope for temporaries and bindings from block `'b:`.
 /// (D12.): DestructionScope for temporaries created during M1 (e.g. f()).
+/// ```
 ///
 /// Note that while the above picture shows the destruction scopes
 /// as following their corresponding node scopes, in the internal
@@ -158,8 +160,8 @@ pub struct BlockRemainder {
 
 newtype_index!(FirstStatementIndex
     {
-        DEBUG_FORMAT = "{}",
-        MAX = SCOPE_DATA_REMAINDER_MAX,
+        pub idx
+        MAX = SCOPE_DATA_REMAINDER_MAX
     });
 
 impl From<ScopeData> for Scope {
@@ -277,6 +279,8 @@ impl Scope {
     }
 }
 
+pub type ScopeDepth = u32;
+
 /// The region scope tree encodes information about region relationships.
 #[derive(Default, Debug)]
 pub struct ScopeTree {
@@ -294,7 +298,7 @@ pub struct ScopeTree {
     /// conditional expression or repeating block. (Note that the
     /// enclosing scope id for the block associated with a closure is
     /// the closure itself.)
-    parent_map: FxHashMap<Scope, Scope>,
+    parent_map: FxHashMap<Scope, (Scope, ScopeDepth)>,
 
     /// `var_map` maps from a variable or binding id to the block in
     /// which that variable is declared.
@@ -321,7 +325,7 @@ pub struct ScopeTree {
     /// hierarchy based on their lexical mapping. This is used to
     /// handle the relationships between regions in a fn and in a
     /// closure defined by that fn. See the "Modeling closures"
-    /// section of the README in infer::region_inference for
+    /// section of the README in infer::region_constraints for
     /// more details.
     closure_tree: FxHashMap<hir::ItemLocalId, hir::ItemLocalId>,
 
@@ -351,8 +355,8 @@ pub struct ScopeTree {
     /// the result of `g()` occurs after the yield (and therefore
     /// doesn't). If we want to infer that, we can look at the
     /// postorder traversal:
-    /// ```
-    /// `foo` `f` Call#1 `y` Yield `bar` `g` Call#3 Call#2 Call#0
+    /// ```plain,ignore
+    ///     `foo` `f` Call#1 `y` Yield `bar` `g` Call#3 Call#2 Call#0
     /// ```
     ///
     /// In which we can easily see that `Call#1` occurs before the yield,
@@ -408,15 +412,16 @@ pub struct Context {
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
     /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in infer::region_inference for more
+    /// the README in infer::region_constraints for more
     /// details.
     root_id: Option<hir::ItemLocalId>,
 
-    /// the scope that contains any new variables declared
-    var_parent: Option<Scope>,
+    /// The scope that contains any new variables declared, plus its depth in
+    /// the scope tree.
+    var_parent: Option<(Scope, ScopeDepth)>,
 
-    /// region parent of expressions etc
-    parent: Option<Scope>,
+    /// Region parent of expressions, etc., plus its depth in the scope tree.
+    parent: Option<(Scope, ScopeDepth)>,
 }
 
 struct RegionResolutionVisitor<'a, 'tcx: 'a> {
@@ -453,9 +458,50 @@ struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     terminating_scopes: FxHashSet<hir::ItemLocalId>,
 }
 
+struct ExprLocatorVisitor {
+    hir_id: hir::HirId,
+    result: Option<usize>,
+    expr_and_pat_count: usize,
+}
+
+// This visitor has to have the same visit_expr calls as RegionResolutionVisitor
+// since `expr_count` is compared against the results there.
+impl<'tcx> Visitor<'tcx> for ExprLocatorVisitor {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_pat(&mut self, pat: &'tcx Pat) {
+        intravisit::walk_pat(self, pat);
+
+        self.expr_and_pat_count += 1;
+
+        if pat.hir_id == self.hir_id {
+            self.result = Some(self.expr_and_pat_count);
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        debug!("ExprLocatorVisitor - pre-increment {} expr = {:?}",
+               self.expr_and_pat_count,
+               expr);
+
+        intravisit::walk_expr(self, expr);
+
+        self.expr_and_pat_count += 1;
+
+        debug!("ExprLocatorVisitor - post-increment {} expr = {:?}",
+               self.expr_and_pat_count,
+               expr);
+
+        if expr.hir_id == self.hir_id {
+            self.result = Some(self.expr_and_pat_count);
+        }
+    }
+}
 
 impl<'tcx> ScopeTree {
-    pub fn record_scope_parent(&mut self, child: Scope, parent: Option<Scope>) {
+    pub fn record_scope_parent(&mut self, child: Scope, parent: Option<(Scope, ScopeDepth)>) {
         debug!("{:?}.parent = {:?}", child, parent);
 
         if let Some(p) = parent {
@@ -471,7 +517,7 @@ impl<'tcx> ScopeTree {
 
     pub fn each_encl_scope<E>(&self, mut e:E) where E: FnMut(Scope, Scope) {
         for (&child, &parent) in &self.parent_map {
-            e(child, parent)
+            e(child, parent.0)
         }
     }
 
@@ -498,18 +544,6 @@ impl<'tcx> ScopeTree {
         assert!(previous.is_none());
     }
 
-    fn closure_is_enclosed_by(&self,
-                              mut sub_closure: hir::ItemLocalId,
-                              sup_closure: hir::ItemLocalId) -> bool {
-        loop {
-            if sub_closure == sup_closure { return true; }
-            match self.closure_tree.get(&sub_closure) {
-                Some(&s) => { sub_closure = s; }
-                None => { return false; }
-            }
-        }
-    }
-
     fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
         debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
         assert!(var != lifetime.item_local_id());
@@ -526,7 +560,7 @@ impl<'tcx> ScopeTree {
 
     pub fn opt_encl_scope(&self, id: Scope) -> Option<Scope> {
         //! Returns the narrowest scope that encloses `id`, if any.
-        self.parent_map.get(&id).cloned()
+        self.parent_map.get(&id).cloned().map(|(p, _)| p)
     }
 
     #[allow(dead_code)] // used in cfg
@@ -558,7 +592,7 @@ impl<'tcx> ScopeTree {
         // returned.
         let mut id = Scope::Node(expr_id);
 
-        while let Some(&p) = self.parent_map.get(&id) {
+        while let Some(&(p, _)) = self.parent_map.get(&id) {
             match p.data() {
                 ScopeData::Destruction(..) => {
                     debug!("temporary_scope({:?}) = {:?} [enclosing]",
@@ -612,105 +646,75 @@ impl<'tcx> ScopeTree {
         return true;
     }
 
-    /// Finds the nearest common ancestor (if any) of two scopes.  That is, finds the smallest
-    /// scope which is greater than or equal to both `scope_a` and `scope_b`.
-    pub fn nearest_common_ancestor(&self,
-                                   scope_a: Scope,
-                                   scope_b: Scope)
-                                   -> Scope {
+    /// Returns the id of the innermost containing body
+    pub fn containing_body(&self, mut scope: Scope)-> Option<hir::ItemLocalId> {
+        loop {
+            if let ScopeData::CallSite(id) = scope.data() {
+                return Some(id);
+            }
+
+            match self.opt_encl_scope(scope) {
+                None => return None,
+                Some(parent) => scope = parent,
+            }
+        }
+    }
+
+    /// Finds the nearest common ancestor of two scopes.  That is, finds the
+    /// smallest scope which is greater than or equal to both `scope_a` and
+    /// `scope_b`.
+    pub fn nearest_common_ancestor(&self, scope_a: Scope, scope_b: Scope) -> Scope {
         if scope_a == scope_b { return scope_a; }
 
-        // [1] The initial values for `a_buf` and `b_buf` are not used.
-        // The `ancestors_of` function will return some prefix that
-        // is re-initialized with new values (or else fallback to a
-        // heap-allocated vector).
-        let mut a_buf: [Scope; 32] = [scope_a /* [1] */; 32];
-        let mut a_vec: Vec<Scope> = vec![];
-        let mut b_buf: [Scope; 32] = [scope_b /* [1] */; 32];
-        let mut b_vec: Vec<Scope> = vec![];
-        let parent_map = &self.parent_map;
-        let a_ancestors = ancestors_of(parent_map, scope_a, &mut a_buf, &mut a_vec);
-        let b_ancestors = ancestors_of(parent_map, scope_b, &mut b_buf, &mut b_vec);
-        let mut a_index = a_ancestors.len() - 1;
-        let mut b_index = b_ancestors.len() - 1;
+        let mut a = scope_a;
+        let mut b = scope_b;
 
-        // Here, [ab]_ancestors is a vector going from narrow to broad.
-        // The end of each vector will be the item where the scope is
-        // defined; if there are any common ancestors, then the tails of
-        // the vector will be the same.  So basically we want to walk
-        // backwards from the tail of each vector and find the first point
-        // where they diverge.  If one vector is a suffix of the other,
-        // then the corresponding scope is a superscope of the other.
+        // Get the depth of each scope's parent. If either scope has no parent,
+        // it must be the root, which means we can stop immediately because the
+        // root must be the nearest common ancestor. (In practice, this is
+        // moderately common.)
+        let (parent_a, parent_a_depth) = match self.parent_map.get(&a) {
+            Some(pd) => *pd,
+            None => return a,
+        };
+        let (parent_b, parent_b_depth) = match self.parent_map.get(&b) {
+            Some(pd) => *pd,
+            None => return b,
+        };
 
-        if a_ancestors[a_index] != b_ancestors[b_index] {
-            // In this case, the two regions belong to completely
-            // different functions.  Compare those fn for lexical
-            // nesting. The reasoning behind this is subtle.  See the
-            // "Modeling closures" section of the README in
-            // infer::region_inference for more details.
-            let a_root_scope = a_ancestors[a_index];
-            let b_root_scope = a_ancestors[a_index];
-            return match (a_root_scope.data(), b_root_scope.data()) {
-                (ScopeData::Destruction(a_root_id),
-                 ScopeData::Destruction(b_root_id)) => {
-                    if self.closure_is_enclosed_by(a_root_id, b_root_id) {
-                        // `a` is enclosed by `b`, hence `b` is the ancestor of everything in `a`
-                        scope_b
-                    } else if self.closure_is_enclosed_by(b_root_id, a_root_id) {
-                        // `b` is enclosed by `a`, hence `a` is the ancestor of everything in `b`
-                        scope_a
-                    } else {
-                        // neither fn encloses the other
-                        bug!()
-                    }
-                }
-                _ => {
-                    // root ids are always Node right now
-                    bug!()
-                }
-            };
+        if parent_a_depth > parent_b_depth {
+            // `a` is lower than `b`. Move `a` up until it's at the same depth
+            // as `b`. The first move up is trivial because we already found
+            // `parent_a` above; the loop does the remaining N-1 moves.
+            a = parent_a;
+            for _ in 0..(parent_a_depth - parent_b_depth - 1) {
+                a = self.parent_map.get(&a).unwrap().0;
+            }
+        } else if parent_b_depth > parent_a_depth {
+            // `b` is lower than `a`.
+            b = parent_b;
+            for _ in 0..(parent_b_depth - parent_a_depth - 1) {
+                b = self.parent_map.get(&b).unwrap().0;
+            }
+        } else {
+            // Both scopes are at the same depth, and we know they're not equal
+            // because that case was tested for at the top of this function. So
+            // we can trivially move them both up one level now.
+            assert!(parent_a_depth != 0);
+            a = parent_a;
+            b = parent_b;
         }
 
-        loop {
-            // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
-            // for all indices between a_index and the end of the array
-            if a_index == 0 { return scope_a; }
-            if b_index == 0 { return scope_b; }
-            a_index -= 1;
-            b_index -= 1;
-            if a_ancestors[a_index] != b_ancestors[b_index] {
-                return a_ancestors[a_index + 1];
-            }
-        }
+        // Now both scopes are at the same level. We move upwards in lockstep
+        // until they match. In practice, this loop is almost always executed
+        // zero times because `a` is almost always a direct ancestor of `b` or
+        // vice versa.
+        while a != b {
+            a = self.parent_map.get(&a).unwrap().0;
+            b = self.parent_map.get(&b).unwrap().0;
+        };
 
-        fn ancestors_of<'a, 'tcx>(parent_map: &FxHashMap<Scope, Scope>,
-                                  scope: Scope,
-                                  buf: &'a mut [Scope; 32],
-                                  vec: &'a mut Vec<Scope>)
-                                  -> &'a [Scope] {
-            // debug!("ancestors_of(scope={:?})", scope);
-            let mut scope = scope;
-
-            let mut i = 0;
-            while i < 32 {
-                buf[i] = scope;
-                match parent_map.get(&scope) {
-                    Some(&superscope) => scope = superscope,
-                    _ => return &buf[..i+1]
-                }
-                i += 1;
-            }
-
-            *vec = Vec::with_capacity(64);
-            vec.extend_from_slice(buf);
-            loop {
-                vec.push(scope);
-                match parent_map.get(&scope) {
-                    Some(&superscope) => scope = superscope,
-                    _ => return &*vec
-                }
-            }
-        }
+        a
     }
 
     /// Assuming that the provided region was defined within this `ScopeTree`,
@@ -763,9 +767,32 @@ impl<'tcx> ScopeTree {
 
     /// Checks whether the given scope contains a `yield`. If so,
     /// returns `Some((span, expr_count))` with the span of a yield we found and
-    /// the number of expressions appearing before the `yield` in the body.
+    /// the number of expressions and patterns appearing before the `yield` in the body + 1.
+    /// If there a are multiple yields in a scope, the one with the highest number is returned.
     pub fn yield_in_scope(&self, scope: Scope) -> Option<(Span, usize)> {
         self.yield_in_scope.get(&scope).cloned()
+    }
+
+    /// Checks whether the given scope contains a `yield` and if that yield could execute
+    /// after `expr`. If so, it returns the span of that `yield`.
+    /// `scope` must be inside the body.
+    pub fn yield_in_scope_for_expr(&self,
+                                   scope: Scope,
+                                   expr_hir_id: hir::HirId,
+                                   body: &'tcx hir::Body) -> Option<Span> {
+        self.yield_in_scope(scope).and_then(|(span, count)| {
+            let mut visitor = ExprLocatorVisitor {
+                hir_id: expr_hir_id,
+                result: None,
+                expr_and_pat_count: 0,
+            };
+            visitor.visit_body(body);
+            if count >= visitor.result.unwrap() {
+                Some(span)
+            } else {
+                None
+            }
+        })
     }
 
     /// Gives the number of expressions visited in a body.
@@ -786,7 +813,7 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor,
             //
             // extern fn isalnum(c: c_int) -> c_int
         }
-        Some(parent_scope) =>
+        Some((parent_scope, _)) =>
             visitor.scope_tree.record_var_scope(var_id, parent_scope),
     }
 }
@@ -808,7 +835,7 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
     //
     // Each of the statements within the block is a terminating
     // scope, and thus a temporary (e.g. the result of calling
-    // `bar()` in the initalizer expression for `let inner = ...;`)
+    // `bar()` in the initializer expression for `let inner = ...;`)
     // will be cleaned up immediately after its corresponding
     // statement (i.e. `let inner = ...;`) executes.
     //
@@ -831,8 +858,8 @@ fn resolve_block<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, blk:
         // index information.)
 
         for (i, statement) in blk.stmts.iter().enumerate() {
-            if let hir::StmtDecl(..) = statement.node {
-                // Each StmtDecl introduces a subscope for bindings
+            if let hir::StmtKind::Decl(..) = statement.node {
+                // Each StmtKind::Decl introduces a subscope for bindings
                 // introduced by the declaration; this subscope covers
                 // a suffix of the block . Each subscope in a block
                 // has the previous subscope in the block as a parent,
@@ -872,9 +899,13 @@ fn resolve_pat<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, pat: &
         record_var_lifetime(visitor, pat.hir_id.local_id, pat.span);
     }
 
+    debug!("resolve_pat - pre-increment {} pat = {:?}", visitor.expr_and_pat_count, pat);
+
     intravisit::walk_pat(visitor, pat);
 
     visitor.expr_and_pat_count += 1;
+
+    debug!("resolve_pat - post-increment {} pat = {:?}", visitor.expr_and_pat_count, pat);
 }
 
 fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
@@ -897,7 +928,7 @@ fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt:
 }
 
 fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr: &'tcx hir::Expr) {
-    debug!("resolve_expr(expr.id={:?})", expr.id);
+    debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
 
     let prev_cx = visitor.cx;
     visitor.enter_node_scope_with_dtor(expr.hir_id.local_id);
@@ -912,39 +943,39 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
             // scopes, meaning that temporaries cannot outlive them.
             // This ensures fixed size stacks.
 
-            hir::ExprBinary(codemap::Spanned { node: hir::BiAnd, .. }, _, ref r) |
-            hir::ExprBinary(codemap::Spanned { node: hir::BiOr, .. }, _, ref r) => {
+            hir::ExprKind::Binary(codemap::Spanned { node: hir::BinOpKind::And, .. }, _, ref r) |
+            hir::ExprKind::Binary(codemap::Spanned { node: hir::BinOpKind::Or, .. }, _, ref r) => {
                 // For shortcircuiting operators, mark the RHS as a terminating
                 // scope since it only executes conditionally.
                 terminating(r.hir_id.local_id);
             }
 
-            hir::ExprIf(ref expr, ref then, Some(ref otherwise)) => {
+            hir::ExprKind::If(ref expr, ref then, Some(ref otherwise)) => {
                 terminating(expr.hir_id.local_id);
                 terminating(then.hir_id.local_id);
                 terminating(otherwise.hir_id.local_id);
             }
 
-            hir::ExprIf(ref expr, ref then, None) => {
+            hir::ExprKind::If(ref expr, ref then, None) => {
                 terminating(expr.hir_id.local_id);
                 terminating(then.hir_id.local_id);
             }
 
-            hir::ExprLoop(ref body, _, _) => {
+            hir::ExprKind::Loop(ref body, _, _) => {
                 terminating(body.hir_id.local_id);
             }
 
-            hir::ExprWhile(ref expr, ref body, _) => {
+            hir::ExprKind::While(ref expr, ref body, _) => {
                 terminating(expr.hir_id.local_id);
                 terminating(body.hir_id.local_id);
             }
 
-            hir::ExprMatch(..) => {
+            hir::ExprKind::Match(..) => {
                 visitor.cx.var_parent = visitor.cx.parent;
             }
 
-            hir::ExprAssignOp(..) | hir::ExprIndex(..) |
-            hir::ExprUnary(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) => {
+            hir::ExprKind::AssignOp(..) | hir::ExprKind::Index(..) |
+            hir::ExprKind::Unary(..) | hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) => {
                 // FIXME(https://github.com/rust-lang/rfcs/issues/811) Nested method calls
                 //
                 // The lifetimes for a call or method call look as follows:
@@ -972,7 +1003,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
     match expr.node {
         // Manually recurse over closures, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprClosure(.., body, _, _) => {
+        hir::ExprKind::Closure(.., body, _, _) => {
             let body = visitor.tcx.hir.body(body);
             visitor.visit_body(body);
         }
@@ -982,7 +1013,9 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
 
     visitor.expr_and_pat_count += 1;
 
-    if let hir::ExprYield(..) = expr.node {
+    debug!("resolve_expr post-increment {}, expr = {:?}", visitor.expr_and_pat_count, expr);
+
+    if let hir::ExprKind::Yield(..) = expr.node {
         // Mark this expr's scope and all parent scopes as containing `yield`.
         let mut scope = Scope::Node(expr.hir_id.local_id);
         loop {
@@ -992,7 +1025,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
             // Keep traversing up while we can.
             match visitor.scope_tree.parent_map.get(&scope) {
                 // Don't cross from closure bodies to their parent.
-                Some(&superscope) => match superscope.data() {
+                Some(&(superscope, _)) => match superscope.data() {
                     ScopeData::CallSite(_) => break,
                     _ => scope = superscope
                 },
@@ -1009,7 +1042,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
                            init: Option<&'tcx hir::Expr>) {
     debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
-    let blk_scope = visitor.cx.var_parent;
+    let blk_scope = visitor.cx.var_parent.map(|(p, _)| p);
 
     // As an exception to the normal rules governing temporary
     // lifetimes, initializers in a let have a temporary lifetime
@@ -1033,7 +1066,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     //    I mean that creating a binding into a ref-counted or managed value
     //    would still count.)
     //
-    // 3. `ET`, which matches both rvalues like `foo()` as well as lvalues
+    // 3. `ET`, which matches both rvalues like `foo()` as well as places
     //    based on rvalues like `foo().x[2].y`.
     //
     // A subexpression `<rvalue>` that appears in a let initializer
@@ -1077,11 +1110,12 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
         }
     }
 
-    if let Some(pat) = pat {
-        visitor.visit_pat(pat);
-    }
+    // Make sure we visit the initializer first, so expr_and_pat_count remains correct
     if let Some(expr) = init {
         visitor.visit_expr(expr);
+    }
+    if let Some(pat) = pat {
+        visitor.visit_pat(pat);
     }
 
     /// True if `pat` match the `P&` nonterminal:
@@ -1159,27 +1193,27 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
         blk_id: Option<Scope>)
     {
         match expr.node {
-            hir::ExprAddrOf(_, ref subexpr) => {
+            hir::ExprKind::AddrOf(_, ref subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 record_rvalue_scope(visitor, &subexpr, blk_id);
             }
-            hir::ExprStruct(_, ref fields, _) => {
+            hir::ExprKind::Struct(_, ref fields, _) => {
                 for field in fields {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &field.expr, blk_id);
                 }
             }
-            hir::ExprArray(ref subexprs) |
-            hir::ExprTup(ref subexprs) => {
+            hir::ExprKind::Array(ref subexprs) |
+            hir::ExprKind::Tup(ref subexprs) => {
                 for subexpr in subexprs {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &subexpr, blk_id);
                 }
             }
-            hir::ExprCast(ref subexpr, _) => {
+            hir::ExprKind::Cast(ref subexpr, _) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id)
             }
-            hir::ExprBlock(ref block) => {
+            hir::ExprKind::Block(ref block, _) => {
                 if let Some(ref subexpr) = block.expr {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &subexpr, blk_id);
@@ -1203,7 +1237,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     ///        | (ET)
     ///        | <rvalue>
     ///
-    /// Note: ET is intended to match "rvalues or lvalues based on rvalues".
+    /// Note: ET is intended to match "rvalues or places based on rvalues".
     fn record_rvalue_scope<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
                                      expr: &hir::Expr,
                                      blk_scope: Option<Scope>) {
@@ -1211,17 +1245,16 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
         loop {
             // Note: give all the expressions matching `ET` with the
             // extended temporary lifetime, not just the innermost rvalue,
-            // because in trans if we must compile e.g. `*rvalue()`
+            // because in codegen if we must compile e.g. `*rvalue()`
             // into a temporary, we request the temporary scope of the
             // outer expression.
             visitor.scope_tree.record_rvalue_scope(expr.hir_id.local_id, blk_scope);
 
             match expr.node {
-                hir::ExprAddrOf(_, ref subexpr) |
-                hir::ExprUnary(hir::UnDeref, ref subexpr) |
-                hir::ExprField(ref subexpr, _) |
-                hir::ExprTupField(ref subexpr, _) |
-                hir::ExprIndex(ref subexpr, _) => {
+                hir::ExprKind::AddrOf(_, ref subexpr) |
+                hir::ExprKind::Unary(hir::UnDeref, ref subexpr) |
+                hir::ExprKind::Field(ref subexpr, _) |
+                hir::ExprKind::Index(ref subexpr, _) => {
                     expr = &subexpr;
                 }
                 _ => {
@@ -1234,16 +1267,20 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
 
 impl<'a, 'tcx> RegionResolutionVisitor<'a, 'tcx> {
     /// Records the current parent (if any) as the parent of `child_scope`.
-    fn record_child_scope(&mut self, child_scope: Scope) {
+    /// Returns the depth of `child_scope`.
+    fn record_child_scope(&mut self, child_scope: Scope) -> ScopeDepth {
         let parent = self.cx.parent;
         self.scope_tree.record_scope_parent(child_scope, parent);
+        // If `child_scope` has no parent, it must be the root node, and so has
+        // a depth of 1. Otherwise, its depth is one more than its parent's.
+        parent.map_or(1, |(_p, d)| d + 1)
     }
 
     /// Records the current parent (if any) as the parent of `child_scope`,
     /// and sets `child_scope` as the new current parent.
     fn enter_scope(&mut self, child_scope: Scope) {
-        self.record_child_scope(child_scope);
-        self.cx.parent = Some(child_scope);
+        let child_depth = self.record_child_scope(child_scope);
+        self.cx.parent = Some((child_scope, child_depth));
     }
 
     fn enter_node_scope_with_dtor(&mut self, id: hir::ItemLocalId) {
@@ -1298,7 +1335,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
-        if let MirSource::Fn(_) = MirSource::from_node(self.tcx, owner_id) {
+        if let hir::BodyOwnerKind::Fn = self.tcx.hir.body_owner_kind(owner_id) {
             self.visit_expr(&body.value);
         } else {
             // Only functions have an outer terminating (drop) scope, while
@@ -1351,7 +1388,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 }
 
 fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Rc<ScopeTree>
+    -> Lrc<ScopeTree>
 {
     let closure_base_def_id = tcx.closure_base_def_id(def_id);
     if closure_base_def_id != def_id {
@@ -1393,7 +1430,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         ScopeTree::default()
     };
 
-    Rc::new(scope_tree)
+    Lrc::new(scope_tree)
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -1403,9 +1440,9 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for ScopeTree {
+impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let ScopeTree {
             root_body,

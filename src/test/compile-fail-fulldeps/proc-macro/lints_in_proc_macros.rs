@@ -11,7 +11,7 @@
 // aux-build:bang_proc_macro2.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros, proc_macro_non_items)]
 #![allow(unused_macros)]
 
 extern crate bang_proc_macro2;

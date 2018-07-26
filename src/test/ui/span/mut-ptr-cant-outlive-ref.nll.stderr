@@ -1,0 +1,14 @@
+error[E0597]: `b` does not live long enough
+  --> $DIR/mut-ptr-cant-outlive-ref.rs:18:15
+   |
+LL |         p = &*b;
+   |               ^ borrowed value does not live long enough
+LL |     }
+   |     - borrowed value only lives until here
+LL |     //~^^ ERROR `b` does not live long enough
+LL |     p.use_ref();
+   |     - borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -23,10 +23,9 @@
 
 pub use self::PopResult::*;
 
-use alloc::boxed::Box;
 use core::ptr;
 use core::cell::UnsafeCell;
-
+use boxed::Box;
 use sync::atomic::{AtomicPtr, Ordering};
 
 /// A result of the `pop` function.

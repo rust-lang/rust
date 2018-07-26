@@ -18,11 +18,13 @@
 use clone;
 use cmp;
 use fmt;
+use future::{Future, UnsafeFutureObj};
 use hash;
 use intrinsics;
-use marker::{Copy, PhantomData, Sized};
+use marker::{Copy, PhantomData, Sized, Unpin, Unsize};
 use ptr;
-use ops::{Deref, DerefMut};
+use task::{Context, Poll};
+use ops::{Deref, DerefMut, CoerceUnsized};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::transmute;
@@ -189,14 +191,17 @@ pub fn forget<T>(t: T) {
 /// Type | size_of::\<Type>()
 /// ---- | ---------------
 /// () | 0
+/// bool | 1
 /// u8 | 1
 /// u16 | 2
 /// u32 | 4
 /// u64 | 8
+/// u128 | 16
 /// i8 | 1
 /// i16 | 2
 /// i32 | 4
 /// i64 | 8
+/// i128 | 16
 /// f32 | 4
 /// f64 | 8
 /// char | 4
@@ -224,6 +229,8 @@ pub fn forget<T>(t: T) {
 /// 2. Round up the current size to the nearest multiple of the next field's [alignment].
 ///
 /// Finally, round the size of the struct to the nearest multiple of its [alignment].
+/// The alignment of the struct is usually the largest alignment of all its
+/// fields; this can be changed with the use of `repr(align(N))`.
 ///
 /// Unlike `C`, zero sized structs are not rounded up to one byte in size.
 ///
@@ -278,7 +285,8 @@ pub fn forget<T>(t: T) {
 /// // The size of the second field is 2, so add 2 to the size. Size is 4.
 /// // The alignment of the third field is 1, so add 0 to the size for padding. Size is 4.
 /// // The size of the third field is 1, so add 1 to the size. Size is 5.
-/// // Finally, the alignment of the struct is 2, so add 1 to the size for padding. Size is 6.
+/// // Finally, the alignment of the struct is 2 (because the largest alignment amongst its
+/// // fields is 2), so add 1 to the size for padding. Size is 6.
 /// assert_eq!(6, mem::size_of::<FieldStruct>());
 ///
 /// #[repr(C)]
@@ -311,7 +319,6 @@ pub fn forget<T>(t: T) {
 /// [alignment]: ./fn.align_of.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_size_of")]
 pub const fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
@@ -403,7 +410,6 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_align_of")]
 pub const fn align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
@@ -632,12 +638,13 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        ptr::swap_nonoverlapping(x, y, 1);
+        ptr::swap_nonoverlapping_one(x, y);
     }
 }
 
-/// Replaces the value at a mutable location with a new one, returning the old value, without
-/// deinitializing either one.
+/// Moves `src` into the referenced `dest`, returning the previous `dest` value.
+///
+/// Neither value is dropped.
 ///
 /// # Examples
 ///
@@ -836,7 +843,9 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 
 /// Opaque type representing the discriminant of an enum.
 ///
-/// See the `discriminant` function in this module for more information.
+/// See the [`discriminant`] function in this module for more information.
+///
+/// [`discriminant`]: fn.discriminant.html
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub struct Discriminant<T>(u64, PhantomData<fn() -> T>);
 
@@ -960,8 +969,9 @@ impl<T> ManuallyDrop<T> {
     /// ManuallyDrop::new(Box::new(()));
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_manually_drop_new")]
     #[inline]
-    pub fn new(value: T) -> ManuallyDrop<T> {
+    pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: value }
     }
 
@@ -1026,7 +1036,7 @@ impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: Clone> Clone for ManuallyDrop<T> {
     fn clone(&self) -> Self {
         ManuallyDrop::new(self.deref().clone())
@@ -1037,14 +1047,14 @@ impl<T: Clone> Clone for ManuallyDrop<T> {
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: Default> Default for ManuallyDrop<T> {
     fn default() -> Self {
         ManuallyDrop::new(Default::default())
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: PartialEq> PartialEq for ManuallyDrop<T> {
     fn eq(&self, other: &Self) -> bool {
         self.deref().eq(other)
@@ -1055,10 +1065,10 @@ impl<T: PartialEq> PartialEq for ManuallyDrop<T> {
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: Eq> Eq for ManuallyDrop<T> {}
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: PartialOrd> PartialOrd for ManuallyDrop<T> {
     fn partial_cmp(&self, other: &Self) -> Option<::cmp::Ordering> {
         self.deref().partial_cmp(other)
@@ -1081,28 +1091,159 @@ impl<T: PartialOrd> PartialOrd for ManuallyDrop<T> {
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: Ord> Ord for ManuallyDrop<T> {
     fn cmp(&self, other: &Self) -> ::cmp::Ordering {
         self.deref().cmp(other)
     }
 }
 
-#[stable(feature = "manually_drop", since = "1.20.0")]
+#[stable(feature = "manually_drop_impls", since = "1.22.0")]
 impl<T: ::hash::Hash> ::hash::Hash for ManuallyDrop<T> {
     fn hash<H: ::hash::Hasher>(&self, state: &mut H) {
         self.deref().hash(state);
     }
 }
 
-/// Tells LLVM that this point in the code is not reachable, enabling further
-/// optimizations.
+/// A pinned reference.
 ///
-/// NB: This is very different from the `unreachable!()` macro: Unlike the
-/// macro, which panics when it is executed, it is *undefined behavior* to
-/// reach code marked with this function.
-#[inline]
-#[unstable(feature = "unreachable", issue = "43751")]
-pub unsafe fn unreachable() -> ! {
-    intrinsics::unreachable()
+/// A pinned reference is a lot like a mutable reference, except that it is not
+/// safe to move a value out of a pinned reference unless the type of that
+/// value implements the `Unpin` trait.
+#[unstable(feature = "pin", issue = "49150")]
+#[fundamental]
+pub struct PinMut<'a, T: ?Sized + 'a> {
+    inner: &'a mut T,
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + Unpin> PinMut<'a, T> {
+    /// Construct a new `PinMut` around a reference to some data of a type that
+    /// implements `Unpin`.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn new(reference: &'a mut T) -> PinMut<'a, T> {
+        PinMut { inner: reference }
+    }
+
+    /// Get a mutable reference to the data inside of this `PinMut`.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn get_mut(this: PinMut<'a, T>) -> &'a mut T {
+        this.inner
+    }
+}
+
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized> PinMut<'a, T> {
+    /// Construct a new `PinMut` around a reference to some data of a type that
+    /// may or may not implement `Unpin`.
+    ///
+    /// This constructor is unsafe because we do not know what will happen with
+    /// that data after the reference ends. If you cannot guarantee that the
+    /// data will never move again, calling this constructor is invalid.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub unsafe fn new_unchecked(reference: &'a mut T) -> PinMut<'a, T> {
+        PinMut { inner: reference }
+    }
+
+    /// Reborrow a `PinMut` for a shorter lifetime.
+    ///
+    /// For example, `PinMut::get_mut(x.reborrow())` (unsafely) returns a
+    /// short-lived mutable reference reborrowing from `x`.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn reborrow<'b>(&'b mut self) -> PinMut<'b, T> {
+        PinMut { inner: self.inner }
+    }
+
+    /// Get a mutable reference to the data inside of this `PinMut`.
+    ///
+    /// This function is unsafe. You must guarantee that you will never move
+    /// the data out of the mutable reference you receive when you call this
+    /// function.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub unsafe fn get_mut_unchecked(this: PinMut<'a, T>) -> &'a mut T {
+        this.inner
+    }
+
+    /// Construct a new pin by mapping the interior value.
+    ///
+    /// For example, if you  wanted to get a `PinMut` of a field of something,
+    /// you could use this to get access to that field in one line of code.
+    ///
+    /// This function is unsafe. You must guarantee that the data you return
+    /// will not move so long as the argument value does not move (for example,
+    /// because it is one of the fields of that value), and also that you do
+    /// not move out of the argument you receive to the interior function.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub unsafe fn map_unchecked<U, F>(this: PinMut<'a, T>, f: F) -> PinMut<'a, U> where
+        F: FnOnce(&mut T) -> &mut U
+    {
+        PinMut { inner: f(this.inner) }
+    }
+
+    /// Assign a new value to the memory behind the pinned reference.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn set(this: PinMut<'a, T>, value: T)
+        where T: Sized,
+    {
+        *this.inner = value;
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized> Deref for PinMut<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &*self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + Unpin> DerefMut for PinMut<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for PinMut<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: fmt::Display + ?Sized> fmt::Display for PinMut<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized> fmt::Pointer for PinMut<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Pointer::fmt(&(&*self.inner as *const T), f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinMut<'a, U>> for PinMut<'a, T> {}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized> Unpin for PinMut<'a, T> {}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for PinMut<'a, F>
+    where F: Future<Output = T> + 'a
+{
+    fn into_raw(self) -> *mut () {
+        unsafe { PinMut::get_mut_unchecked(self) as *mut F as *mut () }
+    }
+
+    unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T> {
+        PinMut::new_unchecked(&mut *(ptr as *mut F)).poll(cx)
+    }
+
+    unsafe fn drop(_ptr: *mut ()) {}
 }

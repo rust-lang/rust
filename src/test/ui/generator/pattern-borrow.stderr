@@ -1,0 +1,11 @@
+error[E0626]: borrow may still be in use when generator yields
+  --> $DIR/pattern-borrow.rs:19:24
+   |
+LL |         if let Test::A(ref _a) = test { //~ ERROR borrow may still be in use when generator yields
+   |                        ^^^^^^
+LL |             yield ();
+   |             -------- possible yield occurs here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0626`.

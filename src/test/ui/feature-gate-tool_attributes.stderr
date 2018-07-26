@@ -1,0 +1,11 @@
+error[E0658]: scoped attribute `rustfmt::skip` is experimental (see issue #44690)
+  --> $DIR/feature-gate-tool_attributes.rs:12:5
+   |
+LL |     #[rustfmt::skip] //~ ERROR scoped attribute `rustfmt::skip` is experimental
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(tool_attributes)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

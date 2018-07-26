@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(unicode)]
-
+#![feature(unicode_version)]
 
 /// Tests access to the internal Unicode Version type and value.
 pub fn main() {

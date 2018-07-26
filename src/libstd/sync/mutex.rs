@@ -150,7 +150,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 /// [`lock`]: struct.Mutex.html#method.lock
 /// [`try_lock`]: struct.Mutex.html#method.try_lock
 /// [`Mutex`]: struct.Mutex.html
-#[must_use]
+#[must_use = "if unused the Mutex will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     // funny underscores due to how Deref/DerefMut currently work (they
@@ -227,7 +227,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<T>> {
         unsafe {
-            self.inner.lock();
+            self.inner.raw_lock();
             MutexGuard::new(self)
         }
     }
@@ -382,6 +382,17 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
     }
 }
 
+#[stable(feature = "mutex_from", since = "1.24.0")]
+impl<T> From<T> for Mutex<T> {
+    /// Creates a new mutex in an unlocked state ready for use.
+    /// This is equivalent to [`Mutex::new`].
+    ///
+    /// [`Mutex::new`]: #method.new
+    fn from(t: T) -> Self {
+        Mutex::new(t)
+    }
+}
+
 #[stable(feature = "mutex_default", since = "1.10.0")]
 impl<T: ?Sized + Default> Default for Mutex<T> {
     /// Creates a `Mutex<T>`, with the `Default` value for T.
@@ -443,7 +454,7 @@ impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
     fn drop(&mut self) {
         unsafe {
             self.__lock.poison.done(&self.__poison);
-            self.__lock.inner.unlock();
+            self.__lock.inner.raw_unlock();
         }
     }
 }

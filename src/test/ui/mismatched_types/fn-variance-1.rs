@@ -20,12 +20,8 @@ fn main() {
     apply(&3, takes_imm);
     apply(&3, takes_mut);
     //~^ ERROR type mismatch
-    //~| NOTE types differ in mutability
-    //~| NOTE required by `apply`
 
     apply(&mut 3, takes_mut);
     apply(&mut 3, takes_imm);
     //~^ ERROR type mismatch
-    //~| NOTE types differ in mutability
-    //~| NOTE required by `apply`
 }

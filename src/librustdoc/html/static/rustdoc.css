@@ -89,7 +89,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -109,7 +109,7 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 	position: relative;
 }
 h3.impl, h3.method, h3.type {
-	margin-top: 15px;
+	padding-left: 15px;
 }
 
 h1, h2, h3, h4,
@@ -141,8 +141,11 @@ code, pre {
 	border-radius: 3px;
 	padding: 0 0.2em;
 }
-.docblock pre code, .docblock-short pre code {
+.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
+}
+.docblock code.spotlight :last-child {
+	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
@@ -178,15 +181,19 @@ nav.sub {
 	overflow: auto;
 }
 
-.sidebar .current {
-	margin-right: -20px;
+.sidebar .block > ul > li {
+	margin-right: -10px;
 }
 
-.content, nav { max-width: 960px; }
+.content, nav {
+	max-width: 960px;
+}
 
 /* Everything else */
 
-.js-only, .hidden { display: none !important; }
+.js-only, .hidden {
+	display: none !important;
+}
 
 .sidebar img {
 	margin: 20px auto;
@@ -205,7 +212,7 @@ nav.sub {
 .sidebar .version {
 	font-size: 15px;
 	text-align: center;
-	border-bottom: #DDDDDD 1px solid;
+	border-bottom: 1px solid;
 	overflow-wrap: break-word;
 	word-wrap: break-word; /* deprecated */
 	word-break: break-word; /* Chrome, non-standard */
@@ -215,7 +222,9 @@ nav.sub {
 	border: none;
 }
 
-.location a:first-child { font-weight: 500; }
+.location a:first-child {
+	font-weight: 500;
+}
 
 .block {
 	padding: 0;
@@ -244,8 +253,8 @@ nav.sub {
 }
 
 .sidebar-title {
-	border-top: 1px solid #777;
-	border-bottom: 1px solid #777;
+	border-top: 1px solid;
+	border-bottom: 1px solid;
 	text-align: center;
 	font-size: 17px;
 	margin-bottom: 5px;
@@ -260,6 +269,10 @@ nav.sub {
 	width: 100%;
 }
 
+.sidebar-menu {
+	display: none;
+}
+
 .content {
 	padding: 15px 0;
 }
@@ -269,9 +282,24 @@ nav.sub {
 	overflow: auto;
 	padding-left: 0;
 }
+
 #search {
 	margin-left: 230px;
+	position: relative;
 }
+
+#results {
+	position: absolute;
+	right: 0;
+	left: 0;
+	overflow: auto;
+}
+
+#results > table {
+	width: 100%;
+	table-layout: fixed;
+}
+
 .content pre.line-numbers {
 	float: left;
 	border: none;
@@ -282,7 +310,9 @@ nav.sub {
 	-ms-user-select: none;
 	user-select: none;
 }
-.line-numbers span { cursor: pointer; }
+.line-numbers span {
+	cursor: pointer;
+}
 
 .docblock-short p {
 	display: inline;
@@ -300,7 +330,9 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock-short code { white-space: nowrap; }
+.docblock-short code {
+	white-space: nowrap;
+}
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
 	border-bottom: 1px solid;
@@ -343,7 +375,8 @@ ul.item-list > li > .out-of-band {
 }
 
 h4 > code, h3 > code, .invisible > code {
-	position: inherit;
+	max-width: calc(100% - 41px);
+	display: block;
 }
 
 .in-band, code {
@@ -351,7 +384,6 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .invisible {
-	background: rgba(0, 0, 0, 0);
 	width: 100%;
 	display: inline-block;
 }
@@ -359,46 +391,43 @@ h4 > code, h3 > code, .invisible > code {
 .content .in-band {
 	margin: 0px;
 	padding: 0px;
-	display: inline-block;
 }
 
 .in-band > code {
 	display: inline-block;
 }
 
-#main { position: relative; }
+#main {
+	position: relative;
+}
 #main > .since {
 	top: inherit;
 	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-.content table {
+.content table:not(.table-display) {
 	border-spacing: 0 5px;
-	border-collapse: separate;
 }
 .content td { vertical-align: top; }
 .content td:first-child { padding-right: 20px; }
 .content td p:first-child { margin-top: 0; }
 .content td h1, .content td h2 { margin-left: 0; font-size: 1.1em; }
+.content tr:first-child td { border-top: 0; }
 
 .docblock table {
-	border: 1px solid;
 	margin: .5em 0;
-	border-collapse: collapse;
 	width: 100%;
 }
 
 .docblock table td {
 	padding: .5em;
-	border-top: 1px dashed;
-	border-bottom: 1px dashed;
+	border: 1px dashed;
 }
 
 .docblock table th {
 	padding: .5em;
 	text-align: left;
-	border-top: 1px solid;
-	border-bottom: 1px solid;
+	border: 1px solid;
 }
 
 .fields + table {
@@ -410,7 +439,9 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li { margin-bottom: 1em; }
+.content .item-list li {
+	margin-bottom: 1em;
+}
 
 .content .multi-column {
 	-moz-column-count: 5;
@@ -431,17 +462,38 @@ h4 > code, h3 > code, .invisible > code {
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
-	color: #4E4C4C;
 	font-size: 0.8em;
 }
 
-.content .methods > div { margin-left: 40px; }
-
-.content .impl-items .docblock, .content .impl-items .stability {
+.content .methods > div:not(.important-traits) {
 	margin-left: 40px;
+	margin-bottom: 15px;
 }
+
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 	margin-left: 20px;
+}
+.content .impl-items .docblock, .content .impl-items .stability {
+	margin-bottom: .6em;
+}
+.content .docblock > .impl-items {
+	margin-left: 20px;
+	margin-top: -34px;
+}
+.content .docblock > .impl-items > h4 {
+	border-bottom: 0;
+}
+.content .docblock >.impl-items .table-display {
+	margin: 0;
+}
+.content .docblock >.impl-items table td {
+	padding: 0;
+}
+.toggle-wrapper.marg-left > .collapse-toggle {
+	left: -24px;
+}
+.content .docblock > .impl-items .table-display, .impl-items table td {
+	border: none;
 }
 
 .content .stability code {
@@ -490,23 +542,38 @@ a {
 .anchor {
 	display: none;
 	position: absolute;
-	left: -25px;
+	left: -7px;
 }
 .anchor.field {
+	left: -5px;
+}
+.small-section-header > .anchor {
 	left: -20px;
+}
+.small-section-header > .anchor:not(.field) {
+	left: -28px;
 }
 .anchor:before {
 	content: '\2002\00a7\2002';
 }
 
-.docblock a:hover, .docblock-short a:hover, .stability a {
+.docblock a:not(.srclink):not(.test-arrow):hover,
+.docblock-short a:not(.srclink):not(.test-arrow):hover, .stability a {
 	text-decoration: underline;
 }
 
 .block a.current.crate { font-weight: 500; }
 
+.search-container {
+	position: relative;
+}
+.search-container > .top-button {
+	position: absolute;
+	right: 0;
+	top: 10px;
+}
 .search-input {
-	width: 100%;
+	width: calc(100% - 34px);
 	/* Override Normalize.css: we have margins and do
 	 not want to overflow - the `moz` attribute is necessary
 	 until Firefox 29, too early to drop at this point */
@@ -524,7 +591,6 @@ a {
 }
 
 .search-input:focus {
-	border-color: #66afe9;
 	border-radius: 2px;
 	border: 0;
 	outline: 0;
@@ -542,11 +608,25 @@ a {
 	display: block;
 }
 
-.content .search-results td:first-child { padding-right: 0; }
-.content .search-results td:first-child a { padding-right: 10px; }
+.content .search-results td:first-child {
+	padding-right: 0;
+	width: 75%;
+}
+.content .search-results td:first-child a {
+	padding-right: 10px;
+}
+.content .search-results td:first-child a span {
+	float: left;
+}
 
 tr.result span.primitive::after {
-	content: ' (primitive type)'; font-style: italic; color: black;
+	content: ' (primitive type)';
+	font-style: italic;
+}
+
+tr.result span.keyword::after {
+	content: ' (keyword)';
+	font-style: italic;
 }
 
 body.blur > :not(#help) {
@@ -569,26 +649,22 @@ body.blur > :not(#help) {
 	flex: 0 0 auto;
 	box-shadow: 0 0 6px rgba(0,0,0,.2);
 	width: 550px;
-	height: 354px;
+	height: auto;
 	border: 1px solid;
 }
 #help dt {
 	float: left;
-	border-radius: 4px;
-	border: 1px solid;
-	width: 23px;
-	text-align: center;
 	clear: left;
 	display: block;
-	margin-top: -1px;
 }
-#help dd { margin: 5px 33px; }
+#help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }
 #help h1, #help h2 { margin-top: 0; }
 #help > div div {
 	width: 50%;
 	float: left;
 	padding: 20px;
+	padding-left: 17px;
 }
 
 .stab {
@@ -682,7 +758,6 @@ a.test-arrow:hover{
 	font-weight: 300;
 	position: absolute;
 	left: -23px;
-	color: #999;
 	top: 0;
 }
 
@@ -698,7 +773,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 .toggle-wrapper {
 	position: relative;
-	margin-top: 5px;
+	margin-top: 0;
 }
 
 .toggle-wrapper.collapsed {
@@ -781,10 +856,19 @@ span.since {
 
 .attributes {
 	display: block;
-	margin: 0px 0px 0px 30px !important;
+	margin-top: 0px !important;
+	margin-right: 0px;
+	margin-bottom: 0px !important;
+	margin-left: 30px;
 }
 .toggle-attributes.collapsed {
-	margin-bottom: 5px;
+	margin-bottom: 0;
+}
+.impl-items > .toggle-attributes {
+	margin-left: 20px;
+}
+.impl-items .attributes {
+	font-weight: 500;
 }
 
 :target > code {
@@ -806,9 +890,10 @@ span.since {
 		margin-left: -15px;
 		padding: 0 15px;
 		position: static;
+		z-index: 1;
 	}
 
-	.sidebar .location {
+	.sidebar > .location {
 		float: right;
 		margin: 0px;
 		margin-top: 2px;
@@ -828,18 +913,51 @@ span.since {
 		margin-top: 5px;
 		margin-bottom: 5px;
 		float: left;
+		margin-left: 50px;
+	}
+
+	.sidebar-menu {
+		position: fixed;
+		z-index: 10;
+		font-size: 2rem;
+		cursor: pointer;
+		width: 45px;
+		left: 0;
+		text-align: center;
+		display: block;
+		border-bottom: 1px solid;
+		border-right: 1px solid;
+		height: 45px;
+	}
+
+	.sidebar-elems {
+		position: fixed;
+		z-index: 1;
+		left: 0;
+		top: 45px;
+		bottom: 0;
+		overflow-y: auto;
+		border-right: 1px solid;
+		display: none;
+	}
+
+	.sidebar > .block.version {
+		border-bottom: none;
+		margin-top: 12px;
 	}
 
 	nav.sub {
-		margin: 0 auto;
-	}
-
-	.sidebar .block {
-		display: none;
+		width: calc(100% - 32px);
+		float: right;
 	}
 
 	.content {
 		margin-left: 0px;
+	}
+
+	#main {
+		margin-top: 45px;
+		padding: 0;
 	}
 
 	.content .in-band {
@@ -865,6 +983,10 @@ span.since {
 	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 		display: flex;
 	}
+
+	.anchor {
+		display: none !important;
+	}
 }
 
 @media print {
@@ -889,8 +1011,6 @@ span.since {
 .tooltip .tooltiptext {
 	width: 120px;
 	display: none;
-	background-color: black;
-	color: #fff;
 	text-align: center;
 	padding: 5px 3px;
 	border-radius: 6px;
@@ -912,11 +1032,16 @@ span.since {
 	margin-top: -5px;
 	border-width: 5px;
 	border-style: solid;
-	border-color: transparent black transparent transparent;
+}
+
+.important-traits .tooltip .tooltiptext {
+	border: 1px solid;
 }
 
 pre.rust {
 	position: relative;
+	tab-width: 4;
+	-moz-tab-width: 4;
 }
 
 .search-failed {
@@ -932,15 +1057,309 @@ pre.rust {
 	float: left;
 	width: 33.3%;
 	text-align: center;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid;
 	font-size: 18px;
 	cursor: pointer;
 }
 
 #titles > div.selected {
-	border-bottom: 3px solid #0078ee;
+	border-bottom: 3px solid;
 }
 
 #titles > div:hover {
-	border-bottom: 3px solid #0089ff;
+	border-bottom: 3px solid;
+}
+
+#titles > div > div.count {
+	display: inline-block;
+	font-size: 16px;
+}
+
+.important-traits {
+	cursor: pointer;
+	z-index: 2;
+}
+
+h4 > .important-traits {
+	position: absolute;
+	left: -44px;
+	top: 2px;
+}
+
+@media (max-width: 700px) {
+	h4 > .important-traits {
+		position: absolute;
+		left: -22px;
+		top: 24px;
+	}
+
+	#titles > div > div.count {
+		float: left;
+		width: 100%;
+	}
+
+	#titles {
+		height: 50px;
+	}
+
+	.sidebar.mobile {
+		position: fixed;
+		width: 100%;
+		margin-left: 0;
+		background-color: rgba(0,0,0,0);
+		height: 100%;
+	}
+
+	.show-it {
+		display: block;
+		width: 246px;
+	}
+
+	.show-it > .block.items {
+		margin: 8px 0;
+	}
+
+	.show-it > .block.items > ul {
+		margin: 0;
+	}
+
+	.show-it > .block.items > ul > li {
+		text-align: center;
+		margin: 2px 0;
+	}
+
+	.show-it > .block.items > ul > li > a {
+		font-size: 21px;
+	}
+
+	/* Because of ios, we need to actually have a full height sidebar title so the
+	 * actual sidebar can show up. But then we need to make it transparent so we don't
+	 * hide content. The filler just allows to create the background for the sidebar
+	 * title. But because of the absolute position, I had to lower the z-index.
+	 */
+	#sidebar-filler {
+		position: fixed;
+		left: 45px;
+		width: calc(100% - 45px);
+		top: 0;
+		height: 45px;
+		z-index: -1;
+		border-bottom: 1px solid;
+	}
+
+	.collapse-toggle {
+		left: -20px;
+	}
+
+	.impl > .collapse-toggle {
+		left: -10px;
+	}
+}
+
+
+@media (max-width: 416px) {
+	#titles {
+		height: 73px;
+	}
+
+	#titles > div {
+		height: 73px;
+	}
+}
+
+.modal {
+	position: fixed;
+	width: 100vw;
+	height: 100vh;
+	z-index: 10000;
+	top: 0;
+	left: 0;
+}
+
+.modal-content {
+	display: block;
+	max-width: 60%;
+	min-width: 200px;
+	padding: 8px;
+	top: 40%;
+	position: absolute;
+	left: 50%;
+	transform: translate(-50%, -40%);
+	border: 1px solid;
+	border-radius: 4px;
+	border-top-right-radius: 0;
+}
+
+.modal-content > .docblock {
+	margin: 0;
+}
+
+h3.important {
+	margin: 0;
+	margin-bottom: 13px;
+	font-size: 19px;
+}
+
+.modal-content > .docblock > code.content {
+	margin: 0;
+	padding: 0;
+	font-size: 20px;
+}
+
+.modal-content > .close {
+	position: absolute;
+	font-weight: 900;
+	right: -25px;
+	top: -1px;
+	font-size: 18px;
+	width: 25px;
+	padding-right: 2px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+	text-align: center;
+	border: 1px solid;
+	border-right: 0;
+	cursor: pointer;
+}
+
+.modal-content > .whiter {
+	height: 25px;
+	position: absolute;
+	width: 3px;
+	right: -2px;
+	top: 0px;
+}
+
+#main > div.important-traits {
+	position: absolute;
+	left: -24px;
+	margin-top: 16px;
+}
+
+.content > .methods > div.important-traits {
+	position: absolute;
+	left: -42px;
+	margin-top: 2px;
+}
+
+kbd {
+	display: inline-block;
+	padding: 3px 5px;
+	font: 15px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	line-height: 10px;
+	vertical-align: middle;
+	border: solid 1px;
+	border-radius: 3px;
+	box-shadow: inset 0 -1px 0;
+	cursor: default;
+}
+
+.theme-picker {
+	position: absolute;
+	left: 211px;
+	top: 19px;
+}
+
+.theme-picker button {
+	outline: none;
+}
+
+#settings-menu {
+	position: absolute;
+	right: 0;
+	top: 10px;
+	outline: none;
+}
+
+#theme-picker, #settings-menu {
+	padding: 4px;
+	width: 27px;
+	height: 29px;
+	border: 1px solid;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+#theme-choices {
+	display: none;
+	position: absolute;
+	left: 0;
+	top: 28px;
+	border: 1px solid;
+	border-radius: 3px;
+	z-index: 1;
+	cursor: pointer;
+}
+
+#theme-choices > button {
+	border: none;
+	width: 100%;
+	padding: 4px;
+	text-align: center;
+	background: rgba(0,0,0,0);
+}
+
+#theme-choices > button:not(:first-child) {
+	border-top: 1px solid;
+}
+
+@media (max-width: 700px) {
+	.theme-picker {
+		left: 10px;
+		top: 54px;
+		z-index: 1;
+	}
+}
+
+.hidden-by-impl-hider,
+.hidden-by-usual-hider {
+	/* important because of conflicting rule for small screens */
+	display: none !important;
+}
+
+#implementations-list > h3 > span.in-band {
+	width: 100%;
+}
+
+.table-display {
+	width: 100%;
+	border: 0;
+	border-collapse: collapse;
+	border-spacing: 0;
+	font-size: 16px;
+}
+
+.table-display tr td:first-child {
+	padding-right: 0;
+}
+
+.table-display tr td:last-child {
+	float: right;
+}
+.table-display .out-of-band {
+	position: relative;
+	font-size: 19px;
+	display: block;
+}
+
+#main > ul {
+	padding-left: 10px;
+}
+#main > ul > li {
+	list-style: none;
+}
+#all-types {
+	text-align: center;
+	border: 1px solid;
+	margin: 0 10px;
+	margin-bottom: 10px;
+	display: block;
+	border-radius: 7px;
+}
+#all-types > p {
+	margin: 5px 0;
+}
+
+.non-exhaustive {
+	margin-bottom: 1em;
 }

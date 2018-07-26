@@ -1,0 +1,9 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/E0507.rs:22:5
+   |
+LL |     x.borrow().nothing_is_true(); //~ ERROR E0507
+   |     ^^^^^^^^^^ cannot move out of borrowed content
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

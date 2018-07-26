@@ -13,7 +13,7 @@ use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 
-use syntax::abi::Abi::RustIntrinsic;
+use rustc_target::spec::abi::Abi::RustIntrinsic;
 use syntax_pos::Span;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir;
@@ -145,7 +145,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        let def = if let hir::ExprPath(ref qpath) = expr.node {
+        let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
             self.tables.qpath_def(qpath, expr.hir_id)
         } else {
             Def::Err

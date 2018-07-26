@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast::{self, Expr, Generics, ItemKind, MetaItem, VariantData};
+use syntax::ast::GenericArg;
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -23,7 +25,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
                              mitem: &MetaItem,
                              item: &Annotatable,
-                             push: &mut FnMut(Annotatable)) {
+                             push: &mut dyn FnMut(Annotatable)) {
     // check if we can use a short form
     //
     // the short form is `fn clone(&self) -> Self { *self }`
@@ -44,18 +46,29 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     match *item {
         Annotatable::Item(ref annitem) => {
             match annitem.node {
-                ItemKind::Struct(_, Generics { ref ty_params, .. }) |
-                ItemKind::Enum(_, Generics { ref ty_params, .. })
-                        if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
-                           ty_params.is_empty() => {
-                    bounds = vec![];
-                    is_shallow = true;
-                    substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_shallow("Clone", c, s, sub, false)
-                    }));
+                ItemKind::Struct(_, Generics { ref params, .. }) |
+                ItemKind::Enum(_, Generics { ref params, .. }) => {
+                    if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
+                        !params.iter().any(|param| match param.kind {
+                            ast::GenericParamKind::Type { .. } => true,
+                            _ => false,
+                        })
+                    {
+                        bounds = vec![];
+                        is_shallow = true;
+                        substructure = combine_substructure(Box::new(|c, s, sub| {
+                            cs_clone_shallow("Clone", c, s, sub, false)
+                        }));
+                    } else {
+                        bounds = vec![];
+                        is_shallow = false;
+                        substructure = combine_substructure(Box::new(|c, s, sub| {
+                            cs_clone("Clone", c, s, sub)
+                        }));
+                    }
                 }
                 ItemKind::Union(..) => {
-                    bounds = vec![Literal(path_std!(cx, core::marker::Copy))];
+                    bounds = vec![Literal(path_std!(cx, marker::Copy))];
                     is_shallow = true;
                     substructure = combine_substructure(Box::new(|c, s, sub| {
                         cs_clone_shallow("Clone", c, s, sub, true)
@@ -79,7 +92,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, core::clone::Clone),
+        path: path_std!(cx, clone::Clone),
         additional_bounds: bounds,
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -114,7 +127,7 @@ fn cs_clone_shallow(name: &str,
         let span = span.with_ctxt(cx.backtrace());
         let assert_path = cx.path_all(span, true,
                                         cx.std_path(&["clone", helper_name]),
-                                        vec![], vec![ty], vec![]);
+                                        vec![GenericArg::Type(ty)], vec![]);
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
     fn process_variant(cx: &mut ExtCtxt, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
@@ -168,7 +181,7 @@ fn cs_clone(name: &str,
             vdata = vdata_;
         }
         EnumMatching(.., variant, ref af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.node.name]);
+            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.node.ident]);
             all_fields = af;
             vdata = &variant.node.data;
         }

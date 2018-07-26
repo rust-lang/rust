@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten fma not implemented in emscripten
+
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
         let (a, b) = (&$a, &$b);

@@ -162,11 +162,24 @@ fn test_join_for_different_lengths() {
     test_join!("-a-bc", ["", "a", "bc"], "-");
 }
 
+// join has fast paths for small separators up to 4 bytes
+// this tests the slow paths.
+#[test]
+fn test_join_for_different_lengths_with_long_separator() {
+    assert_eq!("～～～～～".len(), 15);
+
+    let empty: &[&str] = &[];
+    test_join!("", empty, "～～～～～");
+    test_join!("a", ["a"], "～～～～～");
+    test_join!("a～～～～～b", ["a", "b"], "～～～～～");
+    test_join!("～～～～～a～～～～～bc", ["", "a", "bc"], "～～～～～");
+}
+
 #[test]
 fn test_unsafe_slice() {
-    assert_eq!("ab", unsafe {"abc".slice_unchecked(0, 2)});
-    assert_eq!("bc", unsafe {"abc".slice_unchecked(1, 3)});
-    assert_eq!("", unsafe {"abc".slice_unchecked(1, 1)});
+    assert_eq!("ab", unsafe {"abc".get_unchecked(0..2)});
+    assert_eq!("bc", unsafe {"abc".get_unchecked(1..3)});
+    assert_eq!("", unsafe {"abc".get_unchecked(1..1)});
     fn a_million_letter_a() -> String {
         let mut i = 0;
         let mut rs = String::new();
@@ -187,7 +200,7 @@ fn test_unsafe_slice() {
     }
     let letters = a_million_letter_a();
     assert_eq!(half_a_million_letter_a(),
-        unsafe { letters.slice_unchecked(0, 500000)});
+        unsafe { letters.get_unchecked(0..500000)});
 }
 
 #[test]
@@ -291,114 +304,410 @@ fn test_replace_pattern() {
     assert_eq!(data.replace(|c| c == 'γ', "😺😺😺"), "abcdαβ😺😺😺δabcdαβ😺😺😺δ");
 }
 
-#[test]
-fn test_slice() {
-    assert_eq!("ab", &"abc"[0..2]);
-    assert_eq!("bc", &"abc"[1..3]);
-    assert_eq!("", &"abc"[1..1]);
-    assert_eq!("\u{65e5}", &"\u{65e5}\u{672c}"[0..3]);
+// The current implementation of SliceIndex fails to handle methods
+// orthogonally from range types; therefore, it is worth testing
+// all of the indexing operations on each input.
+mod slice_index {
+    // Test a slicing operation **that should succeed,**
+    // testing it on all of the indexing methods.
+    //
+    // This is not suitable for testing failure on invalid inputs.
+    macro_rules! assert_range_eq {
+        ($s:expr, $range:expr, $expected:expr)
+        => {
+            let mut s: String = $s.to_owned();
+            let mut expected: String = $expected.to_owned();
+            {
+                let s: &str = &s;
+                let expected: &str = &expected;
 
-    let data = "ประเทศไทย中华";
-    assert_eq!("ป", &data[0..3]);
-    assert_eq!("ร", &data[3..6]);
-    assert_eq!("", &data[3..3]);
-    assert_eq!("华", &data[30..33]);
+                assert_eq!(&s[$range], expected, "(in assertion for: index)");
+                assert_eq!(s.get($range), Some(expected), "(in assertion for: get)");
+                unsafe {
+                    assert_eq!(
+                        s.get_unchecked($range), expected,
+                        "(in assertion for: get_unchecked)",
+                    );
+                }
+            }
+            {
+                let s: &mut str = &mut s;
+                let expected: &mut str = &mut expected;
 
-    fn a_million_letter_x() -> String {
-        let mut i = 0;
-        let mut rs = String::new();
-        while i < 100000 {
-            rs.push_str("华华华华华华华华华华");
-            i += 1;
+                assert_eq!(
+                    &mut s[$range], expected,
+                    "(in assertion for: index_mut)",
+                );
+                assert_eq!(
+                    s.get_mut($range), Some(&mut expected[..]),
+                    "(in assertion for: get_mut)",
+                );
+                unsafe {
+                    assert_eq!(
+                        s.get_unchecked_mut($range), expected,
+                        "(in assertion for: get_unchecked_mut)",
+                    );
+                }
+            }
         }
-        rs
     }
-    fn half_a_million_letter_x() -> String {
-        let mut i = 0;
-        let mut rs = String::new();
-        while i < 100000 {
-            rs.push_str("华华华华华");
-            i += 1;
+
+    // Make sure the macro can actually detect bugs,
+    // because if it can't, then what are we even doing here?
+    //
+    // (Be aware this only demonstrates the ability to detect bugs
+    //  in the FIRST method that panics, as the macro is not designed
+    //  to be used in `should_panic`)
+    #[test]
+    #[should_panic(expected = "out of bounds")]
+    fn assert_range_eq_can_fail_by_panic() {
+        assert_range_eq!("abc", 0..5, "abc");
+    }
+
+    // (Be aware this only demonstrates the ability to detect bugs
+    //  in the FIRST method it calls, as the macro is not designed
+    //  to be used in `should_panic`)
+    #[test]
+    #[should_panic(expected = "==")]
+    fn assert_range_eq_can_fail_by_inequality() {
+        assert_range_eq!("abc", 0..2, "abc");
+    }
+
+    // Generates test cases for bad index operations.
+    //
+    // This generates `should_panic` test cases for Index/IndexMut
+    // and `None` test cases for get/get_mut.
+    macro_rules! panic_cases {
+        ($(
+            in mod $case_name:ident {
+                data: $data:expr;
+
+                // optional:
+                //
+                // a similar input for which DATA[input] succeeds, and the corresponding
+                // output str. This helps validate "critical points" where an input range
+                // straddles the boundary between valid and invalid.
+                // (such as the input `len..len`, which is just barely valid)
+                $(
+                    good: data[$good:expr] == $output:expr;
+                )*
+
+                bad: data[$bad:expr];
+                message: $expect_msg:expr; // must be a literal
+            }
+        )*) => {$(
+            mod $case_name {
+                #[test]
+                fn pass() {
+                    let mut v: String = $data.into();
+
+                    $( assert_range_eq!(v, $good, $output); )*
+
+                    {
+                        let v: &str = &v;
+                        assert_eq!(v.get($bad), None, "(in None assertion for get)");
+                    }
+
+                    {
+                        let v: &mut str = &mut v;
+                        assert_eq!(v.get_mut($bad), None, "(in None assertion for get_mut)");
+                    }
+                }
+
+                #[test]
+                #[should_panic(expected = $expect_msg)]
+                fn index_fail() {
+                    let v: String = $data.into();
+                    let v: &str = &v;
+                    let _v = &v[$bad];
+                }
+
+                #[test]
+                #[should_panic(expected = $expect_msg)]
+                fn index_mut_fail() {
+                    let mut v: String = $data.into();
+                    let v: &mut str = &mut v;
+                    let _v = &mut v[$bad];
+                }
+            }
+        )*};
+    }
+
+    #[test]
+    fn simple_ascii() {
+        assert_range_eq!("abc", .., "abc");
+
+        assert_range_eq!("abc", 0..2, "ab");
+        assert_range_eq!("abc", 0..=1, "ab");
+        assert_range_eq!("abc", ..2, "ab");
+        assert_range_eq!("abc", ..=1, "ab");
+
+        assert_range_eq!("abc", 1..3, "bc");
+        assert_range_eq!("abc", 1..=2, "bc");
+        assert_range_eq!("abc", 1..1, "");
+        assert_range_eq!("abc", 1..=0, "");
+    }
+
+    #[test]
+    fn simple_unicode() {
+        // 日本
+        assert_range_eq!("\u{65e5}\u{672c}", .., "\u{65e5}\u{672c}");
+
+        assert_range_eq!("\u{65e5}\u{672c}", 0..3, "\u{65e5}");
+        assert_range_eq!("\u{65e5}\u{672c}", 0..=2, "\u{65e5}");
+        assert_range_eq!("\u{65e5}\u{672c}", ..3, "\u{65e5}");
+        assert_range_eq!("\u{65e5}\u{672c}", ..=2, "\u{65e5}");
+
+        assert_range_eq!("\u{65e5}\u{672c}", 3..6, "\u{672c}");
+        assert_range_eq!("\u{65e5}\u{672c}", 3..=5, "\u{672c}");
+        assert_range_eq!("\u{65e5}\u{672c}", 3.., "\u{672c}");
+
+        let data = "ประเทศไทย中华";
+        assert_range_eq!(data, 0..3, "ป");
+        assert_range_eq!(data, 3..6, "ร");
+        assert_range_eq!(data, 3..3, "");
+        assert_range_eq!(data, 30..33, "华");
+
+        /*0: 中
+          3: 华
+          6: V
+          7: i
+          8: ệ
+         11: t
+         12:
+         13: N
+         14: a
+         15: m */
+        let ss = "中华Việt Nam";
+        assert_range_eq!(ss, 3..6, "华");
+        assert_range_eq!(ss, 6..16, "Việt Nam");
+        assert_range_eq!(ss, 6..=15, "Việt Nam");
+        assert_range_eq!(ss, 6.., "Việt Nam");
+
+        assert_range_eq!(ss, 0..3, "中");
+        assert_range_eq!(ss, 3..7, "华V");
+        assert_range_eq!(ss, 3..=6, "华V");
+        assert_range_eq!(ss, 3..3, "");
+        assert_range_eq!(ss, 3..=2, "");
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "asmjs"))] // hits an OOM
+    fn simple_big() {
+        fn a_million_letter_x() -> String {
+            let mut i = 0;
+            let mut rs = String::new();
+            while i < 100000 {
+                rs.push_str("华华华华华华华华华华");
+                i += 1;
+            }
+            rs
         }
-        rs
+        fn half_a_million_letter_x() -> String {
+            let mut i = 0;
+            let mut rs = String::new();
+            while i < 100000 {
+                rs.push_str("华华华华华");
+                i += 1;
+            }
+            rs
+        }
+        let letters = a_million_letter_x();
+        assert_range_eq!(letters, 0..3 * 500000, half_a_million_letter_x());
     }
-    let letters = a_million_letter_x();
-    assert_eq!(half_a_million_letter_x(), &letters[0..3 * 500000]);
+
+    #[test]
+    #[should_panic]
+    fn test_slice_fail() {
+        &"中华Việt Nam"[0..2];
+    }
+
+    panic_cases! {
+        in mod rangefrom_len {
+            data: "abcdef";
+            good: data[6..] == "";
+            bad: data[7..];
+            message: "out of bounds";
+        }
+
+        in mod rangeto_len {
+            data: "abcdef";
+            good: data[..6] == "abcdef";
+            bad: data[..7];
+            message: "out of bounds";
+        }
+
+        in mod rangetoinclusive_len {
+            data: "abcdef";
+            good: data[..=5] == "abcdef";
+            bad: data[..=6];
+            message: "out of bounds";
+        }
+
+        in mod range_len_len {
+            data: "abcdef";
+            good: data[6..6] == "";
+            bad: data[7..7];
+            message: "out of bounds";
+        }
+
+        in mod rangeinclusive_len_len {
+            data: "abcdef";
+            good: data[6..=5] == "";
+            bad: data[7..=6];
+            message: "out of bounds";
+        }
+    }
+
+    panic_cases! {
+        in mod range_neg_width {
+            data: "abcdef";
+            good: data[4..4] == "";
+            bad: data[4..3];
+            message: "begin <= end (4 <= 3)";
+        }
+
+        in mod rangeinclusive_neg_width {
+            data: "abcdef";
+            good: data[4..=3] == "";
+            bad: data[4..=2];
+            message: "begin <= end (4 <= 3)";
+        }
+    }
+
+    mod overflow {
+        panic_cases! {
+            in mod rangeinclusive {
+                data: "hello";
+                // note: using 0 specifically ensures that the result of overflowing is 0..0,
+                //       so that `get` doesn't simply return None for the wrong reason.
+                bad: data[0..=usize::max_value()];
+                message: "maximum usize";
+            }
+
+            in mod rangetoinclusive {
+                data: "hello";
+                bad: data[..=usize::max_value()];
+                message: "maximum usize";
+            }
+        }
+    }
+
+    mod boundary {
+        const DATA: &'static str = "abcαβγ";
+
+        const BAD_START: usize = 4;
+        const GOOD_START: usize = 3;
+        const BAD_END: usize = 6;
+        const GOOD_END: usize = 7;
+        const BAD_END_INCL: usize = BAD_END - 1;
+        const GOOD_END_INCL: usize = GOOD_END - 1;
+
+        // it is especially important to test all of the different range types here
+        // because some of the logic may be duplicated as part of micro-optimizations
+        // to dodge unicode boundary checks on half-ranges.
+        panic_cases! {
+            in mod range_1 {
+                data: super::DATA;
+                bad: data[super::BAD_START..super::GOOD_END];
+                message:
+                    "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
+            }
+
+            in mod range_2 {
+                data: super::DATA;
+                bad: data[super::GOOD_START..super::BAD_END];
+                message:
+                    "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
+            }
+
+            in mod rangefrom {
+                data: super::DATA;
+                bad: data[super::BAD_START..];
+                message:
+                    "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
+            }
+
+            in mod rangeto {
+                data: super::DATA;
+                bad: data[..super::BAD_END];
+                message:
+                    "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
+            }
+
+            in mod rangeinclusive_1 {
+                data: super::DATA;
+                bad: data[super::BAD_START..=super::GOOD_END_INCL];
+                message:
+                    "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
+            }
+
+            in mod rangeinclusive_2 {
+                data: super::DATA;
+                bad: data[super::GOOD_START..=super::BAD_END_INCL];
+                message:
+                    "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
+            }
+
+            in mod rangetoinclusive {
+                data: super::DATA;
+                bad: data[..=super::BAD_END_INCL];
+                message:
+                    "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
+            }
+        }
+    }
+
+    const LOREM_PARAGRAPH: &'static str = "\
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem \
+    sit amet dolor ultricies condimentum. Praesent iaculis purus elit, ac malesuada \
+    quam malesuada in. Duis sed orci eros. Suspendisse sit amet magna mollis, mollis \
+    nunc luctus, imperdiet mi. Integer fringilla non sem ut lacinia. Fusce varius \
+    tortor a risus porttitor hendrerit. Morbi mauris dui, ultricies nec tempus vel, \
+    gravida nec quam.";
+
+    // check the panic includes the prefix of the sliced string
+    #[test]
+    #[should_panic(expected="byte index 1024 is out of bounds of `Lorem ipsum dolor sit amet")]
+    fn test_slice_fail_truncated_1() {
+        &LOREM_PARAGRAPH[..1024];
+    }
+    // check the truncation in the panic message
+    #[test]
+    #[should_panic(expected="luctus, im`[...]")]
+    fn test_slice_fail_truncated_2() {
+        &LOREM_PARAGRAPH[..1024];
+    }
 }
 
 #[test]
-fn test_slice_2() {
-    let ss = "中华Việt Nam";
-
-    assert_eq!("华", &ss[3..6]);
-    assert_eq!("Việt Nam", &ss[6..16]);
-
-    assert_eq!("ab", &"abc"[0..2]);
-    assert_eq!("bc", &"abc"[1..3]);
-    assert_eq!("", &"abc"[1..1]);
-
-    assert_eq!("中", &ss[0..3]);
-    assert_eq!("华V", &ss[3..7]);
-    assert_eq!("", &ss[3..3]);
-    /*0: 中
-      3: 华
-      6: V
-      7: i
-      8: ệ
-     11: t
-     12:
-     13: N
-     14: a
-     15: m */
+fn test_str_slice_rangetoinclusive_ok() {
+    let s = "abcαβγ";
+    assert_eq!(&s[..=2], "abc");
+    assert_eq!(&s[..=4], "abcα");
 }
 
 #[test]
 #[should_panic]
-fn test_slice_fail() {
-    &"中华Việt Nam"[0..2];
+fn test_str_slice_rangetoinclusive_notok() {
+    let s = "abcαβγ";
+    &s[..=3];
 }
 
 #[test]
-#[should_panic]
-fn test_str_slice_rangetoinclusive_max_panics() {
-    &"hello"[..=usize::max_value()];
-}
-
-#[test]
-#[should_panic]
-fn test_str_slice_rangeinclusive_max_panics() {
-    &"hello"[1..=usize::max_value()];
-}
-
-#[test]
-#[should_panic]
-fn test_str_slicemut_rangetoinclusive_max_panics() {
-    let mut s = "hello".to_owned();
+fn test_str_slicemut_rangetoinclusive_ok() {
+    let mut s = "abcαβγ".to_owned();
     let s: &mut str = &mut s;
-    &mut s[..=usize::max_value()];
+    assert_eq!(&mut s[..=2], "abc");
+    assert_eq!(&mut s[..=4], "abcα");
 }
 
 #[test]
 #[should_panic]
-fn test_str_slicemut_rangeinclusive_max_panics() {
-    let mut s = "hello".to_owned();
+fn test_str_slicemut_rangetoinclusive_notok() {
+    let mut s = "abcαβγ".to_owned();
     let s: &mut str = &mut s;
-    &mut s[1..=usize::max_value()];
-}
-
-#[test]
-fn test_str_get_maxinclusive() {
-    let mut s = "hello".to_owned();
-    {
-        let s: &str = &s;
-        assert_eq!(s.get(..=usize::max_value()), None);
-        assert_eq!(s.get(1..=usize::max_value()), None);
-    }
-    {
-        let s: &mut str = &mut s;
-        assert_eq!(s.get(..=usize::max_value()), None);
-        assert_eq!(s.get(1..=usize::max_value()), None);
-    }
+    &mut s[..=3];
 }
 
 #[test]
@@ -415,50 +724,6 @@ fn test_is_char_boundary() {
                     "{} should not be a char boundary in {:?}", i + j, s);
         }
     }
-}
-const LOREM_PARAGRAPH: &'static str = "\
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
-ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
-eros. Suspendisse sit amet magna mollis, mollis nunc luctus, imperdiet mi. Integer fringilla non \
-sem ut lacinia. Fusce varius tortor a risus porttitor hendrerit. Morbi mauris dui, ultricies nec \
-tempus vel, gravida nec quam.";
-
-// check the panic includes the prefix of the sliced string
-#[test]
-#[should_panic(expected="byte index 1024 is out of bounds of `Lorem ipsum dolor sit amet")]
-fn test_slice_fail_truncated_1() {
-    &LOREM_PARAGRAPH[..1024];
-}
-// check the truncation in the panic message
-#[test]
-#[should_panic(expected="luctus, im`[...]")]
-fn test_slice_fail_truncated_2() {
-    &LOREM_PARAGRAPH[..1024];
-}
-
-#[test]
-#[should_panic(expected="byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of")]
-fn test_slice_fail_boundary_1() {
-    &"abcαβγ"[4..];
-}
-
-#[test]
-#[should_panic(expected="byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of")]
-fn test_slice_fail_boundary_2() {
-    &"abcαβγ"[2..6];
-}
-
-#[test]
-fn test_slice_from() {
-    assert_eq!(&"abcd"[0..], "abcd");
-    assert_eq!(&"abcd"[2..], "cd");
-    assert_eq!(&"abcd"[4..], "");
-}
-#[test]
-fn test_slice_to() {
-    assert_eq!(&"abcd"[..0], "");
-    assert_eq!(&"abcd"[..2], "ab");
-    assert_eq!(&"abcd"[..4], "abcd");
 }
 
 #[test]
@@ -706,7 +971,6 @@ fn test_split_at() {
 
 #[test]
 fn test_split_at_mut() {
-    use std::ascii::AsciiExt;
     let mut s = "Hello World".to_string();
     {
         let (a, b) = s.split_at_mut(5);
@@ -738,6 +1002,12 @@ fn test_escape_unicode() {
 
 #[test]
 fn test_escape_debug() {
+    // Note that there are subtleties with the number of backslashes
+    // on the left- and right-hand sides. In particular, Unicode code points
+    // are usually escaped with two backslashes on the right-hand side, as
+    // they are escaped. However, when the character is unescaped (e.g. for
+    // printable characters), only a single backslash appears (as the character
+    // itself appears in the debug string).
     assert_eq!("abc".escape_debug(), "abc");
     assert_eq!("a c".escape_debug(), "a c");
     assert_eq!("éèê".escape_debug(), "éèê");
@@ -748,6 +1018,7 @@ fn test_escape_debug() {
     assert_eq!("\u{10000}\u{10ffff}".escape_debug(), "\u{10000}\\u{10ffff}");
     assert_eq!("ab\u{200b}".escape_debug(), "ab\\u{200b}");
     assert_eq!("\u{10d4ea}\r".escape_debug(), "\\u{10d4ea}\\r");
+    assert_eq!("\u{301}a\u{301}bé\u{e000}".escape_debug(), "\\u{301}a\u{301}bé\\u{e000}");
 }
 
 #[test]
@@ -1055,6 +1326,7 @@ fn test_str_default() {
 
     t::<&str>();
     t::<String>();
+    t::<&mut str>();
 }
 
 #[test]
@@ -1205,8 +1477,7 @@ fn test_rev_split_char_iterator_no_trailing() {
 
 #[test]
 fn test_utf16_code_units() {
-    use std_unicode::str::Utf16Encoder;
-    assert_eq!(Utf16Encoder::new(vec!['é', '\u{1F4A9}'].into_iter()).collect::<Vec<u16>>(),
+    assert_eq!("é\u{1F4A9}".encode_utf16().collect::<Vec<u16>>(),
                [0xE9, 0xD83D, 0xDCA9])
 }
 
@@ -1428,12 +1699,12 @@ mod pattern {
         Reject(6, 7),
         Match (7, 7),
     ]);
-    make_test!(str_searcher_mulibyte_haystack, " ", "├──", [
+    make_test!(str_searcher_multibyte_haystack, " ", "├──", [
         Reject(0, 3),
         Reject(3, 6),
         Reject(6, 9),
     ]);
-    make_test!(str_searcher_empty_needle_mulibyte_haystack, "", "├──", [
+    make_test!(str_searcher_empty_needle_multibyte_haystack, "", "├──", [
         Match (0, 0),
         Reject(0, 3),
         Match (3, 3),
@@ -1456,7 +1727,7 @@ mod pattern {
         Match (5, 6),
         Reject(6, 7),
     ]);
-    make_test!(char_searcher_mulibyte_haystack, ' ', "├──", [
+    make_test!(char_searcher_multibyte_haystack, ' ', "├──", [
         Reject(0, 3),
         Reject(3, 6),
         Reject(6, 9),

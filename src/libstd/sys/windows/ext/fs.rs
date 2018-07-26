@@ -45,15 +45,15 @@ pub trait FileExt {
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let mut buffer = [0; 10];
+    /// fn main() -> io::Result<()> {
+    ///     let mut file = File::open("foo.txt")?;
+    ///     let mut buffer = [0; 10];
     ///
-    /// // Read 10 bytes, starting 72 bytes from the
-    /// // start of the file.
-    /// file.seek_read(&mut buffer[..], 72)?;
-    /// # Ok(())
-    /// # }
+    ///     // Read 10 bytes, starting 72 bytes from the
+    ///     // start of the file.
+    ///     file.seek_read(&mut buffer[..], 72)?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
@@ -79,14 +79,14 @@ pub trait FileExt {
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut buffer = File::create("foo.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut buffer = File::create("foo.txt")?;
     ///
-    /// // Write a byte string starting 72 bytes from
-    /// // the start of the file.
-    /// buffer.seek_write(b"some bytes", 72)?;
-    /// # Ok(())
-    /// # }
+    ///     // Write a byte string starting 72 bytes from
+    ///     // the start of the file.
+    ///     buffer.seek_write(b"some bytes", 72)?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
@@ -103,9 +103,9 @@ impl FileExt for fs::File {
     }
 }
 
-/// Windows-specific extensions to [`OpenOptions`].
+/// Windows-specific extensions to [`fs::OpenOptions`].
 ///
-/// [`OpenOptions`]: ../../../fs/struct.OpenOptions.html
+/// [`fs::OpenOptions`]: ../../../../std/fs/struct.OpenOptions.html
 #[stable(feature = "open_options_ext", since = "1.10.0")]
 pub trait OpenOptionsExt {
     /// Overrides the `dwDesiredAccess` argument to the call to [`CreateFile`]
@@ -281,13 +281,12 @@ impl OpenOptionsExt for OpenOptions {
     }
 }
 
-/// Extension methods for [`fs::Metadata`] to access the raw fields contained
-/// within.
+/// Windows-specific extensions to [`fs::Metadata`].
 ///
 /// The data members that this trait exposes correspond to the members
 /// of the [`BY_HANDLE_FILE_INFORMATION`] structure.
 ///
-/// [`fs::Metadata`]: ../../../fs/struct.Metadata.html
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 /// [`BY_HANDLE_FILE_INFORMATION`]:
 ///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa363788.aspx
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -305,11 +304,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let attributes = metadata.file_attributes();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let attributes = metadata.file_attributes();
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [File Attribute Constants]:
@@ -335,11 +334,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let creation_time = metadata.creation_time();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let creation_time = metadata.creation_time();
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
@@ -370,11 +369,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let last_access_time = metadata.last_access_time();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let last_access_time = metadata.last_access_time();
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
@@ -403,11 +402,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let last_write_time = metadata.last_write_time();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let last_write_time = metadata.last_write_time();
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
@@ -426,11 +425,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let file_size = metadata.file_size();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let file_size = metadata.file_size();
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_size(&self) -> u64;
@@ -445,6 +444,27 @@ impl MetadataExt for Metadata {
     fn file_size(&self) -> u64 { self.as_inner().size() }
 }
 
+/// Windows-specific extensions to [`FileType`].
+///
+/// On Windows, a symbolic link knows whether it is a file or directory.
+///
+/// [`FileType`]: ../../../../std/fs/struct.FileType.html
+#[unstable(feature = "windows_file_type_ext", issue = "0")]
+pub trait FileTypeExt {
+    /// Returns whether this file type is a symbolic link that is also a directory.
+    #[unstable(feature = "windows_file_type_ext", issue = "0")]
+    fn is_symlink_dir(&self) -> bool;
+    /// Returns whether this file type is a symbolic link that is also a file.
+    #[unstable(feature = "windows_file_type_ext", issue = "0")]
+    fn is_symlink_file(&self) -> bool;
+}
+
+#[unstable(feature = "windows_file_type_ext", issue = "0")]
+impl FileTypeExt for fs::FileType {
+    fn is_symlink_dir(&self) -> bool { self.as_inner().is_symlink_dir() }
+    fn is_symlink_file(&self) -> bool { self.as_inner().is_symlink_file() }
+}
+
 /// Creates a new file symbolic link on the filesystem.
 ///
 /// The `dst` path will be a file symbolic link pointing to the `src`
@@ -455,10 +475,10 @@ impl MetadataExt for Metadata {
 /// ```no_run
 /// use std::os::windows::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::symlink_file("a.txt", "b.txt")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::symlink_file("a.txt", "b.txt")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
@@ -476,10 +496,10 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
 /// ```no_run
 /// use std::os::windows::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::symlink_dir("a", "b")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::symlink_dir("a", "b")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)

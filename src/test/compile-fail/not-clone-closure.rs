@@ -10,8 +10,6 @@
 
 // Check that closures do not implement `Clone` if their environment is not `Clone`.
 
-#![feature(clone_closures)]
-
 struct S(i32);
 
 fn main() {

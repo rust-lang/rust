@@ -12,8 +12,6 @@
 
 fn main() {
     if foo {
-    //~^ NOTE: unclosed delimiter
-    //~| ERROR: unresolved value `foo`
-    //~| NOTE: no resolution found
+    //~^ ERROR: cannot find value `foo`
     ) //~ ERROR: incorrect close delimiter: `)`
 }

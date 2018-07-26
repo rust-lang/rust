@@ -12,5 +12,5 @@
 // Make sure that the span of a closure marked `move` begins at the `move` keyword.
 
 fn main() {
-    let x: () = move || ();
+    let x: () = move || (); //~ ERROR mismatched types
 }

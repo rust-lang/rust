@@ -1,0 +1,36 @@
+error[E0517]: attribute should be applied to struct, enum or union
+  --> $DIR/E0517.rs:11:8
+   |
+LL | #[repr(C)] //~ ERROR: E0517
+   |        ^
+LL | type Foo = u8;
+   | -------------- not a struct, enum or union
+
+error[E0517]: attribute should be applied to struct or union
+  --> $DIR/E0517.rs:14:8
+   |
+LL | #[repr(packed)] //~ ERROR: E0517
+   |        ^^^^^^
+LL | enum Foo2 {Bar, Baz}
+   | -------------------- not a struct or union
+
+error[E0517]: attribute should be applied to enum
+  --> $DIR/E0517.rs:17:8
+   |
+LL | #[repr(u8)] //~ ERROR: E0517
+   |        ^^
+LL | struct Foo3 {bar: bool, baz: bool}
+   | ---------------------------------- not an enum
+
+error[E0517]: attribute should be applied to struct, enum or union
+  --> $DIR/E0517.rs:20:8
+   |
+LL |   #[repr(C)] //~ ERROR: E0517
+   |          ^
+LL | / impl Foo3 {
+LL | | }
+   | |_- not a struct, enum or union
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0517`.

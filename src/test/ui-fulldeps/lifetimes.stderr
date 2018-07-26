@@ -1,0 +1,8 @@
+error: expected type, found `'`
+  --> $DIR/lifetimes.rs:19:10
+   |
+LL | type A = single_quote_alone!(); //~ ERROR expected type, found `'`
+   |          ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

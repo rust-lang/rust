@@ -1,0 +1,31 @@
+error[E0596]: cannot borrow `f.v` as mutable, as `f` is not declared as mutable
+  --> $DIR/issue-35937.rs:17:5
+   |
+LL |     let f = Foo { v: Vec::new() };
+   |         - help: consider changing this to be mutable: `mut f`
+LL |     f.v.push("cat".to_string()); //~ ERROR cannot borrow
+   |     ^^^ cannot borrow as mutable
+
+error[E0384]: cannot assign twice to immutable variable `s`
+  --> $DIR/issue-35937.rs:26:5
+   |
+LL |     let s = S { x: 42 };
+   |         -
+   |         |
+   |         first assignment to `s`
+   |         consider changing this to `mut s`
+LL |     s.x += 1; //~ ERROR cannot assign
+   |     ^^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign to immutable argument `s`
+  --> $DIR/issue-35937.rs:30:5
+   |
+LL | fn bar(s: S) {
+   |        - consider changing this to `mut s`
+LL |     s.x += 1; //~ ERROR cannot assign
+   |     ^^^^^^^^ cannot assign to immutable argument
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0384, E0596.
+For more information about an error, try `rustc --explain E0384`.

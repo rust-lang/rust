@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-
+// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 // min-lldb-version: 310
 
 // This test case checks if function arguments already have the correct value

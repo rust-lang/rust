@@ -14,17 +14,17 @@
 //! type equality, etc.
 
 use hir::def_id::DefId;
-use middle::const_val::ConstVal;
-use traits::Reveal;
-use ty::subst::{Kind, Substs};
+use mir::interpret::ConstValue;
+use ty::subst::{Kind, UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
+use mir::interpret::GlobalId;
 use util::common::ErrorReported;
+use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
 use std::iter;
-use syntax::abi;
+use rustc_target::spec::abi;
 use hir as ast;
-use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
@@ -141,13 +141,7 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 
     let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        if let (Some(a_ty), Some(b_ty)) = (a.as_type(), b.as_type()) {
-            Ok(Kind::from(relation.relate_with_variance(variance, &a_ty, &b_ty)?))
-        } else if let (Some(a_r), Some(b_r)) = (a.as_region(), b.as_region()) {
-            Ok(Kind::from(relation.relate_with_variance(variance, &a_r, &b_r)?))
-        } else {
-            bug!()
-        }
+        relation.relate_with_variance(variance, a, b)
     });
 
     Ok(tcx.mk_substs(params)?)
@@ -160,6 +154,8 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                            -> RelateResult<'tcx, ty::FnSig<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
+        let tcx = relation.tcx();
+
         if a.variadic != b.variadic {
             return Err(TypeError::VariadicMismatch(
                 expected_found(relation, &a.variadic, &b.variadic)));
@@ -181,9 +177,9 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                 } else {
                     relation.relate_with_variance(ty::Contravariant, &a, &b)
                 }
-            }).collect::<Result<AccumulateVec<[_; 8]>, _>>()?;
+            });
         Ok(ty::FnSig {
-            inputs_and_output: relation.tcx().intern_type_list(&inputs_and_output),
+            inputs_and_output: tcx.mk_type_list(inputs_and_output)?,
             variadic: a.variadic,
             unsafety,
             abi,
@@ -319,6 +315,29 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
+#[derive(Debug, Clone)]
+struct GeneratorWitness<'tcx>(&'tcx ty::Slice<Ty<'tcx>>);
+
+TupleStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
+        a
+    }
+}
+
+impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
+    fn relate<'a, 'gcx, R>(relation: &mut R,
+                           a: &GeneratorWitness<'tcx>,
+                           b: &GeneratorWitness<'tcx>)
+                           -> RelateResult<'tcx, GeneratorWitness<'tcx>>
+        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
+    {
+        assert!(a.0.len() == b.0.len());
+        let tcx = relation.tcx();
+        let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
+        Ok(GeneratorWitness(types))
+    }
+}
+
 impl<'tcx> Relate<'tcx> for Ty<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &Ty<'tcx>,
@@ -398,16 +417,26 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
         }
 
-        (&ty::TyGenerator(a_id, a_substs, a_interior),
-         &ty::TyGenerator(b_id, b_substs, b_interior))
+        (&ty::TyGenerator(a_id, a_substs, movability),
+         &ty::TyGenerator(b_id, b_substs, _))
             if a_id == b_id =>
         {
             // All TyGenerator types with the same id represent
             // the (anonymous) type of the same generator expression. So
             // all of their regions should be equated.
             let substs = relation.relate(&a_substs, &b_substs)?;
-            let interior = relation.relate(&a_interior, &b_interior)?;
-            Ok(tcx.mk_generator(a_id, substs, interior))
+            Ok(tcx.mk_generator(a_id, substs, movability))
+        }
+
+        (&ty::TyGeneratorWitness(a_types), &ty::TyGeneratorWitness(b_types)) =>
+        {
+            // Wrap our types with a temporary GeneratorWitness struct
+            // inside the binder so we can related them
+            let a_types = a_types.map_bound(GeneratorWitness);
+            let b_types = b_types.map_bound(GeneratorWitness);
+            // Then remove the GeneratorWitness for the result
+            let types = relation.relate(&a_types, &b_types)?.map_bound(|witness| witness.0);
+            Ok(tcx.mk_generator_witness(types))
         }
 
         (&ty::TyClosure(a_id, a_substs),
@@ -418,7 +447,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let substs = relation.relate(&a_substs, &b_substs)?;
-            Ok(tcx.mk_closure_from_closure_substs(a_id, substs))
+            Ok(tcx.mk_closure(a_id, substs))
         }
 
         (&ty::TyRawPtr(ref a_mt), &ty::TyRawPtr(ref b_mt)) =>
@@ -427,10 +456,12 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_ptr(mt))
         }
 
-        (&ty::TyRef(a_r, ref a_mt), &ty::TyRef(b_r, ref b_mt)) =>
+        (&ty::TyRef(a_r, a_ty, a_mutbl), &ty::TyRef(b_r, b_ty, b_mutbl)) =>
         {
             let r = relation.relate_with_variance(ty::Contravariant, &a_r, &b_r)?;
-            let mt = relation.relate(a_mt, b_mt)?;
+            let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
+            let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
+            let mt = relation.relate(&a_mt, &b_mt)?;
             Ok(tcx.mk_ref(r, mt))
         }
 
@@ -440,27 +471,44 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             assert_eq!(sz_a.ty, tcx.types.usize);
             assert_eq!(sz_b.ty, tcx.types.usize);
             let to_u64 = |x: &'tcx ty::Const<'tcx>| -> Result<u64, ErrorReported> {
+                if let Some(s) = x.assert_usize(tcx) {
+                    return Ok(s);
+                }
                 match x.val {
-                    ConstVal::Integral(x) => Ok(x.to_u64().unwrap()),
-                    ConstVal::Unevaluated(def_id, substs) => {
+                    ConstValue::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
-                        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                        let param_env = ty::ParamEnv::empty();
                         match tcx.lift_to_global(&substs) {
                             Some(substs) => {
-                                match tcx.const_eval(param_env.and((def_id, substs))) {
-                                    Ok(&ty::Const { val: ConstVal::Integral(x), .. }) => {
-                                        return Ok(x.to_u64().unwrap());
+                                let instance = ty::Instance::resolve(
+                                    tcx.global_tcx(),
+                                    param_env,
+                                    def_id,
+                                    substs,
+                                );
+                                if let Some(instance) = instance {
+                                    let cid = GlobalId {
+                                        instance,
+                                        promoted: None
+                                    };
+                                    if let Some(s) = tcx.const_eval(param_env.and(cid))
+                                                        .ok()
+                                                        .map(|c| c.unwrap_usize(tcx)) {
+                                        return Ok(s)
                                     }
-                                    _ => {}
                                 }
-                            }
+                            },
                             None => {}
                         }
                         tcx.sess.delay_span_bug(tcx.def_span(def_id),
                             "array length could not be evaluated");
                         Err(ErrorReported)
                     }
-                    _ => bug!("arrays should not have {:?} as length", x)
+                    _ => {
+                        tcx.sess.delay_span_bug(DUMMY_SP,
+                            &format!("arrays should not have {:?} as length", x));
+                        Err(ErrorReported)
+                    }
                 }
             };
             match (to_u64(sz_a), to_u64(sz_b)) {
@@ -485,11 +533,10 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_slice(t))
         }
 
-        (&ty::TyTuple(as_, a_defaulted), &ty::TyTuple(bs, b_defaulted)) =>
+        (&ty::TyTuple(as_), &ty::TyTuple(bs)) =>
         {
             if as_.len() == bs.len() {
-                let defaulted = a_defaulted || b_defaulted;
-                Ok(tcx.mk_tup(as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b)), defaulted)?)
+                Ok(tcx.mk_tup(as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b)))?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(
                     expected_found(relation, &as_.len(), &bs.len())))
@@ -564,19 +611,19 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
         let substs = relate_substs(relation, None, a.substs, b.substs)?;
-        Ok(ty::ClosureSubsts { substs: substs })
+        Ok(ty::ClosureSubsts { substs })
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::GeneratorInterior<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::GeneratorSubsts<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &ty::GeneratorInterior<'tcx>,
-                           b: &ty::GeneratorInterior<'tcx>)
-                           -> RelateResult<'tcx, ty::GeneratorInterior<'tcx>>
+                           a: &ty::GeneratorSubsts<'tcx>,
+                           b: &ty::GeneratorSubsts<'tcx>)
+                           -> RelateResult<'tcx, ty::GeneratorSubsts<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        let interior = relation.relate(&a.witness, &b.witness)?;
-        Ok(ty::GeneratorInterior::new(interior))
+        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        Ok(ty::GeneratorSubsts { substs })
     }
 }
 
@@ -636,6 +683,27 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Box<T> {
         let a: &T = a;
         let b: &T = b;
         Ok(Box::new(relation.relate(a, b)?))
+    }
+}
+
+impl<'tcx> Relate<'tcx> for Kind<'tcx> {
+    fn relate<'a, 'gcx, R>(
+        relation: &mut R,
+        a: &Kind<'tcx>,
+        b: &Kind<'tcx>
+    ) -> RelateResult<'tcx, Kind<'tcx>>
+    where
+        R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a,
+    {
+        match (a.unpack(), b.unpack()) {
+            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
+                Ok(relation.relate(&a_lt, &b_lt)?.into())
+            }
+            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
+                Ok(relation.relate(&a_ty, &b_ty)?.into())
+            }
+            (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => bug!()
+        }
     }
 }
 

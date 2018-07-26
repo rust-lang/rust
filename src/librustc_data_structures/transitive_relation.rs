@@ -10,16 +10,16 @@
 
 use bitvec::BitMatrix;
 use fx::FxHashMap;
+use sync::Lock;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use stable_hasher::{HashStable, StableHasher, StableHasherResult};
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
 
 #[derive(Clone, Debug)]
-pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
+pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
     // List of elements. This is used to map from a T to a usize.
     elements: Vec<T>,
 
@@ -32,14 +32,14 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
 
     // This is a cached transitive closure derived from the edges.
     // Currently, we build it lazilly and just throw out any existing
-    // copy whenever a new edge is added. (The RefCell is to permit
+    // copy whenever a new edge is added. (The Lock is to permit
     // the lazy computation.) This is kind of silly, except for the
     // fact its size is tied to `self.elements.len()`, so I wanted to
     // wait before building it up to avoid reallocating as new edges
     // are added with new elements. Perhaps better would be to ask the
     // user for a batch of edges to minimize this effect, but I
     // already wrote the code this way. :P -nmatsakis
-    closure: RefCell<Option<BitMatrix>>,
+    closure: Lock<Option<BitMatrix<usize, usize>>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -51,13 +51,13 @@ struct Edge {
     target: Index,
 }
 
-impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
+impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     pub fn new() -> TransitiveRelation<T> {
         TransitiveRelation {
             elements: vec![],
             map: FxHashMap(),
             edges: vec![],
-            closure: RefCell::new(None),
+            closure: Lock::new(None),
         }
     }
 
@@ -72,7 +72,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     fn add_index(&mut self, a: T) -> Index {
         let &mut TransitiveRelation {
             ref mut elements,
-            ref closure,
+            ref mut closure,
             ref mut map,
             ..
         } = self;
@@ -82,7 +82,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
                elements.push(a);
 
                // if we changed the dimensions, clear the cache
-               *closure.borrow_mut() = None;
+               *closure.get_mut() = None;
 
                Index(elements.len() - 1)
            })
@@ -122,7 +122,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
             self.edges.push(edge);
 
             // added an edge, clear the cache
-            *self.closure.borrow_mut() = None;
+            *self.closure.get_mut() = None;
         }
     }
 
@@ -134,12 +134,13 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
         }
     }
 
-    /// Returns a vector of all things less than `a`.
+    /// Thinking of `x R y` as an edge `x -> y` in a graph, this
+    /// returns all things reachable from `a`.
     ///
     /// Really this probably ought to be `impl Iterator<Item=&T>`, but
     /// I'm too lazy to make that work, and -- given the caching
     /// strategy -- it'd be a touch tricky anyhow.
-    pub fn less_than(&self, a: &T) -> Vec<&T> {
+    pub fn reachable_from(&self, a: &T) -> Vec<&T> {
         match self.index(a) {
             Some(a) => self.with_closure(|closure| {
                 closure.iter(a.0).map(|i| &self.elements[i]).collect()
@@ -184,7 +185,14 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     /// b -> b1
     /// ```
     pub fn postdom_upper_bound(&self, a: &T, b: &T) -> Option<&T> {
-        let mut mubs = self.minimal_upper_bounds(a, b);
+        let mubs = self.minimal_upper_bounds(a, b);
+        self.mutual_immediate_postdominator(mubs)
+    }
+
+    /// Viewing the relation as a graph, computes the "mutual
+    /// immediate postdominator" of a set of points (if one
+    /// exists). See `postdom_upper_bound` for details.
+    pub fn mutual_immediate_postdominator<'a>(&'a self, mut mubs: Vec<&'a T>) -> Option<&'a T> {
         loop {
             match mubs.len() {
                 0 => return None,
@@ -276,6 +284,8 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
             // After step 3, we know that no element can reach any of
             // its predecesssors (because of step 2) nor successors
             // (because we just called `pare_down`)
+            //
+            // This same algorithm is used in `parents` below.
 
             let mut candidates = closure.intersection(a.0, b.0); // (1)
             pare_down(&mut candidates, closure); // (2)
@@ -290,8 +300,61 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
                    .collect()
     }
 
+    /// Given an element A, returns the maximal set {B} of elements B
+    /// such that
+    ///
+    /// - A != B
+    /// - A R B is true
+    /// - for each i, j: B[i] R B[j] does not hold
+    ///
+    /// The intuition is that this moves "one step up" through a lattice
+    /// (where the relation is encoding the `<=` relation for the lattice).
+    /// So e.g. if the relation is `->` and we have
+    ///
+    /// ```
+    /// a -> b -> d -> f
+    /// |              ^
+    /// +--> c -> e ---+
+    /// ```
+    ///
+    /// then `parents(a)` returns `[b, c]`. The `postdom_parent` function
+    /// would further reduce this to just `f`.
+    pub fn parents(&self, a: &T) -> Vec<&T> {
+        let a = match self.index(a) {
+            Some(a) => a,
+            None => return vec![]
+        };
+
+        // Steal the algorithm for `minimal_upper_bounds` above, but
+        // with a slight tweak. In the case where `a R a`, we remove
+        // that from the set of candidates.
+        let ancestors = self.with_closure(|closure| {
+            let mut ancestors = closure.intersection(a.0, a.0);
+
+            // Remove anything that can reach `a`. If this is a
+            // reflexive relation, this will include `a` itself.
+            ancestors.retain(|&e| !closure.contains(e, a.0));
+
+            pare_down(&mut ancestors, closure); // (2)
+            ancestors.reverse(); // (3a)
+            pare_down(&mut ancestors, closure); // (3b)
+            ancestors
+        });
+
+        ancestors.into_iter()
+                 .rev() // (4)
+                 .map(|i| &self.elements[i])
+                 .collect()
+    }
+
+    /// A "best" parent in some sense. See `parents` and
+    /// `postdom_upper_bound` for more details.
+    pub fn postdom_parent(&self, a: &T) -> Option<&T> {
+        self.mutual_immediate_postdominator(self.parents(a))
+    }
+
     fn with_closure<OP, R>(&self, op: OP) -> R
-        where OP: FnOnce(&BitMatrix) -> R
+        where OP: FnOnce(&BitMatrix<usize, usize>) -> R
     {
         let mut closure_cell = self.closure.borrow_mut();
         let mut closure = closure_cell.take();
@@ -303,7 +366,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
         result
     }
 
-    fn compute_closure(&self) -> BitMatrix {
+    fn compute_closure(&self) -> BitMatrix<usize, usize> {
         let mut matrix = BitMatrix::new(self.elements.len(),
                                         self.elements.len());
         let mut changed = true;
@@ -333,7 +396,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
 /// - Input: `[a, b, x]`. Output: `[a, x]`.
 /// - Input: `[b, a, x]`. Output: `[b, a, x]`.
 /// - Input: `[a, x, b, y]`. Output: `[a, x]`.
-fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix) {
+fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix<usize, usize>) {
     let mut i = 0;
     while i < candidates.len() {
         let candidate_i = candidates[i];
@@ -380,7 +443,7 @@ impl<T> Decodable for TransitiveRelation<T>
                               .enumerate()
                               .map(|(index, elem)| (elem.clone(), Index(index)))
                               .collect();
-            Ok(TransitiveRelation { elements, edges, map, closure: RefCell::new(None) })
+            Ok(TransitiveRelation { elements, edges, map, closure: Lock::new(None) })
         })
     }
 }
@@ -468,11 +531,17 @@ fn test_many_steps() {
 }
 
 #[test]
-fn mubs_triange() {
+fn mubs_triangle() {
+    // a -> tcx
+    //      ^
+    //      |
+    //      b
     let mut relation = TransitiveRelation::new();
     relation.add("a", "tcx");
     relation.add("b", "tcx");
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"tcx"]);
+    assert_eq!(relation.parents(&"a"), vec![&"tcx"]);
+    assert_eq!(relation.parents(&"b"), vec![&"tcx"]);
 }
 
 #[test]
@@ -498,6 +567,9 @@ fn mubs_best_choice1() {
     relation.add("3", "2");
 
     assert_eq!(relation.minimal_upper_bounds(&"0", &"3"), vec![&"2"]);
+    assert_eq!(relation.parents(&"0"), vec![&"2"]);
+    assert_eq!(relation.parents(&"2"), vec![&"1"]);
+    assert!(relation.parents(&"1").is_empty());
 }
 
 #[test]
@@ -522,6 +594,9 @@ fn mubs_best_choice2() {
     relation.add("3", "2");
 
     assert_eq!(relation.minimal_upper_bounds(&"0", &"3"), vec![&"1"]);
+    assert_eq!(relation.parents(&"0"), vec![&"1"]);
+    assert_eq!(relation.parents(&"1"), vec![&"2"]);
+    assert!(relation.parents(&"2").is_empty());
 }
 
 #[test]
@@ -536,10 +611,15 @@ fn mubs_no_best_choice() {
     relation.add("3", "2");
 
     assert_eq!(relation.minimal_upper_bounds(&"0", &"3"), vec![&"1", &"2"]);
+    assert_eq!(relation.parents(&"0"), vec![&"1", &"2"]);
+    assert_eq!(relation.parents(&"3"), vec![&"1", &"2"]);
 }
 
 #[test]
 fn mubs_best_choice_scc() {
+    // in this case, 1 and 2 form a cycle; we pick arbitrarily (but
+    // consistently).
+
     let mut relation = TransitiveRelation::new();
     relation.add("0", "1");
     relation.add("0", "2");
@@ -551,6 +631,7 @@ fn mubs_best_choice_scc() {
     relation.add("3", "2");
 
     assert_eq!(relation.minimal_upper_bounds(&"0", &"3"), vec![&"1"]);
+    assert_eq!(relation.parents(&"0"), vec![&"1"]);
 }
 
 #[test]
@@ -572,6 +653,8 @@ fn pdub_crisscross() {
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"),
                vec![&"a1", &"b1"]);
     assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
+    assert_eq!(relation.postdom_parent(&"a"), Some(&"x"));
+    assert_eq!(relation.postdom_parent(&"b"), Some(&"x"));
 }
 
 #[test]
@@ -603,6 +686,9 @@ fn pdub_crisscross_more() {
     assert_eq!(relation.minimal_upper_bounds(&"a1", &"b1"),
                vec![&"a2", &"b2"]);
     assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
+
+    assert_eq!(relation.postdom_parent(&"a"), Some(&"x"));
+    assert_eq!(relation.postdom_parent(&"b"), Some(&"x"));
 }
 
 #[test]
@@ -620,6 +706,11 @@ fn pdub_lub() {
 
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"x"]);
     assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
+
+    assert_eq!(relation.postdom_parent(&"a"), Some(&"a1"));
+    assert_eq!(relation.postdom_parent(&"b"), Some(&"b1"));
+    assert_eq!(relation.postdom_parent(&"a1"), Some(&"x"));
+    assert_eq!(relation.postdom_parent(&"b1"), Some(&"x"));
 }
 
 #[test]
@@ -720,4 +811,40 @@ fn mubs_scc_4() {
     relation.add("b", "e");
 
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+}
+
+#[test]
+fn parent() {
+    // An example that was misbehaving in the compiler.
+    //
+    // 4 -> 1 -> 3
+    //   \  |   /
+    //    \ v  /
+    // 2 -> 0
+    //
+    // plus a bunch of self-loops
+    //
+    // Here `->` represents `<=` and `0` is `'static`.
+
+    let pairs = vec![
+        (2, /*->*/ 0),
+        (2, /*->*/ 2),
+        (0, /*->*/ 0),
+        (0, /*->*/ 0),
+        (1, /*->*/ 0),
+        (1, /*->*/ 1),
+        (3, /*->*/ 0),
+        (3, /*->*/ 3),
+        (4, /*->*/ 0),
+        (4, /*->*/ 1),
+        (1, /*->*/ 3),
+    ];
+
+    let mut relation = TransitiveRelation::new();
+    for (a, b) in pairs {
+        relation.add(a, b);
+    }
+
+    let p = relation.postdom_parent(&3);
+    assert_eq!(p, Some(&0));
 }

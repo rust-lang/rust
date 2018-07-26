@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
-
 #![feature(flt2dec)]
-#![feature(slice_patterns)]
 #![feature(test)]
 
 extern crate core;
@@ -20,6 +17,6 @@ extern crate test;
 mod any;
 mod hash;
 mod iter;
-mod mem;
 mod num;
 mod ops;
+mod slice;

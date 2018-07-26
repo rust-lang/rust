@@ -11,9 +11,6 @@
 // Ensure that we can do a destructuring bind of a fixed-size array,
 // even when the element type has a destructor.
 
-
-#![feature(slice_patterns)]
-
 struct D { x: u8 }
 
 impl Drop for D { fn drop(&mut self) { } }

@@ -13,17 +13,20 @@
 
 use std::str;
 
-pub const MAX_BASE: u64 = 64;
-pub const ALPHANUMERIC_ONLY: u64 = 62;
+pub const MAX_BASE: usize = 64;
+pub const ALPHANUMERIC_ONLY: usize = 62;
+pub const CASE_INSENSITIVE: usize = 36;
 
 const BASE_64: &'static [u8; MAX_BASE as usize] =
     b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@$";
 
 #[inline]
-pub fn push_str(mut n: u64, base: u64, output: &mut String) {
+pub fn push_str(mut n: u128, base: usize, output: &mut String) {
     debug_assert!(base >= 2 && base <= MAX_BASE);
-    let mut s = [0u8; 64];
+    let mut s = [0u8; 128];
     let mut index = 0;
+
+    let base = base as u128;
 
     loop {
         s[index] = BASE_64[(n % base) as usize];
@@ -39,16 +42,16 @@ pub fn push_str(mut n: u64, base: u64, output: &mut String) {
 }
 
 #[inline]
-pub fn encode(n: u64, base: u64) -> String {
-    let mut s = String::with_capacity(13);
+pub fn encode(n: u128, base: usize) -> String {
+    let mut s = String::new();
     push_str(n, base, &mut s);
     s
 }
 
 #[test]
 fn test_encode() {
-    fn test(n: u64, base: u64) {
-        assert_eq!(Ok(n), u64::from_str_radix(&encode(n, base), base as u32));
+    fn test(n: u128, base: usize) {
+        assert_eq!(Ok(n), u128::from_str_radix(&encode(n, base), base as u32));
     }
 
     for base in 2..37 {
@@ -57,7 +60,8 @@ fn test_encode() {
         test(35, base);
         test(36, base);
         test(37, base);
-        test(u64::max_value(), base);
+        test(u64::max_value() as u128, base);
+        test(u128::max_value(), base);
 
         for i in 0 .. 1_000 {
             test(i * 983, base);

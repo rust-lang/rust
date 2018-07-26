@@ -16,10 +16,10 @@
 #![feature(naked_functions)]
 
 // CHECK: Function Attrs: naked uwtable
-// CHECK-NEXT: define internal void @naked_empty()
+// CHECK-NEXT: define void @naked_empty()
 #[no_mangle]
 #[naked]
-fn naked_empty() {
+pub fn naked_empty() {
     // CHECK-NEXT: {{.+}}:
     // CHECK-NEXT: ret void
 }
@@ -27,8 +27,8 @@ fn naked_empty() {
 // CHECK: Function Attrs: naked uwtable
 #[no_mangle]
 #[naked]
-// CHECK-NEXT: define internal void @naked_with_args(i{{[0-9]+}})
-fn naked_with_args(a: isize) {
+// CHECK-NEXT: define void @naked_with_args(i{{[0-9]+}})
+pub fn naked_with_args(a: isize) {
     // CHECK-NEXT: {{.+}}:
     // CHECK-NEXT: %a = alloca i{{[0-9]+}}
     &a; // keep variable in an alloca
@@ -36,20 +36,20 @@ fn naked_with_args(a: isize) {
 }
 
 // CHECK: Function Attrs: naked uwtable
-// CHECK-NEXT: define internal i{{[0-9]+}} @naked_with_return()
+// CHECK-NEXT: define i{{[0-9]+}} @naked_with_return()
 #[no_mangle]
 #[naked]
-fn naked_with_return() -> isize {
+pub fn naked_with_return() -> isize {
     // CHECK-NEXT: {{.+}}:
     // CHECK-NEXT: ret i{{[0-9]+}} 0
     0
 }
 
 // CHECK: Function Attrs: naked uwtable
-// CHECK-NEXT: define internal i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}})
+// CHECK-NEXT: define i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}})
 #[no_mangle]
 #[naked]
-fn naked_with_args_and_return(a: isize) -> isize {
+pub fn naked_with_args_and_return(a: isize) -> isize {
     // CHECK-NEXT: {{.+}}:
     // CHECK-NEXT: %a = alloca i{{[0-9]+}}
     &a; // keep variable in an alloca
@@ -58,10 +58,10 @@ fn naked_with_args_and_return(a: isize) -> isize {
 }
 
 // CHECK: Function Attrs: naked uwtable
-// CHECK-NEXT: define internal void @naked_recursive()
+// CHECK-NEXT: define void @naked_recursive()
 #[no_mangle]
 #[naked]
-fn naked_recursive() {
+pub fn naked_recursive() {
     // CHECK-NEXT: {{.+}}:
     // CHECK-NEXT: call void @naked_empty()
 

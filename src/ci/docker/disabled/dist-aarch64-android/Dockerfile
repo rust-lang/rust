@@ -14,8 +14,6 @@ ENV DEP_Z_ROOT=/android/ndk/arm64-21/sysroot/usr/
 ENV HOSTS=aarch64-linux-android
 
 ENV RUST_CONFIGURE_ARGS \
-      --host=$HOSTS \
-      --target=$HOSTS \
       --aarch64-linux-android-ndk=/android/ndk/arm64-21 \
       --disable-rpath \
       --enable-extended \

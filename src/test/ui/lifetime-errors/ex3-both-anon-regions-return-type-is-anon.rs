@@ -14,7 +14,7 @@ struct Foo {
 
 impl Foo {
   fn foo<'a>(&self, x: &i32) -> &i32 {
-    x
+    x //~ ERROR lifetime mismatch
   }
 }
 

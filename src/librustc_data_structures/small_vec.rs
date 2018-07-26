@@ -50,6 +50,10 @@ impl<A: Array> SmallVec<A> {
         SmallVec(AccumulateVec::new())
     }
 
+    pub fn is_array(&self) -> bool {
+        self.0.is_array()
+    }
+
     pub fn with_capacity(cap: usize) -> Self {
         let mut vec = SmallVec::new();
         vec.reserve(cap);

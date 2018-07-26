@@ -16,9 +16,6 @@
 use {Intrinsic, Type};
 use IntrinsicDef::Named;
 
-// The default inlining settings trigger a pathological behaviour in
-// LLVM, which causes makes compilation very slow. See #28273.
-#[inline(never)]
 pub fn find(name: &str) -> Option<Intrinsic> {
     if !name.starts_with("powerpc") { return None }
     Some(match &name["powerpc".len()..] {

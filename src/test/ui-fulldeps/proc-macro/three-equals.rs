@@ -11,7 +11,7 @@
 // aux-build:three-equals.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros, proc_macro_non_items)]
 
 extern crate three_equals;
 
@@ -22,17 +22,17 @@ fn main() {
     three_equals!(===);
 
     // Need exactly three equals.
-    three_equals!(==);
+    three_equals!(==); //~ ERROR found 2 equal signs, need exactly 3
 
     // Need exactly three equals.
-    three_equals!(=====);
+    three_equals!(=====); //~ ERROR expected EOF
 
     // Only equals accepted.
-    three_equals!(abc);
+    three_equals!(abc); //~ ERROR expected `=`
 
     // Only equals accepted.
-    three_equals!(!!);
+    three_equals!(!!); //~ ERROR expected `=`
 
     // Only three characters expected.
-    three_equals!(===a);
+    three_equals!(===a); //~ ERROR expected EOF
 }

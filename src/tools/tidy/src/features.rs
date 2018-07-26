@@ -81,7 +81,7 @@ impl Feature {
 pub type Features = HashMap<String, Feature>;
 
 pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
-    let mut features = collect_lang_features(path);
+    let mut features = collect_lang_features(path, bad);
     assert!(!features.is_empty());
 
     let lib_features = get_and_check_lib_features(path, bad, &features);
@@ -89,9 +89,12 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
     let mut contents = String::new();
 
-    super::walk_many(&[&path.join("test/compile-fail"),
+    super::walk_many(&[&path.join("test/ui-fulldeps"),
+                       &path.join("test/ui"),
+                       &path.join("test/compile-fail"),
                        &path.join("test/compile-fail-fulldeps"),
-                       &path.join("test/parse-fail"),],
+                       &path.join("test/parse-fail"),
+                       &path.join("test/ui"),],
                      &mut |path| super::filter_dirs(path),
                      &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
@@ -150,9 +153,9 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
     for &(name, _) in gate_untested.iter() {
         println!("Expected a gate test for the feature '{}'.", name);
-        println!("Hint: create a file named 'feature-gate-{}.rs' in the compile-fail\
-                \n      test suite, with its failures due to missing usage of\
-                \n      #![feature({})].", name, name);
+        println!("Hint: create a failing test file named 'feature-gate-{}.rs'\
+                \n      in the 'ui' test suite, with its failures due to\
+                \n      missing usage of #![feature({})].", name, name);
         println!("Hint: If you already have such a test and don't want to rename it,\
                 \n      you can also add a // gate-test-{} line to the test file.",
                  name);
@@ -211,14 +214,27 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
     return false;
 }
 
-pub fn collect_lang_features(base_src_path: &Path) -> Features {
+pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
     let mut contents = String::new();
     let path = base_src_path.join("libsyntax/feature_gate.rs");
     t!(t!(File::open(path)).read_to_string(&mut contents));
 
-    contents.lines()
-        .filter_map(|line| {
-            let mut parts = line.trim().split(",");
+    // we allow rustc-internal features to omit a tracking issue.
+    // these features must be marked with `// rustc internal` in its own group.
+    let mut next_feature_is_rustc_internal = false;
+
+    contents.lines().zip(1..)
+        .filter_map(|(line, line_number)| {
+            let line = line.trim();
+            if line.starts_with("// rustc internal") {
+                next_feature_is_rustc_internal = true;
+                return None;
+            } else if line.is_empty() {
+                next_feature_is_rustc_internal = false;
+                return None;
+            }
+
+            let mut parts = line.split(',');
             let level = match parts.next().map(|l| l.trim().trim_left_matches('(')) {
                 Some("active") => Status::Unstable,
                 Some("removed") => Status::Removed,
@@ -229,9 +245,19 @@ pub fn collect_lang_features(base_src_path: &Path) -> Features {
             let since = parts.next().unwrap().trim().trim_matches('"');
             let issue_str = parts.next().unwrap().trim();
             let tracking_issue = if issue_str.starts_with("None") {
+                if level == Status::Unstable && !next_feature_is_rustc_internal {
+                    *bad = true;
+                    tidy_error!(
+                        bad,
+                        "libsyntax/feature_gate.rs:{}: no tracking issue for feature {}",
+                        line_number,
+                        name,
+                    );
+                }
                 None
             } else {
-                let s = issue_str.split("(").nth(1).unwrap().split(")").nth(0).unwrap();
+                next_feature_is_rustc_internal = false;
+                let s = issue_str.split('(').nth(1).unwrap().split(')').nth(0).unwrap();
                 Some(s.parse().unwrap())
             };
             Some((name.to_owned(),

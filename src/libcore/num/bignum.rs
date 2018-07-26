@@ -114,7 +114,7 @@ macro_rules! define_bignum {
         /// copying it recklessly may result in the performance hit.
         /// Thus this is intentionally not `Copy`.
         ///
-        /// All operations available to bignums panic in the case of over/underflows.
+        /// All operations available to bignums panic in the case of overflows.
         /// The caller is responsible to use large enough bignum types.
         pub struct $name {
             /// One plus the offset to the maximum "digit" in use.

@@ -8,104 +8,119 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use leb128::{read_signed_leb128, read_unsigned_leb128, write_signed_leb128, write_unsigned_leb128};
+use leb128::{self, read_signed_leb128, write_signed_leb128};
 use std::borrow::Cow;
-use std::io::{self, Write};
 use serialize;
 
 // -----------------------------------------------------------------------------
 // Encoder
 // -----------------------------------------------------------------------------
 
-pub type EncodeResult = io::Result<()>;
+pub type EncodeResult = Result<(), !>;
 
-pub struct Encoder<'a> {
-    pub cursor: &'a mut io::Cursor<Vec<u8>>,
+pub struct Encoder {
+    pub data: Vec<u8>,
 }
 
-impl<'a> Encoder<'a> {
-    pub fn new(cursor: &'a mut io::Cursor<Vec<u8>>) -> Encoder<'a> {
-        Encoder { cursor: cursor }
+impl Encoder {
+    pub fn new(data: Vec<u8>) -> Encoder {
+        Encoder { data }
+    }
+
+    pub fn into_inner(self) -> Vec<u8> {
+        self.data
+    }
+
+    pub fn emit_raw_bytes(&mut self, s: &[u8]) {
+        self.data.extend_from_slice(s);
     }
 }
 
-
 macro_rules! write_uleb128 {
-    ($enc:expr, $value:expr) => {{
-        let pos = $enc.cursor.position() as usize;
-        let bytes_written = write_unsigned_leb128($enc.cursor.get_mut(), pos, $value as u128);
-        $enc.cursor.set_position((pos + bytes_written) as u64);
+    ($enc:expr, $value:expr, $fun:ident) => {{
+        leb128::$fun(&mut $enc.data, $value);
         Ok(())
     }}
 }
 
 macro_rules! write_sleb128 {
     ($enc:expr, $value:expr) => {{
-        let pos = $enc.cursor.position() as usize;
-        let bytes_written = write_signed_leb128($enc.cursor.get_mut(), pos, $value as i128);
-        $enc.cursor.set_position((pos + bytes_written) as u64);
+        write_signed_leb128(&mut $enc.data, $value as i128);
         Ok(())
     }}
 }
 
-impl<'a> serialize::Encoder for Encoder<'a> {
-    type Error = io::Error;
+impl serialize::Encoder for Encoder {
+    type Error = !;
 
+    #[inline]
     fn emit_nil(&mut self) -> EncodeResult {
         Ok(())
     }
 
+    #[inline]
     fn emit_usize(&mut self, v: usize) -> EncodeResult {
-        write_uleb128!(self, v)
+        write_uleb128!(self, v, write_usize_leb128)
     }
 
+    #[inline]
     fn emit_u128(&mut self, v: u128) -> EncodeResult {
-        write_uleb128!(self, v)
+        write_uleb128!(self, v, write_u128_leb128)
     }
 
+    #[inline]
     fn emit_u64(&mut self, v: u64) -> EncodeResult {
-        write_uleb128!(self, v)
+        write_uleb128!(self, v, write_u64_leb128)
     }
 
+    #[inline]
     fn emit_u32(&mut self, v: u32) -> EncodeResult {
-        write_uleb128!(self, v)
+        write_uleb128!(self, v, write_u32_leb128)
     }
 
+    #[inline]
     fn emit_u16(&mut self, v: u16) -> EncodeResult {
-        write_uleb128!(self, v)
+        write_uleb128!(self, v, write_u16_leb128)
     }
 
+    #[inline]
     fn emit_u8(&mut self, v: u8) -> EncodeResult {
-        let _ = self.cursor.write_all(&[v]);
+        self.data.push(v);
         Ok(())
     }
 
+    #[inline]
     fn emit_isize(&mut self, v: isize) -> EncodeResult {
         write_sleb128!(self, v)
     }
 
+    #[inline]
     fn emit_i128(&mut self, v: i128) -> EncodeResult {
         write_sleb128!(self, v)
     }
 
+    #[inline]
     fn emit_i64(&mut self, v: i64) -> EncodeResult {
         write_sleb128!(self, v)
     }
 
+    #[inline]
     fn emit_i32(&mut self, v: i32) -> EncodeResult {
         write_sleb128!(self, v)
     }
 
+    #[inline]
     fn emit_i16(&mut self, v: i16) -> EncodeResult {
         write_sleb128!(self, v)
     }
 
+    #[inline]
     fn emit_i8(&mut self, v: i8) -> EncodeResult {
         let as_u8: u8 = unsafe { ::std::mem::transmute(v) };
-        let _ = self.cursor.write_all(&[as_u8]);
-        Ok(())
+        self.emit_u8(as_u8)
     }
 
+    #[inline]
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         self.emit_u8(if v {
             1
@@ -114,30 +129,35 @@ impl<'a> serialize::Encoder for Encoder<'a> {
         })
     }
 
+    #[inline]
     fn emit_f64(&mut self, v: f64) -> EncodeResult {
         let as_u64: u64 = unsafe { ::std::mem::transmute(v) };
         self.emit_u64(as_u64)
     }
 
+    #[inline]
     fn emit_f32(&mut self, v: f32) -> EncodeResult {
         let as_u32: u32 = unsafe { ::std::mem::transmute(v) };
         self.emit_u32(as_u32)
     }
 
+    #[inline]
     fn emit_char(&mut self, v: char) -> EncodeResult {
         self.emit_u32(v as u32)
     }
 
+    #[inline]
     fn emit_str(&mut self, v: &str) -> EncodeResult {
         self.emit_usize(v.len())?;
-        let _ = self.cursor.write_all(v.as_bytes());
+        self.emit_raw_bytes(v.as_bytes());
         Ok(())
     }
 }
 
-impl<'a> Encoder<'a> {
+impl Encoder {
+    #[inline]
     pub fn position(&self) -> usize {
-        self.cursor.position() as usize
+        self.data.len()
     }
 }
 
@@ -158,20 +178,38 @@ impl<'a> Decoder<'a> {
         }
     }
 
+    #[inline]
     pub fn position(&self) -> usize {
         self.position
     }
 
+    #[inline]
+    pub fn set_position(&mut self, pos: usize) {
+        self.position = pos
+    }
+
+    #[inline]
     pub fn advance(&mut self, bytes: usize) {
         self.position += bytes;
+    }
+
+    pub fn read_raw_bytes(&mut self, s: &mut [u8]) -> Result<(), String> {
+        let start = self.position;
+        let end = start + s.len();
+
+        s.copy_from_slice(&self.data[start..end]);
+
+        self.position = end;
+
+        Ok(())
     }
 }
 
 macro_rules! read_uleb128 {
-    ($dec:expr, $t:ty) => ({
-        let (value, bytes_read) = read_unsigned_leb128($dec.data, $dec.position);
+    ($dec:expr, $t:ty, $fun:ident) => ({
+        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position ..]);
         $dec.position += bytes_read;
-        Ok(value as $t)
+        Ok(value)
     })
 }
 
@@ -194,22 +232,22 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_u128(&mut self) -> Result<u128, Self::Error> {
-        read_uleb128!(self, u128)
+        read_uleb128!(self, u128, read_u128_leb128)
     }
 
     #[inline]
     fn read_u64(&mut self) -> Result<u64, Self::Error> {
-        read_uleb128!(self, u64)
+        read_uleb128!(self, u64, read_u64_leb128)
     }
 
     #[inline]
     fn read_u32(&mut self) -> Result<u32, Self::Error> {
-        read_uleb128!(self, u32)
+        read_uleb128!(self, u32, read_u32_leb128)
     }
 
     #[inline]
     fn read_u16(&mut self) -> Result<u16, Self::Error> {
-        read_uleb128!(self, u16)
+        read_uleb128!(self, u16, read_u16_leb128)
     }
 
     #[inline]
@@ -221,7 +259,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_usize(&mut self) -> Result<usize, Self::Error> {
-        read_uleb128!(self, usize)
+        read_uleb128!(self, usize, read_usize_leb128)
     }
 
     #[inline]
@@ -297,7 +335,6 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 #[cfg(test)]
 mod tests {
     use serialize::{Encodable, Decodable};
-    use std::io::Cursor;
     use std::fmt::Debug;
     use super::{Encoder, Decoder};
 
@@ -326,14 +363,13 @@ mod tests {
 
 
     fn check_round_trip<T: Encodable + Decodable + PartialEq + Debug>(values: Vec<T>) {
-        let mut cursor = Cursor::new(Vec::new());
+        let mut encoder = Encoder::new(Vec::new());
 
         for value in &values {
-            let mut encoder = Encoder::new(&mut cursor);
             Encodable::encode(&value, &mut encoder).unwrap();
         }
 
-        let data = cursor.into_inner();
+        let data = encoder.into_inner();
         let mut decoder = Decoder::new(&data[..], 0);
 
         for value in values {

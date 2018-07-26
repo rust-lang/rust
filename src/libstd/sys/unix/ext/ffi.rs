@@ -17,7 +17,9 @@ use mem;
 use sys::os_str::Buf;
 use sys_common::{FromInner, IntoInner, AsInner};
 
-/// Unix-specific extensions to `OsString`.
+/// Unix-specific extensions to [`OsString`].
+///
+/// [`OsString`]: ../../../../std/ffi/struct.OsString.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStringExt {
     /// Creates an [`OsString`] from a byte vector.
@@ -66,7 +68,9 @@ impl OsStringExt for OsString {
     }
 }
 
-/// Unix-specific extensions to `OsStr`.
+/// Unix-specific extensions to [`OsStr`].
+///
+/// [`OsStr`]: ../../../../std/ffi/struct.OsStr.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStrExt {
     #[stable(feature = "rust1", since = "1.0.0")]

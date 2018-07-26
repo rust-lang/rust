@@ -17,7 +17,7 @@ use macros::{InvocationData, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
-use {Resolver, ResolverArenas};
+use {PerNS, Resolver, ResolverArenas};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {resolve_error, resolve_struct_error, ResolutionError};
 
@@ -27,22 +27,20 @@ use rustc::hir::def_id::{BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, LOCAL_CRATE, Def
 use rustc::ty;
 
 use std::cell::Cell;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 use syntax::ast::{Name, Ident};
 use syntax::attr;
 
-use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
-use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
-use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
-use syntax::codemap::respan;
-use syntax::ext::base::SyntaxExtension;
+use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
+use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token::{self, Token};
+use syntax::std_inject::injected_crate_name;
 use syntax::symbol::keywords;
-use syntax::symbol::Symbol;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -73,7 +71,6 @@ impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark) {
 struct LegacyMacroImports {
     import_all: Option<Span>,
     imports: Vec<(Name, Span)>,
-    reexports: Vec<(Name, Span)>,
 }
 
 impl<'a> Resolver<'a> {
@@ -102,6 +99,156 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn build_reduced_graph_for_use_tree(&mut self,
+                                        root_use_tree: &ast::UseTree,
+                                        root_id: NodeId,
+                                        use_tree: &ast::UseTree,
+                                        id: NodeId,
+                                        vis: ty::Visibility,
+                                        prefix: &ast::Path,
+                                        nested: bool,
+                                        item: &Item,
+                                        expansion: Mark) {
+        let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
+        let path = &use_tree.prefix;
+
+        let mut module_path: Vec<_> = prefix.segments.iter()
+            .chain(path.segments.iter())
+            .map(|seg| seg.ident)
+            .collect();
+
+        match use_tree.kind {
+            ast::UseTreeKind::Simple(rename, ..) => {
+                let mut ident = use_tree.ident();
+                let mut source = module_path.pop().unwrap();
+                let mut type_ns_only = false;
+
+                if nested {
+                    // Correctly handle `self`
+                    if source.name == keywords::SelfValue.name() {
+                        type_ns_only = true;
+
+                        let last_segment = *module_path.last().unwrap();
+                        if last_segment.name == keywords::CrateRoot.name() {
+                            resolve_error(
+                                self,
+                                use_tree.span,
+                                ResolutionError::
+                                SelfImportOnlyInImportListWithNonEmptyPrefix
+                            );
+                            return;
+                        }
+
+                        // Replace `use foo::self;` with `use foo;`
+                        let _ = module_path.pop();
+                        source = last_segment;
+                        if rename.is_none() {
+                            ident = last_segment;
+                        }
+                    }
+                } else {
+                    // Disallow `self`
+                    if source.name == keywords::SelfValue.name() {
+                        resolve_error(self,
+                                      use_tree.span,
+                                      ResolutionError::SelfImportsOnlyAllowedWithin);
+                    }
+
+                    // Disallow `use $crate;`
+                    if source.name == keywords::DollarCrate.name() && path.segments.len() == 1 {
+                        let crate_root = self.resolve_crate_root(source);
+                        let crate_name = match crate_root.kind {
+                            ModuleKind::Def(_, name) => name,
+                            ModuleKind::Block(..) => unreachable!(),
+                        };
+                        source.name = crate_name;
+                        if rename.is_none() {
+                            ident.name = crate_name;
+                        }
+
+                        self.session.struct_span_warn(item.span, "`$crate` may not be imported")
+                            .note("`use $crate;` was erroneously allowed and \
+                                   will become a hard error in a future release")
+                            .emit();
+                    }
+                }
+
+                let subclass = SingleImport {
+                    target: ident,
+                    source,
+                    result: PerNS {
+                        type_ns: Cell::new(Err(Undetermined)),
+                        value_ns: Cell::new(Err(Undetermined)),
+                        macro_ns: Cell::new(Err(Undetermined)),
+                    },
+                    type_ns_only,
+                };
+                self.add_import_directive(
+                    module_path,
+                    subclass,
+                    use_tree.span,
+                    id,
+                    root_use_tree.span,
+                    root_id,
+                    vis,
+                    expansion,
+                );
+            }
+            ast::UseTreeKind::Glob => {
+                let subclass = GlobImport {
+                    is_prelude,
+                    max_vis: Cell::new(ty::Visibility::Invisible),
+                };
+                self.add_import_directive(
+                    module_path,
+                    subclass,
+                    use_tree.span,
+                    id,
+                    root_use_tree.span,
+                    root_id,
+                    vis,
+                    expansion,
+                );
+            }
+            ast::UseTreeKind::Nested(ref items) => {
+                let prefix = ast::Path {
+                    segments: module_path.into_iter()
+                        .map(|ident| ast::PathSegment::from_ident(ident))
+                        .collect(),
+                    span: path.span,
+                };
+
+                // Ensure there is at most one `self` in the list
+                let self_spans = items.iter().filter_map(|&(ref use_tree, _)| {
+                    if let ast::UseTreeKind::Simple(..) = use_tree.kind {
+                        if use_tree.ident().name == keywords::SelfValue.name() {
+                            return Some(use_tree.span);
+                        }
+                    }
+
+                    None
+                }).collect::<Vec<_>>();
+                if self_spans.len() > 1 {
+                    let mut e = resolve_struct_error(self,
+                        self_spans[0],
+                        ResolutionError::SelfImportCanOnlyAppearOnceInTheList);
+
+                    for other_span in self_spans.iter().skip(1) {
+                        e.span_label(*other_span, "another `self` import appears here");
+                    }
+
+                    e.emit();
+                }
+
+                for &(ref tree, id) in items {
+                    self.build_reduced_graph_for_use_tree(
+                        root_use_tree, root_id, tree, id, vis, &prefix, true, item, expansion
+                    );
+                }
+            }
+        }
+    }
+
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item, expansion: Mark) {
         let parent = self.current_module;
@@ -110,162 +257,37 @@ impl<'a> Resolver<'a> {
         let vis = self.resolve_visibility(&item.vis);
 
         match item.node {
-            ItemKind::Use(ref view_path) => {
-                // Extract and intern the module part of the path. For
-                // globs and lists, the path is found directly in the AST;
-                // for simple paths we have to munge the path a little.
-                let mut module_path: Vec<_> = match view_path.node {
-                    ViewPathSimple(_, ref full_path) => {
-                        full_path.segments
-                                 .split_last()
-                                 .unwrap()
-                                 .1
-                                 .iter()
-                                 .map(|seg| respan(seg.span, seg.identifier))
-                                 .collect()
-                    }
-
-                    ViewPathGlob(ref module_ident_path) |
-                    ViewPathList(ref module_ident_path, _) => {
-                        module_ident_path.segments
-                                         .iter()
-                                         .map(|seg| respan(seg.span, seg.identifier))
-                                         .collect()
-                    }
+            ItemKind::Use(ref use_tree) => {
+                // Imports are resolved as global by default, add starting root segment.
+                let prefix = ast::Path {
+                    segments: use_tree.prefix.make_root().into_iter().collect(),
+                    span: use_tree.span,
                 };
 
-                // This can be removed once warning cycle #36888 is complete.
-                if module_path.len() >= 2 &&
-                    module_path[0].node.name == keywords::CrateRoot.name() &&
-                    token::Ident(module_path[1].node).is_path_segment_keyword()
-                {
-                    module_path.remove(0);
-                }
-
-                // Build up the import directives.
-                let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
-
-                match view_path.node {
-                    ViewPathSimple(mut binding, ref full_path) => {
-                        let mut source = full_path.segments.last().unwrap().identifier;
-                        let source_name = source.name;
-                        if source_name == "mod" || source_name == "self" {
-                            resolve_error(self,
-                                          view_path.span,
-                                          ResolutionError::SelfImportsOnlyAllowedWithin);
-                        } else if source_name == keywords::DollarCrate.name() &&
-                                  full_path.segments.len() == 1 {
-                            let crate_root = self.resolve_crate_root(source.ctxt);
-                            let crate_name = match crate_root.kind {
-                                ModuleKind::Def(_, name) => name,
-                                ModuleKind::Block(..) => unreachable!(),
-                            };
-                            source.name = crate_name;
-                            if binding.name == keywords::DollarCrate.name() {
-                                binding.name = crate_name;
-                            }
-
-                            self.session.struct_span_warn(item.span, "`$crate` may not be imported")
-                                .note("`use $crate;` was erroneously allowed and \
-                                       will become a hard error in a future release")
-                                .emit();
-                        }
-
-                        let subclass = SingleImport {
-                            target: binding,
-                            source,
-                            result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
-                            type_ns_only: false,
-                        };
-                        self.add_import_directive(
-                            module_path, subclass, view_path.span, item.id, vis, expansion,
-                        );
-                    }
-                    ViewPathList(_, ref source_items) => {
-                        // Make sure there's at most one `mod` import in the list.
-                        let mod_spans = source_items.iter().filter_map(|item| {
-                            if item.node.name.name == keywords::SelfValue.name() {
-                                Some(item.span)
-                            } else {
-                                None
-                            }
-                        }).collect::<Vec<Span>>();
-
-                        if mod_spans.len() > 1 {
-                            let mut e = resolve_struct_error(self,
-                                          mod_spans[0],
-                                          ResolutionError::SelfImportCanOnlyAppearOnceInTheList);
-                            for other_span in mod_spans.iter().skip(1) {
-                                e.span_note(*other_span, "another `self` import appears here");
-                            }
-                            e.emit();
-                        }
-
-                        for source_item in source_items {
-                            let node = source_item.node;
-                            let (module_path, ident, rename, type_ns_only) = {
-                                if node.name.name != keywords::SelfValue.name() {
-                                    let rename = node.rename.unwrap_or(node.name);
-                                    (module_path.clone(),
-                                     respan(source_item.span, node.name),
-                                     rename,
-                                     false)
-                                } else {
-                                    let ident = *module_path.last().unwrap();
-                                    if ident.node.name == keywords::CrateRoot.name() {
-                                        resolve_error(
-                                            self,
-                                            source_item.span,
-                                            ResolutionError::
-                                            SelfImportOnlyInImportListWithNonEmptyPrefix
-                                        );
-                                        continue;
-                                    }
-                                    let module_path = module_path.split_last().unwrap().1;
-                                    let rename = node.rename.unwrap_or(ident.node);
-                                    (module_path.to_vec(), ident, rename, true)
-                                }
-                            };
-                            let subclass = SingleImport {
-                                target: rename,
-                                source: ident.node,
-                                result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
-                                type_ns_only,
-                            };
-                            let id = source_item.node.id;
-                            self.add_import_directive(
-                                module_path, subclass, source_item.span, id, vis, expansion,
-                            );
-                        }
-                    }
-                    ViewPathGlob(_) => {
-                        let subclass = GlobImport {
-                            is_prelude,
-                            max_vis: Cell::new(ty::Visibility::Invisible),
-                        };
-                        self.add_import_directive(
-                            module_path, subclass, view_path.span, item.id, vis, expansion,
-                        );
-                    }
-                }
+                self.build_reduced_graph_for_use_tree(
+                    use_tree, item.id, use_tree, item.id, vis, &prefix, false, item, expansion,
+                );
             }
 
-            ItemKind::ExternCrate(_) => {
-                self.crate_loader.process_item(item, &self.definitions);
-
-                // n.b. we don't need to look at the path option here, because cstore already did
-                let crate_id = self.cstore.extern_mod_stmt_cnum_untracked(item.id).unwrap();
+            ItemKind::ExternCrate(orig_name) => {
+                let crate_id = self.crate_loader.process_extern_crate(item, &self.definitions);
                 let module =
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(module);
+                if injected_crate_name().map_or(false, |name| item.ident.name == name) {
+                    self.injected_crate = Some(module);
+                }
+
                 let used = self.process_legacy_macro_imports(item, module, expansion);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
+                    root_id: item.id,
                     id: item.id,
                     parent,
                     imported_module: Cell::new(Some(module)),
-                    subclass: ImportDirectiveSubclass::ExternCrate,
+                    subclass: ImportDirectiveSubclass::ExternCrate(orig_name),
+                    root_span: item.span,
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
@@ -297,7 +319,8 @@ impl<'a> Resolver<'a> {
                 self.current_module = module;
             }
 
-            ItemKind::ForeignMod(..) => self.crate_loader.process_item(item, &self.definitions),
+            // Handled in `rustc_metadata::{native_libs,link_args}`
+            ItemKind::ForeignMod(..) => {}
 
             // These items live in the value namespace.
             ItemKind::Static(_, m, _) => {
@@ -312,11 +335,34 @@ impl<'a> Resolver<'a> {
             ItemKind::Fn(..) => {
                 let def = Def::Fn(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, ValueNS, (def, vis, sp, expansion));
+
+                // Functions introducing procedural macros reserve a slot
+                // in the macro namespace as well (see #52225).
+                if attr::contains_name(&item.attrs, "proc_macro") ||
+                   attr::contains_name(&item.attrs, "proc_macro_attribute") {
+                    let def = Def::Macro(def.def_id(), MacroKind::ProcMacroStub);
+                    self.define(parent, ident, MacroNS, (def, vis, sp, expansion));
+                }
+                if let Some(attr) = attr::find_by_name(&item.attrs, "proc_macro_derive") {
+                    if let Some(trait_attr) =
+                            attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
+                        if let Some(ident) = trait_attr.name().map(Ident::with_empty_ctxt) {
+                            let sp = trait_attr.span;
+                            let def = Def::Macro(def.def_id(), MacroKind::ProcMacroStub);
+                            self.define(parent, ident, MacroNS, (def, vis, sp, expansion));
+                        }
+                    }
+                }
             }
 
             // These items live in the type namespace.
             ItemKind::Ty(..) => {
                 let def = Def::TyAlias(self.definitions.local_def_id(item.id));
+                self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
+            }
+
+            ItemKind::Existential(_, _) => {
+                let def = Def::Existential(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
             }
 
@@ -335,14 +381,29 @@ impl<'a> Resolver<'a> {
                 }
             }
 
+            ItemKind::TraitAlias(..) => {
+                let def = Def::TraitAlias(self.definitions.local_def_id(item.id));
+                self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
+            }
+
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref struct_def, _) => {
                 // Define a name in the type namespace.
-                let def = Def::Struct(self.definitions.local_def_id(item.id));
+                let def_id = self.definitions.local_def_id(item.id);
+                let def = Def::Struct(def_id);
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
 
-                // Record field names for error reporting.
                 let mut ctor_vis = vis;
+
+                let has_non_exhaustive = attr::contains_name(&item.attrs, "non_exhaustive");
+
+                // If the structure is marked as non_exhaustive then lower the visibility
+                // to within the crate.
+                if has_non_exhaustive && vis == ty::Visibility::Public {
+                    ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+                }
+
+                // Record field names for error reporting.
                 let field_names = struct_def.fields().iter().filter_map(|field| {
                     let field_vis = self.resolve_visibility(&field.vis);
                     if ctor_vis.is_at_least(field_vis, &*self) {
@@ -376,7 +437,7 @@ impl<'a> Resolver<'a> {
                 self.insert_field_names(item_def_id, field_names);
             }
 
-            ItemKind::DefaultImpl(..) | ItemKind::Impl(..) => {}
+            ItemKind::Impl(..) => {}
 
             ItemKind::Trait(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
@@ -391,6 +452,7 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.current_module = module;
             }
+
             ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
         }
     }
@@ -402,7 +464,7 @@ impl<'a> Resolver<'a> {
                                        parent: Module<'a>,
                                        vis: ty::Visibility,
                                        expansion: Mark) {
-        let ident = variant.node.name;
+        let ident = variant.node.ident;
         let def_id = self.definitions.local_def_id(variant.node.data.id());
 
         // Define a name in the type namespace.
@@ -414,6 +476,7 @@ impl<'a> Resolver<'a> {
         // value namespace, they are reserved for possible future use.
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
         let ctor_def = Def::VariantCtor(def_id, ctor_kind);
+
         self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
     }
 
@@ -429,6 +492,7 @@ impl<'a> Resolver<'a> {
             ForeignItemKind::Ty => {
                 (Def::TyForeign(self.definitions.local_def_id(item.id)), TypeNS)
             }
+            ForeignItemKind::Macro(_) => unreachable!(),
         };
         let parent = self.current_module;
         let vis = self.resolve_visibility(&item.vis);
@@ -450,11 +514,8 @@ impl<'a> Resolver<'a> {
 
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
-        let ident = child.ident;
-        let def = child.def;
+        let Export { ident, def, vis, span, .. } = child;
         let def_id = def.def_id();
-        let vis = self.cstore.visibility_untracked(def_id);
-        let span = child.span;
         let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
         match def {
             Def::Mod(..) | Def::Enum(..) => {
@@ -526,14 +587,14 @@ impl<'a> Resolver<'a> {
         }
 
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
-            (self.cstore.crate_name_untracked(def_id.krate).as_str(), None)
+            (self.cstore.crate_name_untracked(def_id.krate).as_interned_str(), None)
         } else {
             let def_key = self.cstore.def_key(def_id);
             (def_key.disambiguated_data.data.get_opt_name().unwrap(),
              Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
         };
 
-        let kind = ModuleKind::Def(Def::Mod(def_id), Symbol::intern(&name));
+        let kind = ModuleKind::Def(Def::Mod(def_id), name.as_symbol());
         let module =
             self.arenas.alloc_module(ModuleData::new(parent, kind, def_id, Mark::root(), DUMMY_SP));
         self.extern_module_map.insert((def_id, macros_only), module);
@@ -545,15 +606,14 @@ impl<'a> Resolver<'a> {
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
         } else if def_id.krate == BUILTIN_MACROS_CRATE {
-            // FIXME(jseyfried): This happens when `include!()`ing a `$crate::` path, c.f, #40469.
-            self.graph_root
+            self.injected_crate.unwrap_or(self.graph_root)
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
             self.get_module(module_def_id)
         }
     }
 
-    pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
+    pub fn get_macro(&mut self, def: Def) -> Lrc<SyntaxExtension> {
         let def_id = match def {
             Def::Macro(def_id, ..) => def_id,
             _ => panic!("Expected Def::Macro(..)"),
@@ -567,9 +627,10 @@ impl<'a> Resolver<'a> {
             LoadedMacro::ProcMacro(ext) => return ext,
         };
 
-        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess,
-                                               &self.session.features,
-                                               &macro_def));
+        let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
+                                               &self.session.features_untracked(),
+                                               &macro_def,
+                                               self.cstore.crate_edition_untracked(def_id.krate)));
         self.macro_map.insert(def_id, ext.clone());
         ext
     }
@@ -590,7 +651,7 @@ impl<'a> Resolver<'a> {
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
-        if self.global_macros.insert(name, binding).is_some() && !allow_shadowing {
+        if self.macro_prelude.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
@@ -605,7 +666,7 @@ impl<'a> Resolver<'a> {
         let legacy_imports = self.legacy_macro_imports(&item.attrs);
         let mut used = legacy_imports != LegacyMacroImports::default();
 
-        // `#[macro_use]` and `#[macro_reexport]` are only allowed at the crate root.
+        // `#[macro_use]` is only allowed at the crate root.
         if self.current_module.parent.is_some() && used {
             span_err!(self.session, item.span, E0468,
                       "an `extern crate` loading macros must be at the crate root");
@@ -620,10 +681,12 @@ impl<'a> Resolver<'a> {
 
         let (graph_root, arenas) = (self.graph_root, self.arenas);
         let macro_use_directive = |span| arenas.alloc_import_directive(ImportDirective {
+            root_id: item.id,
             id: item.id,
             parent: graph_root,
             imported_module: Cell::new(Some(module)),
             subclass: ImportDirectiveSubclass::MacroUse,
+            root_span: span,
             span,
             module_path: Vec::new(),
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
@@ -641,8 +704,7 @@ impl<'a> Resolver<'a> {
         } else {
             for (name, span) in legacy_imports.imports {
                 let ident = Ident::with_empty_ctxt(name);
-                let result = self.resolve_ident_in_module(module, ident, MacroNS,
-                                                          false, false, span);
+                let result = self.resolve_ident_in_module(module, ident, MacroNS, false, span);
                 if let Ok(binding) = result {
                     let directive = macro_use_directive(span);
                     self.potentially_unused_imports.push(directive);
@@ -651,16 +713,6 @@ impl<'a> Resolver<'a> {
                 } else {
                     span_err!(self.session, span, E0469, "imported macro not found");
                 }
-            }
-        }
-        for (name, span) in legacy_imports.reexports {
-            self.cstore.export_macros_untracked(module.def_id().unwrap().krate);
-            let ident = Ident::with_empty_ctxt(name);
-            let result = self.resolve_ident_in_module(module, ident, MacroNS, false, false, span);
-            if let Ok(binding) = result {
-                self.macro_exports.push(Export { ident: ident, def: binding.def(), span: span });
-            } else {
-                span_err!(self.session, span, E0470, "reexported macro not found");
             }
         }
         used
@@ -703,21 +755,6 @@ impl<'a> Resolver<'a> {
                         }
                     },
                     None => imports.import_all = Some(attr.span),
-                }
-            } else if attr.check_name("macro_reexport") {
-                let bad_macro_reexport = |this: &mut Self, span| {
-                    span_err!(this.session, span, E0467, "bad macro reexport");
-                };
-                if let Some(names) = attr.meta_item_list() {
-                    for attr in names {
-                        if let Some(word) = attr.word() {
-                            imports.reexports.push((word.name(), attr.span()));
-                        } else {
-                            bad_macro_reexport(self, attr.span());
-                        }
-                    }
-                } else {
-                    bad_macro_reexport(self, attr.span());
                 }
             }
         }
@@ -792,6 +829,11 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
+        if let ForeignItemKind::Macro(_) = foreign_item.node {
+            self.visit_invoc(foreign_item.id);
+            return;
+        }
+
         self.resolver.build_reduced_graph_for_foreign_item(foreign_item, self.expansion);
         visit::walk_foreign_item(self, foreign_item);
     }

@@ -46,7 +46,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 /// An owned smart pointer.
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, PartialEq, Eq)]
 pub struct P<T: ?Sized> {
     ptr: Box<T>
 }
@@ -68,7 +68,7 @@ impl<T: 'static> P<T> {
         f(*self.ptr)
     }
     /// Equivalent to and_then(|x| x)
-    pub fn unwrap(self) -> T {
+    pub fn into_inner(self) -> T {
         *self.ptr
     }
 

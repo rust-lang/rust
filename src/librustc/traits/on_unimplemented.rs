@@ -11,17 +11,17 @@
 use fmt_macros::{Parser, Piece, Position};
 
 use hir::def_id::DefId;
-use ty::{self, TyCtxt};
+use ty::{self, TyCtxt, GenericParamDefKind};
 use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
 
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
 use syntax_pos::Span;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::LocalInternedString;
 
 #[derive(Clone, Debug)]
-pub struct OnUnimplementedFormatString(InternedString);
+pub struct OnUnimplementedFormatString(LocalInternedString);
 
 #[derive(Debug)]
 pub struct OnUnimplementedDirective {
@@ -29,16 +29,18 @@ pub struct OnUnimplementedDirective {
     pub subcommands: Vec<OnUnimplementedDirective>,
     pub message: Option<OnUnimplementedFormatString>,
     pub label: Option<OnUnimplementedFormatString>,
+    pub note: Option<OnUnimplementedFormatString>,
 }
 
 pub struct OnUnimplementedNote {
     pub message: Option<String>,
     pub label: Option<String>,
+    pub note: Option<String>,
 }
 
 impl OnUnimplementedNote {
     pub fn empty() -> Self {
-        OnUnimplementedNote { message: None, label: None }
+        OnUnimplementedNote { message: None, label: None, note: None }
     }
 }
 
@@ -89,6 +91,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
 
         let mut message = None;
         let mut label = None;
+        let mut note = None;
         let mut subcommands = vec![];
         for item in item_iter {
             if item.check_name("message") && message.is_none() {
@@ -103,8 +106,14 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
                         tcx, trait_def_id, label_.as_str(), span)?);
                     continue;
                 }
+            } else if item.check_name("note") && note.is_none() {
+                if let Some(note_) = item.value_str() {
+                    note = Some(OnUnimplementedFormatString::try_parse(
+                        tcx, trait_def_id, note_.as_str(), span)?);
+                    continue;
+                }
             } else if item.check_name("on") && is_root &&
-                message.is_none() && label.is_none()
+                message.is_none() && label.is_none() && note.is_none()
             {
                 if let Some(items) = item.meta_item_list() {
                     if let Ok(subcommand) =
@@ -128,7 +137,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         if errored {
             Err(ErrorReported)
         } else {
-            Ok(OnUnimplementedDirective { condition, message, label, subcommands })
+            Ok(OnUnimplementedDirective { condition, message, label, subcommands, note })
         }
     }
 
@@ -140,9 +149,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     {
         let attrs = tcx.get_attrs(impl_def_id);
 
-        let attr = if let Some(item) =
-            attrs.into_iter().find(|a| a.check_name("rustc_on_unimplemented"))
-        {
+        let attr = if let Some(item) = attr::find_by_name(&attrs, "rustc_on_unimplemented") {
             item
         } else {
             return Ok(None);
@@ -156,7 +163,8 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
                 message: None,
                 subcommands: vec![],
                 label: Some(OnUnimplementedFormatString::try_parse(
-                    tcx, trait_def_id, value.as_str(), attr.span)?)
+                    tcx, trait_def_id, value.as_str(), attr.span)?),
+                note: None,
             }))
         } else {
             return Err(parse_error(tcx, attr.span,
@@ -171,22 +179,21 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     pub fn evaluate(&self,
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     trait_ref: ty::TraitRef<'tcx>,
-                    options: &[(&str, Option<&str>)])
+                    options: &[(String, Option<String>)])
                     -> OnUnimplementedNote
     {
         let mut message = None;
         let mut label = None;
-        info!("evaluate({:?}, trait_ref={:?}, options={:?})",
-              self, trait_ref, options);
+        let mut note = None;
+        info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    options.contains(&(&c.name().as_str(),
-                                      match c.value_str().map(|s| s.as_str()) {
-                                          Some(ref s) => Some(s),
-                                          None => None
-                                      }))
+                    options.contains(&(
+                        c.name().as_str().to_string(),
+                        c.value_str().map(|s| s.as_str().to_string())
+                    ))
                 }) {
                     debug!("evaluate: skipping {:?} due to condition", command);
                     continue
@@ -200,11 +207,16 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
             if let Some(ref label_) = command.label {
                 label = Some(label_.clone());
             }
+
+            if let Some(ref note_) = command.note {
+                note = Some(note_.clone());
+            }
         }
 
         OnUnimplementedNote {
             label: label.map(|l| l.format(tcx, trait_ref)),
-            message: message.map(|m| m.format(tcx, trait_ref))
+            message: message.map(|m| m.format(tcx, trait_ref)),
+            note: note.map(|n| n.format(tcx, trait_ref)),
         }
     }
 }
@@ -212,7 +224,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
 impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
     pub fn try_parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      trait_def_id: DefId,
-                     from: InternedString,
+                     from: LocalInternedString,
                      err_sp: Span)
                      -> Result<Self, ErrorReported>
     {
@@ -229,8 +241,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
     {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
-        let parser = Parser::new(&self.0);
-        let types = &generics.types;
+        let parser = Parser::new(&self.0, None);
         let mut result = Ok(());
         for token in parser {
             match token {
@@ -241,20 +252,20 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     // `{ThisTraitsName}` is allowed
                     Position::ArgumentNamed(s) if s == name => (),
                     // So is `{A}` if A is a type parameter
-                    Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                        t.name == s
+                    Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
+                        param.name == s
                     }) {
                         Some(_) => (),
                         None => {
                             span_err!(tcx.sess, span, E0230,
-                                      "there is no type parameter \
+                                      "there is no parameter \
                                        {} on trait {}",
                                       s, name);
                             result = Err(ErrorReported);
                         }
                     },
                     // `{:1}` and `{}` are not to be used
-                    Position::ArgumentIs(_) => {
+                    Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
                         span_err!(tcx.sess, span, E0231,
                                   "only named substitution \
                                    parameters are allowed");
@@ -275,12 +286,18 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.item_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
-        let generic_map = generics.types.iter().map(|param| {
-            (param.name.as_str().to_string(),
-             trait_ref.substs.type_for_def(param).to_string())
+        let generic_map = generics.params.iter().filter_map(|param| {
+            let value = match param.kind {
+                GenericParamDefKind::Type {..} => {
+                    trait_ref.substs[param.index as usize].to_string()
+                },
+                GenericParamDefKind::Lifetime => return None
+            };
+            let name = param.name.to_string();
+            Some((name, value))
         }).collect::<FxHashMap<String, String>>();
 
-        let parser = Parser::new(&self.0);
+        let parser = Parser::new(&self.0, None);
         parser.map(|p| {
             match p {
                 Piece::String(s) => s,

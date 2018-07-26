@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x: u32 = (
+    let x: u32 = ( //~ ERROR mismatched types
     );
 }
 

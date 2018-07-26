@@ -1,0 +1,25 @@
+error[E0407]: method `method` is not a member of trait `Tr`
+  --> $DIR/assoc_item_ctxt.rs:45:13
+   |
+LL |             fn method() {} //~ ERROR method `method` is not a member of trait `Tr`
+   |             ^^^^^^^^^^^^^^ not a member of trait `Tr`
+...
+LL |     mac_trait_impl!();
+   |     ------------------ in this macro invocation
+
+error[E0046]: not all trait items implemented, missing: `method`
+  --> $DIR/assoc_item_ctxt.rs:44:9
+   |
+LL |         fn method();
+   |         ------------ `method` from trait
+...
+LL |         impl Tr for u8 { //~ ERROR not all trait items implemented, missing: `method`
+   |         ^^^^^^^^^^^^^^ missing `method` in implementation
+...
+LL |     mac_trait_impl!();
+   |     ------------------ in this macro invocation
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0046, E0407.
+For more information about an error, try `rustc --explain E0046`.

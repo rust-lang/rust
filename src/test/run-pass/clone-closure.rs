@@ -10,8 +10,6 @@
 
 // Check that closures implement `Clone`.
 
-#![feature(clone_closures)]
-
 #[derive(Clone)]
 struct S(i32);
 

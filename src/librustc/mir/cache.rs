@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::{Ref, RefCell};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::{RwLock, ReadGuard};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use ich::StableHashingContext;
@@ -19,7 +19,7 @@ use rustc_serialize as serialize;
 
 #[derive(Clone, Debug)]
 pub struct Cache {
-    predecessors: RefCell<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
+    predecessors: RwLock<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
 }
 
 
@@ -35,9 +35,9 @@ impl serialize::Decodable for Cache {
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for Cache {
+impl<'a> HashStable<StableHashingContext<'a>> for Cache {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          _: &mut StableHashingContext<'gcx>,
+                                          _: &mut StableHashingContext<'a>,
                                           _: &mut StableHasher<W>) {
         // do nothing
     }
@@ -46,7 +46,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Cache {
 impl Cache {
     pub fn new() -> Self {
         Cache {
-            predecessors: RefCell::new(None)
+            predecessors: RwLock::new(None)
         }
     }
 
@@ -55,12 +55,12 @@ impl Cache {
         *self.predecessors.borrow_mut() = None;
     }
 
-    pub fn predecessors(&self, mir: &Mir) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self, mir: &Mir) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
         if self.predecessors.borrow().is_none() {
             *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));
         }
 
-        Ref::map(self.predecessors.borrow(), |p| p.as_ref().unwrap())
+        ReadGuard::map(self.predecessors.borrow(), |p| p.as_ref().unwrap())
     }
 }
 
@@ -68,11 +68,15 @@ fn calculate_predecessors(mir: &Mir) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
     let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
         if let Some(ref term) = data.terminator {
-            for &tgt in term.successors().iter() {
+            for &tgt in term.successors() {
                 result[tgt].push(bb);
             }
         }
     }
 
     result
+}
+
+CloneTypeFoldableAndLiftImpls! {
+    Cache,
 }

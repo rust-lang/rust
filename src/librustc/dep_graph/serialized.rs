@@ -20,7 +20,10 @@ newtype_index!(SerializedDepNodeIndex);
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
-    pub nodes: IndexVec<SerializedDepNodeIndex, (DepNode, Fingerprint)>,
+    pub nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
+    /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
+    /// the DepNode at the same index in the nodes vector.
+    pub fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint>,
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
     /// which holds the actual DepNodeIndices of the target nodes.
@@ -35,6 +38,7 @@ impl SerializedDepGraph {
     pub fn new() -> SerializedDepGraph {
         SerializedDepGraph {
             nodes: IndexVec::new(),
+            fingerprints: IndexVec::new(),
             edge_list_indices: IndexVec::new(),
             edge_list_data: Vec::new(),
         }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn foo<T:'static>() {
-    1.bar::<T>(); //~ ERROR `T: std::marker::Send` is not satisfied
+    1.bar::<T>(); //~ ERROR `T` cannot be sent between threads safely
 }
 
 trait bar {

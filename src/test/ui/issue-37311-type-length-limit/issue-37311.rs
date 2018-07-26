@@ -20,7 +20,7 @@ trait Foo {
 
 impl<T> Foo for T {
     #[allow(unconditional_recursion)]
-    fn recurse(&self) {
+    fn recurse(&self) { //~ ERROR reached the type-length limit
         (self, self).recurse();
     }
 }

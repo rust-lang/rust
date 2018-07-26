@@ -1,0 +1,15 @@
+error[E0606]: casting `&u8` as `u8` is invalid
+  --> $DIR/E0606.rs:12:5
+   |
+LL |     &0u8 as u8; //~ ERROR E0606
+   |     ^^^^^^^^^^ cannot cast `&u8` as `u8`
+   |
+help: did you mean `*&0u8`?
+  --> $DIR/E0606.rs:12:5
+   |
+LL |     &0u8 as u8; //~ ERROR E0606
+   |     ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0606`.

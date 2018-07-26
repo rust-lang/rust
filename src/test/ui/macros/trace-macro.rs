@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z trace-macros
+// compile-pass
 
 fn main() {
     println!("Hello, World!");

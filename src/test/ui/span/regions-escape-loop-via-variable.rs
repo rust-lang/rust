@@ -18,6 +18,7 @@ fn main() {
 
     loop {
         let x = 1 + *p;
-        p = &x; //~ ERROR `x` does not live long enough
+        p = &x;
     }
+    //~^^ ERROR `x` does not live long enough
 }

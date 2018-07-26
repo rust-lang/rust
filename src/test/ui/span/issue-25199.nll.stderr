@@ -1,0 +1,15 @@
+error[E0597]: `container` does not live long enough
+  --> $DIR/issue-25199.rs:80:27
+   |
+LL |     let test = Test{test: &container};
+   |                           ^^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `container` is dropped
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

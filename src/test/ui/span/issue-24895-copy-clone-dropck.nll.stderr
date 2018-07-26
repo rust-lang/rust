@@ -1,0 +1,16 @@
+error[E0597]: `d1` does not live long enough
+  --> $DIR/issue-24895-copy-clone-dropck.rs:37:14
+   |
+LL |     d2 = D(S(&d1, "inner"), "d2");
+   |              ^^^ borrowed value does not live long enough
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `d2` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

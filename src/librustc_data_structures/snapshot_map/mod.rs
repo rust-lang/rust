@@ -45,6 +45,11 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
+    pub fn clear(&mut self) {
+        self.map.clear();
+        self.undo_log.clear();
+    }
+
     pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.map.insert(key.clone(), value) {
             None => {
@@ -59,6 +64,12 @@ impl<K, V> SnapshotMap<K, V>
                 }
                 false
             }
+        }
+    }
+
+    pub fn insert_noop(&mut self) {
+        if !self.undo_log.is_empty() {
+            self.undo_log.push(UndoLog::Noop);
         }
     }
 

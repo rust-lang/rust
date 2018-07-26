@@ -15,7 +15,7 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
 
     if target.contains("linux") {
-        if target.contains("musl") && !target.contains("mips") {
+        if target.contains("musl") {
             // musl is handled in lib.rs
         } else if !target.contains("android") {
             println!("cargo:rustc-link-lib=gcc_s");
@@ -27,7 +27,7 @@ fn main() {
     } else if target.contains("netbsd") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("openbsd") {
-        println!("cargo:rustc-link-lib=gcc");
+        println!("cargo:rustc-link-lib=c++abi");
     } else if target.contains("solaris") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("bitrig") {
@@ -43,5 +43,7 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("redox") {
         println!("cargo:rustc-link-lib=gcc");
+    } else if target.contains("cloudabi") {
+        println!("cargo:rustc-link-lib=unwind");
     }
 }

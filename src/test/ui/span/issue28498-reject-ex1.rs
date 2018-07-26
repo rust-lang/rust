@@ -42,7 +42,7 @@ fn main() {
     foo.data.push(Concrete(0, Cell::new(None)));
 
     foo.data[0].1.set(Some(&foo.data[1]));
+    //~^ ERROR `foo.data` does not live long enough
     foo.data[1].1.set(Some(&foo.data[0]));
+    //~^ ERROR `foo.data` does not live long enough
 }
-//~^ ERROR `foo.data` does not live long enough
-//~| ERROR `foo.data` does not live long enough

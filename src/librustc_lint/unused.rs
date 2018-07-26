@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::adjustment;
@@ -48,17 +49,17 @@ impl LintPass for UnusedResults {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         let expr = match s.node {
-            hir::StmtSemi(ref expr, _) => &**expr,
+            hir::StmtKind::Semi(ref expr, _) => &**expr,
             _ => return,
         };
 
-        if let hir::ExprRet(..) = expr.node {
+        if let hir::ExprKind::Ret(..) = expr.node {
             return;
         }
 
         let t = cx.tables.expr_ty(&expr);
         let ty_warned = match t.sty {
-            ty::TyTuple(ref tys, _) if tys.is_empty() => return,
+            ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
             ty::TyAdt(def, _) => {
                 if def.variants.is_empty() {
@@ -72,40 +73,70 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let mut fn_warned = false;
         let mut op_warned = false;
-        if cx.tcx.sess.features.borrow().fn_must_use {
-            let maybe_def = match expr.node {
-                hir::ExprCall(ref callee, _) => {
-                    match callee.node {
-                        hir::ExprPath(ref qpath) => {
-                            Some(cx.tables.qpath_def(qpath, callee.hir_id))
-                        },
-                        _ => None
-                    }
-                },
-                hir::ExprMethodCall(..) => {
-                    cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
-                },
-                _ => None
-            };
-            if let Some(def) = maybe_def {
-                let def_id = def.def_id();
-                fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
-            }
-
-            if let hir::ExprBinary(bin_op, ..) = expr.node {
-                match bin_op.node {
-                    // Hardcoding the comparison operators here seemed more
-                    // expedient than the refactoring that would be needed to
-                    // look up the `#[must_use]` attribute which does exist on
-                    // the comparison trait methods
-                    hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => {
-                        let msg = "unused comparison which must be used";
-                        cx.span_lint(UNUSED_MUST_USE, expr.span, msg);
-                        op_warned = true;
+        let maybe_def = match expr.node {
+            hir::ExprKind::Call(ref callee, _) => {
+                match callee.node {
+                    hir::ExprKind::Path(ref qpath) => {
+                        let def = cx.tables.qpath_def(qpath, callee.hir_id);
+                        if let Def::Fn(_) = def {
+                            Some(def)
+                        } else {  // `Def::Local` if it was a closure, for which we
+                            None  // do not currently support must-use linting
+                        }
                     },
-                    _ => {},
+                    _ => None
                 }
-            }
+            },
+            hir::ExprKind::MethodCall(..) => {
+                cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
+            },
+            _ => None
+        };
+        if let Some(def) = maybe_def {
+            let def_id = def.def_id();
+            fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
+        }
+        let must_use_op = match expr.node {
+            // Hardcoding operators here seemed more expedient than the
+            // refactoring that would be needed to look up the `#[must_use]`
+            // attribute which does exist on the comparison trait methods
+            hir::ExprKind::Binary(bin_op, ..)  => {
+                match bin_op.node {
+                    hir::BinOpKind::Eq |
+                    hir::BinOpKind::Lt |
+                    hir::BinOpKind::Le |
+                    hir::BinOpKind::Ne |
+                    hir::BinOpKind::Ge |
+                    hir::BinOpKind::Gt => {
+                        Some("comparison")
+                    },
+                    hir::BinOpKind::Add |
+                    hir::BinOpKind::Sub |
+                    hir::BinOpKind::Div |
+                    hir::BinOpKind::Mul |
+                    hir::BinOpKind::Rem => {
+                        Some("arithmetic operation")
+                    },
+                    hir::BinOpKind::And | hir::BinOpKind::Or => {
+                        Some("logical operation")
+                    },
+                    hir::BinOpKind::BitXor |
+                    hir::BinOpKind::BitAnd |
+                    hir::BinOpKind::BitOr |
+                    hir::BinOpKind::Shl |
+                    hir::BinOpKind::Shr => {
+                        Some("bitwise operation")
+                    },
+                }
+            },
+            hir::ExprKind::Unary(..) => Some("unary operation"),
+            _ => None
+        };
+
+        if let Some(must_use_op) = must_use_op {
+            cx.span_lint(UNUSED_MUST_USE, expr.span,
+                         &format!("unused {} which must be used", must_use_op));
+            op_warned = true;
         }
 
         if !(ty_warned || fn_warned || op_warned) {
@@ -117,12 +148,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 if attr.check_name("must_use") {
                     let mut msg = format!("unused {}`{}` which must be used",
                                           describe_path, cx.tcx.item_path_str(def_id));
-                    // check for #[must_use="..."]
-                    if let Some(s) = attr.value_str() {
-                        msg.push_str(": ");
-                        msg.push_str(&s.as_str());
+                    let mut err = cx.struct_span_lint(UNUSED_MUST_USE, sp, &msg);
+                    // check for #[must_use = "..."]
+                    if let Some(note) = attr.value_str() {
+                        err.note(&note.as_str());
                     }
-                    cx.span_lint(UNUSED_MUST_USE, sp, &msg);
+                    err.emit();
                     return true;
                 }
             }
@@ -148,8 +179,8 @@ impl LintPass for PathStatements {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
-        if let hir::StmtSemi(ref expr, _) = s.node {
-            if let hir::ExprPath(_) = expr.node {
+        if let hir::StmtKind::Semi(ref expr, _) = s.node {
+            if let hir::ExprKind::Path(_) = expr.node {
                 cx.span_lint(PATH_STATEMENTS, s.span, "path statement with no effect");
             }
         }
@@ -174,8 +205,6 @@ impl LintPass for UnusedAttributes {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
-        let name = unwrap_or!(attr.name(), return);
-
         // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty, _) in BUILTIN_ATTRIBUTES {
             match ty {
@@ -195,6 +224,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             }
         }
 
+        let name = attr.name();
         if !attr::is_used(attr) {
             debug!("Emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
@@ -301,8 +331,38 @@ impl EarlyLintPass for UnusedParens {
             Ret(Some(ref value)) => (value, "`return` value", false),
             Assign(_, ref value) => (value, "assigned value", false),
             AssignOp(.., ref value) => (value, "assigned value", false),
-            InPlace(_, ref value) => (value, "emplacement value", false),
-            _ => return,
+            // either function/method call, or something this lint doesn't care about
+            ref call_or_other => {
+                let args_to_check;
+                let call_kind;
+                match *call_or_other {
+                    Call(_, ref args) => {
+                        call_kind = "function";
+                        args_to_check = &args[..];
+                    },
+                    MethodCall(_, ref args) => {
+                        call_kind = "method";
+                        // first "argument" is self (which sometimes needs parens)
+                        args_to_check = &args[1..];
+                    }
+                    // actual catch-all arm
+                    _ => { return; }
+                }
+                // Don't lint if this is a nested macro expansion: otherwise, the lint could
+                // trigger in situations that macro authors shouldn't have to care about, e.g.,
+                // when a parenthesized token tree matched in one macro expansion is matched as
+                // an expression in another and used as a fn/method argument (Issue #47775)
+                if e.span.ctxt().outer().expn_info()
+                    .map_or(false, |info| info.call_site.ctxt().outer()
+                            .expn_info().is_some()) {
+                        return;
+                }
+                let msg = format!("{} argument", call_kind);
+                for arg in args_to_check {
+                    self.check_unused_parens_core(cx, arg, &msg, false);
+                }
+                return;
+            }
         };
         self.check_unused_parens_core(cx, &value, msg, struct_lit_needs_parens);
     }
@@ -330,6 +390,44 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct UnusedImportBraces;
 
+impl UnusedImportBraces {
+    fn check_use_tree(&self, cx: &EarlyContext, use_tree: &ast::UseTree, item: &ast::Item) {
+        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+            // Recursively check nested UseTrees
+            for &(ref tree, _) in items {
+                self.check_use_tree(cx, tree, item);
+            }
+
+            // Trigger the lint only if there is one nested item
+            if items.len() != 1 {
+                return;
+            }
+
+            // Trigger the lint if the nested item is a non-self single item
+            let node_ident;
+            match items[0].0.kind {
+                ast::UseTreeKind::Simple(rename, ..) => {
+                    let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
+                    if orig_ident.name == keywords::SelfValue.name() {
+                        return;
+                    } else {
+                        node_ident = rename.unwrap_or(orig_ident);
+                    }
+                }
+                ast::UseTreeKind::Glob => {
+                    node_ident = ast::Ident::from_str("*");
+                }
+                ast::UseTreeKind::Nested(_) => {
+                    return;
+                }
+            }
+
+            let msg = format!("braces around {} is unnecessary", node_ident.name);
+            cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
+        }
+    }
+}
+
 impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_IMPORT_BRACES)
@@ -338,13 +436,8 @@ impl LintPass for UnusedImportBraces {
 
 impl EarlyLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        if let ast::ItemKind::Use(ref view_path) = item.node {
-            if let ast::ViewPathList(_, ref items) = view_path.node {
-                if items.len() == 1 && items[0].node.name.name != keywords::SelfValue.name() {
-                    let msg = format!("braces around {} is unnecessary", items[0].node.name);
-                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
-                }
-            }
+        if let ast::ItemKind::Use(ref use_tree) = item.node {
+            self.check_use_tree(cx, use_tree, item);
         }
     }
 }
@@ -367,15 +460,17 @@ impl LintPass for UnusedAllocation {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
-            hir::ExprBox(_) => {}
+            hir::ExprKind::Box(_) => {}
             _ => return,
         }
 
         for adj in cx.tables.expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 let msg = match m {
-                    hir::MutImmutable => "unnecessary allocation, use & instead",
-                    hir::MutMutable => "unnecessary allocation, use &mut instead"
+                    adjustment::AutoBorrowMutability::Immutable =>
+                        "unnecessary allocation, use & instead",
+                    adjustment::AutoBorrowMutability::Mutable { .. }=>
+                        "unnecessary allocation, use &mut instead"
                 };
                 cx.span_lint(UNUSED_ALLOCATION, e.span, msg);
             }

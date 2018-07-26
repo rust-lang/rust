@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(bare_trait_objects)]
+
 #![sanitizer_runtime]
 #![feature(alloc_system)]
-#![feature(allocator_api)]
-#![feature(global_allocator)]
 #![feature(sanitizer_runtime)]
 #![feature(staged_api)]
 #![no_std]

@@ -177,12 +177,14 @@ quasiquote as an ordinary plugin library.
 Plugins can extend [Rust's lint
 infrastructure](../reference/attributes.html#lint-check-attributes) with
 additional checks for code style, safety, etc. Now let's write a plugin
-[`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/lint_plugin_test.rs)
+[`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/lint_plugin_test.rs)
 that warns about any item named `lintme`.
 
 ```rust,ignore
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
+#![feature(macro_vis_matcher)]
+#![feature(macro_at_most_once_rep)]
 
 extern crate syntax;
 
@@ -208,7 +210,7 @@ impl LintPass for Pass {
 
 impl EarlyLintPass for Pass {
     fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
-        if it.ident.name.as_str() == "lintme" {
+        if it.ident.as_str() == "lintme" {
             cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'");
         }
     }

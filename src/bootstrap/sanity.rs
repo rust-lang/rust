@@ -21,9 +21,10 @@
 use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsString, OsStr};
-use std::fs;
-use std::process::Command;
+use std::fs::{self, File};
+use std::io::Read;
 use std::path::PathBuf;
+use std::process::Command;
 
 use build_helper::output;
 
@@ -78,7 +79,7 @@ pub fn check(build: &mut Build) {
     }
 
     let mut cmd_finder = Finder::new();
-    // If we've got a git directory we're gona need git to update
+    // If we've got a git directory we're gonna need git to update
     // submodules and learn about various other aspects.
     if build.rust_info.is_git() {
         cmd_finder.must_have("git");
@@ -139,14 +140,18 @@ pub fn check(build: &mut Build) {
             continue;
         }
 
-        cmd_finder.must_have(build.cc(*target));
-        if let Some(ar) = build.ar(*target) {
-            cmd_finder.must_have(ar);
+        if !build.config.dry_run {
+            cmd_finder.must_have(build.cc(*target));
+            if let Some(ar) = build.ar(*target) {
+                cmd_finder.must_have(ar);
+            }
         }
     }
 
     for host in &build.hosts {
-        cmd_finder.must_have(build.cxx(*host).unwrap());
+        if !build.config.dry_run {
+            cmd_finder.must_have(build.cxx(*host).unwrap());
+        }
 
         // The msvc hosts don't use jemalloc, turn it off globally to
         // avoid packaging the dummy liballoc_jemalloc on that platform.
@@ -168,8 +173,21 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
+        if target.contains("-none-") {
+            if build.no_std(*target).is_none() {
+                let target = build.config.target_config.entry(target.clone())
+                    .or_insert(Default::default());
+
+                target.no_std = true;
+            }
+
+            if build.no_std(*target) == Some(false) {
+                panic!("All the *-none-* targets are no-std targets")
+            }
+        }
+
         // Make sure musl-root is valid
-        if target.contains("musl") && !target.contains("mips") {
+        if target.contains("musl") {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
             if build.musl_root(*target).is_none() && build.config.build == *target {
@@ -233,5 +251,15 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 
     if let Some(ref s) = build.config.ccache {
         cmd_finder.must_have(s);
+    }
+
+    if build.config.channel == "stable" {
+        let mut stage0 = String::new();
+        t!(t!(File::open(build.src.join("src/stage0.txt")))
+            .read_to_string(&mut stage0));
+        if stage0.contains("\ndev:") {
+            panic!("bootstrapping from a dev compiler in a stable release, but \
+                    should only be bootstrapping from a released compiler!");
+        }
     }
 }

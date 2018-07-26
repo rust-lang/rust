@@ -1,0 +1,30 @@
+warning: not reporting region error due to nll
+  --> $DIR/static-return-lifetime-infered.rs:17:16
+   |
+LL |         self.x.iter().map(|a| a.0)
+   |                ^^^^
+
+warning: not reporting region error due to nll
+  --> $DIR/static-return-lifetime-infered.rs:21:16
+   |
+LL |         self.x.iter().map(|a| a.0)
+   |                ^^^^
+
+error: borrowed data escapes outside of closure
+  --> $DIR/static-return-lifetime-infered.rs:17:9
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
+   |                         ----- `self` is a reference that is only valid in the closure body
+LL |         self.x.iter().map(|a| a.0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ `self` escapes the closure body here
+
+error: borrowed data escapes outside of closure
+  --> $DIR/static-return-lifetime-infered.rs:21:9
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                        -------- `self` is a reference that is only valid in the closure body
+LL |         self.x.iter().map(|a| a.0)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ `self` escapes the closure body here
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,9 @@
+error[E0089]: too few type parameters provided: expected 2 type parameters, found 1 type parameter
+  --> $DIR/E0089.rs:14:5
+   |
+LL |     foo::<f64>(); //~ ERROR expected 2 type parameters, found 1 type parameter [E0089]
+   |     ^^^^^^^^^^ expected 2 type parameters
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0089`.

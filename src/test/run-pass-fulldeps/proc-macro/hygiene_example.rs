@@ -12,7 +12,7 @@
 // aux-build:hygiene_example.rs
 // ignore-stage1
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros, proc_macro_non_items)]
 
 extern crate hygiene_example;
 use hygiene_example::hello;

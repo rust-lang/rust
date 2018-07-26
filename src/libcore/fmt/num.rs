@@ -49,15 +49,13 @@ doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 #[doc(hidden)]
 trait GenericRadix {
     /// The number of digits.
-    fn base(&self) -> u8;
+    const BASE: u8;
 
     /// A radix-specific prefix string.
-    fn prefix(&self) -> &'static str {
-        ""
-    }
+    const PREFIX: &'static str;
 
     /// Converts an integer to corresponding radix digit.
-    fn digit(&self, x: u8) -> u8;
+    fn digit(x: u8) -> u8;
 
     /// Format an integer using the radix using a formatter.
     fn fmt_int<T: Int>(&self, mut x: T, f: &mut fmt::Formatter) -> fmt::Result {
@@ -65,16 +63,16 @@ trait GenericRadix {
         // characters for a base 2 number.
         let zero = T::zero();
         let is_nonnegative = x >= zero;
-        let mut buf = [0; 128];
+        let mut buf: [u8; 128] = unsafe { mem::uninitialized() };
         let mut curr = buf.len();
-        let base = T::from_u8(self.base());
+        let base = T::from_u8(Self::BASE);
         if is_nonnegative {
             // Accumulate each digit of the number from the least significant
             // to the most significant figure.
             for byte in buf.iter_mut().rev() {
-                let n = x % base;              // Get the current place value.
-                x = x / base;                  // Deaccumulate the number.
-                *byte = self.digit(n.to_u8()); // Store the digit in the buffer.
+                let n = x % base;               // Get the current place value.
+                x = x / base;                   // Deaccumulate the number.
+                *byte = Self::digit(n.to_u8()); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
@@ -84,9 +82,9 @@ trait GenericRadix {
         } else {
             // Do the same as above, but accounting for two's complement.
             for byte in buf.iter_mut().rev() {
-                let n = zero - (x % base);     // Get the current place value.
-                x = x / base;                  // Deaccumulate the number.
-                *byte = self.digit(n.to_u8()); // Store the digit in the buffer.
+                let n = zero - (x % base);      // Get the current place value.
+                x = x / base;                   // Deaccumulate the number.
+                *byte = Self::digit(n.to_u8()); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
@@ -95,7 +93,7 @@ trait GenericRadix {
             }
         }
         let buf = unsafe { str::from_utf8_unchecked(&buf[curr..]) };
-        f.pad_integral(is_nonnegative, self.prefix(), buf)
+        f.pad_integral(is_nonnegative, Self::PREFIX, buf)
     }
 }
 
@@ -106,10 +104,6 @@ struct Binary;
 /// An octal (base 8) radix
 #[derive(Clone, PartialEq)]
 struct Octal;
-
-/// A decimal (base 10) radix
-#[derive(Clone, PartialEq)]
-struct Decimal;
 
 /// A hexadecimal (base 16) radix, formatted with lower-case characters
 #[derive(Clone, PartialEq)]
@@ -122,25 +116,24 @@ struct UpperHex;
 macro_rules! radix {
     ($T:ident, $base:expr, $prefix:expr, $($x:pat => $conv:expr),+) => {
         impl GenericRadix for $T {
-            fn base(&self) -> u8 { $base }
-            fn prefix(&self) -> &'static str { $prefix }
-            fn digit(&self, x: u8) -> u8 {
+            const BASE: u8 = $base;
+            const PREFIX: &'static str = $prefix;
+            fn digit(x: u8) -> u8 {
                 match x {
                     $($x => $conv,)+
-                    x => panic!("number not in the range 0..{}: {}", self.base() - 1, x),
+                    x => panic!("number not in the range 0..={}: {}", Self::BASE - 1, x),
                 }
             }
         }
     }
 }
 
-radix! { Binary,    2, "0b", x @  0 ...  2 => b'0' + x }
-radix! { Octal,     8, "0o", x @  0 ...  7 => b'0' + x }
-radix! { Decimal,  10, "",   x @  0 ...  9 => b'0' + x }
-radix! { LowerHex, 16, "0x", x @  0 ...  9 => b'0' + x,
-                             x @ 10 ... 15 => b'a' + (x - 10) }
-radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
-                             x @ 10 ... 15 => b'A' + (x - 10) }
+radix! { Binary,    2, "0b", x @  0 ..=  1 => b'0' + x }
+radix! { Octal,     8, "0o", x @  0 ..=  7 => b'0' + x }
+radix! { LowerHex, 16, "0x", x @  0 ..=  9 => b'0' + x,
+                             x @ 10 ..= 15 => b'a' + (x - 10) }
+radix! { UpperHex, 16, "0x", x @  0 ..=  9 => b'0' + x,
+                             x @ 10 ..= 15 => b'A' + (x - 10) }
 
 macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
@@ -157,8 +150,15 @@ macro_rules! debug {
     ($T:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
+            #[inline]
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Display::fmt(self, f)
+                if f.debug_lower_hex() {
+                    fmt::LowerHex::fmt(self, f)
+                } else if f.debug_upper_hex() {
+                    fmt::UpperHex::fmt(self, f)
+                } else {
+                    fmt::Display::fmt(self, f)
+                }
             }
         }
     }

@@ -13,10 +13,8 @@
 fn foo(x: usize, y: !, z: usize) { }
 
 fn call_foo_a() {
-    // FIXME(#40800) -- accepted beacuse divergence happens **before**
-    // the coercion to `!`, but within same expression. Not clear that
-    // these are the rules we want.
     foo(return, 22, 44);
+    //~^ ERROR mismatched types
 }
 
 fn call_foo_b() {
@@ -36,6 +34,7 @@ fn call_foo_d() {
     let b = 22;
     let c = 44;
     foo(a, b, c); // ... and hence a reference to `a` is expected to diverge.
+    //~^ ERROR mismatched types
 }
 
 fn call_foo_e() {
@@ -57,9 +56,8 @@ fn call_foo_f() {
 }
 
 fn array_a() {
-    // Accepted: return is coerced to `!` just fine, and then `22` can be
-    // because we already diverged.
-    let x: [!; 2] = [return, 22];
+    // Return is coerced to `!` just fine, but `22` cannot be.
+    let x: [!; 2] = [return, 22]; //~ ERROR mismatched types
 }
 
 fn array_b() {
@@ -75,6 +73,7 @@ fn tuple_a() {
 fn tuple_b() {
     // Divergence happens before coercion: OK
     let x: (usize, !, usize) = (return, 44, 66);
+    //~^ ERROR mismatched types
 }
 
 fn tuple_c() {

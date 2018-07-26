@@ -1,0 +1,15 @@
+error[E0502]: cannot borrow `u.z.c` as immutable because it is also borrowed as mutable
+  --> $DIR/issue-45157.rs:37:20
+   |
+LL |         let mref = &mut u.s.a;
+   |                    ---------- mutable borrow occurs here
+...
+LL |         let nref = &u.z.c;
+   |                    ^^^^^^ immutable borrow occurs here
+LL |         //~^ ERROR cannot borrow `u.z.c` as immutable because it is also borrowed as mutable [E0502]
+LL |         println!("{} {}", mref, nref)
+   |                           ---- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0502`.

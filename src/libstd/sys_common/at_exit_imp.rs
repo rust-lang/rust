@@ -12,8 +12,9 @@
 //!
 //! Documentation can be found on the `rt::at_exit` function.
 
-use alloc::boxed::FnBox;
+use boxed::FnBox;
 use ptr;
+use mem;
 use sys_common::mutex::Mutex;
 
 type Queue = Vec<Box<FnBox()>>;
@@ -25,6 +26,8 @@ type Queue = Vec<Box<FnBox()>>;
 static LOCK: Mutex = Mutex::new();
 static mut QUEUE: *mut Queue = ptr::null_mut();
 
+const DONE: *mut Queue = 1_usize as *mut _;
+
 // The maximum number of times the cleanup routines will be run. While running
 // the at_exit closures new ones may be registered, and this count is the number
 // of times the new closures will be allowed to register successfully. After
@@ -35,7 +38,7 @@ unsafe fn init() -> bool {
     if QUEUE.is_null() {
         let state: Box<Queue> = box Vec::new();
         QUEUE = Box::into_raw(state);
-    } else if QUEUE as usize == 1 {
+    } else if QUEUE == DONE {
         // can't re-init after a cleanup
         return false
     }
@@ -44,18 +47,18 @@ unsafe fn init() -> bool {
 }
 
 pub fn cleanup() {
-    for i in 0..ITERS {
+    for i in 1..=ITERS {
         unsafe {
-            LOCK.lock();
-            let queue = QUEUE;
-            QUEUE = if i == ITERS - 1 {1} else {0} as *mut _;
-            LOCK.unlock();
+            let queue = {
+                let _guard = LOCK.lock();
+                mem::replace(&mut QUEUE, if i == ITERS { DONE } else { ptr::null_mut() })
+            };
 
             // make sure we're not recursively cleaning up
-            assert!(queue as usize != 1);
+            assert!(queue != DONE);
 
             // If we never called init, not need to cleanup!
-            if queue as usize != 0 {
+            if !queue.is_null() {
                 let queue: Box<Queue> = Box::from_raw(queue);
                 for to_run in *queue {
                     to_run();
@@ -66,15 +69,13 @@ pub fn cleanup() {
 }
 
 pub fn push(f: Box<FnBox()>) -> bool {
-    let mut ret = true;
     unsafe {
-        LOCK.lock();
+        let _guard = LOCK.lock();
         if init() {
             (*QUEUE).push(f);
+            true
         } else {
-            ret = false;
+            false
         }
-        LOCK.unlock();
     }
-    ret
 }

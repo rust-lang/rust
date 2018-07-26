@@ -32,16 +32,16 @@ fn projection() {
     bomb = vec![""];
     _w = Wrap::<&[&str]>(NoisyDrop(&bomb));
 }
-//~^ ERROR `bomb` does not live long enough
+//~^^ ERROR `bomb` does not live long enough
 
 fn closure() {
     let (_w,v);
     v = vec![""];
     _w = {
         let u = NoisyDrop(&v);
+        //~^ ERROR `v` does not live long enough
         move || u.0.len()
     };
 }
-//~^ ERROR `v` does not live long enough
 
 fn main() { closure(); projection() }

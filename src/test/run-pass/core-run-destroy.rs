@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags:--test
+// ignore-cloudabi no processes
 // ignore-emscripten no processes
 
 // NB: These tests kill child processes. Valgrind sees these children as leaking

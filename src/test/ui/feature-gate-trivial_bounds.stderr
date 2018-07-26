@@ -1,0 +1,130 @@
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:20:1
+   |
+LL | enum E where i32: Foo { V } //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
+   |
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:22:1
+   |
+LL | struct S where i32: Foo; //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
+   |
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:24:1
+   |
+LL | trait T where i32: Foo {} //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
+   |
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:26:1
+   |
+LL | union U where i32: Foo { f: i32 } //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
+   |
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:30:1
+   |
+LL | / impl Foo for () where i32: Foo { //~ ERROR
+LL | |     fn test(&self) {
+LL | |         3i32.test();
+LL | |         Foo::test(&4i32);
+LL | |         generic_function(5i32);
+LL | |     }
+LL | | }
+   | |_^ the trait `Foo` is not implemented for `i32`
+   |
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:38:1
+   |
+LL | / fn f() where i32: Foo //~ ERROR
+LL | | {
+LL | |     let s = S;
+LL | |     3i32.test();
+LL | |     Foo::test(&4i32);
+LL | |     generic_function(5i32);
+LL | | }
+   | |_^ the trait `Foo` is not implemented for `i32`
+   |
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the trait bound `std::string::String: std::ops::Neg` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:46:1
+   |
+LL | / fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> { //~ ERROR
+LL | |     -s
+LL | | }
+   | |_^ the trait `std::ops::Neg` is not implemented for `std::string::String`
+   |
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the trait bound `i32: std::iter::Iterator` is not satisfied
+  --> $DIR/feature-gate-trivial_bounds.rs:50:1
+   |
+LL | / fn use_for() where i32: Iterator { //~ ERROR
+LL | |     for _ in 2i32 {}
+LL | | }
+   | |_^ `i32` is not an iterator; maybe try calling `.iter()` or a similar method
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `i32`
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/feature-gate-trivial_bounds.rs:62:1
+   |
+LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-sized>
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/feature-gate-trivial_bounds.rs:65:1
+   |
+LL | / fn unsized_local() where Dst<A>: Sized { //~ ERROR
+LL | |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
+LL | | }
+   | |_^ doesn't have a size known at compile-time
+   |
+   = help: within `Dst<(dyn A + 'static)>`, the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-sized>
+   = note: required because it appears within the type `Dst<(dyn A + 'static)>`
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/feature-gate-trivial_bounds.rs:69:1
+   |
+LL | / fn return_str() -> str where str: Sized { //~ ERROR
+LL | |     *"Sized".to_string().into_boxed_str()
+LL | | }
+   | |_^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-sized>
+   = help: see issue #48214
+   = help: add #![feature(trivial_bounds)] to the crate attributes to enable
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -27,36 +27,10 @@
        html_playground_url = "https://play.rust-lang.org/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
-#![deny(warnings)]
 #![no_std]
 
-#![feature(core_char_ext)]
-#![feature(str_internals)]
-#![feature(decode_utf8)]
-#![feature(fused)]
-#![feature(fn_traits)]
-#![feature(lang_items)]
+#![feature(unicode_internals)]
 #![feature(staged_api)]
-#![feature(try_from)]
-#![feature(unboxed_closures)]
+#![rustc_deprecated(since = "1.27.0", reason = "moved into libcore")]
 
-mod tables;
-mod u_str;
-pub mod char;
-pub mod lossy;
-
-#[allow(deprecated)]
-pub mod str {
-    pub use u_str::{SplitWhitespace, UnicodeStr};
-    pub use u_str::Utf16Encoder;
-}
-
-// For use in liballoc, not re-exported in libstd.
-pub mod derived_property {
-    pub use tables::derived_property::{Case_Ignorable, Cased};
-}
-
-// For use in libsyntax
-pub mod property {
-    pub use tables::property::Pattern_White_Space;
-}
+pub use core::unicode::*;

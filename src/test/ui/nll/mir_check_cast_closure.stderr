@@ -1,0 +1,14 @@
+warning: not reporting region error due to nll
+  --> $DIR/mir_check_cast_closure.rs:18:5
+   |
+LL |     g
+   |     ^
+
+error: unsatisfied lifetime constraints
+  --> $DIR/mir_check_cast_closure.rs:16:28
+   |
+LL |     let g: fn(_, _) -> _ = |_x, y| y;
+   |                            ^^^^^^^^^ cast requires that `'b` must outlive `'a`
+
+error: aborting due to previous error
+

@@ -1,0 +1,14 @@
+error[E0596]: cannot borrow immutable local variable `foo` as mutable
+  --> $DIR/span-covering-argument-1.rs:15:19
+   |
+LL |             let $s = 0;
+   |                 -- consider changing this to `mut $s`
+LL |             *&mut $s = 0;
+   |                   ^^ cannot borrow mutably
+...
+LL |     bad!(foo whatever);
+   |     ------------------- in this macro invocation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

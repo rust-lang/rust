@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare always compiled as panic=abort right now
+
 // Check that values are not leaked when a dtor panics (#14875)
 
 use std::panic::{self, UnwindSafe};
@@ -28,7 +30,6 @@ impl Drop for PanicOnDrop {
         panic!("test panic");
     }
 }
-
 
 fn main() {
     let mut set_on_drop = false;

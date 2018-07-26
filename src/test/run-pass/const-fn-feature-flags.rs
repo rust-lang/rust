@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test use of const fns in std using individual feature gates.
-
-#![feature(const_cell_new)]
+// Test use of stabilized const fns in std formerly using individual feature gates.
 
 use std::cell::Cell;
 

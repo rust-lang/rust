@@ -11,15 +11,15 @@
 use check::regionck::RegionCtxt;
 
 use hir::def_id::DefId;
-use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk};
+use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, ObligationCause};
+use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use util::common::ErrorReported;
-use util::nodemap::FxHashSet;
 
+use syntax::ast;
 use syntax_pos::Span;
 
 /// check_drop_impl confirms that the Drop implementation identified by
@@ -59,11 +59,13 @@ pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         _ => {
             // Destructors only work on nominal types.  This was
-            // already checked by coherence, so we can panic here.
+            // already checked by coherence, but compilation may
+            // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            span_bug!(span,
-                      "should have been rejected by coherence check: {}",
-                      dtor_self_type);
+            tcx.sess.delay_span_bug(span,
+                            &format!("should have been rejected by coherence check: {}",
+                            dtor_self_type));
+            Err(ErrorReported)
         }
     }
 }
@@ -82,7 +84,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     tcx.infer_ctxt().enter(|ref infcx| {
         let impl_param_env = tcx.param_env(self_type_did);
         let tcx = infcx.tcx;
-        let mut fulfillment_cx = traits::FulfillmentContext::new();
+        let mut fulfillment_cx = TraitEngine::new(tcx);
 
         let named_type = tcx.type_of(self_type_did);
 
@@ -110,13 +112,23 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 
         if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
             // this could be reached when we get lazy normalization
-            infcx.report_fulfillment_errors(errors, None);
+            infcx.report_fulfillment_errors(errors, None, false);
             return Err(ErrorReported);
         }
 
         let region_scope_tree = region::ScopeTree::default();
-        let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(drop_impl_did, &region_scope_tree, &free_regions);
+
+        // NB. It seems a bit... suspicious to use an empty param-env
+        // here. The correct thing, I imagine, would be
+        // `OutlivesEnvironment::new(impl_param_env)`, which would
+        // allow region solving to take any `a: 'b` relations on the
+        // impl into account. But I could not create a test case where
+        // it did the wrong thing, so I chose to preserve existing
+        // behavior, since it ought to be simply more
+        // conservative. -nmatsakis
+        let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
+
+        infcx.resolve_regions_and_report_errors(drop_impl_did, &region_scope_tree, &outlives_env);
         Ok(())
     })
 }
@@ -270,6 +282,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
+    body_id: ast::NodeId,
     scope: region::Scope)
     -> Result<(), ErrorReported>
 {
@@ -285,47 +298,15 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     };
     let parent_scope = rcx.tcx.mk_region(ty::ReScope(parent_scope));
     let origin = || infer::SubregionOrigin::SafeDestructor(span);
-
-    let ty = rcx.fcx.resolve_type_vars_if_possible(&ty);
-    let for_ty = ty;
-    let mut types = vec![(ty, 0)];
-    let mut known = FxHashSet();
-    while let Some((ty, depth)) = types.pop() {
-        let ty::DtorckConstraint {
-            dtorck_types, outlives
-        } = rcx.tcx.dtorck_constraint_for_ty(span, for_ty, depth, ty)?;
-
-        for ty in dtorck_types {
-            let ty = rcx.fcx.normalize_associated_types_in(span, &ty);
-            let ty = rcx.fcx.resolve_type_vars_with_obligations(ty);
-            let ty = rcx.fcx.resolve_type_and_region_vars_if_possible(&ty);
-            match ty.sty {
-                // All parameters live for the duration of the
-                // function.
-                ty::TyParam(..) => {}
-
-                // A projection that we couldn't resolve - it
-                // might have a destructor.
-                ty::TyProjection(..) | ty::TyAnon(..) => {
-                    rcx.type_must_outlive(origin(), ty, parent_scope);
-                }
-
-                _ => {
-                    if let None = known.replace(ty) {
-                        types.push((ty, depth+1));
-                    }
-                }
-            }
-        }
-
-        for outlive in outlives {
-            if let Some(r) = outlive.as_region() {
-                rcx.sub_regions(origin(), parent_scope, r);
-            } else if let Some(ty) = outlive.as_type() {
-                rcx.type_must_outlive(origin(), ty, parent_scope);
-            }
+    let cause = &ObligationCause::misc(span, body_id);
+    let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
+    debug!("dropck_outlives = {:#?}", infer_ok);
+    let kinds = rcx.fcx.register_infer_ok_obligations(infer_ok);
+    for kind in kinds {
+        match kind.unpack() {
+            UnpackedKind::Lifetime(r) => rcx.sub_regions(origin(), parent_scope, r),
+            UnpackedKind::Type(ty) => rcx.type_must_outlive(origin(), ty, parent_scope),
         }
     }
-
     Ok(())
 }

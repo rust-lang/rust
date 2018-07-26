@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-gnu
 // ignore-android
 // ignore-bitrig
-// ignore-macos
+// ignore-cloudabi
 // ignore-dragonfly
+// ignore-emscripten
 // ignore-freebsd
+// ignore-gnu
 // ignore-haiku
 // ignore-ios
 // ignore-linux
+// ignore-macos
 // ignore-netbsd
 // ignore-openbsd
 // ignore-solaris
-// ignore-emscripten
 
 // compile-flags: -Z parse-only
 

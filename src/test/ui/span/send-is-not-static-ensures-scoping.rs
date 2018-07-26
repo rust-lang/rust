@@ -23,7 +23,8 @@ impl<'a> Guard<'a> {
 fn main() {
     let bad = {
         let x = 1;
-        let y = &x; //~ ERROR `x` does not live long enough
+        let y = &x;
+        //~^ ERROR `x` does not live long enough
 
         scoped(|| {
             let _z = y;

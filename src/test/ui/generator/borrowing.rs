@@ -15,7 +15,7 @@ use std::ops::Generator;
 fn main() {
     let _b = {
         let a = 3;
-        (|| yield &a).resume()
+        unsafe { (|| yield &a).resume() }
         //~^ ERROR: `a` does not live long enough
     };
 

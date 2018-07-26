@@ -10,7 +10,7 @@
 
 use super::*;
 use syntax_pos::SpanData;
-use rustc::ty::maps::QueryMsg;
+use rustc::util::common::QueryMsg;
 use std::fs::File;
 use std::time::{Duration, Instant};
 use std::collections::hash_map::HashMap;
@@ -220,7 +220,8 @@ pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetr
 }
 
 pub fn write_traces(html_file: &mut File, counts_file: &mut File, traces: &Vec<Rec>) {
-    let mut counts : HashMap<String,QueryMetric> = HashMap::new();
+    let capacity = traces.iter().fold(0, |acc, t| acc + 1 + t.extent.len());
+    let mut counts : HashMap<String, QueryMetric> = HashMap::with_capacity(capacity);
     compute_counts_rec(&mut counts, traces);
     write_counts(counts_file, &mut counts);
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// error-pattern: main function not found
+// error-pattern: `main` function not found
 // compile-flags: --cfg foo
 
 // main is conditionally compiled, but the conditional compilation

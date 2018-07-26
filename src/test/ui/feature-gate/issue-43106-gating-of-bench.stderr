@@ -1,0 +1,7 @@
+error[E0601]: `main` function not found in crate `issue_43106_gating_of_bench`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-43106-gating-of-bench.rs`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0601`.

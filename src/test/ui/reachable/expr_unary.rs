@@ -7,15 +7,15 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+#![feature(never_type)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![feature(never_type)]
 
 fn foo() {
-    let x: ! = ! { return; 22 };
+    let x: ! = ! { return; }; //~ ERROR unreachable
+    //~| ERROR cannot apply unary operator `!` to type `!`
 }
 
 fn main() { }

@@ -12,7 +12,7 @@ pub use self::CommentStyle::*;
 
 use ast;
 use codemap::CodeMap;
-use syntax_pos::{BytePos, CharPos, Pos};
+use syntax_pos::{BytePos, CharPos, Pos, FileName};
 use parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
 use parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
 use print::pprust;
@@ -40,7 +40,7 @@ pub struct Comment {
     pub pos: BytePos,
 }
 
-pub fn is_doc_comment(s: &str) -> bool {
+fn is_doc_comment(s: &str) -> bool {
     (s.starts_with("///") && super::is_doc_comment(s)) || s.starts_with("//!") ||
     (s.starts_with("/**") && is_block_doc_comment(s)) || s.starts_with("/*!")
 }
@@ -101,7 +101,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
                     break;
                 }
             }
-            if i > line.len() {
+            if i >= line.len() {
                 can_trim = false;
             }
             if !can_trim {
@@ -238,7 +238,21 @@ fn read_block_comment(rdr: &mut StringReader,
     debug!(">>> block comment");
     let p = rdr.pos;
     let mut lines: Vec<String> = Vec::new();
-    let col = rdr.col;
+
+    // Count the number of chars since the start of the line by rescanning.
+    let mut src_index = rdr.src_index(rdr.filemap.line_begin_pos(rdr.pos));
+    let end_src_index = rdr.src_index(rdr.pos);
+    assert!(src_index <= end_src_index,
+        "src_index={}, end_src_index={}, line_begin_pos={}",
+        src_index, end_src_index, rdr.filemap.line_begin_pos(rdr.pos).to_u32());
+    let mut n = 0;
+    while src_index < end_src_index {
+        let c = char_at(&rdr.src, src_index);
+        src_index += c.len_utf8();
+        n += 1;
+    }
+    let col = CharPos(n);
+
     rdr.bump();
     rdr.bump();
 
@@ -265,7 +279,7 @@ fn read_block_comment(rdr: &mut StringReader,
         while level > 0 {
             debug!("=== block comment level {}", level);
             if rdr.is_eof() {
-                panic!(rdr.fatal("unterminated block comment"));
+                rdr.fatal("unterminated block comment").raise();
             }
             if rdr.ch_is('\n') {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
@@ -343,14 +357,14 @@ pub struct Literal {
 
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments_and_literals(sess: &ParseSess, path: String, srdr: &mut Read)
+pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut dyn Read)
                                     -> (Vec<Comment>, Vec<Literal>) {
     let mut src = Vec::new();
     srdr.read_to_end(&mut src).unwrap();
     let src = String::from_utf8(src).unwrap();
     let cm = CodeMap::new(sess.codemap().path_mapping().clone());
     let filemap = cm.new_filemap(path, src);
-    let mut rdr = lexer::StringReader::new_raw(sess, filemap);
+    let mut rdr = lexer::StringReader::new_raw(sess, filemap, None);
 
     let mut comments: Vec<Comment> = Vec::new();
     let mut literals: Vec<Literal> = Vec::new();

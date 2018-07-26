@@ -10,7 +10,7 @@
 
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension, Resolver};
 use syntax::ext::build::AstBuilder;
@@ -19,32 +19,27 @@ use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-macro_rules! pathvec {
-    ($($x:ident)::+) => (
-        vec![ $( stringify!($x) ),+ ]
-    )
-}
-
-macro_rules! path_local {
-    ($x:ident) => (
-        ::deriving::generic::ty::Path::new_local(stringify!($x))
-    )
-}
-
-macro_rules! pathvec_std {
-    ($cx:expr, $first:ident :: $($rest:ident)::+) => ({
-        let mut v = pathvec![$($rest)::+];
-        if let Some(s) = $cx.crate_root {
-            v.insert(0, s);
+macro_rules! span_err_if_not_stage0 {
+    ($cx:expr, $sp:expr, $code:ident, $text:tt) => {
+        #[cfg(not(stage0))] {
+            span_err!($cx, $sp, $code, $text)
         }
-        v
-    })
+        #[cfg(stage0)] {
+            $cx.span_err($sp, $text)
+        }
+    }
 }
 
-macro_rules! path_std {
-    ($($x:tt)*) => (
-        ::deriving::generic::ty::Path::new( pathvec_std!( $($x)* ) )
-    )
+macro path_local($x:ident) {
+    generic::ty::Path::new_local(stringify!($x))
+}
+
+macro pathvec_std($cx:expr, $($rest:ident)::+) {{
+    vec![ $( stringify!($rest) ),+ ]
+}}
+
+macro path_std($($x:tt)*) {
+    generic::ty::Path::new( pathvec_std!( $($x)* ) )
 }
 
 pub mod bounds;
@@ -77,11 +72,11 @@ macro_rules! derive_traits {
             }
         }
 
-        pub fn register_builtin_derives(resolver: &mut Resolver) {
+        pub fn register_builtin_derives(resolver: &mut dyn Resolver) {
             $(
                 resolver.add_builtin(
                     ast::Ident::with_empty_ctxt(Symbol::intern($name)),
-                    Rc::new(SyntaxExtension::BuiltinDerive($func))
+                    Lrc::new(SyntaxExtension::BuiltinDerive($func))
                 );
             )*
         }
@@ -137,10 +132,15 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
     let mut typaram = String::from(base);
     if let Annotatable::Item(ref item) = *item {
         match item.node {
-            ast::ItemKind::Struct(_, ast::Generics { ref ty_params, .. }) |
-            ast::ItemKind::Enum(_, ast::Generics { ref ty_params, .. }) => {
-                for ty in ty_params.iter() {
-                    typaram.push_str(&ty.ident.name.as_str());
+            ast::ItemKind::Struct(_, ast::Generics { ref params, .. }) |
+            ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
+                for param in params {
+                    match param.kind {
+                        ast::GenericParamKind::Type { .. } => {
+                            typaram.push_str(&param.ident.as_str());
+                        }
+                        _ => {}
+                    }
                 }
             }
 
@@ -157,11 +157,11 @@ fn call_intrinsic(cx: &ExtCtxt,
                   intrinsic: &str,
                   args: Vec<P<ast::Expr>>)
                   -> P<ast::Expr> {
-    if cx.current_expansion.mark.expn_info().unwrap().callee.allow_internal_unstable {
+    if cx.current_expansion.mark.expn_info().unwrap().allow_internal_unstable {
         span = span.with_ctxt(cx.backtrace());
     } else { // Avoid instability errors with user defined curstom derives, cc #36316
         let mut info = cx.current_expansion.mark.expn_info().unwrap();
-        info.callee.allow_internal_unstable = true;
+        info.allow_internal_unstable = true;
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(info);
         span = span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
@@ -174,5 +174,6 @@ fn call_intrinsic(cx: &ExtCtxt,
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
+        recovered: false,
     }))
 }

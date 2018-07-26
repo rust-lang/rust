@@ -1,0 +1,14 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/issue-15480.rs:15:10
+   |
+LL |         &id(3)
+   |          ^^^^^ temporary value does not live long enough
+LL |     ];
+   |      - temporary value only lives until here
+...
+LL |     for &&x in &v {
+   |                -- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

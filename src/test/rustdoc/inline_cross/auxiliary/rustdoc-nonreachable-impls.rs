@@ -36,7 +36,7 @@ pub mod hidden {
     pub struct Wobble;
 
 
-    // these should only be shown if they're reexported correctly
+    // these should only be shown if they're re-exported correctly
     impl Qux for ::Foo {}
     impl Qux for Wobble {}
     impl ::Bark for Wobble {}

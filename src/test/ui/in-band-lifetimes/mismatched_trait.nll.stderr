@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/mismatched_trait.rs:16:9
+   |
+LL |         y //~ ERROR explicit lifetime required
+   |         ^
+
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/mismatched_trait.rs:16:9
+   |
+LL |     fn baz(&self, x: &'a u32, y: &u32) -> &'a u32 {
+   |                               - consider changing the type of `y` to `&'a u32`
+LL |         y //~ ERROR explicit lifetime required
+   |         ^ lifetime `'a` required
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0621`.

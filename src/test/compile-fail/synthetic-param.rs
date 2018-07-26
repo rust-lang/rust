@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generic_param_attrs, rustc_attrs)]
+#![feature(rustc_attrs)]
 
 fn func<#[rustc_synthetic] T>(_: T) {}
 

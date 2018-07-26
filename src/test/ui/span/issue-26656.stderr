@@ -1,12 +1,13 @@
 error[E0597]: `ticking` does not live long enough
-  --> $DIR/issue-26656.rs:51:1
+  --> $DIR/issue-26656.rs:50:36
    |
-50 |     zook.button = B::BigRedButton(&ticking);
-   |                                    ------- borrow occurs here
-51 | }
-   | ^ `ticking` dropped here while still borrowed
+LL |     zook.button = B::BigRedButton(&ticking);
+   |                                    ^^^^^^^ borrowed value does not live long enough
+LL | }
+   | - `ticking` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

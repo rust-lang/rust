@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![warn(const_err)]
+
 #![feature(const_fn)]
 
 const fn foo(x: u32) -> u32 {
@@ -16,6 +18,12 @@ const fn foo(x: u32) -> u32 {
 
 fn main() {
     const X: u32 = 0-1;
+    //~^ WARN this constant cannot be used
     const Y: u32 = foo(0-1);
+    //~^ WARN this constant cannot be used
     println!("{} {}", X, Y);
+    //~^ ERROR erroneous constant used
+    //~| ERROR erroneous constant used
+    //~| ERROR E0080
+    //~| ERROR E0080
 }

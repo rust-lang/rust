@@ -10,13 +10,12 @@
 
 // ignore-tidy-linelength
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 fn foo(x: Box<isize>) -> isize {
     let y = &*x;
     free(x); //[ast]~ ERROR cannot move out of `x` because it is borrowed
-    //[mir]~^ ERROR cannot move out of `x` because it is borrowed (Ast)
-    //[mir]~| ERROR cannot move out of `x` because it is borrowed (Mir)
+    //[mir]~^ ERROR cannot move out of `x` because it is borrowed
     *y
 }
 

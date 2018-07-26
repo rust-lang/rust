@@ -10,9 +10,7 @@
 
 #![feature(optin_builtin_traits)]
 
-pub trait AnOibit {}
-
-impl AnOibit for .. {}
+pub auto trait AnOibit {}
 
 pub struct Foo<T> { field: T }
 

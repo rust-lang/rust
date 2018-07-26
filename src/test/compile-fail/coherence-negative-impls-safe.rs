@@ -15,6 +15,6 @@ use std::marker::Send;
 struct TestType;
 
 unsafe impl !Send for TestType {}
-//~^ ERROR negative implementations are not unsafe
+//~^ ERROR negative impls cannot be unsafe
 
 fn main() {}

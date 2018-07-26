@@ -13,7 +13,6 @@
 // no-prefer-dynamic
 // error-pattern: the #[global_allocator] in
 
-#![feature(global_allocator)]
 
 extern crate system_allocator;
 extern crate system_allocator2;

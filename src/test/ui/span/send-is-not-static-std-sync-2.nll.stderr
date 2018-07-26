@@ -1,0 +1,37 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:21:20
+   |
+LL |         Mutex::new(&x)
+   |                    ^^ borrowed value does not live long enough
+LL |     };
+   |     - borrowed value only lives until here
+...
+LL |     let _dangling = *lock.lock().unwrap();
+   |                      ---- borrow later used here
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:31:21
+   |
+LL |         RwLock::new(&x)
+   |                     ^^ borrowed value does not live long enough
+LL |     };
+   |     - borrowed value only lives until here
+LL |     //~^^ ERROR `x` does not live long enough
+LL |     let _dangling = *lock.read().unwrap();
+   |                      ---- borrow later used here
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:41:25
+   |
+LL |     let (_tx, rx) = {
+   |          --- borrow later used here
+...
+LL |         let _ = tx.send(&x);
+   |                         ^^ borrowed value does not live long enough
+LL |         (tx, rx)
+LL |     };
+   |     - borrowed value only lives until here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

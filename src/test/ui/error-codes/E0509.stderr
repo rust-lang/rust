@@ -1,0 +1,12 @@
+error[E0509]: cannot move out of type `DropStruct`, which implements the `Drop` trait
+  --> $DIR/E0509.rs:26:23
+   |
+LL |     let fancy_field = drop_struct.fancy; //~ ERROR E0509
+   |                       ^^^^^^^^^^^^^^^^^
+   |                       |
+   |                       cannot move out of here
+   |                       help: consider using a reference instead: `&drop_struct.fancy`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0509`.

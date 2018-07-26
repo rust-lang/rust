@@ -1,0 +1,21 @@
+error[E0659]: `Foo` is ambiguous
+  --> $DIR/rfc-1560-warning-cycle.rs:19:17
+   |
+LL |         fn f(_: Foo) {} //~ ERROR `Foo` is ambiguous
+   |                 ^^^
+   |
+note: `Foo` could refer to the name imported here
+  --> $DIR/rfc-1560-warning-cycle.rs:17:13
+   |
+LL |         use *;
+   |             ^
+note: `Foo` could also refer to the name imported here
+  --> $DIR/rfc-1560-warning-cycle.rs:18:13
+   |
+LL |         use bar::*;
+   |             ^^^^^^
+   = note: consider adding an explicit import of `Foo` to disambiguate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

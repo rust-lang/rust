@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that pointers to extern types can be casted from/to usize,
+// Test that pointers to extern types can be cast from/to usize,
 // despite being !Sized.
 
 #![feature(extern_types)]

@@ -10,8 +10,8 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use transform::{MirPass, MirSource};
 
 #[derive(PartialEq)]
 pub enum AddCallGuards {
@@ -30,7 +30,7 @@ pub use self::AddCallGuards::*;
  * do at the end of the predecessor block, or at the start of the
  * successor block. Critical edges have to be broken in order to prevent
  * "edge actions" from affecting other edges. We need this for calls that are
- * translated to LLVM invoke instructions, because invoke is a block terminator
+ * codegened to LLVM invoke instructions, because invoke is a block terminator
  * in LLVM so we can't insert any code to handle the call's result into the
  * block that performs the call.
  *

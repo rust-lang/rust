@@ -18,7 +18,11 @@ macro_rules! register_diagnostic {
 macro_rules! span_fatal {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        $session.span_fatal_with_code($span, &format!($($message)*), stringify!($code))
+        $session.span_fatal_with_code(
+            $span,
+            &format!($($message)*),
+            $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+        )
     })
 }
 
@@ -26,7 +30,11 @@ macro_rules! span_fatal {
 macro_rules! span_err {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        $session.span_err_with_code($span, &format!($($message)*), stringify!($code))
+        $session.span_err_with_code(
+            $span,
+            &format!($($message)*),
+            $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+        )
     })
 }
 
@@ -34,7 +42,11 @@ macro_rules! span_err {
 macro_rules! span_warn {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        $session.span_warn_with_code($span, &format!($($message)*), stringify!($code))
+        $session.span_warn_with_code(
+            $span,
+            &format!($($message)*),
+            $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+        )
     })
 }
 
@@ -42,7 +54,10 @@ macro_rules! span_warn {
 macro_rules! struct_err {
     ($session:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        $session.struct_err_with_code(&format!($($message)*), stringify!($code))
+        $session.struct_err_with_code(
+            &format!($($message)*),
+            $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+        )
     })
 }
 
@@ -51,9 +66,17 @@ macro_rules! span_err_or_warn {
     ($is_warning:expr, $session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
         if $is_warning {
-            $session.span_warn_with_code($span, &format!($($message)*), stringify!($code))
+            $session.span_warn_with_code(
+                $span,
+                &format!($($message)*),
+                $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+            )
         } else {
-            $session.span_err_with_code($span, &format!($($message)*), stringify!($code))
+            $session.span_err_with_code(
+                $span,
+                &format!($($message)*),
+                $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+            )
         }
     })
 }
@@ -62,7 +85,11 @@ macro_rules! span_err_or_warn {
 macro_rules! struct_span_fatal {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        $session.struct_span_fatal_with_code($span, &format!($($message)*), stringify!($code))
+        $session.struct_span_fatal_with_code(
+            $span,
+            &format!($($message)*),
+            $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+        )
     })
 }
 
@@ -70,7 +97,19 @@ macro_rules! struct_span_fatal {
 macro_rules! struct_span_err {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        $session.struct_span_err_with_code($span, &format!($($message)*), stringify!($code))
+        $session.struct_span_err_with_code(
+            $span,
+            &format!($($message)*),
+            $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+        )
+    })
+}
+
+#[macro_export]
+macro_rules! stringify_error_code {
+    ($code:ident) => ({
+        __diagnostic_used!($code);
+        $crate::errors::DiagnosticId::Error(stringify!($code).to_owned())
     })
 }
 
@@ -89,7 +128,11 @@ macro_rules! type_error_struct {
 macro_rules! struct_span_warn {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
-        $session.struct_span_warn_with_code($span, &format!($($message)*), stringify!($code))
+        $session.struct_span_warn_with_code(
+            $span,
+            &format!($($message)*),
+            $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+        )
     })
 }
 
@@ -98,9 +141,17 @@ macro_rules! struct_span_err_or_warn {
     ($is_warning:expr, $session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
         if $is_warning {
-            $session.struct_span_warn_with_code($span, &format!($($message)*), stringify!($code))
+            $session.struct_span_warn_with_code(
+                $span,
+                &format!($($message)*),
+                $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+            )
         } else {
-            $session.struct_span_err_with_code($span, &format!($($message)*), stringify!($code))
+            $session.struct_span_err_with_code(
+                $span,
+                &format!($($message)*),
+                $crate::errors::DiagnosticId::Error(stringify!($code).to_owned()),
+            )
         }
     })
 }

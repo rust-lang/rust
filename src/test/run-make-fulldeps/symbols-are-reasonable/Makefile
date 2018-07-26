@@ -1,0 +1,13 @@
+-include ../tools.mk
+
+# check that the compile generated symbols for strings, binaries,
+# vtables, etc. have semisane names (e.g. `str.1234`); it's relatively
+# easy to accidentally modify the compiler internals to make them
+# become things like `str"str"(1234)`.
+
+OUT=$(TMPDIR)/lib.s
+
+all:
+	$(RUSTC) lib.rs --emit=asm --crate-type=staticlib
+	# just check for symbol declarations with the names we're expecting.
+	$(CGREP) -e 'str\.[0-9]+:' 'byte_str\.[0-9]+:' 'vtable\.[0-9]+' < $(OUT)

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use build::{BlockAnd, BlockAndExtension, Builder};
+use build::ForGuard::OutsideGuard;
+use build::matches::ArmHasGuard;
 use hair::*;
 use rustc::mir::*;
 use rustc::hir;
@@ -16,7 +18,7 @@ use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn ast_block(&mut self,
-                     destination: &Lvalue<'tcx>,
+                     destination: &Place<'tcx>,
                      block: BasicBlock,
                      ast_block: &'tcx hir::Block,
                      source_info: SourceInfo)
@@ -34,7 +36,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), block, move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, block, move |this| {
                 if targeted_by_break {
-                    // This is a `break`-able block (currently only `catch { ... }`)
+                    // This is a `break`-able block
                     let exit_block = this.cfg.start_new_block();
                     let block_exit = this.in_breakable_scope(
                         None, exit_block, destination.clone(), |this| {
@@ -53,7 +55,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn ast_block_stmts(&mut self,
-                       destination: &Lvalue<'tcx>,
+                       destination: &Place<'tcx>,
                        mut block: BasicBlock,
                        span: Span,
                        stmts: Vec<StmtRef<'tcx>>,
@@ -79,10 +81,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         //
         // First we build all the statements in the block.
         let mut let_scope_stack = Vec::with_capacity(8);
-        let outer_visibility_scope = this.visibility_scope;
+        let outer_source_scope = this.source_scope;
         let outer_push_unsafe_count = this.push_unsafe_count;
         let outer_unpushed_unsafe = this.unpushed_unsafe;
-        this.update_visibility_scope_for_safety_mode(span, safety_mode);
+        this.update_source_scope_for_safety_mode(span, safety_mode);
 
         let source_info = this.source_info(span);
         for stmt in stmts {
@@ -102,6 +104,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     remainder_scope,
                     init_scope,
                     pattern,
+                    ty,
                     initializer,
                     lint_level
                 } => {
@@ -109,31 +112,53 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.push_scope((remainder_scope, source_info));
                     let_scope_stack.push(remainder_scope);
 
-                    // Declare the bindings, which may create a visibility scope.
+                    // Declare the bindings, which may create a source scope.
                     let remainder_span = remainder_scope.span(this.hir.tcx(),
                                                               &this.hir.region_scope_tree);
-                    let scope = this.declare_bindings(None, remainder_span, lint_level, &pattern);
+
+                    let scope;
 
                     // Evaluate the initializer, if present.
                     if let Some(init) = initializer {
+                        let initializer_span = init.span();
+
+                        scope = this.declare_bindings(
+                            None,
+                            remainder_span,
+                            lint_level,
+                            &pattern,
+                            ArmHasGuard(false),
+                            Some((None, initializer_span)),
+                        );
                         unpack!(block = this.in_opt_scope(
-                            opt_destruction_scope.map(|de|(de, source_info)), block, move |this| {
+                            opt_destruction_scope.map(|de|(de, source_info)), block, |this| {
                                 let scope = (init_scope, source_info);
-                                this.in_scope(scope, lint_level, block, move |this| {
-                                    // FIXME #30046                             ^~~~
-                                    this.expr_into_pattern(block, pattern, init)
+                                this.in_scope(scope, lint_level, block, |this| {
+                                    this.expr_into_pattern(block, ty, pattern, init)
                                 })
                             }));
                     } else {
-                        this.visit_bindings(&pattern, &mut |this, _, _, node, span, _| {
-                            this.storage_live_binding(block, node, span);
-                            this.schedule_drop_for_binding(node, span);
+                        scope = this.declare_bindings(None, remainder_span, lint_level, &pattern,
+                                                        ArmHasGuard(false), None);
+
+                        // FIXME(#47184): We currently only insert `UserAssertTy` statements for
+                        // patterns that are bindings, this is as we do not want to deconstruct
+                        // the type being assertion to match the pattern.
+                        if let PatternKind::Binding { var, .. } = *pattern.kind {
+                            if let Some(ty) = ty {
+                                this.user_assert_ty(block, ty, var, span);
+                            }
+                        }
+
+                        this.visit_bindings(&pattern, &mut |this, _, _, _, node, span, _| {
+                            this.storage_live_binding(block, node, span, OutsideGuard);
+                            this.schedule_drop_for_binding(node, span, OutsideGuard);
                         })
                     }
 
-                    // Enter the visibility scope, after evaluating the initializer.
-                    if let Some(visibility_scope) = scope {
-                        this.visibility_scope = visibility_scope;
+                    // Enter the source scope, after evaluating the initializer.
+                    if let Some(source_scope) = scope {
+                        this.source_scope = source_scope;
                     }
                 }
             }
@@ -143,26 +168,36 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         if let Some(expr) = expr {
             unpack!(block = this.into(destination, block, expr));
         } else {
-            this.cfg.push_assign_unit(block, source_info, destination);
+            // If a block has no trailing expression, then it is given an implicit return type.
+            // This return type is usually `()`, unless the block is diverging, in which case the
+            // return type is `!`. For the unit type, we need to actually return the unit, but in
+            // the case of `!`, no return value is required, as the block will never return.
+            let tcx = this.hir.tcx();
+            let ty = destination.ty(&this.local_decls, tcx).to_ty(tcx);
+            if ty.is_nil() {
+                // We only want to assign an implicit `()` as the return value of the block if the
+                // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
+                this.cfg.push_assign_unit(block, source_info, destination);
+            }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block
         // itself.
         for scope in let_scope_stack.into_iter().rev() {
             unpack!(block = this.pop_scope((scope, source_info), block));
         }
-        // Restore the original visibility scope.
-        this.visibility_scope = outer_visibility_scope;
+        // Restore the original source scope.
+        this.source_scope = outer_source_scope;
         this.push_unsafe_count = outer_push_unsafe_count;
         this.unpushed_unsafe = outer_unpushed_unsafe;
         block.unit()
     }
 
-    /// If we are changing the safety mode, create a new visibility scope
-    fn update_visibility_scope_for_safety_mode(&mut self,
+    /// If we are changing the safety mode, create a new source scope
+    fn update_source_scope_for_safety_mode(&mut self,
                                                span: Span,
                                                safety_mode: BlockSafety)
     {
-        debug!("update_visibility_scope_for({:?}, {:?})", span, safety_mode);
+        debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {
             BlockSafety::Safe => None,
             BlockSafety::ExplicitUnsafe(node_id) => {
@@ -192,7 +227,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         if let Some(unsafety) = new_unsafety {
-            self.visibility_scope = self.new_visibility_scope(
+            self.source_scope = self.new_source_scope(
                 span, LintLevel::Inherited, Some(unsafety));
         }
     }

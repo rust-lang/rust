@@ -294,13 +294,26 @@ def default_build_triple():
             raise ValueError('unknown byteorder: {}'.format(sys.byteorder))
         # only the n64 ABI is supported, indicate it
         ostype += 'abi64'
-    elif cputype == 'sparcv9' or cputype == 'sparc64':
+    elif cputype == 'sparc' or cputype == 'sparcv9' or cputype == 'sparc64':
         pass
     else:
         err = "unknown cpu type: {}".format(cputype)
         sys.exit(err)
 
     return "{}-{}".format(cputype, ostype)
+
+
+@contextlib.contextmanager
+def output(filepath):
+    tmp = filepath + '.tmp'
+    with open(tmp, 'w') as f:
+        yield f
+    try:
+        os.remove(filepath)  # PermissionError/OSError on Win32 if in use
+        os.rename(tmp, filepath)
+    except OSError:
+        shutil.copy2(tmp, filepath)
+        os.remove(tmp)
 
 
 class RustBuild(object):
@@ -314,8 +327,7 @@ class RustBuild(object):
         self.build_dir = os.path.join(os.getcwd(), "build")
         self.clean = False
         self.config_toml = ''
-        self.printed = False
-        self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+        self.rust_root = ''
         self.use_locked_deps = ''
         self.use_vendored_sources = ''
         self.verbose = False
@@ -336,7 +348,6 @@ class RustBuild(object):
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or
                  self.program_out_of_date(self.rustc_stamp())):
-            self.print_what_bootstrap_means()
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             filename = "rust-std-{}-{}.tar.gz".format(
@@ -348,9 +359,12 @@ class RustBuild(object):
             self._download_stage0_helper(filename, "rustc")
             self.fix_executable("{}/bin/rustc".format(self.bin_root()))
             self.fix_executable("{}/bin/rustdoc".format(self.bin_root()))
-            with open(self.rustc_stamp(), 'w') as rust_stamp:
+            with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(self.date)
 
+            # This is required so that we don't mix incompatible MinGW
+            # libraries/binaries that are included in rust-std with
+            # the system MinGW ones.
             if "pc-windows-gnu" in self.build:
                 filename = "rust-mingw-{}-{}.tar.gz".format(
                     rustc_channel, self.build)
@@ -359,11 +373,10 @@ class RustBuild(object):
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or
                  self.program_out_of_date(self.cargo_stamp())):
-            self.print_what_bootstrap_means()
             filename = "cargo-{}-{}.tar.gz".format(cargo_channel, self.build)
             self._download_stage0_helper(filename, "cargo")
             self.fix_executable("{}/bin/cargo".format(self.bin_root()))
-            with open(self.cargo_stamp(), 'w') as cargo_stamp:
+            with output(self.cargo_stamp()) as cargo_stamp:
                 cargo_stamp.write(self.date)
 
     def _download_stage0_helper(self, filename, pattern):
@@ -489,7 +502,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, self.build, "stage0")
 
-    def get_toml(self, key):
+    def get_toml(self, key, section=None):
         """Returns the value of the given key in config.toml, otherwise returns None
 
         >>> rb = RustBuild()
@@ -501,12 +514,29 @@ class RustBuild(object):
 
         >>> rb.get_toml("key3") is None
         True
+
+        Optionally also matches the section the key appears in
+
+        >>> rb.config_toml = '[a]\\nkey = "value1"\\n[b]\\nkey = "value2"'
+        >>> rb.get_toml('key', 'a')
+        'value1'
+        >>> rb.get_toml('key', 'b')
+        'value2'
+        >>> rb.get_toml('key', 'c') is None
+        True
         """
+
+        cur_section = None
         for line in self.config_toml.splitlines():
+            section_match = re.match(r'^\s*\[(.*)\]\s*$', line)
+            if section_match is not None:
+                cur_section = section_match.group(1)
+
             match = re.match(r'^{}\s*=(.*)$'.format(key), line)
             if match is not None:
                 value = match.group(1)
-                return self.get_string(value) or value.strip()
+                if section is None or section == cur_section:
+                    return self.get_string(value) or value.strip()
         return None
 
     def cargo(self):
@@ -560,23 +590,6 @@ class RustBuild(object):
             return '.exe'
         return ''
 
-    def print_what_bootstrap_means(self):
-        """Prints more information about the build system"""
-        if hasattr(self, 'printed'):
-            return
-        self.printed = True
-        if os.path.exists(self.bootstrap_binary()):
-            return
-        if '--help' not in sys.argv or len(sys.argv) == 1:
-            return
-
-        print('info: the build system for Rust is written in Rust, so this')
-        print('      script is now going to download a stage0 rust compiler')
-        print('      and then compile the build system itself')
-        print('')
-        print('info: in the meantime you can read more about rustbuild at')
-        print('      src/bootstrap/README.md before the download finishes')
-
     def bootstrap_binary(self):
         """Return the path of the boostrap binary
 
@@ -590,7 +603,6 @@ class RustBuild(object):
 
     def build_bootstrap(self):
         """Build bootstrap"""
-        self.print_what_bootstrap_means()
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -607,6 +619,17 @@ class RustBuild(object):
         env["LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
+        env["RUSTFLAGS"] = "-Cdebuginfo=2 "
+
+        build_section = "target.{}".format(self.build_triple())
+        target_features = []
+        if self.get_toml("crt-static", build_section) == "true":
+            target_features += ["+crt-static"]
+        elif self.get_toml("crt-static", build_section) == "false":
+            target_features += ["-crt-static"]
+        if target_features:
+            env["RUSTFLAGS"] += "-C target-feature=" + (",".join(target_features)) + " "
+
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
@@ -614,10 +637,8 @@ class RustBuild(object):
                 self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-        if self.verbose:
+        for _ in range(1, self.verbose):
             args.append("--verbose")
-            if self.verbose > 1:
-                args.append("--verbose")
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:
@@ -631,53 +652,114 @@ class RustBuild(object):
             return config
         return default_build_triple()
 
+    def check_submodule(self, module, slow_submodules):
+        if not slow_submodules:
+            checked_out = subprocess.Popen(["git", "rev-parse", "HEAD"],
+                                           cwd=os.path.join(self.rust_root, module),
+                                           stdout=subprocess.PIPE)
+            return checked_out
+        else:
+            return None
+
+    def update_submodule(self, module, checked_out, recorded_submodules):
+        module_path = os.path.join(self.rust_root, module)
+
+        if checked_out != None:
+            default_encoding = sys.getdefaultencoding()
+            checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
+            if recorded_submodules[module] == checked_out:
+                return
+
+        print("Updating submodule", module)
+
+        run(["git", "submodule", "-q", "sync", module],
+            cwd=self.rust_root, verbose=self.verbose)
+        run(["git", "submodule", "update",
+            "--init", "--recursive", module],
+            cwd=self.rust_root, verbose=self.verbose)
+        run(["git", "reset", "-q", "--hard"],
+            cwd=module_path, verbose=self.verbose)
+        run(["git", "clean", "-qdfx"],
+            cwd=module_path, verbose=self.verbose)
+
     def update_submodules(self):
         """Update submodules"""
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
                 self.get_toml('submodules') == "false":
             return
-        print('Updating submodules')
+        slow_submodules = self.get_toml('fast-submodules') == "false"
+        start_time = time()
+        if slow_submodules:
+            print('Unconditionally updating all submodules')
+        else:
+            print('Updating only changed submodules')
         default_encoding = sys.getdefaultencoding()
-        run(["git", "submodule", "-q", "sync"], cwd=self.rust_root, verbose=self.verbose)
         submodules = [s.split(' ', 1)[1] for s in subprocess.check_output(
             ["git", "config", "--file",
              os.path.join(self.rust_root, ".gitmodules"),
              "--get-regexp", "path"]
         ).decode(default_encoding).splitlines()]
-        submodules = [module for module in submodules
-                      if not ((module.endswith("llvm") and
-                               self.get_toml('llvm-config')) or
-                              (module.endswith("jemalloc") and
-                               (self.get_toml('use-jemalloc') == "false" or
-                                self.get_toml('jemalloc'))))]
-        run(["git", "submodule", "update",
-             "--init", "--recursive"] + submodules,
-            cwd=self.rust_root, verbose=self.verbose)
-        run(["git", "submodule", "-q", "foreach", "git",
-             "reset", "-q", "--hard"],
-            cwd=self.rust_root, verbose=self.verbose)
-        run(["git", "submodule", "-q", "foreach", "git",
-             "clean", "-qdfx"],
-            cwd=self.rust_root, verbose=self.verbose)
+        filtered_submodules = []
+        submodules_names = []
+        for module in submodules:
+            if module.endswith("llvm"):
+                if self.get_toml('llvm-config'):
+                    continue
+            if module.endswith("llvm-emscripten"):
+                backends = self.get_toml('codegen-backends')
+                if backends is None or not 'emscripten' in backends:
+                    continue
+            if module.endswith("jemalloc"):
+                if self.get_toml('use-jemalloc') == 'false':
+                    continue
+                if self.get_toml('jemalloc'):
+                    continue
+            if module.endswith("lld"):
+                config = self.get_toml('lld')
+                if config is None or config == 'false':
+                    continue
+            check = self.check_submodule(module, slow_submodules)
+            filtered_submodules.append((module, check))
+            submodules_names.append(module)
+        recorded = subprocess.Popen(["git", "ls-tree", "HEAD"] + submodules_names,
+                                    cwd=self.rust_root, stdout=subprocess.PIPE)
+        recorded = recorded.communicate()[0].decode(default_encoding).strip().splitlines()
+        recorded_submodules = {}
+        for data in recorded:
+            data = data.split()
+            recorded_submodules[data[3]] = data[2]
+        for module in filtered_submodules:
+            self.update_submodule(module[0], module[1], recorded_submodules)
+        print("Submodules updated in %.2f seconds" % (time() - start_time))
 
     def set_dev_environment(self):
         """Set download URL for development environment"""
         self._download_url = 'https://dev-static.rust-lang.org'
 
 
-def bootstrap():
+def bootstrap(help_triggered):
     """Configure, fetch, build and run the initial bootstrap"""
+
+    # If the user is asking for help, let them know that the whole download-and-build
+    # process has to happen before anything is printed out.
+    if help_triggered:
+        print("info: Downloading and building bootstrap before processing --help")
+        print("      command. See src/bootstrap/README.md for help with common")
+        print("      commands.")
+
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
+    parser.add_argument('--src')
     parser.add_argument('--clean', action='store_true')
-    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-v', '--verbose', action='count', default=0)
 
     args = [a for a in sys.argv if a != '-h' and a != '--help']
     args, _ = parser.parse_known_args(args)
 
     # Configure initial bootstrap
     build = RustBuild()
+    build.rust_root = args.src or os.path.abspath(os.path.join(__file__, '../../..'))
     build.verbose = args.verbose
     build.clean = args.clean
 
@@ -687,10 +769,9 @@ def bootstrap():
     except (OSError, IOError):
         pass
 
-    if '\nverbose = 2' in build.config_toml:
-        build.verbose = 2
-    elif '\nverbose = 1' in build.config_toml:
-        build.verbose = 1
+    match = re.search(r'\nverbose = (\d+)', build.config_toml)
+    if match is not None:
+        build.verbose = max(build.verbose, int(match.group(1)))
 
     build.use_vendored_sources = '\nvendor = true' in build.config_toml
 
@@ -703,12 +784,12 @@ def bootstrap():
             print('      and so in order to preserve your $HOME this will now')
             print('      use vendored sources by default. Note that if this')
             print('      does not work you should run a normal build first')
-            print('      before running a command like `sudo make install`')
+            print('      before running a command like `sudo ./x.py install`')
 
     if build.use_vendored_sources:
         if not os.path.exists('.cargo'):
             os.makedirs('.cargo')
-        with open('.cargo/config', 'w') as cargo_config:
+        with output('.cargo/config') as cargo_config:
             cargo_config.write("""
                 [source.crates-io]
                 replace-with = 'vendored-sources'
@@ -746,6 +827,10 @@ def bootstrap():
     env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
+    env["BUILD_DIR"] = build.build_dir
+    env["RUSTC_BOOTSTRAP"] = '1'
+    env["CARGO"] = build.cargo()
+    env["RUSTC"] = build.rustc()
     run(args, env=env, verbose=build.verbose)
 
 
@@ -755,7 +840,7 @@ def main():
     help_triggered = (
         '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
-        bootstrap()
+        bootstrap(help_triggered)
         if not help_triggered:
             print("Build completed successfully in {}".format(
                 format_build_time(time() - start_time)))

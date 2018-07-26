@@ -346,15 +346,19 @@ def check_tree_attr(tree, path, attr, pat, regexp):
 def check_tree_text(tree, path, pat, regexp):
     path = normalize_xpath(path)
     ret = False
-    for e in tree.findall(path):
-        try:
-            value = flatten(e)
-        except KeyError:
-            continue
-        else:
-            ret = check_string(value, pat, regexp)
-            if ret:
-                break
+    try:
+        for e in tree.findall(path):
+            try:
+                value = flatten(e)
+            except KeyError:
+                continue
+            else:
+                ret = check_string(value, pat, regexp)
+                if ret:
+                    break
+    except Exception as e:
+        print('Failed to get path "{}"'.format(path))
+        raise e
     return ret
 
 

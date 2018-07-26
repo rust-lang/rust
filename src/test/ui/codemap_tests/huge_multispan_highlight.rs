@@ -97,5 +97,5 @@ fn main() {
 
 
 
-    let y = &mut x;
+    let y = &mut x; //~ ERROR cannot borrow
 }

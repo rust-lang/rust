@@ -1,0 +1,20 @@
+warning: not reporting region error due to nll
+  --> $DIR/ex1-return-one-existing-name-return-type-is-anon.rs:18:5
+   |
+LL |     x //~ ERROR lifetime mismatch
+   |     ^
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ex1-return-one-existing-name-return-type-is-anon.rs:18:5
+   |
+LL |   fn foo<'a>(&self, x: &'a i32) -> &i32 {
+   |                        -------     ----
+   |                        |
+   |                        this parameter and the return type are declared with different lifetimes...
+LL | 
+LL |     x //~ ERROR lifetime mismatch
+   |     ^ ...but data from `x` is returned here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

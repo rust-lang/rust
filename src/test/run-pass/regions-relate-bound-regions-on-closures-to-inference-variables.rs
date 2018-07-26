@@ -42,7 +42,7 @@ impl<'a,'tcx> Foo<'a,'tcx> {
             // inferring `'_2` to be `'static` in this case, because
             // it is created outside the closure but then related to
             // regions bound by the closure itself. See the
-            // `region_inference.rs` file (and the `givens` field, in
+            // `region_constraints.rs` file (and the `givens` field, in
             // particular) for more details.
             this.foo()
         }))

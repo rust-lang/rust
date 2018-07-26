@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 #[derive(Clone)]
 struct point {
@@ -21,7 +21,6 @@ fn main() {
     let mut origin: point;
     origin = point {x: 10,.. origin};
     //[ast]~^ ERROR use of possibly uninitialized variable: `origin.y` [E0381]
-    //[mir]~^^ ERROR (Ast) [E0381]
-    //[mir]~|  ERROR (Mir) [E0381]
+    //[mir]~^^ ERROR [E0381]
     origin.clone();
 }

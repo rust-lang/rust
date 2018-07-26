@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions:rpass1 rpass2 rpass3
-// compile-flags: -Z query-dep-graph -g -Zincremental-cc
+// compile-flags: -Z query-dep-graph -g
 // aux-build:extern_crate.rs
 
 // This test case makes sure that we detect if paths emitted into debuginfo
@@ -20,7 +20,7 @@
 #![rustc_partition_reused(module="main", cfg="rpass2")]
 #![rustc_partition_reused(module="main-some_mod", cfg="rpass2")]
 #![rustc_partition_reused(module="main", cfg="rpass3")]
-#![rustc_partition_translated(module="main-some_mod", cfg="rpass3")]
+#![rustc_partition_codegened(module="main-some_mod", cfg="rpass3")]
 
 extern crate extern_crate;
 

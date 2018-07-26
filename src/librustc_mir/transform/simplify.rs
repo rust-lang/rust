@@ -15,7 +15,7 @@
 //!
 //! The `SimplifyLocals` pass is kinda expensive and therefore not very suitable to be run often.
 //! Most of the passes should not care or be impacted in meaningful ways due to extra locals
-//! either, so running the pass once, right before translation, should suffice.
+//! either, so running the pass once, right before codegen, should suffice.
 //!
 //! On the other side of the spectrum, the `SimplifyCfg` pass is considerably cheap to run, thus
 //! one should run it after every pass which may modify CFG in significant ways. This pass must
@@ -41,9 +41,10 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
-use rustc::mir::visit::{MutVisitor, Visitor, LvalueContext};
+use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext};
+use rustc::session::config::FullDebugInfo;
 use std::borrow::Cow;
+use transform::{MirPass, MirSource};
 
 pub struct SimplifyCfg { label: String }
 
@@ -90,7 +91,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
 
         for (_, data) in traversal::preorder(mir) {
             if let Some(ref term) = data.terminator {
-                for &tgt in term.successors().iter() {
+                for &tgt in term.successors() {
                     pred_count[tgt] += 1;
                 }
             }
@@ -123,8 +124,6 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
                 for successor in terminator.successors_mut() {
                     self.collapse_goto_chain(successor, &mut changed);
                 }
-
-                changed |= self.simplify_unwind(&mut terminator);
 
                 let mut new_stmts = vec![];
                 let mut inner_changed = true;
@@ -220,10 +219,10 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         };
 
         let first_succ = {
-            let successors = terminator.successors();
-            if let Some(&first_succ) = terminator.successors().get(0) {
-                if successors.iter().all(|s| *s == first_succ) {
-                    self.pred_count[first_succ] -= (successors.len()-1) as u32;
+            if let Some(&first_succ) = terminator.successors().nth(0) {
+                if terminator.successors().all(|s| *s == first_succ) {
+                    let count = terminator.successors().count();
+                    self.pred_count[first_succ] -= (count - 1) as u32;
                     first_succ
                 } else {
                     return false
@@ -236,38 +235,6 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         debug!("simplifying branch {:?}", terminator);
         terminator.kind = TerminatorKind::Goto { target: first_succ };
         true
-    }
-
-    // turn an unwind branch to a resume block into a None
-    fn simplify_unwind(&mut self, terminator: &mut Terminator<'tcx>) -> bool {
-        let unwind = match terminator.kind {
-            TerminatorKind::Drop { ref mut unwind, .. } |
-            TerminatorKind::DropAndReplace { ref mut unwind, .. } |
-            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
-            TerminatorKind::Assert { cleanup: ref mut unwind, .. } =>
-                unwind,
-            _ => return false
-        };
-
-        if let &mut Some(unwind_block) = unwind {
-            let is_resume_block = match self.basic_blocks[unwind_block] {
-                BasicBlockData {
-                    ref statements,
-                    terminator: Some(Terminator {
-                        kind: TerminatorKind::Resume, ..
-                    }), ..
-                } if statements.is_empty() => true,
-                _ => false
-            };
-            if is_resume_block {
-                debug!("simplifying unwind to {:?} from {:?}",
-                       unwind_block, terminator.source_info);
-                *unwind = None;
-            }
-            return is_resume_block;
-        }
-
-        false
     }
 
     fn strip_nops(&mut self) {
@@ -315,16 +282,24 @@ pub struct SimplifyLocals;
 
 impl MirPass for SimplifyLocals {
     fn run_pass<'a, 'tcx>(&self,
-                          _: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource,
                           mir: &mut Mir<'tcx>) {
         let mut marker = DeclMarker { locals: BitVector::new(mir.local_decls.len()) };
         marker.visit_mir(mir);
         // Return pointer and arguments are always live
-        marker.locals.insert(0);
-        for idx in mir.args_iter() {
-            marker.locals.insert(idx.index());
+        marker.locals.insert(RETURN_PLACE);
+        for arg in mir.args_iter() {
+            marker.locals.insert(arg);
         }
+
+        // We may need to keep dead user variables live for debuginfo.
+        if tcx.sess.opts.debuginfo == FullDebugInfo {
+            for local in mir.vars_iter() {
+                marker.locals.insert(local);
+            }
+        }
+
         let map = make_local_map(&mut mir.local_decls, marker.locals);
         // Update references to all vars and tmps now
         LocalUpdater { map: map }.visit_mir(mir);
@@ -333,35 +308,38 @@ impl MirPass for SimplifyLocals {
 }
 
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
-fn make_local_map<'tcx, I: Idx, V>(vec: &mut IndexVec<I, V>, mask: BitVector) -> Vec<usize> {
-    let mut map: Vec<usize> = ::std::iter::repeat(!0).take(vec.len()).collect();
-    let mut used = 0;
+fn make_local_map<'tcx, V>(
+    vec: &mut IndexVec<Local, V>,
+    mask: BitVector<Local>,
+) -> IndexVec<Local, Option<Local>> {
+    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*vec);
+    let mut used = Local::new(0);
     for alive_index in mask.iter() {
-        map[alive_index] = used;
+        map[alive_index] = Some(used);
         if alive_index != used {
             vec.swap(alive_index, used);
         }
-        used += 1;
+        used.increment_by(1);
     }
-    vec.truncate(used);
+    vec.truncate(used.index());
     map
 }
 
 struct DeclMarker {
-    pub locals: BitVector,
+    pub locals: BitVector<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
-    fn visit_local(&mut self, local: &Local, ctx: LvalueContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
         // ignore these altogether, they get removed along with their otherwise unused decls.
-        if ctx != LvalueContext::StorageLive && ctx != LvalueContext::StorageDead {
-            self.locals.insert(local.index());
+        if ctx != PlaceContext::StorageLive && ctx != PlaceContext::StorageDead {
+            self.locals.insert(*local);
         }
     }
 }
 
 struct LocalUpdater {
-    map: Vec<usize>,
+    map: IndexVec<Local, Option<Local>>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
@@ -370,14 +348,14 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         data.statements.retain(|stmt| {
             match stmt.kind {
                 StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
-                    self.map[l.index()] != !0
+                    self.map[l].is_some()
                 }
                 _ => true
             }
         });
         self.super_basic_block_data(block, data);
     }
-    fn visit_local(&mut self, l: &mut Local, _: LvalueContext<'tcx>, _: Location) {
-        *l = Local::new(self.map[l.index()]);
+    fn visit_local(&mut self, l: &mut Local, _: PlaceContext<'tcx>, _: Location) {
+        *l = self.map[*l].unwrap();
     }
 }

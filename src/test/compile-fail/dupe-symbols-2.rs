@@ -11,13 +11,13 @@
 #![crate_type="rlib"]
 #![allow(warnings)]
 
-mod a {
+pub mod a {
     #[no_mangle]
     pub extern fn fail() {
     }
 }
 
-mod b {
+pub mod b {
     #[no_mangle]
     pub extern fn fail() {
     //~^ symbol `fail` is already defined

@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(match_default_bindings)]
-
 pub fn main() {
     let i = 5;
     match &&&&i {
-        1 ... 3 => panic!(),
-        3 ... 8 => {},
+        1 ..= 3 => panic!(),
+        3 ..= 8 => {},
         _ => panic!(),
     }
 }

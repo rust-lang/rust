@@ -1,0 +1,22 @@
+error[E0369]: binary operation `+` cannot be applied to type `T`
+  --> $DIR/missing_trait_impl.rs:15:13
+   |
+LL |     let z = x + y; //~ ERROR binary operation `+` cannot be applied to type `T`
+   |             ^^^^^
+   |
+   = note: `T` might need a bound for `std::ops::Add`
+
+error[E0368]: binary assignment operation `+=` cannot be applied to type `T`
+  --> $DIR/missing_trait_impl.rs:19:5
+   |
+LL |     x += x; //~ ERROR binary assignment operation `+=` cannot be applied to type `T`
+   |     -^^^^^
+   |     |
+   |     cannot use `+=` on type `T`
+   |
+   = note: `T` might need a bound for `std::ops::AddAssign`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0368, E0369.
+For more information about an error, try `rustc --explain E0368`.

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::{Ref, RefCell};
+use rustc_data_structures::sync::{RwLock, ReadGuard};
 use std::mem;
 
 /// The `Steal` struct is intended to used as the value for a query.
@@ -32,25 +32,25 @@ use std::mem;
 ///
 /// FIXME(#41710) -- what is the best way to model linear queries?
 pub struct Steal<T> {
-    value: RefCell<Option<T>>
+    value: RwLock<Option<T>>
 }
 
 impl<T> Steal<T> {
     pub fn new(value: T) -> Self {
         Steal {
-            value: RefCell::new(Some(value))
+            value: RwLock::new(Some(value))
         }
     }
 
-    pub fn borrow(&self) -> Ref<T> {
-        Ref::map(self.value.borrow(), |opt| match *opt {
+    pub fn borrow(&self) -> ReadGuard<T> {
+        ReadGuard::map(self.value.borrow(), |opt| match *opt {
             None => bug!("attempted to read from stolen value"),
             Some(ref v) => v
         })
     }
 
     pub fn steal(&self) -> T {
-        let value_ref = &mut *self.value.borrow_mut();
+        let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
         let value = mem::replace(value_ref, None);
         value.expect("attempt to read from stolen value")
     }

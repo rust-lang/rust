@@ -20,135 +20,137 @@ use std::mem;
 impl_stable_hash_for!(struct mir::GeneratorLayout<'tcx> { fields });
 impl_stable_hash_for!(struct mir::SourceInfo { span, scope });
 impl_stable_hash_for!(enum mir::Mutability { Mut, Not });
-impl_stable_hash_for!(enum mir::BorrowKind { Shared, Unique, Mut });
 impl_stable_hash_for!(enum mir::LocalKind { Var, Temp, Arg, ReturnPointer });
 impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
     mutability,
     ty,
     name,
     source_info,
+    visibility_scope,
     internal,
-    lexical_scope,
     is_user_variable
 });
-impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, by_ref });
+impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, var_hir_id, by_ref, mutability });
 impl_stable_hash_for!(struct mir::BasicBlockData<'tcx> { statements, terminator, is_cleanup });
-impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, lint_node_id });
+impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, details, kind });
+impl_stable_hash_for!(struct mir::UnsafetyCheckResult { violations, unsafe_blocks });
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>>
-for mir::Terminator<'gcx> {
+impl<'a> HashStable<StableHashingContext<'a>>
+for mir::BorrowKind {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        let mir::Terminator {
-            ref kind,
-            ref source_info,
-        } = *self;
+        mem::discriminant(self).hash_stable(hcx, hasher);
 
-        let hash_spans_unconditionally = match *kind {
-            mir::TerminatorKind::Assert { .. } => {
-                // Assert terminators generate a panic message that contains the
-                // source location, so we always have to feed its span into the
-                // ICH.
-                true
+        match *self {
+            mir::BorrowKind::Shared |
+            mir::BorrowKind::Unique => {}
+            mir::BorrowKind::Mut { allow_two_phase_borrow } => {
+                allow_two_phase_borrow.hash_stable(hcx, hasher);
             }
-            mir::TerminatorKind::Goto { .. } |
-            mir::TerminatorKind::SwitchInt { .. } |
-            mir::TerminatorKind::Resume |
-            mir::TerminatorKind::Return |
-            mir::TerminatorKind::GeneratorDrop |
-            mir::TerminatorKind::Unreachable |
-            mir::TerminatorKind::Drop { .. } |
-            mir::TerminatorKind::DropAndReplace { .. } |
-            mir::TerminatorKind::Yield { .. } |
-            mir::TerminatorKind::Call { .. } => false,
-        };
-
-        if hash_spans_unconditionally {
-            hcx.while_hashing_spans(true, |hcx| {
-                source_info.hash_stable(hcx, hasher);
-            })
-        } else {
-            source_info.hash_stable(hcx, hasher);
         }
-
-        kind.hash_stable(hcx, hasher);
     }
 }
 
-impl<'gcx, T> HashStable<StableHashingContext<'gcx>> for mir::ClearOnDecode<T>
-    where T: HashStable<StableHashingContext<'gcx>>
+
+impl<'a> HashStable<StableHashingContext<'a>>
+for mir::UnsafetyViolationKind {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            mir::UnsafetyViolationKind::General => {}
+            mir::UnsafetyViolationKind::ExternStatic(lint_node_id) |
+            mir::UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
+                lint_node_id.hash_stable(hcx, hasher);
+            }
+
+        }
+    }
+}
+
+impl_stable_hash_for!(struct mir::Terminator<'tcx> {
+    kind,
+    source_info
+});
+
+impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for mir::ClearCrossCrate<T>
+    where T: HashStable<StableHashingContext<'a>>
 {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            mir::ClearOnDecode::Clear => {}
-            mir::ClearOnDecode::Set(ref value) => {
+            mir::ClearCrossCrate::Clear => {}
+            mir::ClearCrossCrate::Set(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
         }
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Local {
+impl<'a> HashStable<StableHashingContext<'a>> for mir::Local {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         use rustc_data_structures::indexed_vec::Idx;
         self.index().hash_stable(hcx, hasher);
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::BasicBlock {
+impl<'a> HashStable<StableHashingContext<'a>> for mir::BasicBlock {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         use rustc_data_structures::indexed_vec::Idx;
         self.index().hash_stable(hcx, hasher);
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Field {
+impl<'a> HashStable<StableHashingContext<'a>> for mir::Field {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         use rustc_data_structures::indexed_vec::Idx;
         self.index().hash_stable(hcx, hasher);
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>>
-for mir::VisibilityScope {
+impl<'a> HashStable<StableHashingContext<'a>>
+for mir::SourceScope {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         use rustc_data_structures::indexed_vec::Idx;
         self.index().hash_stable(hcx, hasher);
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Promoted {
+impl<'a> HashStable<StableHashingContext<'a>> for mir::Promoted {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         use rustc_data_structures::indexed_vec::Idx;
         self.index().hash_stable(hcx, hasher);
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>>
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
 for mir::TerminatorKind<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -166,6 +168,7 @@ for mir::TerminatorKind<'gcx> {
                 targets.hash_stable(hcx, hasher);
             }
             mir::TerminatorKind::Resume |
+            mir::TerminatorKind::Abort |
             mir::TerminatorKind::Return |
             mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Unreachable => {}
@@ -210,59 +213,55 @@ for mir::TerminatorKind<'gcx> {
                 target.hash_stable(hcx, hasher);
                 cleanup.hash_stable(hcx, hasher);
             }
-        }
-    }
-}
-
-impl<'gcx> HashStable<StableHashingContext<'gcx>>
-for mir::AssertMessage<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
-                                          hasher: &mut StableHasher<W>) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            mir::AssertMessage::BoundsCheck { ref len, ref index } => {
-                len.hash_stable(hcx, hasher);
-                index.hash_stable(hcx, hasher);
+            mir::TerminatorKind::FalseEdges { ref real_target, ref imaginary_targets } => {
+                real_target.hash_stable(hcx, hasher);
+                for target in imaginary_targets {
+                    target.hash_stable(hcx, hasher);
+                }
             }
-            mir::AssertMessage::Math(ref const_math_err) => {
-                const_math_err.hash_stable(hcx, hasher);
+            mir::TerminatorKind::FalseUnwind { ref real_target, ref unwind } => {
+                real_target.hash_stable(hcx, hasher);
+                unwind.hash_stable(hcx, hasher);
             }
-            mir::AssertMessage::GeneratorResumedAfterReturn => (),
-            mir::AssertMessage::GeneratorResumedAfterPanic => (),
         }
     }
 }
 
 impl_stable_hash_for!(struct mir::Statement<'tcx> { source_info, kind });
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>>
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
 for mir::StatementKind<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                lvalue.hash_stable(hcx, hasher);
+            mir::StatementKind::Assign(ref place, ref rvalue) => {
+                place.hash_stable(hcx, hasher);
                 rvalue.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::SetDiscriminant { ref lvalue, variant_index } => {
-                lvalue.hash_stable(hcx, hasher);
+            mir::StatementKind::ReadForMatch(ref place) => {
+                place.hash_stable(hcx, hasher);
+            }
+            mir::StatementKind::SetDiscriminant { ref place, variant_index } => {
+                place.hash_stable(hcx, hasher);
                 variant_index.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::StorageLive(ref lvalue) |
-            mir::StatementKind::StorageDead(ref lvalue) => {
-                lvalue.hash_stable(hcx, hasher);
+            mir::StatementKind::StorageLive(ref place) |
+            mir::StatementKind::StorageDead(ref place) => {
+                place.hash_stable(hcx, hasher);
             }
             mir::StatementKind::EndRegion(ref region_scope) => {
                 region_scope.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::Validate(ref op, ref lvalues) => {
+            mir::StatementKind::Validate(ref op, ref places) => {
                 op.hash_stable(hcx, hasher);
-                lvalues.hash_stable(hcx, hasher);
+                places.hash_stable(hcx, hasher);
+            }
+            mir::StatementKind::UserAssertTy(ref c_ty, ref local) => {
+                c_ty.hash_stable(hcx, hasher);
+                local.hash_stable(hcx, hasher);
             }
             mir::StatementKind::Nop => {}
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
@@ -274,15 +273,15 @@ for mir::StatementKind<'gcx> {
     }
 }
 
-impl<'gcx, T> HashStable<StableHashingContext<'gcx>>
+impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
     for mir::ValidationOperand<'gcx, T>
-    where T: HashStable<StableHashingContext<'gcx>>
+    where T: HashStable<StableHashingContext<'a>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>)
     {
-        self.lval.hash_stable(hcx, hasher);
+        self.place.hash_stable(hcx, hasher);
         self.ty.hash_stable(hcx, hasher);
         self.re.hash_stable(hcx, hasher);
         self.mutbl.hash_stable(hcx, hasher);
@@ -291,33 +290,36 @@ impl<'gcx, T> HashStable<StableHashingContext<'gcx>>
 
 impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(region_scope) });
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Lvalue<'gcx> {
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Place<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            mir::Lvalue::Local(ref local) => {
+            mir::Place::Local(ref local) => {
                 local.hash_stable(hcx, hasher);
             }
-            mir::Lvalue::Static(ref statik) => {
+            mir::Place::Static(ref statik) => {
                 statik.hash_stable(hcx, hasher);
             }
-            mir::Lvalue::Projection(ref lvalue_projection) => {
-                lvalue_projection.hash_stable(hcx, hasher);
+            mir::Place::Promoted(ref promoted) => {
+                promoted.hash_stable(hcx, hasher);
+            }
+            mir::Place::Projection(ref place_projection) => {
+                place_projection.hash_stable(hcx, hasher);
             }
         }
     }
 }
 
-impl<'gcx, B, V, T> HashStable<StableHashingContext<'gcx>>
+impl<'a, 'gcx, B, V, T> HashStable<StableHashingContext<'a>>
 for mir::Projection<'gcx, B, V, T>
-    where B: HashStable<StableHashingContext<'gcx>>,
-          V: HashStable<StableHashingContext<'gcx>>,
-          T: HashStable<StableHashingContext<'gcx>>
+    where B: HashStable<StableHashingContext<'a>>,
+          V: HashStable<StableHashingContext<'a>>,
+          T: HashStable<StableHashingContext<'a>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let mir::Projection {
             ref base,
@@ -329,13 +331,13 @@ for mir::Projection<'gcx, B, V, T>
     }
 }
 
-impl<'gcx, V, T> HashStable<StableHashingContext<'gcx>>
+impl<'a, 'gcx, V, T> HashStable<StableHashingContext<'a>>
 for mir::ProjectionElem<'gcx, V, T>
-    where V: HashStable<StableHashingContext<'gcx>>,
-          T: HashStable<StableHashingContext<'gcx>>
+    where V: HashStable<StableHashingContext<'a>>,
+          T: HashStable<StableHashingContext<'a>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
@@ -364,14 +366,14 @@ for mir::ProjectionElem<'gcx, V, T>
     }
 }
 
-impl_stable_hash_for!(struct mir::VisibilityScopeData { span, parent_scope });
-impl_stable_hash_for!(struct mir::VisibilityScopeInfo {
+impl_stable_hash_for!(struct mir::SourceScopeData { span, parent_scope });
+impl_stable_hash_for!(struct mir::SourceScopeLocalData {
     lint_root, safety
 });
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Safety {
+impl<'a> HashStable<StableHashingContext<'a>> for mir::Safety {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -386,15 +388,18 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Safety {
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Operand<'gcx> {
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Operand<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            mir::Operand::Consume(ref lvalue) => {
-                lvalue.hash_stable(hcx, hasher);
+            mir::Operand::Copy(ref place) => {
+                place.hash_stable(hcx, hasher);
+            }
+            mir::Operand::Move(ref place) => {
+                place.hash_stable(hcx, hasher);
             }
             mir::Operand::Constant(ref constant) => {
                 constant.hash_stable(hcx, hasher);
@@ -403,9 +408,9 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Operand<'gcx> {
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Rvalue<'gcx> {
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Rvalue<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -417,13 +422,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Rvalue<'gcx> {
                 operand.hash_stable(hcx, hasher);
                 val.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Ref(region, borrow_kind, ref lvalue) => {
+            mir::Rvalue::Ref(region, borrow_kind, ref place) => {
                 region.hash_stable(hcx, hasher);
                 borrow_kind.hash_stable(hcx, hasher);
-                lvalue.hash_stable(hcx, hasher);
+                place.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Len(ref lvalue) => {
-                lvalue.hash_stable(hcx, hasher);
+            mir::Rvalue::Len(ref place) => {
+                place.hash_stable(hcx, hasher);
             }
             mir::Rvalue::Cast(cast_kind, ref operand, ty) => {
                 cast_kind.hash_stable(hcx, hasher);
@@ -440,8 +445,8 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Rvalue<'gcx> {
                 op.hash_stable(hcx, hasher);
                 operand.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Discriminant(ref lvalue) => {
-                lvalue.hash_stable(hcx, hasher);
+            mir::Rvalue::Discriminant(ref place) => {
+                place.hash_stable(hcx, hasher);
             }
             mir::Rvalue::NullaryOp(op, ty) => {
                 op.hash_stable(hcx, hasher);
@@ -463,10 +468,10 @@ impl_stable_hash_for!(enum mir::CastKind {
     Unsize
 });
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>>
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
 for mir::AggregateKind<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
@@ -484,10 +489,10 @@ for mir::AggregateKind<'gcx> {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            mir::AggregateKind::Generator(def_id, ref substs, ref interior) => {
+            mir::AggregateKind::Generator(def_id, ref substs, movability) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
-                interior.hash_stable(hcx, hasher);
+                movability.hash_stable(hcx, hasher);
             }
         }
     }
@@ -525,20 +530,38 @@ impl_stable_hash_for!(enum mir::NullOp {
 
 impl_stable_hash_for!(struct mir::Constant<'tcx> { span, ty, literal });
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Literal<'gcx> {
+impl_stable_hash_for!(struct mir::Location { block, statement_index });
+
+impl_stable_hash_for!(struct mir::BorrowCheckResult<'tcx> {
+    closure_requirements,
+    used_mut_upvars
+});
+
+impl_stable_hash_for!(struct mir::ClosureRegionRequirements<'tcx> {
+    num_external_vids,
+    outlives_requirements
+});
+
+impl_stable_hash_for!(struct mir::ClosureOutlivesRequirement<'tcx> {
+    subject,
+    outlived_free_region,
+    blame_span
+});
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::ClosureOutlivesSubject<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            mir::Literal::Value { ref value } => {
-                value.hash_stable(hcx, hasher);
+            mir::ClosureOutlivesSubject::Ty(ref ty) => {
+                ty.hash_stable(hcx, hasher);
             }
-            mir::Literal::Promoted { index } => {
-                index.hash_stable(hcx, hasher);
+            mir::ClosureOutlivesSubject::Region(ref region) => {
+                region.hash_stable(hcx, hasher);
             }
         }
     }
 }
 
-impl_stable_hash_for!(struct mir::Location { block, statement_index });
+impl_stable_hash_for!(struct mir::interpret::GlobalId<'tcx> { instance, promoted });

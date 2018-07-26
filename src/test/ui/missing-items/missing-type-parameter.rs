@@ -11,5 +11,5 @@
 fn foo<X>() { }
 
 fn main() {
-    foo();
+    foo(); //~ ERROR type annotations needed
 }

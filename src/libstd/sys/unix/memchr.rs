@@ -50,7 +50,7 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 
     #[cfg(not(target_os = "linux"))]
     fn memrchr_specific(needle: u8, haystack: &[u8]) -> Option<usize> {
-        ::sys_common::memchr::fallback::memrchr(needle, haystack)
+        ::core::slice::memchr::memrchr(needle, haystack)
     }
 
     memrchr_specific(needle, haystack)

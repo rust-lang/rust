@@ -1,0 +1,9 @@
+error[E0616]: field `i` of struct `foo::S` is private
+  --> $DIR/nested_macro_privacy.rs:25:5
+   |
+LL |     S::default().i; //~ ERROR field `i` of struct `foo::S` is private
+   |     ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0616`.

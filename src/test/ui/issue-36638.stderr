@@ -1,0 +1,14 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-36638.rs:13:12
+   |
+LL | struct Foo<Self>(Self);
+   |            ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-36638.rs:16:11
+   |
+LL | trait Bar<Self> {}
+   |           ^^^^ expected identifier, found keyword
+
+error: aborting due to 2 previous errors
+

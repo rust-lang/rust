@@ -12,7 +12,7 @@
 
 fn main() {
     match 5 {
-        6 ... 1 => { }
+        6 ..= 1 => { }
         _ => { }
     };
     //~^^^ ERROR lower range bound must be less than or equal to upper
@@ -24,7 +24,7 @@ fn main() {
     //~^^^ ERROR lower range bound must be less than upper
 
     match 5u64 {
-        0xFFFF_FFFF_FFFF_FFFF ... 1 => { }
+        0xFFFF_FFFF_FFFF_FFFF ..= 1 => { }
         _ => { }
     };
     //~^^^ ERROR lower range bound must be less than or equal to upper

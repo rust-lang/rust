@@ -1,0 +1,17 @@
+error[E0597]: `c_shortest` does not live long enough
+  --> $DIR/dropck-eyepatch-extern-crate.rs:47:19
+   |
+LL |     dt = Dt("dt", &c_shortest);
+   |                   ^^^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `dt` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

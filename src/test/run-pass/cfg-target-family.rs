@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi no target_family
+// ignore-wasm32-bare no target_family
+
 // pretty-expanded FIXME #23616
 
 #[cfg(target_family = "windows")]

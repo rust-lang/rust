@@ -94,6 +94,13 @@ fn issue_14576() {
     const F : C = C::D;
 
     assert_eq!(match C::D { F => 1, _ => 2, }, 1);
+
+    // test gaps
+    #[derive(PartialEq, Eq)]
+    enum G { H = 3, I = 5 }
+    const K : G = G::I;
+
+    assert_eq!(match G::I { K => 1, _ => 2, }, 1);
 }
 
 fn issue_13731() {

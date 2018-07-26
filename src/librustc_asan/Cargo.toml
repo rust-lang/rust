@@ -17,3 +17,4 @@ cmake = "0.1.18"
 alloc = { path = "../liballoc" }
 alloc_system = { path = "../liballoc_system" }
 core = { path = "../libcore" }
+compiler_builtins = { path = "../rustc/compiler_builtins_shim" }

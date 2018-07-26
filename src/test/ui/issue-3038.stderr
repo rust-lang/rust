@@ -1,0 +1,21 @@
+error[E0416]: identifier `x` is bound more than once in the same pattern
+  --> $DIR/issue-3038.rs:22:15
+   |
+LL |       f::g(x, x) => { println!("{}", x + x); }
+   |               ^ used in a pattern more than once
+
+error[E0416]: identifier `x` is bound more than once in the same pattern
+  --> $DIR/issue-3038.rs:27:32
+   |
+LL |       h::i(j::l(x, _), k::m(_, x))
+   |                                ^ used in a pattern more than once
+
+error[E0416]: identifier `x` is bound more than once in the same pattern
+  --> $DIR/issue-3038.rs:33:13
+   |
+LL |         (x, x) => { x } //~ ERROR identifier `x` is bound more than once in the same pattern
+   |             ^ used in a pattern more than once
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0416`.

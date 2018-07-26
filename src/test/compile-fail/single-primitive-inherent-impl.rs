@@ -15,9 +15,9 @@
 #![no_std]
 
 // OK
-#[lang = "char"]
-impl char {}
+#[lang = "str_alloc"]
+impl str {}
 
-impl char {
-//~^ error: only a single inherent implementation marked with `#[lang = "char"]` is allowed for the `char` primitive
+impl str {
+//~^ error: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
 }

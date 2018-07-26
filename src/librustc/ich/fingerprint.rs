@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::mem;
 use rustc_data_structures::stable_hasher;
+use serialize;
+use serialize::opaque::{EncodeResult, Encoder, Decoder};
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy)]
 pub struct Fingerprint(u64, u64);
 
 impl Fingerprint {
-    #[inline]
-    pub fn zero() -> Fingerprint {
-        Fingerprint(0, 0)
-    }
+
+    pub const ZERO: Fingerprint = Fingerprint(0, 0);
 
     #[inline]
     pub fn from_smaller_hash(hash: u64) -> Fingerprint {
@@ -44,14 +45,42 @@ impl Fingerprint {
         )
     }
 
+    // Combines two hashes in an order independent way. Make sure this is what
+    // you want.
+    #[inline]
+    pub fn combine_commutative(self, other: Fingerprint) -> Fingerprint {
+        let a = (self.1 as u128) << 64 | self.0 as u128;
+        let b = (other.1 as u128) << 64 | other.0 as u128;
+
+        let c = a.wrapping_add(b);
+
+        Fingerprint((c >> 64) as u64, c as u64)
+    }
+
     pub fn to_hex(&self) -> String {
         format!("{:x}{:x}", self.0, self.1)
     }
 
+    pub fn encode_opaque(&self, encoder: &mut Encoder) -> EncodeResult {
+        let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
+
+        encoder.emit_raw_bytes(&bytes);
+        Ok(())
+    }
+
+    pub fn decode_opaque<'a>(decoder: &mut Decoder<'a>) -> Result<Fingerprint, String> {
+        let mut bytes = [0; 16];
+
+        decoder.read_raw_bytes(&mut bytes)?;
+
+        let [l, r]: [u64; 2] = unsafe { mem::transmute(bytes) };
+
+        Ok(Fingerprint(u64::from_le(l), u64::from_le(r)))
+    }
 }
 
 impl ::std::fmt::Display for Fingerprint {
-    fn fmt(&self, formatter: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(formatter, "{:x}-{:x}", self.0, self.1)
     }
 }
@@ -69,5 +98,21 @@ impl<CTX> stable_hasher::HashStable<CTX> for Fingerprint {
                                           _: &mut CTX,
                                           hasher: &mut stable_hasher::StableHasher<W>) {
         ::std::hash::Hash::hash(self, hasher);
+    }
+}
+
+impl serialize::UseSpecializedEncodable for Fingerprint { }
+
+impl serialize::UseSpecializedDecodable for Fingerprint { }
+
+impl serialize::SpecializedEncoder<Fingerprint> for serialize::opaque::Encoder {
+    fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
+        f.encode_opaque(self)
+    }
+}
+
+impl<'a> serialize::SpecializedDecoder<Fingerprint> for serialize::opaque::Decoder<'a> {
+    fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
+        Fingerprint::decode_opaque(self)
     }
 }

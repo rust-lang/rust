@@ -1,0 +1,17 @@
+error[E0597]: `*m` does not live long enough
+  --> $DIR/dropck-object-cycle.rs:37:31
+   |
+LL |     assert_eq!(object_invoke1(&*m), (4,5));
+   |                               ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `m` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

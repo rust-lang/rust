@@ -13,7 +13,7 @@
 #![feature(core)]
 
 /*!
- * Tests the range assertion wraparound case in trans::middle::adt::load_discr.
+ * Tests the range assertion wraparound case when reading discriminants.
  */
 
 #[repr(u8)]

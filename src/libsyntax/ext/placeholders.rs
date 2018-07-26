@@ -11,7 +11,7 @@
 use ast::{self, NodeId};
 use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
-use ext::expand::{Expansion, ExpansionKind};
+use ext::expand::{AstFragment, AstFragmentKind};
 use ext::hygiene::Mark;
 use tokenstream::TokenStream;
 use fold::*;
@@ -22,18 +22,19 @@ use util::small_vector::SmallVector;
 
 use std::collections::HashMap;
 
-pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
+pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
         dummy_spanned(ast::Mac_ {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
             tts: TokenStream::empty().into(),
+            delim: ast::MacDelimiter::Brace,
         })
     }
 
     let ident = keywords::Invalid.ident();
     let attrs = Vec::new();
     let generics = ast::Generics::default();
-    let vis = ast::Visibility::Inherited;
+    let vis = dummy_spanned(ast::VisibilityKind::Inherited);
     let span = DUMMY_SP;
     let expr_placeholder = || P(ast::Expr {
         id, span,
@@ -42,31 +43,36 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     });
 
     match kind {
-        ExpansionKind::Expr => Expansion::Expr(expr_placeholder()),
-        ExpansionKind::OptExpr => Expansion::OptExpr(Some(expr_placeholder())),
-        ExpansionKind::Items => Expansion::Items(SmallVector::one(P(ast::Item {
+        AstFragmentKind::Expr => AstFragment::Expr(expr_placeholder()),
+        AstFragmentKind::OptExpr => AstFragment::OptExpr(Some(expr_placeholder())),
+        AstFragmentKind::Items => AstFragment::Items(SmallVector::one(P(ast::Item {
             id, span, ident, vis, attrs,
             node: ast::ItemKind::Mac(mac_placeholder()),
             tokens: None,
         }))),
-        ExpansionKind::TraitItems => Expansion::TraitItems(SmallVector::one(ast::TraitItem {
+        AstFragmentKind::TraitItems => AstFragment::TraitItems(SmallVector::one(ast::TraitItem {
             id, span, ident, attrs, generics,
             node: ast::TraitItemKind::Macro(mac_placeholder()),
             tokens: None,
         })),
-        ExpansionKind::ImplItems => Expansion::ImplItems(SmallVector::one(ast::ImplItem {
+        AstFragmentKind::ImplItems => AstFragment::ImplItems(SmallVector::one(ast::ImplItem {
             id, span, ident, vis, attrs, generics,
             node: ast::ImplItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
         })),
-        ExpansionKind::Pat => Expansion::Pat(P(ast::Pat {
+        AstFragmentKind::ForeignItems =>
+            AstFragment::ForeignItems(SmallVector::one(ast::ForeignItem {
+                id, span, ident, vis, attrs,
+                node: ast::ForeignItemKind::Macro(mac_placeholder()),
+            })),
+        AstFragmentKind::Pat => AstFragment::Pat(P(ast::Pat {
             id, span, node: ast::PatKind::Mac(mac_placeholder()),
         })),
-        ExpansionKind::Ty => Expansion::Ty(P(ast::Ty {
+        AstFragmentKind::Ty => AstFragment::Ty(P(ast::Ty {
             id, span, node: ast::TyKind::Mac(mac_placeholder()),
         })),
-        ExpansionKind::Stmts => Expansion::Stmts(SmallVector::one({
+        AstFragmentKind::Stmts => AstFragment::Stmts(SmallVector::one({
             let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ast::ThinVec::new()));
             ast::Stmt { id, span, node: ast::StmtKind::Mac(mac) }
         })),
@@ -74,7 +80,7 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
 }
 
 pub struct PlaceholderExpander<'a, 'b: 'a> {
-    expansions: HashMap<ast::NodeId, Expansion>,
+    expanded_fragments: HashMap<ast::NodeId, AstFragment>,
     cx: &'a mut ExtCtxt<'b>,
     monotonic: bool,
 }
@@ -83,27 +89,27 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
     pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
         PlaceholderExpander {
             cx,
-            expansions: HashMap::new(),
+            expanded_fragments: HashMap::new(),
             monotonic,
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion, derives: Vec<Mark>) {
-        let mut expansion = expansion.fold_with(self);
-        if let Expansion::Items(mut items) = expansion {
+    pub fn add(&mut self, id: ast::NodeId, fragment: AstFragment, derives: Vec<Mark>) {
+        let mut fragment = fragment.fold_with(self);
+        if let AstFragment::Items(mut items) = fragment {
             for derive in derives {
                 match self.remove(NodeId::placeholder_from_mark(derive)) {
-                    Expansion::Items(derived_items) => items.extend(derived_items),
+                    AstFragment::Items(derived_items) => items.extend(derived_items),
                     _ => unreachable!(),
                 }
             }
-            expansion = Expansion::Items(items);
+            fragment = AstFragment::Items(items);
         }
-        self.expansions.insert(id, expansion);
+        self.expanded_fragments.insert(id, fragment);
     }
 
-    fn remove(&mut self, id: ast::NodeId) -> Expansion {
-        self.expansions.remove(&id).unwrap()
+    fn remove(&mut self, id: ast::NodeId) -> AstFragment {
+        self.expanded_fragments.remove(&id).unwrap()
     }
 }
 
@@ -132,6 +138,13 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
         }
     }
 
+    fn fold_foreign_item(&mut self, item: ast::ForeignItem) -> SmallVector<ast::ForeignItem> {
+        match item.node {
+            ast::ForeignItemKind::Macro(_) => self.remove(item.id).make_foreign_items(),
+            _ => noop_fold_foreign_item(item, self),
+        }
+    }
+
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
         match expr.node {
             ast::ExprKind::Mac(_) => self.remove(expr.id).make_expr(),
@@ -147,18 +160,18 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
-        let (style, mut expansion) = match stmt.node {
+        let (style, mut stmts) = match stmt.node {
             ast::StmtKind::Mac(mac) => (mac.1, self.remove(stmt.id).make_stmts()),
             _ => return noop_fold_stmt(stmt, self),
         };
 
         if style == ast::MacStmtStyle::Semicolon {
-            if let Some(stmt) = expansion.pop() {
-                expansion.push(stmt.add_trailing_semicolon());
+            if let Some(stmt) = stmts.pop() {
+                stmts.push(stmt.add_trailing_semicolon());
             }
         }
 
-        expansion
+        stmts
     }
 
     fn fold_pat(&mut self, pat: P<ast::Pat>) -> P<ast::Pat> {

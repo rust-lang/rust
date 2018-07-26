@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare no libc to test ffi with
 
 #![feature(libc)]
 
@@ -33,7 +34,7 @@ mod m {
 
     #[link_name = "m"]
     extern {
-        #[cfg(unix)]
+        #[cfg(any(unix, target_os = "cloudabi"))]
         #[link_name="lgamma_r"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
         #[cfg(windows)]

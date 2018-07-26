@@ -16,6 +16,7 @@ use complex_impl_support::{External, M};
 
 struct Q;
 
-impl<R> External for (Q, R) {}
+impl<R> External for (Q, R) {} //~ ERROR must be used
+//~^ ERROR conflicting implementations of trait
 
 fn main() {}

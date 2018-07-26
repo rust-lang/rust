@@ -59,6 +59,7 @@ pub trait ToOwned {
     /// let vv: Vec<i32> = v.to_owned();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "cloning is often expensive and is not expected to have side effects"]
     fn to_owned(&self) -> Self::Owned;
 
     /// Uses borrowed data to replace owned data, usually by cloning.
@@ -191,7 +192,6 @@ impl<'a, B: ?Sized> Cow<'a, B>
     /// # Examples
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
     /// use std::borrow::Cow;
     ///
     /// let mut cow = Cow::Borrowed("foo");
@@ -233,7 +233,7 @@ impl<'a, B: ?Sized> Cow<'a, B>
     ///
     /// assert_eq!(
     ///   cow.into_owned(),
-    ///   Cow::Owned(String::from(s))
+    ///   String::from(s)
     /// );
     /// ```
     ///
@@ -247,7 +247,7 @@ impl<'a, B: ?Sized> Cow<'a, B>
     ///
     /// assert_eq!(
     ///   cow.into_owned(),
-    ///   Cow::Owned(String::from(s))
+    ///   String::from(s)
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

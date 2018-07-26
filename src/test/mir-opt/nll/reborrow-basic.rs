@@ -12,8 +12,8 @@
 // in the type of `r_a` must outlive the region (`R7`) that appears in
 // the type of `r_b`
 
-// compile-flags:-Znll -Zverbose
-//                     ^^^^^^^^^ force compiler to dump more region information
+// compile-flags:-Zborrowck=mir -Zverbose
+//                              ^^^^^^^^^ force compiler to dump more region information
 
 #![allow(warnings)]
 
@@ -27,13 +27,12 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node13.nll.0.mir
-// | '_#5r: {bb0[6], bb0[7], bb0[8], bb0[9], bb0[10], bb0[11], bb0[12], bb0[13], bb0[14]}
+// START rustc.main.nll.0.mir
+// | '_#7r    | U0 | {bb0[4], bb0[8..=17]}
 // ...
-// | '_#7r: {bb0[11], bb0[12], bb0[13], bb0[14]}
-// END rustc.node13.nll.0.mir
-// START rustc.node13.nll.0.mir
-// let _2: &'_#5r mut i32;
+// | '_#9r    | U0 | {bb0[10], bb0[14..=17]}
 // ...
-// let _4: &'_#7r mut i32;
-// END rustc.node13.nll.0.mir
+// let _4: &'_#9r mut i32;
+// ...
+// let _2: &'_#7r mut i32;
+// END rustc.main.nll.0.mir

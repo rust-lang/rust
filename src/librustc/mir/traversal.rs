@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
-
 use rustc_data_structures::bitvec::BitVector;
-use rustc_data_structures::indexed_vec::Idx;
 
 use super::*;
 
@@ -35,7 +32,7 @@ use super::*;
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    visited: BitVector,
+    visited: BitVector<BasicBlock>,
     worklist: Vec<BasicBlock>,
 }
 
@@ -60,14 +57,14 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
     fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
         while let Some(idx) = self.worklist.pop() {
-            if !self.visited.insert(idx.index()) {
+            if !self.visited.insert(idx) {
                 continue;
             }
 
             let data = &self.mir[idx];
 
             if let Some(ref term) = data.terminator {
-                for &succ in term.successors().iter() {
+                for &succ in term.successors() {
                     self.worklist.push(succ);
                 }
             }
@@ -77,7 +74,17 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
         None
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // All the blocks, minus the number of blocks we've visited.
+        let remaining = self.mir.basic_blocks().len() - self.visited.count();
+
+        // We will visit all remaining blocks exactly once.
+        (remaining, Some(remaining))
+    }
 }
+
+impl<'a, 'tcx> ExactSizeIterator for Preorder<'a, 'tcx> {}
 
 /// Postorder traversal of a graph.
 ///
@@ -99,8 +106,8 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    visited: BitVector,
-    visit_stack: Vec<(BasicBlock, vec::IntoIter<BasicBlock>)>
+    visited: BitVector<BasicBlock>,
+    visit_stack: Vec<(BasicBlock, Successors<'a>)>
 }
 
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
@@ -115,11 +122,8 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         let data = &po.mir[root];
 
         if let Some(ref term) = data.terminator {
-            po.visited.insert(root.index());
-
-            let succs = term.successors().into_owned().into_iter();
-
-            po.visit_stack.push((root, succs));
+            po.visited.insert(root);
+            po.visit_stack.push((root, term.successors()));
             po.traverse_successor();
         }
 
@@ -176,7 +180,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         // two iterations yield `C` and finally `A` for a final traversal of [E, D, B, C, A]
         loop {
             let bb = if let Some(&mut (_, ref mut iter)) = self.visit_stack.last_mut() {
-                if let Some(bb) = iter.next() {
+                if let Some(&bb) = iter.next() {
                     bb
                 } else {
                     break;
@@ -185,10 +189,9 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
                 break;
             };
 
-            if self.visited.insert(bb.index()) {
-                if let Some(ref term) = self.mir[bb].terminator {
-                    let succs = term.successors().into_owned().into_iter();
-                    self.visit_stack.push((bb, succs));
+            if self.visited.insert(bb) {
+                if let Some(term) = &self.mir[bb].terminator {
+                    self.visit_stack.push((bb, term.successors()));
                 }
             }
         }
@@ -210,7 +213,17 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 
         next.map(|(bb, _)| (bb, &self.mir[bb]))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // All the blocks, minus the number of blocks we've visited.
+        let remaining = self.mir.basic_blocks().len() - self.visited.count();
+
+        // We will visit all remaining blocks exactly once.
+        (remaining, Some(remaining))
+    }
 }
+
+impl<'a, 'tcx> ExactSizeIterator for Postorder<'a, 'tcx> {}
 
 /// Reverse postorder traversal of a graph
 ///
@@ -276,4 +289,10 @@ impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
 
         self.blocks.get(self.idx).map(|&bb| (bb, &self.mir[bb]))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.idx, Some(self.idx))
+    }
 }
+
+impl<'a, 'tcx> ExactSizeIterator for ReversePostorder<'a, 'tcx> {}

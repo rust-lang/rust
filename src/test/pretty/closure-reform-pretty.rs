@@ -17,7 +17,7 @@ fn call_it(f: Box<FnMut(String) -> String>) { }
 
 fn call_this<F>(f: F) where F: Fn(&str) + Send { }
 
-fn call_that<F>(f: F) where F: for<'a>Fn(&'a isize, &'a isize) -> isize { }
+fn call_that<F>(f: F) where F: for<'a> Fn(&'a isize, &'a isize) -> isize { }
 
 fn call_extern(f: fn() -> isize) { }
 

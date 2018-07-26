@@ -20,13 +20,16 @@ use namespace::Namespace;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
+use rustc::ty::GenericParamDefKind;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
 use rustc::infer::{self, InferOk};
+use rustc::middle::stability;
 use syntax::ast;
 use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
-use syntax_pos::Span;
+use syntax_pos::{Span, symbol::Symbol};
 use rustc::hir;
+use rustc::lint;
 use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -37,13 +40,14 @@ pub use self::PickKind::*;
 
 /// Boolean flag used to indicate if this search is for a suggestion
 /// or not.  If true, we can allow ambiguity and so forth.
+#[derive(Clone, Copy)]
 pub struct IsSuggestion(pub bool);
 
 struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
     mode: Mode,
-    method_name: Option<ast::Name>,
+    method_name: Option<ast::Ident>,
     return_type: Option<Ty<'tcx>>,
     steps: Rc<Vec<CandidateStep<'tcx>>>,
     inherent_candidates: Vec<Candidate<'tcx>>,
@@ -64,6 +68,8 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
     unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+
+    is_suggestion: IsSuggestion,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
@@ -77,6 +83,12 @@ impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
 struct CandidateStep<'tcx> {
     self_ty: Ty<'tcx>,
     autoderefs: usize,
+    // true if the type results from a dereference of a raw pointer.
+    // when assembling candidates, we include these steps, but not when
+    // picking methods. This so that if we have `foo: *const Foo` and `Foo` has methods
+    // `fn by_raw_ptr(self: *const Self)` and `fn by_ref(&self)`, then
+    // `foo.by_raw_ptr()` will work and `foo.by_ref()` won't.
+    from_unsafe_deref: bool,
     unsize: bool,
 }
 
@@ -107,7 +119,7 @@ enum ProbeResult {
     Match,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Pick<'tcx> {
     pub item: ty::AssociatedItem,
     pub kind: PickKind<'tcx>,
@@ -183,7 +195,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                scope_expr_id);
         let method_names =
             self.probe_op(span, mode, None, Some(return_type), IsSuggestion(true),
-                          self_ty, scope_expr_id, ProbeScope::TraitsInScope,
+                          self_ty, scope_expr_id, ProbeScope::AllTraits,
                           |probe_cx| Ok(probe_cx.candidate_method_names()))
                 .unwrap_or(vec![]);
          method_names
@@ -192,7 +204,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  self.probe_op(
                      span, mode, Some(method_name), Some(return_type),
                      IsSuggestion(true), self_ty, scope_expr_id,
-                     ProbeScope::TraitsInScope, |probe_cx| probe_cx.pick()
+                     ProbeScope::AllTraits, |probe_cx| probe_cx.pick()
                  ).ok().map(|pick| pick.item)
              })
             .collect()
@@ -201,7 +213,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn probe_for_name(&self,
                           span: Span,
                           mode: Mode,
-                          item_name: ast::Name,
+                          item_name: ast::Ident,
                           is_suggestion: IsSuggestion,
                           self_ty: Ty<'tcx>,
                           scope_expr_id: ast::NodeId,
@@ -225,7 +237,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn probe_op<OP,R>(&'a self,
                       span: Span,
                       mode: Mode,
-                      method_name: Option<ast::Name>,
+                      method_name: Option<ast::Ident>,
                       return_type: Option<Ty<'tcx>>,
                       is_suggestion: IsSuggestion,
                       self_ty: Ty<'tcx>,
@@ -243,7 +255,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // think cause spurious errors. Really though this part should
         // take place in the `self.probe` below.
         let steps = if mode == Mode::MethodCall {
-            match self.create_steps(span, self_ty, is_suggestion) {
+            match self.create_steps(span, scope_expr_id, self_ty, is_suggestion) {
                 Some(steps) => steps,
                 None => {
                     return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
@@ -257,6 +269,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             vec![CandidateStep {
                      self_ty,
                      autoderefs: 0,
+                     from_unsafe_deref: false,
                      unsize: false,
                  }]
         };
@@ -268,8 +281,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // this creates one big transaction so that all type variables etc
         // that we create during the probe process are removed later
         self.probe(|_| {
-            let mut probe_cx =
-                ProbeContext::new(self, span, mode, method_name, return_type, Rc::new(steps));
+            let mut probe_cx = ProbeContext::new(
+                self, span, mode, method_name, return_type, Rc::new(steps), is_suggestion,
+            );
 
             probe_cx.assemble_inherent_candidates();
             match scope {
@@ -284,19 +298,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn create_steps(&self,
                     span: Span,
+                    scope_expr_id: ast::NodeId,
                     self_ty: Ty<'tcx>,
                     is_suggestion: IsSuggestion)
                     -> Option<Vec<CandidateStep<'tcx>>> {
         // FIXME: we don't need to create the entire steps in one pass
 
-        let mut autoderef = self.autoderef(span, self_ty);
+        let mut autoderef = self.autoderef(span, self_ty).include_raw_pointers();
+        let mut reached_raw_pointer = false;
         let mut steps: Vec<_> = autoderef.by_ref()
             .map(|(ty, d)| {
-                CandidateStep {
+                let step = CandidateStep {
                     self_ty: ty,
                     autoderefs: d,
+                    from_unsafe_deref: reached_raw_pointer,
                     unsize: false,
+                };
+                if let ty::TyRawPtr(_) = ty.sty {
+                    // all the subsequent steps will be from_unsafe_deref
+                    reached_raw_pointer = true;
                 }
+                step
             })
             .collect();
 
@@ -304,12 +326,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match final_ty.sty {
             ty::TyInfer(ty::TyVar(_)) => {
                 // Ended in an inference variable. If we are doing
-                // a real method lookup, this is a hard error (it's an
-                // ambiguity and we can't make progress).
+                // a real method lookup, this is a hard error because it's
+                // possible that there will be multiple applicable methods.
                 if !is_suggestion.0 {
-                    let t = self.structurally_resolved_type(span, final_ty);
-                    assert_eq!(t, self.tcx.types.err);
-                    return None
+                    if reached_raw_pointer
+                    && !self.tcx.features().arbitrary_self_types {
+                        // this case used to be allowed by the compiler,
+                        // so we do a future-compat lint here for the 2015 edition
+                        // (see https://github.com/rust-lang/rust/issues/46906)
+                        if self.tcx.sess.rust_2018() {
+                          span_err!(self.tcx.sess, span, E0699,
+                                    "the type of this value must be known \
+                                     to call a method on a raw pointer on it");
+                        } else {
+                            self.tcx.lint_node(
+                                lint::builtin::TYVAR_BEHIND_RAW_POINTER,
+                                scope_expr_id,
+                                span,
+                                &format!("type annotations needed"));
+                        }
+                    } else {
+                        let t = self.structurally_resolved_type(span, final_ty);
+                        assert_eq!(t, self.tcx.types.err);
+                        return None
+                    }
                 } else {
                     // If we're just looking for suggestions,
                     // though, ambiguity is no big thing, we can
@@ -322,6 +362,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 steps.push(CandidateStep {
                     self_ty: self.tcx.mk_slice(elem_ty),
                     autoderefs: dereferences,
+                    // this could be from an unsafe deref if we had
+                    // a *mut/const [T; N]
+                    from_unsafe_deref: reached_raw_pointer,
                     unsize: true,
                 });
             }
@@ -339,9 +382,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
            span: Span,
            mode: Mode,
-           method_name: Option<ast::Name>,
+           method_name: Option<ast::Ident>,
            return_type: Option<Ty<'tcx>>,
-           steps: Rc<Vec<CandidateStep<'tcx>>>)
+           steps: Rc<Vec<CandidateStep<'tcx>>>,
+           is_suggestion: IsSuggestion)
            -> ProbeContext<'a, 'gcx, 'tcx> {
         ProbeContext {
             fcx,
@@ -357,6 +401,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             allow_similar_names: false,
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),
+            is_suggestion,
         }
     }
 
@@ -377,7 +422,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let def_scope = self.tcx.adjust(name, item.container.id(), self.body_id).1;
+            let def_scope = self.tcx.adjust_ident(name, item.container.id(), self.body_id).1;
             item.vis.is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -427,9 +472,21 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyStr => {
                 let lang_def_id = lang_items.str_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.str_alloc_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TySlice(_) => {
                 let lang_def_id = lang_items.slice_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.slice_u8_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.slice_alloc_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.slice_u8_alloc_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
@@ -460,7 +517,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let lang_def_id = lang_items.i128_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::IntTy::Is) => {
+            ty::TyInt(ast::IntTy::Isize) => {
                 let lang_def_id = lang_items.isize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
@@ -484,16 +541,22 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let lang_def_id = lang_items.u128_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::UintTy::Us) => {
+            ty::TyUint(ast::UintTy::Usize) => {
                 let lang_def_id = lang_items.usize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyFloat(ast::FloatTy::F32) => {
                 let lang_def_id = lang_items.f32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.f32_runtime_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyFloat(ast::FloatTy::F64) => {
                 let lang_def_id = lang_items.f64_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.f64_runtime_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             _ => {}
@@ -588,14 +651,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             .filter_map(|predicate| {
                 match *predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
-                        match trait_predicate.0.trait_ref.self_ty().sty {
+                        match trait_predicate.skip_binder().trait_ref.self_ty().sty {
                             ty::TyParam(ref p) if *p == param_ty => {
                                 Some(trait_predicate.to_poly_trait_ref())
                             }
                             _ => None,
                         }
                     }
-                    ty::Predicate::Equate(..) |
                     ty::Predicate::Subtype(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::RegionOutlives(..) |
@@ -736,7 +798,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn candidate_method_names(&self) -> Vec<ast::Name> {
+    fn candidate_method_names(&self) -> Vec<ast::Ident> {
         let mut set = FxHashSet();
         let mut names: Vec<_> = self.inherent_candidates
             .iter()
@@ -748,12 +810,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     true
                 }
             })
-            .map(|candidate| candidate.item.name)
+            .map(|candidate| candidate.item.ident)
             .filter(|&name| set.insert(name))
             .collect();
 
         // sort them by the name so we have a stable result
-        names.sort_by_key(|n| n.as_str());
+        names.sort_by_cached_key(|n| n.as_str());
         names
     }
 
@@ -827,7 +889,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             .iter()
             .filter(|step| {
                 debug!("pick_core: step={:?}", step);
-                !step.self_ty.references_error()
+                // skip types that are from a type error or that would require dereferencing
+                // a raw pointer
+                !step.self_ty.references_error() && !step.from_unsafe_deref
             }).flat_map(|step| {
                 self.pick_by_value_method(step).or_else(|| {
                 self.pick_autorefd_method(step, hir::MutImmutable).or_else(|| {
@@ -854,9 +918,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 pick.autoderefs = step.autoderefs;
 
                 // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::TyRef(_, mt) = step.self_ty.sty {
+                if let ty::TyRef(_, _, mutbl) = step.self_ty.sty {
                     pick.autoderefs += 1;
-                    pick.autoref = Some(mt.mutbl);
+                    pick.autoref = Some(mutbl);
                 }
 
                 pick
@@ -894,30 +958,57 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
 
         let mut possibly_unsatisfied_predicates = Vec::new();
+        let mut unstable_candidates = Vec::new();
 
-        debug!("searching inherent candidates");
-        if let Some(pick) = self.consider_candidates(self_ty,
-                                                     &self.inherent_candidates,
-                                                     &mut possibly_unsatisfied_predicates) {
-            return Some(pick);
+        for (kind, candidates) in &[
+            ("inherent", &self.inherent_candidates),
+            ("extension", &self.extension_candidates),
+        ] {
+            debug!("searching {} candidates", kind);
+            let res = self.consider_candidates(
+                self_ty,
+                candidates.iter(),
+                &mut possibly_unsatisfied_predicates,
+                Some(&mut unstable_candidates),
+            );
+            if let Some(pick) = res {
+                if !self.is_suggestion.0 && !unstable_candidates.is_empty() {
+                    if let Ok(p) = &pick {
+                        // Emit a lint if there are unstable candidates alongside the stable ones.
+                        //
+                        // We suppress warning if we're picking the method only because it is a
+                        // suggestion.
+                        self.emit_unstable_name_collision_hint(p, &unstable_candidates);
+                    }
+                }
+                return Some(pick);
+            }
         }
 
-        debug!("searching extension candidates");
-        let res = self.consider_candidates(self_ty,
-                                           &self.extension_candidates,
-                                           &mut possibly_unsatisfied_predicates);
-        if let None = res {
+        debug!("searching unstable candidates");
+        let res = self.consider_candidates(
+            self_ty,
+            unstable_candidates.into_iter().map(|(c, _)| c),
+            &mut possibly_unsatisfied_predicates,
+            None,
+        );
+        if res.is_none() {
             self.unsatisfied_predicates.extend(possibly_unsatisfied_predicates);
         }
         res
     }
 
-    fn consider_candidates(&self,
-                           self_ty: Ty<'tcx>,
-                           probes: &[Candidate<'tcx>],
-                           possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>)
-                           -> Option<PickResult<'tcx>> {
-        let mut applicable_candidates: Vec<_> = probes.iter()
+    fn consider_candidates<'b, ProbesIter>(
+        &self,
+        self_ty: Ty<'tcx>,
+        probes: ProbesIter,
+        possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>,
+        unstable_candidates: Option<&mut Vec<(&'b Candidate<'tcx>, Symbol)>>,
+    ) -> Option<PickResult<'tcx>>
+    where
+        ProbesIter: Iterator<Item = &'b Candidate<'tcx>> + Clone,
+    {
+        let mut applicable_candidates: Vec<_> = probes.clone()
             .map(|probe| {
                 (probe, self.consider_probe(self_ty, probe, possibly_unsatisfied_predicates))
             })
@@ -932,8 +1023,20 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             }
         }
 
+        if let Some(uc) = unstable_candidates {
+            applicable_candidates.retain(|&(p, _)| {
+                if let stability::EvalResult::Deny { feature, .. } =
+                    self.tcx.eval_stability(p.item.def_id, None, self.span)
+                {
+                    uc.push((p, feature));
+                    return false;
+                }
+                true
+            });
+        }
+
         if applicable_candidates.len() > 1 {
-            let sources = probes.iter()
+            let sources = probes
                 .map(|p| self.candidate_source(p, self_ty))
                 .collect();
             return Some(Err(MethodError::Ambiguity(sources)));
@@ -946,6 +1049,39 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 Err(MethodError::BadReturnType)
             }
         })
+    }
+
+    fn emit_unstable_name_collision_hint(
+        &self,
+        stable_pick: &Pick,
+        unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
+    ) {
+        let mut diag = self.tcx.struct_span_lint_node(
+            lint::builtin::UNSTABLE_NAME_COLLISIONS,
+            self.fcx.body_id,
+            self.span,
+            "a method with this name may be added to the standard library in the future",
+        );
+
+        // FIXME: This should be a `span_suggestion` instead of `help`. However `self.span` only
+        // highlights the method name, so we can't use it. Also consider reusing the code from
+        // `report_method_error()`.
+        diag.help(&format!(
+            "call with fully qualified syntax `{}(...)` to keep using the current method",
+            self.tcx.item_path_str(stable_pick.item.def_id),
+        ));
+
+        if ::rustc::session::config::nightly_options::is_nightly_build() {
+            for (candidate, feature) in unstable_candidates {
+                diag.note(&format!(
+                    "add #![feature({})] to the crate attributes to enable `{}`",
+                    feature,
+                    self.tcx.item_path_str(candidate.item.def_id),
+                ));
+            }
+        }
+
+        diag.emit();
     }
 
     fn select_trait_candidate(&self, trait_ref: ty::TraitRef<'tcx>)
@@ -1038,7 +1174,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     let predicate = trait_ref.to_predicate();
                     let obligation =
                         traits::Obligation::new(cause.clone(), self.param_env, predicate);
-                    if !selcx.evaluate_obligation(&obligation) {
+                    if !self.predicate_may_hold(&obligation) {
                         if self.probe(|_| self.select_trait_candidate(trait_ref).is_err()) {
                             // This candidate's primary obligation doesn't even
                             // select - don't bother registering anything in
@@ -1066,10 +1202,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // Evaluate those obligations to see if they might possibly hold.
             for o in candidate_obligations.into_iter().chain(sub_obligations) {
                 let o = self.resolve_type_vars_if_possible(&o);
-                if !selcx.evaluate_obligation(&o) {
+                if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
                     if let &ty::Predicate::Trait(ref pred) = &o.predicate {
-                        possibly_unsatisfied_predicates.push(pred.0.trait_ref);
+                        possibly_unsatisfied_predicates.push(pred.skip_binder().trait_ref);
                     }
                 }
             }
@@ -1147,7 +1283,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let steps = self.steps.clone();
         self.probe(|_| {
             let mut pcx = ProbeContext::new(self.fcx, self.span, self.mode, self.method_name,
-                                            self.return_type, steps);
+                                            self.return_type, steps, IsSuggestion(true));
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
             pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)?;
@@ -1173,14 +1309,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 Ok(None)
             } else {
                 let best_name = {
-                    let names = applicable_close_candidates.iter().map(|cand| &cand.name);
+                    let names = applicable_close_candidates.iter().map(|cand| &cand.ident.name);
                     find_best_match_for_name(names,
                                              &self.method_name.unwrap().as_str(),
                                              None)
                 }.unwrap();
                 Ok(applicable_close_candidates
                    .into_iter()
-                   .find(|method| method.name == best_name))
+                   .find(|method| method.ident.name == best_name))
             }
         })
     }
@@ -1196,6 +1332,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.method_has_self_argument,
             Mode::Path => match item.kind {
+                ty::AssociatedKind::Existential |
                 ty::AssociatedKind::Type => false,
                 ty::AssociatedKind::Method | ty::AssociatedKind::Const => true
             },
@@ -1243,31 +1380,28 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // method yet. So create fresh variables here for those too,
         // if there are any.
         let generics = self.tcx.generics_of(method);
-        assert_eq!(substs.types().count(), generics.parent_types as usize);
-        assert_eq!(substs.regions().count(), generics.parent_regions as usize);
+        assert_eq!(substs.len(), generics.parent_count as usize);
 
         // Erase any late-bound regions from the method and substitute
         // in the values from the substitution.
         let xform_fn_sig = self.erase_late_bound_regions(&fn_sig);
 
-        if generics.types.is_empty() && generics.regions.is_empty() {
+        if generics.params.is_empty() {
             xform_fn_sig.subst(self.tcx, substs)
         } else {
-            let substs = Substs::for_item(self.tcx, method, |def, _| {
-                let i = def.index as usize;
+            let substs = Substs::for_item(self.tcx, method, |param, _| {
+                let i = param.index as usize;
                 if i < substs.len() {
-                    substs.region_at(i)
+                    substs[i]
                 } else {
-                    // In general, during probe we erase regions. See
-                    // `impl_self_ty()` for an explanation.
-                    self.tcx.types.re_erased
-                }
-            }, |def, cur_substs| {
-                let i = def.index as usize;
-                if i < substs.len() {
-                    substs.type_at(i)
-                } else {
-                    self.type_var_for_def(self.span, def, cur_substs)
+                    match param.kind {
+                        GenericParamDefKind::Lifetime => {
+                            // In general, during probe we erase regions. See
+                            // `impl_self_ty()` for an explanation.
+                            self.tcx.types.re_erased.into()
+                        }
+                        GenericParamDefKind::Type {..} => self.var_for_def(self.span, param),
+                    }
                 }
             });
             xform_fn_sig.subst(self.tcx, substs)
@@ -1280,12 +1414,15 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn fresh_item_substs(&self, def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx,
-                         def_id,
-                         |_, _| self.tcx.types.re_erased,
-                         |_, _| self.next_ty_var(
-                             TypeVariableOrigin::SubstitutionPlaceholder(
-                                 self.tcx.def_span(def_id))))
+        Substs::for_item(self.tcx, def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => self.tcx.types.re_erased.into(),
+                GenericParamDefKind::Type {..} => {
+                    self.next_ty_var(TypeVariableOrigin::SubstitutionPlaceholder(
+                        self.tcx.def_span(def_id))).into()
+                }
+            }
+        })
     }
 
     /// Replace late-bound-regions bound by `value` with `'static` using
@@ -1320,7 +1457,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx.associated_items(def_id)
                     .filter(|x| {
-                        let dist = lev_distance(&*name.as_str(), &x.name.as_str());
+                        let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         Namespace::from(x.kind) == Namespace::Value && dist > 0
                         && dist <= max_dist
                     })
@@ -1350,7 +1487,10 @@ impl<'tcx> Candidate<'tcx> {
                     // inference variables or other artifacts. This
                     // means they are safe to put into the
                     // `WhereClausePick`.
-                    assert!(!trait_ref.substs().needs_infer());
+                    assert!(
+                        !trait_ref.skip_binder().substs.needs_infer()
+                            && !trait_ref.skip_binder().substs.has_skol()
+                    );
 
                     WhereClausePick(trait_ref.clone())
                 }

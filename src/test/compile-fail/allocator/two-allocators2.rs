@@ -12,11 +12,9 @@
 // no-prefer-dynamic
 // error-pattern: the #[global_allocator] in
 
-#![feature(global_allocator, allocator_api)]
-
 extern crate system_allocator;
 
-use std::heap::System;
+use std::alloc::System;
 
 #[global_allocator]
 static A: System = System;

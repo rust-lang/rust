@@ -28,14 +28,14 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node12.EraseRegions.after.mir
+// START rustc.{{impl}}-foo.EraseRegions.after.mir
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[317d]::{{impl}}[0]::foo[0] }, BrAnon(0)) Test, _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(0:5) => validate_1[317d]::{{impl}}[0]::foo[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId(0/0:5 ~ validate_1[317d]::{{impl}}[0]::foo[0]), BrAnon(0)) Test, _2: &ReFree(DefId(0/0:5 ~ validate_1[317d]::{{impl}}[0]::foo[0]), BrAnon(1)) mut i32]);
 //         ...
 //         return;
 //     }
-// END rustc.node12.EraseRegions.after.mir
-// START rustc.node23.EraseRegions.after.mir
+// END rustc.{{impl}}-foo.EraseRegions.after.mir
+// START rustc.main.EraseRegions.after.mir
 // fn main() -> () {
 //     ...
 //     bb0: {
@@ -47,7 +47,7 @@ fn main() {
 //         _5 = &ReErased mut (*_6);
 //         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(10)))]);
 //         Validate(Release, [_2: (), _3: &ReScope(Node(ItemLocalId(10))) Test, _5: &ReScope(Node(ItemLocalId(10))) mut i32]);
-//         _2 = const Test::foo(_3, _5) -> bb1;
+//         _2 = const Test::foo(move _3, move _5) -> bb1;
 //     }
 //
 //     bb1: {
@@ -57,23 +57,20 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.node23.EraseRegions.after.mir
-// START rustc.node50.EraseRegions.after.mir
+// END rustc.main.EraseRegions.after.mir
+// START rustc.main-{{closure}}.EraseRegions.after.mir
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(50)], _2: &ReErased mut i32) -> i32 {
 //     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[317d]::main[0]::{{closure}}[0] }, BrEnv) [closure@NodeId(50)], _2: &ReFree(DefId { krate: CrateNum(0), index: DefIndex(1:11) => validate_1[317d]::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId(0/1:11 ~ validate_1[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(50)], _2: &ReFree(DefId(0/1:11 ~ validate_1[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
 //         StorageLive(_3);
-//         Validate(Suspend(ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 }))), [(*_2): i32]);
+//         Validate(Suspend(ReScope(Remainder(BlockRemainder { block: ItemLocalId(25), first_statement_index: 0 }))), [(*_2): i32]);
 //         _3 = &ReErased (*_2);
-//         Validate(Acquire, [(*_3): i32/ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })) (imm)]);
-//         StorageLive(_4);
-//         _4 = (*_3);
-//         _0 = _4;
-//         StorageDead(_4);
-//         EndRegion(ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })));
+//         Validate(Acquire, [(*_3): i32/ReScope(Remainder(BlockRemainder { block: ItemLocalId(25), first_statement_index: 0 })) (imm)]);
+//         _0 = (*_3);
+//         EndRegion(ReScope(Remainder(BlockRemainder { block: ItemLocalId(25), first_statement_index: 0 })));
 //         StorageDead(_3);
 //         return;
 //     }
 // }
-// END rustc.node50.EraseRegions.after.mir
+// END rustc.main-{{closure}}.EraseRegions.after.mir

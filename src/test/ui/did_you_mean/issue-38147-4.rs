@@ -13,7 +13,7 @@ struct Foo<'a> {
 }
 
 fn f(x: usize, f: &Foo) {
-    f.s.push('x');
+    f.s.push('x'); //~ ERROR cannot borrow data mutably
 }
 
 fn main() {}

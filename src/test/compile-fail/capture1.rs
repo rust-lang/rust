@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-// error-pattern: can't capture dynamic environment in a fn item;
+// error-pattern: can't capture dynamic environment in a fn item
 
 fn main() {
     let bar: isize = 5;

@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The MIR is translated from some high-level abstract IR
+//! The MIR is built from some high-level abstract IR
 //! (HAIR). This section defines the HAIR along with a trait for
 //! accessing it. The intention is to allow MIR construction to be
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc_const_math::ConstUsize;
-use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp};
+use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
-use rustc::ty::{AdtDef, ClosureSubsts, Region, Ty, GeneratorInterior};
+use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty, Const};
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
@@ -27,7 +26,8 @@ use self::cx::Cx;
 
 pub mod cx;
 
-pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
+pub mod pattern;
+pub use self::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
 
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
@@ -93,10 +93,13 @@ pub enum StmtKind<'tcx> {
         /// lifetime of temporaries
         init_scope: region::Scope,
 
-        /// let <PAT> = ...
+        /// let <PAT>: ty = ...
         pattern: Pattern<'tcx>,
 
-        /// let pat = <INIT> ...
+        /// let pat: <TY> = init ...
+        ty: Option<hir::HirId>,
+
+        /// let pat: ty = <INIT> ...
         initializer: Option<ExprRef<'tcx>>,
 
         /// the lint level for this let-statement
@@ -104,12 +107,12 @@ pub enum StmtKind<'tcx> {
     },
 }
 
-/// The Hair trait implementor translates their expressions (`&'tcx H::Expr`)
-/// into instances of this `Expr` enum. This translation can be done
+/// The Hair trait implementor lowers their expressions (`&'tcx H::Expr`)
+/// into instances of this `Expr` enum. This lowering can be done
 /// basically as lazily or as eagerly as desired: every recursive
 /// reference to an expression in this enum is an `ExprRef<'tcx>`, which
 /// may in turn be another instance of this enum (boxed), or else an
-/// untranslated `&'tcx H::Expr`. Note that instances of `Expr` are very
+/// unlowered `&'tcx H::Expr`. Note that instances of `Expr` are very
 /// shortlived. They are created by `Hair::to_expr`, analyzed and
 /// converted into MIR, and then discarded.
 ///
@@ -246,7 +249,7 @@ pub enum ExprKind<'tcx> {
     },
     Repeat {
         value: ExprRef<'tcx>,
-        count: ConstUsize,
+        count: u64,
     },
     Array {
         fields: Vec<ExprRef<'tcx>>,
@@ -263,12 +266,12 @@ pub enum ExprKind<'tcx> {
     },
     Closure {
         closure_id: DefId,
-        substs: ClosureSubsts<'tcx>,
+        substs: UpvarSubsts<'tcx>,
         upvars: Vec<ExprRef<'tcx>>,
-        interior: Option<GeneratorInterior<'tcx>>,
+        movability: Option<hir::GeneratorMovability>,
     },
     Literal {
-        literal: Literal<'tcx>,
+        literal: &'tcx Const<'tcx>,
     },
     InlineAsm {
         asm: &'tcx hir::InlineAsm,
@@ -310,6 +313,15 @@ pub struct Arm<'tcx> {
 pub enum LogicalOp {
     And,
     Or,
+}
+
+impl<'tcx> ExprRef<'tcx> {
+    pub fn span(&self) -> Span {
+        match self {
+            ExprRef::Hair(expr) => expr.span,
+            ExprRef::Mirror(expr) => expr.span,
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

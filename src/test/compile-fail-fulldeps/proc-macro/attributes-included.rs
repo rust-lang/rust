@@ -10,23 +10,25 @@
 
 // aux-build:attributes-included.rs
 // ignore-stage1
+// compile-pass
 
-#![feature(proc_macro, rustc_attrs)]
+#![feature(use_extern_macros)]
 #![warn(unused)]
 
 extern crate attributes_included;
 
-#[attributes_included::bar]
+use attributes_included::*;
+
+#[bar]
 #[inline]
 /// doc
-#[attributes_included::foo]
+#[foo]
 #[inline]
 /// doc
 fn foo() {
     let a: i32 = "foo"; //~ WARN: unused variable
 }
 
-#[rustc_error]
-fn main() { //~ ERROR: compilation successful
+fn main() {
     foo()
 }

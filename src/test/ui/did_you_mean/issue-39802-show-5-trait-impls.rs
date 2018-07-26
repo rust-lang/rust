@@ -31,7 +31,7 @@ impl Foo<bool> for bool {}
 impl Foo<i8> for bool {}
 
 fn main() {
-    Foo::<i32>::bar(&1i8);
-    Foo::<i32>::bar(&1u8);
-    Foo::<i32>::bar(&true);
+    Foo::<i32>::bar(&1i8); //~ ERROR is not satisfied
+    Foo::<i32>::bar(&1u8); //~ ERROR is not satisfied
+    Foo::<i32>::bar(&true); //~ ERROR is not satisfied
 }

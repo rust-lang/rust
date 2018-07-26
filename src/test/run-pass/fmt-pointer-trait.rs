@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(libc)]
-extern crate libc;
 use std::ptr;
 use std::rc::Rc;
 use std::sync::Arc;
 
 fn main() {
-    let p: *const libc::c_void = ptr::null();
+    let p: *const u8 = ptr::null();
     let rc = Rc::new(1usize);
     let arc = Arc::new(1usize);
     let b = Box::new("hi");

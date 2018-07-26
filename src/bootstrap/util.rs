@@ -15,13 +15,14 @@
 
 use std::env;
 use std::str;
-use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, Instant};
 
-use filetime::{self, FileTime};
+use config::Config;
+use builder::Builder;
 
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
@@ -30,88 +31,6 @@ pub fn staticlib(name: &str, target: &str) -> String {
     } else {
         format!("lib{}.a", name)
     }
-}
-
-/// Copies a file from `src` to `dst`
-pub fn copy(src: &Path, dst: &Path) {
-    let _ = fs::remove_file(&dst);
-    // Attempt to "easy copy" by creating a hard link (symlinks don't work on
-    // windows), but if that fails just fall back to a slow `copy` operation.
-    if let Ok(()) = fs::hard_link(src, dst) {
-        return
-    }
-    if let Err(e) = fs::copy(src, dst) {
-        panic!("failed to copy `{}` to `{}`: {}", src.display(),
-               dst.display(), e)
-    }
-    let metadata = t!(src.metadata());
-    t!(fs::set_permissions(dst, metadata.permissions()));
-    let atime = FileTime::from_last_access_time(&metadata);
-    let mtime = FileTime::from_last_modification_time(&metadata);
-    t!(filetime::set_file_times(dst, atime, mtime));
-}
-
-pub fn read_stamp_file(stamp: &Path) -> Vec<PathBuf> {
-    let mut paths = Vec::new();
-    let mut contents = Vec::new();
-    t!(t!(File::open(stamp)).read_to_end(&mut contents));
-    // This is the method we use for extracting paths from the stamp file passed to us. See
-    // run_cargo for more information (in compile.rs).
-    for part in contents.split(|b| *b == 0) {
-        if part.is_empty() {
-            continue
-        }
-        let path = PathBuf::from(t!(str::from_utf8(part)));
-        paths.push(path);
-    }
-    paths
-}
-
-/// Copies the `src` directory recursively to `dst`. Both are assumed to exist
-/// when this function is called.
-pub fn cp_r(src: &Path, dst: &Path) {
-    for f in t!(fs::read_dir(src)) {
-        let f = t!(f);
-        let path = f.path();
-        let name = path.file_name().unwrap();
-        let dst = dst.join(name);
-        if t!(f.file_type()).is_dir() {
-            t!(fs::create_dir_all(&dst));
-            cp_r(&path, &dst);
-        } else {
-            let _ = fs::remove_file(&dst);
-            copy(&path, &dst);
-        }
-    }
-}
-
-/// Copies the `src` directory recursively to `dst`. Both are assumed to exist
-/// when this function is called. Unwanted files or directories can be skipped
-/// by returning `false` from the filter function.
-pub fn cp_filtered(src: &Path, dst: &Path, filter: &Fn(&Path) -> bool) {
-    // Inner function does the actual work
-    fn recurse(src: &Path, dst: &Path, relative: &Path, filter: &Fn(&Path) -> bool) {
-        for f in t!(fs::read_dir(src)) {
-            let f = t!(f);
-            let path = f.path();
-            let name = path.file_name().unwrap();
-            let dst = dst.join(name);
-            let relative = relative.join(name);
-            // Only copy file or directory if the filter function returns true
-            if filter(&relative) {
-                if t!(f.file_type()).is_dir() {
-                    let _ = fs::remove_dir_all(&dst);
-                    t!(fs::create_dir(&dst));
-                    recurse(&path, &dst, &relative, filter);
-                } else {
-                    let _ = fs::remove_file(&dst);
-                    copy(&path, &dst);
-                }
-            }
-        }
-    }
-    // Immediately recurse with an empty relative path
-    recurse(src, dst, Path::new(""), filter)
 }
 
 /// Given an executable called `name`, return the filename for the
@@ -182,25 +101,28 @@ pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
     buf
 }
 
-pub struct TimeIt(Instant);
+pub struct TimeIt(bool, Instant);
 
 /// Returns an RAII structure that prints out how long it took to drop.
-pub fn timeit() -> TimeIt {
-    TimeIt(Instant::now())
+pub fn timeit(builder: &Builder) -> TimeIt {
+    TimeIt(builder.config.dry_run, Instant::now())
 }
 
 impl Drop for TimeIt {
     fn drop(&mut self) {
-        let time = self.0.elapsed();
-        println!("\tfinished in {}.{:03}",
-                 time.as_secs(),
-                 time.subsec_nanos() / 1_000_000);
+        let time = self.1.elapsed();
+        if !self.0 {
+            println!("\tfinished in {}.{:03}",
+                    time.as_secs(),
+                    time.subsec_nanos() / 1_000_000);
+        }
     }
 }
 
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
-pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
+pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
+    if config.dry_run { return Ok(()); }
     let _ = fs::remove_dir(dest);
     return symlink_dir_inner(src, dest);
 
@@ -274,6 +196,7 @@ pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
                                nOutBufferSize: DWORD,
                                lpBytesReturned: LPDWORD,
                                lpOverlapped: LPOVERLAPPED) -> BOOL;
+            fn CloseHandle(hObject: HANDLE) -> BOOL;
         }
 
         fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
@@ -301,7 +224,7 @@ pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
             let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
             let db = data.as_mut_ptr()
                             as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
-            let buf = &mut (*db).ReparseTarget as *mut _;
+            let buf = &mut (*db).ReparseTarget as *mut u16;
             let mut i = 0;
             // FIXME: this conversion is very hacky
             let v = br"\??\";
@@ -327,11 +250,13 @@ pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
                                       &mut ret,
                                       ptr::null_mut());
 
-            if res == 0 {
+            let out = if res == 0 {
                 Err(io::Error::last_os_error())
             } else {
                 Ok(())
-            }
+            };
+            CloseHandle(h);
+            out
         }
     }
 }

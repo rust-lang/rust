@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for formatting and printing `String`s
+//! Utilities for formatting and printing `String`s.
 //!
 //! This module contains the runtime support for the [`format!`] syntax extension.
 //! This macro is implemented in the compiler to emit calls to this module in
@@ -113,6 +113,8 @@
 //!
 //! * *nothing* ⇒ [`Display`]
 //! * `?` ⇒ [`Debug`]
+//! * `x?` ⇒ [`Debug`] with lower-case hexadecimal integers
+//! * `X?` ⇒ [`Debug`] with upper-case hexadecimal integers
 //! * `o` ⇒ [`Octal`](trait.Octal.html)
 //! * `x` ⇒ [`LowerHex`](trait.LowerHex.html)
 //! * `X` ⇒ [`UpperHex`](trait.UpperHex.html)
@@ -236,6 +238,8 @@
 //! writeln!     // same as write but appends a newline
 //! print!       // the format string is printed to the standard output
 //! println!     // same as print but appends a newline
+//! eprint!      // the format string is printed to the standard error
+//! eprintln!    // same as eprint but appends a newline
 //! format_args! // described below.
 //! ```
 //!
@@ -264,6 +268,11 @@
 //! print!("Hello {}!", "world");
 //! println!("I have a newline {}", "character at the end");
 //! ```
+//! ### `eprint!`
+//!
+//! The [`eprint!`] and [`eprintln!`] macros are identical to
+//! [`print!`] and [`println!`], respectively, except they emit their
+//! output to stderr.
 //!
 //! ### `format_args!`
 //!
@@ -317,7 +326,7 @@
 //! sign := '+' | '-'
 //! width := count
 //! precision := count | '*'
-//! type := identifier | ''
+//! type := identifier | '?' | ''
 //! count := parameter | integer
 //! parameter := argument '$'
 //! ```
@@ -331,7 +340,8 @@
 //!
 //! ## Fill/Alignment
 //!
-//! The fill character is provided normally in conjunction with the `width`
+//! The fill character is provided normally in conjunction with the
+//! [`width`](#width)
 //! parameter. This indicates that if the value being formatted is smaller than
 //! `width` some extra characters will be printed around it. The extra
 //! characters are specified by `fill`, and the alignment can be one of the
@@ -379,7 +389,8 @@
 //! padding specified by fill/alignment will be used to take up the required
 //! space.
 //!
-//! The default fill/alignment for non-numerics is a space and left-aligned. The
+//! The default [fill/alignment](#fillalignment) for non-numerics is a space and
+//! left-aligned. The
 //! defaults for numeric formatters is also a space but with right-alignment. If
 //! the `0` flag is specified for numerics, then the implicit fill character is
 //! `0`.
@@ -490,7 +501,10 @@
 //! [`writeln!`]: ../../std/macro.writeln.html
 //! [`write_fmt`]: ../../std/io/trait.Write.html#method.write_fmt
 //! [`std::io::Write`]: ../../std/io/trait.Write.html
+//! [`print!`]: ../../std/macro.print.html
 //! [`println!`]: ../../std/macro.println.html
+//! [`eprint!`]: ../../std/macro.eprint.html
+//! [`eprintln!`]: ../../std/macro.eprintln.html
 //! [`write!`]: ../../std/macro.write.html
 //! [`format_args!`]: ../../std/macro.format_args.html
 //! [`fmt::Arguments`]: struct.Arguments.html
@@ -504,19 +518,21 @@ pub use core::fmt::rt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Formatter, Result, Write};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{Octal, Binary};
+pub use core::fmt::{Binary, Octal};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{Display, Debug};
+pub use core::fmt::{Debug, Display};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{LowerHex, UpperHex, Pointer};
+pub use core::fmt::{LowerHex, Pointer, UpperHex};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerExp, UpperExp};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{ArgumentV1, Arguments, write};
+pub use core::fmt::{write, ArgumentV1, Arguments};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
+#[stable(feature = "fmt_flags_align", since = "1.28.0")]
+pub use core::fmt::{Alignment};
 
 use string;
 
@@ -536,7 +552,7 @@ use string;
 /// assert_eq!(s, "Hello, world!");
 /// ```
 ///
-/// Please note that using [`format!`] might be preferrable.
+/// Please note that using [`format!`] might be preferable.
 /// Example:
 ///
 /// ```
@@ -551,7 +567,8 @@ use string;
 pub fn format(args: Arguments) -> string::String {
     let capacity = args.estimated_capacity();
     let mut output = string::String::with_capacity(capacity);
-    output.write_fmt(args)
-          .expect("a formatting trait implementation returned an error");
+    output
+        .write_fmt(args)
+        .expect("a formatting trait implementation returned an error");
     output
 }

@@ -29,6 +29,4 @@ fn main() {
 
     f1.foo(1usize);
     //~^ error: method named `foo` found for type `Bar` in the current scope
-    //~| help: items from traits can only be used if the trait is implemented and in scope
-    //~| help: candidate #1: `Foo`
 }

@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions:lexical nll
+//[nll]compile-flags: -Z disable-nll-user-type-assert
+#![cfg_attr(nll, feature(nll))]
+
 #![feature(generators)]
 
 fn bar<'a>() {

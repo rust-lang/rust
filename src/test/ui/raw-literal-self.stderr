@@ -1,0 +1,8 @@
+error: `r#self` is not currently supported.
+  --> $DIR/raw-literal-self.rs:15:14
+   |
+LL | fn self_test(r#self: u32) {
+   |              ^^^^^^
+
+error: aborting due to previous error
+

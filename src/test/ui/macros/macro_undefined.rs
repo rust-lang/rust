@@ -18,6 +18,6 @@ mod m {
 }
 
 fn main() {
-    k!();
-    kl!();
+    k!(); //~ ERROR cannot find
+    kl!(); //~ ERROR cannot find
 }

@@ -1,6 +1,6 @@
 warning: derive(Encodable) is deprecated in favor of derive(RustcEncodable)
   --> $DIR/deprecated-derive.rs:18:10
    |
-18 | #[derive(Encodable)]
+LL | #[derive(Encodable)]
    |          ^^^^^^^^^
 

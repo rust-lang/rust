@@ -1,24 +1,25 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/vec_refs_data_with_early_death.rs:31:1
+  --> $DIR/vec_refs_data_with_early_death.rs:27:13
    |
-27 |     v.push(&x);
-   |             - borrow occurs here
+LL |     v.push(&x);
+   |             ^ borrowed value does not live long enough
 ...
-31 | }
-   | ^ `x` dropped here while still borrowed
+LL | }
+   | - `x` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/vec_refs_data_with_early_death.rs:31:1
+  --> $DIR/vec_refs_data_with_early_death.rs:29:13
    |
-28 |     v.push(&y);
-   |             - borrow occurs here
+LL |     v.push(&y);
+   |             ^ borrowed value does not live long enough
 ...
-31 | }
-   | ^ `y` dropped here while still borrowed
+LL | }
+   | - `y` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

@@ -77,8 +77,19 @@ pub fn find(build: &mut Build) {
                                .collect::<HashSet<_>>();
     for target in targets.into_iter() {
         let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false)
+        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false)
            .target(&target).host(&build.build);
+        match build.crt_static(target) {
+            Some(a) => { cfg.static_crt(a); }
+            None => {
+                if target.contains("msvc") {
+                    cfg.static_crt(true);
+                }
+                if target.contains("musl") {
+                    cfg.static_flag(true);
+                }
+            }
+        }
 
         let config = build.config.target_config.get(&target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
@@ -94,8 +105,9 @@ pub fn find(build: &mut Build) {
             cc2ar(compiler.path(), &target)
         };
 
-        build.verbose(&format!("CC_{} = {:?}", &target, compiler.path()));
         build.cc.insert(target, compiler);
+        build.verbose(&format!("CC_{} = {:?}", &target, build.cc(target)));
+        build.verbose(&format!("CFLAGS_{} = {:?}", &target, build.cflags(target)));
         if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target, ar));
             build.ar.insert(target, ar);
@@ -106,7 +118,7 @@ pub fn find(build: &mut Build) {
     let hosts = build.hosts.iter().cloned().chain(iter::once(build.build)).collect::<HashSet<_>>();
     for host in hosts.into_iter() {
         let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false).cpp(true)
+        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false).cpp(true)
            .target(&host).host(&build.build);
         let config = build.config.target_config.get(&host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {

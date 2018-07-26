@@ -1,0 +1,11 @@
+error[E0560]: struct `Foo` has no field named `nonexistent`
+  --> $DIR/issue-5439.rs:23:26
+   |
+LL |         return box Foo { nonexistent: self, foo: i }; //~ ERROR: no field named
+   |                          ^^^^^^^^^^^ `Foo` does not have this field
+   |
+   = note: available fields are: `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0560`.

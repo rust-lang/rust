@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/block-must-not-have-result-while.rs:13:9
    |
-13 |         true //~  ERROR mismatched types
+LL |         true //~  ERROR mismatched types
    |         ^^^^ expected (), found bool
    |
    = note: expected type `()`
@@ -9,3 +9,4 @@ error[E0308]: mismatched types
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

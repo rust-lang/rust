@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: cfail1 cfail2 cfail3
-// must-compile-successfully
+// compile-pass
 
 // This test case makes sure that we can compile with incremental compilation
 // enabled when there are macros exported from this crate. (See #37756)

@@ -21,6 +21,6 @@ GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
 # different/specific command (defaults to `gdb`).
 RUST_GDB="${RUST_GDB:-gdb}"
 PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" ${RUST_GDB} \
-  -d "$GDB_PYTHON_MODULE_DIRECTORY" \
+  --directory="$GDB_PYTHON_MODULE_DIRECTORY" \
   -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
   "$@"

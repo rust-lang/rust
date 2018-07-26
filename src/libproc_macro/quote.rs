@@ -11,253 +11,140 @@
 //! # Quasiquoter
 //! This file contains the implementation internals of the quasiquoter provided by `quote!`.
 
-//! This quasiquoter uses macros 2.0 hygiene to reliably use items from `__rt`,
-//! including re-exported API `libsyntax`, to build a `syntax::tokenstream::TokenStream`
-//! and wrap it into a `proc_macro::TokenStream`.
+//! This quasiquoter uses macros 2.0 hygiene to reliably access
+//! items from `proc_macro`, to build a `proc_macro::TokenStream`.
 
-use syntax::ast::Ident;
-use syntax::ext::base::{ExtCtxt, ProcMacro};
-use syntax::parse::token::{self, Token, Lit};
-use syntax::symbol::Symbol;
-use syntax::tokenstream::{Delimited, TokenTree, TokenStream, TokenStreamBuilder};
-use syntax_pos::{DUMMY_SP, Span};
-use syntax_pos::hygiene::SyntaxContext;
+use {Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 
-pub struct Quoter;
-
-pub mod __rt {
-    pub use syntax::ast::Ident;
-    pub use syntax::parse::token;
-    pub use syntax::symbol::Symbol;
-    pub use syntax::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree, Delimited};
-    pub use super::{ctxt, span};
-
-    pub fn unquote<T: Into<::TokenStream> + Clone>(tokens: &T) -> TokenStream {
-        T::into(tokens.clone()).0
-    }
+macro_rules! quote_tt {
+    (($($t:tt)*)) => { Group::new(Delimiter::Parenthesis, quote!($($t)*)) };
+    ([$($t:tt)*]) => { Group::new(Delimiter::Bracket, quote!($($t)*)) };
+    ({$($t:tt)*}) => { Group::new(Delimiter::Brace, quote!($($t)*)) };
+    (,) => { Punct::new(',', Spacing::Alone) };
+    (.) => { Punct::new('.', Spacing::Alone) };
+    (:) => { Punct::new(':', Spacing::Alone) };
+    (;) => { Punct::new(';', Spacing::Alone) };
+    (!) => { Punct::new('!', Spacing::Alone) };
+    (<) => { Punct::new('<', Spacing::Alone) };
+    (>) => { Punct::new('>', Spacing::Alone) };
+    (&) => { Punct::new('&', Spacing::Alone) };
+    (=) => { Punct::new('=', Spacing::Alone) };
+    ($i:ident) => { Ident::new(stringify!($i), Span::def_site()) };
 }
 
-pub fn ctxt() -> SyntaxContext {
-    ::__internal::with_sess(|(_, mark)| SyntaxContext::empty().apply_mark(mark))
+macro_rules! quote_ts {
+    ((@ $($t:tt)*)) => { $($t)* };
+    (::) => {
+        [
+            TokenTree::from(Punct::new(':', Spacing::Joint)),
+            TokenTree::from(Punct::new(':', Spacing::Alone)),
+        ].iter()
+            .cloned()
+            .map(|mut x| {
+                x.set_span(Span::def_site());
+                x
+            })
+            .collect::<TokenStream>()
+    };
+    ($t:tt) => { TokenTree::from(quote_tt!($t)) };
 }
 
-pub fn span() -> Span {
-    ::Span::default().0
-}
-
-pub trait Quote {
-    fn quote(&self) -> TokenStream;
-}
-
-macro_rules! quote_tok {
-    (,) => { Token::Comma };
-    (.) => { Token::Dot };
-    (:) => { Token::Colon };
-    (::) => { Token::ModSep };
-    (!) => { Token::Not };
-    (<) => { Token::Lt };
-    (>) => { Token::Gt };
-    (_) => { Token::Underscore };
-    (0) => { Token::Literal(token::Lit::Integer(Symbol::intern("0")), None) };
-    (&) => { Token::BinOp(token::And) };
-    ($i:ident) => { Token::Ident(Ident { name: Symbol::intern(stringify!($i)), ctxt: ctxt() }) };
-}
-
-macro_rules! quote_tree {
-    ((unquote $($t:tt)*)) => { TokenStream::from($($t)*) };
-    ((quote $($t:tt)*)) => { ($($t)*).quote() };
-    (($($t:tt)*)) => { delimit(token::Paren, quote!($($t)*)) };
-    ([$($t:tt)*]) => { delimit(token::Bracket, quote!($($t)*)) };
-    ({$($t:tt)*}) => { delimit(token::Brace, quote!($($t)*)) };
-    (rt) => { quote!(::__internal::__rt) };
-    ($t:tt) => { TokenStream::from(TokenTree::Token(span(), quote_tok!($t))) };
-}
-
-fn delimit(delim: token::DelimToken, stream: TokenStream) -> TokenStream {
-    TokenTree::Delimited(span(), Delimited { delim: delim, tts: stream.into() }).into()
-}
-
+/// Simpler version of the real `quote!` macro, implemented solely
+/// through `macro_rules`, for bootstrapping the real implementation
+/// (see the `quote` function), which does not have access to the
+/// real `quote!` macro due to the `proc_macro` crate not being
+/// able to depend on itself.
+///
+/// Note: supported tokens are a subset of the real `quote!`, but
+/// unquoting is different: instead of `$x`, this uses `(@ expr)`.
 macro_rules! quote {
-    () => { TokenStream::empty() };
-    ($($t:tt)*) => { [ $( quote_tree!($t), )* ].iter().cloned().collect::<TokenStream>() };
+    () => { TokenStream::new() };
+    ($($t:tt)*) => {
+        [
+            $(TokenStream::from(quote_ts!($t)),)*
+        ].iter().cloned().collect::<TokenStream>()
+    };
 }
 
-impl ProcMacro for Quoter {
-    fn expand<'cx>(&self, cx: &'cx mut ExtCtxt, _: Span, stream: TokenStream) -> TokenStream {
-        let mut info = cx.current_expansion.mark.expn_info().unwrap();
-        info.callee.allow_internal_unstable = true;
-        cx.current_expansion.mark.set_expn_info(info);
-        ::__internal::set_sess(cx, || quote!(::TokenStream { 0: (quote stream) }))
+/// Quote a `TokenStream` into a `TokenStream`.
+/// This is the actual `quote!()` proc macro.
+///
+/// It is manually loaded in `CStore::load_macro_untracked`.
+#[unstable(feature = "proc_macro_quote", issue = "38356")]
+pub fn quote(stream: TokenStream) -> TokenStream {
+    if stream.is_empty() {
+        return quote!(::TokenStream::new());
     }
-}
-
-impl<T: Quote> Quote for Option<T> {
-    fn quote(&self) -> TokenStream {
-        match *self {
-            Some(ref t) => quote!(Some((quote t))),
-            None => quote!(None),
-        }
-    }
-}
-
-impl Quote for TokenStream {
-    fn quote(&self) -> TokenStream {
-        let mut builder = TokenStreamBuilder::new();
-        builder.push(quote!(rt::TokenStreamBuilder::new()));
-
-        let mut trees = self.trees();
-        loop {
-            let (mut tree, mut is_joint) = match trees.next_as_stream() {
-                Some(next) => next.as_tree(),
-                None => return builder.add(quote!(.build())).build(),
-            };
-            if let TokenTree::Token(_, Token::Dollar) = tree {
-                let (next_tree, next_is_joint) = match trees.next_as_stream() {
-                    Some(next) => next.as_tree(),
-                    None => panic!("unexpected trailing `$` in `quote!`"),
-                };
-                match next_tree {
-                    TokenTree::Token(_, Token::Ident(..)) => {
-                        builder.push(quote!(.add(rt::unquote(&(unquote next_tree)))));
-                        continue
+    let mut after_dollar = false;
+    let tokens = stream
+        .into_iter()
+        .filter_map(|tree| {
+            if after_dollar {
+                after_dollar = false;
+                match tree {
+                    TokenTree::Ident(_) => {
+                        return Some(quote!(Into::<::TokenStream>::into(
+                        Clone::clone(&(@ tree))),));
                     }
-                    TokenTree::Token(_, Token::Dollar) => {
-                        tree = next_tree;
-                        is_joint = next_is_joint;
-                    }
+                    TokenTree::Punct(ref tt) if tt.as_char() == '$' => {}
                     _ => panic!("`$` must be followed by an ident or `$` in `quote!`"),
                 }
-            }
-
-            builder.push(match is_joint {
-                true => quote!(.add((quote tree).joint())),
-                false => quote!(.add(rt::TokenStream::from((quote tree)))),
-            });
-        }
-    }
-}
-
-impl Quote for TokenTree {
-    fn quote(&self) -> TokenStream {
-        match *self {
-            TokenTree::Token(span, ref token) => quote! {
-                rt::TokenTree::Token((quote span), (quote token))
-            },
-            TokenTree::Delimited(span, ref delimited) => quote! {
-                rt::TokenTree::Delimited((quote span), (quote delimited))
-            },
-        }
-    }
-}
-
-impl Quote for Delimited {
-    fn quote(&self) -> TokenStream {
-        quote!(rt::Delimited { delim: (quote self.delim), tts: (quote self.stream()).into() })
-    }
-}
-
-impl<'a> Quote for &'a str {
-    fn quote(&self) -> TokenStream {
-        TokenTree::Token(span(), Token::Literal(token::Lit::Str_(Symbol::intern(self)), None))
-            .into()
-    }
-}
-
-impl Quote for usize {
-    fn quote(&self) -> TokenStream {
-        let integer_symbol = Symbol::intern(&self.to_string());
-        TokenTree::Token(DUMMY_SP, Token::Literal(token::Lit::Integer(integer_symbol), None))
-            .into()
-    }
-}
-
-impl Quote for Ident {
-    fn quote(&self) -> TokenStream {
-        quote!(rt::Ident { name: (quote self.name), ctxt: rt::ctxt() })
-    }
-}
-
-impl Quote for Symbol {
-    fn quote(&self) -> TokenStream {
-        quote!(rt::Symbol::intern((quote &*self.as_str())))
-    }
-}
-
-impl Quote for Span {
-    fn quote(&self) -> TokenStream {
-        quote!(rt::span())
-    }
-}
-
-impl Quote for Token {
-    fn quote(&self) -> TokenStream {
-        macro_rules! gen_match {
-            ($($i:ident),*; $($t:tt)*) => {
-                match *self {
-                    $( Token::$i => quote!(rt::token::$i), )*
-                    $( $t )*
+            } else if let TokenTree::Punct(ref tt) = tree {
+                if tt.as_char() == '$' {
+                    after_dollar = true;
+                    return None;
                 }
             }
-        }
 
-        gen_match! {
-            Eq, Lt, Le, EqEq, Ne, Ge, Gt, AndAnd, OrOr, Not, Tilde, At, Dot, DotDot, DotDotDot,
-            DotDotEq, Comma, Semi, Colon, ModSep, RArrow, LArrow, FatArrow, Pound, Dollar,
-            Question, Underscore;
+            Some(quote!(::TokenStream::from((@ match tree {
+                TokenTree::Punct(tt) => quote!(::TokenTree::Punct(::Punct::new(
+                    (@ TokenTree::from(Literal::character(tt.as_char()))),
+                    (@ match tt.spacing() {
+                        Spacing::Alone => quote!(::Spacing::Alone),
+                        Spacing::Joint => quote!(::Spacing::Joint),
+                    }),
+                ))),
+                TokenTree::Group(tt) => quote!(::TokenTree::Group(::Group::new(
+                    (@ match tt.delimiter() {
+                        Delimiter::Parenthesis => quote!(::Delimiter::Parenthesis),
+                        Delimiter::Brace => quote!(::Delimiter::Brace),
+                        Delimiter::Bracket => quote!(::Delimiter::Bracket),
+                        Delimiter::None => quote!(::Delimiter::None),
+                    }),
+                    (@ quote(tt.stream())),
+                ))),
+                TokenTree::Ident(tt) => quote!(::TokenTree::Ident(::Ident::new(
+                    (@ TokenTree::from(Literal::string(&tt.to_string()))),
+                    (@ quote_span(tt.span())),
+                ))),
+                TokenTree::Literal(tt) => quote!(::TokenTree::Literal({
+                    let mut iter = (@ TokenTree::from(Literal::string(&tt.to_string())))
+                        .parse::<::TokenStream>()
+                        .unwrap()
+                        .into_iter();
+                    if let (Some(::TokenTree::Literal(mut lit)), None) =
+                        (iter.next(), iter.next())
+                    {
+                        lit.set_span((@ quote_span(tt.span())));
+                        lit
+                    } else {
+                        unreachable!()
+                    }
+                }))
+            })),))
+        })
+        .collect::<TokenStream>();
 
-            Token::OpenDelim(delim) => quote!(rt::token::OpenDelim((quote delim))),
-            Token::CloseDelim(delim) => quote!(rt::token::CloseDelim((quote delim))),
-            Token::BinOp(tok) => quote!(rt::token::BinOp((quote tok))),
-            Token::BinOpEq(tok) => quote!(rt::token::BinOpEq((quote tok))),
-            Token::Ident(ident) => quote!(rt::token::Ident((quote ident))),
-            Token::Lifetime(ident) => quote!(rt::token::Lifetime((quote ident))),
-            Token::Literal(lit, sfx) => quote!(rt::token::Literal((quote lit), (quote sfx))),
-            _ => panic!("Unhandled case!"),
-        }
+    if after_dollar {
+        panic!("unexpected trailing `$` in `quote!`");
     }
+
+    quote!([(@ tokens)].iter().cloned().collect::<::TokenStream>())
 }
 
-impl Quote for token::BinOpToken {
-    fn quote(&self) -> TokenStream {
-        macro_rules! gen_match {
-            ($($i:ident),*) => {
-                match *self {
-                    $( token::BinOpToken::$i => quote!(rt::token::BinOpToken::$i), )*
-                }
-            }
-        }
-
-        gen_match!(Plus, Minus, Star, Slash, Percent, Caret, And, Or, Shl, Shr)
-    }
-}
-
-impl Quote for Lit {
-    fn quote(&self) -> TokenStream {
-        macro_rules! gen_match {
-            ($($i:ident),*; $($raw:ident),*) => {
-                match *self {
-                    $( Lit::$i(lit) => quote!(rt::token::Lit::$i((quote lit))), )*
-                    $( Lit::$raw(lit, n) => {
-                        quote!(::syntax::parse::token::Lit::$raw((quote lit), (quote n)))
-                    })*
-                }
-            }
-        }
-
-        gen_match!(Byte, Char, Float, Str_, Integer, ByteStr; StrRaw, ByteStrRaw)
-    }
-}
-
-impl Quote for token::DelimToken {
-    fn quote(&self) -> TokenStream {
-        macro_rules! gen_match {
-            ($($i:ident),*) => {
-                match *self {
-                    $(token::DelimToken::$i => { quote!(rt::token::DelimToken::$i) })*
-                }
-            }
-        }
-
-        gen_match!(Paren, Bracket, Brace, NoDelim)
-    }
+/// Quote a `Span` into a `TokenStream`.
+/// This is needed to implement a custom quoter.
+#[unstable(feature = "proc_macro_quote", issue = "38356")]
+pub fn quote_span(_: Span) -> TokenStream {
+    quote!(::Span::def_site())
 }

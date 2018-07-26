@@ -1,0 +1,14 @@
+error[E0597]: `books` does not live long enough
+  --> $DIR/borrowck-escaping-closure-error-1.rs:23:11
+   |
+LL |     spawn(|| books.push(4));
+   |           ^^^^^^^^^^^^^^^^ borrowed value does not live long enough
+LL |     //~^ ERROR E0373
+LL | }
+   | - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

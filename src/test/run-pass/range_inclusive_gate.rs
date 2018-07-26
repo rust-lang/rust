@@ -9,8 +9,7 @@
 // except according to those terms.
 
 // Test that you only need the syntax gate if you don't mention the structs.
-
-#![feature(inclusive_range_syntax)]
+// (Obsoleted since both features are stabilized)
 
 fn main() {
     let mut count = 0;

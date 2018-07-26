@@ -1,0 +1,93 @@
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
+  --> $DIR/get_default.rs:33:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+...
+LL |                 map.set(String::new()); // Ideally, this would not error.
+   |                 ^^^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
+  --> $DIR/get_default.rs:45:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+LL |             Some(v) => {
+LL |                 map.set(String::new()); // Both AST and MIR error here
+   |                 ^^^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Ast)
+  --> $DIR/get_default.rs:51:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+...
+LL |                 map.set(String::new()); // Ideally, just AST would error here
+   |                 ^^^ mutable borrow occurs here
+...
+LL | }
+   | - immutable borrow ends here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
+  --> $DIR/get_default.rs:33:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+...
+LL |                 map.set(String::new()); // Ideally, this would not error.
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 26:1...
+  --> $DIR/get_default.rs:26:1
+   |
+LL | / fn ok(map: &mut Map) -> &String {
+LL | |     loop {
+LL | |         match map.get() {
+LL | |             Some(v) => {
+...  |
+LL | |     }
+LL | | }
+   | |_^
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
+  --> $DIR/get_default.rs:45:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+LL |             Some(v) => {
+LL |                 map.set(String::new()); // Both AST and MIR error here
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+...
+LL |                 return v;
+   |                        - borrow later used here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
+  --> $DIR/get_default.rs:51:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+...
+LL |                 map.set(String::new()); // Ideally, just AST would error here
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 41:1...
+  --> $DIR/get_default.rs:41:1
+   |
+LL | / fn err(map: &mut Map) -> &String {
+LL | |     loop {
+LL | |         match map.get() {
+LL | |             Some(v) => {
+...  |
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

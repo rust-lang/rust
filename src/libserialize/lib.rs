@@ -14,17 +14,18 @@
 Core encoding and decoding interfaces.
 */
 
+#![deny(bare_trait_objects)]
+
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(allow(unused_variables), deny(warnings))))]
-#![deny(warnings)]
 
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![feature(i128_type)]
 #![feature(specialization)]
+#![feature(never_type)]
 #![cfg_attr(test, feature(test))]
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};

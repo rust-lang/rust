@@ -14,16 +14,11 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
 #![allow(dead_code, unused_variables)]
-#![feature(box_syntax, box_heap)]
-#![feature(placement_in_syntax)]
-
-// during check-pretty, the expanded code needs to opt into these
-// features
-#![feature(placement_new_protocol, core_intrinsics)]
+#![feature(box_syntax)]
 
 // Tests that the new `box` syntax works with unique pointers.
 
-use std::boxed::{Box, HEAP};
+use std::boxed::Box;
 
 struct Structure {
     x: isize,
@@ -31,7 +26,6 @@ struct Structure {
 }
 
 pub fn main() {
-    let x: Box<isize> = in HEAP { 2 };
     let y: Box<isize> = box 2;
     let b: Box<isize> = box (1 + 2);
     let c = box (3 + 4);

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
+// compile-pass
 
 // This file illustrates how packing is handled; it should cause
 // the elimination of padding that would normally be introduced
@@ -19,10 +20,35 @@
 // padding and overall computed sizes can be quite different.
 
 #![allow(dead_code)]
+#![feature(start)]
+#![feature(repr_packed)]
 
 #[derive(Default)]
 #[repr(packed)]
-struct Packed {
+struct Packed1 {
+    a: u8,
+    b: u8,
+    g: i32,
+    c: u8,
+    h: i16,
+    d: u8,
+}
+
+#[derive(Default)]
+#[repr(packed(2))]
+struct Packed2 {
+    a: u8,
+    b: u8,
+    g: i32,
+    c: u8,
+    h: i16,
+    d: u8,
+}
+
+#[derive(Default)]
+#[repr(packed(2))]
+#[repr(C)]
+struct Packed2C {
     a: u8,
     b: u8,
     g: i32,
@@ -41,7 +67,11 @@ struct Padded {
     d: u8,
 }
 
-pub fn main() {
-    let _c: Packed = Default::default();
-    let _d: Padded = Default::default();
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
+    let _c: Packed1 = Default::default();
+    let _d: Packed2 = Default::default();
+    let _e: Packed2C = Default::default();
+    let _f: Padded = Default::default();
+    0
 }

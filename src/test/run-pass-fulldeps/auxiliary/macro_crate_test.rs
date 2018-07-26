@@ -37,13 +37,13 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("make_a_1", expand_make_a_1);
     reg.register_macro("identity", expand_identity);
     reg.register_syntax_extension(
-        Symbol::intern("into_multi_foo"),
+        Symbol::intern("rustc_into_multi_foo"),
         MultiModifier(Box::new(expand_into_foo_multi)));
     reg.register_syntax_extension(
-        Symbol::intern("duplicate"),
+        Symbol::intern("rustc_duplicate"),
         MultiDecorator(Box::new(expand_duplicate)));
     reg.register_syntax_extension(
-        Symbol::intern("caller"),
+        Symbol::intern("rustc_caller"),
         MultiDecorator(Box::new(expand_caller)));
 }
 
@@ -96,6 +96,10 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 }
             })
         ],
+        // covered in proc_macro/macros-in-extern.rs
+        Annotatable::ForeignItem(..) => unimplemented!(),
+        // covered in proc_macro/attr-stmt-expr.rs
+        Annotatable::Stmt(_) | Annotatable::Expr(_) => panic!("expected item"),
     }
 }
 
@@ -108,7 +112,7 @@ fn expand_duplicate(cx: &mut ExtCtxt,
     let copy_name = match mi.node {
         ast::MetaItemKind::List(ref xs) => {
             if let Some(word) = xs[0].word() {
-                ast::Ident::with_empty_ctxt(word.name())
+                word.ident.segments.last().unwrap().ident
             } else {
                 cx.span_err(mi.span, "Expected word");
                 return;
@@ -140,6 +144,10 @@ fn expand_duplicate(cx: &mut ExtCtxt,
             new_it.ident = copy_name;
             push(Annotatable::TraitItem(P(new_it)));
         }
+        // covered in proc_macro/macros-in-extern.rs
+        Annotatable::ForeignItem(..) => unimplemented!(),
+        // covered in proc_macro/attr-stmt-expr.rs
+        Annotatable::Stmt(_) | Annotatable::Expr(_) => panic!("expected item")
     }
 }
 

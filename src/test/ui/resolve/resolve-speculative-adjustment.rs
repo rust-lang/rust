@@ -25,19 +25,15 @@ impl Tr for S {
             // Speculative resolution of `Self` and `self` silently fails,
             // "did you mean" messages are not printed.
             field;
-            //~^ ERROR unresolved value `field`
-            //~| NOTE no resolution found
+            //~^ ERROR cannot find value `field`
             method();
-            //~^ ERROR unresolved function `method`
-            //~| NOTE no resolution found
+            //~^ ERROR cannot find function `method`
         }
 
         field;
-        //~^ ERROR unresolved value `field`
-        //~| NOTE did you mean `self.field`?
+        //~^ ERROR cannot find value `field`
         method();
-        //~^ ERROR unresolved function `method`
-        //~| NOTE did you mean `self.method(...)`?
+        //~^ ERROR cannot find function `method`
     }
 }
 

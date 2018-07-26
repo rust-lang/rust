@@ -22,7 +22,7 @@ union W {
 
 extern "C" {
     static FOREIGN1: U; // OK
-    static FOREIGN2: W; //~ ERROR found union without foreign-function-safe representation
+    static FOREIGN2: W; //~ ERROR union has unspecified layout
 }
 
 fn main() {}

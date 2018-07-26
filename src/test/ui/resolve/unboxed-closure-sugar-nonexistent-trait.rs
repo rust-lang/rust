@@ -9,13 +9,11 @@
 // except according to those terms.
 
 fn f<F:Nonexist(isize) -> isize>(x: F) {}
-//~^ ERROR unresolved trait `Nonexist`
-//~| NOTE no resolution found
+//~^ ERROR cannot find trait `Nonexist`
 
 type Typedef = isize;
 
 fn g<F:Typedef(isize) -> isize>(x: F) {}
 //~^ ERROR expected trait, found type alias `Typedef`
-//~| NOTE type aliases cannot be used for traits
 
 fn main() {}

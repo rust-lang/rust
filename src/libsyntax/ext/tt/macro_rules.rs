@@ -10,9 +10,10 @@
 
 use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
+use edition::Edition;
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
-use ext::expand::{Expansion, ExpansionKind};
+use ext::expand::{AstFragment, AstFragmentKind};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_failure_msg};
@@ -26,10 +27,11 @@ use parse::token::Token::*;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 
-use std::cell::RefCell;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::rc::Rc;
+
+use rustc_data_structures::sync::Lrc;
 
 pub struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -41,21 +43,21 @@ pub struct ParserAnyMacro<'a> {
 }
 
 impl<'a> ParserAnyMacro<'a> {
-    pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: ExpansionKind) -> Expansion {
+    pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser } = *self;
-        let expansion = panictry!(parser.parse_expansion(kind, true));
+        let fragment = panictry!(parser.parse_ast_fragment(kind, true));
 
         // We allow semicolons at the end of expressions -- e.g. the semicolon in
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
         // but `m!()` is allowed in expression positions (c.f. issue #34706).
-        if kind == ExpansionKind::Expr && parser.token == token::Semi {
+        if kind == AstFragmentKind::Expr && parser.token == token::Semi {
             parser.bump();
         }
 
         // Make sure we don't have any tokens left to parse so we don't silently drop anything.
-        let path = ast::Path::from_ident(site_span, macro_ident);
+        let path = ast::Path::from_ident(macro_ident.with_span_pos(site_span));
         parser.ensure_complete_parse(&path, kind.name(), site_span);
-        expansion
+        fragment
     }
 }
 
@@ -71,7 +73,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
                    input: TokenStream)
-                   -> Box<MacResult+'cx> {
+                   -> Box<dyn MacResult+'cx> {
         if !self.valid {
             return DummyResult::any(sp);
         }
@@ -97,7 +99,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           arg: TokenStream,
                           lhses: &[quoted::TokenTree],
                           rhses: &[quoted::TokenTree])
-                          -> Box<MacResult+'cx> {
+                          -> Box<dyn MacResult+'cx> {
     if cx.trace_macros() {
         trace_macros_note(cx, sp, format!("expanding `{}! {{ {} }}`", name, arg));
     }
@@ -141,12 +143,12 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                 }
 
                 let directory = Directory {
-                    path: cx.current_expansion.module.directory.clone(),
+                    path: Cow::from(cx.current_expansion.module.directory.as_path()),
                     ownership: cx.current_expansion.directory_ownership,
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false);
                 p.root_module_name = cx.current_expansion.module.mod_path.last()
-                    .map(|id| id.name.as_str().to_string());
+                    .map(|id| id.as_str().to_string());
 
                 p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
@@ -183,7 +185,8 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
 // Holy self-referential!
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
-pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) -> SyntaxExtension {
+pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: Edition)
+               -> SyntaxExtension {
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
@@ -199,7 +202,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
     let argument_gram = vec![
-        quoted::TokenTree::Sequence(DUMMY_SP, Rc::new(quoted::SequenceRepetition {
+        quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
             tts: vec![
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, lhs_nm, ast::Ident::from_str("tt")),
                 quoted::TokenTree::Token(DUMMY_SP, token::FatArrow),
@@ -210,7 +213,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             num_captures: 2,
         })),
         // to phase into semicolon-termination instead of semicolon-separation
-        quoted::TokenTree::Sequence(DUMMY_SP, Rc::new(quoted::SequenceRepetition {
+        quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
             tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi)],
             separator: None,
             op: quoted::KleeneOp::ZeroOrMore,
@@ -222,10 +225,10 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
         Success(m) => m,
         Failure(sp, tok) => {
             let s = parse_failure_msg(tok);
-            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s));
+            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
         }
         Error(sp, s) => {
-            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s));
+            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
         }
     };
 
@@ -237,7 +240,17 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = quoted::parse(tt.clone().into(), true, sess).pop().unwrap();
+                        let tt = quoted::parse(
+                            tt.clone().into(),
+                            true,
+                            sess,
+                            features,
+                            &def.attrs,
+                            edition,
+                            def.id,
+                        )
+                        .pop()
+                        .unwrap();
                         valid &= check_lhs_nt_follows(sess, features, &def.attrs, &tt);
                         return tt;
                     }
@@ -253,7 +266,16 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        return quoted::parse(tt.clone().into(), false, sess).pop().unwrap();
+                        return quoted::parse(
+                            tt.clone().into(),
+                            false,
+                            sess,
+                            features,
+                            &def.attrs,
+                            edition,
+                            def.id,
+                        ).pop()
+                         .unwrap();
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
@@ -281,19 +303,45 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
     if body.legacy {
         let allow_internal_unstable = attr::contains_name(&def.attrs, "allow_internal_unstable");
         let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
+        let mut local_inner_macros = false;
+        if let Some(macro_export) = attr::find_by_name(&def.attrs, "macro_export") {
+            if let Some(l) = macro_export.meta_item_list() {
+                local_inner_macros = attr::list_contains_name(&l, "local_inner_macros");
+            }
+        }
+
+        let unstable_feature = attr::find_stability(&sess.span_diagnostic,
+                                                    &def.attrs, def.span).and_then(|stability| {
+            if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
+                Some((stability.feature, issue))
+            } else {
+                None
+            }
+        });
+
         NormalTT {
             expander,
             def_info: Some((def.id, def.span)),
             allow_internal_unstable,
-            allow_internal_unsafe
+            allow_internal_unsafe,
+            local_inner_macros,
+            unstable_feature,
+            edition,
         }
     } else {
-        SyntaxExtension::DeclMacro(expander, Some((def.id, def.span)))
+        let is_transparent = attr::contains_name(&def.attrs, "rustc_transparent_macro");
+
+        SyntaxExtension::DeclMacro {
+            expander,
+            def_info: Some((def.id, def.span)),
+            is_transparent,
+            edition,
+        }
     }
 }
 
 fn check_lhs_nt_follows(sess: &ParseSess,
-                        features: &RefCell<Features>,
+                        features: &Features,
                         attrs: &[ast::Attribute],
                         lhs: &quoted::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
@@ -350,7 +398,7 @@ fn check_rhs(sess: &ParseSess, rhs: &quoted::TokenTree) -> bool {
 }
 
 fn check_matcher(sess: &ParseSess,
-                 features: &RefCell<Features>,
+                 features: &Features,
                  attrs: &[ast::Attribute],
                  matcher: &[quoted::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
@@ -598,7 +646,7 @@ impl TokenSet {
 // Requires that `first_sets` is pre-computed for `matcher`;
 // see `FirstSets::new`.
 fn check_matcher_core(sess: &ParseSess,
-                      features: &RefCell<Features>,
+                      features: &Features,
                       attrs: &[ast::Attribute],
                       first_sets: &FirstSets,
                       matcher: &[quoted::TokenTree],
@@ -634,7 +682,7 @@ fn check_matcher_core(sess: &ParseSess,
                     let msg = format!("invalid fragment specifier `{}`", bad_frag);
                     sess.span_diagnostic.struct_span_err(token.span(), &msg)
                         .help("valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, \
-                              `pat`, `ty`, `path`, `meta`, `tt`, `item` and `vis`")
+                              `pat`, `ty`, `literal`, `path`, `meta`, `tt`, `item` and `vis`")
                         .emit();
                     // (This eliminates false positives and duplicates
                     // from error messages.)
@@ -713,7 +761,7 @@ fn check_matcher_core(sess: &ParseSess,
         'each_last: for token in &last.tokens {
             if let TokenTree::MetaVarDecl(_, ref name, ref frag_spec) = *token {
                 for next_token in &suffix_first.tokens {
-                    match is_in_follow(next_token, &frag_spec.name.as_str()) {
+                    match is_in_follow(next_token, &frag_spec.as_str()) {
                         Err((msg, help)) => {
                             sess.span_diagnostic.struct_span_err(next_token.span(), &msg)
                                 .help(help).emit();
@@ -751,7 +799,7 @@ fn check_matcher_core(sess: &ParseSess,
 
 fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
     if let quoted::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
-        frag_can_be_followed_by_any(&frag_spec.name.as_str())
+        frag_can_be_followed_by_any(&frag_spec.as_str())
     } else {
         // (Non NT's can always be followed by anthing in matchers.)
         true
@@ -768,10 +816,12 @@ fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
 /// ANYTHING without fear of future compatibility hazards).
 fn frag_can_be_followed_by_any(frag: &str) -> bool {
     match frag {
-        "item"  | // always terminated by `}` or `;`
-        "block" | // exactly one token tree
-        "ident" | // exactly one token tree
-        "meta"  | // exactly one token tree
+        "item"     | // always terminated by `}` or `;`
+        "block"    | // exactly one token tree
+        "ident"    | // exactly one token tree
+        "literal"  | // exactly one token tree
+        "meta"     | // exactly one token tree
+        "lifetime" | // exactly one token tree
         "tt" =>   // exactly one token tree
             true,
 
@@ -817,7 +867,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
             "pat" => match *tok {
                 TokenTree::Token(_, ref tok) => match *tok {
                     FatArrow | Comma | Eq | BinOp(token::Or) => Ok(true),
-                    Ident(i) if i.name == "if" || i.name == "in" => Ok(true),
+                    Ident(i, false) if i.name == "if" || i.name == "in" => Ok(true),
                     _ => Ok(false)
                 },
                 _ => Ok(false),
@@ -826,14 +876,18 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 TokenTree::Token(_, ref tok) => match *tok {
                     OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
-                    Ident(i) if i.name == "as" || i.name == "where" => Ok(true),
+                    Ident(i, false) if i.name == "as" || i.name == "where" => Ok(true),
                     _ => Ok(false)
                 },
                 TokenTree::MetaVarDecl(_, _, frag) if frag.name == "block" => Ok(true),
                 _ => Ok(false),
             },
-            "ident" => {
-                // being a single token, idents are harmless
+            "ident" | "lifetime" => {
+                // being a single token, idents and lifetimes are harmless
+                Ok(true)
+            },
+            "literal" => {
+                // literals may be of a single token, or two tokens (negative numbers)
                 Ok(true)
             },
             "meta" | "tt" => {
@@ -846,7 +900,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         Comma => Ok(true),
-                        Ident(i) if i.name != "priv" => Ok(true),
+                        Ident(i, is_raw) if is_raw || i.name != "priv" => Ok(true),
                         ref tok => Ok(tok.can_begin_type())
                     },
                     TokenTree::MetaVarDecl(_, _, frag) if frag.name == "ident"
@@ -859,18 +913,18 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
             _ => Err((format!("invalid fragment specifier `{}`", frag),
                      "valid fragment specifiers are `ident`, `block`, \
                       `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt`, \
-                      `item` and `vis`"))
+                      `literal`, `item` and `vis`"))
         }
     }
 }
 
 fn has_legal_fragment_specifier(sess: &ParseSess,
-                                features: &RefCell<Features>,
+                                features: &Features,
                                 attrs: &[ast::Attribute],
                                 tok: &quoted::TokenTree) -> Result<(), String> {
     debug!("has_legal_fragment_specifier({:?})", tok);
     if let quoted::TokenTree::MetaVarDecl(_, _, ref frag_spec) = *tok {
-        let frag_name = frag_spec.name.as_str();
+        let frag_name = frag_spec.as_str();
         let frag_span = tok.span();
         if !is_legal_fragment_specifier(sess, features, attrs, &frag_name, frag_span) {
             return Err(frag_name.to_string());
@@ -880,16 +934,28 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
 }
 
 fn is_legal_fragment_specifier(sess: &ParseSess,
-                               features: &RefCell<Features>,
+                               features: &Features,
                                attrs: &[ast::Attribute],
                                frag_name: &str,
                                frag_span: Span) -> bool {
     match frag_name {
-        "item" | "block" | "stmt" | "expr" | "pat" |
+        "item" | "block" | "stmt" | "expr" | "pat" | "lifetime" |
         "path" | "ty" | "ident" | "meta" | "tt" | "" => true,
+        "literal" => {
+            if !features.macro_literal_matcher &&
+               !attr::contains_name(attrs, "allow_internal_unstable") {
+                let explain = feature_gate::EXPLAIN_LITERAL_MATCHER;
+                emit_feature_err(sess,
+                                 "macro_literal_matcher",
+                                 frag_span,
+                                 GateIssue::Language,
+                                 explain);
+            }
+            true
+        },
         "vis" => {
-            if     !features.borrow().macro_vis_matcher
-                && !attr::contains_name(attrs, "allow_internal_unstable") {
+            if !features.macro_vis_matcher &&
+               !attr::contains_name(attrs, "allow_internal_unstable") {
                 let explain = feature_gate::EXPLAIN_VIS_MATCHER;
                 emit_feature_err(sess,
                                  "macro_vis_matcher",

@@ -1,0 +1,32 @@
+error: expected identifier, found reserved keyword `async`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:20:13
+   |
+LL |     let mut async = 1; //~ ERROR expected identifier, found reserved keyword `async`
+   |             ^^^^^ expected identifier, found reserved keyword
+
+error: expected identifier, found reserved keyword `async`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:30:13
+   |
+LL |     module::async(); //~ ERROR expected identifier, found reserved keyword `async`
+   |             ^^^^^ expected identifier, found reserved keyword
+
+error: no rules expected the token `r#async`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:24:31
+   |
+LL |     r#async = consumes_async!(r#async); //~ ERROR no rules expected the token `r#async`
+   |                               ^^^^^^^
+
+error: no rules expected the token `async`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:25:35
+   |
+LL |     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the token `async`
+   |                                   ^^^^^
+
+error: expected one of `move`, `|`, or `||`, found `<eof>`
+  --> <passes_ident macros>:1:22
+   |
+LL | ( $ i : ident ) => ( $ i )
+   |                      ^^^ expected one of `move`, `|`, or `||` here
+
+error: aborting due to 5 previous errors
+

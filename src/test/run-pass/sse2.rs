@@ -7,7 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// min-llvm-version 4.0
+
+// min-llvm-version 6.0
+// ^ needs MCSubtargetInfo::checkFeatures()
+// ignore-cloudabi no std::env
 
 #![feature(cfg_target_feature)]
 
@@ -27,4 +30,7 @@ fn main() {
         assert!(cfg!(target_feature = "sse2"),
                 "SSE2 was not detected as available on an x86 platform");
     }
+    // check a negative case too -- whitelisted on x86, but not enabled by default
+    assert!(cfg!(not(target_feature = "avx2")),
+            "AVX2 shouldn't be detected as available by default on any platform");
 }

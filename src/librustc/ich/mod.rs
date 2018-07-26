@@ -12,13 +12,12 @@
 
 pub use self::fingerprint::Fingerprint;
 pub use self::caching_codemap_view::CachingCodemapView;
-pub use self::hcx::{StableHashingContext, NodeIdHashingMode,
-                    hash_stable_trait_impls};
+pub use self::hcx::{StableHashingContextProvider, StableHashingContext, NodeIdHashingMode,
+                    hash_stable_trait_impls, compute_ignored_attr_names};
 mod fingerprint;
 mod caching_codemap_view;
 mod hcx;
 
-mod impls_const_math;
 mod impls_cstore;
 mod impls_hir;
 mod impls_mir;
@@ -28,12 +27,10 @@ mod impls_syntax;
 
 pub const ATTR_DIRTY: &'static str = "rustc_dirty";
 pub const ATTR_CLEAN: &'static str = "rustc_clean";
-pub const ATTR_DIRTY_METADATA: &'static str = "rustc_metadata_dirty";
-pub const ATTR_CLEAN_METADATA: &'static str = "rustc_metadata_clean";
 pub const ATTR_IF_THIS_CHANGED: &'static str = "rustc_if_this_changed";
 pub const ATTR_THEN_THIS_WOULD_NEED: &'static str = "rustc_then_this_would_need";
 pub const ATTR_PARTITION_REUSED: &'static str = "rustc_partition_reused";
-pub const ATTR_PARTITION_TRANSLATED: &'static str = "rustc_partition_translated";
+pub const ATTR_PARTITION_CODEGENED: &'static str = "rustc_partition_codegened";
 
 
 pub const DEP_GRAPH_ASSERT_ATTRS: &'static [&'static str] = &[
@@ -41,10 +38,8 @@ pub const DEP_GRAPH_ASSERT_ATTRS: &'static [&'static str] = &[
     ATTR_THEN_THIS_WOULD_NEED,
     ATTR_DIRTY,
     ATTR_CLEAN,
-    ATTR_DIRTY_METADATA,
-    ATTR_CLEAN_METADATA,
     ATTR_PARTITION_REUSED,
-    ATTR_PARTITION_TRANSLATED,
+    ATTR_PARTITION_CODEGENED,
 ];
 
 pub const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
@@ -53,8 +48,6 @@ pub const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
     ATTR_THEN_THIS_WOULD_NEED,
     ATTR_DIRTY,
     ATTR_CLEAN,
-    ATTR_DIRTY_METADATA,
-    ATTR_CLEAN_METADATA,
     ATTR_PARTITION_REUSED,
-    ATTR_PARTITION_TRANSLATED,
+    ATTR_PARTITION_CODEGENED,
 ];

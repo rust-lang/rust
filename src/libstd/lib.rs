@@ -44,10 +44,10 @@
 //!
 //! Once you are familiar with the contents of the standard library you may
 //! begin to find the verbosity of the prose distracting. At this stage in your
-//! development you may want to press the **[-]** button near the top of the
+//! development you may want to press the `[-]` button near the top of the
 //! page to collapse it into a more skimmable view.
 //!
-//! While you are looking at that **[-]** button also notice the **[src]**
+//! While you are looking at that `[-]` button also notice the `[src]`
 //! button. Rust's API documentation comes with the source code and you are
 //! encouraged to read it. The standard library source is generally high
 //! quality and a peek behind the curtains is often enlightening.
@@ -227,23 +227,22 @@
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
 
-// Turn warnings into errors, but only after stage0, where it can be useful for
-// code to emit warnings during language transitions
-#![deny(warnings)]
-
 // std may use features in a platform-specific way
 #![allow(unused_features)]
 
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 #![feature(alloc)]
-#![feature(allocator_api)]
+#![feature(alloc_error_handler)]
 #![feature(alloc_system)]
+#![feature(allocator_api)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(align_offset)]
+#![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
+#![feature(ascii_ctype)]
 #![feature(asm)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
@@ -255,30 +254,18 @@
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
-#![feature(const_max_value)]
-#![feature(const_atomic_bool_new)]
-#![feature(const_atomic_isize_new)]
-#![feature(const_atomic_usize_new)]
-#![feature(const_unsafe_cell_new)]
-#![feature(const_cell_new)]
-#![feature(const_once_new)]
-#![feature(const_ptr_null)]
-#![feature(const_ptr_null_mut)]
-#![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
+#![feature(external_doc)]
+#![feature(fs_read_write)]
 #![feature(fixed_size_array)]
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
-#![feature(fused)]
-#![feature(generic_param_attrs)]
-#![feature(hashmap_hasher)]
-#![feature(heap_api)]
-#![feature(i128)]
-#![feature(i128_type)]
-#![feature(inclusive_range)]
+#![feature(futures_api)]
+#![feature(generator_trait)]
+#![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
@@ -286,30 +273,31 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
-#![feature(macro_reexport)]
 #![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
+#![feature(exhaustive_patterns)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
+#![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(peek)]
-#![feature(placement_in_syntax)]
+#![feature(pin)]
 #![feature(placement_new_protocol)]
 #![feature(prelude_import)]
+#![feature(ptr_internals)]
 #![feature(rand)]
 #![feature(raw)]
-#![feature(repr_align)]
-#![feature(repr_simd)]
 #![feature(rustc_attrs)]
-#![feature(rustc_const_unstable)]
-#![feature(shared)]
-#![feature(sip_hash_13)]
+#![feature(std_internals)]
+#![feature(stdsimd)]
+#![feature(shrink_to)]
 #![feature(slice_bytes)]
 #![feature(slice_concat_ext)]
+#![feature(slice_internals)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
@@ -320,16 +308,22 @@
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
 #![feature(try_from)]
+#![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(unicode)]
-#![feature(unique)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+#![feature(use_extern_macros)]
 #![feature(vec_push_all)]
 #![feature(doc_cfg)]
 #![feature(doc_masked)]
+#![feature(doc_spotlight)]
 #![cfg_attr(test, feature(update_panic_count))]
-#![cfg_attr(windows, feature(const_atomic_ptr_new))]
+#![cfg_attr(windows, feature(used))]
+#![feature(doc_alias)]
+#![feature(doc_keyword)]
+#![feature(float_internals)]
+#![feature(panic_info_message)]
+#![feature(panic_implementation)]
 
 #![default_lib_allocator]
 
@@ -339,11 +333,8 @@
 // `force_alloc_system` is *only* intended as a workaround for local rebuilds
 // with a rustc without jemalloc.
 // FIXME(#44236) shouldn't need MSVC logic
-#![cfg_attr(all(not(target_env = "msvc"),
-                any(stage0, feature = "force_alloc_system")),
-            feature(global_allocator))]
 #[cfg(all(not(target_env = "msvc"),
-          any(stage0, feature = "force_alloc_system")))]
+          any(all(stage0, not(test)), feature = "force_alloc_system")))]
 #[global_allocator]
 static ALLOC: alloc_system::System = alloc_system::System;
 
@@ -355,22 +346,18 @@ use prelude::v1::*;
 
 // Access to Bencher, etc.
 #[cfg(test)] extern crate test;
+#[cfg(test)] extern crate rand;
 
-// We want to reexport a few macros from core but libcore has already been
-// imported by the compiler (via our #[no_std] attribute) In this case we just
-// add a new crate name so we can attach the reexports to it.
-#[macro_reexport(assert, assert_eq, assert_ne, debug_assert, debug_assert_eq,
-                 debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
-extern crate core as __core;
+// Re-export a few macros from core
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::{unreachable, unimplemented, write, writeln, try};
 
-#[doc(masked)]
-#[allow(deprecated)]
-extern crate rand as core_rand;
+#[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
-#[macro_reexport(vec, format)]
-extern crate alloc;
+extern crate alloc as alloc_crate;
 extern crate alloc_system;
-extern crate std_unicode;
 #[doc(masked)]
 extern crate libc;
 
@@ -379,14 +366,10 @@ extern crate libc;
 #[allow(unused_extern_crates)]
 extern crate unwind;
 
-// compiler-rt intrinsics
-#[doc(masked)]
-extern crate compiler_builtins;
-
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source
 // code. So any lang items std defines are conditionally excluded (or else they
-// wolud generate duplicate lang item errors), and any globals it defines are
+// would generate duplicate lang item errors), and any globals it defines are
 // _not_ the globals used by "real" std. So this import, defined only during
 // testing gives test-std access to real-std lang items and globals. See #2912
 #[cfg(test)] extern crate std as realstd;
@@ -398,7 +381,7 @@ mod macros;
 // The Rust prelude
 pub mod prelude;
 
-// Public module declarations and reexports
+// Public module declarations and re-exports
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -441,7 +424,7 @@ pub use core::i16;
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
-#[unstable(feature = "i128", issue = "35118")]
+#[stable(feature = "i128", since = "1.26.0")]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
@@ -454,25 +437,29 @@ pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u64;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::boxed;
+pub use alloc_crate::boxed;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::rc;
+pub use alloc_crate::rc;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::borrow;
+pub use alloc_crate::borrow;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::fmt;
+pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::slice;
+pub use alloc_crate::format;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::str;
+pub use alloc_crate::slice;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::string;
+pub use alloc_crate::str;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::vec;
+pub use alloc_crate::string;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use std_unicode::char;
-#[unstable(feature = "i128", issue = "35118")]
+pub use alloc_crate::vec;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::char;
+#[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
+#[stable(feature = "core_hint", since = "1.27.0")]
+pub use core::hint;
 
 pub mod f32;
 pub mod f64;
@@ -494,34 +481,69 @@ pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
-pub mod heap;
+
+#[unstable(feature = "futures_api",
+           reason = "futures in libcore are unstable",
+           issue = "50547")]
+pub mod task {
+    //! Types and Traits for working with asynchronous tasks.
+    #[doc(inline)]
+    pub use core::task::*;
+    #[doc(inline)]
+    pub use alloc_crate::task::*;
+}
+
+#[unstable(feature = "futures_api",
+           reason = "futures in libcore are unstable",
+           issue = "50547")]
+pub mod future;
 
 // Platform-abstraction modules
 #[macro_use]
 mod sys_common;
 mod sys;
 
+pub mod alloc;
+
 // Private support modules
 mod panicking;
-mod rand;
 mod memchr;
 
 // The runtime entry point and a few unstable public functions used by the
 // compiler
 pub mod rt;
 
-// Some external utilities of the standard library rely on randomness (aka
-// rustc_back::TempDir and tests) and need a way to get at the OS rng we've got
-// here. This module is not at all intended for stabilization as-is, however,
-// but it may be stabilized long-term. As a result we're exposing a hidden,
-// unstable module so we can get our build working.
-#[doc(hidden)]
-#[unstable(feature = "rand", issue = "27703")]
-pub mod __rand {
-    pub use rand::{thread_rng, ThreadRng, Rng};
+// Pull in the the `stdsimd` crate directly into libstd. This is the same as
+// libcore's arch/simd modules where the source of truth here is in a different
+// repository, but we pull things in here manually to get it into libstd.
+//
+// Note that the #[cfg] here is intended to do two things. First it allows us to
+// change the rustc implementation of intrinsics in stage0 by not compiling simd
+// intrinsics in stage0. Next it doesn't compile anything in test mode as
+// stdsimd has tons of its own tests which we don't want to run.
+#[path = "../stdsimd/stdsimd/mod.rs"]
+#[allow(missing_debug_implementations, missing_docs, dead_code)]
+#[unstable(feature = "stdsimd", issue = "48556")]
+#[cfg(all(not(stage0), not(test)))]
+mod stdsimd;
+
+// A "fake" module needed by the `stdsimd` module to compile, not actually
+// exported though.
+#[cfg(not(stage0))]
+mod coresimd {
+    pub use core::arch;
 }
+
+#[stable(feature = "simd_arch", since = "1.27.0")]
+#[cfg(all(not(stage0), not(test)))]
+pub use stdsimd::arch;
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
+
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for the existing keywords. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
+include!("keyword_docs.rs");

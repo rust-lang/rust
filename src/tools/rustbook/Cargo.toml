@@ -8,5 +8,6 @@ license = "MIT/Apache-2.0"
 clap = "2.25.0"
 
 [dependencies.mdbook]
-version = "0.0.26"
+version = "0.1.7"
 default-features = false
+features = ["search"]

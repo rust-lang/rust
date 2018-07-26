@@ -1,0 +1,9 @@
+error[E0214]: parenthesized parameters may only be used with a trait
+  --> $DIR/E0214.rs:12:15
+   |
+LL |     let v: Vec(&str) = vec!["foo"];
+   |               ^^^^^^ only traits may use parentheses
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0214`.

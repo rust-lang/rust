@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(never_type)]
+#![feature(exhaustive_patterns)]
 
 mod private {
     pub struct Private {

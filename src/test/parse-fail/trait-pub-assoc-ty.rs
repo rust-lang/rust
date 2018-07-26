@@ -10,7 +10,7 @@
 
 trait Foo {
     pub type Foo;
-    //~^ ERROR expected one of `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `pub`
+    //~^ ERROR expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found
 }
 
 fn main() {}

@@ -99,9 +99,10 @@ use mem;
 #[allow(deprecated)]
 pub use self::sip::SipHasher;
 
-#[unstable(feature = "sip_hash_13", issue = "34767")]
+#[unstable(feature = "hashmap_internals", issue = "0")]
 #[allow(deprecated)]
-pub use self::sip::{SipHasher13, SipHasher24};
+#[doc(hidden)]
+pub use self::sip::SipHasher13;
 
 mod sip;
 
@@ -259,7 +260,7 @@ pub trait Hasher {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     ///
-    /// ['write']: #tymethod.write
+    /// [`write`]: #tymethod.write
     #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 
@@ -307,7 +308,7 @@ pub trait Hasher {
     }
     /// Writes a single `u128` into this hasher.
     #[inline]
-    #[unstable(feature = "i128", issue = "35118")]
+    #[stable(feature = "i128", since = "1.26.0")]
     fn write_u128(&mut self, i: u128) {
         self.write(&unsafe { mem::transmute::<_, [u8; 16]>(i) })
     }
@@ -347,7 +348,7 @@ pub trait Hasher {
     }
     /// Writes a single `i128` into this hasher.
     #[inline]
-    #[unstable(feature = "i128", issue = "35118")]
+    #[stable(feature = "i128", since = "1.26.0")]
     fn write_i128(&mut self, i: i128) {
         self.write_u128(i as u128)
     }
@@ -541,6 +542,16 @@ impl<H> Default for BuildHasherDefault<H> {
     }
 }
 
+#[stable(since = "1.29.0", feature = "build_hasher_eq")]
+impl<H> PartialEq for BuildHasherDefault<H> {
+    fn eq(&self, _other: &BuildHasherDefault<H>) -> bool {
+        true
+    }
+}
+
+#[stable(since = "1.29.0", feature = "build_hasher_eq")]
+impl<H> Eq for BuildHasherDefault<H> {}
+
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {
@@ -599,6 +610,13 @@ mod impls {
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write(self.as_bytes());
             state.write_u8(0xff)
+        }
+    }
+
+    #[stable(feature = "never_hash", since = "1.29.0")]
+    impl Hash for ! {
+        fn hash<H: Hasher>(&self, _: &mut H) {
+            *self
         }
     }
 

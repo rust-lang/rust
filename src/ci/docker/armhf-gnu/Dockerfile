@@ -76,9 +76,7 @@ RUN curl -O http://ftp.nl.debian.org/debian/dists/jessie/main/installer-armhf/cu
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV RUST_CONFIGURE_ARGS \
-      --target=arm-unknown-linux-gnueabihf \
-      --qemu-armhf-rootfs=/tmp/rootfs
+ENV RUST_CONFIGURE_ARGS --qemu-armhf-rootfs=/tmp/rootfs
 ENV SCRIPT python2.7 ../x.py test --target arm-unknown-linux-gnueabihf
 
 ENV NO_CHANGE_USER=1

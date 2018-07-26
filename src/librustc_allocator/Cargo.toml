@@ -11,5 +11,7 @@ test = false
 [dependencies]
 rustc = { path = "../librustc" }
 rustc_errors = { path = "../librustc_errors" }
+rustc_target = { path = "../librustc_target" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+log = "0.4"

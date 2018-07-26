@@ -2,10 +2,6 @@
 	path = src/llvm
 	url = https://github.com/rust-lang/llvm.git
 	branch = master
-[submodule "src/rt/hoedown"]
-	path = src/rt/hoedown
-	url = https://github.com/rust-lang/hoedown.git
-	branch = rust-2015-09-21-do-not-delete
 [submodule "src/jemalloc"]
 	path = src/jemalloc
 	url = https://github.com/rust-lang/jemalloc.git
@@ -21,10 +17,10 @@
 [submodule "src/tools/cargo"]
 	path = src/tools/cargo
 	url = https://github.com/rust-lang/cargo.git
-[submodule "reference"]
+[submodule "src/doc/reference"]
 	path = src/doc/reference
 	url = https://github.com/rust-lang-nursery/reference.git
-[submodule "book"]
+[submodule "src/doc/book"]
 	path = src/doc/book
 	url = https://github.com/rust-lang/book.git
 [submodule "src/tools/rls"]
@@ -42,3 +38,21 @@
 [submodule "src/tools/miri"]
 	path = src/tools/miri
 	url = https://github.com/solson/miri.git
+[submodule "src/dlmalloc"]
+	path = src/dlmalloc
+	url = https://github.com/alexcrichton/dlmalloc-rs.git
+[submodule "src/doc/rust-by-example"]
+	path = src/doc/rust-by-example
+	url = https://github.com/rust-lang/rust-by-example
+[submodule "src/llvm-emscripten"]
+	path = src/llvm-emscripten
+	url = https://github.com/rust-lang/llvm
+[submodule "src/stdsimd"]
+	path = src/stdsimd
+	url = https://github.com/rust-lang-nursery/stdsimd
+[submodule "src/tools/lld"]
+	path = src/tools/lld
+	url = https://github.com/rust-lang/lld.git
+[submodule "src/libbacktrace"]
+	path = src/libbacktrace
+	url = https://github.com/rust-lang-nursery/libbacktrace

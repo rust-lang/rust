@@ -17,7 +17,7 @@
 // `use` directives.
 //
 // Unused trait imports can't be checked until the method resolution. We save
-// candidates here, and do the acutal check in librustc_typeck/check_unused.rs.
+// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
 
 use std::ops::{Deref, DerefMut};
 
@@ -26,7 +26,7 @@ use resolve_imports::ImportDirectiveSubclass;
 
 use rustc::{lint, ty};
 use rustc::util::nodemap::NodeMap;
-use syntax::ast::{self, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::ast;
 use syntax::visit::{self, Visitor};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 
@@ -35,6 +35,8 @@ struct UnusedImportCheckVisitor<'a, 'b: 'a> {
     resolver: &'a mut Resolver<'b>,
     /// All the (so far) unused imports, grouped path list
     unused_imports: NodeMap<NodeMap<Span>>,
+    base_id: ast::NodeId,
+    item_span: Span,
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
@@ -77,40 +79,48 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
 
 impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &'a ast::Item) {
-        visit::walk_item(self, item);
+        self.item_span = item.span;
+
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
-        if item.vis == ast::Visibility::Public || item.span.source_equal(&DUMMY_SP) {
-            return;
-        }
-
-        match item.node {
-            ast::ItemKind::Use(ref p) => {
-                match p.node {
-                    ViewPathSimple(..) => {
-                        self.check_import(item.id, item.id, p.span)
-                    }
-
-                    ViewPathList(_, ref list) => {
-                        if list.len() == 0 {
-                            self.unused_imports
-                                .entry(item.id)
-                                .or_insert_with(NodeMap)
-                                .insert(item.id, item.span);
-                        }
-                        for i in list {
-                            self.check_import(item.id, i.node.id, i.span);
-                        }
-                    }
-                    ViewPathGlob(_) => {
-                        self.check_import(item.id, item.id, p.span);
-                    }
-                }
+        if let ast::ItemKind::Use(..) = item.node {
+            if item.vis.node.is_pub() || item.span.is_dummy() {
+                return;
             }
-            _ => {}
         }
+
+        visit::walk_item(self, item);
+    }
+
+    fn visit_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId, nested: bool) {
+        // Use the base UseTree's NodeId as the item id
+        // This allows the grouping of all the lints in the same item
+        if !nested {
+            self.base_id = id;
+        }
+
+        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+            // If it's the parent group, cover the entire use item
+            let span = if nested {
+                use_tree.span
+            } else {
+                self.item_span
+            };
+
+            if items.len() == 0 {
+                self.unused_imports
+                    .entry(self.base_id)
+                    .or_insert_with(NodeMap)
+                    .insert(id, span);
+            }
+        } else {
+            let base_id = self.base_id;
+            self.check_import(base_id, id, use_tree.span);
+        }
+
+        visit::walk_use_tree(self, use_tree, id);
     }
 }
 
@@ -119,8 +129,23 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
         match directive.subclass {
             _ if directive.used.get() ||
                  directive.vis.get() == ty::Visibility::Public ||
-                 directive.span.source_equal(&DUMMY_SP) => {}
-            ImportDirectiveSubclass::ExternCrate => {
+                 directive.span.is_dummy() => {
+                if let ImportDirectiveSubclass::MacroUse = directive.subclass {
+                    if resolver.session.features_untracked().use_extern_macros &&
+                        !directive.span.is_dummy() {
+                        resolver.session.buffer_lint(
+                            lint::builtin::MACRO_USE_EXTERN_CRATE,
+                            directive.id,
+                            directive.span,
+                            "deprecated `#[macro_use]` directive used to \
+                             import macros should be replaced at use sites \
+                             with a `use` statement to import the macro \
+                             instead",
+                        );
+                    }
+                }
+            }
+            ImportDirectiveSubclass::ExternCrate(_) => {
                 resolver.maybe_unused_extern_crates.push((directive.id, directive.span));
             }
             ImportDirectiveSubclass::MacroUse => {
@@ -132,9 +157,15 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
         }
     }
 
+    for (id, span) in resolver.unused_labels.iter() {
+        resolver.session.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
+    }
+
     let mut visitor = UnusedImportCheckVisitor {
         resolver,
         unused_imports: NodeMap(),
+        base_id: ast::DUMMY_NODE_ID,
+        item_span: DUMMY_SP,
     };
     visit::walk_crate(&mut visitor, krate);
 

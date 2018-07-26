@@ -50,6 +50,8 @@ mod cross_crate {
         <Foo>::trait_deprecated_text(&foo);
         <Foo as Trait>::trait_deprecated_text(&foo);
 
+        deprecated_future(); // Fine; no error.
+
         deprecated_unstable();
         //~^ ERROR use of unstable library feature
         Trait::trait_deprecated_unstable(&foo);
@@ -96,6 +98,10 @@ mod cross_crate {
         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
         //~^ ERROR use of unstable library feature
         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
+        type A = TraitWithAssociatedTypes<
+            TypeUnstable = u8, //~ ERROR use of unstable library feature
+            TypeDeprecated = u16,
+        >;
 
         let _ = DeprecatedStruct {
             i: 0
@@ -213,6 +219,10 @@ mod this_crate {
     #[unstable(feature = "test_feature", issue = "0")]
     #[rustc_deprecated(since = "1.0.0", reason = "text")]
     pub fn deprecated_text() {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "99.99.99", reason = "text")]
+    pub fn deprecated_future() {}
 
     #[unstable(feature = "test_feature", issue = "0")]
     pub fn unstable() {}
@@ -333,6 +343,8 @@ mod this_crate {
         Trait::trait_deprecated_text(&foo);
         <Foo>::trait_deprecated_text(&foo);
         <Foo as Trait>::trait_deprecated_text(&foo);
+
+        deprecated_future();
 
         unstable();
         foo.method_unstable();

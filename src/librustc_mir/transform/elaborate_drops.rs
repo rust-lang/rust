@@ -9,19 +9,18 @@
 // except according to those terms.
 
 use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
-use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
+use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::{DataflowResults};
 use dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
 use dataflow::MoveDataParamEnv;
-use dataflow;
+use dataflow::{self, do_dataflow, DebugFormatted};
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
-use rustc::middle::const_val::ConstVal;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
+use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
 use util::elaborate_drops::{DropFlagState, Unwind, elaborate_drop};
 use util::elaborate_drops::{DropElaborator, DropStyle, DropFlagMode};
@@ -39,13 +38,10 @@ impl MirPass for ElaborateDrops {
                           mir: &mut Mir<'tcx>)
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
-        match src {
-            MirSource::Fn(..) => {},
-            _ => return
-        }
-        let id = src.item_id();
-        let param_env = tcx.param_env(tcx.hir.local_def_id(id));
-        let move_data = MoveData::gather_moves(mir, tcx, param_env).unwrap();
+
+        let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
+        let param_env = tcx.param_env(src.def_id).with_reveal_all();
+        let move_data = MoveData::gather_moves(mir, tcx).unwrap();
         let elaborate_patch = {
             let mir = &*mir;
             let env = MoveDataParamEnv {
@@ -54,13 +50,13 @@ impl MirPass for ElaborateDrops {
             };
             let dead_unwinds = find_dead_unwinds(tcx, mir, id, &env);
             let flow_inits =
-                dataflow::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                                      MaybeInitializedLvals::new(tcx, mir, &env),
-                                      |bd, p| &bd.move_data().move_paths[p]);
+                do_dataflow(tcx, mir, id, &[], &dead_unwinds,
+                            MaybeInitializedPlaces::new(tcx, mir, &env),
+                            |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
             let flow_uninits =
-                dataflow::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                                      MaybeUninitializedLvals::new(tcx, mir, &env),
-                                      |bd, p| &bd.move_data().move_paths[p]);
+                do_dataflow(tcx, mir, id, &[], &dead_unwinds,
+                            MaybeUninitializedPlaces::new(tcx, mir, &env),
+                            |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
 
             ElaborateDropsCtxt {
                 tcx,
@@ -91,9 +87,9 @@ fn find_dead_unwinds<'a, 'tcx>(
     // reach cleanup blocks, which can't have unwind edges themselves.
     let mut dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let flow_inits =
-        dataflow::do_dataflow(tcx, mir, id, &[], &dead_unwinds,
-                           MaybeInitializedLvals::new(tcx, mir, &env),
-                           |bd, p| &bd.move_data().move_paths[p]);
+        do_dataflow(tcx, mir, id, &[], &dead_unwinds,
+                    MaybeInitializedPlaces::new(tcx, mir, &env),
+                    |bd, p| DebugFormatted::new(&bd.move_data().move_paths[p]));
     for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
         let location = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref location, unwind: Some(_), .. } |
@@ -176,7 +172,7 @@ struct Elaborator<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> fmt::Debug for Elaborator<'a, 'b, 'tcx> {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
     }
 }
@@ -252,6 +248,20 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         })
     }
 
+    fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
+            match p {
+                &Projection {
+                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: false}, ..
+                } => offset == index,
+                &Projection {
+                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true}, ..
+                } => size - offset == index,
+                _ => false
+            }
+        })
+    }
+
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
             match p {
@@ -273,7 +283,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     }
 
     fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>> {
-        self.ctxt.drop_flag(path).map(Operand::Consume)
+        self.ctxt.drop_flag(path).map(Operand::Copy)
     }
 }
 
@@ -281,8 +291,8 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     env: &'a MoveDataParamEnv<'tcx, 'tcx>,
-    flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx, 'tcx>>,
-    flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx, 'tcx>>,
+    flow_inits: DataflowResults<MaybeInitializedPlaces<'a, 'tcx, 'tcx>>,
+    flow_uninits:  DataflowResults<MaybeUninitializedPlaces<'a, 'tcx, 'tcx>>,
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }
@@ -317,8 +327,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         });
     }
 
-    fn drop_flag(&mut self, index: MovePathIndex) -> Option<Lvalue<'tcx>> {
-        self.drop_flags.get(&index).map(|t| Lvalue::Local(*t))
+    fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {
+        self.drop_flags.get(&index).map(|t| Place::Local(*t))
     }
 
     /// create a patch that elaborates all drops in the input
@@ -353,7 +363,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             });
 
             let path = self.move_data().rev_lookup.find(location);
-            debug!("collect_drop_flags: {:?}, lv {:?} ({:?})",
+            debug!("collect_drop_flags: {:?}, place {:?} ({:?})",
                    bb, location, path);
 
             let path = match path {
@@ -363,7 +373,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     let (_maybe_live, maybe_dead) = init_data.state(parent);
                     if maybe_dead {
                         span_bug!(terminator.source_info.span,
-                                  "drop of untracked, uninitialized value {:?}, lv {:?} ({:?})",
+                                  "drop of untracked, uninitialized value {:?}, place {:?} ({:?})",
                                   bb, location, path);
                     }
                     continue
@@ -432,13 +442,13 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     /// Elaborate a MIR `replace` terminator. This instruction
-    /// is not directly handled by translation, and therefore
+    /// is not directly handled by codegen, and therefore
     /// must be desugared.
     ///
     /// The desugaring drops the location if needed, and then writes
     /// the value (including setting the drop flag) over it in *both* arms.
     ///
-    /// The `replace` terminator can also be called on lvalues that
+    /// The `replace` terminator can also be called on places that
     /// are not tracked by elaboration (for example,
     /// `replace x[i] <- tmp0`). The borrow checker requires that
     /// these locations are initialized before the assignment,
@@ -446,7 +456,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn elaborate_replace(
         &mut self,
         loc: Location,
-        location: &Lvalue<'tcx>,
+        location: &Place<'tcx>,
         value: &Operand<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>)
@@ -520,12 +530,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         Rvalue::Use(Operand::Constant(Box::new(Constant {
             span,
             ty: self.tcx.types.bool,
-            literal: Literal::Value {
-                value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Bool(val),
-                    ty: self.tcx.types.bool
-                })
-            }
+            literal: ty::Const::from_bool(self.tcx, val),
         })))
     }
 
@@ -533,28 +538,28 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         if let Some(&flag) = self.drop_flags.get(&path) {
             let span = self.patch.source_info_for_location(self.mir, loc).span;
             let val = self.constant_bool(span, val.value());
-            self.patch.add_assign(loc, Lvalue::Local(flag), val);
+            self.patch.add_assign(loc, Place::Local(flag), val);
         }
     }
 
     fn drop_flags_on_init(&mut self) {
-        let loc = Location { block: START_BLOCK, statement_index: 0 };
+        let loc = Location::START;
         let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
-            self.patch.add_assign(loc, Lvalue::Local(*flag), false_.clone());
+            self.patch.add_assign(loc, Place::Local(*flag), false_.clone());
         }
     }
 
     fn drop_flags_for_fn_rets(&mut self) {
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             if let TerminatorKind::Call {
-                destination: Some((ref lv, tgt)), cleanup: Some(_), ..
+                destination: Some((ref place, tgt)), cleanup: Some(_), ..
             } = data.terminator().kind {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: tgt, statement_index: 0 };
-                let path = self.move_data().rev_lookup.find(lv);
+                let path = self.move_data().rev_lookup.find(place);
                 on_lookup_result_bits(
                     self.tcx, self.mir, self.move_data(), path,
                     |child| self.set_drop_flag(loc, child, DropFlagState::Present)
@@ -564,7 +569,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     fn drop_flags_for_args(&mut self) {
-        let loc = Location { block: START_BLOCK, statement_index: 0 };
+        let loc = Location::START;
         dataflow::drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.env, |path, ds| {
                 self.set_drop_flag(loc, path, ds);
@@ -623,12 +628,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             // so mark the return as initialized *before* the
             // call.
             if let TerminatorKind::Call {
-                destination: Some((ref lv, _)), cleanup: None, ..
+                destination: Some((ref place, _)), cleanup: None, ..
             } = data.terminator().kind {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
-                let path = self.move_data().rev_lookup.find(lv);
+                let path = self.move_data().rev_lookup.find(place);
                 on_lookup_result_bits(
                     self.tcx, self.mir, self.move_data(), path,
                     |child| self.set_drop_flag(loc, child, DropFlagState::Present)

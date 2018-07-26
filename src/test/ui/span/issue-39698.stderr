@@ -1,7 +1,7 @@
 error[E0408]: variable `a` is not bound in all patterns
   --> $DIR/issue-39698.rs:20:23
    |
-20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
    |               -       ^^^^^^^^^^^   ^^^^^^^^         - variable not in all patterns
    |               |       |             |
    |               |       |             pattern doesn't bind `a`
@@ -11,7 +11,7 @@ error[E0408]: variable `a` is not bound in all patterns
 error[E0408]: variable `d` is not bound in all patterns
   --> $DIR/issue-39698.rs:20:37
    |
-20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
    |                  -          -       ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `d`
    |                  |          |       |
    |                  |          |       pattern doesn't bind `d`
@@ -21,7 +21,7 @@ error[E0408]: variable `d` is not bound in all patterns
 error[E0408]: variable `b` is not bound in all patterns
   --> $DIR/issue-39698.rs:20:9
    |
-20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
    |         ^^^^^^^^^^^            -    ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `b`
    |         |                      |    |
    |         |                      |    pattern doesn't bind `b`
@@ -31,7 +31,7 @@ error[E0408]: variable `b` is not bound in all patterns
 error[E0408]: variable `c` is not bound in all patterns
   --> $DIR/issue-39698.rs:20:9
    |
-20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
    |         ^^^^^^^^^^^   ^^^^^^^^^^^         -    ^^^^^^^^ pattern doesn't bind `c`
    |         |             |                   |
    |         |             |                   variable not in all patterns
@@ -40,3 +40,4 @@ error[E0408]: variable `c` is not bound in all patterns
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0408`.

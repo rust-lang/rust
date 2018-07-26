@@ -92,7 +92,7 @@
 //! }
 //! ```
 
-use deriving;
+use deriving::{self, pathvec_std};
 use deriving::generic::*;
 use deriving::generic::ty::*;
 use deriving::warn_if_deprecated;
@@ -108,7 +108,7 @@ pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt,
                                        span: Span,
                                        mitem: &MetaItem,
                                        item: &Annotatable,
-                                       push: &mut FnMut(Annotatable)) {
+                                       push: &mut dyn FnMut(Annotatable)) {
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
 
@@ -116,7 +116,7 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
-                                 push: &mut FnMut(Annotatable)) {
+                                 push: &mut dyn FnMut(Annotatable)) {
     warn_if_deprecated(cx, span, "Encodable");
     expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
 }
@@ -125,22 +125,14 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
-                                 push: &mut FnMut(Annotatable),
+                                 push: &mut dyn FnMut(Annotatable),
                                  krate: &'static str) {
-    if cx.crate_root != Some("std") {
-        // FIXME(#21880): lift this requirement.
-        cx.span_err(span,
-                    "this trait cannot be derived with #![no_std] \
-                           or #![no_core]");
-        return;
-    }
-
     let typaram = &*deriving::hygienic_type_parameter(item, "__S");
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: Path::new_(vec![krate, "Encodable"], None, vec![], true),
+        path: Path::new_(vec![krate, "Encodable"], None, vec![], PathKind::Global),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -150,19 +142,21 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                 name: "encode",
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
-                    bounds: vec![(typaram,
-                                  vec![Path::new_(vec![krate, "Encoder"], None, vec![], true)])]
+                    bounds: vec![
+                        (typaram,
+                         vec![Path::new_(vec![krate, "Encoder"], None, vec![], PathKind::Global)])
+                    ],
                 },
                 explicit_self: borrowed_explicit_self(),
-                args: vec![Ptr(Box::new(Literal(Path::new_local(typaram))),
-                           Borrowed(None, Mutability::Mutable))],
+                args: vec![(Ptr(Box::new(Literal(Path::new_local(typaram))),
+                           Borrowed(None, Mutability::Mutable)), "s")],
                 ret_ty: Literal(Path::new_(
-                    pathvec_std!(cx, core::result::Result),
+                    pathvec_std!(cx, result::Result),
                     None,
                     vec![Box::new(Tuple(Vec::new())), Box::new(Literal(Path::new_(
-                        vec![typaram, "Error"], None, vec![], false
+                        vec![typaram, "Error"], None, vec![], PathKind::Local
                     )))],
-                    true
+                    PathKind::Std
                 )),
                 attributes: Vec::new(),
                 is_unsafe: false,
@@ -218,17 +212,19 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                 } else {
                     cx.expr(span, ExprKind::Ret(Some(call)))
                 };
-                stmts.push(cx.stmt_expr(call));
+
+                let stmt = cx.stmt_expr(call);
+                stmts.push(stmt);
             }
 
             // unit structs have no fields and need to return Ok()
-            if stmts.is_empty() {
+            let blk = if stmts.is_empty() {
                 let ok = cx.expr_ok(trait_span, cx.expr_tuple(trait_span, vec![]));
-                let ret_ok = cx.expr(trait_span, ExprKind::Ret(Some(ok)));
-                stmts.push(cx.stmt_expr(ret_ok));
-            }
+                cx.lambda1(trait_span, ok, blkarg)
+            } else {
+                cx.lambda_stmts_1(trait_span, stmts, blkarg)
+            };
 
-            let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
             cx.expr_method_call(trait_span,
                                 encoder,
                                 cx.ident_of("emit_struct"),
@@ -271,7 +267,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
             }
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
-            let name = cx.expr_str(trait_span, variant.node.name.name);
+            let name = cx.expr_str(trait_span, variant.node.ident.name);
             let call = cx.expr_method_call(trait_span,
                                            blkencoder,
                                            cx.ident_of("emit_enum_variant"),

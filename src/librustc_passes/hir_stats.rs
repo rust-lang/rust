@@ -203,9 +203,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_ty_param_bound(&mut self, bounds: &'v hir::TyParamBound) {
-        self.record("TyParamBound", Id::None, bounds);
-        hir_visit::walk_ty_param_bound(self, bounds)
+    fn visit_param_bound(&mut self, bounds: &'v hir::GenericBound) {
+        self.record("GenericBound", Id::None, bounds);
+        hir_visit::walk_param_bound(self, bounds)
     }
 
     fn visit_struct_field(&mut self, s: &'v hir::StructField) {
@@ -223,10 +223,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
         self.record("Lifetime", Id::Node(lifetime.id), lifetime);
         hir_visit::walk_lifetime(self, lifetime)
-    }
-    fn visit_lifetime_def(&mut self, lifetime: &'v hir::LifetimeDef) {
-        self.record("LifetimeDef", Id::None, lifetime);
-        hir_visit::walk_lifetime_def(self, lifetime)
     }
     fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: NodeId, span: Span) {
         self.record("QPath", Id::None, qpath);
@@ -326,9 +322,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_ty_param_bound(&mut self, bounds: &'v ast::TyParamBound) {
-        self.record("TyParamBound", Id::None, bounds);
-        ast_visit::walk_ty_param_bound(self, bounds)
+    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound) {
+        self.record("GenericBound", Id::None, bounds);
+        ast_visit::walk_param_bound(self, bounds)
     }
 
     fn visit_struct_field(&mut self, s: &'v ast::StructField) {
@@ -349,20 +345,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_lifetime_def(&mut self, lifetime: &'v ast::LifetimeDef) {
-        self.record("LifetimeDef", Id::None, lifetime);
-        ast_visit::walk_lifetime_def(self, lifetime)
-    }
-
     fn visit_mac(&mut self, mac: &'v ast::Mac) {
         self.record("Mac", Id::None, mac);
-    }
-
-    fn visit_path_list_item(&mut self,
-                            prefix: &'v ast::Path,
-                            item: &'v ast::PathListItem) {
-        self.record("PathListItem", Id::None, item);
-        ast_visit::walk_path_list_item(self, prefix, item)
     }
 
     fn visit_path_segment(&mut self,

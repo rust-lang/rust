@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_val::{ConstVal, ConstAggregate};
+use mir::interpret::ConstValue;
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
@@ -16,13 +16,16 @@ use ty::{self, Ty, TypeFlags, TypeFoldable};
 pub struct FlagComputation {
     pub flags: TypeFlags,
 
-    // maximum depth of any bound region that we have seen thus far
-    pub depth: u32,
+    // see `TyS::outer_exclusive_binder` for details
+    pub outer_exclusive_binder: ty::DebruijnIndex,
 }
 
 impl FlagComputation {
     fn new() -> FlagComputation {
-        FlagComputation { flags: TypeFlags::empty(), depth: 0 }
+        FlagComputation {
+            flags: TypeFlags::empty(),
+            outer_exclusive_binder: ty::INNERMOST,
+        }
     }
 
     pub fn for_sty(st: &ty::TypeVariants) -> FlagComputation {
@@ -35,10 +38,17 @@ impl FlagComputation {
         self.flags = self.flags | (flags & TypeFlags::NOMINAL_FLAGS);
     }
 
-    fn add_depth(&mut self, depth: u32) {
-        if depth > self.depth {
-            self.depth = depth;
-        }
+    /// indicates that `self` refers to something at binding level `binder`
+    fn add_binder(&mut self, binder: ty::DebruijnIndex) {
+        let exclusive_binder = binder.shifted_in(1);
+        self.add_exclusive_binder(exclusive_binder);
+    }
+
+    /// indicates that `self` refers to something *inside* binding
+    /// level `binder` -- not bound by `binder`, but bound by the next
+    /// binder internal to it
+    fn add_exclusive_binder(&mut self, exclusive_binder: ty::DebruijnIndex) {
+        self.outer_exclusive_binder = self.outer_exclusive_binder.max(exclusive_binder);
     }
 
     /// Adds the flags/depth from a set of types that appear within the current type, but within a
@@ -49,9 +59,11 @@ impl FlagComputation {
         // The types that contributed to `computation` occurred within
         // a region binder, so subtract one from the region depth
         // within when adding the depth to `self`.
-        let depth = computation.depth;
-        if depth > 0 {
-            self.add_depth(depth - 1);
+        let outer_exclusive_binder = computation.outer_exclusive_binder;
+        if outer_exclusive_binder > ty::INNERMOST {
+            self.add_exclusive_binder(outer_exclusive_binder.shifted_out(1));
+        } else {
+            // otherwise, this binder captures nothing
         }
     }
 
@@ -79,7 +91,7 @@ impl FlagComputation {
             }
 
             &ty::TyParam(ref p) => {
-                self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 if p.is_self() {
                     self.add_flags(TypeFlags::HAS_SELF);
                 } else {
@@ -87,27 +99,40 @@ impl FlagComputation {
                 }
             }
 
-            &ty::TyGenerator(_, ref substs, ref interior) => {
+            &ty::TyGenerator(_, ref substs, _) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
-                self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_substs(&substs.substs);
-                self.add_ty(interior.witness);
+            }
+
+            &ty::TyGeneratorWitness(ref ts) => {
+                let mut computation = FlagComputation::new();
+                computation.add_tys(&ts.skip_binder()[..]);
+                self.add_bound_computation(&computation);
             }
 
             &ty::TyClosure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
-                self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_substs(&substs.substs);
             }
 
             &ty::TyInfer(infer) => {
-                self.add_flags(TypeFlags::HAS_LOCAL_NAMES); // it might, right?
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES); // it might, right?
                 self.add_flags(TypeFlags::HAS_TY_INFER);
                 match infer {
                     ty::FreshTy(_) |
                     ty::FreshIntTy(_) |
-                    ty::FreshFloatTy(_) => {}
-                    _ => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
+                    ty::FreshFloatTy(_) |
+                    ty::CanonicalTy(_) => {
+                        self.add_flags(TypeFlags::HAS_CANONICAL_VARS);
+                    }
+
+                    ty::TyVar(_) |
+                    ty::IntVar(_) |
+                    ty::FloatVar(_) => {
+                        self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
+                    }
                 }
             }
 
@@ -160,15 +185,12 @@ impl FlagComputation {
                 self.add_ty(m.ty);
             }
 
-            &ty::TyRef(r, ref m) => {
+            &ty::TyRef(r, ty, _) => {
                 self.add_region(r);
-                self.add_ty(m.ty);
+                self.add_ty(ty);
             }
 
-            &ty::TyTuple(ref ts, is_default) => {
-                if is_default {
-                    self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX);
-                }
+            &ty::TyTuple(ref ts) => {
                 self.add_tys(&ts[..]);
             }
 
@@ -184,7 +206,7 @@ impl FlagComputation {
 
     fn add_ty(&mut self, ty: Ty) {
         self.add_flags(ty.flags);
-        self.add_depth(ty.region_depth);
+        self.add_exclusive_binder(ty.outer_exclusive_binder);
     }
 
     fn add_tys(&mut self, tys: &[Ty]) {
@@ -205,41 +227,15 @@ impl FlagComputation {
     fn add_region(&mut self, r: ty::Region) {
         self.add_flags(r.type_flags());
         if let ty::ReLateBound(debruijn, _) = *r {
-            self.add_depth(debruijn.depth);
+            self.add_binder(debruijn);
         }
     }
 
     fn add_const(&mut self, constant: &ty::Const) {
         self.add_ty(constant.ty);
-        match constant.val {
-            ConstVal::Integral(_) |
-            ConstVal::Float(_) |
-            ConstVal::Str(_) |
-            ConstVal::ByteStr(_) |
-            ConstVal::Bool(_) |
-            ConstVal::Char(_) |
-            ConstVal::Variant(_) => {}
-            ConstVal::Function(_, substs) => {
-                self.add_substs(substs);
-            }
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                for &(_, v) in fields {
-                    self.add_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                for v in fields {
-                    self.add_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-                self.add_const(v);
-            }
-            ConstVal::Unevaluated(_, substs) => {
-                self.add_flags(TypeFlags::HAS_PROJECTION);
-                self.add_substs(substs);
-            }
+        if let ConstValue::Unevaluated(_, substs) = constant.val {
+            self.add_flags(TypeFlags::HAS_PROJECTION);
+            self.add_substs(substs);
         }
     }
 

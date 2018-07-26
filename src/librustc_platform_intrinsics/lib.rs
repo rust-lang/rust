@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
 #![allow(bad_style)]
+#![deny(bare_trait_objects)]
 
 pub struct Intrinsic {
     pub inputs: &'static [&'static Type],

@@ -22,23 +22,23 @@
 //! More documentation about each implementation can be found in the respective
 //! module.
 
+#![deny(bare_trait_objects)]
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
-#![deny(warnings)]
 
+#![feature(allocator_api)]
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(libc)]
-#![cfg_attr(not(any(target_env = "msvc",
-                    all(windows, target_arch = "x86_64", target_env = "gnu"))),
-            feature(panic_unwind))]
+#![feature(panic_unwind)]
 #![feature(raw)]
 #![feature(staged_api)]
+#![feature(std_internals)]
 #![feature(unwind_attributes)]
 #![cfg_attr(target_env = "msvc", feature(raw))]
 
@@ -50,9 +50,11 @@ extern crate libc;
 #[cfg(not(any(target_env = "msvc", all(windows, target_arch = "x86_64", target_env = "gnu"))))]
 extern crate unwind;
 
+use alloc::boxed::Box;
 use core::intrinsics;
 use core::mem;
 use core::raw;
+use core::panic::BoxMeUp;
 
 // Rust runtime's startup objects depend on these symbols, so make them public.
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
@@ -70,6 +72,7 @@ mod imp;
 
 // i686-pc-windows-gnu and all others
 #[cfg(any(all(unix, not(target_os = "emscripten")),
+          target_os = "cloudabi",
           target_os = "redox",
           all(windows, target_arch = "x86", target_env = "gnu")))]
 #[path = "gcc.rs"]
@@ -78,6 +81,10 @@ mod imp;
 // emscripten
 #[cfg(target_os = "emscripten")]
 #[path = "emcc.rs"]
+mod imp;
+
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+#[path = "wasm32.rs"]
 mod imp;
 
 mod dwarf;
@@ -109,10 +116,8 @@ pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[no_mangle]
-#[unwind]
-pub unsafe extern "C" fn __rust_start_panic(data: usize, vtable: usize) -> u32 {
-    imp::panic(mem::transmute(raw::TraitObject {
-        data: data as *mut (),
-        vtable: vtable as *mut (),
-    }))
+#[unwind(allowed)]
+pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
+    let payload = payload as *mut &mut dyn BoxMeUp;
+    imp::panic(Box::from_raw((*payload).box_me_up()))
 }

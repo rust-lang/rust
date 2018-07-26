@@ -1,0 +1,14 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/issue-40402-2.rs:15:18
+   |
+LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
+   |          -  -    ^^^^
+   |          |  |    |
+   |          |  |    cannot move out of borrowed content
+   |          |  |    help: consider using a reference instead: `&x[0]`
+   |          |  move occurs because b has type `std::string::String`, which does not implement the `Copy` trait
+   |          move occurs because a has type `std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

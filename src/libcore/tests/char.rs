@@ -181,6 +181,7 @@ fn test_escape_debug() {
     assert_eq!(string('\u{ff}'), "\u{ff}");
     assert_eq!(string('\u{11b}'), "\u{11b}");
     assert_eq!(string('\u{1d4b6}'), "\u{1d4b6}");
+    assert_eq!(string('\u{301}'), "\\u{301}");     // combining character
     assert_eq!(string('\u{200b}'),"\\u{200b}");      // zero width space
     assert_eq!(string('\u{e000}'), "\\u{e000}");     // private use 1
     assert_eq!(string('\u{100000}'), "\\u{100000}"); // private use 2
@@ -364,6 +365,7 @@ fn eu_iterator_specializations() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_decode_utf8() {
     macro_rules! assert_decode_utf8 {
         ($input_bytes: expr, $expected_str: expr) => {

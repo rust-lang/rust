@@ -31,11 +31,11 @@ use print::pprust;
 use serialize::{Decoder, Decodable, Encoder, Encodable};
 use util::RcSlice;
 
+use std::borrow::Cow;
 use std::{fmt, iter, mem};
-use std::hash::{self, Hash};
 
 /// A delimited sequence of token trees
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Delimited {
     /// The type of delimiter
     pub delim: token::DelimToken,
@@ -56,8 +56,8 @@ impl Delimited {
 
     /// Returns the opening delimiter as a token tree.
     pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = if span == DUMMY_SP {
-            DUMMY_SP
+        let open_span = if span.is_dummy() {
+            span
         } else {
             span.with_hi(span.lo() + BytePos(self.delim.len() as u32))
         };
@@ -66,8 +66,8 @@ impl Delimited {
 
     /// Returns the closing delimiter as a token tree.
     pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = if span == DUMMY_SP {
-            DUMMY_SP
+        let close_span = if span.is_dummy() {
+            span
         } else {
             span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
         };
@@ -92,7 +92,7 @@ impl Delimited {
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
-#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum TokenTree {
     /// A single token
     Token(Span, token::Token),
@@ -106,7 +106,7 @@ impl TokenTree {
                  -> macro_parser::NamedParseResult {
         // `None` is because we're not interpolating
         let directory = Directory {
-            path: cx.current_expansion.module.directory.clone(),
+            path: Cow::from(cx.current_expansion.module.directory.as_path()),
             ownership: cx.current_expansion.directory_ownership,
         };
         macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory), true)
@@ -118,7 +118,25 @@ impl TokenTree {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
             (&TokenTree::Delimited(_, ref dl), &TokenTree::Delimited(_, ref dl2)) => {
                 dl.delim == dl2.delim &&
-                dl.stream().trees().zip(dl2.stream().trees()).all(|(tt, tt2)| tt.eq_unspanned(&tt2))
+                dl.stream().eq_unspanned(&dl2.stream())
+            }
+            (_, _) => false,
+        }
+    }
+
+    // See comments in `interpolated_to_tokenstream` for why we care about
+    // *probably* equal here rather than actual equality
+    //
+    // This is otherwise the same as `eq_unspanned`, only recursing with a
+    // different method.
+    pub fn probably_equal_for_proc_macro(&self, other: &TokenTree) -> bool {
+        match (self, other) {
+            (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => {
+                tk.probably_equal_for_proc_macro(tk2)
+            }
+            (&TokenTree::Delimited(_, ref dl), &TokenTree::Delimited(_, ref dl2)) => {
+                dl.delim == dl2.delim &&
+                dl.stream().probably_equal_for_proc_macro(&dl2.stream())
             }
             (_, _) => false,
         }
@@ -240,12 +258,30 @@ impl TokenStream {
 
     /// Compares two TokenStreams, checking equality without regarding span information.
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
-        for (t1, t2) in self.trees().zip(other.trees()) {
+        let mut t1 = self.trees();
+        let mut t2 = other.trees();
+        for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
             if !t1.eq_unspanned(&t2) {
                 return false;
             }
         }
-        true
+        t1.next().is_none() && t2.next().is_none()
+    }
+
+    // See comments in `interpolated_to_tokenstream` for why we care about
+    // *probably* equal here rather than actual equality
+    //
+    // This is otherwise the same as `eq_unspanned`, only recursing with a
+    // different method.
+    pub fn probably_equal_for_proc_macro(&self, other: &TokenStream) -> bool {
+        let mut t1 = self.trees();
+        let mut t2 = other.trees();
+        for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
+            if !t1.probably_equal_for_proc_macro(&t2) {
+                return false;
+            }
+        }
+        t1.next().is_none() && t2.next().is_none()
     }
 
     /// Precondition: `self` consists of a single token tree.
@@ -286,12 +322,12 @@ impl TokenStream {
         TokenStream::concat(result)
     }
 
-    fn first_tree(&self) -> Option<TokenTree> {
+    fn first_tree_and_joint(&self) -> Option<(TokenTree, bool)> {
         match self.kind {
             TokenStreamKind::Empty => None,
-            TokenStreamKind::Tree(ref tree) |
-            TokenStreamKind::JointTree(ref tree) => Some(tree.clone()),
-            TokenStreamKind::Stream(ref stream) => stream.first().unwrap().first_tree(),
+            TokenStreamKind::Tree(ref tree) => Some((tree.clone(), false)),
+            TokenStreamKind::JointTree(ref tree) => Some((tree.clone(), true)),
+            TokenStreamKind::Stream(ref stream) => stream.first().unwrap().first_tree_and_joint(),
         }
     }
 
@@ -304,6 +340,7 @@ impl TokenStream {
     }
 }
 
+#[derive(Clone)]
 pub struct TokenStreamBuilder(Vec<TokenStream>);
 
 impl TokenStreamBuilder {
@@ -315,12 +352,18 @@ impl TokenStreamBuilder {
         let stream = stream.into();
         let last_tree_if_joint = self.0.last().and_then(TokenStream::last_tree_if_joint);
         if let Some(TokenTree::Token(last_span, last_tok)) = last_tree_if_joint {
-            if let Some(TokenTree::Token(span, tok)) = stream.first_tree() {
+            if let Some((TokenTree::Token(span, tok), is_joint)) = stream.first_tree_and_joint() {
                 if let Some(glued_tok) = last_tok.glue(tok) {
                     let last_stream = self.0.pop().unwrap();
                     self.push_all_but_last_tree(&last_stream);
                     let glued_span = last_span.to(span);
-                    self.0.push(TokenTree::Token(glued_span, glued_tok).into());
+                    let glued_tt = TokenTree::Token(glued_span, glued_tok);
+                    let glued_tokenstream = if is_joint {
+                        glued_tt.joint()
+                    } else {
+                        glued_tt.into()
+                    };
+                    self.0.push(glued_tokenstream);
                     self.push_all_but_first_tree(&stream);
                     return
                 }
@@ -562,14 +605,6 @@ impl Decodable for TokenStream {
     }
 }
 
-impl Hash for TokenStream {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        for tree in self.trees() {
-            tree.hash(state);
-        }
-    }
-}
-
 impl Encodable for ThinTokenStream {
     fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
         TokenStream::from(self.clone()).encode(encoder)
@@ -582,17 +617,11 @@ impl Decodable for ThinTokenStream {
     }
 }
 
-impl Hash for ThinTokenStream {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        TokenStream::from(self.clone()).hash(state);
-    }
-}
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use syntax::ast::Ident;
+    use with_globals;
     use syntax_pos::{Span, BytePos, NO_EXPANSION};
     use parse::token::Token;
     use util::parser_testing::string_to_stream;
@@ -607,66 +636,94 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        let test_res = string_to_ts("foo::bar::baz");
-        let test_fst = string_to_ts("foo::bar");
-        let test_snd = string_to_ts("::baz");
-        let eq_res = TokenStream::concat(vec![test_fst, test_snd]);
-        assert_eq!(test_res.trees().count(), 5);
-        assert_eq!(eq_res.trees().count(), 5);
-        assert_eq!(test_res.eq_unspanned(&eq_res), true);
+        with_globals(|| {
+            let test_res = string_to_ts("foo::bar::baz");
+            let test_fst = string_to_ts("foo::bar");
+            let test_snd = string_to_ts("::baz");
+            let eq_res = TokenStream::concat(vec![test_fst, test_snd]);
+            assert_eq!(test_res.trees().count(), 5);
+            assert_eq!(eq_res.trees().count(), 5);
+            assert_eq!(test_res.eq_unspanned(&eq_res), true);
+        })
     }
 
     #[test]
     fn test_to_from_bijection() {
-        let test_start = string_to_ts("foo::bar(baz)");
-        let test_end = test_start.trees().collect();
-        assert_eq!(test_start, test_end)
+        with_globals(|| {
+            let test_start = string_to_ts("foo::bar(baz)");
+            let test_end = test_start.trees().collect();
+            assert_eq!(test_start, test_end)
+        })
     }
 
     #[test]
     fn test_eq_0() {
-        let test_res = string_to_ts("foo");
-        let test_eqs = string_to_ts("foo");
-        assert_eq!(test_res, test_eqs)
+        with_globals(|| {
+            let test_res = string_to_ts("foo");
+            let test_eqs = string_to_ts("foo");
+            assert_eq!(test_res, test_eqs)
+        })
     }
 
     #[test]
     fn test_eq_1() {
-        let test_res = string_to_ts("::bar::baz");
-        let test_eqs = string_to_ts("::bar::baz");
-        assert_eq!(test_res, test_eqs)
+        with_globals(|| {
+            let test_res = string_to_ts("::bar::baz");
+            let test_eqs = string_to_ts("::bar::baz");
+            assert_eq!(test_res, test_eqs)
+        })
     }
 
     #[test]
     fn test_eq_3() {
-        let test_res = string_to_ts("");
-        let test_eqs = string_to_ts("");
-        assert_eq!(test_res, test_eqs)
+        with_globals(|| {
+            let test_res = string_to_ts("");
+            let test_eqs = string_to_ts("");
+            assert_eq!(test_res, test_eqs)
+        })
     }
 
     #[test]
     fn test_diseq_0() {
-        let test_res = string_to_ts("::bar::baz");
-        let test_eqs = string_to_ts("bar::baz");
-        assert_eq!(test_res == test_eqs, false)
+        with_globals(|| {
+            let test_res = string_to_ts("::bar::baz");
+            let test_eqs = string_to_ts("bar::baz");
+            assert_eq!(test_res == test_eqs, false)
+        })
     }
 
     #[test]
     fn test_diseq_1() {
-        let test_res = string_to_ts("(bar,baz)");
-        let test_eqs = string_to_ts("bar,baz");
-        assert_eq!(test_res == test_eqs, false)
+        with_globals(|| {
+            let test_res = string_to_ts("(bar,baz)");
+            let test_eqs = string_to_ts("bar,baz");
+            assert_eq!(test_res == test_eqs, false)
+        })
     }
 
     #[test]
     fn test_is_empty() {
-        let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
-        let test1: TokenStream =
-            TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a"))).into();
-        let test2 = string_to_ts("foo(bar::baz)");
+        with_globals(|| {
+            let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
+            let test1: TokenStream =
+                TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a"), false)).into();
+            let test2 = string_to_ts("foo(bar::baz)");
 
-        assert_eq!(test0.is_empty(), true);
-        assert_eq!(test1.is_empty(), false);
-        assert_eq!(test2.is_empty(), false);
+            assert_eq!(test0.is_empty(), true);
+            assert_eq!(test1.is_empty(), false);
+            assert_eq!(test2.is_empty(), false);
+        })
     }
+
+    #[test]
+    fn test_dotdotdot() {
+        let mut builder = TokenStreamBuilder::new();
+        builder.push(TokenTree::Token(sp(0, 1), Token::Dot).joint());
+        builder.push(TokenTree::Token(sp(1, 2), Token::Dot).joint());
+        builder.push(TokenTree::Token(sp(2, 3), Token::Dot));
+        let stream = builder.build();
+        assert!(stream.eq_unspanned(&string_to_ts("...")));
+        assert_eq!(stream.trees().count(), 1);
+    }
+
 }

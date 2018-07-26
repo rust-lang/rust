@@ -1,0 +1,32 @@
+warning: not reporting region error due to nll
+  --> $DIR/mismatched.rs:14:42
+   |
+LL | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y } //~ ERROR explicit lifetime required
+   |                                          ^
+
+warning: not reporting region error due to nll
+  --> $DIR/mismatched.rs:16:46
+   |
+LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y } //~ ERROR lifetime mismatch
+   |                                              ^
+
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/mismatched.rs:14:42
+   |
+LL | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y } //~ ERROR explicit lifetime required
+   |                    -                     ^ lifetime `'a` required
+   |                    |
+   |                    consider changing the type of `y` to `&'a u32`
+
+error[E0623]: lifetime mismatch
+  --> $DIR/mismatched.rs:16:46
+   |
+LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y } //~ ERROR lifetime mismatch
+   |                        -------     -------   ^ ...but data from `y` is returned here
+   |                        |
+   |                        this parameter and the return type are declared with different lifetimes...
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0621, E0623.
+For more information about an error, try `rustc --explain E0621`.

@@ -13,7 +13,7 @@
 //
 // (Compare against compile-fail/dropck_vec_cycle_checked.rs)
 
-#![feature(const_atomic_usize_new)]
+
 
 use std::cell::Cell;
 use id::Id;
@@ -101,18 +101,18 @@ fn f() {
     b2 = B::new();
     b3 = B::new();
     b1.a[0].v.set(Some(&b2));
+    //~^ ERROR `b2` does not live long enough
     b1.a[1].v.set(Some(&b3));
+    //~^ ERROR `b3` does not live long enough
     b2.a[0].v.set(Some(&b2));
+    //~^ ERROR `b2` does not live long enough
     b2.a[1].v.set(Some(&b3));
+    //~^ ERROR `b3` does not live long enough
     b3.a[0].v.set(Some(&b1));
+    //~^ ERROR `b1` does not live long enough
     b3.a[1].v.set(Some(&b2));
+    //~^ ERROR `b2` does not live long enough
 }
-//~^ ERROR `b2` does not live long enough
-//~| ERROR `b3` does not live long enough
-//~| ERROR `b2` does not live long enough
-//~| ERROR `b3` does not live long enough
-//~| ERROR `b1` does not live long enough
-//~| ERROR `b2` does not live long enough
 
 fn main() {
     f();

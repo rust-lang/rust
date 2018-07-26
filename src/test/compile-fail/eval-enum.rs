@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum test {
-    div_zero = 1/0, //~ ERROR E0080
-                    //~| attempt to divide by zero
-    rem_zero = 1%0,
-    //~^ ERROR E0080
-    //~| attempt to calculate the remainder with a divisor of zero
+enum Test {
+    DivZero = 1/0,
+    //~^ attempt to divide by zero
+    //~| ERROR could not evaluate enum discriminant
+    //~| ERROR this expression will panic at runtime
+    RemZero = 1%0,
+    //~^ attempt to calculate the remainder with a divisor of zero
+    //~| ERROR could not evaluate enum discriminant
+    //~| ERROR this expression will panic at runtime
 }
 
 fn main() {}

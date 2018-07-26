@@ -38,6 +38,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
         Symbol::intern("into_multi_foo"),
         MultiModifier(Box::new(expand_into_foo_multi)));
     reg.register_syntax_extension(
+        Symbol::intern("noop_attribute"),
+        MultiModifier(Box::new(expand_noop_attribute)));
+    reg.register_syntax_extension(
         Symbol::intern("duplicate"),
         MultiDecorator(Box::new(expand_duplicate)));
 }
@@ -90,7 +93,18 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 }
             })
         }
+        // covered in proc_macro/macros-in-extern.rs
+        Annotatable::ForeignItem(_) => unimplemented!(),
+        // covered in proc_macro/attr-stmt-expr.rs
+        Annotatable::Stmt(_) | Annotatable::Expr(_) => panic!("expected item")
     }
+}
+
+fn expand_noop_attribute(_cx: &mut ExtCtxt,
+                         _sp: Span,
+                         _attr: &MetaItem,
+                         it: Annotatable) -> Annotatable {
+    it
 }
 
 // Create a duplicate of the annotatable, based on the MetaItem
@@ -103,7 +117,7 @@ fn expand_duplicate(cx: &mut ExtCtxt,
     let copy_name = match mi.node {
         ast::MetaItemKind::List(ref xs) => {
             if let Some(word) = xs[0].word() {
-                ast::Ident::with_empty_ctxt(word.name())
+                word.ident.segments.last().unwrap().ident
             } else {
                 cx.span_err(mi.span, "Expected word");
                 return;
@@ -135,6 +149,10 @@ fn expand_duplicate(cx: &mut ExtCtxt,
             new_it.ident = copy_name;
             push(Annotatable::TraitItem(P(new_it)));
         }
+        // covered in proc_macro/macros-in-extern.rs
+        Annotatable::ForeignItem(_) => unimplemented!(),
+        // covered in proc_macro/attr-stmt-expr.rs
+        Annotatable::Stmt(_) | Annotatable::Expr(_) => panic!("expected item")
     }
 }
 

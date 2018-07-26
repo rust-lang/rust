@@ -1,0 +1,9 @@
+error[E0395]: raw pointers cannot be compared in statics
+  --> $DIR/E0395.rs:14:22
+   |
+LL | static BAZ: bool = { (&FOO as *const i32) == (&BAR as *const i32) }; //~ ERROR E0395
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comparing raw pointers in static
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0395`.

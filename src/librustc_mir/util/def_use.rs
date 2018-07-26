@@ -11,10 +11,12 @@
 //! Def-use analysis.
 
 use rustc::mir::{Local, Location, Mir};
-use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
+use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::marker::PhantomData;
 use std::mem;
+use std::slice;
+use std::iter;
 
 pub struct DefUseAnalysis<'tcx> {
     info: IndexVec<Local, Info<'tcx>>,
@@ -27,7 +29,7 @@ pub struct Info<'tcx> {
 
 #[derive(Clone)]
 pub struct Use<'tcx> {
-    pub context: LvalueContext<'tcx>,
+    pub context: PlaceContext<'tcx>,
     pub location: Location,
 }
 
@@ -39,11 +41,19 @@ impl<'tcx> DefUseAnalysis<'tcx> {
     }
 
     pub fn analyze(&mut self, mir: &Mir<'tcx>) {
+        self.clear();
+
         let mut finder = DefUseFinder {
             info: mem::replace(&mut self.info, IndexVec::new()),
         };
         finder.visit_mir(mir);
         self.info = finder.info
+    }
+
+    fn clear(&mut self) {
+        for info in &mut self.info {
+            info.clear();
+        }
     }
 
     pub fn local_info(&self, local: Local) -> &Info<'tcx> {
@@ -52,12 +62,12 @@ impl<'tcx> DefUseAnalysis<'tcx> {
 
     fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'tcx>, mut callback: F)
                                where F: for<'a> FnMut(&'a mut Local,
-                                                      LvalueContext<'tcx>,
+                                                      PlaceContext<'tcx>,
                                                       Location) {
-        for lvalue_use in &self.info[local].defs_and_uses {
+        for place_use in &self.info[local].defs_and_uses {
             MutateUseVisitor::new(local,
                                   &mut callback,
-                                  mir).visit_location(mir, lvalue_use.location)
+                                  mir).visit_location(mir, place_use.location)
         }
     }
 
@@ -77,7 +87,7 @@ struct DefUseFinder<'tcx> {
 impl<'tcx> Visitor<'tcx> for DefUseFinder<'tcx> {
     fn visit_local(&mut self,
                    &local: &Local,
-                   context: LvalueContext<'tcx>,
+                   context: PlaceContext<'tcx>,
                    location: Location) {
         self.info[local].defs_and_uses.push(Use {
             context,
@@ -93,19 +103,29 @@ impl<'tcx> Info<'tcx> {
         }
     }
 
+    fn clear(&mut self) {
+        self.defs_and_uses.clear();
+    }
+
     pub fn def_count(&self) -> usize {
-        self.defs_and_uses.iter().filter(|lvalue_use| lvalue_use.context.is_mutating_use()).count()
+        self.defs_and_uses.iter().filter(|place_use| place_use.context.is_mutating_use()).count()
     }
 
     pub fn def_count_not_including_drop(&self) -> usize {
-        self.defs_and_uses.iter().filter(|lvalue_use| {
-            lvalue_use.context.is_mutating_use() && !lvalue_use.context.is_drop()
-        }).count()
+        self.defs_not_including_drop().count()
+    }
+
+    pub fn defs_not_including_drop(
+        &self,
+    ) -> iter::Filter<slice::Iter<Use<'tcx>>, fn(&&Use<'tcx>) -> bool> {
+        self.defs_and_uses.iter().filter(|place_use| {
+            place_use.context.is_mutating_use() && !place_use.context.is_drop()
+        })
     }
 
     pub fn use_count(&self) -> usize {
-        self.defs_and_uses.iter().filter(|lvalue_use| {
-            lvalue_use.context.is_nonmutating_use()
+        self.defs_and_uses.iter().filter(|place_use| {
+            place_use.context.is_nonmutating_use()
         }).count()
     }
 }
@@ -119,7 +139,7 @@ struct MutateUseVisitor<'tcx, F> {
 impl<'tcx, F> MutateUseVisitor<'tcx, F> {
     fn new(query: Local, callback: F, _: &Mir<'tcx>)
            -> MutateUseVisitor<'tcx, F>
-           where F: for<'a> FnMut(&'a mut Local, LvalueContext<'tcx>, Location) {
+           where F: for<'a> FnMut(&'a mut Local, PlaceContext<'tcx>, Location) {
         MutateUseVisitor {
             query,
             callback,
@@ -129,10 +149,10 @@ impl<'tcx, F> MutateUseVisitor<'tcx, F> {
 }
 
 impl<'tcx, F> MutVisitor<'tcx> for MutateUseVisitor<'tcx, F>
-              where F: for<'a> FnMut(&'a mut Local, LvalueContext<'tcx>, Location) {
+              where F: for<'a> FnMut(&'a mut Local, PlaceContext<'tcx>, Location) {
     fn visit_local(&mut self,
                     local: &mut Local,
-                    context: LvalueContext<'tcx>,
+                    context: PlaceContext<'tcx>,
                     location: Location) {
         if *local == self.query {
             (self.callback)(local, context, location)

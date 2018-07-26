@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten FIXME(#45351)
+
 #![feature(repr_simd, platform_intrinsics)]
 
 #[repr(C)]

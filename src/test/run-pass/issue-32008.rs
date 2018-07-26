@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Tests that binary operators allow subtyping on both the LHS and RHS,
-// and as such do not introduce unnecesarily strict lifetime constraints.
+// and as such do not introduce unnecessarily strict lifetime constraints.
 
 use std::ops::Add;
 

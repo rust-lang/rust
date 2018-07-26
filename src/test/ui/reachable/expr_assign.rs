@@ -7,17 +7,16 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+#![feature(never_type)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![feature(never_type)]
 
 fn foo() {
     // No error here.
     let x;
-    x = return;
+    x = return; //~ ERROR unreachable
 }
 
 fn bar() {
@@ -27,13 +26,13 @@ fn bar() {
         // Here we consider the `return` unreachable because
         // "evaluating" the `*p` has type `!`. This is somewhat
         // dubious, I suppose.
-        *p = return;
+        *p = return; //~ ERROR unreachable
     }
 }
 
 fn baz() {
     let mut i = 0;
-    *{return; &mut i} = 22;
+    *{return; &mut i} = 22; //~ ERROR unreachable
 }
 
 fn main() { }

@@ -1,0 +1,49 @@
+error[E0659]: `env` is ambiguous
+  --> $DIR/glob-shadowing.rs:21:17
+   |
+LL |         let x = env!("PATH"); //~ ERROR `env` is ambiguous
+   |                 ^^^
+   |
+note: `env` could refer to the name imported here
+  --> $DIR/glob-shadowing.rs:19:9
+   |
+LL |     use m::*;
+   |         ^^^^
+   = note: `env` is also a builtin macro
+   = note: consider adding an explicit import of `env` to disambiguate
+
+error[E0659]: `env` is ambiguous
+  --> $DIR/glob-shadowing.rs:29:21
+   |
+LL |             let x = env!("PATH"); //~ ERROR `env` is ambiguous
+   |                     ^^^
+   |
+note: `env` could refer to the name imported here
+  --> $DIR/glob-shadowing.rs:27:13
+   |
+LL |         use m::*;
+   |             ^^^^
+   = note: `env` is also a builtin macro
+   = note: consider adding an explicit import of `env` to disambiguate
+
+error[E0659]: `fenv` is ambiguous
+  --> $DIR/glob-shadowing.rs:39:21
+   |
+LL |             let x = fenv!(); //~ ERROR `fenv` is ambiguous
+   |                     ^^^^
+   |
+note: `fenv` could refer to the name imported here
+  --> $DIR/glob-shadowing.rs:37:13
+   |
+LL |         use m::*;
+   |             ^^^^
+note: `fenv` could also refer to the name defined here
+  --> $DIR/glob-shadowing.rs:35:5
+   |
+LL |     pub macro fenv($e: expr) { $e }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: consider adding an explicit import of `fenv` to disambiguate
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

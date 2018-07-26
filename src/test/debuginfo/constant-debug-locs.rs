@@ -15,7 +15,6 @@
 #![allow(dead_code, unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(const_unsafe_cell_new)]
 #![feature(static_mutex)]
 
 // This test makes sure that the compiler doesn't crash when trying to assign

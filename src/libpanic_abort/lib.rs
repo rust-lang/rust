@@ -19,18 +19,20 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
-#![deny(warnings)]
-
-#![feature(staged_api)]
-
 #![panic_runtime]
+#![allow(unused_features)]
+#![deny(bare_trait_objects)]
+
+#![feature(core_intrinsics)]
+#![feature(libc)]
 #![feature(panic_runtime)]
-#![cfg_attr(unix, feature(libc))]
-#![cfg_attr(any(target_os = "redox", windows), feature(core_intrinsics))]
+#![feature(staged_api)]
+#![feature(rustc_attrs)]
 
 // Rust's "try" function, but if we're aborting on panics we just call the
 // function as there's nothing else we need to do here.
 #[no_mangle]
+#[rustc_std_internal_symbol]
 pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
                                               data: *mut u8,
                                               _data_ptr: *mut usize,
@@ -50,16 +52,19 @@ pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
 // will kill us with an illegal instruction, which will do a good enough job for
 // now hopefully.
 #[no_mangle]
-pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
+#[rustc_std_internal_symbol]
+pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
     abort();
 
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "cloudabi"))]
     unsafe fn abort() -> ! {
         extern crate libc;
         libc::abort();
     }
 
-    #[cfg(any(target_os = "redox", windows))]
+    #[cfg(any(target_os = "redox",
+              windows,
+              all(target_arch = "wasm32", not(target_os = "emscripten"))))]
     unsafe fn abort() -> ! {
         core::intrinsics::abort();
     }
@@ -92,7 +97,6 @@ pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
 // binaries, but it should never be called as we don't link in an unwinding
 // runtime at all.
 pub mod personalities {
-
     #[no_mangle]
     #[cfg(not(all(target_os = "windows",
                   target_env = "gnu",

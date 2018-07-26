@@ -13,7 +13,10 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-#![deny(warnings)]
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 
 use std::fs;
 
@@ -46,16 +49,21 @@ pub mod features;
 pub mod cargo;
 pub mod pal;
 pub mod deps;
+pub mod extdeps;
+pub mod ui_tests;
 pub mod unstable_book;
+pub mod libcoretest;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
+        "src/dlmalloc",
         "src/jemalloc",
         "src/llvm",
+        "src/llvm-emscripten",
         "src/libbacktrace",
         "src/libcompiler_builtins",
+        "src/librustc_data_structures/owning_ref",
         "src/compiler-rt",
-        "src/rustllvm",
         "src/liblibc",
         "src/vendor",
         "src/rt/hoedown",
@@ -65,6 +73,11 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/rust-installer",
         "src/tools/rustfmt",
         "src/tools/miri",
+        "src/tools/lld",
+        "src/librustc/mir/interpret",
+        "src/librustc_mir/interpret",
+        "src/target",
+        "src/stdsimd",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

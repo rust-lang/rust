@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::abi::{Abi};
+use rustc_target::spec::abi::{Abi};
 use syntax::ast;
 use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, Location};
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
+use transform::{MirPass, MirSource};
 
-use dataflow::do_dataflow;
+use dataflow::{do_dataflow, DebugFormatted};
 use dataflow::MoveDataParamEnv;
 use dataflow::BitDenotation;
 use dataflow::DataflowResults;
-use dataflow::{DefinitelyInitializedLvals, MaybeInitializedLvals, MaybeUninitializedLvals};
+use dataflow::{DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::move_paths::{MovePathIndex, LookupResult};
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow;
@@ -34,9 +34,9 @@ pub struct SanityCheck;
 impl MirPass for SanityCheck {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource, mir: &mut Mir<'tcx>) {
-        let id = src.item_id();
-        let def_id = tcx.hir.local_def_id(id);
-        if !tcx.has_attr(def_id, "rustc_mir_borrowck") {
+        let def_id = src.def_id;
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
+        if !tcx.has_attr(def_id, "rustc_mir") {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
             return;
         } else {
@@ -45,21 +45,21 @@ impl MirPass for SanityCheck {
 
         let attributes = tcx.get_attrs(def_id);
         let param_env = tcx.param_env(def_id);
-        let move_data = MoveData::gather_moves(mir, tcx, param_env).unwrap();
+        let move_data = MoveData::gather_moves(mir, tcx).unwrap();
         let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
         let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
         let flow_inits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                        MaybeInitializedLvals::new(tcx, mir, &mdpe),
-                        |bd, i| &bd.move_data().move_paths[i]);
+                        MaybeInitializedPlaces::new(tcx, mir, &mdpe),
+                        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_uninits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                        MaybeUninitializedLvals::new(tcx, mir, &mdpe),
-                        |bd, i| &bd.move_data().move_paths[i]);
+                        MaybeUninitializedPlaces::new(tcx, mir, &mdpe),
+                        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_def_inits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                        DefinitelyInitializedLvals::new(tcx, mir, &mdpe),
-                        |bd, i| &bd.move_data().move_paths[i]);
+                        DefinitelyInitializedPlaces::new(tcx, mir, &mdpe),
+                        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
 
         if has_rustc_mir_with(&attributes, "rustc_peek_maybe_init").is_some() {
             sanity_check_via_rustc_peek(tcx, mir, id, &attributes, &flow_inits);
@@ -123,12 +123,13 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         None => return,
     };
     assert!(args.len() == 1);
-    let peek_arg_lval = match args[0] {
-        mir::Operand::Consume(ref lval @ mir::Lvalue::Local(_)) => Some(lval),
+    let peek_arg_place = match args[0] {
+        mir::Operand::Copy(ref place @ mir::Place::Local(_)) |
+        mir::Operand::Move(ref place @ mir::Place::Local(_)) => Some(place),
         _ => None,
     };
 
-    let peek_arg_lval = match peek_arg_lval {
+    let peek_arg_place = match peek_arg_place {
         Some(arg) => arg,
         None => {
             tcx.sess.diagnostic().span_err(
@@ -142,8 +143,8 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut kill = results.0.sets.kill_set_for(bb.index()).to_owned();
 
     // Emulate effect of all statements in the block up to (but not
-    // including) the borrow within `peek_arg_lval`. Do *not* include
-    // call to `peek_arg_lval` itself (since we are peeking the state
+    // including) the borrow within `peek_arg_place`. Do *not* include
+    // call to `peek_arg_place` itself (since we are peeking the state
     // of the argument at time immediate preceding Call to
     // `rustc_peek`).
 
@@ -153,29 +154,31 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for (j, stmt) in statements.iter().enumerate() {
         debug!("rustc_peek: ({:?},{}) {:?}", bb, j, stmt);
-        let (lvalue, rvalue) = match stmt.kind {
-            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                (lvalue, rvalue)
+        let (place, rvalue) = match stmt.kind {
+            mir::StatementKind::Assign(ref place, ref rvalue) => {
+                (place, rvalue)
             }
+            mir::StatementKind::ReadForMatch(_) |
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::EndRegion(_) |
             mir::StatementKind::Validate(..) |
+            mir::StatementKind::UserAssertTy(..) |
             mir::StatementKind::Nop => continue,
             mir::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
                           "sanity_check should run before Deaggregator inserts SetDiscriminant"),
         };
 
-        if lvalue == peek_arg_lval {
-            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_lval) = *rvalue {
+        if place == peek_arg_place {
+            if let mir::Rvalue::Ref(_, mir::BorrowKind::Shared, ref peeking_at_place) = *rvalue {
                 // Okay, our search is over.
-                match move_data.rev_lookup.find(peeking_at_lval) {
+                match move_data.rev_lookup.find(peeking_at_place) {
                     LookupResult::Exact(peek_mpi) => {
                         let bit_state = sets.on_entry.contains(&peek_mpi);
                         debug!("rustc_peek({:?} = &{:?}) bit_state: {}",
-                               lvalue, peeking_at_lval, bit_state);
+                               place, peeking_at_place, bit_state);
                         if !bit_state {
                             tcx.sess.span_err(span, "rustc_peek: bit not set");
                         }
@@ -195,17 +198,24 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        let lhs_mpi = move_data.rev_lookup.find(lvalue);
+        let lhs_mpi = move_data.rev_lookup.find(place);
 
-        debug!("rustc_peek: computing effect on lvalue: {:?} ({:?}) in stmt: {:?}",
-               lvalue, lhs_mpi, stmt);
+        debug!("rustc_peek: computing effect on place: {:?} ({:?}) in stmt: {:?}",
+               place, lhs_mpi, stmt);
         // reset GEN and KILL sets before emulating their effect.
         for e in sets.gen_set.words_mut() { *e = 0; }
         for e in sets.kill_set.words_mut() { *e = 0; }
-        results.0.operator.statement_effect(&mut sets, Location { block: bb, statement_index: j });
+        results.0.operator.before_statement_effect(
+            &mut sets, Location { block: bb, statement_index: j });
+        results.0.operator.statement_effect(
+            &mut sets, Location { block: bb, statement_index: j });
         sets.on_entry.union(sets.gen_set);
         sets.on_entry.subtract(sets.kill_set);
     }
+
+    results.0.operator.before_terminator_effect(
+        &mut sets,
+        Location { block: bb, statement_index: statements.len() });
 
     tcx.sess.span_err(span, &format!("rustc_peek: MIR did not match \
                                       anticipated pattern; note that \

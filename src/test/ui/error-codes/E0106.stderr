@@ -1,0 +1,33 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:12:8
+   |
+LL |     x: &bool,
+   |        ^ expected lifetime parameter
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:17:7
+   |
+LL |     B(&bool),
+   |       ^ expected lifetime parameter
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:20:14
+   |
+LL | type MyStr = &str;
+   |              ^ expected lifetime parameter
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:27:10
+   |
+LL |     baz: Baz,
+   |          ^^^ expected lifetime parameter
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/E0106.rs:30:11
+   |
+LL |     buzz: Buzz,
+   |           ^^^^ expected 2 lifetime parameters
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

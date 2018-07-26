@@ -1,0 +1,9 @@
+error[E0302]: cannot assign in a pattern guard
+  --> $DIR/E0302.rs:14:21
+   |
+LL |         option if { option = None; false } => { }, //~ ERROR E0302
+   |                     ^^^^^^^^^^^^^ assignment in pattern guard
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0302`.

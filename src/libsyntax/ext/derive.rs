@@ -10,7 +10,7 @@
 
 use attr::HasAttrs;
 use ast;
-use codemap::{ExpnInfo, NameAndSpan, ExpnFormat};
+use codemap::{hygiene, ExpnInfo, ExpnFormat};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use parse::parser::PathStyle;
@@ -54,18 +54,18 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
             pretty_name.push_str(", ");
         }
         pretty_name.push_str(&path.to_string());
-        names.insert(unwrap_or!(path.segments.get(0), continue).identifier.name);
+        names.insert(unwrap_or!(path.segments.get(0), continue).ident.name);
     }
     pretty_name.push(')');
 
     cx.current_expansion.mark.set_expn_info(ExpnInfo {
         call_site: span,
-        callee: NameAndSpan {
-            format: ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)),
-            span: None,
-            allow_internal_unstable: true,
-            allow_internal_unsafe: false,
-        },
+        def_site: None,
+        format: ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)),
+        allow_internal_unstable: true,
+        allow_internal_unsafe: false,
+        local_inner_macros: false,
+        edition: hygiene::default_edition(),
     });
 
     let span = span.with_ctxt(cx.backtrace());
@@ -74,7 +74,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
             let meta = cx.meta_word(span, Symbol::intern("structural_match"));
             attrs.push(cx.attribute(span, meta));
         }
-        if names.contains(&Symbol::intern("Copy")) && names.contains(&Symbol::intern("Clone")) {
+        if names.contains(&Symbol::intern("Copy")) {
             let meta = cx.meta_word(span, Symbol::intern("rustc_copy_clone_marker"));
             attrs.push(cx.attribute(span, meta));
         }

@@ -23,12 +23,19 @@ use std::path::PathBuf;
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
-    let libdir = env::var_os("RUSTC_LIBDIR").expect("RUSTC_LIBDIR was not set");
+    let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
 
+    use std::str::FromStr;
+
+    let verbose = match env::var("RUSTC_VERBOSE") {
+        Ok(s) => usize::from_str(&s).expect("RUSTC_VERBOSE should be an integer"),
+        Err(_) => 0,
+    };
+
     let mut dylib_path = bootstrap::util::dylib_path();
-    dylib_path.insert(0, PathBuf::from(libdir));
+    dylib_path.insert(0, PathBuf::from(libdir.clone()));
 
     let mut cmd = Command::new(rustdoc);
     cmd.args(&args)
@@ -55,8 +62,14 @@ fn main() {
     // it up so we can make rustdoc print this into the docs
     if let Some(version) = env::var_os("RUSTDOC_CRATE_VERSION") {
         // This "unstable-options" can be removed when `--crate-version` is stabilized
-        cmd.arg("-Z").arg("unstable-options")
+        cmd.arg("-Z")
+           .arg("unstable-options")
            .arg("--crate-version").arg(version);
+    }
+
+    if verbose > 1 {
+        eprintln!("rustdoc command: {:?}", cmd);
+        eprintln!("libdir: {:?}", libdir);
     }
 
     std::process::exit(match cmd.status() {

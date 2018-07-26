@@ -1,0 +1,15 @@
+error[E0004]: non-exhaustive patterns: type std::option::Option<i32> is non-empty
+  --> $DIR/E0004-2.rs:14:11
+   |
+LL |     match x { } //~ ERROR E0004
+   |           ^
+   |
+help: Please ensure that all possible cases are being handled; possibly adding wildcards or more match arms.
+  --> $DIR/E0004-2.rs:14:11
+   |
+LL |     match x { } //~ ERROR E0004
+   |           ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::boxed::FnBox;
+use boxed::FnBox;
 use io;
 use ffi::CStr;
 use mem;
@@ -52,7 +52,7 @@ impl Thread {
         };
 
         extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
-            unsafe { start_thread(main); }
+            unsafe { start_thread(main as *mut u8); }
             0
         }
     }
@@ -93,6 +93,8 @@ impl Thread {
 
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    pub unsafe fn current() -> Option<usize> { None }
-    pub unsafe fn init() -> Option<usize> { None }
+    pub type Guard = !;
+    pub unsafe fn current() -> Option<Guard> { None }
+    pub unsafe fn init() -> Option<Guard> { None }
+    pub unsafe fn deinit() {}
 }

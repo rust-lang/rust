@@ -1,0 +1,24 @@
+error[E0422]: cannot find struct, variant or union type `async` in this scope
+  --> $DIR/feature-gate-async-await-2015-edition.rs:18:13
+   |
+LL |     let _ = async {}; //~ ERROR cannot find struct, variant or union type `async`
+   |             ^^^^^ not found in this scope
+
+error[E0425]: cannot find value `async` in this scope
+  --> $DIR/feature-gate-async-await-2015-edition.rs:19:13
+   |
+LL |     let _ = async || {}; //~ ERROR cannot find value `async` in this scope
+   |             ^^^^^ not found in this scope
+
+error[E0658]: async fn is unstable (see issue #50547)
+  --> $DIR/feature-gate-async-await-2015-edition.rs:15:1
+   |
+LL | async fn foo() {} //~ ERROR async fn is unstable
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(async_await)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0422, E0425, E0658.
+For more information about an error, try `rustc --explain E0422`.

@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lookup_host)]
+// ignore-cloudabi networking not available
+// ignore-wasm32-bare networking not available
 
-use std::net::lookup_host;
+use std::net::ToSocketAddrs;
 
 fn is_sync<T>(_: T) where T: Sync {}
 fn is_send<T>(_: T) where T: Send {}
@@ -27,5 +28,5 @@ macro_rules! all_sync_send {
 }
 
 fn main() {
-    all_sync_send!(lookup_host("localhost").unwrap(), next);
+    all_sync_send!("localhost:80".to_socket_addrs().unwrap(), next);
 }

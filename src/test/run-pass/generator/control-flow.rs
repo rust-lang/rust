@@ -16,7 +16,7 @@ fn finish<T>(mut amt: usize, mut t: T) -> T::Return
     where T: Generator<Yield = ()>
 {
     loop {
-        match t.resume() {
+        match unsafe { t.resume() } {
             GeneratorState::Yielded(()) => amt = amt.checked_sub(1).unwrap(),
             GeneratorState::Complete(ret) => {
                 assert_eq!(amt, 0);

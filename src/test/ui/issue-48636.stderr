@@ -1,0 +1,13 @@
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/issue-48636.rs:17:5
+   |
+LL |     x: u8
+   |          - help: missing comma here: `,`
+LL |     /// The id of the parent core
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: doc comments must come before what they document, maybe a comment was intended with `//`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0585`.

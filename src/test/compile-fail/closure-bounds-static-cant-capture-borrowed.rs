@@ -13,8 +13,7 @@ fn bar<F>(blk: F) where F: FnOnce() + 'static {
 
 fn foo(x: &()) {
     bar(|| {
-        //~^ ERROR cannot infer
-        //~| ERROR does not fulfill
+        //~^ ERROR explicit lifetime required in the type of `x` [E0621]
         let _ = x;
     })
 }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(i128_type)]
-
 #[macro_use]
 extern crate rustc_apfloat;
 
@@ -2201,12 +2199,12 @@ fn is_finite_non_zero() {
     assert!(!Single::ZERO.is_finite_non_zero());
     assert!(!(-Single::ZERO).is_finite_non_zero());
 
-    // Test +/- qNaN. +/- dont mean anything with qNaN but paranoia can't hurt in
+    // Test +/- qNaN. +/- don't mean anything with qNaN but paranoia can't hurt in
     // this instance.
     assert!(!Single::NAN.is_finite_non_zero());
     assert!(!(-Single::NAN).is_finite_non_zero());
 
-    // Test +/- sNaN. +/- dont mean anything with sNaN but paranoia can't hurt in
+    // Test +/- sNaN. +/- don't mean anything with sNaN but paranoia can't hurt in
     // this instance.
     assert!(!Single::snan(None).is_finite_non_zero());
     assert!(!(-Single::snan(None)).is_finite_non_zero());

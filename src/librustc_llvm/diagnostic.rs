@@ -121,6 +121,7 @@ impl InlineAsmDiagnostic {
 pub enum Diagnostic {
     Optimization(OptimizationDiagnostic),
     InlineAsm(InlineAsmDiagnostic),
+    PGO(DiagnosticInfoRef),
 
     /// LLVM has other types that we do not wrap here.
     UnknownDiagnostic(DiagnosticInfoRef),
@@ -158,6 +159,10 @@ impl Diagnostic {
 
             Dk::OptimizationFailure => {
                 Optimization(OptimizationDiagnostic::unpack(OptimizationFailure, di))
+            }
+
+            Dk::PGOProfile => {
+                PGO(di)
             }
 
             _ => UnknownDiagnostic(di),

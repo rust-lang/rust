@@ -12,9 +12,10 @@
 // first one. This would be easy-ish to address by better recovery in tokenisation.
 
 pub fn trace_option(option: Option<isize>) {
-    option.map(|some| 42; //~ NOTE: unclosed delimiter
+    option.map(|some| 42;
                           //~^ ERROR: expected one of
-                          //~| NOTE: expected one of
-                          //~| NOTE: unexpected token
+
 } //~ ERROR: incorrect close delimiter
 //~^ ERROR: expected expression, found `)`
+
+fn main() {}

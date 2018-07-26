@@ -31,23 +31,6 @@ const FOO2: i32 = { 0 }; // but brackets are useless here
 ```
 "##,
 */
-E0030: r##"
-When matching against a range, the compiler verifies that the range is
-non-empty.  Range patterns include both end-points, so this is equivalent to
-requiring the start of the range to be less than or equal to the end of the
-range.
-
-For example:
-
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 ... 1 => {}
-    // This range is empty, and the compiler can tell.
-    1000 ... 5 => {}
-}
-```
-"##,
 
 E0130: r##"
 You declared a pattern as an argument in a foreign function declaration.
@@ -82,20 +65,50 @@ extern {
 ```
 "##,
 
-E0265: r##"
-This error indicates that a static or constant references itself.
-All statics and constants need to resolve to a value in an acyclic manner.
+E0197: r##"
+Inherent implementations (one that do not implement a trait but provide
+methods associated with a type) are always safe because they are not
+implementing an unsafe trait. Removing the `unsafe` keyword from the inherent
+implementation will resolve this error.
 
-For example, neither of the following can be sensibly compiled:
+```compile_fail,E0197
+struct Foo;
 
-```compile_fail,E0265
-const X: u32 = X;
+// this will cause this error
+unsafe impl Foo { }
+// converting it to this will fix it
+impl Foo { }
+```
+"##,
+
+E0198: r##"
+A negative implementation is one that excludes a type from implementing a
+particular trait. Not being able to use a trait is always a safe operation,
+so negative implementations are always safe and never need to be marked as
+unsafe.
+
+```compile_fail
+#![feature(optin_builtin_traits)]
+
+struct Foo;
+
+// unsafe is unnecessary
+unsafe impl !Clone for Foo { }
 ```
 
-```compile_fail,E0265
-const X: u32 = Y;
-const Y: u32 = X;
+This will compile:
+
+```ignore (ignore auto_trait future compatibility warning)
+#![feature(optin_builtin_traits)]
+
+struct Foo;
+
+auto trait Enterprise {}
+
+impl !Enterprise for Foo { }
 ```
+
+Please note that negative impls are only allowed for auto traits.
 "##,
 
 E0267: r##"
@@ -150,6 +163,13 @@ Trait methods cannot be declared `const` by design. For more information, see
 [RFC 911]: https://github.com/rust-lang/rfcs/pull/911
 "##,
 
+E0380: r##"
+Auto traits cannot have methods or associated items.
+For more information see the [opt-in builtin traits RFC][RFC 19].
+
+[RFC 19]: https://github.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md
+"##,
+
 E0449: r##"
 A visibility qualifier was used when it was unnecessary. Erroneous code
 examples:
@@ -190,24 +210,6 @@ impl Foo for Bar {
 ```
 "##,
 
-
-E0579: r##"
-When matching against an exclusive range, the compiler verifies that the range
-is non-empty. Exclusive range patterns include the start point but not the end
-point, so this is equivalent to requiring the start of the range to be less
-than the end of the range.
-
-For example:
-
-```compile_fail
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 .. 2 => {}
-    // This range is empty, and the compiler can tell.
-    5 .. 5 => {}
-}
-```
-"##,
 
 E0590: r##"
 `break` or `continue` must include a label when used in the condition of a
@@ -257,6 +259,44 @@ let result = loop { // ok!
     i += 1;
 };
 ```
+"##,
+
+E0695: r##"
+A `break` statement without a label appeared inside a labeled block.
+
+Example of erroneous code:
+
+```compile_fail,E0695
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break;
+    }
+}
+```
+
+Make sure to always label the `break`:
+
+```
+# #![feature(label_break_value)]
+'l: loop {
+    'a: {
+        break 'l;
+    }
+}
+```
+
+Or if you want to `break` the labeled block:
+
+```
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break 'a;
+    }
+    break;
+}
+```
 "##
 }
 
@@ -264,4 +304,11 @@ register_diagnostics! {
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
     E0561, // patterns aren't allowed in function pointer types
+    E0567, // auto traits can not have generic parameters
+    E0568, // auto traits can not have super traits
+    E0642, // patterns aren't allowed in methods without bodies
+    E0666, // nested `impl Trait` is illegal
+    E0667, // `impl Trait` in projections
+    E0696, // `continue` pointing to a labeled block
+    E0706, // `async fn` in trait
 }

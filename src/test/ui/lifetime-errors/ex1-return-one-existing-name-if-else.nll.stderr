@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/ex1-return-one-existing-name-if-else.rs:12:27
+   |
+LL |     if x > y { x } else { y } //~ ERROR explicit lifetime
+   |                           ^
+
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/ex1-return-one-existing-name-if-else.rs:12:8
+   |
+LL | fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
+   |                        - consider changing the type of `y` to `&'a i32`
+LL |     if x > y { x } else { y } //~ ERROR explicit lifetime
+   |        ^^^^^ lifetime `'a` required
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0621`.

@@ -9,6 +9,6 @@
 // except according to those terms.
 
 type x = Vec<x>;
-//~^ ERROR unsupported cyclic reference
+//~^ ERROR cycle detected
 
 fn main() { let b: x = Vec::new(); }

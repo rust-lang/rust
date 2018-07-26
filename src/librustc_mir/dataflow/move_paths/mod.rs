@@ -29,17 +29,17 @@ mod abs_domain;
 // (which is likely to yield a subtle off-by-one error).
 pub(crate) mod indexes {
     use std::fmt;
-    use core::nonzero::NonZero;
+    use std::num::NonZeroUsize;
     use rustc_data_structures::indexed_vec::Idx;
 
     macro_rules! new_index {
         ($Index:ident, $debug_name:expr) => {
-            #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-            pub struct $Index(NonZero<usize>);
+            #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+            pub struct $Index(NonZeroUsize);
 
             impl Idx for $Index {
                 fn new(idx: usize) -> Self {
-                    $Index(NonZero::new(idx + 1).unwrap())
+                    $Index(NonZeroUsize::new(idx + 1).unwrap())
                 }
                 fn index(self) -> usize {
                     self.0.get() - 1
@@ -60,12 +60,16 @@ pub(crate) mod indexes {
     /// Index into MoveData.moves.
     new_index!(MoveOutIndex, "mo");
 
+    /// Index into MoveData.inits.
+    new_index!(InitIndex, "in");
+
     /// Index into Borrows.locations
     new_index!(BorrowIndex, "bw");
 }
 
 pub use self::indexes::MovePathIndex;
 pub use self::indexes::MoveOutIndex;
+pub use self::indexes::InitIndex;
 
 impl MoveOutIndex {
     pub fn move_path_index(&self, move_data: &MoveData) -> MovePathIndex {
@@ -79,7 +83,7 @@ impl MoveOutIndex {
 /// It follows a tree structure.
 ///
 /// Given `struct X { m: M, n: N }` and `x: X`, moves like `drop x.m;`
-/// move *out* of the l-value `x.m`.
+/// move *out* of the place `x.m`.
 ///
 /// The MovePaths representing `x.m` and `x.n` are siblings (that is,
 /// one of them will link to the other via the `next_sibling` field,
@@ -90,7 +94,7 @@ pub struct MovePath<'tcx> {
     pub next_sibling: Option<MovePathIndex>,
     pub first_child: Option<MovePathIndex>,
     pub parent: Option<MovePathIndex>,
-    pub lvalue: Lvalue<'tcx>,
+    pub place: Place<'tcx>,
 }
 
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
@@ -105,13 +109,13 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
         if let Some(next_sibling) = self.next_sibling {
             write!(w, " next_sibling: {:?}", next_sibling)?;
         }
-        write!(w, " lvalue: {:?} }}", self.lvalue)
+        write!(w, " place: {:?} }}", self.place)
     }
 }
 
 impl<'tcx> fmt::Display for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
-        write!(w, "{:?}", self.lvalue)
+        write!(w, "{:?}", self.place)
     }
 }
 
@@ -126,6 +130,11 @@ pub struct MoveData<'tcx> {
     pub loc_map: LocationMap<Vec<MoveOutIndex>>,
     pub path_map: IndexVec<MovePathIndex, Vec<MoveOutIndex>>,
     pub rev_lookup: MovePathLookup<'tcx>,
+    pub inits: IndexVec<InitIndex, Init>,
+    /// Each Location `l` is mapped to the Inits that are effects
+    /// of executing the code at `l`.
+    pub init_loc_map: LocationMap<Vec<InitIndex>>,
+    pub init_path_map: IndexVec<MovePathIndex, Vec<InitIndex>>,
 }
 
 pub trait HasMoveData<'tcx> {
@@ -182,16 +191,44 @@ impl fmt::Debug for MoveOut {
     }
 }
 
-/// Tables mapping from an l-value to its MovePathIndex.
+/// `Init` represents a point in a program that initializes some L-value;
+#[derive(Copy, Clone)]
+pub struct Init {
+    /// path being initialized
+    pub path: MovePathIndex,
+    /// span of initialization
+    pub span: Span,
+    /// Extra information about this initialization
+    pub kind: InitKind,
+}
+
+/// Additional information about the initialization.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum InitKind {
+    /// Deep init, even on panic
+    Deep,
+    /// Only does a shallow init
+    Shallow,
+    /// This doesn't initialize the variable on panic (and a panic is possible).
+    NonPanicPathOnly,
+}
+
+impl fmt::Debug for Init {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{:?}@{:?} ({:?})", self.path, self.span, self.kind)
+    }
+}
+
+/// Tables mapping from a place to its MovePathIndex.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
     locals: IndexVec<Local, MovePathIndex>,
 
-    /// projections are made from a base-lvalue and a projection
-    /// elem. The base-lvalue will have a unique MovePathIndex; we use
+    /// projections are made from a base-place and a projection
+    /// elem. The base-place will have a unique MovePathIndex; we use
     /// the latter as the index into the outer vector (narrowing
     /// subsequent search so that it is solely relative to that
-    /// base-lvalue). For the remaining lookup, we map the projection
+    /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
     projections: FxHashMap<(MovePathIndex, AbstractElem<'tcx>), MovePathIndex>
 }
@@ -207,13 +244,14 @@ pub enum LookupResult {
 impl<'tcx> MovePathLookup<'tcx> {
     // Unlike the builder `fn move_path_for` below, this lookup
     // alternative will *not* create a MovePath on the fly for an
-    // unknown l-value, but will rather return the nearest available
+    // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, lval: &Lvalue<'tcx>) -> LookupResult {
-        match *lval {
-            Lvalue::Local(local) => LookupResult::Exact(self.locals[local]),
-            Lvalue::Static(..) => LookupResult::Parent(None),
-            Lvalue::Projection(ref proj) => {
+    pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
+        match *place {
+            Place::Local(local) => LookupResult::Exact(self.locals[local]),
+            Place::Promoted(_) |
+            Place::Static(..) => LookupResult::Parent(None),
+            Place::Projection(ref proj) => {
                 match self.find(&proj.base) {
                     LookupResult::Exact(base_path) => {
                         match self.projections.get(&(base_path, proj.elem.lift())) {
@@ -226,21 +264,38 @@ impl<'tcx> MovePathLookup<'tcx> {
             }
         }
     }
+
+    pub fn find_local(&self, local: Local) -> MovePathIndex {
+        self.locals[local]
+    }
 }
 
 #[derive(Debug)]
 pub struct IllegalMoveOrigin<'tcx> {
-    pub(crate) span: Span,
+    pub(crate) location: Location,
     pub(crate) kind: IllegalMoveOriginKind<'tcx>,
 }
 
 #[derive(Debug)]
 pub(crate) enum IllegalMoveOriginKind<'tcx> {
+    /// Illegal move due to attempt to move from `static` variable.
     Static,
-    BorrowedContent,
+
+    /// Illegal move due to attempt to move from behind a reference.
+    BorrowedContent {
+        /// The place the reference refers to: if erroneous code was trying to
+        /// move from `(*x).f` this will be `*x`.
+        target_place: Place<'tcx>,
+    },
+
+    /// Illegal move due to attempt to move from field of an ADT that
+    /// implements `Drop`. Rust maintains invariant that all `Drop`
+    /// ADT's remain fully-initialized so that user-defined destructor
+    /// can safely read from all of the ADT's fields.
     InteriorOfTypeWithDestructor { container_ty: ty::Ty<'tcx> },
-    InteriorOfSlice { elem_ty: ty::Ty<'tcx>, is_index: bool, },
-    InteriorOfArray { elem_ty: ty::Ty<'tcx>, is_index: bool, },
+
+    /// Illegal move due to attempt to move out of a slice or array.
+    InteriorOfSliceOrArray { ty: ty::Ty<'tcx>, is_index: bool, },
 }
 
 #[derive(Debug)]
@@ -250,17 +305,15 @@ pub enum MoveError<'tcx> {
 }
 
 impl<'tcx> MoveError<'tcx> {
-    fn cannot_move_out_of(span: Span, kind: IllegalMoveOriginKind<'tcx>) -> Self {
-        let origin = IllegalMoveOrigin { span, kind };
+    fn cannot_move_out_of(location: Location, kind: IllegalMoveOriginKind<'tcx>) -> Self {
+        let origin = IllegalMoveOrigin { location, kind };
         MoveError::IllegalMove { cannot_move_out_of: origin }
     }
 }
 
 impl<'a, 'gcx, 'tcx> MoveData<'tcx> {
-    pub fn gather_moves(mir: &Mir<'tcx>,
-                        tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                        param_env: ty::ParamEnv<'gcx>)
+    pub fn gather_moves(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                         -> Result<Self, (Self, Vec<MoveError<'tcx>>)> {
-        builder::gather_moves(mir, tcx, param_env)
+        builder::gather_moves(mir, tcx)
     }
 }

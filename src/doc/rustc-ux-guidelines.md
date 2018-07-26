@@ -64,13 +64,12 @@ for details on how to format and write long error codes.
   [librustc](https://github.com/rust-lang/rust/blob/master/src/librustc/diagnostics.rs),
   [libsyntax](https://github.com/rust-lang/rust/blob/master/src/libsyntax/diagnostics.rs),
   [librustc_borrowck](https://github.com/rust-lang/rust/blob/master/src/librustc_borrowck/diagnostics.rs),
-  [librustc_const_eval](https://github.com/rust-lang/rust/blob/master/src/librustc_const_eval/diagnostics.rs),
   [librustc_metadata](https://github.com/rust-lang/rust/blob/master/src/librustc_metadata/diagnostics.rs),
   [librustc_mir](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/diagnostics.rs),
   [librustc_passes](https://github.com/rust-lang/rust/blob/master/src/librustc_passes/diagnostics.rs),
   [librustc_privacy](https://github.com/rust-lang/rust/blob/master/src/librustc_privacy/diagnostics.rs),
   [librustc_resolve](https://github.com/rust-lang/rust/blob/master/src/librustc_resolve/diagnostics.rs),
-  [librustc_trans](https://github.com/rust-lang/rust/blob/master/src/librustc_trans/diagnostics.rs),
+  [librustc_codegen_llvm](https://github.com/rust-lang/rust/blob/master/src/librustc_codegen_llvm/diagnostics.rs),
   [librustc_plugin](https://github.com/rust-lang/rust/blob/master/src/librustc_plugin/diagnostics.rs),
   [librustc_typeck](https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/diagnostics.rs).
 * Explanations have full markdown support. Use it, especially to highlight

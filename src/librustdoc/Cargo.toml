@@ -2,20 +2,12 @@
 authors = ["The Rust Project Developers"]
 name = "rustdoc"
 version = "0.0.0"
-build = "build.rs"
 
 [lib]
 name = "rustdoc"
 path = "lib.rs"
-# SNAP/stage0(cargo)
-doctest = false
 
 [dependencies]
-env_logger = { version = "0.4", default-features = false }
-log = "0.3"
-pulldown-cmark = { version = "0.1.0", default-features = false }
-html-diff = "0.0.4"
-
-[build-dependencies]
-build_helper = { path = "../build_helper" }
-cc = "1.0.1"
+pulldown-cmark = { version = "0.1.2", default-features = false }
+minifier = "0.0.14"
+tempfile = "3"

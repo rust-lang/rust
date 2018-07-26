@@ -56,7 +56,7 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     /// map; and `CurrentTask` represents the current task when
     /// `memoize` is invoked.
     ///
-    /// **Important:* when `op` is invoked, the current task will be
+    /// **Important:** when `op` is invoked, the current task will be
     /// switched to `Map(key)`. Therefore, if `op` makes use of any
     /// HIR nodes or shared state accessed through its closure
     /// environment, it must explicitly register a read of that

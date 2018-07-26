@@ -8,20 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::{DepGraph, DepKind};
-use rustc::hir::def_id::DefId;
-use rustc::hir::svh::Svh;
-use rustc::ich::Fingerprint;
-use rustc::middle::cstore::EncodedMetadataHashes;
+use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::common::time;
-use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::join;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
-use std::io::{self, Cursor, Write};
-use std::fs::{self, File};
+use std::fs;
 use std::path::PathBuf;
 
 use super::data::*;
@@ -30,73 +25,57 @@ use super::dirty_clean;
 use super::file_format;
 use super::work_product;
 
-use super::load::load_prev_metadata_hashes;
-
-pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                metadata_hashes: &EncodedMetadataHashes,
-                                svh: Svh) {
+pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     debug!("save_dep_graph()");
-    let _ignore = tcx.dep_graph.in_ignore();
-    let sess = tcx.sess;
-    if sess.opts.incremental.is_none() {
-        return;
-    }
+    tcx.dep_graph.with_ignore(|| {
+        let sess = tcx.sess;
+        if sess.opts.incremental.is_none() {
+            return;
+        }
 
-    // We load the previous metadata hashes now before overwriting the file
-    // (if we need them for testing).
-    let prev_metadata_hashes = if tcx.sess.opts.debugging_opts.query_dep_graph {
-        load_prev_metadata_hashes(tcx)
-    } else {
-        DefIdMap()
-    };
+        let query_cache_path = query_cache_path(sess);
+        let dep_graph_path = dep_graph_path(sess);
 
-    let mut current_metadata_hashes = FxHashMap();
+        join(move || {
+            if tcx.sess.opts.debugging_opts.incremental_queries {
+                time(sess, "persist query result cache", || {
+                    save_in(sess,
+                            query_cache_path,
+                            |e| encode_query_cache(tcx, e));
+                });
+            }
+        }, || {
+            time(sess, "persist dep-graph", || {
+                save_in(sess,
+                        dep_graph_path,
+                        |e| {
+                            time(sess, "encode dep-graph", || {
+                                encode_dep_graph(tcx, e)
+                            })
+                        });
+            });
+        });
 
-    if sess.opts.debugging_opts.incremental_cc ||
-       sess.opts.debugging_opts.query_dep_graph {
-        save_in(sess,
-                metadata_hash_export_path(sess),
-                |e| encode_metadata_hashes(tcx,
-                                           svh,
-                                           metadata_hashes,
-                                           &mut current_metadata_hashes,
-                                           e));
-    }
-
-    time(sess.time_passes(), "persist query result cache", || {
-        save_in(sess,
-                query_cache_path(sess),
-                |e| encode_query_cache(tcx, e));
-    });
-
-    time(sess.time_passes(), "persist dep-graph", || {
-        save_in(sess,
-                dep_graph_path(sess),
-                |e| encode_dep_graph(tcx, e));
-    });
-
-    dirty_clean::check_dirty_clean_annotations(tcx);
-    dirty_clean::check_dirty_clean_metadata(tcx,
-                                            &prev_metadata_hashes,
-                                            &current_metadata_hashes);
+        dirty_clean::check_dirty_clean_annotations(tcx);
+    })
 }
 
-pub fn save_work_products(sess: &Session, dep_graph: &DepGraph) {
+pub fn save_work_product_index(sess: &Session,
+                               dep_graph: &DepGraph,
+                               new_work_products: FxHashMap<WorkProductId, WorkProduct>) {
     if sess.opts.incremental.is_none() {
         return;
     }
 
-    debug!("save_work_products()");
-    let _ignore = dep_graph.in_ignore();
+    debug!("save_work_product_index()");
+    dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    save_in(sess, path, |e| encode_work_products(dep_graph, e));
+    save_in(sess, path, |e| encode_work_product_index(&new_work_products, e));
 
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
     // content, they are just not needed anymore.
-    let new_work_products = dep_graph.work_products();
     let previous_work_products = dep_graph.previous_work_products();
-
     for (id, wp) in previous_work_products.iter() {
         if !new_work_products.contains_key(id) {
             work_product::delete_workproduct_files(sess, wp);
@@ -118,7 +97,7 @@ pub fn save_work_products(sess: &Session, dep_graph: &DepGraph) {
 }
 
 fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
-    where F: FnOnce(&mut Encoder) -> io::Result<()>
+    where F: FnOnce(&mut Encoder)
 {
     debug!("save: storing data in {}", path_buf.display());
 
@@ -141,21 +120,13 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 
     // generate the data in a memory buffer
-    let mut wr = Cursor::new(Vec::new());
-    file_format::write_file_header(&mut wr).unwrap();
-    match encode(&mut Encoder::new(&mut wr)) {
-        Ok(()) => {}
-        Err(err) => {
-            sess.err(&format!("could not encode dep-graph to `{}`: {}",
-                              path_buf.display(),
-                              err));
-            return;
-        }
-    }
+    let mut encoder = Encoder::new(Vec::new());
+    file_format::write_file_header(&mut encoder);
+    encode(&mut encoder);
 
     // write the data out
-    let data = wr.into_inner();
-    match File::create(&path_buf).and_then(|mut file| file.write_all(&data)) {
+    let data = encoder.into_inner();
+    match fs::write(&path_buf, data) {
         Ok(_) => {
             debug!("save: data written to disk successfully");
         }
@@ -169,13 +140,14 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
 }
 
 fn encode_dep_graph(tcx: TyCtxt,
-                    encoder: &mut Encoder)
-                    -> io::Result<()> {
+                    encoder: &mut Encoder) {
     // First encode the commandline arguments hash
-    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
+    tcx.sess.opts.dep_tracking_hash().encode(encoder).unwrap();
 
     // Encode the graph data.
-    let serialized_graph = tcx.dep_graph.serialize();
+    let serialized_graph = time(tcx.sess, "getting serialized graph", || {
+        tcx.dep_graph.serialize()
+    });
 
     if tcx.sess.opts.debugging_opts.incremental_info {
         #[derive(Clone)]
@@ -187,10 +159,12 @@ fn encode_dep_graph(tcx: TyCtxt,
 
         let total_node_count = serialized_graph.nodes.len();
         let total_edge_count = serialized_graph.edge_list_data.len();
+        let (total_edge_reads, total_duplicate_edge_reads) =
+            tcx.dep_graph.edge_deduplication_data();
 
         let mut counts: FxHashMap<_, Stat> = FxHashMap();
 
-        for (i, &(node, _)) in serialized_graph.nodes.iter_enumerated() {
+        for (i, &node) in serialized_graph.nodes.iter_enumerated() {
             let stat = counts.entry(node.kind).or_insert(Stat {
                 kind: node.kind,
                 node_counter: 0,
@@ -224,6 +198,8 @@ fn encode_dep_graph(tcx: TyCtxt,
         println!("[incremental]");
         println!("[incremental] Total Node Count: {}", total_node_count);
         println!("[incremental] Total Edge Count: {}", total_edge_count);
+        println!("[incremental] Total Edge Reads: {}", total_edge_reads);
+        println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
         println!("[incremental]");
         println!("[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
                  "Node Kind",
@@ -247,52 +223,14 @@ fn encode_dep_graph(tcx: TyCtxt,
         println!("[incremental]");
     }
 
-    serialized_graph.encode(encoder)?;
-
-    Ok(())
+    time(tcx.sess, "encoding serialized graph", || {
+        serialized_graph.encode(encoder).unwrap();
+    });
 }
 
-fn encode_metadata_hashes(tcx: TyCtxt,
-                          svh: Svh,
-                          metadata_hashes: &EncodedMetadataHashes,
-                          current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
-                          encoder: &mut Encoder)
-                          -> io::Result<()> {
-    assert_eq!(metadata_hashes.hashes.len(),
-        metadata_hashes.hashes.iter().map(|x| (x.def_index, ())).collect::<FxHashMap<_,_>>().len());
-
-    let mut serialized_hashes = SerializedMetadataHashes {
-        entry_hashes: metadata_hashes.hashes.to_vec(),
-        index_map: FxHashMap()
-    };
-
-    if tcx.sess.opts.debugging_opts.query_dep_graph {
-        for serialized_hash in &serialized_hashes.entry_hashes {
-            let def_id = DefId::local(serialized_hash.def_index);
-
-            // Store entry in the index_map
-            let def_path_hash = tcx.def_path_hash(def_id);
-            serialized_hashes.index_map.insert(def_id.index, def_path_hash);
-
-            // Record hash in current_metadata_hashes
-            current_metadata_hashes.insert(def_id, serialized_hash.hash);
-        }
-
-        debug!("save: stored index_map (len={}) for serialized hashes",
-               serialized_hashes.index_map.len());
-    }
-
-    // Encode everything.
-    svh.encode(encoder)?;
-    serialized_hashes.encode(encoder)?;
-
-    Ok(())
-}
-
-fn encode_work_products(dep_graph: &DepGraph,
-                        encoder: &mut Encoder) -> io::Result<()> {
-    let work_products: Vec<_> = dep_graph
-        .work_products()
+fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduct>,
+                             encoder: &mut Encoder) {
+    let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| {
             SerializedWorkProduct {
@@ -302,11 +240,12 @@ fn encode_work_products(dep_graph: &DepGraph,
         })
         .collect();
 
-    work_products.encode(encoder)
+    serialized_products.encode(encoder).unwrap();
 }
 
 fn encode_query_cache(tcx: TyCtxt,
-                      encoder: &mut Encoder)
-                      -> io::Result<()> {
-    tcx.serialize_query_result_cache(encoder)
+                      encoder: &mut Encoder) {
+    time(tcx.sess, "serialize query result cache", || {
+        tcx.serialize_query_result_cache(encoder).unwrap();
+    })
 }

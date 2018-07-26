@@ -22,7 +22,7 @@ const A_I8_T
     : [u32; (i8::MAX as i8 + 1u8) as usize]
     //~^ ERROR mismatched types
     //~| expected i8, found u8
-    //~| ERROR the trait bound `i8: std::ops::Add<u8>` is not satisfied
+    //~| ERROR cannot add `u8` to `i8`
     = [0; (i8::MAX as usize) + 1];
 
 

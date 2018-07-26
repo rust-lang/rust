@@ -23,7 +23,7 @@ struct Foo<T> {
     f: T
 }
 
-#[rustc_if_this_changed]
+#[rustc_if_this_changed(Krate)]
 type TypeAlias<T> = Foo<T>;
 
 #[rustc_then_this_would_need(ItemVariances)] //~ ERROR OK

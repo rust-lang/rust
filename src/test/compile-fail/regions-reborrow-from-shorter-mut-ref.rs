@@ -13,7 +13,7 @@
 // for `'a` (which must be a sublifetime of `'b`).
 
 fn copy_borrowed_ptr<'a, 'b>(p: &'a mut &'b mut isize) -> &'b mut isize {
-    &mut **p //~ ERROR cannot infer
+    &mut **p //~ ERROR 16:5: 16:13: lifetime mismatch [E0623]
 }
 
 fn main() {

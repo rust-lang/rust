@@ -21,31 +21,34 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.SimplifyCfg-initial.after.mir
+// START rustc.main.SimplifyCfg-initial.after.mir
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const false;
-//         goto -> bb1;
+//         goto -> bb2;
 //     }
-//
 //     bb1: {
+//         resume;
+//     }
+//     bb2: {
+//         falseUnwind -> [real: bb3, cleanup: bb1];
+//     }
+//     bb3: {
 //         StorageLive(_4);
 //         _4 = _1;
-//         switchInt(_4) -> [0u8: bb3, otherwise: bb2];
+//         switchInt(move _4) -> [false: bb5, otherwise: bb4];
 //     }
-//
-//     bb2: {
+//     bb4: {
 //         _0 = ();
 //         StorageDead(_4);
 //         StorageDead(_1);
 //         return;
 //     }
-//
-//     bb3: {
+//     bb5: {
 //         _3 = ();
 //         StorageDead(_4);
 //         _1 = const true;
 //         _2 = ();
-//         goto -> bb1;
+//         goto -> bb2;
 //     }
-// END rustc.node4.SimplifyCfg-initial.after.mir
+// END rustc.main.SimplifyCfg-initial.after.mir

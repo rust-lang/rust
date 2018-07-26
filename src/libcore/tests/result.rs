@@ -220,13 +220,15 @@ fn test_try() {
     assert_eq!(try_result_none(), None);
 
     fn try_result_ok() -> Result<u8, u8> {
-        let val = Ok(1)?;
+        let result: Result<u8, u8> = Ok(1);
+        let val = result?;
         Ok(val)
     }
     assert_eq!(try_result_ok(), Ok(1));
 
     fn try_result_err() -> Result<u8, u8> {
-        let val = Err(1)?;
+        let result: Result<u8, u8> = Err(1);
+        let val = result?;
         Ok(val)
     }
     assert_eq!(try_result_err(), Err(1));

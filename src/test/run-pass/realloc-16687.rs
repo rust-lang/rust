@@ -15,8 +15,8 @@
 
 #![feature(heap_api, allocator_api)]
 
-use std::heap::{Heap, Alloc, Layout};
-use std::ptr;
+use std::alloc::{Global, Alloc, Layout, handle_alloc_error};
+use std::ptr::{self, NonNull};
 
 fn main() {
     unsafe {
@@ -50,13 +50,13 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let ret = Heap.alloc(layout.clone()).unwrap_or_else(|e| Heap.oom(e));
+        let ret = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         if PRINT {
             println!("allocate({:?}) = {:?}", layout, ret);
         }
 
-        ret
+        ret.cast().as_ptr()
     }
 
     unsafe fn deallocate(ptr: *mut u8, layout: Layout) {
@@ -64,7 +64,7 @@ unsafe fn test_triangle() -> bool {
             println!("deallocate({:?}, {:?}", ptr, layout);
         }
 
-        Heap.dealloc(ptr, layout);
+        Global.dealloc(NonNull::new_unchecked(ptr), layout);
     }
 
     unsafe fn reallocate(ptr: *mut u8, old: Layout, new: Layout) -> *mut u8 {
@@ -72,14 +72,16 @@ unsafe fn test_triangle() -> bool {
             println!("reallocate({:?}, old={:?}, new={:?})", ptr, old, new);
         }
 
-        let ret = Heap.realloc(ptr, old.clone(), new.clone())
-            .unwrap_or_else(|e| Heap.oom(e));
+        let ret = Global.realloc(NonNull::new_unchecked(ptr), old, new.size())
+            .unwrap_or_else(|_| handle_alloc_error(
+                Layout::from_size_align_unchecked(new.size(), old.align())
+            ));
 
         if PRINT {
             println!("reallocate({:?}, old={:?}, new={:?}) = {:?}",
                      ptr, old, new, ret);
         }
-        ret
+        ret.cast().as_ptr()
     }
 
     fn idx_to_size(i: usize) -> usize { (i+1) * 10 }

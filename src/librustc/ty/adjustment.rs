@@ -22,38 +22,38 @@ use ty::subst::Substs;
 /// Here are some common scenarios:
 ///
 /// 1. The simplest cases are where a pointer is not adjusted fat vs thin.
-/// Here the pointer will be dereferenced N times (where a dereference can
-/// happen to raw or borrowed pointers or any smart pointer which implements
-/// Deref, including Box<_>). The types of dereferences is given by
-/// `autoderefs`.  It can then be auto-referenced zero or one times, indicated
-/// by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
-/// `false`.
+///    Here the pointer will be dereferenced N times (where a dereference can
+///    happen to raw or borrowed pointers or any smart pointer which implements
+///    Deref, including Box<_>). The types of dereferences is given by
+///    `autoderefs`.  It can then be auto-referenced zero or one times, indicated
+///    by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
+///    `false`.
 ///
 /// 2. A thin-to-fat coercion involves unsizing the underlying data. We start
-/// with a thin pointer, deref a number of times, unsize the underlying data,
-/// then autoref. The 'unsize' phase may change a fixed length array to a
-/// dynamically sized one, a concrete object to a trait object, or statically
-/// sized struct to a dynamically sized one. E.g., &[i32; 4] -> &[i32] is
-/// represented by:
+///    with a thin pointer, deref a number of times, unsize the underlying data,
+///    then autoref. The 'unsize' phase may change a fixed length array to a
+///    dynamically sized one, a concrete object to a trait object, or statically
+///    sized struct to a dynamically sized one. E.g., &[i32; 4] -> &[i32] is
+///    represented by:
 ///
-/// ```
-/// Deref(None) -> [i32; 4],
-/// Borrow(AutoBorrow::Ref) -> &[i32; 4],
-/// Unsize -> &[i32],
-/// ```
+///    ```
+///    Deref(None) -> [i32; 4],
+///    Borrow(AutoBorrow::Ref) -> &[i32; 4],
+///    Unsize -> &[i32],
+///    ```
 ///
-/// Note that for a struct, the 'deep' unsizing of the struct is not recorded.
-/// E.g., `struct Foo<T> { x: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
-/// The autoderef and -ref are the same as in the above example, but the type
-/// stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
-/// the underlying conversions from `[i32; 4]` to `[i32]`.
+///    Note that for a struct, the 'deep' unsizing of the struct is not recorded.
+///    E.g., `struct Foo<T> { x: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
+///    The autoderef and -ref are the same as in the above example, but the type
+///    stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
+///    the underlying conversions from `[i32; 4]` to `[i32]`.
 ///
 /// 3. Coercing a `Box<T>` to `Box<Trait>` is an interesting special case.  In
-/// that case, we have the pointer we need coming in, so there are no
-/// autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
-/// At some point, of course, `Box` should move out of the compiler, in which
-/// case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
-/// Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
+///    that case, we have the pointer we need coming in, so there are no
+///    autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
+///    At some point, of course, `Box` should move out of the compiler, in which
+///    case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
+///    Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Adjustment<'tcx> {
     pub kind: Adjust<'tcx>,
@@ -77,7 +77,7 @@ pub enum Adjust<'tcx> {
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
 
-    /// Dereference once, producing an lvalue.
+    /// Dereference once, producing a place.
     Deref(Option<OverloadedDeref<'tcx>>),
 
     /// Take the address and produce either a `&` or `*` pointer.
@@ -91,8 +91,8 @@ pub enum Adjust<'tcx> {
     /// pointers.  We don't store the details of how the transform is
     /// done (in fact, we don't know that, because it might depend on
     /// the precise type parameters). We just store the target
-    /// type. Trans figures out what has to be done at monomorphization
-    /// time based on the precise source/target type at hand.
+    /// type. Codegen backends and miri figure out what has to be done
+    /// based on the precise source/target type at hand.
     Unsize,
 }
 
@@ -119,10 +119,43 @@ impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
     }
 }
 
+/// At least for initial deployment, we want to limit two-phase borrows to
+/// only a few specific cases. Right now, those mostly "things that desugar"
+/// into method calls
+///     - using x.some_method() syntax, where some_method takes &mut self
+///     - using Foo::some_method(&mut x, ...) syntax
+///     - binary assignment operators (+=, -=, *=, etc.)
+/// Anything else should be rejected until generalized two phase borrow support
+/// is implemented. Right now, dataflow can't handle the general case where there
+/// is more than one use of a mutable borrow, and we don't want to accept too much
+/// new code via two-phase borrows, so we try to limit where we create two-phase
+/// capable mutable borrows.
+/// See #49434 for tracking.
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+pub enum AllowTwoPhase {
+    Yes,
+    No
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+pub enum AutoBorrowMutability {
+    Mutable { allow_two_phase_borrow: AllowTwoPhase },
+    Immutable,
+}
+
+impl From<AutoBorrowMutability> for hir::Mutability {
+    fn from(m: AutoBorrowMutability) -> Self {
+        match m {
+            AutoBorrowMutability::Mutable { .. } => hir::MutMutable,
+            AutoBorrowMutability::Immutable => hir::MutImmutable,
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AutoBorrow<'tcx> {
     /// Convert from T to &T.
-    Ref(ty::Region<'tcx>, hir::Mutability),
+    Ref(ty::Region<'tcx>, AutoBorrowMutability),
 
     /// Convert from T to *T.
     RawPtr(hir::Mutability),

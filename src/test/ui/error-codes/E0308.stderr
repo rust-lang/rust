@@ -1,0 +1,12 @@
+error[E0308]: intrinsic has wrong type
+  --> $DIR/E0308.rs:14:5
+   |
+LL |     fn size_of<T>(); //~ ERROR E0308
+   |     ^^^^^^^^^^^^^^^^ expected (), found usize
+   |
+   = note: expected type `unsafe extern "rust-intrinsic" fn()`
+              found type `unsafe extern "rust-intrinsic" fn() -> usize`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

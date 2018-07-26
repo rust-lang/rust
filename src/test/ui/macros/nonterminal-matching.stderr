@@ -1,0 +1,11 @@
+error: no rules expected the token `enum E { }`
+  --> $DIR/nonterminal-matching.rs:29:10
+   |
+LL |     n!(a $nt_item b); //~ ERROR no rules expected the token `enum E { }`
+   |          ^^^^^^^^
+...
+LL | complex_nonterminal!(enum E {});
+   | -------------------------------- in this macro invocation
+
+error: aborting due to previous error
+

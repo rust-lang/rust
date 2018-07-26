@@ -22,7 +22,7 @@ static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 =
 struct SomeStruct<'x, 'y, 'z: 'x> {
     foo: &'x Foo<'z>,
     bar: &'x Bar<'z>,
-    f: &'y for<'a, 'b: 'a> Fn(&'a Foo<'b>) -> &'a Bar<'b>,
+    f: &'y for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Bar<'b>,
 }
 
 fn id<T>(t: T) -> T {

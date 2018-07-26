@@ -1,40 +1,40 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct-3.rs:29:9
+  --> $DIR/token-error-correct-3.rs:30:9
    |
-29 |         } else { //~ ERROR: incorrect close delimiter: `}`
+LL |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^
    |
 note: unclosed delimiter
-  --> $DIR/token-error-correct-3.rs:23:21
+  --> $DIR/token-error-correct-3.rs:24:21
    |
-23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
+LL |             callback(path.as_ref(); //~ ERROR expected one of
    |                     ^
 
-error: expected one of `,`, `.`, `?`, or an operator, found `;`
-  --> $DIR/token-error-correct-3.rs:23:35
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
+  --> $DIR/token-error-correct-3.rs:24:35
    |
-23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
-   |                                   ^ expected one of `,`, `.`, `?`, or an operator here
+LL |             callback(path.as_ref(); //~ ERROR expected one of
+   |                                   ^ expected one of `)`, `,`, `.`, `?`, or an operator here
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
-  --> $DIR/token-error-correct-3.rs:29:9
+  --> $DIR/token-error-correct-3.rs:30:9
    |
-25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
 ...
-29 |         } else { //~ ERROR: incorrect close delimiter: `}`
+LL |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^ unexpected token
 
 error[E0425]: cannot find function `is_directory` in this scope
-  --> $DIR/token-error-correct-3.rs:21:13
+  --> $DIR/token-error-correct-3.rs:23:13
    |
-21 |         if !is_directory(path.as_ref()) { //~ ERROR: unresolved function `is_directory`
+LL |         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
    |             ^^^^^^^^^^^^ not found in this scope
 
 error[E0308]: mismatched types
   --> $DIR/token-error-correct-3.rs:25:13
    |
-25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
    |             |
    |             expected (), found enum `std::result::Result`
@@ -44,3 +44,5 @@ error[E0308]: mismatched types
 
 error: aborting due to 5 previous errors
 
+Some errors occurred: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

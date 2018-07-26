@@ -10,30 +10,7 @@
 
 // Code for annotating snippets.
 
-use syntax_pos::{Span, FileMap};
-use CodeMapper;
-use std::rc::Rc;
 use Level;
-
-#[derive(Clone)]
-pub struct SnippetData {
-    codemap: Rc<CodeMapper>,
-    files: Vec<FileInfo>,
-}
-
-#[derive(Clone)]
-pub struct FileInfo {
-    file: Rc<FileMap>,
-
-    /// The "primary file", if any, gets a `-->` marker instead of
-    /// `>>>`, and has a line-number/column printed and not just a
-    /// filename.  It appears first in the listing. It is known to
-    /// contain at least one primary span, though primary spans (which
-    /// are designated with `^^^`) may also occur in other files.
-    primary_span: Option<Span>,
-
-    lines: Vec<Line>,
-}
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Line {
@@ -70,7 +47,7 @@ impl MultilineAnnotation {
 
     pub fn as_end(&self) -> Annotation {
         Annotation {
-            start_col: self.end_col - 1,
+            start_col: self.end_col.saturating_sub(1),
             end_col: self.end_col,
             is_primary: self.is_primary,
             label: self.label.clone(),
@@ -205,6 +182,7 @@ pub struct StyledString {
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Style {
+    MainHeaderMsg,
     HeaderMsg,
     LineAndColumn,
     LineNumber,
@@ -213,6 +191,7 @@ pub enum Style {
     UnderlineSecondary,
     LabelPrimary,
     LabelSecondary,
+    OldSchoolNoteText,
     NoStyle,
     Level(Level),
     Highlight,

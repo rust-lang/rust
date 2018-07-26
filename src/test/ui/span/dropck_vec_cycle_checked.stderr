@@ -1,67 +1,69 @@
 error[E0597]: `c2` does not live long enough
-   --> $DIR/dropck_vec_cycle_checked.rs:116:1
-    |
-110 |     c1.v[0].v.set(Some(&c2));
-    |                         -- borrow occurs here
+  --> $DIR/dropck_vec_cycle_checked.rs:113:25
+   |
+LL |     c1.v[0].v.set(Some(&c2));
+   |                         ^^ borrowed value does not live long enough
 ...
-116 | }
-    | ^ `c2` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `c2` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c3` does not live long enough
-   --> $DIR/dropck_vec_cycle_checked.rs:116:1
-    |
-111 |     c1.v[1].v.set(Some(&c3));
-    |                         -- borrow occurs here
+  --> $DIR/dropck_vec_cycle_checked.rs:115:25
+   |
+LL |     c1.v[1].v.set(Some(&c3));
+   |                         ^^ borrowed value does not live long enough
 ...
-116 | }
-    | ^ `c3` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `c3` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c2` does not live long enough
-   --> $DIR/dropck_vec_cycle_checked.rs:116:1
-    |
-112 |     c2.v[0].v.set(Some(&c2));
-    |                         -- borrow occurs here
+  --> $DIR/dropck_vec_cycle_checked.rs:117:25
+   |
+LL |     c2.v[0].v.set(Some(&c2));
+   |                         ^^ borrowed value does not live long enough
 ...
-116 | }
-    | ^ `c2` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `c2` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c3` does not live long enough
-   --> $DIR/dropck_vec_cycle_checked.rs:116:1
-    |
-113 |     c2.v[1].v.set(Some(&c3));
-    |                         -- borrow occurs here
+  --> $DIR/dropck_vec_cycle_checked.rs:119:25
+   |
+LL |     c2.v[1].v.set(Some(&c3));
+   |                         ^^ borrowed value does not live long enough
 ...
-116 | }
-    | ^ `c3` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `c3` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c1` does not live long enough
-   --> $DIR/dropck_vec_cycle_checked.rs:116:1
-    |
-114 |     c3.v[0].v.set(Some(&c1));
-    |                         -- borrow occurs here
-115 |     c3.v[1].v.set(Some(&c2));
-116 | }
-    | ^ `c1` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+  --> $DIR/dropck_vec_cycle_checked.rs:121:25
+   |
+LL |     c3.v[0].v.set(Some(&c1));
+   |                         ^^ borrowed value does not live long enough
+...
+LL | }
+   | - `c1` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c2` does not live long enough
-   --> $DIR/dropck_vec_cycle_checked.rs:116:1
-    |
-115 |     c3.v[1].v.set(Some(&c2));
-    |                         -- borrow occurs here
-116 | }
-    | ^ `c2` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+  --> $DIR/dropck_vec_cycle_checked.rs:123:25
+   |
+LL |     c3.v[1].v.set(Some(&c2));
+   |                         ^^ borrowed value does not live long enough
+LL |     //~^ ERROR `c2` does not live long enough
+LL | }
+   | - `c2` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deny(const_err)]
+
 const FOO: &'static[u32] = &[1, 2, 3];
 const BAR: u32 = FOO[5];
-//~^ ERROR constant evaluation error [E0080]
-//~| index out of bounds: the len is 3 but the index is 5
+//~^ index out of bounds: the len is 3 but the index is 5
+//~| ERROR this constant cannot be used
 
 fn main() {
     let _ = BAR;

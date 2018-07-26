@@ -61,7 +61,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "servo",
         repo: "https://github.com/servo/servo",
-        sha: "38fe9533b93e985657f99a29772bf3d3c8694822",
+        sha: "17e97b9320fdb7cdb33bbc5f4d0fde0653bbf2e4",
         lock: None,
         // Only test Stylo a.k.a. Quantum CSS, the parts of Servo going into Firefox.
         // This takes much less time to build than all of Servo and supports stable Rust.
@@ -165,6 +165,8 @@ fn run_cargo_test(cargo_path: &Path, crate_path: &Path, packages: &[&str]) -> bo
     let status = command
         // Disable rust-lang/cargo's cross-compile tests
         .env("CFG_DISABLE_CROSS_TESTS", "1")
+        // Relax #![deny(warnings)] in some crates
+        .env("RUSTFLAGS", "--cap-lints warn")
         .current_dir(crate_path)
         .status()
         .expect("");

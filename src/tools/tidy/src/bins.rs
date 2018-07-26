@@ -31,9 +31,9 @@ pub fn check(path: &Path, bad: &mut bool) {
     if let Ok(mut file) = fs::File::open("/proc/version") {
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
-        // Probably on Windows Linux Subsystem, all files will be marked as
-        // executable, so skip checking.
-        if contents.contains("Microsoft") {
+        // Probably on Windows Linux Subsystem or Docker via VirtualBox,
+        // all files will be marked as executable, so skip checking.
+        if contents.contains("Microsoft") || contents.contains("boot2docker") {
             return;
         }
     }

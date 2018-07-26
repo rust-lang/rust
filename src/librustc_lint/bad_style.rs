@@ -13,17 +13,17 @@ use rustc::ty;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
 
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
 
-use rustc::hir::{self, PatKind};
+use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::intravisit::FnKind;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {
-    TraitDefaultImpl,
+    TraitAutoImpl,
     TraitImpl,
     PlainImpl,
 }
@@ -32,7 +32,7 @@ pub fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
     let def_id = cx.tcx.hir.local_def_id(id);
     let item = cx.tcx.associated_item(def_id);
     match item.container {
-        ty::TraitContainer(..) => MethodLateContext::TraitDefaultImpl,
+        ty::TraitContainer(..) => MethodLateContext::TraitAutoImpl,
         ty::ImplContainer(cid) => {
             match cx.tcx.impl_trait_ref(cid) {
                 Some(_) => MethodLateContext::TraitImpl,
@@ -53,6 +53,10 @@ pub struct NonCamelCaseTypes;
 
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &LateContext, sort: &str, name: ast::Name, span: Span) {
+        fn char_has_case(c: char) -> bool {
+            c.is_lowercase() || c.is_uppercase()
+        }
+
         fn is_camel_case(name: ast::Name) -> bool {
             let name = name.as_str();
             if name.is_empty() {
@@ -62,20 +66,38 @@ impl NonCamelCaseTypes {
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
-            !name.is_empty() && !name.chars().next().unwrap().is_lowercase() && !name.contains('_')
+            !name.is_empty() && !name.chars().next().unwrap().is_lowercase() &&
+                !name.contains("__") && !name.chars().collect::<Vec<_>>().windows(2).any(|pair| {
+                    // contains a capitalisable character followed by, or preceded by, an underscore
+                    char_has_case(pair[0]) && pair[1] == '_' ||
+                    char_has_case(pair[1]) && pair[0] == '_'
+                })
         }
 
         fn to_camel_case(s: &str) -> String {
-            s.split('_')
-                .flat_map(|word| {
+            s.trim_matches('_')
+                .split('_')
+                .map(|word| {
                     word.chars().enumerate().map(|(i, c)| if i == 0 {
                         c.to_uppercase().collect::<String>()
                     } else {
                         c.to_lowercase().collect()
                     })
+                    .collect::<Vec<_>>()
+                    .concat()
                 })
+                .filter(|x| !x.is_empty())
                 .collect::<Vec<_>>()
-                .concat()
+                .iter().fold((String::new(), None), |(acc, prev): (String, Option<&String>), next| {
+                    // separate two components with an underscore if their boundary cannot
+                    // be distinguished using a uppercase/lowercase case distinction
+                    let join = if let Some(prev) = prev {
+                                    let l = prev.chars().last().unwrap();
+                                    let f = next.chars().next().unwrap();
+                                    !char_has_case(l) && !char_has_case(f)
+                                } else { false };
+                    (acc + if join { "_" } else { "" } + next, Some(next))
+                }).0
         }
 
         if !is_camel_case(name) {
@@ -98,26 +120,24 @@ impl LintPass for NonCamelCaseTypes {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        let extern_repr_count = it.attrs
+        let has_repr_c = it.attrs
             .iter()
-            .filter(|attr| {
+            .any(|attr| {
                 attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr)
                     .iter()
-                    .any(|r| r == &attr::ReprExtern)
-            })
-            .count();
-        let has_extern_repr = extern_repr_count > 0;
+                    .any(|r| r == &attr::ReprC)
+            });
 
-        if has_extern_repr {
+        if has_repr_c {
             return;
         }
 
         match it.node {
-            hir::ItemTy(..) |
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemUnion(..) => self.check_case(cx, "type", it.name, it.span),
-            hir::ItemTrait(..) => self.check_case(cx, "trait", it.name, it.span),
+            hir::ItemKind::Ty(..) |
+            hir::ItemKind::Enum(..) |
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::Union(..) => self.check_case(cx, "type", it.name, it.span),
+            hir::ItemKind::Trait(..) => self.check_case(cx, "trait", it.name, it.span),
             _ => (),
         }
     }
@@ -126,9 +146,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
         self.check_case(cx, "variant", v.node.name, v.span);
     }
 
-    fn check_generics(&mut self, cx: &LateContext, it: &hir::Generics) {
-        for gen in it.ty_params.iter() {
-            self.check_case(cx, "type parameter", gen.name, gen.span);
+    fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
+        match param.kind {
+            GenericParamKind::Lifetime { .. } => {}
+            GenericParamKind::Type { synthetic, .. } => {
+                if synthetic.is_none() {
+                    self.check_case(cx, "type parameter", param.name.ident().name, param.span);
+                }
+            }
         }
     }
 }
@@ -221,14 +246,22 @@ impl LintPass for NonSnakeCase {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_crate(&mut self, cx: &LateContext, cr: &hir::Crate) {
-        let attr_crate_name = cr.attrs
-            .iter()
-            .find(|at| at.check_name("crate_name"))
+        let attr_crate_name = attr::find_by_name(&cr.attrs, "crate_name")
             .and_then(|at| at.value_str().map(|s| (at, s)));
         if let Some(ref name) = cx.tcx.sess.opts.crate_name {
             self.check_snake_case(cx, "crate", name, None);
         } else if let Some((attr, name)) = attr_crate_name {
             self.check_snake_case(cx, "crate", &name.as_str(), Some(attr.span));
+        }
+    }
+
+    fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
+        match param.kind {
+            GenericParamKind::Lifetime { .. } => {
+                let name = param.name.ident().as_str();
+                self.check_snake_case(cx, "lifetime", &name, Some(param.span));
+            }
+            GenericParamKind::Type { .. } => {}
         }
     }
 
@@ -245,15 +278,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                     MethodLateContext::PlainImpl => {
                         self.check_snake_case(cx, "method", &name.as_str(), Some(span))
                     }
-                    MethodLateContext::TraitDefaultImpl => {
+                    MethodLateContext::TraitAutoImpl => {
                         self.check_snake_case(cx, "trait method", &name.as_str(), Some(span))
                     }
                     _ => (),
                 }
             }
-            FnKind::ItemFn(name, _, _, _, abi, _, attrs) => {
+            FnKind::ItemFn(name, _, header, _, attrs) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if abi != Abi::Rust && attr::find_by_name(attrs, "no_mangle").is_some() {
+                if header.abi != Abi::Rust && attr::find_by_name(attrs, "no_mangle").is_some() {
                     return;
                 }
                 self.check_snake_case(cx, "function", &name.as_str(), Some(span))
@@ -263,33 +296,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        if let hir::ItemMod(_) = it.node {
+        if let hir::ItemKind::Mod(_) = it.node {
             self.check_snake_case(cx, "module", &it.name.as_str(), Some(it.span));
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
-        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(ref names)) = item.node {
+        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(ref pnames)) = item.node {
             self.check_snake_case(cx,
                                   "trait method",
-                                  &item.name.as_str(),
+                                  &item.ident.as_str(),
                                   Some(item.span));
-            for name in names {
-                self.check_snake_case(cx, "variable", &name.node.as_str(), Some(name.span));
+            for param_name in pnames {
+                self.check_snake_case(cx, "variable", &param_name.as_str(), Some(param_name.span));
             }
         }
     }
 
-    fn check_lifetime_def(&mut self, cx: &LateContext, t: &hir::LifetimeDef) {
-        self.check_snake_case(cx,
-                              "lifetime",
-                              &t.lifetime.name.name().as_str(),
-                              Some(t.lifetime.span));
-    }
-
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
-        if let &PatKind::Binding(_, _, ref path1, _) = &p.node {
-            self.check_snake_case(cx, "variable", &path1.node.as_str(), Some(p.span));
+        if let &PatKind::Binding(_, _, ref ident, _) = &p.node {
+            self.check_snake_case(cx, "variable", &ident.as_str(), Some(p.span));
         }
     }
 
@@ -300,7 +326,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                         _: &hir::Generics,
                         _: ast::NodeId) {
         for sf in s.fields() {
-            self.check_snake_case(cx, "structure field", &sf.name.as_str(), Some(sf.span));
+            self.check_snake_case(cx, "structure field", &sf.ident.as_str(), Some(sf.span));
         }
     }
 }
@@ -343,10 +369,13 @@ impl LintPass for NonUpperCaseGlobals {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
-            hir::ItemStatic(..) => {
+            hir::ItemKind::Static(..) => {
+                if attr::find_by_name(&it.attrs, "no_mangle").is_some() {
+                    return;
+                }
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.name, it.span);
             }
-            hir::ItemConst(..) => {
+            hir::ItemKind::Const(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant", it.name, it.span);
             }
             _ => {}
@@ -356,7 +385,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_trait_item(&mut self, cx: &LateContext, ti: &hir::TraitItem) {
         match ti.node {
             hir::TraitItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "associated constant", ti.name, ti.span);
+                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
+                                                      ti.ident.name, ti.span);
             }
             _ => {}
         }
@@ -365,7 +395,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_impl_item(&mut self, cx: &LateContext, ii: &hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Const(..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "associated constant", ii.name, ii.span);
+                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
+                                                      ii.ident.name, ii.span);
             }
             _ => {}
         }
@@ -378,7 +409,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
                 if path.segments.len() == 1 {
                     NonUpperCaseGlobals::check_upper_case(cx,
                                                           "constant in pattern",
-                                                          path.segments[0].name,
+                                                          path.segments[0].ident.name,
                                                           path.span);
                 }
             }

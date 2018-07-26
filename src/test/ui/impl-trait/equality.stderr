@@ -1,55 +1,21 @@
 error[E0308]: mismatched types
   --> $DIR/equality.rs:25:5
    |
-25 |     0_u32
+LL |     0_u32
    |     ^^^^^ expected i32, found u32
    |
    = note: expected type `i32`
               found type `u32`
 
-error[E0277]: the trait bound `u32: std::ops::Add<impl Foo>` is not satisfied
+error[E0277]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:34:11
    |
-34 |         n + sum_to(n - 1)
+LL |         n + sum_to(n - 1)
    |           ^ no implementation for `u32 + impl Foo`
    |
    = help: the trait `std::ops::Add<impl Foo>` is not implemented for `u32`
 
-error[E0308]: mismatched types
-  --> $DIR/equality.rs:53:18
-   |
-53 |     let _: u32 = hide(0_u32);
-   |                  ^^^^^^^^^^^ expected u32, found anonymized type
-   |
-   = note: expected type `u32`
-              found type `impl Foo`
+error: aborting due to 2 previous errors
 
-error[E0308]: mismatched types
-  --> $DIR/equality.rs:59:18
-   |
-59 |     let _: i32 = Leak::leak(hide(0_i32));
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^ expected i32, found associated type
-   |
-   = note: expected type `i32`
-              found type `<impl Foo as Leak>::T`
-
-error[E0308]: mismatched types
-  --> $DIR/equality.rs:66:10
-   |
-66 |     x = (x.1,
-   |          ^^^ expected u32, found i32
-   |
-   = note: expected type `impl Foo` (u32)
-              found type `impl Foo` (i32)
-
-error[E0308]: mismatched types
-  --> $DIR/equality.rs:69:10
-   |
-69 |          x.0);
-   |          ^^^ expected i32, found u32
-   |
-   = note: expected type `impl Foo` (i32)
-              found type `impl Foo` (u32)
-
-error: aborting due to 6 previous errors
-
+Some errors occurred: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

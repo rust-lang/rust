@@ -18,8 +18,7 @@ extern crate issue_21221_4;
 struct Foo;
 
 impl T for Foo {}
-//~^ ERROR unresolved trait `T`
-//~| HELP you can import it into scope: `use issue_21221_4::T;`
+//~^ ERROR cannot find trait `T`
 
 fn main() {
     println!("Hello, world!");

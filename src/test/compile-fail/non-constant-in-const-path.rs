@@ -11,8 +11,7 @@
 fn main() {
     let x = 0;
     match 1 {
-        0 ... x => {}
-        //~^ ERROR constant evaluation error
-        //~| non-constant path in constant expression
+        0 ..= x => {}
+        //~^ ERROR runtime values cannot be referenced in patterns
     };
 }

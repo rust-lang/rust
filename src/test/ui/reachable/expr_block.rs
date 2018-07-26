@@ -12,13 +12,12 @@
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![feature(never_type)]
 
 fn a() {
     // Here the tail expression is considered unreachable:
     let x = {
         return;
-        22
+        22 //~ ERROR unreachable
     };
 }
 
@@ -34,6 +33,7 @@ fn c() {
     let x = {
         return;
         println!("foo");
+        //~^ ERROR unreachable statement
         22
     };
 }

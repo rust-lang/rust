@@ -9,12 +9,14 @@
 // except according to those terms.
 
 // compile-flags: -C no-prepopulate-passes
+// ignore-tidy-linelength
+// min-llvm-version 6.0
 
 #![crate_type = "lib"]
 #![feature(custom_attribute)]
 
 pub struct S {
-  _field: [i64; 4],
+  _field: [i32; 8],
 }
 
 pub struct UnsafeInner {
@@ -45,22 +47,20 @@ pub fn static_borrow(_: &'static i32) {
 pub fn named_borrow<'r>(_: &'r i32) {
 }
 
-// CHECK: @unsafe_borrow(%UnsafeInner* dereferenceable(2) %arg0)
+// CHECK: @unsafe_borrow(i16* dereferenceable(2) %arg0)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(%UnsafeInner* dereferenceable(2) %arg0)
+// CHECK: @mutable_unsafe_borrow(i16* noalias dereferenceable(2) %arg0)
 // ... unless this is a mutable borrow, those never alias
-// ... except that there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 }
 
-// CHECK: @mutable_borrow(i32* dereferenceable(4) %arg0)
+// CHECK: @mutable_borrow(i32* noalias dereferenceable(4) %arg0)
 // FIXME #25759 This should also have `nocapture`
-// ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
 }
@@ -76,7 +76,7 @@ pub fn indirect_struct(_: S) {
 pub fn borrowed_struct(_: &S) {
 }
 
-// CHECK: noalias dereferenceable(4) i32* @_box(i32* noalias dereferenceable(4) %x)
+// CHECK: noalias align 4 dereferenceable(4) i32* @_box(i32* noalias dereferenceable(4) %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
   x
@@ -86,55 +86,72 @@ pub fn _box(x: Box<i32>) -> Box<i32> {
 #[no_mangle]
 pub fn struct_return() -> S {
   S {
-    _field: [0, 0, 0, 0]
+    _field: [0, 0, 0, 0, 0, 0, 0, 0]
   }
 }
 
 // Hack to get the correct size for the length part in slices
 // CHECK: @helper([[USIZE:i[0-9]+]] %arg0)
 #[no_mangle]
-fn helper(_: usize) {
+pub fn helper(_: usize) {
 }
 
-// CHECK: @slice(i8* noalias nonnull readonly %arg0.ptr, [[USIZE]] %arg0.meta)
+// CHECK: @slice([0 x i8]* noalias nonnull readonly %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-fn slice(_: &[u8]) {
+pub fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice(i8* nonnull %arg0.ptr, [[USIZE]] %arg0.meta)
+// CHECK: @mutable_slice([0 x i8]* noalias nonnull %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
-// ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
-fn mutable_slice(_: &mut [u8]) {
+pub fn mutable_slice(_: &mut [u8]) {
 }
 
-// CHECK: @unsafe_slice(%UnsafeInner* nonnull %arg0.ptr, [[USIZE]] %arg0.meta)
+// CHECK: @unsafe_slice([0 x i16]* nonnull %arg0.0, [[USIZE]] %arg0.1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_slice(_: &[UnsafeInner]) {
 }
 
-// CHECK: @str(i8* noalias nonnull readonly %arg0.ptr, [[USIZE]] %arg0.meta)
+// CHECK: @str([0 x i8]* noalias nonnull readonly %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-fn str(_: &[u8]) {
+pub fn str(_: &[u8]) {
 }
 
-// CHECK: @trait_borrow({}* nonnull, {}* noalias nonnull readonly)
+// CHECK: @trait_borrow({}* nonnull %arg0.0, {}* noalias nonnull readonly %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
-fn trait_borrow(_: &Drop) {
+pub fn trait_borrow(_: &Drop) {
 }
 
 // CHECK: @trait_box({}* noalias nonnull, {}* noalias nonnull readonly)
 #[no_mangle]
-fn trait_box(_: Box<Drop>) {
+pub fn trait_box(_: Box<Drop>) {
 }
 
-// CHECK: { i16*, [[USIZE]] } @return_slice(i16* noalias nonnull readonly %x.ptr, [[USIZE]] %x.meta)
+// CHECK: { i8*, i8* } @trait_option(i8* noalias %x.0, i8* %x.1)
 #[no_mangle]
-fn return_slice(x: &[u16]) -> &[u16] {
+pub fn trait_option(x: Option<Box<Drop>>) -> Option<Box<Drop>> {
+  x
+}
+
+// CHECK: { [0 x i16]*, [[USIZE]] } @return_slice([0 x i16]* noalias nonnull readonly %x.0, [[USIZE]] %x.1)
+#[no_mangle]
+pub fn return_slice(x: &[u16]) -> &[u16] {
+  x
+}
+
+// CHECK: { i16, i16 } @enum_id_1(i16 %x.0, i16 %x.1)
+#[no_mangle]
+pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
+  x
+}
+
+// CHECK: { i8, i8 } @enum_id_2(i1 zeroext %x.0, i8 %x.1)
+#[no_mangle]
+pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
   x
 }
 

@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 use super::autoderef::Autoderef;
 use super::method::MethodCallee;
 
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
-use rustc::ty::{self, TyCtxt, TypeFoldable, LvaluePreference, Ty};
-use rustc::ty::subst::Subst;
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
-use syntax::abi;
-use syntax::symbol::Symbol;
+use rustc::ty::{self, TyCtxt, TypeFoldable, Ty};
+use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_target::spec::abi;
+use syntax::ast::Ident;
 use syntax_pos::Span;
 
 use rustc::hir;
@@ -97,7 +96,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match adjusted_ty.sty {
             ty::TyFnDef(..) | ty::TyFnPtr(_) => {
-                let adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+                let adjustments = autoderef.adjust_steps(Needs::None);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
             }
@@ -108,13 +107,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(def_id).is_none() {
-                    let closure_ty = self.fn_sig(def_id).subst(self.tcx, substs.substs);
+                if self.closure_kind(def_id, substs).is_none() {
+                    let closure_ty = self.closure_sig(def_id, substs);
                     let fn_sig = self.replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                    infer::FnCall,
                                                                    &closure_ty)
                         .0;
-                    let adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+                    let adjustments = autoderef.adjust_steps(Needs::None);
                     self.record_deferred_call_resolution(def_id, DeferredCallResolution {
                         call_expr,
                         callee_expr,
@@ -122,6 +121,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         adjustments,
                         fn_sig,
                         closure_def_id: def_id,
+                        closure_substs: substs,
                     });
                     return Some(CallStep::DeferredClosure(fn_sig));
                 }
@@ -143,7 +143,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         self.try_overloaded_call_traits(call_expr, adjusted_ty).map(|(autoref, method)| {
-            let mut adjustments = autoderef.adjust_steps(LvaluePreference::NoPreference);
+            let mut adjustments = autoderef.adjust_steps(Needs::None);
             adjustments.extend(autoref);
             self.apply_adjustments(callee_expr, adjustments);
             CallStep::Overloaded(method)
@@ -157,9 +157,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name, borrow) in
-            &[(self.tcx.lang_items().fn_trait(), Symbol::intern("call"), true),
-              (self.tcx.lang_items().fn_mut_trait(), Symbol::intern("call_mut"), true),
-              (self.tcx.lang_items().fn_once_trait(), Symbol::intern("call_once"), false)] {
+            &[(self.tcx.lang_items().fn_trait(), Ident::from_str("call"), true),
+              (self.tcx.lang_items().fn_mut_trait(), Ident::from_str("call_mut"), true),
+              (self.tcx.lang_items().fn_once_trait(), Ident::from_str("call_once"), false)] {
             let trait_def_id = match opt_trait_def_id {
                 Some(def_id) => def_id,
                 None => continue,
@@ -175,9 +175,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let method = self.register_infer_ok_obligations(ok);
                     let mut autoref = None;
                     if borrow {
-                        if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                        if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                            let mutbl = match mutbl {
+                                hir::MutImmutable => AutoBorrowMutability::Immutable,
+                                hir::MutMutable => AutoBorrowMutability::Mutable {
+                                    // For initial two-phase borrow
+                                    // deployment, conservatively omit
+                                    // overloaded function call ops.
+                                    allow_two_phase_borrow: AllowTwoPhase::No,
+                                }
+                            };
                             autoref = Some(Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                                 target: method.sig.inputs()[0]
                             });
                         }
@@ -205,24 +214,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut unit_variant = None;
                 if let &ty::TyAdt(adt_def, ..) = t {
                     if adt_def.is_enum() {
-                        if let hir::ExprCall(ref expr, _) = call_expr.node {
+                        if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
                             unit_variant = Some(self.tcx.hir.node_to_pretty_string(expr.id))
                         }
                     }
                 }
-                let mut err = type_error_struct!(self.tcx.sess, call_expr.span, callee_ty, E0618,
-                                                 "expected function, found `{}`",
-                                                 if let Some(ref path) = unit_variant {
-                                                     path.to_string()
-                                                 } else {
-                                                     callee_ty.to_string()
-                                                 });
-                if let Some(path) = unit_variant {
-                    err.help(&format!("did you mean to write `{}`?", path));
+
+                let mut err = type_error_struct!(
+                    self.tcx.sess,
+                    call_expr.span,
+                    callee_ty,
+                    E0618,
+                    "expected function, found {}",
+                    match unit_variant {
+                        Some(ref path) => format!("enum variant `{}`", path),
+                        None => format!("`{}`", callee_ty),
+                    });
+
+                err.span_label(call_expr.span, "not a function");
+
+                if let Some(ref path) = unit_variant {
+                    err.span_suggestion(call_expr.span,
+                                        &format!("`{}` is a unit variant, you need to write it \
+                                                  without the parenthesis", path),
+                                        path.to_string());
                 }
 
-                if let hir::ExprCall(ref expr, _) = call_expr.node {
-                    let def = if let hir::ExprPath(ref qpath) = expr.node {
+                if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
+                    let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
                         self.tables.borrow().qpath_def(qpath, expr.hir_id)
                     } else {
                         Def::Err
@@ -235,7 +254,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => self.tcx.hir.span_if_local(def.def_id())
                     };
                     if let Some(span) = def_span {
-                        err.span_note(span, "defined here");
+                        let name = match unit_variant {
+                            Some(path) => path,
+                            None => callee_ty.to_string(),
+                        };
+                        err.span_label(span, format!("`{}` defined here", name));
                     }
                 }
 
@@ -244,7 +267,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This is the "default" function signature, used in case of error.
                 // In that case, we check each argument against "error" in order to
                 // set up all the node type bindings.
-                (ty::Binder(self.tcx.mk_fn_sig(
+                (ty::Binder::bind(self.tcx.mk_fn_sig(
                     self.err_args(arg_exprs.len()).into_iter(),
                     self.tcx.types.err,
                     false,
@@ -336,6 +359,7 @@ pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
+    closure_substs: ty::ClosureSubsts<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
@@ -344,7 +368,7 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_def_id).is_some());
+        assert!(fcx.closure_kind(self.closure_def_id, self.closure_substs).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr,

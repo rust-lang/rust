@@ -55,6 +55,7 @@ pub enum CallConv {
     X86_64_Win64 = 79,
     X86_VectorCall = 80,
     X86_Intr = 83,
+    AmdGpuKernel = 91,
 }
 
 /// LLVMRustLinkage
@@ -299,12 +300,11 @@ pub enum RelocMode {
 #[repr(C)]
 pub enum CodeModel {
     Other,
-    Default,
-    JITDefault,
     Small,
     Kernel,
     Medium,
     Large,
+    None,
 }
 
 /// LLVMRustDiagnosticKind
@@ -323,6 +323,7 @@ pub enum DiagnosticKind {
     OptimizationRemarkAnalysisAliasing,
     OptimizationRemarkOther,
     OptimizationFailure,
+    PGOProfile,
 }
 
 /// LLVMRustArchiveKind
@@ -331,7 +332,6 @@ pub enum DiagnosticKind {
 pub enum ArchiveKind {
     Other,
     K_GNU,
-    K_MIPS64,
     K_BSD,
     K_COFF,
 }
@@ -357,6 +357,17 @@ pub struct ThinLTOModule {
     pub identifier: *const c_char,
     pub data: *const u8,
     pub len: usize,
+}
+
+/// LLVMThreadLocalMode
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum ThreadLocalMode {
+  NotThreadLocal,
+  GeneralDynamic,
+  LocalDynamic,
+  InitialExec,
+  LocalExec
 }
 
 // Opaque pointer types
@@ -435,6 +446,9 @@ pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
 #[allow(missing_copy_implementations)]
 pub enum OperandBundleDef_opaque {}
 pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
+#[allow(missing_copy_implementations)]
+pub enum Linker_opaque {}
+pub type LinkerRef = *mut Linker_opaque;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
@@ -487,6 +501,10 @@ pub mod debuginfo {
             const FlagStaticMember        = (1 << 12);
             const FlagLValueReference     = (1 << 13);
             const FlagRValueReference     = (1 << 14);
+            const FlagExternalTypeRef     = (1 << 15);
+            const FlagIntroducedVirtual   = (1 << 18);
+            const FlagBitField            = (1 << 19);
+            const FlagNoReturn            = (1 << 20);
             const FlagMainSubprogram      = (1 << 21);
         }
     }
@@ -494,20 +512,16 @@ pub mod debuginfo {
 
 pub enum ModuleBuffer {}
 
-// Link to our native llvm bindings (things that we need to use the C++ api
-// for) and because llvm is written in C++ we need to link against libstdc++
-//
-// You'll probably notice that there is an omission of all LLVM libraries
-// from this location. This is because the set of LLVM libraries that we
-// link to is mostly defined by LLVM, and the `llvm-config` tool is used to
-// figure out the exact set of libraries. To do this, the build system
-// generates an llvmdeps.rs file next to this one which will be
-// automatically updated whenever LLVM is updated to include an up-to-date
-// set of the libraries we need to link to LLVM for.
-#[link(name = "rustllvm", kind = "static")] // not quite true but good enough
+// This annotation is primarily needed for MSVC where attributes like
+// dllimport/dllexport are applied and need to be correct for everything to
+// link successfully. The #[link] annotation here says "these symbols are
+// included statically" which means that they're all exported with dllexport
+// and from the rustc_llvm dynamic library. Otherwise the rustc_codegen_llvm dynamic
+// library would not be able to access these symbols.
+#[link(name = "rustllvm", kind = "static")]
 extern "C" {
     // Create and destroy contexts.
-    pub fn LLVMContextCreate() -> ContextRef;
+    pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> ContextRef;
     pub fn LLVMContextDispose(C: ContextRef);
     pub fn LLVMGetMDKindIDInContext(C: ContextRef, Name: *const c_char, SLen: c_uint) -> c_uint;
 
@@ -530,9 +544,6 @@ extern "C" {
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: TypeRef) -> TypeKind;
-
-    /// See llvm::Value::getContext
-    pub fn LLVMRustGetValueContext(V: ValueRef) -> ContextRef;
 
     // Operations on integer types
     pub fn LLVMInt1TypeInContext(C: ContextRef) -> TypeRef;
@@ -564,8 +575,6 @@ extern "C" {
                                    ElementCount: c_uint,
                                    Packed: Bool)
                                    -> TypeRef;
-    pub fn LLVMCountStructElementTypes(StructTy: TypeRef) -> c_uint;
-    pub fn LLVMGetStructElementTypes(StructTy: TypeRef, Dest: *mut TypeRef);
     pub fn LLVMIsPackedStruct(StructTy: TypeRef) -> Bool;
 
     // Operations on array, pointer, and vector types (sequence types)
@@ -574,11 +583,11 @@ extern "C" {
     pub fn LLVMVectorType(ElementType: TypeRef, ElementCount: c_uint) -> TypeRef;
 
     pub fn LLVMGetElementType(Ty: TypeRef) -> TypeRef;
-    pub fn LLVMGetArrayLength(ArrayTy: TypeRef) -> c_uint;
     pub fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
     // Operations on other types
     pub fn LLVMVoidTypeInContext(C: ContextRef) -> TypeRef;
+    pub fn LLVMX86MMXTypeInContext(C: ContextRef) -> TypeRef;
     pub fn LLVMRustMetadataTypeInContext(C: ContextRef) -> TypeRef;
 
     // Operations on all values
@@ -600,10 +609,7 @@ extern "C" {
     pub fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
     pub fn LLVMConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
     pub fn LLVMConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
-    // only for isize/vector
     pub fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
-    pub fn LLVMIsNull(Val: ValueRef) -> Bool;
-    pub fn LLVMIsUndef(Val: ValueRef) -> Bool;
 
     // Operations on metadata
     pub fn LLVMMDStringInContext(C: ContextRef, Str: *const c_char, SLen: c_uint) -> ValueRef;
@@ -617,6 +623,7 @@ extern "C" {
     pub fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;
     pub fn LLVMRustConstInt128Get(ConstantVal: ValueRef, SExt: bool,
                                   high: *mut u64, low: *mut u64) -> bool;
+    pub fn LLVMConstRealGetDouble (ConstantVal: ValueRef, losesInfo: *mut Bool) -> f64;
 
 
     // Operations on composite constants
@@ -660,6 +667,16 @@ extern "C" {
     pub fn LLVMConstShl(LHSConstant: ValueRef, RHSConstant: ValueRef) -> ValueRef;
     pub fn LLVMConstLShr(LHSConstant: ValueRef, RHSConstant: ValueRef) -> ValueRef;
     pub fn LLVMConstAShr(LHSConstant: ValueRef, RHSConstant: ValueRef) -> ValueRef;
+    pub fn LLVMConstGEP(
+        ConstantVal: ValueRef,
+        ConstantIndices: *const ValueRef,
+        NumIndices: c_uint,
+    ) -> ValueRef;
+    pub fn LLVMConstInBoundsGEP(
+        ConstantVal: ValueRef,
+        ConstantIndices: *const ValueRef,
+        NumIndices: c_uint,
+    ) -> ValueRef;
     pub fn LLVMConstTrunc(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
     pub fn LLVMConstZExt(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
     pub fn LLVMConstUIToFP(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
@@ -709,6 +726,7 @@ extern "C" {
     pub fn LLVMGetInitializer(GlobalVar: ValueRef) -> ValueRef;
     pub fn LLVMSetInitializer(GlobalVar: ValueRef, ConstantVal: ValueRef);
     pub fn LLVMSetThreadLocal(GlobalVar: ValueRef, IsThreadLocal: Bool);
+    pub fn LLVMSetThreadLocalMode(GlobalVar: ValueRef, Mode: ThreadLocalMode);
     pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
     pub fn LLVMRustGetNamedValue(M: ModuleRef, Name: *const c_char) -> ValueRef;
@@ -724,7 +742,9 @@ extern "C" {
                                        FunctionTy: TypeRef)
                                        -> ValueRef;
     pub fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
+    pub fn LLVMRustAddAlignmentAttr(Fn: ValueRef, index: c_uint, bytes: u32);
     pub fn LLVMRustAddDereferenceableAttr(Fn: ValueRef, index: c_uint, bytes: u64);
+    pub fn LLVMRustAddDereferenceableOrNullAttr(Fn: ValueRef, index: c_uint, bytes: u64);
     pub fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: Attribute);
     pub fn LLVMRustAddFunctionAttrStringValue(Fn: ValueRef,
                                               index: c_uint,
@@ -754,7 +774,11 @@ extern "C" {
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: c_uint);
     pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, attr: Attribute);
+    pub fn LLVMRustAddAlignmentCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u32);
     pub fn LLVMRustAddDereferenceableCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u64);
+    pub fn LLVMRustAddDereferenceableOrNullCallSiteAttr(Instr: ValueRef,
+                                                        index: c_uint,
+                                                        bytes: u64);
 
     // Operations on load/store instructions (only)
     pub fn LLVMSetVolatile(MemoryAccessInst: ValueRef, volatile: Bool);
@@ -803,13 +827,12 @@ extern "C" {
                                Bundle: OperandBundleDefRef,
                                Name: *const c_char)
                                -> ValueRef;
-    pub fn LLVMRustBuildLandingPad(B: BuilderRef,
-                                   Ty: TypeRef,
-                                   PersFn: ValueRef,
-                                   NumClauses: c_uint,
-                                   Name: *const c_char,
-                                   F: ValueRef)
-                                   -> ValueRef;
+    pub fn LLVMBuildLandingPad(B: BuilderRef,
+                               Ty: TypeRef,
+                               PersFn: ValueRef,
+                               NumClauses: c_uint,
+                               Name: *const c_char)
+                               -> ValueRef;
     pub fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
     pub fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
@@ -914,6 +937,11 @@ extern "C" {
                          RHS: ValueRef,
                          Name: *const c_char)
                          -> ValueRef;
+    pub fn LLVMBuildExactUDiv(B: BuilderRef,
+                              LHS: ValueRef,
+                              RHS: ValueRef,
+                              Name: *const c_char)
+                              -> ValueRef;
     pub fn LLVMBuildSDiv(B: BuilderRef,
                          LHS: ValueRef,
                          RHS: ValueRef,
@@ -1181,6 +1209,49 @@ extern "C" {
                                 Name: *const c_char)
                                 -> ValueRef;
 
+    pub fn LLVMRustBuildVectorReduceFAdd(B: BuilderRef,
+                                         Acc: ValueRef,
+                                         Src: ValueRef)
+                                         -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceFMul(B: BuilderRef,
+                                         Acc: ValueRef,
+                                         Src: ValueRef)
+                                         -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceAdd(B: BuilderRef,
+                                        Src: ValueRef)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceMul(B: BuilderRef,
+                                        Src: ValueRef)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceAnd(B: BuilderRef,
+                                        Src: ValueRef)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceOr(B: BuilderRef,
+                                       Src: ValueRef)
+                                       -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceXor(B: BuilderRef,
+                                        Src: ValueRef)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceMin(B: BuilderRef,
+                                        Src: ValueRef,
+                                        IsSigned: bool)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceMax(B: BuilderRef,
+                                        Src: ValueRef,
+                                        IsSigned: bool)
+                                        -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceFMin(B: BuilderRef,
+                                         Src: ValueRef,
+                                         IsNaN: bool)
+                                         -> ValueRef;
+    pub fn LLVMRustBuildVectorReduceFMax(B: BuilderRef,
+                                         Src: ValueRef,
+                                         IsNaN: bool)
+                                         -> ValueRef;
+
+    pub fn LLVMRustBuildMinNum(B: BuilderRef, LHS: ValueRef, LHS: ValueRef) -> ValueRef;
+    pub fn LLVMRustBuildMaxNum(B: BuilderRef, LHS: ValueRef, LHS: ValueRef) -> ValueRef;
+
     pub fn LLVMBuildIsNull(B: BuilderRef, Val: ValueRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMBuildIsNotNull(B: BuilderRef, Val: ValueRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMBuildPtrDiff(B: BuilderRef,
@@ -1193,15 +1264,13 @@ extern "C" {
     pub fn LLVMRustBuildAtomicLoad(B: BuilderRef,
                                    PointerVal: ValueRef,
                                    Name: *const c_char,
-                                   Order: AtomicOrdering,
-                                   Alignment: c_uint)
+                                   Order: AtomicOrdering)
                                    -> ValueRef;
 
     pub fn LLVMRustBuildAtomicStore(B: BuilderRef,
                                     Val: ValueRef,
                                     Ptr: ValueRef,
-                                    Order: AtomicOrdering,
-                                    Alignment: c_uint)
+                                    Order: AtomicOrdering)
                                     -> ValueRef;
 
     pub fn LLVMRustBuildAtomicCmpXchg(B: BuilderRef,
@@ -1235,23 +1304,6 @@ extern "C" {
 
     /// Creates target data from a target layout string.
     pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
-    /// Number of bytes clobbered when doing a Store to *T.
-    pub fn LLVMSizeOfTypeInBits(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
-
-    /// Distance between successive elements in an array of T. Includes ABI padding.
-    pub fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
-
-    /// Returns the preferred alignment of a type.
-    pub fn LLVMPreferredAlignmentOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
-    /// Returns the minimum alignment of a type.
-    pub fn LLVMABIAlignmentOfType(TD: TargetDataRef, Ty: TypeRef) -> c_uint;
-
-    /// Computes the byte offset of the indexed struct element for a
-    /// target.
-    pub fn LLVMOffsetOfElement(TD: TargetDataRef,
-                               StructTy: TypeRef,
-                               Element: c_uint)
-                               -> c_ulonglong;
 
     /// Disposes target data.
     pub fn LLVMDisposeTargetData(TD: TargetDataRef);
@@ -1328,14 +1380,6 @@ extern "C" {
                              ElementTypes: *const TypeRef,
                              ElementCount: c_uint,
                              Packed: Bool);
-
-    pub fn LLVMConstNamedStruct(S: TypeRef,
-                                ConstantVals: *const ValueRef,
-                                Count: c_uint)
-                                -> ValueRef;
-
-    /// Enables LLVM debug output.
-    pub fn LLVMRustSetDebug(Enabled: c_int);
 
     /// Prepares inline assembly.
     pub fn LLVMRustInlineAsm(Ty: TypeRef,
@@ -1568,12 +1612,13 @@ extern "C" {
                                                 InlinedAt: MetadataRef)
                                                 -> ValueRef;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
-    pub fn LLVMRustDIBuilderCreateOpPlus() -> i64;
+    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
 
     pub fn LLVMRustWriteTypeToString(Type: TypeRef, s: RustStringRef);
     pub fn LLVMRustWriteValueToString(value_ref: ValueRef, s: RustStringRef);
 
     pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;
+    pub fn LLVMIsAConstantFP(value_ref: ValueRef) -> ValueRef;
 
     pub fn LLVMRustPassKind(Pass: PassRef) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> PassRef;
@@ -1593,7 +1638,9 @@ extern "C" {
                                        UseSoftFP: bool,
                                        PositionIndependentExecutable: bool,
                                        FunctionSections: bool,
-                                       DataSections: bool)
+                                       DataSections: bool,
+                                       TrapUnreachable: bool,
+                                       Singlethread: bool)
                                        -> TargetMachineRef;
     pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
     pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: ModuleRef);
@@ -1604,7 +1651,10 @@ extern "C" {
                                                OptLevel: CodeGenOptLevel,
                                                MergeFunctions: bool,
                                                SLPVectorize: bool,
-                                               LoopVectorize: bool);
+                                               LoopVectorize: bool,
+                                               PrepareForThinLTO: bool,
+                                               PGOGenPath: *const c_char,
+                                               PGOUsePath: *const c_char);
     pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef,
                                   M: ModuleRef,
                                   DisableSimplifyLibCalls: bool);
@@ -1626,8 +1676,6 @@ extern "C" {
     pub fn LLVMRustPrintPasses();
     pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef, AddLifetimes: bool);
-    pub fn LLVMRustLinkInExternalBitcode(M: ModuleRef, bc: *const c_char, len: size_t) -> bool;
-    pub fn LLVMRustLinkInParsedExternalBitcode(M: ModuleRef, M: ModuleRef) -> bool;
     pub fn LLVMRustRunRestrictionPass(M: ModuleRef, syms: *const *const c_char, len: size_t);
     pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
 
@@ -1663,8 +1711,6 @@ extern "C" {
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
     pub fn LLVMRustGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
 
-    pub fn LLVMRustWriteDebugLocToString(C: ContextRef, DL: DebugLocRef, s: RustStringRef);
-
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: ContextRef,
                                                  H: InlineAsmDiagHandler,
                                                  CX: *mut c_void);
@@ -1684,7 +1730,6 @@ extern "C" {
     pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
 
     pub fn LLVMRustSetDataLayoutFromTargetMachine(M: ModuleRef, TM: TargetMachineRef);
-    pub fn LLVMRustGetModuleDataLayout(M: ModuleRef) -> TargetDataRef;
 
     pub fn LLVMRustBuildOperandBundleDef(Name: *const c_char,
                                          Inputs: *const ValueRef,
@@ -1704,6 +1749,7 @@ extern "C" {
     pub fn LLVMRustModuleCost(M: ModuleRef) -> u64;
 
     pub fn LLVMRustThinLTOAvailable() -> bool;
+    pub fn LLVMRustPGOAvailable() -> bool;
     pub fn LLVMRustWriteThinBitcodeToFile(PMR: PassManagerRef,
                                           M: ModuleRef,
                                           BC: *const c_char) -> bool;
@@ -1741,4 +1787,14 @@ extern "C" {
         Identifier: *const c_char,
     ) -> ModuleRef;
     pub fn LLVMGetModuleIdentifier(M: ModuleRef, size: *mut usize) -> *const c_char;
+    pub fn LLVMRustThinLTOGetDICompileUnit(M: ModuleRef,
+                                           CU1: *mut *mut c_void,
+                                           CU2: *mut *mut c_void);
+    pub fn LLVMRustThinLTOPatchDICompileUnit(M: ModuleRef, CU: *mut c_void);
+
+    pub fn LLVMRustLinkerNew(M: ModuleRef) -> LinkerRef;
+    pub fn LLVMRustLinkerAdd(linker: LinkerRef,
+                             bytecode: *const c_char,
+                             bytecode_len: usize) -> bool;
+    pub fn LLVMRustLinkerFree(linker: LinkerRef);
 }

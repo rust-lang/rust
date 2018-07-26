@@ -18,7 +18,9 @@ use sys_common::AsInner;
 #[allow(deprecated)]
 use os::freebsd::raw;
 
-/// OS-specific extension methods for `fs::Metadata`
+/// OS-specific extensions to [`fs::Metadata`].
+///
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains

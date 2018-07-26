@@ -13,7 +13,7 @@ use rustc::hir::{self, HirId};
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::ty;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_back::slice;
+use std::slice;
 use syntax::ptr::P;
 
 use borrowck::BorrowckCtxt;
@@ -26,7 +26,7 @@ pub fn check<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, body: &'tcx hir::Body) {
     }.visit_expr(&body.value);
     let mut cx = UnusedMutCx { bccx, used_mut };
     for arg in body.arguments.iter() {
-        cx.check_unused_mut_pat(slice::ref_slice(&arg.pat));
+        cx.check_unused_mut_pat(slice::from_ref(&arg.pat));
     }
     cx.visit_expr(&body.value);
 }
@@ -46,45 +46,43 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
         let tcx = self.bccx.tcx;
         let mut mutables = FxHashMap();
         for p in pats {
-            p.each_binding(|_, id, span, path1| {
-                let name = path1.node;
-
+            p.each_binding(|_, hir_id, span, ident| {
                 // Skip anything that looks like `_foo`
-                if name.as_str().starts_with("_") {
-                    return
+                if ident.as_str().starts_with("_") {
+                    return;
                 }
 
                 // Skip anything that looks like `&foo` or `&mut foo`, only look
                 // for by-value bindings
-                let hir_id = tcx.hir.node_to_hir_id(id);
-                let bm = match self.bccx.tables.pat_binding_modes().get(hir_id) {
-                    Some(&bm) => bm,
-                    None => span_bug!(span, "missing binding mode"),
-                };
-                match bm {
-                    ty::BindByValue(hir::MutMutable) => {}
-                    _ => return,
-                }
+                if let Some(&bm) = self.bccx.tables.pat_binding_modes().get(hir_id) {
+                    match bm {
+                        ty::BindByValue(hir::MutMutable) => {}
+                        _ => return,
+                    }
 
-                mutables.entry(name).or_insert(Vec::new()).push((id, hir_id, span));
+                    mutables.entry(ident.name).or_insert(Vec::new()).push((hir_id, span));
+                } else {
+                    tcx.sess.delay_span_bug(span, "missing binding mode");
+                }
             });
         }
 
         for (_name, ids) in mutables {
             // If any id for this name was used mutably then consider them all
             // ok, so move on to the next
-            if ids.iter().any(|&(_, ref id, _)| self.used_mut.contains(id)) {
-                continue
+            if ids.iter().any(|&(ref hir_id, _)| self.used_mut.contains(hir_id)) {
+                continue;
             }
 
-            let mut_span = tcx.sess.codemap().span_until_char(ids[0].2, ' ');
+            let (hir_id, span) = ids[0];
+            let mut_span = tcx.sess.codemap().span_until_non_whitespace(span);
 
             // Ok, every name wasn't used mutably, so issue a warning that this
             // didn't need to be mutable.
-            tcx.struct_span_lint_node(UNUSED_MUT,
-                                      ids[0].0,
-                                      ids[0].2,
-                                      "variable does not need to be mutable")
+            tcx.struct_span_lint_hir(UNUSED_MUT,
+                                     hir_id,
+                                     span,
+                                     "variable does not need to be mutable")
                 .span_suggestion_short(mut_span, "remove this `mut`", "".to_owned())
                 .emit();
         }
@@ -101,7 +99,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnusedMutCx<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, local: &hir::Local) {
-        self.check_unused_mut_pat(slice::ref_slice(&local.pat));
+        self.check_unused_mut_pat(slice::from_ref(&local.pat));
     }
 }
 

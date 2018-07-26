@@ -272,15 +272,12 @@ make_test!(match_indices_a_str, s, s.match_indices("a").count());
 make_test!(split_a_str, s, s.split("a").count());
 
 make_test!(trim_ascii_char, s, {
-    use std::ascii::AsciiExt;
     s.trim_matches(|c: char| c.is_ascii())
 });
 make_test!(trim_left_ascii_char, s, {
-    use std::ascii::AsciiExt;
     s.trim_left_matches(|c: char| c.is_ascii())
 });
 make_test!(trim_right_ascii_char, s, {
-    use std::ascii::AsciiExt;
     s.trim_right_matches(|c: char| c.is_ascii())
 });
 

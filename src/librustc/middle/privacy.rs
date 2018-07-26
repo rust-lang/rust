@@ -26,9 +26,9 @@ pub enum AccessLevel {
     // public, then type `T` is reachable. Its values can be obtained by other crates
     // even if the type itself is not nameable.
     Reachable,
-    // Public items + items accessible to other crates with help of `pub use` reexports
+    // Public items + items accessible to other crates with help of `pub use` re-exports
     Exported,
-    // Items accessible to other crates directly, without help of reexports
+    // Items accessible to other crates directly, without help of re-exports
     Public,
 }
 

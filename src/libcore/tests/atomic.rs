@@ -49,6 +49,13 @@ fn uint_and() {
 }
 
 #[test]
+fn uint_nand() {
+    let x = AtomicUsize::new(0xf731);
+    assert_eq!(x.fetch_nand(0x137f, SeqCst), 0xf731);
+    assert_eq!(x.load(SeqCst), !(0xf731 & 0x137f));
+}
+
+#[test]
 fn uint_or() {
     let x = AtomicUsize::new(0xf731);
     assert_eq!(x.fetch_or(0x137f, SeqCst), 0xf731);
@@ -67,6 +74,13 @@ fn int_and() {
     let x = AtomicIsize::new(0xf731);
     assert_eq!(x.fetch_and(0x137f, SeqCst), 0xf731);
     assert_eq!(x.load(SeqCst), 0xf731 & 0x137f);
+}
+
+#[test]
+fn int_nand() {
+    let x = AtomicIsize::new(0xf731);
+    assert_eq!(x.fetch_nand(0x137f, SeqCst), 0xf731);
+    assert_eq!(x.load(SeqCst), !(0xf731 & 0x137f));
 }
 
 #[test]
@@ -90,8 +104,10 @@ static S_UINT: AtomicUsize = AtomicUsize::new(0);
 
 #[test]
 fn static_init() {
-    assert!(!S_FALSE.load(SeqCst));
-    assert!(S_TRUE.load(SeqCst));
-    assert!(S_INT.load(SeqCst) == 0);
-    assert!(S_UINT.load(SeqCst) == 0);
+    // Note that we're not really testing the mutability here but it's important
+    // on Android at the moment (#49775)
+    assert!(!S_FALSE.swap(true, SeqCst));
+    assert!(S_TRUE.swap(false, SeqCst));
+    assert!(S_INT.fetch_add(1, SeqCst) == 0);
+    assert!(S_UINT.fetch_add(1, SeqCst) == 0);
 }

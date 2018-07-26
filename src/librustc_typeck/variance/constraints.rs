@@ -14,15 +14,11 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::dep_graph::{DepGraphSafe, DepKind, DepNodeColor};
-use rustc::ich::StableHashingContext;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-
-use rustc_data_structures::stable_hasher::StableHashingContextProvider;
 
 use super::terms::*;
 use super::terms::VarianceTerm::*;
@@ -84,8 +80,8 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         match item.node {
-            hir::ItemStruct(ref struct_def, _) |
-            hir::ItemUnion(ref struct_def, _) => {
+            hir::ItemKind::Struct(ref struct_def, _) |
+            hir::ItemKind::Union(ref struct_def, _) => {
                 self.visit_node_helper(item.id);
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
@@ -93,7 +89,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            hir::ItemEnum(ref enum_def, _) => {
+            hir::ItemKind::Enum(ref enum_def, _) => {
                 self.visit_node_helper(item.id);
 
                 for variant in &enum_def.variants {
@@ -103,13 +99,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            hir::ItemFn(..) => {
+            hir::ItemKind::Fn(..) => {
                 self.visit_node_helper(item.id);
             }
 
-            hir::ItemForeignMod(ref foreign_mod) => {
+            hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
-                    if let hir::ForeignItemFn(..) = foreign_item.node {
+                    if let hir::ForeignItemKind::Fn(..) = foreign_item.node {
                         self.visit_node_helper(foreign_item.id);
                     }
                 }
@@ -132,50 +128,11 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> StableHashingContextProvider for ConstraintContext<'a, 'tcx> {
-    type ContextType = StableHashingContext<'tcx>;
-
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
-         self.terms_cx.tcx.create_stable_hashing_context()
-    }
-}
-
-impl<'a, 'tcx> DepGraphSafe for ConstraintContext<'a, 'tcx> {}
-
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn visit_node_helper(&mut self, id: ast::NodeId) {
         let tcx = self.terms_cx.tcx;
         let def_id = tcx.hir.local_def_id(id);
-
-        // Encapsulate constructing the constraints into a task we can
-        // reference later. This can go away once the red-green
-        // algorithm is in place.
-        //
-        // See README.md for a detailed discussion
-        // on dep-graph management.
-        let dep_node = def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-
-        if let Some(DepNodeColor::Green(_)) = tcx.dep_graph.node_color(&dep_node) {
-            // If the corresponding node has already been marked as green, the
-            // appropriate portion of the DepGraph has already been loaded from
-            // the previous graph, so we don't do any dep-tracking. Since we
-            // don't cache any values though, we still have to re-run the
-            // computation.
-            tcx.dep_graph.with_ignore(|| {
-                self.build_constraints_for_item(def_id);
-            });
-        } else {
-            tcx.dep_graph.with_task(dep_node,
-                                    self,
-                                    def_id,
-                                    visit_item_task);
-        }
-
-        fn visit_item_task<'a, 'tcx>(ccx: &mut ConstraintContext<'a, 'tcx>,
-                                     def_id: DefId)
-        {
-            ccx.build_constraints_for_item(def_id);
-        }
+        self.build_constraints_for_item(def_id);
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
@@ -315,10 +272,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 bug!("Unexpected closure type in variance computation");
             }
 
-            ty::TyRef(region, ref mt) => {
+            ty::TyRef(region, ty, mutbl) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(current, region, contra);
-                self.add_constraints_from_mt(current, mt, variance);
+                self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
             ty::TyArray(typ, _) |
@@ -330,7 +287,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(current, mt, variance);
             }
 
-            ty::TyTuple(subtys, _) => {
+            ty::TyTuple(subtys) => {
                 for &subty in subtys {
                     self.add_constraints_from_ty(current, subty, variance);
                 }
@@ -356,11 +313,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
                 if let Some(p) = data.principal() {
                     let poly_trait_ref = p.with_self_ty(self.tcx(), self.tcx().types.err);
-                    self.add_constraints_from_trait_ref(current, poly_trait_ref.0, variance);
+                    self.add_constraints_from_trait_ref(
+                        current, *poly_trait_ref.skip_binder(), variance);
                 }
 
                 for projection in data.projection_bounds() {
-                    self.add_constraints_from_ty(current, projection.0.ty, self.invariant);
+                    self.add_constraints_from_ty(
+                        current, projection.skip_binder().ty, self.invariant);
                 }
             }
 
@@ -377,6 +336,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // types, where we use TyError as the Self type
             }
 
+            ty::TyGeneratorWitness(..) |
             ty::TyInfer(..) => {
                 bug!("unexpected type encountered in \
                       variance inference: {}",
@@ -423,12 +383,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
                    variance_decl,
                    variance_i);
-            if let Some(ty) = k.as_type() {
-                self.add_constraints_from_ty(current, ty, variance_i);
-            } else if let Some(r) = k.as_region() {
-                self.add_constraints_from_region(current, r, variance_i);
-            } else {
-                bug!();
+            match k.unpack() {
+                UnpackedKind::Lifetime(lt) => {
+                    self.add_constraints_from_region(current, lt, variance_i)
+                }
+                UnpackedKind::Type(ty) => {
+                    self.add_constraints_from_ty(current, ty, variance_i)
+                }
             }
         }
     }
@@ -440,10 +401,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                 sig: ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
-        for &input in sig.0.inputs() {
+        for &input in sig.skip_binder().inputs() {
             self.add_constraints_from_ty(current, input, contra);
         }
-        self.add_constraints_from_ty(current, sig.0.output(), variance);
+        self.add_constraints_from_ty(current, sig.skip_binder().output(), variance);
     }
 
     /// Adds constraints appropriate for a region appearing in a
@@ -464,7 +425,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // way early-bound regions do, so we skip them here.
             }
 
+            ty::ReCanonical(_) |
             ty::ReFree(..) |
+            ty::ReClosureBound(..) |
             ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) |

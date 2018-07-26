@@ -1,0 +1,9 @@
+error[E0090]: too few lifetime parameters provided: expected 2 lifetime parameters, found 1 lifetime parameter
+  --> $DIR/E0090.rs:14:5
+   |
+LL |     foo::<'static>(); //~ ERROR expected 2 lifetime parameters, found 1 lifetime parameter [E0090]
+   |     ^^^^^^^^^^^^^^ expected 2 lifetime parameters
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0090`.

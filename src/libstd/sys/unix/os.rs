@@ -223,7 +223,34 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(target_os = "netbsd")]
 pub fn current_exe() -> io::Result<PathBuf> {
-    ::fs::read_link("/proc/curproc/exe")
+    fn sysctl() -> io::Result<PathBuf> {
+        unsafe {
+            let mib = [libc::CTL_KERN, libc::KERN_PROC_ARGS, -1, libc::KERN_PROC_PATHNAME];
+            let mut path_len: usize = 0;
+            cvt(libc::sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
+                             ptr::null_mut(), &mut path_len,
+                             ptr::null(), 0))?;
+            if path_len <= 1 {
+                return Err(io::Error::new(io::ErrorKind::Other,
+                           "KERN_PROC_PATHNAME sysctl returned zero-length string"))
+            }
+            let mut path: Vec<u8> = Vec::with_capacity(path_len);
+            cvt(libc::sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
+                             path.as_ptr() as *mut libc::c_void, &mut path_len,
+                             ptr::null(), 0))?;
+            path.set_len(path_len - 1); // chop off NUL
+            Ok(PathBuf::from(OsString::from_vec(path)))
+        }
+    }
+    fn procfs() -> io::Result<PathBuf> {
+        let curproc_exe = path::Path::new("/proc/curproc/exe");
+        if curproc_exe.is_file() {
+            return ::fs::read_link(curproc_exe);
+        }
+        Err(io::Error::new(io::ErrorKind::Other,
+                           "/proc/curproc/exe doesn't point to regular file."))
+    }
+    sysctl().or_else(|_| procfs())
 }
 
 #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
@@ -382,10 +409,9 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 /// environment variables of the current process.
 pub fn env() -> Env {
     unsafe {
-        ENV_LOCK.lock();
+        let _guard = ENV_LOCK.lock();
         let mut environ = *environ();
         if environ == ptr::null() {
-            ENV_LOCK.unlock();
             panic!("os::env() failure getting env string from OS: {}",
                    io::Error::last_os_error());
         }
@@ -396,12 +422,10 @@ pub fn env() -> Env {
             }
             environ = environ.offset(1);
         }
-        let ret = Env {
+        return Env {
             iter: result.into_iter(),
             _dont_send_or_sync_me: PhantomData,
-        };
-        ENV_LOCK.unlock();
-        return ret
+        }
     }
 
     fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
@@ -425,15 +449,14 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     // always None as well
     let k = CString::new(k.as_bytes())?;
     unsafe {
-        ENV_LOCK.lock();
-        let s = libc::getenv(k.as_ptr()) as *const _;
+        let _guard = ENV_LOCK.lock();
+        let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
         let ret = if s.is_null() {
             None
         } else {
             Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
         };
-        ENV_LOCK.unlock();
-        return Ok(ret)
+        Ok(ret)
     }
 }
 
@@ -442,10 +465,8 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let v = CString::new(v.as_bytes())?;
 
     unsafe {
-        ENV_LOCK.lock();
-        let ret = cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ());
-        ENV_LOCK.unlock();
-        return ret
+        let _guard = ENV_LOCK.lock();
+        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ())
     }
 }
 
@@ -453,10 +474,8 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
     unsafe {
-        ENV_LOCK.lock();
-        let ret = cvt(libc::unsetenv(nbuf.as_ptr())).map(|_| ());
-        ENV_LOCK.unlock();
-        return ret
+        let _guard = ENV_LOCK.lock();
+        cvt(libc::unsetenv(nbuf.as_ptr())).map(|_| ())
     }
 }
 
@@ -514,4 +533,40 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     unsafe { libc::getpid() as u32 }
+}
+
+pub fn getppid() -> u32 {
+    unsafe { libc::getppid() as u32 }
+}
+
+#[cfg(target_env = "gnu")]
+pub fn glibc_version() -> Option<(usize, usize)> {
+    if let Some(Ok(version_str)) = glibc_version_cstr().map(CStr::to_str) {
+        parse_glibc_version(version_str)
+    } else {
+        None
+    }
+}
+
+#[cfg(target_env = "gnu")]
+fn glibc_version_cstr() -> Option<&'static CStr> {
+    weak! {
+        fn gnu_get_libc_version() -> *const libc::c_char
+    }
+    if let Some(f) = gnu_get_libc_version.get() {
+        unsafe { Some(CStr::from_ptr(f())) }
+    } else {
+        None
+    }
+}
+
+// Returns Some((major, minor)) if the string is a valid "x.y" version,
+// ignoring any extra dot-separated parts. Otherwise return None.
+#[cfg(target_env = "gnu")]
+fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
+    let mut parsed_ints = version.split('.').map(str::parse::<usize>).fuse();
+    match (parsed_ints.next(), parsed_ints.next()) {
+        (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
+        _ => None
+    }
 }

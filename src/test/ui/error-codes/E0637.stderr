@@ -1,0 +1,21 @@
+error[E0637]: invalid lifetime bound name: `'_`
+  --> $DIR/E0637.rs:11:16
+   |
+LL | struct Foo<'a: '_>(&'a u8); //~ ERROR invalid lifetime bound name: `'_`
+   |                ^^ `'_` is a reserved lifetime name
+
+error[E0637]: invalid lifetime bound name: `'_`
+  --> $DIR/E0637.rs:12:12
+   |
+LL | fn foo<'a: '_>(_: &'a u8) {} //~ ERROR invalid lifetime bound name: `'_`
+   |            ^^ `'_` is a reserved lifetime name
+
+error[E0637]: invalid lifetime bound name: `'_`
+  --> $DIR/E0637.rs:15:10
+   |
+LL | impl<'a: '_> Bar<'a> { //~ ERROR invalid lifetime bound name: `'_`
+   |          ^^ `'_` is a reserved lifetime name
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

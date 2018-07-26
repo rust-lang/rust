@@ -62,6 +62,39 @@ fn test_is_null() {
 
     let mq = unsafe { mp.offset(1) };
     assert!(!mq.is_null());
+
+    // Pointers to unsized types -- slices
+    let s: &mut [u8] = &mut [1, 2, 3];
+    let cs: *const [u8] = s;
+    assert!(!cs.is_null());
+
+    let ms: *mut [u8] = s;
+    assert!(!ms.is_null());
+
+    let cz: *const [u8] = &[];
+    assert!(!cz.is_null());
+
+    let mz: *mut [u8] = &mut [];
+    assert!(!mz.is_null());
+
+    let ncs: *const [u8] = null::<[u8; 3]>();
+    assert!(ncs.is_null());
+
+    let nms: *mut [u8] = null_mut::<[u8; 3]>();
+    assert!(nms.is_null());
+
+    // Pointers to unsized types -- trait objects
+    let ci: *const ToString = &3;
+    assert!(!ci.is_null());
+
+    let mi: *mut ToString = &mut 3;
+    assert!(!mi.is_null());
+
+    let nci: *const ToString = null::<isize>();
+    assert!(nci.is_null());
+
+    let nmi: *mut ToString = null_mut::<isize>();
+    assert!(nmi.is_null());
 }
 
 #[test]
@@ -85,6 +118,39 @@ fn test_as_ref() {
             let p = &u as *const isize;
             assert_eq!(p.as_ref().unwrap(), &2);
         }
+
+        // Pointers to unsized types -- slices
+        let s: &mut [u8] = &mut [1, 2, 3];
+        let cs: *const [u8] = s;
+        assert_eq!(cs.as_ref(), Some(&*s));
+
+        let ms: *mut [u8] = s;
+        assert_eq!(ms.as_ref(), Some(&*s));
+
+        let cz: *const [u8] = &[];
+        assert_eq!(cz.as_ref(), Some(&[][..]));
+
+        let mz: *mut [u8] = &mut [];
+        assert_eq!(mz.as_ref(), Some(&[][..]));
+
+        let ncs: *const [u8] = null::<[u8; 3]>();
+        assert_eq!(ncs.as_ref(), None);
+
+        let nms: *mut [u8] = null_mut::<[u8; 3]>();
+        assert_eq!(nms.as_ref(), None);
+
+        // Pointers to unsized types -- trait objects
+        let ci: *const ToString = &3;
+        assert!(ci.as_ref().is_some());
+
+        let mi: *mut ToString = &mut 3;
+        assert!(mi.as_ref().is_some());
+
+        let nci: *const ToString = null::<isize>();
+        assert!(nci.as_ref().is_none());
+
+        let nmi: *mut ToString = null_mut::<isize>();
+        assert!(nmi.as_ref().is_none());
     }
 }
 
@@ -103,6 +169,24 @@ fn test_as_mut() {
             let p = &mut u as *mut isize;
             assert!(p.as_mut().unwrap() == &mut 2);
         }
+
+        // Pointers to unsized types -- slices
+        let s: &mut [u8] = &mut [1, 2, 3];
+        let ms: *mut [u8] = s;
+        assert_eq!(ms.as_mut(), Some(s));
+
+        let mz: *mut [u8] = &mut [];
+        assert_eq!(mz.as_mut(), Some(&mut [][..]));
+
+        let nms: *mut [u8] = null_mut::<[u8; 3]>();
+        assert_eq!(nms.as_mut(), None);
+
+        // Pointers to unsized types -- trait objects
+        let mi: *mut ToString = &mut 3;
+        assert!(mi.as_mut().is_some());
+
+        let nmi: *mut ToString = null_mut::<isize>();
+        assert!(nmi.as_mut().is_none());
     }
 }
 
@@ -165,9 +249,9 @@ fn test_set_memory() {
 }
 
 #[test]
-fn test_unsized_unique() {
+fn test_unsized_nonnull() {
     let xs: &[i32] = &[1, 2, 3];
-    let ptr = unsafe { Unique::new_unchecked(xs as *const [i32] as *mut [i32]) };
+    let ptr = unsafe { NonNull::new_unchecked(xs as *const [i32] as *mut [i32]) };
     let ys = unsafe { ptr.as_ref() };
     let zs: &[i32] = &[1, 2, 3];
     assert!(ys == zs);
@@ -211,4 +295,93 @@ fn write_unaligned_drop() {
         unsafe { write_unaligned(&mut t, c); }
     }
     DROPS.with(|d| assert_eq!(*d.borrow(), [0]));
+}
+
+#[test]
+fn align_offset_zst() {
+    // For pointers of stride = 0, the pointer is already aligned or it cannot be aligned at
+    // all, because no amount of elements will align the pointer.
+    let mut p = 1;
+    while p < 1024 {
+        assert_eq!((p as *const ()).align_offset(p), 0);
+        if p != 1 {
+            assert_eq!(((p + 1) as *const ()).align_offset(p), !0);
+        }
+        p = (p + 1).next_power_of_two();
+    }
+}
+
+#[test]
+fn align_offset_stride1() {
+    // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
+    // number of bytes.
+    let mut align = 1;
+    while align < 1024 {
+        for ptr in 1..2*align {
+            let expected = ptr % align;
+            let offset = if expected == 0 { 0 } else { align - expected };
+            assert_eq!((ptr as *const u8).align_offset(align), offset,
+            "ptr = {}, align = {}, size = 1", ptr, align);
+        }
+        align = (align + 1).next_power_of_two();
+    }
+}
+
+#[test]
+fn align_offset_weird_strides() {
+    #[repr(packed)]
+    struct A3(u16, u8);
+    struct A4(u32);
+    #[repr(packed)]
+    struct A5(u32, u8);
+    #[repr(packed)]
+    struct A6(u32, u16);
+    #[repr(packed)]
+    struct A7(u32, u16, u8);
+    #[repr(packed)]
+    struct A8(u32, u32);
+    #[repr(packed)]
+    struct A9(u32, u32, u8);
+    #[repr(packed)]
+    struct A10(u32, u32, u16);
+
+    unsafe fn test_weird_stride<T>(ptr: *const T, align: usize) -> bool {
+        let numptr = ptr as usize;
+        let mut expected = usize::max_value();
+        // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
+        for el in 0..align {
+            if (numptr + el * ::std::mem::size_of::<T>()) % align == 0 {
+                expected = el;
+                break;
+            }
+        }
+        let got = ptr.align_offset(align);
+        if got != expected {
+            eprintln!("aligning {:p} (with stride of {}) to {}, expected {}, got {}", ptr,
+                      ::std::mem::size_of::<T>(), align, expected, got);
+            return true;
+        }
+        return false;
+    }
+
+    // For pointers of stride != 1, we verify the algorithm against the naivest possible
+    // implementation
+    let mut align = 1;
+    let mut x = false;
+    while align < 1024 {
+        for ptr in 1usize..4*align {
+            unsafe {
+                x |= test_weird_stride::<A3>(ptr as *const A3, align);
+                x |= test_weird_stride::<A4>(ptr as *const A4, align);
+                x |= test_weird_stride::<A5>(ptr as *const A5, align);
+                x |= test_weird_stride::<A6>(ptr as *const A6, align);
+                x |= test_weird_stride::<A7>(ptr as *const A7, align);
+                x |= test_weird_stride::<A8>(ptr as *const A8, align);
+                x |= test_weird_stride::<A9>(ptr as *const A9, align);
+                x |= test_weird_stride::<A10>(ptr as *const A10, align);
+            }
+        }
+        align = (align + 1).next_power_of_two();
+    }
+    assert!(!x);
 }

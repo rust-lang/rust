@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/impl-trait-captures.rs:21:5
+   |
+LL |     x
+   |     ^
+
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/impl-trait-captures.rs:21:5
+   |
+LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
+   |               - consider changing the type of `x` to `&ReEarlyBound(0, 'a) T`
+LL |     x
+   |     ^ lifetime `ReEarlyBound(0, 'a)` required
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0621`.

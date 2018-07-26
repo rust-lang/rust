@@ -11,7 +11,7 @@
 #![allow(unused)]
 
 extern crate core;
-pub use core as reexported_core; //~ ERROR `core` is private, and cannot be reexported
+pub use core as reexported_core; //~ ERROR `core` is private, and cannot be re-exported
                                  //~^ WARN this was previously accepted
 
 mod foo1 {
@@ -19,7 +19,7 @@ mod foo1 {
 }
 
 mod foo2 {
-    use foo1::core; //~ ERROR `core` is private, and cannot be reexported
+    use foo1::core; //~ ERROR `core` is private, and cannot be re-exported
                     //~^ WARN this was previously accepted
     pub mod bar {
         extern crate core;
@@ -27,7 +27,7 @@ mod foo2 {
 }
 
 mod baz {
-    pub use foo2::bar::core; //~ ERROR `core` is private, and cannot be reexported
+    pub use foo2::bar::core; //~ ERROR `core` is private, and cannot be re-exported
                              //~^ WARN this was previously accepted
 }
 

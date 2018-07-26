@@ -74,8 +74,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) => self.infcx.region_vars.opportunistic_resolve_var(rid),
-            _ => r,
+            ty::ReVar(rid) =>
+                self.infcx.borrow_region_constraints()
+                          .opportunistic_resolve_var(self.tcx(), rid),
+            _ =>
+                r,
         }
     }
 }
@@ -170,12 +173,6 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
                 ty::TyInfer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }
-                ty::TyTuple(tys, true) => {
-                    // Un-default defaulted tuples - we are going to a
-                    // different infcx, and the default will just cause
-                    // pollution.
-                    self.tcx().intern_tup(tys, false)
-                }
                 _ => {
                     t.super_fold_with(self)
                 }
@@ -185,7 +182,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) => self.infcx.region_vars.resolve_var(rid),
+            ty::ReVar(rid) => self.infcx.lexical_region_resolutions
+                                        .borrow()
+                                        .as_ref()
+                                        .expect("region resolution not performed")
+                                        .resolve_var(rid),
             _ => r,
         }
     }

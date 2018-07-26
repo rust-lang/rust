@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(const_fn)]
+
 struct WithDtor;
 
 impl Drop for WithDtor {
@@ -27,5 +29,13 @@ static EARLY_DROP_S: i32 = (WithDtor, 0).1;
 
 const EARLY_DROP_C: i32 = (WithDtor, 0).1;
 //~^ ERROR destructors cannot be evaluated at compile-time
+
+const fn const_drop<T>(_: T) {}
+//~^ ERROR destructors cannot be evaluated at compile-time
+
+const fn const_drop2<T>(x: T) {
+    (x, ()).1
+    //~^ ERROR destructors cannot be evaluated at compile-time
+}
 
 fn main () {}

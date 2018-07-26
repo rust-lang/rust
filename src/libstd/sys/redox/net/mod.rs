@@ -41,12 +41,12 @@ impl Iterator for LookupHost {
 pub fn lookup_host(host: &str) -> Result<LookupHost> {
     let mut ip_string = String::new();
     File::open("/etc/net/ip")?.read_to_string(&mut ip_string)?;
-    let ip: Vec<u8> = ip_string.trim().split(".").map(|part| part.parse::<u8>()
+    let ip: Vec<u8> = ip_string.trim().split('.').map(|part| part.parse::<u8>()
                                .unwrap_or(0)).collect();
 
     let mut dns_string = String::new();
     File::open("/etc/net/dns")?.read_to_string(&mut dns_string)?;
-    let dns: Vec<u8> = dns_string.trim().split(".").map(|part| part.parse::<u8>()
+    let dns: Vec<u8> = dns_string.trim().split('.').map(|part| part.parse::<u8>()
                                  .unwrap_or(0)).collect();
 
     if ip.len() == 4 && dns.len() == 4 {

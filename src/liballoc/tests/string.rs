@@ -9,6 +9,9 @@
 // except according to those terms.
 
 use std::borrow::Cow;
+use std::collections::CollectionAllocErr::*;
+use std::mem::size_of;
+use std::{usize, isize};
 
 pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
     fn into_cow(self) -> Cow<'a, B>;
@@ -129,7 +132,7 @@ fn test_from_utf16() {
         let s_as_utf16 = s.encode_utf16().collect::<Vec<u16>>();
         let u_as_string = String::from_utf16(&u).unwrap();
 
-        assert!(::std_unicode::char::decode_utf16(u.iter().cloned()).all(|r| r.is_ok()));
+        assert!(::core::char::decode_utf16(u.iter().cloned()).all(|r| r.is_ok()));
         assert_eq!(s_as_utf16, u);
 
         assert_eq!(u_as_string, s);
@@ -440,53 +443,53 @@ fn test_drain() {
 }
 
 #[test]
-fn test_splice() {
+fn test_replace_range() {
     let mut s = "Hello, world!".to_owned();
-    s.splice(7..12, "世界");
+    s.replace_range(7..12, "世界");
     assert_eq!(s, "Hello, 世界!");
 }
 
 #[test]
 #[should_panic]
-fn test_splice_char_boundary() {
+fn test_replace_range_char_boundary() {
     let mut s = "Hello, 世界!".to_owned();
-    s.splice(..8, "");
+    s.replace_range(..8, "");
 }
 
 #[test]
-fn test_splice_inclusive_range() {
+fn test_replace_range_inclusive_range() {
     let mut v = String::from("12345");
-    v.splice(2..=3, "789");
+    v.replace_range(2..=3, "789");
     assert_eq!(v, "127895");
-    v.splice(1..=2, "A");
+    v.replace_range(1..=2, "A");
     assert_eq!(v, "1A895");
 }
 
 #[test]
 #[should_panic]
-fn test_splice_out_of_bounds() {
+fn test_replace_range_out_of_bounds() {
     let mut s = String::from("12345");
-    s.splice(5..6, "789");
+    s.replace_range(5..6, "789");
 }
 
 #[test]
 #[should_panic]
-fn test_splice_inclusive_out_of_bounds() {
+fn test_replace_range_inclusive_out_of_bounds() {
     let mut s = String::from("12345");
-    s.splice(5..=5, "789");
+    s.replace_range(5..=5, "789");
 }
 
 #[test]
-fn test_splice_empty() {
+fn test_replace_range_empty() {
     let mut s = String::from("12345");
-    s.splice(1..2, "");
+    s.replace_range(1..2, "");
     assert_eq!(s, "1345");
 }
 
 #[test]
-fn test_splice_unbounded() {
+fn test_replace_range_unbounded() {
     let mut s = String::from("12345");
-    s.splice(.., "");
+    s.replace_range(.., "");
     assert_eq!(s, "");
 }
 
@@ -503,4 +506,164 @@ fn test_into_boxed_str() {
     let xs = String::from("hello my name is bob");
     let ys = xs.into_boxed_str();
     assert_eq!(&*ys, "hello my name is bob");
+}
+
+#[test]
+fn test_reserve_exact() {
+    // This is all the same as test_reserve
+
+    let mut s = String::new();
+    assert_eq!(s.capacity(), 0);
+
+    s.reserve_exact(2);
+    assert!(s.capacity() >= 2);
+
+    for _i in 0..16 {
+        s.push('0');
+    }
+
+    assert!(s.capacity() >= 16);
+    s.reserve_exact(16);
+    assert!(s.capacity() >= 32);
+
+    s.push('0');
+
+    s.reserve_exact(16);
+    assert!(s.capacity() >= 33)
+}
+
+#[test]
+fn test_try_reserve() {
+
+    // These are the interesting cases:
+    // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
+    // * > isize::MAX should always fail
+    //    * On 16/32-bit should CapacityOverflow
+    //    * On 64-bit should OOM
+    // * overflow may trigger when adding `len` to `cap` (in number of elements)
+    // * overflow may trigger when multiplying `new_cap` by size_of::<T> (to get bytes)
+
+    const MAX_CAP: usize = isize::MAX as usize;
+    const MAX_USIZE: usize = usize::MAX;
+
+    // On 16/32-bit, we check that allocations don't exceed isize::MAX,
+    // on 64-bit, we assume the OS will give an OOM for such a ridiculous size.
+    // Any platform that succeeds for these requests is technically broken with
+    // ptr::offset because LLVM is the worst.
+    let guards_against_isize = size_of::<usize>() < 8;
+
+    {
+        // Note: basic stuff is checked by test_reserve
+        let mut empty_string: String = String::new();
+
+        // Check isize::MAX doesn't count as an overflow
+        if let Err(CapacityOverflow) = empty_string.try_reserve(MAX_CAP) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        // Play it again, frank! (just to be sure)
+        if let Err(CapacityOverflow) = empty_string.try_reserve(MAX_CAP) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+
+        if guards_against_isize {
+            // Check isize::MAX + 1 does count as overflow
+            if let Err(CapacityOverflow) = empty_string.try_reserve(MAX_CAP + 1) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!") }
+
+            // Check usize::MAX does count as overflow
+            if let Err(CapacityOverflow) = empty_string.try_reserve(MAX_USIZE) {
+            } else { panic!("usize::MAX should trigger an overflow!") }
+        } else {
+            // Check isize::MAX + 1 is an OOM
+            if let Err(AllocErr) = empty_string.try_reserve(MAX_CAP + 1) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+
+            // Check usize::MAX is an OOM
+            if let Err(AllocErr) = empty_string.try_reserve(MAX_USIZE) {
+            } else { panic!("usize::MAX should trigger an OOM!") }
+        }
+    }
+
+
+    {
+        // Same basic idea, but with non-zero len
+        let mut ten_bytes: String = String::from("0123456789");
+
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if guards_against_isize {
+            if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+        } else {
+            if let Err(AllocErr) = ten_bytes.try_reserve(MAX_CAP - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
+        // Should always overflow in the add-to-len
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_USIZE) {
+        } else { panic!("usize::MAX should trigger an overflow!") }
+    }
+
+}
+
+#[test]
+fn test_try_reserve_exact() {
+
+    // This is exactly the same as test_try_reserve with the method changed.
+    // See that test for comments.
+
+    const MAX_CAP: usize = isize::MAX as usize;
+    const MAX_USIZE: usize = usize::MAX;
+
+    let guards_against_isize = size_of::<usize>() < 8;
+
+    {
+        let mut empty_string: String = String::new();
+
+        if let Err(CapacityOverflow) = empty_string.try_reserve_exact(MAX_CAP) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if let Err(CapacityOverflow) = empty_string.try_reserve_exact(MAX_CAP) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+
+        if guards_against_isize {
+            if let Err(CapacityOverflow) = empty_string.try_reserve_exact(MAX_CAP + 1) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!") }
+
+            if let Err(CapacityOverflow) = empty_string.try_reserve_exact(MAX_USIZE) {
+            } else { panic!("usize::MAX should trigger an overflow!") }
+        } else {
+            if let Err(AllocErr) = empty_string.try_reserve_exact(MAX_CAP + 1) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+
+            if let Err(AllocErr) = empty_string.try_reserve_exact(MAX_USIZE) {
+            } else { panic!("usize::MAX should trigger an OOM!") }
+        }
+    }
+
+
+    {
+        let mut ten_bytes: String = String::from("0123456789");
+
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 10) {
+            panic!("isize::MAX shouldn't trigger an overflow!");
+        }
+        if guards_against_isize {
+            if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
+        } else {
+            if let Err(AllocErr) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
+        if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_USIZE) {
+        } else { panic!("usize::MAX should trigger an overflow!") }
+    }
+
 }

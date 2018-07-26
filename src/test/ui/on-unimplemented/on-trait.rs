@@ -36,10 +36,6 @@ pub fn main() {
     let x = vec![1u8, 2, 3, 4];
     let y: Option<Vec<u8>> = collect(x.iter()); // this should give approximately the same error for x.iter().collect()
     //~^ ERROR
-    //~^^ NOTE a collection of type `std::option::Option<std::vec::Vec<u8>>` cannot be built from an iterator over elements of type `&u8`
-    //~^^^ NOTE required by `collect`
 
     let x: String = foobar(); //~ ERROR
-    //~^ NOTE test error `std::string::String` with `u8` `_` `u32`
-    //~^^ NOTE required by `foobar`
 }

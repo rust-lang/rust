@@ -1,0 +1,9 @@
+error[E0603]: constant `PRIVATE` is private
+  --> $DIR/E0603.rs:16:5
+   |
+LL |     SomeModule::PRIVATE; //~ ERROR E0603
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

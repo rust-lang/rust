@@ -15,11 +15,13 @@ use io;
 use mem;
 use path::Path;
 use ptr;
-use rand::{self, Rng};
 use slice;
+use sync::atomic::Ordering::SeqCst;
+use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 use sys::c;
 use sys::fs::{File, OpenOptions};
 use sys::handle::Handle;
+use sys::hashmap_random_keys;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -71,10 +73,9 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
         let mut reject_remote_clients_flag = c::PIPE_REJECT_REMOTE_CLIENTS;
         loop {
             tries += 1;
-            let key: u64 = rand::thread_rng().gen();
             name = format!(r"\\.\pipe\__rust_anonymous_pipe1__.{}.{}",
                            c::GetCurrentProcessId(),
-                           key);
+                           random_number());
             let wide_name = OsStr::new(&name)
                                   .encode_wide()
                                   .chain(Some(0))
@@ -156,6 +157,17 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
     }
 }
 
+fn random_number() -> usize {
+    static N: AtomicUsize = ATOMIC_USIZE_INIT;
+    loop {
+        if N.load(SeqCst) != 0 {
+            return N.fetch_add(1, SeqCst)
+        }
+
+        N.store(hashmap_random_keys().0 as usize, SeqCst);
+    }
+}
+
 impl AnonPipe {
     pub fn handle(&self) -> &Handle { &self.inner }
     pub fn into_handle(self) -> Handle { self.inner }
@@ -224,7 +236,7 @@ enum State {
 impl<'a> AsyncPipe<'a> {
     fn new(pipe: Handle, dst: &'a mut Vec<u8>) -> io::Result<AsyncPipe<'a>> {
         // Create an event which we'll use to coordinate our overlapped
-        // opreations, this event will be used in WaitForMultipleObjects
+        // operations, this event will be used in WaitForMultipleObjects
         // and passed as part of the OVERLAPPED handle.
         //
         // Note that we do a somewhat clever thing here by flagging the

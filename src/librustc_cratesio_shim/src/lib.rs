@@ -12,3 +12,4 @@
 #![allow(unused_extern_crates)]
 
 extern crate bitflags;
+extern crate log;

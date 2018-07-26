@@ -12,10 +12,9 @@ test = false
 doc = false
 
 [dependencies]
-alloc = { path = "../liballoc" }
-alloc_system = { path = "../liballoc_system" }
 core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
+compiler_builtins = { path = "../rustc/compiler_builtins_shim" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }

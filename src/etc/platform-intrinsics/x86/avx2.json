@@ -174,7 +174,7 @@
             "intrinsic": "256_sad_epu8",
             "width": [256],
             "llvm": "psad.bw",
-            "ret": "u8",
+            "ret": "u64",
             "args": ["0", "0"]
         },
         {

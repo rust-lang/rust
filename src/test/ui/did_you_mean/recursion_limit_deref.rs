@@ -57,6 +57,7 @@ link!(K, Bottom);
 
 fn main() {
     let t = Top::new();
-    let x: &Bottom = &t;
+    let x: &Bottom = &t; //~ ERROR mismatched types
+    //~^ error recursion limit
 }
 

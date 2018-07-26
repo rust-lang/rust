@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(underscore_lifetimes)]
-
 fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); } //~ ERROR lifetime mismatch
 
 fn main() {}

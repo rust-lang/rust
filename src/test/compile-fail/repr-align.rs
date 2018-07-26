@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![allow(dead_code)]
-#![feature(attr_literals)]
-#![feature(repr_align)]
 
 #[repr(align(16.0))] //~ ERROR: invalid `repr(align)` attribute: not an unsuffixed integer
 struct A(i32);
@@ -17,7 +15,10 @@ struct A(i32);
 #[repr(align(15))] //~ ERROR: invalid `repr(align)` attribute: not a power of two
 struct B(i32);
 
-#[repr(align(4294967296))] //~ ERROR: invalid `repr(align)` attribute: larger than 2147483647
+#[repr(align(4294967296))] //~ ERROR: invalid `repr(align)` attribute: larger than 2^29
 struct C(i32);
+
+#[repr(align(536870912))] // ok: this is the largest accepted alignment
+struct D(i32);
 
 fn main() {}

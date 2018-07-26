@@ -14,14 +14,16 @@ use cmp::Ordering;
 use error::Error;
 use fmt::{self, Write};
 use io;
-use libc;
 use mem;
 use memchr;
 use ops;
 use os::raw::c_char;
 use ptr;
+use rc::Rc;
 use slice;
 use str::{self, Utf8Error};
+use sync::Arc;
+use sys;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.
@@ -89,7 +91,7 @@ use str::{self, Utf8Error};
 ///
 /// # Examples
 ///
-/// ```no_run
+/// ```ignore (extern-declaration)
 /// # fn main() {
 /// use std::ffi::CString;
 /// use std::os::raw::c_char;
@@ -148,7 +150,7 @@ pub struct CString {
 ///
 /// Inspecting a foreign C string:
 ///
-/// ```no_run
+/// ```ignore (extern-declaration)
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
@@ -162,7 +164,7 @@ pub struct CString {
 ///
 /// Passing a Rust-originating C string:
 ///
-/// ```no_run
+/// ```ignore (extern-declaration)
 /// use std::ffi::{CString, CStr};
 /// use std::os::raw::c_char;
 ///
@@ -178,7 +180,7 @@ pub struct CString {
 ///
 /// Converting a foreign C string into a Rust [`String`]:
 ///
-/// ```no_run
+/// ```ignore (extern-declaration)
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
@@ -305,7 +307,7 @@ impl CString {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore (extern-declaration)
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     ///
@@ -387,7 +389,7 @@ impl CString {
     /// Create a `CString`, pass ownership to an `extern` function (via raw pointer), then retake
     /// ownership with `from_raw`:
     ///
-    /// ```no_run
+    /// ```ignore (extern-declaration)
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     ///
@@ -404,7 +406,7 @@ impl CString {
     /// ```
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
-        let len = libc::strlen(ptr) + 1; // Including the NUL byte
+        let len = sys::strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts_mut(ptr, len as usize);
         CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
     }
@@ -680,6 +682,14 @@ impl Borrow<CStr> for CString {
     fn borrow(&self) -> &CStr { self }
 }
 
+#[stable(feature = "cstring_from_cow_cstr", since = "1.28.0")]
+impl<'a> From<Cow<'a, CStr>> for CString {
+    #[inline]
+    fn from(s: Cow<'a, CStr>) -> Self {
+        s.into_owned()
+    }
+}
+
 #[stable(feature = "box_from_c_str", since = "1.17.0")]
 impl<'a> From<&'a CStr> for Box<CStr> {
     fn from(s: &'a CStr) -> Box<CStr> {
@@ -696,11 +706,79 @@ impl From<Box<CStr>> for CString {
     }
 }
 
+#[stable(feature = "more_box_slice_clone", since = "1.29.0")]
+impl Clone for Box<CStr> {
+    #[inline]
+    fn clone(&self) -> Self {
+        (**self).into()
+    }
+}
+
 #[stable(feature = "box_from_c_string", since = "1.20.0")]
 impl From<CString> for Box<CStr> {
     #[inline]
     fn from(s: CString) -> Box<CStr> {
         s.into_boxed_c_str()
+    }
+}
+
+#[stable(feature = "cow_from_cstr", since = "1.28.0")]
+impl<'a> From<CString> for Cow<'a, CStr> {
+    #[inline]
+    fn from(s: CString) -> Cow<'a, CStr> {
+        Cow::Owned(s)
+    }
+}
+
+#[stable(feature = "cow_from_cstr", since = "1.28.0")]
+impl<'a> From<&'a CStr> for Cow<'a, CStr> {
+    #[inline]
+    fn from(s: &'a CStr) -> Cow<'a, CStr> {
+        Cow::Borrowed(s)
+    }
+}
+
+#[stable(feature = "cow_from_cstr", since = "1.28.0")]
+impl<'a> From<&'a CString> for Cow<'a, CStr> {
+    #[inline]
+    fn from(s: &'a CString) -> Cow<'a, CStr> {
+        Cow::Borrowed(s.as_c_str())
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
+impl From<CString> for Arc<CStr> {
+    #[inline]
+    fn from(s: CString) -> Arc<CStr> {
+        let arc: Arc<[u8]> = Arc::from(s.into_inner());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
+impl<'a> From<&'a CStr> for Arc<CStr> {
+    #[inline]
+    fn from(s: &CStr) -> Arc<CStr> {
+        let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
+impl From<CString> for Rc<CStr> {
+    #[inline]
+    fn from(s: CString) -> Rc<CStr> {
+        let rc: Rc<[u8]> = Rc::from(s.into_inner());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
+impl<'a> From<&'a CStr> for Rc<CStr> {
+    #[inline]
+    fn from(s: &CStr) -> Rc<CStr> {
+        let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
     }
 }
 
@@ -837,6 +915,8 @@ impl CStr {
     ///   `ptr`.
     /// * There is no guarantee that the memory pointed to by `ptr` contains a
     ///   valid nul terminator byte at the end of the string.
+    /// * It is not guaranteed that the memory pointed by `ptr` won't change
+    ///   before the `CStr` has been destroyed.
     ///
     /// > **Note**: This operation is intended to be a 0-cost cast but it is
     /// > currently implemented with an up-front calculation of the length of
@@ -844,7 +924,7 @@ impl CStr {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore (extern-declaration)
     /// # fn main() {
     /// use std::ffi::CStr;
     /// use std::os::raw::c_char;
@@ -861,7 +941,7 @@ impl CStr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
-        let len = libc::strlen(ptr);
+        let len = sys::strlen(ptr);
         let ptr = ptr as *const u8;
         CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
     }
@@ -948,6 +1028,7 @@ impl CStr {
     /// behavior when `ptr` is used inside the `unsafe` block:
     ///
     /// ```no_run
+    /// # #![allow(unused_must_use)]
     /// use std::ffi::{CString};
     ///
     /// let ptr = CString::new("Hello").unwrap().as_ptr();
@@ -963,6 +1044,7 @@ impl CStr {
     /// To fix the problem, bind the `CString` to a local variable:
     ///
     /// ```no_run
+    /// # #![allow(unused_must_use)]
     /// use std::ffi::{CString};
     ///
     /// let hello = CString::new("Hello").unwrap();
@@ -988,9 +1070,9 @@ impl CStr {
     /// The returned slice will **not** contain the trailing nul terminator that this C
     /// string has.
     ///
-    /// > **Note**: This method is currently implemented as a 0-cost cast, but
-    /// > it is planned to alter its definition in the future to perform the
-    /// > length calculation whenever this method is called.
+    /// > **Note**: This method is currently implemented as a constant-time
+    /// > cast, but it is planned to alter its definition in the future to
+    /// > perform the length calculation whenever this method is called.
     ///
     /// # Examples
     ///
@@ -1039,9 +1121,9 @@ impl CStr {
     /// it will return an error with details of where UTF-8 validation failed.
     ///
     /// > **Note**: This method is currently implemented to check for validity
-    /// > after a 0-cost cast, but it is planned to alter its definition in the
-    /// > future to perform the length calculation in addition to the UTF-8
-    /// > check whenever this method is called.
+    /// > after a constant-time cast, but it is planned to alter its definition
+    /// > in the future to perform the length calculation in addition to the
+    /// > UTF-8 check whenever this method is called.
     ///
     /// [`&str`]: ../primitive.str.html
     ///
@@ -1072,12 +1154,13 @@ impl CStr {
     /// with the result.
     ///
     /// > **Note**: This method is currently implemented to check for validity
-    /// > after a 0-cost cast, but it is planned to alter its definition in the
-    /// > future to perform the length calculation in addition to the UTF-8
-    /// > check whenever this method is called.
+    /// > after a constant-time cast, but it is planned to alter its definition
+    /// > in the future to perform the length calculation in addition to the
+    /// > UTF-8 check whenever this method is called.
     ///
     /// [`Cow`]: ../borrow/enum.Cow.html
     /// [`Borrowed`]: ../borrow/enum.Cow.html#variant.Borrowed
+    /// [`Owned`]: ../borrow/enum.Cow.html#variant.Owned
     /// [`str`]: ../primitive.str.html
     /// [`String`]: ../string/struct.String.html
     ///
@@ -1201,6 +1284,8 @@ mod tests {
     use borrow::Cow::{Borrowed, Owned};
     use hash::{Hash, Hasher};
     use collections::hash_map::DefaultHasher;
+    use rc::Rc;
+    use sync::Arc;
 
     #[test]
     fn c_to_rust() {
@@ -1336,5 +1421,22 @@ mod tests {
     fn boxed_default() {
         let boxed = <Box<CStr>>::default();
         assert_eq!(boxed.to_bytes_with_nul(), &[0]);
+    }
+
+    #[test]
+    fn into_rc() {
+        let orig: &[u8] = b"Hello, world!\0";
+        let cstr = CStr::from_bytes_with_nul(orig).unwrap();
+        let rc: Rc<CStr> = Rc::from(cstr);
+        let arc: Arc<CStr> = Arc::from(cstr);
+
+        assert_eq!(&*rc, cstr);
+        assert_eq!(&*arc, cstr);
+
+        let rc2: Rc<CStr> = Rc::from(cstr.to_owned());
+        let arc2: Arc<CStr> = Arc::from(cstr.to_owned());
+
+        assert_eq!(&*rc2, cstr);
+        assert_eq!(&*arc2, cstr);
     }
 }

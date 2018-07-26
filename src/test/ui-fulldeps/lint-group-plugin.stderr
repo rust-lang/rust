@@ -1,7 +1,7 @@
 warning: item is named 'lintme'
   --> $DIR/lint-group-plugin.rs:18:1
    |
-18 | fn lintme() { } //~ WARNING item is named 'lintme'
+LL | fn lintme() { } //~ WARNING item is named 'lintme'
    | ^^^^^^^^^^^^^^^
    |
    = note: #[warn(test_lint)] on by default
@@ -9,7 +9,7 @@ warning: item is named 'lintme'
 warning: item is named 'pleaselintme'
   --> $DIR/lint-group-plugin.rs:19:1
    |
-19 | fn pleaselintme() { } //~ WARNING item is named 'pleaselintme'
+LL | fn pleaselintme() { } //~ WARNING item is named 'pleaselintme'
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[warn(please_lint)] on by default

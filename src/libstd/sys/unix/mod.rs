@@ -29,6 +29,9 @@ use libc;
 #[cfg(all(not(dox), target_os = "fuchsia"))]   pub use os::fuchsia as platform;
 #[cfg(all(not(dox), target_os = "l4re"))]      pub use os::linux as platform;
 
+pub use self::rand::hashmap_random_keys;
+pub use libc::strlen;
+
 #[macro_use]
 pub mod weak;
 
@@ -36,6 +39,7 @@ pub mod args;
 pub mod android;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
+pub mod cmath;
 pub mod condvar;
 pub mod env;
 pub mod ext;
@@ -76,11 +80,11 @@ pub fn init() {
         reset_sigpipe();
     }
 
-    #[cfg(not(any(target_os = "emscripten", target_os="fuchsia")))]
+    #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia")))]
     unsafe fn reset_sigpipe() {
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
     }
-    #[cfg(any(target_os = "emscripten", target_os="fuchsia"))]
+    #[cfg(any(target_os = "emscripten", target_os = "fuchsia"))]
     unsafe fn reset_sigpipe() {}
 }
 

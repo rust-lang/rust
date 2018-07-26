@@ -20,6 +20,8 @@ fn test_format_f64() {
     assert_eq!("1.23456789e3", format!("{:e}", 1234.56789f64));
     assert_eq!("1.23456789E6", format!("{:E}", 1234567.89f64));
     assert_eq!("1.23456789E3", format!("{:E}", 1234.56789f64));
+    assert_eq!("0.0", format!("{:?}", 0.0f64));
+    assert_eq!("1.01", format!("{:?}", 1.01f64));
 }
 
 #[test]
@@ -34,4 +36,6 @@ fn test_format_f32() {
     assert_eq!("1.2345679e3", format!("{:e}", 1234.56789f32));
     assert_eq!("1.2345679E6", format!("{:E}", 1234567.89f32));
     assert_eq!("1.2345679E3", format!("{:E}", 1234.56789f32));
+    assert_eq!("0.0", format!("{:?}", 0.0f32));
+    assert_eq!("1.01", format!("{:?}", 1.01f32));
 }

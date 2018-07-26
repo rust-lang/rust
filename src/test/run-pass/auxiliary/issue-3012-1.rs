@@ -10,13 +10,10 @@
 
 #![crate_name="socketlib"]
 #![crate_type = "lib"]
-#![feature(libc)]
 
 pub mod socket {
-    extern crate libc;
-
     pub struct socket_handle {
-        sockfd: libc::c_int,
+        sockfd: u32,
     }
 
     impl Drop for socket_handle {
@@ -25,7 +22,7 @@ pub mod socket {
         }
     }
 
-    pub fn socket_handle(x: libc::c_int) -> socket_handle {
+    pub fn socket_handle(x: u32) -> socket_handle {
         socket_handle {
             sockfd: x
         }

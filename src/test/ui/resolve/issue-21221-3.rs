@@ -23,8 +23,7 @@ struct Foo;
 //   `issue_21221_3::outer::public_module::OuterTrait`
 // are hidden from the view.
 impl OuterTrait for Foo {}
-//~^ ERROR unresolved trait `OuterTrait`
-//~| HELP you can import it into scope: `use issue_21221_3::outer::OuterTrait;`
+//~^ ERROR cannot find trait `OuterTrait`
 fn main() {
     println!("Hello, world!");
 }

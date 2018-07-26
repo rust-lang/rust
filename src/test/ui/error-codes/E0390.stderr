@@ -1,0 +1,15 @@
+error[E0390]: only a single inherent implementation marked with `#[lang = "mut_ptr"]` is allowed for the `*mut T` primitive
+  --> $DIR/E0390.rs:15:1
+   |
+LL | impl *mut Foo {} //~ ERROR E0390
+   | ^^^^^^^^^^^^^^^^
+   |
+help: consider using a trait to implement these methods
+  --> $DIR/E0390.rs:15:1
+   |
+LL | impl *mut Foo {} //~ ERROR E0390
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0390`.

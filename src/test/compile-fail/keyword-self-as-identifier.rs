@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let Self = "foo"; //~ ERROR cannot find unit struct/variant or constant `Self` in this scope
+    let Self = 22; //~ ERROR cannot find unit struct/variant or constant `Self` in this scope
 }

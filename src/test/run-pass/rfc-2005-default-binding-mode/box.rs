@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(box_syntax, box_patterns)]
-#![feature(match_default_bindings)]
 
 struct Foo{}
 

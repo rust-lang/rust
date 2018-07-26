@@ -11,7 +11,7 @@
 // compile-flags: --emit=metadata
 // aux-build:rmeta_rlib.rs
 // no-prefer-dynamic
-// must-compile-successfully
+// compile-pass
 
 // Check that building a metadata crate works with a dependent, rlib crate.
 // This is a cfail test since there is no executable to run.

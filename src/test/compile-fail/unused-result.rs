@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unused_results, unused_must_use)]
 #![allow(dead_code)]
+#![deny(unused_results, unused_must_use)]
+//~^ NOTE: lint level defined here
+//~| NOTE: lint level defined here
 
 #[must_use]
 enum MustUse { Test }
@@ -27,7 +29,8 @@ fn qux() -> MustUseMsg { return foo::<MustUseMsg>(); }
 fn test() {
     foo::<isize>();
     foo::<MustUse>(); //~ ERROR: unused `MustUse` which must be used
-    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` which must be used: some message
+    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` which must be used
+    //~^ NOTE: some message
 }
 
 #[allow(unused_results, unused_must_use)]
@@ -40,7 +43,8 @@ fn test2() {
 fn main() {
     foo::<isize>(); //~ ERROR: unused result
     foo::<MustUse>(); //~ ERROR: unused `MustUse` which must be used
-    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` which must be used: some message
+    foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` which must be used
+    //~^ NOTE: some message
 
     let _ = foo::<isize>();
     let _ = foo::<MustUse>();

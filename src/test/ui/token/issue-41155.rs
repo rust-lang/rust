@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl S {
+impl S { //~ ERROR cannot find type
     pub
-}
+} //~ ERROR expected one of
+
+fn main() {}
