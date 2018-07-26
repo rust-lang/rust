@@ -892,7 +892,7 @@ impl Step for Src {
         builder.run(&mut cmd);
 
         builder.remove_dir(&image);
-        distdir(builder).join(&format!("{}.tar.gz", name))
+        distdir(builder).join(PathBuf::from(name).with_extension("tar.gz"))
     }
 }
 
@@ -992,9 +992,8 @@ impl Step for PlainSourceTarball {
 
         // Create plain source tarball
         let plain_name = format!("rustc-{}-src", builder.rust_package_vers());
-        let mut tarball = distdir(builder).join(&format!("{}.tar.gz", plain_name));
-        tarball.set_extension(""); // strip .gz
-        tarball.set_extension(""); // strip .tar
+        let tarball_name = PathBuf::from(&plain_name).with_extension("tar.gz");
+        let tarball = distdir(builder).join(&plain_name);
         if let Some(dir) = tarball.parent() {
             builder.create_dir(&dir);
         }
@@ -1006,7 +1005,7 @@ impl Step for PlainSourceTarball {
            .arg("--work-dir=.")
            .current_dir(tmpdir(builder));
         builder.run(&mut cmd);
-        distdir(builder).join(&format!("{}.tar.gz", plain_name))
+        distdir(builder).join(&tarball_name)
     }
 }
 

@@ -305,8 +305,8 @@ impl Step for StartupObjects {
         t!(fs::create_dir_all(dst_dir));
 
         for file in &["rsbegin", "rsend"] {
-            let src_file = &src_dir.join(file.to_string() + ".rs");
-            let dst_file = &dst_dir.join(file.to_string() + ".o");
+            let src_file = &src_dir.join(file).with_extension("rs");
+            let dst_file = &dst_dir.join(file).with_extension("o");
             if !up_to_date(src_file, dst_file) {
                 let mut cmd = Command::new(&builder.initial_rustc);
                 builder.run(cmd.env("RUSTC_BOOTSTRAP", "1")
@@ -317,7 +317,7 @@ impl Step for StartupObjects {
                             .arg(src_file));
             }
 
-            builder.copy(dst_file, &sysroot_dir.join(file.to_string() + ".o"));
+            builder.copy(dst_file, &sysroot_dir.join(file).with_extension("o"));
         }
 
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
@@ -1141,8 +1141,7 @@ pub fn run_cargo(builder: &Builder, cargo: &mut Command, stamp: &Path, is_check:
             None => panic!("no output generated for {:?} {:?}", prefix, extension),
         };
         if is_dylib(path_to_add) {
-            let candidate = format!("{}.lib", path_to_add);
-            let candidate = PathBuf::from(candidate);
+            let candidate = PathBuf::from(path_to_add).with_extension("lib");
             if candidate.exists() {
                 deps.push(candidate);
             }
