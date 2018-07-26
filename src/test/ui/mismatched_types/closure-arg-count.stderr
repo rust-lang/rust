@@ -5,6 +5,10 @@ LL |     [1, 2, 3].sort_by(|| panic!());
    |               ^^^^^^^ -- takes 0 arguments
    |               |
    |               expected closure that takes 2 arguments
+help: consider changing the closure to take and ignore the expected arguments
+   |
+LL |     [1, 2, 3].sort_by(|_, _| panic!());
+   |                       ^^^^^^
 
 error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:17:15
@@ -51,6 +55,10 @@ note: required by `f`
    |
 LL | fn f<F: Fn<usize>>(_: F) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider changing the closure to take and ignore the expected argument
+   |
+LL |     f(|_| panic!());
+   |       ^^^
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:26:53
