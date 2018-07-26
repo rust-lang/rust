@@ -12,6 +12,9 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
+use ops::Try;
+use result::Result;
+
 /// Indicates whether a value is available or if the current task has been
 /// scheduled to receive a wakeup instead.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -39,6 +42,7 @@ impl<T> Poll<T> {
     }
 
     /// Returns whether this is `Poll::Ready`
+    #[inline]
     pub fn is_ready(&self) -> bool {
         match *self {
             Poll::Ready(_) => true,
@@ -47,6 +51,7 @@ impl<T> Poll<T> {
     }
 
     /// Returns whether this is `Poll::Pending`
+    #[inline]
     pub fn is_pending(&self) -> bool {
         !self.is_ready()
     }
@@ -79,5 +84,54 @@ impl<T, E> Poll<Result<T, E>> {
 impl<T> From<T> for Poll<T> {
     fn from(t: T) -> Poll<T> {
         Poll::Ready(t)
+    }
+}
+
+impl<T, E> Try for Poll<Result<T, E>> {
+    type Ok = Poll<T>;
+    type Error = E;
+
+    #[inline]
+    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+        match self {
+            Poll::Ready(Ok(x)) => Ok(Poll::Ready(x)),
+            Poll::Ready(Err(e)) => Err(e),
+            Poll::Pending => Ok(Poll::Pending),
+        }
+    }
+
+    #[inline]
+    fn from_error(e: Self::Error) -> Self {
+        Poll::Ready(Err(e))
+    }
+
+    #[inline]
+    fn from_ok(x: Self::Ok) -> Self {
+        x.map(Ok)
+    }
+}
+
+impl<T, E> Try for Poll<Option<Result<T, E>>> {
+    type Ok = Poll<Option<T>>;
+    type Error = E;
+
+    #[inline]
+    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+        match self {
+            Poll::Ready(Some(Ok(x))) => Ok(Poll::Ready(Some(x))),
+            Poll::Ready(Some(Err(e))) => Err(e),
+            Poll::Ready(None) => Ok(Poll::Ready(None)),
+            Poll::Pending => Ok(Poll::Pending),
+        }
+    }
+
+    #[inline]
+    fn from_error(e: Self::Error) -> Self {
+        Poll::Ready(Some(Err(e)))
+    }
+
+    #[inline]
+    fn from_ok(x: Self::Ok) -> Self {
+        x.map(|x| x.map(Ok))
     }
 }
