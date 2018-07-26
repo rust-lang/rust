@@ -19,7 +19,7 @@ use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use util::liveness::{self, DefUse, LivenessMode};
 
-crate fn find<'tcx>(
+crate fn find(
     mir: &Mir<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'_, '_, 'tcx>,
@@ -50,7 +50,7 @@ struct UseFinder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     liveness_mode: LivenessMode,
 }
 
-impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
+impl UseFinder<'cx, 'gcx, 'tcx> {
     fn find(&mut self) -> Option<Cause> {
         let mut queue = VecDeque::new();
         let mut visited = FxHashSet();
@@ -134,7 +134,7 @@ enum DefUseResult {
     UseDrop { local: Local },
 }
 
-impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'gcx, 'tcx> {
+impl Visitor<'tcx> for DefUseVisitor<'cx, 'gcx, 'tcx> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
         let local_ty = self.mir.local_decls[local].ty;
 

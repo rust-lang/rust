@@ -53,7 +53,7 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     _nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
 }
 
-fn precompute_borrows_out_of_scope<'tcx>(
+fn precompute_borrows_out_of_scope(
     mir: &Mir<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     borrows_out_of_scope_at_location: &mut FxHashMap<Location, Vec<BorrowIndex>>,
@@ -108,7 +108,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
     }
 }
 
-impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
+impl Borrows<'a, 'gcx, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         mir: &'a Mir<'tcx>,
@@ -184,7 +184,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
+impl BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     type Idx = BorrowIndex;
     fn name() -> &'static str { "borrows" }
     fn bits_per_block(&self) -> usize {
@@ -369,14 +369,14 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for Borrows<'a, 'gcx, 'tcx> {
+impl BitwiseOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // union effects of preds when computing reservations
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for Borrows<'a, 'gcx, 'tcx> {
+impl InitialFlow for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = nothing is reserved or activated yet

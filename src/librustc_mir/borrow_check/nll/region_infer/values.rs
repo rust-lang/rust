@@ -66,7 +66,7 @@ impl RegionValueElements {
     }
 
     /// Iterates over the `RegionElementIndex` for all points in the CFG.
-    crate fn all_point_indices<'a>(&'a self) -> impl Iterator<Item = RegionElementIndex> + 'a {
+    crate fn all_point_indices(&self) -> impl Iterator<Item = RegionElementIndex> + '_ {
         (0..self.num_points).map(move |i| RegionElementIndex::new(i + self.num_universal_regions))
     }
 
@@ -220,9 +220,9 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Iterates through each row and the accompanying bit set.
-    pub fn iter_enumerated<'a>(
-        &'a self
-    ) -> impl Iterator<Item = (N, &'a BitVector)> + 'a {
+    pub fn iter_enumerated(
+        &self
+    ) -> impl Iterator<Item = (N, &'_ BitVector)> + '_ {
         self.matrix.iter_enumerated()
     }
 
@@ -244,18 +244,18 @@ impl<N: Idx> RegionValues<N> {
     /// Iterate over the value of the region `r`, yielding up element
     /// indices. You may prefer `universal_regions_outlived_by` or
     /// `elements_contained_in`.
-    crate fn element_indices_contained_in<'a>(
-        &'a self,
+    crate fn element_indices_contained_in(
+        &self,
         r: N,
-    ) -> impl Iterator<Item = RegionElementIndex> + 'a {
+    ) -> impl Iterator<Item = RegionElementIndex> + '_ {
         self.matrix.iter(r).map(move |i| i)
     }
 
     /// Returns just the universal regions that are contained in a given region's value.
-    crate fn universal_regions_outlived_by<'a>(
-        &'a self,
+    crate fn universal_regions_outlived_by(
+        &self,
         r: N,
-    ) -> impl Iterator<Item = RegionVid> + 'a {
+    ) -> impl Iterator<Item = RegionVid> + '_ {
         self.element_indices_contained_in(r)
             .map(move |i| self.elements.to_universal_region(i))
             .take_while(move |v| v.is_some()) // universal regions are a prefix
@@ -263,10 +263,10 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns all the elements contained in a given region's value.
-    crate fn elements_contained_in<'a>(
-        &'a self,
+    crate fn elements_contained_in(
+        &self,
         r: N,
-    ) -> impl Iterator<Item = RegionElement> + 'a {
+    ) -> impl Iterator<Item = RegionElement> + '_ {
         self.element_indices_contained_in(r)
             .map(move |r| self.elements.to_element(r))
     }

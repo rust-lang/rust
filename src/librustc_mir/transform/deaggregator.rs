@@ -16,10 +16,7 @@ use transform::{MirPass, MirSource};
 pub struct Deaggregator;
 
 impl MirPass for Deaggregator {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _source: MirSource, mir: &mut Mir<'tcx>) {
         let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
         let local_decls = &*local_decls;
         for bb in basic_blocks {

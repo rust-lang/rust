@@ -49,10 +49,7 @@ struct DeleteTrivialEndRegions<'a> {
 }
 
 impl MirPass for CleanEndRegions {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _source: MirSource, mir: &mut Mir<'tcx>) {
         if !tcx.emit_end_regions() { return; }
 
         let mut gather = GatherBorrowedRegions {
@@ -65,7 +62,7 @@ impl MirPass for CleanEndRegions {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for GatherBorrowedRegions {
+impl Visitor<'tcx> for GatherBorrowedRegions {
     fn visit_rvalue(&mut self,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
@@ -90,7 +87,7 @@ impl<'tcx> Visitor<'tcx> for GatherBorrowedRegions {
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for DeleteTrivialEndRegions<'a> {
+impl MutVisitor<'tcx> for DeleteTrivialEndRegions<'a> {
     fn visit_statement(&mut self,
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,
@@ -115,16 +112,13 @@ pub struct CleanUserAssertTy;
 pub struct DeleteUserAssertTy;
 
 impl MirPass for CleanUserAssertTy {
-    fn run_pass<'a, 'tcx>(&self,
-                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _source: MirSource, mir: &mut Mir<'tcx>) {
         let mut delete = DeleteUserAssertTy;
         delete.visit_mir(mir);
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for DeleteUserAssertTy {
+impl MutVisitor<'tcx> for DeleteUserAssertTy {
     fn visit_statement(&mut self,
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,

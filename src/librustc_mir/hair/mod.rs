@@ -315,7 +315,7 @@ pub enum LogicalOp {
     Or,
 }
 
-impl<'tcx> ExprRef<'tcx> {
+impl ExprRef<'_> {
     pub fn span(&self) -> Span {
         match self {
             ExprRef::Hair(expr) => expr.span,
@@ -342,21 +342,21 @@ impl<'tcx> ExprRef<'tcx> {
 pub trait Mirror<'tcx> {
     type Output;
 
-    fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Self::Output;
+    fn make_mirror(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Self::Output;
 }
 
-impl<'tcx> Mirror<'tcx> for Expr<'tcx> {
+impl Mirror<'tcx> for Expr<'tcx> {
     type Output = Expr<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
+    fn make_mirror(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
         self
     }
 }
 
-impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
+impl Mirror<'tcx> for ExprRef<'tcx> {
     type Output = Expr<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, hir: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
+    fn make_mirror(self, hir: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
         match self {
             ExprRef::Hair(h) => h.make_mirror(hir),
             ExprRef::Mirror(m) => *m,
@@ -364,28 +364,28 @@ impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
     }
 }
 
-impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
+impl Mirror<'tcx> for Stmt<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Stmt<'tcx> {
+    fn make_mirror(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Stmt<'tcx> {
         self
     }
 }
 
-impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
+impl Mirror<'tcx> for StmtRef<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Stmt<'tcx> {
+    fn make_mirror(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Stmt<'tcx> {
         match self {
             StmtRef::Mirror(m) => *m,
         }
     }
 }
 
-impl<'tcx> Mirror<'tcx> for Block<'tcx> {
+impl Mirror<'tcx> for Block<'tcx> {
     type Output = Block<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
+    fn make_mirror(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
         self
     }
 }

@@ -19,21 +19,18 @@ use transform::{MirPass, MirSource};
 pub struct NoLandingPads;
 
 impl MirPass for NoLandingPads {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         no_landing_pads(tcx, mir)
     }
 }
 
-pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
+pub fn no_landing_pads(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
     if tcx.sess.no_landing_pads() {
         NoLandingPads.visit_mir(mir);
     }
 }
 
-impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
+impl MutVisitor<'tcx> for NoLandingPads {
     fn visit_terminator(&mut self,
                         bb: BasicBlock,
                         terminator: &mut Terminator<'tcx>,

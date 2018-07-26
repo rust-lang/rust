@@ -18,7 +18,7 @@ use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty::TyCtxt;
 
-impl<'tcx> CFG<'tcx> {
+impl CFG<'tcx> {
     pub fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.basic_blocks[blk]
     }
@@ -45,11 +45,13 @@ impl<'tcx> CFG<'tcx> {
         self.block_data_mut(block).statements.push(statement);
     }
 
-    pub fn push_end_region<'a, 'gcx:'a+'tcx>(&mut self,
-                                             tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                             block: BasicBlock,
-                                             source_info: SourceInfo,
-                                             region_scope: region::Scope) {
+    pub fn push_end_region(
+        &mut self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        region_scope: region::Scope
+    ) {
         if tcx.emit_end_regions() {
             if let region::ScopeData::CallSite(_) = region_scope.data() {
                 // The CallSite scope (aka the root scope) is sort of weird, in that it is

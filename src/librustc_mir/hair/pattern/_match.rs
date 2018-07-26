@@ -34,14 +34,13 @@ use std::cmp::{self, Ordering};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
 
-pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
-                                -> &'a Pattern<'tcx>
+pub fn expand_pattern(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>) -> &'a Pattern<'tcx>
 {
     cx.pattern_arena.alloc(LiteralExpander.fold_pattern(&pat))
 }
 
 struct LiteralExpander;
-impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
+impl PatternFolder<'tcx> for LiteralExpander {
     fn fold_pattern(&mut self, pat: &Pattern<'tcx>) -> Pattern<'tcx> {
         match (&pat.ty.sty, &*pat.kind) {
             (&ty::TyRef(_, rty, _), &PatternKind::Constant { ref value }) => {
@@ -65,7 +64,7 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
     }
 }
 
-impl<'tcx> Pattern<'tcx> {
+impl Pattern<'tcx> {
     fn is_wildcard(&self) -> bool {
         match *self.kind {
             PatternKind::Binding { subpattern: None, .. } | PatternKind::Wild =>
@@ -77,7 +76,7 @@ impl<'tcx> Pattern<'tcx> {
 
 pub struct Matrix<'a, 'tcx: 'a>(Vec<Vec<&'a Pattern<'tcx>>>);
 
-impl<'a, 'tcx> Matrix<'a, 'tcx> {
+impl Matrix<'a, 'tcx> {
     pub fn empty() -> Self {
         Matrix(vec![])
     }
@@ -99,7 +98,7 @@ impl<'a, 'tcx> Matrix<'a, 'tcx> {
 /// ++++++++++++++++++++++++++
 /// + _     + [_, _, ..tail] +
 /// ++++++++++++++++++++++++++
-impl<'a, 'tcx> fmt::Debug for Matrix<'a, 'tcx> {
+impl fmt::Debug for Matrix<'a, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "\n")?;
 
@@ -131,7 +130,7 @@ impl<'a, 'tcx> fmt::Debug for Matrix<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> FromIterator<Vec<&'a Pattern<'tcx>>> for Matrix<'a, 'tcx> {
+impl FromIterator<Vec<&'a Pattern<'tcx>>> for Matrix<'a, 'tcx> {
     fn from_iter<T: IntoIterator<Item=Vec<&'a Pattern<'tcx>>>>(iter: T) -> Self
     {
         Matrix(iter.into_iter().collect())
@@ -260,7 +259,7 @@ pub enum Constructor<'tcx> {
     Slice(u64),
 }
 
-impl<'tcx> Constructor<'tcx> {
+impl Constructor<'tcx> {
     fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> usize {
         match self {
             &Variant(vid) => adt.variant_index_with_id(vid),
@@ -280,7 +279,7 @@ pub enum Usefulness<'tcx> {
     NotUseful
 }
 
-impl<'tcx> Usefulness<'tcx> {
+impl Usefulness<'tcx> {
     fn is_useful(&self) -> bool {
         match *self {
             NotUseful => false,
@@ -305,15 +304,15 @@ struct PatternContext<'tcx> {
 #[derive(Clone)]
 pub struct Witness<'tcx>(Vec<Pattern<'tcx>>);
 
-impl<'tcx> Witness<'tcx> {
+impl Witness<'tcx> {
     pub fn single_pattern(&self) -> &Pattern<'tcx> {
         assert_eq!(self.0.len(), 1);
         &self.0[0]
     }
 
-    fn push_wild_constructor<'a>(
+    fn push_wild_constructor(
         mut self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
+        cx: &MatchCheckCtxt<'_, 'tcx>,
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>)
         -> Self
@@ -343,9 +342,9 @@ impl<'tcx> Witness<'tcx> {
     ///
     /// left_ty: struct X { a: (bool, &'static str), b: usize}
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor<'a>(
+    fn apply_constructor(
         mut self,
-        cx: &MatchCheckCtxt<'a,'tcx>,
+        cx: &MatchCheckCtxt<'_, 'tcx>,
         ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>)
         -> Self
@@ -423,10 +422,10 @@ impl<'tcx> Witness<'tcx> {
 ///
 /// We make sure to omit constructors that are statically impossible. eg for
 /// Option<!> we do not include Some(_) in the returned list of constructors.
-fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                                  pcx: PatternContext<'tcx>)
-                                  -> Vec<Constructor<'tcx>>
-{
+fn all_constructors(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    pcx: PatternContext<'tcx>
+) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
     match pcx.ty.sty {
         ty::TyBool => {
@@ -467,10 +466,12 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
+fn max_slice_length<I>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    patterns: I) -> u64
-    where I: Iterator<Item=&'p Pattern<'tcx>>
+    patterns: I
+) -> u64
+    where I: Iterator<Item=&'p Pattern<'tcx>>,
+          'tcx: 'p,
 {
     // The exhaustiveness-checking paper does not include any details on
     // checking variable-length slice patterns. However, they are matched
@@ -591,11 +592,12 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
-pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                                       matrix: &Matrix<'p, 'tcx>,
-                                       v: &[&'p Pattern<'tcx>],
-                                       witness: WitnessPreference)
-                                       -> Usefulness<'tcx> {
+pub fn is_useful(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
+    v: &[&'p Pattern<'tcx>],
+    witness: WitnessPreference
+) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -777,7 +779,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
+fn is_useful_specialized(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
     v: &[&'p Pattern<'tcx>],
@@ -819,11 +821,11 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
 /// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
 ///
 /// Returns None in case of a catch-all, which can't be specialized.
-fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt,
-                          pat: &Pattern<'tcx>,
-                          pcx: PatternContext)
-                          -> Option<Vec<Constructor<'tcx>>>
-{
+fn pat_constructors(
+    cx: &mut MatchCheckCtxt,
+    pat: &Pattern<'tcx>,
+    pcx: PatternContext
+) -> Option<Vec<Constructor<'tcx>>> {
     match *pat.kind {
         PatternKind::Binding { .. } | PatternKind::Wild =>
             None,
@@ -878,10 +880,11 @@ fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
 /// expanded to.
 ///
 /// For instance, a tuple pattern (43u32, 'a') has sub pattern types [u32, char].
-fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
-                                             ctor: &Constructor,
-                                             ty: Ty<'tcx>) -> Vec<Ty<'tcx>>
-{
+fn constructor_sub_pattern_tys(
+    cx: &MatchCheckCtxt<'a, 'tcx>,
+    ctor: &Constructor,
+    ty: Ty<'tcx>
+) -> Vec<Ty<'tcx>> {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
     match ty.sty {
         ty::TyTuple(ref fs) => fs.into_iter().map(|t| *t).collect(),
@@ -917,7 +920,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn slice_pat_covered_by_constructor<'tcx>(
+fn slice_pat_covered_by_constructor(
     tcx: TyCtxt<'_, 'tcx, '_>,
     _span: Span,
     ctor: &Constructor,
@@ -970,7 +973,7 @@ fn slice_pat_covered_by_constructor<'tcx>(
     Ok(true)
 }
 
-fn constructor_covered_by_range<'a, 'tcx>(
+fn constructor_covered_by_range(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ctor: &Constructor<'tcx>,
     from: &'tcx ty::Const<'tcx>, to: &'tcx ty::Const<'tcx>,
@@ -1013,7 +1016,7 @@ fn constructor_covered_by_range<'a, 'tcx>(
     }
 }
 
-fn patterns_for_variant<'p, 'a: 'p, 'tcx: 'a>(
+fn patterns_for_variant(
     subpatterns: &'p [FieldPattern<'tcx>],
     wild_patterns: &[&'p Pattern<'tcx>])
     -> Vec<&'p Pattern<'tcx>>
@@ -1036,12 +1039,13 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx: 'a>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize<'p, 'a: 'p, 'tcx: 'a>(
+fn specialize(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     r: &[&'p Pattern<'tcx>],
     constructor: &Constructor<'tcx>,
     wild_patterns: &[&'p Pattern<'tcx>])
     -> Option<Vec<&'p Pattern<'tcx>>>
+    where 'a: 'p,
 {
     let pat = &r[0];
 

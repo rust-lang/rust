@@ -19,7 +19,7 @@ use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 
 use rustc_data_structures::indexed_vec::Idx;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl Builder<'_, 'gcx, 'tcx> {
     /// Compile `expr`, yielding a place that we can move from etc.
     pub fn as_place<M>(&mut self,
                         block: BasicBlock,

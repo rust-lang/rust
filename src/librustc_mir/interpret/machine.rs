@@ -28,7 +28,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     /// e.g. due to missing mir
     ///
     /// Returns Ok(false) if a new stack frame was pushed
-    fn eval_fn_call<'a>(
+    fn eval_fn_call(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Place, mir::BasicBlock)>,
@@ -38,7 +38,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     ) -> EvalResult<'tcx, bool>;
 
     /// directly process an intrinsic without pushing a stack frame.
-    fn call_intrinsic<'a>(
+    fn call_intrinsic(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
@@ -53,7 +53,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     /// op code in order to share more code between machines
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
-    fn try_ptr_op<'a>(
+    fn try_ptr_op(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: Scalar,
@@ -63,7 +63,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
 
     /// Called when trying to mark machine defined `MemoryKinds` as static
-    fn mark_static_initialized<'a>(
+    fn mark_static_initialized(
         _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
         _id: AllocId,
         _mutability: Mutability,
@@ -71,7 +71,7 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
 
     /// Called when requiring a pointer to a static. Non const eval can
     /// create a mutable memory location for `static mut`
-    fn init_static<'a>(
+    fn init_static(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId>;
@@ -79,20 +79,20 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     /// Heap allocations via the `box` keyword
     ///
     /// Returns a pointer to the allocated memory
-    fn box_alloc<'a>(
+    fn box_alloc(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ty: Ty<'tcx>,
         dest: Place,
     ) -> EvalResult<'tcx>;
 
     /// Called when trying to access a global declared with a `linkage` attribute
-    fn global_item_with_linkage<'a>(
+    fn global_item_with_linkage(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         mutability: Mutability,
     ) -> EvalResult<'tcx>;
 
-    fn check_locks<'a>(
+    fn check_locks(
         _mem: &Memory<'a, 'mir, 'tcx, Self>,
         _ptr: Pointer,
         _size: Size,
@@ -101,12 +101,12 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
         Ok(())
     }
 
-    fn add_lock<'a>(
+    fn add_lock(
         _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
         _id: AllocId,
     ) {}
 
-    fn free_lock<'a>(
+    fn free_lock(
         _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
         _id: AllocId,
         _len: u64,
@@ -114,14 +114,14 @@ pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
         Ok(())
     }
 
-    fn end_region<'a>(
+    fn end_region(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _reg: Option<::rustc::middle::region::Scope>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }
 
-    fn validation_op<'a>(
+    fn validation_op(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _op: ::rustc::mir::ValidationOp,
         _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,

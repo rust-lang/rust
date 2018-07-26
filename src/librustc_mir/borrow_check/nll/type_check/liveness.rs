@@ -33,7 +33,7 @@ use super::TypeChecker;
 ///
 /// NB. This computation requires normalization; therefore, it must be
 /// performed before
-pub(super) fn generate<'gcx, 'tcx>(
+pub(super) fn generate(
     cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
@@ -76,7 +76,7 @@ struct DropData<'tcx> {
     region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
 }
 
-impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx> {
+impl TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx> {
     /// Liveness constraints:
     ///
     /// > If a variable V is live at point P, then all regions R in the type of V

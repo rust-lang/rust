@@ -22,7 +22,7 @@ pub mod item;
 pub mod partitioning;
 
 #[inline(never)] // give this a place in the profiler
-pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mono_items: I)
+pub fn assert_symbols_are_distinct<I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mono_items: I)
     where I: Iterator<Item=&'a MonoItem<'tcx>>
 {
     let mut symbols: Vec<_> = mono_items.map(|mono_item| {
@@ -69,7 +69,7 @@ pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mon
     }
 }
 
-fn fn_once_adapter_instance<'a, 'tcx>(
+fn fn_once_adapter_instance(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     closure_did: DefId,
     substs: ty::ClosureSubsts<'tcx>,
@@ -127,7 +127,7 @@ fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
     }
 }
 
-pub fn resolve_closure<'a, 'tcx> (
+pub fn resolve_closure(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
     substs: ty::ClosureSubsts<'tcx>,
@@ -142,7 +142,7 @@ pub fn resolve_closure<'a, 'tcx> (
     }
 }
 
-pub fn resolve_drop_in_place<'a, 'tcx>(
+pub fn resolve_drop_in_place(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>)
     -> ty::Instance<'tcx>
@@ -152,10 +152,11 @@ pub fn resolve_drop_in_place<'a, 'tcx>(
     Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
 }
 
-pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           source_ty: Ty<'tcx>,
-                                           target_ty: Ty<'tcx>)
-                                           -> CustomCoerceUnsized {
+pub fn custom_coerce_unsize_info(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    source_ty: Ty<'tcx>,
+    target_ty: Ty<'tcx>
+) -> CustomCoerceUnsized {
     let def_id = tcx.lang_items().coerce_unsized_trait().unwrap();
 
     let trait_ref = ty::Binder::bind(ty::TraitRef {

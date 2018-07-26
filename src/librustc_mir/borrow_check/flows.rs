@@ -42,7 +42,7 @@ crate struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
     pub polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
 }
 
-impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
+impl Flows<'b, 'gcx, 'tcx> {
     crate fn new(
         borrows: FlowAtLocation<Borrows<'b, 'gcx, 'tcx>>,
         uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
@@ -84,7 +84,7 @@ macro_rules! each_flow {
     };
 }
 
-impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
+impl FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
     fn reset_to_entry_of(&mut self, bb: BasicBlock) {
         each_flow!(self, reset_to_entry_of(bb));
     }
@@ -102,7 +102,7 @@ impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
+impl fmt::Display for Flows<'b, 'gcx, 'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut s = String::new();
 

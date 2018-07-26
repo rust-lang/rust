@@ -39,8 +39,8 @@ use syntax_pos::{Span, DUMMY_SP};
 
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
-impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+impl Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
+    fn nested_visit_map(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
@@ -51,13 +51,13 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn check_crate(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
     tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx: tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
-pub(crate) fn check_match<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn check_match(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Result<(), ErrorReported> {
     let body_id = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
@@ -77,7 +77,7 @@ pub(crate) fn check_match<'a, 'tcx>(
     })
 }
 
-fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> DiagnosticBuilder<'a> {
+fn create_e0004(sess: &'sess Session, sp: Span, error_message: String) -> DiagnosticBuilder<'sess> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
@@ -89,8 +89,8 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     region_scope_tree: &'a region::ScopeTree,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+impl Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
+    fn nested_visit_map(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
 
@@ -128,7 +128,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
 }
 
 
-impl<'a, 'tcx> PatternContext<'a, 'tcx> {
+impl PatternContext<'a, 'tcx> {
     fn report_inlining_errors(&self, pat_span: Span) {
         for error in &self.errors {
             match *error {
@@ -160,7 +160,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
+impl MatchVisitor<'a, 'tcx> {
     fn check_patterns(&self, has_guard: bool, pats: &[P<Pat>]) {
         check_legality_of_move_bindings(self, has_guard, pats);
         for pat in pats {
@@ -355,10 +355,11 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 }
 
 // Check for unreachable patterns
-fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                        arms: &[(Vec<(&'a Pattern<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
-                        source: hir::MatchSource)
-{
+fn check_arms(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    arms: &[(Vec<(&'a Pattern<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
+    source: hir::MatchSource
+) {
     let mut seen = Matrix::empty();
     let mut catchall = None;
     let mut printed_if_let_err = false;
@@ -459,10 +460,12 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                              scrut_ty: Ty<'tcx>,
-                              sp: Span,
-                              matrix: &Matrix<'a, 'tcx>) {
+fn check_exhaustive(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    scrut_ty: Ty<'tcx>,
+    sp: Span,
+    matrix: &Matrix<'a, 'tcx>
+) {
     let wild_pattern = Pattern {
         ty: scrut_ty,
         span: DUMMY_SP,
@@ -587,7 +590,7 @@ struct MutationChecker<'a, 'tcx: 'a> {
     cx: &'a MatchVisitor<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
+impl Delegate<'tcx> for MutationChecker<'a, 'tcx> {
     fn matched_pat(&mut self, _: &Pat, _: &cmt_, _: euv::MatchMode) {}
     fn consume(&mut self, _: ast::NodeId, _: Span, _: &cmt_, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: &cmt_, _: ConsumeMode) {}
@@ -633,8 +636,8 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
     bindings_allowed: bool
 }
 
-impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v> {
+impl Visitor<'v> for AtBindingPatternVisitor<'_, '_, 'tcx> {
+    fn nested_visit_map(&'this mut self) -> NestedVisitorMap<'this, 'v> {
         NestedVisitorMap::None
     }
 

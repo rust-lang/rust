@@ -84,11 +84,8 @@ struct DefUseFinder<'tcx> {
     info: IndexVec<Local, Info<'tcx>>,
 }
 
-impl<'tcx> Visitor<'tcx> for DefUseFinder<'tcx> {
-    fn visit_local(&mut self,
-                   &local: &Local,
-                   context: PlaceContext<'tcx>,
-                   location: Location) {
+impl Visitor<'tcx> for DefUseFinder<'tcx> {
+    fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, location: Location) {
         self.info[local].defs_and_uses.push(Use {
             context,
             location,

@@ -21,10 +21,7 @@ use syntax;
 pub struct Lower128Bit;
 
 impl MirPass for Lower128Bit {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         let debugging_override = tcx.sess.opts.debugging_opts.lower_128bit_ops;
         let target_default = tcx.sess.host.options.i128_lowering;
         if !debugging_override.unwrap_or(target_default) {
@@ -36,7 +33,7 @@ impl MirPass for Lower128Bit {
 }
 
 impl Lower128Bit {
-    fn lower_128bit_ops<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
+    fn lower_128bit_ops(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
         let mut new_blocks = Vec::new();
         let cur_len = mir.basic_blocks().len();
 
@@ -127,7 +124,7 @@ impl Lower128Bit {
     }
 }
 
-fn check_lang_item_type<'a, 'tcx, D>(
+fn check_lang_item_type<D>(
     lang_item: LangItem,
     place: &Place<'tcx>,
     lhs: &Operand<'tcx>,
@@ -149,7 +146,7 @@ fn check_lang_item_type<'a, 'tcx, D>(
     did
 }
 
-fn lower_to<'a, 'tcx, D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCtxt<'a, 'tcx, 'tcx>)
+fn lower_to<D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCtxt<'a, 'tcx, 'tcx>)
     -> Option<(LangItem, RhsKind)>
     where D: HasLocalDecls<'tcx>
 {
@@ -179,7 +176,7 @@ enum RhsKind {
 }
 
 impl RhsKind {
-    fn ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
+    fn ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
         match *self {
             RhsKind::Unchanged => None,
             RhsKind::ForceU128 => Some(tcx.types.u128),

@@ -32,7 +32,7 @@ pub enum PlaceExtra {
     DowncastVariant(usize),
 }
 
-impl<'tcx> Place {
+impl Place {
     /// Produces a Place that will error if attempted to be read from
     pub fn undef() -> Self {
         Self::from_scalar_ptr(Scalar::undef().into(), Align::from_bytes(1, 1).unwrap())
@@ -94,7 +94,7 @@ impl<'tcx> Place {
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> EvalContext<'_, 'mir, 'tcx, M> {
     /// Reads a value from the place without going through the intermediate step of obtaining
     /// a `miri::Place`
     pub fn try_read_place(

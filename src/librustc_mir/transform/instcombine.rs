@@ -21,10 +21,7 @@ use transform::{MirPass, MirSource};
 pub struct InstCombine;
 
 impl MirPass for InstCombine {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
@@ -48,7 +45,7 @@ pub struct InstCombineVisitor<'tcx> {
     optimizations: OptimizationList<'tcx>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
+impl MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
             debug!("Replacing `&*`: {:?}", rvalue);
@@ -78,7 +75,7 @@ struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
     optimizations: OptimizationList<'tcx>,
 }
 
-impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
+impl OptimizationFinder<'b, 'a, 'tcx> {
     fn new(mir: &'b Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'a, 'tcx> {
         OptimizationFinder {
             mir,
@@ -88,7 +85,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
     }
 }
 
-impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
+impl Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, Place::Projection(ref projection)) = *rvalue {
             if let ProjectionElem::Deref = projection.elem {

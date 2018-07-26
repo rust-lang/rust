@@ -81,7 +81,7 @@ pub struct MaybeInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
@@ -91,7 +91,7 @@ impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -136,7 +136,7 @@ pub struct MaybeUninitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
@@ -146,7 +146,7 @@ impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -197,7 +197,7 @@ pub struct DefinitelyInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
@@ -207,7 +207,7 @@ impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -231,7 +231,7 @@ pub struct MovingOutStatements<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> MovingOutStatements<'a, 'gcx, 'tcx> {
+impl MovingOutStatements<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
@@ -241,7 +241,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> MovingOutStatements<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MovingOutStatements<'a, 'gcx, 'tcx> {
+impl HasMoveData<'tcx> for MovingOutStatements<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -280,7 +280,7 @@ pub struct EverInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl EverInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
@@ -290,12 +290,12 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl HasMoveData<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
 
-impl<'a, 'gcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -306,7 +306,7 @@ impl<'a, 'gcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -317,7 +317,7 @@ impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     fn update_bits(sets: &mut BlockSets<MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -328,7 +328,7 @@ impl<'a, 'gcx, 'tcx> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "maybe_init" }
     fn bits_per_block(&self) -> usize {
@@ -379,7 +379,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "maybe_uninit" }
     fn bits_per_block(&self) -> usize {
@@ -434,7 +434,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> 
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "definite_init" }
     fn bits_per_block(&self) -> usize {
@@ -488,7 +488,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tc
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
+impl BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
     type Idx = MoveOutIndex;
     fn name() -> &'static str { "moving_out" }
     fn bits_per_block(&self) -> usize {
@@ -565,7 +565,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     type Idx = InitIndex;
     fn name() -> &'static str { "ever_init" }
     fn bits_per_block(&self) -> usize {
@@ -661,35 +661,35 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl BitwiseOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl BitwiseOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl BitwiseOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 & pred2 // "definitely" means we intersect effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for MovingOutStatements<'a, 'gcx, 'tcx> {
+impl BitwiseOperator for MovingOutStatements<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // moves from both preds are in scope
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl BitwiseOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // inits from both preds are in scope
@@ -706,35 +706,35 @@ impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
 // propagating, or you start at all-ones and then use Intersect as
 // your merge when propagating.
 
-impl<'a, 'gcx, 'tcx> InitialFlow for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl InitialFlow for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = uninitialized
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl InitialFlow for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl InitialFlow for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         true // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for MovingOutStatements<'a, 'gcx, 'tcx> {
+impl InitialFlow for MovingOutStatements<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no loans in scope by default
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl InitialFlow for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no initialized variables by default

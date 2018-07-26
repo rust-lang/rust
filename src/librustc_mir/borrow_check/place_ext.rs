@@ -23,7 +23,7 @@ crate trait PlaceExt<'tcx> {
     fn root_local(&self) -> Option<Local>;
 }
 
-impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
+impl PlaceExt<'tcx> for Place<'tcx> {
     fn is_unsafe_place(&self, tcx: TyCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) -> bool {
         match self {
             Place::Promoted(_) |

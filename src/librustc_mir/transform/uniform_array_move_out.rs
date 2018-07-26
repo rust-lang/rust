@@ -47,10 +47,7 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 pub struct UniformArrayMoveOut;
 
 impl MirPass for UniformArrayMoveOut {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         let mut patch = MirPatch::new(mir);
         {
             let mut visitor = UniformArrayMoveOutVisitor{mir, patch: &mut patch, tcx};
@@ -66,7 +63,7 @@ struct UniformArrayMoveOutVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
+impl Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
     fn visit_assign(&mut self,
                     block: BasicBlock,
                     dst_place: &Place<'tcx>,
@@ -96,7 +93,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
+impl UniformArrayMoveOutVisitor<'a, 'tcx> {
     fn uniform(&mut self,
                location: Location,
                dst_place: &Place<'tcx>,
@@ -169,10 +166,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
 pub struct RestoreSubsliceArrayMoveOut;
 
 impl MirPass for RestoreSubsliceArrayMoveOut {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         let mut patch = MirPatch::new(mir);
         {
             let mut visitor = RestoreDataCollector {
@@ -221,11 +215,13 @@ impl RestoreSubsliceArrayMoveOut {
     // Checks that source has size, all locals are inited from same source place and
     // indices is an integer interval. If all checks pass do the replacent.
     // items are Vec<Option<LocalUse, index in source array, source place for init local>>
-    fn check_and_patch<'tcx>(candidate: Location,
-                             items: &Vec<Option<(&LocalUse, u32, &Place<'tcx>)>>,
-                             opt_size: Option<u64>,
-                             patch: &mut MirPatch<'tcx>,
-                             dst_place: &Place<'tcx>) {
+    fn check_and_patch(
+        candidate: Location,
+        items: &Vec<Option<(&LocalUse, u32, &Place<'tcx>)>>,
+        opt_size: Option<u64>,
+        patch: &mut MirPatch<'tcx>,
+        dst_place: &Place<'tcx>,
+    ) {
         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
 
         if opt_size.is_some() && items.iter().all(
@@ -260,8 +256,10 @@ impl RestoreSubsliceArrayMoveOut {
         }
     }
 
-    fn try_get_item_source<'a, 'tcx>(local_use: &LocalUse,
-                                     mir: &'a Mir<'tcx>) -> Option<(u32, &'a Place<'tcx>)> {
+    fn try_get_item_source(
+        local_use: &LocalUse,
+        mir: &'a Mir<'tcx>
+    ) -> Option<(u32, &'a Place<'tcx>)> {
         if let Some(location) = local_use.first_use {
             let block = &mir[location.block];
             if block.statements.len() > location.statement_index {
@@ -298,7 +296,7 @@ struct RestoreDataCollector {
     candidates: Vec<Location>,
 }
 
-impl<'tcx> Visitor<'tcx> for RestoreDataCollector {
+impl Visitor<'tcx> for RestoreDataCollector {
     fn visit_assign(&mut self,
                     block: BasicBlock,
                     place: &Place<'tcx>,

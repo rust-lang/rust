@@ -34,10 +34,10 @@ pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
-fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       instance: ty::InstanceDef<'tcx>)
-                       -> &'tcx Mir<'tcx>
-{
+fn make_shim(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: ty::InstanceDef<'tcx>
+) -> &'tcx Mir<'tcx> {
     debug!("make_shim({:?})", instance);
 
     let mut result = match instance {
@@ -148,7 +148,7 @@ fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
     }
 }
 
-fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
+fn local_decls_for_sig(sig: &ty::FnSig<'tcx>, span: Span)
     -> IndexVec<Local, LocalDecl<'tcx>>
 {
     iter::once(temp_decl(Mutability::Mut, sig.output(), span))
@@ -157,11 +157,11 @@ fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
         .collect()
 }
 
-fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             def_id: DefId,
-                             ty: Option<Ty<'tcx>>)
-                             -> Mir<'tcx>
-{
+fn build_drop_shim(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    ty: Option<Ty<'tcx>>
+) -> Mir<'tcx> {
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
     // Check if this is a generator, if so, return the drop glue for it
@@ -242,13 +242,13 @@ pub struct DropShimElaborator<'a, 'tcx: 'a> {
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
+impl fmt::Debug for DropShimElaborator<'a, 'tcx> {
     fn fmt(&self, _f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         Ok(())
     }
 }
 
-impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
+impl DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     type Path = ();
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> { &mut self.patch }
@@ -286,11 +286,11 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 }
 
 /// Build a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
-fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              def_id: DefId,
-                              self_ty: Ty<'tcx>)
-                              -> Mir<'tcx>
-{
+fn build_clone_shim(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>
+) -> Mir<'tcx> {
     debug!("build_clone_shim(def_id={:?})", def_id);
 
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
@@ -329,7 +329,7 @@ struct CloneShimBuilder<'a, 'tcx: 'a> {
     sig: ty::FnSig<'tcx>,
 }
 
-impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
+impl CloneShimBuilder<'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            def_id: DefId,
            self_ty: Ty<'tcx>) -> Self {
@@ -667,13 +667,13 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 ///
 /// If `untuple_args` is a vec of types, the second argument of the
 /// function will be untupled as these types.
-fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             def_id: DefId,
-                             rcvr_adjustment: Adjustment,
-                             call_kind: CallKind,
-                             untuple_args: Option<&[Ty<'tcx>]>)
-                             -> Mir<'tcx>
-{
+fn build_call_shim(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    rcvr_adjustment: Adjustment,
+    call_kind: CallKind,
+    untuple_args: Option<&[Ty<'tcx>]>
+) -> Mir<'tcx> {
     debug!("build_call_shim(def_id={:?}, rcvr_adjustment={:?}, \
             call_kind={:?}, untuple_args={:?})",
            def_id, rcvr_adjustment, call_kind, untuple_args);
@@ -805,12 +805,12 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir
 }
 
-pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
-                                      ctor_id: ast::NodeId,
-                                      fields: &[hir::StructField],
-                                      span: Span)
-                                      -> Mir<'tcx>
-{
+pub fn build_adt_ctor(
+    infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
+    ctor_id: ast::NodeId,
+    fields: &[hir::StructField],
+    span: Span
+) -> Mir<'tcx> {
     let tcx = infcx.tcx;
     let gcx = tcx.global_tcx();
     let def_id = tcx.hir.local_def_id(ctor_id);

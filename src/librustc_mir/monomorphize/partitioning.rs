@@ -135,7 +135,7 @@ pub trait CodegenUnitExt<'tcx> {
         self.items().contains_key(item)
     }
 
-    fn name<'a>(&'a self) -> &'a InternedString
+    fn name(&'a self) -> &'a InternedString
         where 'tcx: 'a,
     {
         &self.as_codegen_unit().name()
@@ -149,10 +149,10 @@ pub trait CodegenUnitExt<'tcx> {
         WorkProductId::from_cgu_name(&self.name().as_str())
     }
 
-    fn items_in_deterministic_order<'a>(&self,
-                                        tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                        -> Vec<(MonoItem<'tcx>,
-                                                (Linkage, Visibility))> {
+    fn items_in_deterministic_order(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>
+    ) -> Vec<(MonoItem<'tcx>, (Linkage, Visibility))> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -195,7 +195,7 @@ pub trait CodegenUnitExt<'tcx> {
     }
 }
 
-impl<'tcx> CodegenUnitExt<'tcx> for CodegenUnit<'tcx> {
+impl CodegenUnitExt<'tcx> for CodegenUnit<'tcx> {
     fn as_codegen_unit(&self) -> &CodegenUnit<'tcx> {
         self
     }
@@ -213,7 +213,7 @@ fn fallback_cgu_name(tcx: TyCtxt) -> InternedString {
 }
 
 
-pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn partition<I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               mono_items: I,
                               strategy: PartitioningStrategy,
                               inlining_map: &InliningMap<'tcx>)
@@ -290,9 +290,10 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                             mono_items: I)
-                                             -> PreInliningPartitioning<'tcx>
+fn place_root_mono_items<I>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mono_items: I
+) -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = MonoItem<'tcx>>
 {
     let mut roots = FxHashSet();
@@ -487,9 +488,11 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<'tcx>,
-                             target_cgu_count: usize,
-                             crate_name: &str) {
+fn merge_codegen_units(
+    initial_partitioning: &mut PreInliningPartitioning<'tcx>,
+    target_cgu_count: usize,
+    crate_name: &str
+) {
     assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
 
@@ -522,9 +525,10 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     }
 }
 
-fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<'tcx>,
-                                         inlining_map: &InliningMap<'tcx>)
-                                         -> PostInliningPartitioning<'tcx> {
+fn place_inlined_mono_items(
+    initial_partitioning: PreInliningPartitioning<'tcx>,
+    inlining_map: &InliningMap<'tcx>
+) -> PostInliningPartitioning<'tcx> {
     let mut new_partitioning = Vec::new();
     let mut mono_item_placements = FxHashMap();
 
@@ -595,9 +599,11 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
         internalization_candidates,
     };
 
-    fn follow_inlining<'tcx>(mono_item: MonoItem<'tcx>,
-                             inlining_map: &InliningMap<'tcx>,
-                             visited: &mut FxHashSet<MonoItem<'tcx>>) {
+    fn follow_inlining(
+        mono_item: MonoItem<'tcx>,
+        inlining_map: &InliningMap<'tcx>,
+        visited: &mut FxHashSet<MonoItem<'tcx>>
+    ) {
         if !visited.insert(mono_item) {
             return;
         }
@@ -608,9 +614,11 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
     }
 }
 
-fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 partitioning: &mut PostInliningPartitioning<'tcx>,
-                                 inlining_map: &InliningMap<'tcx>) {
+fn internalize_symbols(
+    _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    partitioning: &mut PostInliningPartitioning<'tcx>,
+    inlining_map: &InliningMap<'tcx>
+) {
     if partitioning.codegen_units.len() == 1 {
         // Fast path for when there is only one codegen unit. In this case we
         // can internalize all candidates, since there is nowhere else they
@@ -673,9 +681,10 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 mono_item: MonoItem<'tcx>)
-                                                 -> Option<DefId> {
+fn characteristic_def_id_of_mono_item(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mono_item: MonoItem<'tcx>
+) -> Option<DefId> {
     match mono_item {
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
@@ -718,10 +727,11 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       def_id: DefId,
-                                       volatile: bool)
-                                       -> InternedString {
+fn compute_codegen_unit_name(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    volatile: bool,
+) -> InternedString {
     // Unfortunately we cannot just use the `ty::item_path` infrastructure here
     // because we need paths to modules and the DefIds of those are not
     // available anymore for external items.
@@ -760,9 +770,11 @@ fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString 
     Symbol::intern(&format!("{}{}", crate_name, index)).as_interned_str()
 }
 
-fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               label: &str,
-                               cgus: I)
+fn debug_dump<I>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    label: &str,
+    cgus: I
+)
     where I: Iterator<Item=&'b CodegenUnit<'tcx>>,
           'tcx: 'a + 'b
 {

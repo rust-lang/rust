@@ -129,7 +129,7 @@ pub enum DefiningTy<'tcx> {
     Const(DefId, &'tcx Substs<'tcx>),
 }
 
-impl<'tcx> DefiningTy<'tcx> {
+impl DefiningTy<'tcx> {
     /// Returns a list of all the upvar types for this MIR. If this is
     /// not a closure or generator, there are no upvars, and hence it
     /// will be an empty list. The order of types in this list will
@@ -229,7 +229,7 @@ pub enum RegionClassification {
 
 const FIRST_GLOBAL_INDEX: usize = 0;
 
-impl<'tcx> UniversalRegions<'tcx> {
+impl UniversalRegions<'tcx> {
     /// Creates a new and fully initialized `UniversalRegions` that
     /// contains indices for all the free regions found in the given
     /// MIR -- that is, all the regions that appear in the function's
@@ -433,9 +433,9 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 
     /// Get an iterator over all the early-bound regions that have names.
-    pub fn named_universal_regions<'s>(
-        &'s self,
-    ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + 's {
+    pub fn named_universal_regions(
+        &self,
+    ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + '_ {
         self.indices.indices.iter().map(|(&r, &v)| (r, v))
     }
 
@@ -457,7 +457,7 @@ struct UniversalRegionsBuilder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 
 const FR: NLLRegionVariableOrigin = NLLRegionVariableOrigin::FreeRegion;
 
-impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
+impl UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
     fn build(mut self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def_id={:?})", self.mir_def_id);
 
@@ -784,7 +784,7 @@ trait InferCtxtExt<'tcx> {
         T: TypeFoldable<'tcx>;
 }
 
-impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
+impl InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
@@ -829,7 +829,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'tcx> UniversalRegionIndices<'tcx> {
+impl UniversalRegionIndices<'tcx> {
     /// Initially, the `UniversalRegionIndices` map contains only the
     /// early-bound regions in scope. Once that is all setup, we come
     /// in later and instantiate the late-bound regions, and then we
@@ -873,7 +873,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
 /// This trait is used by the `impl-trait` constraint code to abstract
 /// over the `FreeRegionMap` from lexical regions and
 /// `UniversalRegions` (from NLL)`.
-impl<'tcx> FreeRegionRelations<'tcx> for UniversalRegions<'tcx> {
+impl FreeRegionRelations<'tcx> for UniversalRegions<'tcx> {
     fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool {
         let shorter = shorter.to_region_vid();
         assert!(self.is_universal_region(shorter));

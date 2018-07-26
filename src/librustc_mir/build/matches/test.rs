@@ -27,11 +27,11 @@ use rustc::hir::{RangeEnd, Mutability};
 use syntax_pos::Span;
 use std::cmp::Ordering;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl Builder<'a, 'gcx, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifyable pattern.
-    pub fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
+    pub fn test(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
             PatternKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => {
                 Test {
@@ -107,14 +107,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_cases_to_switch<'pat>(&mut self,
-                                     test_place: &Place<'tcx>,
-                                     candidate: &Candidate<'pat, 'tcx>,
-                                     switch_ty: Ty<'tcx>,
-                                     options: &mut Vec<u128>,
-                                     indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
-                                     -> bool
-    {
+    pub fn add_cases_to_switch(
+        &mut self,
+        test_place: &Place<'tcx>,
+        candidate: &Candidate<'pat, 'tcx>,
+        switch_ty: Ty<'tcx>,
+        options: &mut Vec<u128>,
+        indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>
+    ) -> bool {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
             Some(match_pair) => match_pair,
             _ => { return false; }
@@ -146,12 +146,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_variants_to_switch<'pat>(&mut self,
-                                        test_place: &Place<'tcx>,
-                                        candidate: &Candidate<'pat, 'tcx>,
-                                        variants: &mut BitVector)
-                                        -> bool
-    {
+    pub fn add_variants_to_switch(
+        &mut self,
+        test_place: &Place<'tcx>,
+        candidate: &Candidate<'pat, 'tcx>,
+        variants: &mut BitVector
+    ) -> bool {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
             Some(match_pair) => match_pair,
             _ => { return false; }
@@ -462,12 +462,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// apply. For now, we return false, indicate that the test does
     /// not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    pub fn sort_candidate<'pat>(&mut self,
-                                test_place: &Place<'tcx>,
-                                test: &Test<'tcx>,
-                                candidate: &Candidate<'pat, 'tcx>,
-                                resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>])
-                                -> bool {
+    pub fn sort_candidate(
+        &mut self,
+        test_place: &Place<'tcx>,
+        test: &Test<'tcx>,
+        candidate: &Candidate<'pat, 'tcx>,
+        resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>]
+    ) -> bool {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
@@ -615,10 +616,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn candidate_without_match_pair<'pat>(&mut self,
-                                          match_pair_index: usize,
-                                          candidate: &Candidate<'pat, 'tcx>)
-                                          -> Candidate<'pat, 'tcx> {
+    fn candidate_without_match_pair(
+        &mut self,
+        match_pair_index: usize,
+        candidate: &Candidate<'pat, 'tcx>
+    ) -> Candidate<'pat, 'tcx> {
         let other_match_pairs =
             candidate.match_pairs.iter()
                                  .enumerate()
@@ -636,13 +638,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn candidate_after_slice_test<'pat>(&mut self,
-                                        match_pair_index: usize,
-                                        candidate: &Candidate<'pat, 'tcx>,
-                                        prefix: &'pat [Pattern<'tcx>],
-                                        opt_slice: Option<&'pat Pattern<'tcx>>,
-                                        suffix: &'pat [Pattern<'tcx>])
-                                        -> Candidate<'pat, 'tcx> {
+    fn candidate_after_slice_test(
+        &mut self,
+        match_pair_index: usize,
+        candidate: &Candidate<'pat, 'tcx>,
+        prefix: &'pat [Pattern<'tcx>],
+        opt_slice: Option<&'pat Pattern<'tcx>>,
+        suffix: &'pat [Pattern<'tcx>]
+    ) -> Candidate<'pat, 'tcx> {
         let mut new_candidate =
             self.candidate_without_match_pair(match_pair_index, candidate);
         self.prefix_slice_suffix(
@@ -655,13 +658,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         new_candidate
     }
 
-    fn candidate_after_variant_switch<'pat>(&mut self,
-                                            match_pair_index: usize,
-                                            adt_def: &'tcx ty::AdtDef,
-                                            variant_index: usize,
-                                            subpatterns: &'pat [FieldPattern<'tcx>],
-                                            candidate: &Candidate<'pat, 'tcx>)
-                                            -> Candidate<'pat, 'tcx> {
+    fn candidate_after_variant_switch(
+        &mut self,
+        match_pair_index: usize,
+        adt_def: &'tcx ty::AdtDef,
+        variant_index: usize,
+        subpatterns: &'pat [FieldPattern<'tcx>],
+        candidate: &Candidate<'pat, 'tcx>
+    ) -> Candidate<'pat, 'tcx> {
         let match_pair = &candidate.match_pairs[match_pair_index];
 
         // So, if we have a match-pattern like `x @ Enum::Variant(P1, P2)`,
@@ -699,13 +703,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
+    fn error_simplifyable(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
         span_bug!(match_pair.pattern.span,
                   "simplifyable pattern found: {:?}",
                   match_pair.pattern)
     }
 }
 
-fn is_switch_ty<'tcx>(ty: Ty<'tcx>) -> bool {
+fn is_switch_ty(ty: Ty<'tcx>) -> bool {
     ty.is_integral() || ty.is_char() || ty.is_bool()
 }

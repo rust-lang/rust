@@ -31,7 +31,7 @@ use rustc::ty::{self, ParamEnv};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::graph::dominators::Dominators;
 
-pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
+pub(super) fn generate_invalidates(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
@@ -74,7 +74,7 @@ struct InvalidationGenerator<'cg, 'cx: 'cg, 'tcx: 'cx, 'gcx: 'tcx> {
 
 /// Visits the whole MIR and generates invalidates() facts
 /// Most of the code implementing this was stolen from borrow_check/mod.rs
-impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
+impl Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
     fn visit_statement(&mut self,
                        block: BasicBlock,
                        statement: &Statement<'tcx>,
@@ -285,7 +285,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
     }
 }
 
-impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
+impl InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
     /// Simulates dropping of a variable
     fn visit_terminator_drop(
         &mut self,

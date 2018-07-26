@@ -73,7 +73,7 @@ pub enum PassWhere {
 ///   or `typeck` appears in the name.
 /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
 ///   or `typeck` and `bar` both appear in the name.
-pub fn dump_mir<'a, 'gcx, 'tcx, F>(
+pub fn dump_mir<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
@@ -104,7 +104,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     );
 }
 
-pub fn dump_enabled<'a, 'gcx, 'tcx>(
+pub fn dump_enabled(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pass_name: &str,
     source: MirSource,
@@ -128,7 +128,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
 // `item_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
-fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
+fn dump_matched_mir_node<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
@@ -231,7 +231,7 @@ pub(crate) fn create_dump_file(
 }
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
+pub fn write_mir_pretty(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     single: Option<DefId>,
     w: &mut dyn Write,
@@ -270,7 +270,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
     Ok(())
 }
 
-pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(
+pub fn write_mir_fn<F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     src: MirSource,
     mir: &Mir<'tcx>,
@@ -294,7 +294,7 @@ where
 }
 
 /// Write out a human-readable textual representation for the given basic block.
-pub fn write_basic_block<'cx, 'gcx, 'tcx, F>(
+pub fn write_basic_block<F>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     block: BasicBlock,
     mir: &Mir<'tcx>,
@@ -386,7 +386,7 @@ struct ExtraComments<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     comments: Vec<String>,
 }
 
-impl<'cx, 'gcx, 'tcx> ExtraComments<'cx, 'gcx, 'tcx> {
+impl ExtraComments<'cx, 'gcx, 'tcx> {
     fn push(&mut self, lines: &str) {
         for line in lines.split('\n') {
             self.comments.push(line.to_string());
@@ -394,7 +394,7 @@ impl<'cx, 'gcx, 'tcx> ExtraComments<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
+impl Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, ty, literal } = constant;
@@ -513,7 +513,7 @@ fn write_scope_tree(
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-pub fn write_mir_intro<'a, 'gcx, 'tcx>(
+pub fn write_mir_intro(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     src: MirSource,
     mir: &Mir,

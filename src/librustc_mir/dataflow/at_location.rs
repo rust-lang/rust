@@ -199,7 +199,7 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
 }
 
 
-impl<'tcx, T> FlowAtLocation<T>
+impl<T> FlowAtLocation<T>
 where
     T: HasMoveData<'tcx> + BitDenotation<Idx = MovePathIndex>,
 {

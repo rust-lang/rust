@@ -10,7 +10,7 @@ use rustc_apfloat::Float;
 use interpret::eval_context::ValTy;
 use interpret::Place;
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     crate fn cast(
         &mut self,
         src: ValTy<'tcx>,

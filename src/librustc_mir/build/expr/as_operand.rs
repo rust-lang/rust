@@ -16,7 +16,7 @@ use hair::*;
 use rustc::middle::region;
 use rustc::mir::*;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl Builder<'_, 'gcx, 'tcx> {
     /// Returns an operand suitable for use until the end of the current
     /// scope expression.
     ///

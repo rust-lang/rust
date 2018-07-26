@@ -104,7 +104,7 @@ mod liveness;
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `errors_buffer` -- errors are sent here for future reporting
-pub(crate) fn type_check<'gcx, 'tcx>(
+pub(crate) fn type_check(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
@@ -213,7 +213,7 @@ struct TypeVerifier<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
     errors_reported: bool,
 }
 
-impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
+impl Visitor<'tcx> for TypeVerifier<'_, '_, 'gcx, 'tcx> {
     fn visit_span(&mut self, span: &Span) {
         if !span.is_dummy() {
             self.last_span = *span;
@@ -253,7 +253,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
+impl TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
             mir,
@@ -722,7 +722,7 @@ impl Locations {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
+impl TypeChecker<'a, 'gcx, 'tcx> {
     fn new(
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         mir: &'a Mir<'tcx>,
@@ -1799,7 +1799,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 pub struct TypeckMir;
 
 impl MirPass for TypeckMir {
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'_, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id;
         debug!("run_pass: {:?}", def_id);
 

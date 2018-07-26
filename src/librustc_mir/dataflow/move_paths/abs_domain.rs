@@ -35,7 +35,7 @@ pub trait Lift {
     type Abstract;
     fn lift(&self) -> Self::Abstract;
 }
-impl<'tcx> Lift for Operand<'tcx> {
+impl Lift for Operand<'tcx> {
     type Abstract = AbstractOperand;
     fn lift(&self) -> Self::Abstract { AbstractOperand }
 }
@@ -43,11 +43,11 @@ impl Lift for Local {
     type Abstract = AbstractOperand;
     fn lift(&self) -> Self::Abstract { AbstractOperand }
 }
-impl<'tcx> Lift for Ty<'tcx> {
+impl Lift for Ty<'tcx> {
     type Abstract = AbstractType;
     fn lift(&self) -> Self::Abstract { AbstractType }
 }
-impl<'tcx> Lift for PlaceElem<'tcx> {
+impl Lift for PlaceElem<'tcx> {
     type Abstract = AbstractElem<'tcx>;
     fn lift(&self) -> Self::Abstract {
         match *self {

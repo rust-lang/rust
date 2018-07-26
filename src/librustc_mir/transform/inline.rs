@@ -49,10 +49,7 @@ struct CallSite<'tcx> {
 }
 
 impl MirPass for Inline {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, source: MirSource, mir: &mut Mir<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(mir);
         }
@@ -64,7 +61,7 @@ struct Inliner<'a, 'tcx: 'a> {
     source: MirSource,
 }
 
-impl<'a, 'tcx> Inliner<'a, 'tcx> {
+impl Inliner<'a, 'tcx> {
     fn run_pass(&self, caller_mir: &mut Mir<'tcx>) {
         // Keep a queue of callsites to try inlining on. We take
         // advantage of the fact that queries detect cycles here to
@@ -602,9 +599,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          param_env: ty::ParamEnv<'tcx>,
-                          ty: Ty<'tcx>) -> Option<u64> {
+fn type_size_of(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>
+) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
@@ -628,7 +627,7 @@ struct Integrator<'a, 'tcx: 'a> {
     in_cleanup_block: bool,
 }
 
-impl<'a, 'tcx> Integrator<'a, 'tcx> {
+impl Integrator<'a, 'tcx> {
     fn update_target(&self, tgt: BasicBlock) -> BasicBlock {
         let new = BasicBlock::new(tgt.index() + self.block_idx);
         debug!("Updating target `{:?}`, new: `{:?}`", tgt, new);
@@ -636,7 +635,7 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
+impl MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
                    _ctxt: PlaceContext<'tcx>,

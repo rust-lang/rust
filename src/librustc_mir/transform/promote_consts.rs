@@ -83,7 +83,7 @@ struct TempCollector<'tcx> {
     mir: &'tcx Mir<'tcx>,
 }
 
-impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
+impl Visitor<'tcx> for TempCollector<'tcx> {
     fn visit_local(&mut self,
                    &index: &Local,
                    context: PlaceContext<'tcx>,
@@ -158,7 +158,7 @@ struct Promoter<'a, 'tcx: 'a> {
     keep_original: bool
 }
 
-impl<'a, 'tcx> Promoter<'a, 'tcx> {
+impl Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
         let span = self.promoted.span;
         self.promoted.basic_blocks_mut().push(BasicBlockData {
@@ -350,7 +350,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 }
 
 /// Replaces all temporaries with their promoted counterparts.
-impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
+impl MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
                    _: PlaceContext<'tcx>,
@@ -361,10 +361,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
-pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
-                                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    mut temps: IndexVec<Local, TempState>,
-                                    candidates: Vec<Candidate>) {
+pub fn promote_candidates(
+    mir: &mut Mir<'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mut temps: IndexVec<Local, TempState>,
+    candidates: Vec<Candidate>
+) {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
 

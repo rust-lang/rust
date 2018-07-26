@@ -23,7 +23,7 @@ use transform::{MirPass, MirSource};
 pub struct AddValidation;
 
 /// Determine the "context" of the place: Mutability and region.
-fn place_context<'a, 'tcx, D>(
+fn place_context<D>(
     place: &Place<'tcx>,
     local_decls: &D,
     tcx: TyCtxt<'a, 'tcx, 'tcx>
@@ -82,7 +82,7 @@ fn place_context<'a, 'tcx, D>(
 }
 
 /// Check if this function contains an unsafe block or is an unsafe function.
-fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> bool {
+fn fn_contains_unsafe(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> bool {
     use rustc::hir::intravisit::{self, Visitor, FnKind};
     use rustc::hir::map::blocks::FnLikeNode;
     use rustc::hir::map::Node;
@@ -100,7 +100,7 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
     }
 
     /// Decide if this FnLike is a closure
-    fn fn_is_closure<'a>(fn_like: FnLikeNode<'a>) -> bool {
+    fn fn_is_closure(fn_like: FnLikeNode<'a>) -> bool {
         match fn_like.kind() {
             FnKind::Closure(_) => true,
             FnKind::Method(..) | FnKind::ItemFn(..) => false,
@@ -165,8 +165,8 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
     // Run the visitor on the NodeId we got.  Seems like there is no uniform way to do that.
     finder.visit_body(tcx.hir.body(fn_like.body()));
 
-    impl<'tcx> Visitor<'tcx> for FindUnsafe {
-        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+    impl Visitor<'tcx> for FindUnsafe {
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, 'tcx> {
             intravisit::NestedVisitorMap::None
         }
 
@@ -187,11 +187,7 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
 }
 
 impl MirPass for AddValidation {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource,
-                          mir: &mut Mir<'tcx>)
-    {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         let emit_validate = tcx.sess.opts.debugging_opts.mir_emit_validate;
         if emit_validate == 0 {
             return;

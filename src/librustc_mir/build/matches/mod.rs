@@ -527,7 +527,7 @@ pub struct Test<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Main matching algorithm
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl Builder<'a, 'gcx, 'tcx> {
     /// The main match algorithm. It begins with a set of candidates
     /// `candidates` and has the job of generating code to determine
     /// which of these candidates, if any, is the correct one. The
@@ -548,13 +548,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// up the list of candidates and recurse with a non-exhaustive
     /// list. This is important to keep the size of the generated code
     /// under control. See `test_candidates` for more details.
-    fn match_candidates<'pat>(&mut self,
-                              span: Span,
-                              arm_blocks: &mut ArmBlocks,
-                              mut candidates: Vec<Candidate<'pat, 'tcx>>,
-                              mut block: BasicBlock)
-                              -> Vec<BasicBlock>
-    {
+    fn match_candidates(
+        &mut self,
+        span: Span,
+        arm_blocks: &mut ArmBlocks,
+        mut candidates: Vec<Candidate<'pat, 'tcx>>,
+        mut block: BasicBlock
+    ) -> Vec<BasicBlock> {
         debug!("matched_candidate(span={:?}, block={:?}, candidates={:?})",
                span, block, candidates);
 
@@ -770,13 +770,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// In addition to avoiding exponential-time blowups, this algorithm
     /// also has nice property that each guard and arm is only generated
     /// once.
-    fn test_candidates<'pat>(&mut self,
-                             span: Span,
-                             arm_blocks: &mut ArmBlocks,
-                             candidates: &[Candidate<'pat, 'tcx>],
-                             block: BasicBlock)
-                             -> (Vec<BasicBlock>, usize)
-    {
+    fn test_candidates(
+        &mut self,
+        span: Span,
+        arm_blocks: &mut ArmBlocks,
+        candidates: &[Candidate<'pat, 'tcx>],
+        block: BasicBlock
+    ) -> (Vec<BasicBlock>, usize) {
         // extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
         let mut test = self.test(match_pair);
@@ -862,11 +862,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// bindings, further tests would be a use-after-move (which would
     /// in turn be detected by the borrowck code that runs on the
     /// MIR).
-    fn bind_and_guard_matched_candidate<'pat>(&mut self,
-                                              mut block: BasicBlock,
-                                              arm_blocks: &mut ArmBlocks,
-                                              candidate: Candidate<'pat, 'tcx>)
-                                              -> Option<BasicBlock> {
+    fn bind_and_guard_matched_candidate(
+        &mut self,
+        mut block: BasicBlock,
+        arm_blocks: &mut ArmBlocks,
+        candidate: Candidate<'pat, 'tcx>
+    ) -> Option<BasicBlock> {
         debug!("bind_and_guard_matched_candidate(block={:?}, candidate={:?})",
                block, candidate);
 

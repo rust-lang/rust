@@ -75,7 +75,7 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> BorrowCheckResult<'tcx> {
+fn mir_borrowck(tcx: TyCtxt<'_, 'tcx, 'tcx>, def_id: DefId) -> BorrowCheckResult<'tcx> {
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
@@ -125,8 +125,8 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> BorrowC
     opt_closure_req
 }
 
-fn do_mir_borrowck<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+fn do_mir_borrowck(
+    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     input_mir: &Mir<'gcx>,
     def_id: DefId,
 ) -> BorrowCheckResult<'gcx> {
@@ -404,7 +404,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     type FlowState = Flows<'cx, 'gcx, 'tcx>;
 
     fn mir(&self) -> &'cx Mir<'tcx> {
@@ -803,7 +803,7 @@ impl InitializationRequiringAction {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Invokes `access_place` as appropriate for dropping the value
     /// at `drop_place`. Note that the *actual* `Drop` in the MIR is
     /// always for a variable (e.g., `Drop(x)`) -- but we recursively
@@ -1421,7 +1421,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn check_if_reassignment_to_immutable_state(
         &mut self,
         context: Context,
@@ -1789,9 +1789,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// Adds the place into the used mutable variables set
-    fn add_used_mut<'d>(
+    fn add_used_mut(
         &mut self,
-        root_place: RootPlace<'d, 'tcx>,
+        root_place: RootPlace<'_, 'tcx>,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         match root_place {
@@ -1838,11 +1838,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Whether this value be written or borrowed mutably.
     /// Returns the root place if the place passed in is a projection.
-    fn is_mutable<'d>(
+    fn is_mutable(
         &self,
-        place: &'d Place<'tcx>,
+        place: &'place Place<'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
-    ) -> Result<RootPlace<'d, 'tcx>, &'d Place<'tcx>> {
+    ) -> Result<RootPlace<'place, 'tcx>, &'place Place<'tcx>> {
         match *place {
             Place::Local(local) => {
                 let local = &self.mir.local_decls[local];
@@ -2017,13 +2017,13 @@ enum Overlap {
     Disjoint,
 }
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // FIXME (#16118): function intended to allow the borrow checker
     // to be less precise in its handling of Box while still allowing
     // moves out of a Box. They should be removed when/if we stop
     // treating Box specially (e.g. when/if DerefMove is added...)
 
-    fn base_path<'d>(&self, place: &'d Place<'tcx>) -> &'d Place<'tcx> {
+    fn base_path(&self, place: &'place Place<'tcx>) -> &'place Place<'tcx> {
         //! Returns the base of the leftmost (deepest) dereference of an
         //! Box in `place`. If there is no dereference of an Box
         //! in `place`, then it just returns `place` itself.

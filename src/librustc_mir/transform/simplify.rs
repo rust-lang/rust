@@ -63,14 +63,11 @@ pub fn simplify_cfg(mir: &mut Mir) {
 }
 
 impl MirPass for SimplifyCfg {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
+    fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass<'a, 'tcx>(&self,
-                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, mir);
         simplify_cfg(mir);
     }
@@ -81,7 +78,7 @@ pub struct CfgSimplifier<'a, 'tcx: 'a> {
     pred_count: IndexVec<BasicBlock, u32>
 }
 
-impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
+impl CfgSimplifier<'a, 'tcx> {
     pub fn new(mir: &'a mut Mir<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, mir.basic_blocks());
 
@@ -281,10 +278,7 @@ pub fn remove_dead_blocks(mir: &mut Mir) {
 pub struct SimplifyLocals;
 
 impl MirPass for SimplifyLocals {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         let mut marker = DeclMarker { locals: BitVector::new(mir.local_decls.len()) };
         marker.visit_mir(mir);
         // Return pointer and arguments are always live
@@ -308,7 +302,7 @@ impl MirPass for SimplifyLocals {
 }
 
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
-fn make_local_map<'tcx, I: Idx, V>(vec: &mut IndexVec<I, V>, mask: BitVector) -> Vec<usize> {
+fn make_local_map<I: Idx, V>(vec: &mut IndexVec<I, V>, mask: BitVector) -> Vec<usize> {
     let mut map: Vec<usize> = ::std::iter::repeat(!0).take(vec.len()).collect();
     let mut used = 0;
     for alive_index in mask.iter() {
@@ -326,7 +320,7 @@ struct DeclMarker {
     pub locals: BitVector,
 }
 
-impl<'tcx> Visitor<'tcx> for DeclMarker {
+impl Visitor<'tcx> for DeclMarker {
     fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
         // ignore these altogether, they get removed along with their otherwise unused decls.
         if ctx != PlaceContext::StorageLive && ctx != PlaceContext::StorageDead {
@@ -339,7 +333,7 @@ struct LocalUpdater {
     map: Vec<usize>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
+impl MutVisitor<'tcx> for LocalUpdater {
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
         // Remove unnecessary StorageLive and StorageDead annotations.
         data.statements.retain(|stmt| {

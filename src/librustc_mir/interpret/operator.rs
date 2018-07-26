@@ -9,7 +9,7 @@ use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc::mir::interpret::{EvalResult, Scalar, Value};
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
@@ -56,7 +56,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Returns the result of the specified operation and whether it overflowed.
     pub fn binary_op(
         &self,

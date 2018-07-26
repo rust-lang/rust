@@ -27,7 +27,7 @@ use dataflow::move_paths::MovePathIndex;
 use dataflow::{FlowAtLocation, MovingOutStatements};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     pub(super) fn report_use_of_moved_or_uninitialized(
         &mut self,
         _context: Context,
@@ -684,7 +684,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
 pub(super) struct IncludingDowncast(bool);
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // End-user visible description of `place` if one can be found. If the
     // place is a temporary for instance, None will be returned.
     pub(super) fn describe_place(&self, place: &Place<'tcx>) -> Option<String> {

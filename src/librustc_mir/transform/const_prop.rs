@@ -36,10 +36,7 @@ use rustc::ty::layout::{
 pub struct ConstProp;
 
 impl MirPass for ConstProp {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, source: MirSource, mir: &mut Mir<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;
@@ -78,7 +75,7 @@ struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
     param_env: ParamEnv<'tcx>,
 }
 
-impl<'a, 'b, 'tcx> LayoutOf for &'a ConstPropagator<'a, 'b, 'tcx> {
+impl LayoutOf for &'a ConstPropagator<'a, 'b, 'tcx> {
     type Ty = ty::Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
@@ -87,14 +84,14 @@ impl<'a, 'b, 'tcx> LayoutOf for &'a ConstPropagator<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> HasDataLayout for &'a ConstPropagator<'a, 'b, 'tcx> {
+impl HasDataLayout for &'a ConstPropagator<'a, 'b, 'tcx> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for &'a ConstPropagator<'a, 'b, 'tcx> {
+impl HasTyCtxt<'tcx> for &'a ConstPropagator<'a, 'b, 'tcx> {
     #[inline]
     fn tcx<'c>(&'c self) -> TyCtxt<'c, 'tcx, 'tcx> {
         self.tcx
@@ -382,9 +379,11 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          param_env: ty::ParamEnv<'tcx>,
-                          ty: ty::Ty<'tcx>) -> Option<u64> {
+fn type_size_of(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: ty::Ty<'tcx>
+) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
@@ -414,7 +413,7 @@ impl CanConstProp {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for CanConstProp {
+impl Visitor<'tcx> for CanConstProp {
     fn visit_local(
         &mut self,
         &local: &Local,
@@ -442,7 +441,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     }
 }
 
-impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
+impl Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
     fn visit_constant(
         &mut self,
         constant: &Constant<'tcx>,

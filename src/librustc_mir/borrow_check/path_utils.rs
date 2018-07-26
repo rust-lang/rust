@@ -21,8 +21,8 @@ use rustc_data_structures::graph::dominators::Dominators;
 /// Returns true if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and
 /// Activation phases.
-pub(super) fn allow_two_phase_borrow<'a, 'tcx, 'gcx: 'tcx>(
-    tcx: &TyCtxt<'a, 'gcx, 'tcx>,
+pub(super) fn allow_two_phase_borrow(
+    tcx: &TyCtxt<'_, '_, '_>,
     kind: BorrowKind
 ) -> bool {
     tcx.two_phase_borrows()
@@ -38,9 +38,9 @@ pub(super) enum Control {
 }
 
 /// Encapsulates the idea of iterating over every borrow that involves a particular path
-pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
+pub(super) fn each_borrow_involving_path<'gcx, 'tcx, F, I, S> (
     s: &mut S,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     _context: Context,
     access_place: (ShallowOrDeep, &Place<'tcx>),
@@ -74,7 +74,7 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     }
 }
 
-pub(super) fn is_active<'tcx>(
+pub(super) fn is_active(
     dominators: &Dominators<BasicBlock>,
     borrow_data: &BorrowData<'tcx>,
     location: Location
@@ -138,7 +138,7 @@ pub(super) fn is_active<'tcx>(
 
 /// Determines if a given borrow is borrowing local data
 /// This is called for all Yield statements on movable generators
-pub(super) fn borrow_of_local_data<'tcx>(place: &Place<'tcx>) -> bool {
+pub(super) fn borrow_of_local_data(place: &Place<'tcx>) -> bool {
     match place {
         Place::Promoted(_) |
         Place::Static(..) => false,

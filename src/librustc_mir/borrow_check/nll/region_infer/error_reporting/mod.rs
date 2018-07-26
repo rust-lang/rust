@@ -54,7 +54,7 @@ impl fmt::Display for ConstraintCategory {
     }
 }
 
-impl<'tcx> RegionInferenceContext<'tcx> {
+impl RegionInferenceContext<'tcx> {
     /// Walks the graph of constraints (where `'a: 'b` is considered
     /// an edge `'a -> 'b`) to find all paths from `from_region` to
     /// `to_region`. The paths are accumulated into the vector

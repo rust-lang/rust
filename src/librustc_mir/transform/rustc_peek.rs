@@ -32,8 +32,7 @@ use dataflow::has_rustc_mir_with;
 pub struct SanityCheck;
 
 impl MirPass for SanityCheck {
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id;
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         if !tcx.has_attr(def_id, "rustc_mir") {
@@ -92,11 +91,13 @@ impl MirPass for SanityCheck {
 /// (If there are any calls to `rustc_peek` that do not match the
 /// expression form above, then that emits an error as well, but those
 /// errors are not intended to be used for unit tests.)
-pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                mir: &Mir<'tcx>,
-                                                id: ast::NodeId,
-                                                _attributes: &[ast::Attribute],
-                                                results: &DataflowResults<O>)
+pub fn sanity_check_via_rustc_peek<O>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    id: ast::NodeId,
+    _attributes: &[ast::Attribute],
+    results: &DataflowResults<O>
+)
     where O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);
@@ -109,10 +110,12 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           mir: &Mir<'tcx>,
-                           results: &DataflowResults<O>,
-                           bb: mir::BasicBlock) where
+fn each_block<O>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    results: &DataflowResults<O>,
+    bb: mir::BasicBlock
+) where
     O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     let move_data = results.0.operator.move_data();
@@ -223,9 +226,10 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       form `&expr`"));
 }
 
-fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           terminator: &'a Option<mir::Terminator<'tcx>>)
-                           -> Option<(&'a [mir::Operand<'tcx>], Span)> {
+fn is_rustc_peek(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    terminator: &'a Option<mir::Terminator<'tcx>>
+) -> Option<(&'a [mir::Operand<'tcx>], Span)> {
     if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
         if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind {
             if let mir::Operand::Constant(ref func) = *oper {

@@ -134,7 +134,7 @@ pub struct LivenessResults<V: Idx> {
 }
 
 impl<V: Idx> LivenessResults<V> {
-    pub fn compute<'tcx>(
+    pub fn compute(
         mir: &Mir<'tcx>,
         map: &impl LiveVariableMap<LiveVar = V>,
     ) -> LivenessResults<V> {
@@ -163,7 +163,7 @@ impl<V: Idx> LivenessResults<V> {
 /// Compute which local variables are live within the given function
 /// `mir`. The liveness mode `mode` determines what sorts of uses are
 /// considered to make a variable live (e.g., do drops count?).
-pub fn liveness_of_locals<'tcx, V: Idx>(
+pub fn liveness_of_locals<V: Idx>(
     mir: &Mir<'tcx>,
     mode: LivenessMode,
     map: &impl LiveVariableMap<LiveVar = V>,
@@ -216,7 +216,7 @@ impl<V: Idx> LivenessResult<V> {
     /// basic block `block`.  At each point within `block`, invokes
     /// the callback `op` with the current location and the set of
     /// variables that are live on entry to that location.
-    pub fn simulate_block<'tcx, OP>(
+    pub fn simulate_block<OP>(
         &self,
         mir: &Mir<'tcx>,
         block: BasicBlock,
@@ -281,7 +281,7 @@ pub enum DefUse {
     Use,
 }
 
-pub fn categorize<'tcx>(context: PlaceContext<'tcx>, mode: LivenessMode) -> Option<DefUse> {
+pub fn categorize(context: PlaceContext<'tcx>, mode: LivenessMode) -> Option<DefUse> {
     match context {
         ///////////////////////////////////////////////////////////////////////////
         // DEFS
@@ -412,7 +412,7 @@ where
     /// Update `bits` with the effects of `value` and call `callback`. We
     /// should always visit in reverse order. This method assumes that we have
     /// not visited anything before; if you have, clear `bits` first.
-    fn update_bits_and_do_callback<'tcx, OP>(
+    fn update_bits_and_do_callback<OP>(
         &mut self,
         location: Location,
         value: &impl MirVisitable<'tcx>,
@@ -427,7 +427,7 @@ where
     }
 }
 
-impl<'tcx, 'lv, V, M> Visitor<'tcx> for DefsUsesVisitor<'lv, V, M>
+impl<V, M> Visitor<'tcx> for DefsUsesVisitor<'lv, V, M>
 where
     V: Idx,
     M: LiveVariableMap<LiveVar = V>,
@@ -443,7 +443,7 @@ where
     }
 }
 
-fn block<'tcx, V: Idx>(
+fn block<V: Idx>(
     mode: LivenessMode,
     map: &impl LiveVariableMap<LiveVar = V>,
     b: &BasicBlockData<'tcx>,
@@ -473,8 +473,8 @@ fn block<'tcx, V: Idx>(
     visitor.defs_uses
 }
 
-pub fn dump_mir<'a, 'tcx, V: Idx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn dump_mir<V: Idx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
     pass_name: &str,
     source: MirSource,
     mir: &Mir<'tcx>,
@@ -491,8 +491,8 @@ pub fn dump_mir<'a, 'tcx, V: Idx>(
     dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, map, result);
 }
 
-fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn dump_matched_mir_node<V: Idx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
     pass_name: &str,
     node_path: &str,
     source: MirSource,
@@ -515,8 +515,8 @@ fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
     });
 }
 
-pub fn write_mir_fn<'a, 'tcx, V: Idx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn write_mir_fn<V: Idx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
     src: MirSource,
     mir: &Mir<'tcx>,
     map: &dyn LiveVariableMap<LiveVar = V>,

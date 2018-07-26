@@ -51,12 +51,12 @@ impl ConstraintGraph {
     }
 }
 
-crate struct Edges<'s> {
-    graph: &'s ConstraintGraph,
+crate struct Edges<'graph> {
+    graph: &'graph ConstraintGraph,
     pointer: Option<ConstraintIndex>,
 }
 
-impl<'s> Iterator for Edges<'s> {
+impl Iterator for Edges<'graph> {
     type Item = ConstraintIndex;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -74,7 +74,7 @@ crate struct RegionGraph<'s> {
     constraint_graph: &'s ConstraintGraph,
 }
 
-impl<'s> RegionGraph<'s> {
+impl RegionGraph<'s> {
     /// Create a "dependency graph" where each region constraint `R1:
     /// R2` is treated as an edge `R1 -> R2`. We use this graph to
     /// construct SCCs for region inference but also for error
@@ -101,7 +101,7 @@ crate struct Successors<'s> {
     edges: Edges<'s>,
 }
 
-impl<'s> Iterator for Successors<'s> {
+impl Iterator for Successors<'s> {
     type Item = RegionVid;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -109,18 +109,18 @@ impl<'s> Iterator for Successors<'s> {
     }
 }
 
-impl<'s> graph::DirectedGraph for RegionGraph<'s> {
+impl graph::DirectedGraph for RegionGraph<'_> {
     type Node = RegionVid;
 }
 
-impl<'s> graph::WithNumNodes for RegionGraph<'s> {
+impl graph::WithNumNodes for RegionGraph<'_> {
     fn num_nodes(&self) -> usize {
         self.constraint_graph.first_constraints.len()
     }
 }
 
-impl<'s> graph::WithSuccessors for RegionGraph<'s> {
-    fn successors<'graph>(
+impl graph::WithSuccessors for RegionGraph<'_> {
+    fn successors(
         &'graph self,
         node: Self::Node,
     ) -> <Self as graph::GraphSuccessors<'graph>>::Iter {
@@ -128,7 +128,7 @@ impl<'s> graph::WithSuccessors for RegionGraph<'s> {
     }
 }
 
-impl<'s, 'graph> graph::GraphSuccessors<'graph> for RegionGraph<'s> {
+impl graph::GraphSuccessors<'graph> for RegionGraph<'s> {
     type Item = RegionVid;
     type Iter = Successors<'graph>;
 }

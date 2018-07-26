@@ -35,7 +35,7 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     all_facts: &'a mut Option<AllFacts>,
 }
 
-impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
+impl ConstraintConversion<'a, 'gcx, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
@@ -193,8 +193,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx>
-    for &'a mut ConstraintConversion<'b, 'gcx, 'tcx>
+impl TypeOutlivesDelegate<'tcx> for &'_ mut ConstraintConversion<'_, 'gcx, 'tcx>
 {
     fn push_sub_region_constraint(
         &mut self,
