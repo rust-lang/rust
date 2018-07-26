@@ -39,8 +39,8 @@ script:
     cat stdout.real stderr.real &&
     # Test `cargo miri` output. Not on mac because output redirecting doesn't
     # work. There is no error. It just stops CI.
-    diff stdout.ref stdout.real &&
-    diff stderr.ref stderr.real
+    diff -u stdout.ref stdout.real &&
+    diff -u stderr.ref stderr.real
   fi &&
   # Test `cargo miri test`
   #cargo miri test &&
