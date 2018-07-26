@@ -612,7 +612,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
             // Stub out all the other pthread calls to just return 0
             link_name if link_name.starts_with("pthread_") => {
-                info!("ignoring C ABI call: {}", link_name);
+                debug!("ignoring C ABI call: {}", link_name);
                 self.write_null(dest, dest_ty)?;
             }
 

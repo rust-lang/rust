@@ -30,9 +30,13 @@ script:
   RUST_BACKTRACE=1 cargo test --release --all-features --all &&
   cargo install --all-features --force
 - |
-  # Test cargo miri
+  # Test `cargo miri`
   cd cargo-miri-test &&
-  cargo miri &&
+  MIRI_SYSROOT=~/.xargo/HOST cargo miri -q -- -Zmiri-start-fn >stdout.real 2>stderr.real &&
+  # Test `cargo miri` output.
+  diff stdout.ref stdout.real &&
+  diff stderr.ref stderr.real &&
+  # Test `cargo miri test`
   #cargo miri test &&
   cd ..
 - |
