@@ -8,6 +8,7 @@ pub trait Sized {}
 #[lang="copy"]
 pub unsafe trait Copy {}
 
+unsafe impl Copy for bool {}
 unsafe impl Copy for u8 {}
 unsafe impl Copy for u16 {}
 unsafe impl Copy for u32 {}
@@ -37,6 +38,30 @@ impl Mul for u8 {
 
     fn mul(self, rhs: Self) -> Self {
         self * rhs
+    }
+}
+
+#[lang="bitor"]
+pub trait BitOr<RHS = Self> {
+    type Output;
+
+    #[must_use]
+    fn bitor(self, rhs: RHS) -> Self::Output;
+}
+
+impl BitOr for bool {
+    type Output = bool;
+
+    fn bitor(self, rhs: bool) -> bool {
+        self | rhs
+    }
+}
+
+impl<'a> BitOr<bool> for &'a bool {
+    type Output = bool;
+
+    fn bitor(self, rhs: bool) -> bool {
+        *self | rhs
     }
 }
 

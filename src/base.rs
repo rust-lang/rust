@@ -242,6 +242,9 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                     let rhs = trans_operand(fx, rhs).load_value(fx);
 
                     let res = match ty.sty {
+                        TypeVariants::TyBool => {
+                            trans_bool_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
+                        }
                         TypeVariants::TyUint(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false, false)
                         }
@@ -424,6 +427,33 @@ macro_rules! binop_match {
             )*
         }
     }
+}
+
+pub fn trans_bool_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
+    let res = binop_match! {
+        fx, bin_op, false, lhs, rhs, "bool";
+        Add (_) bug;
+        Sub (_) bug;
+        Mul (_) bug;
+        Div (_) bug;
+        Rem (_) bug;
+        BitXor (_) bxor;
+        BitAnd (_) band;
+        BitOr (_) bor;
+        Shl (_) bug;
+        Shr (_) bug;
+
+        Eq (_) icmp(Equal);
+        Lt (_) icmp(UnsignedLessThan);
+        Le (_) icmp(UnsignedLessThanOrEqual);
+        Ne (_) icmp(NotEqual);
+        Ge (_) icmp(UnsignedGreaterThanOrEqual);
+        Gt (_) icmp(UnsignedGreaterThan);
+
+        Offset (_) bug;
+    };
+
+    CValue::ByVal(res, fx.layout_of(ty))
 }
 
 pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
