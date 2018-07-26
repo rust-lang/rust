@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
-pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
+pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
+use self::code_stats::CodeStats;
 
 use hir::def_id::CrateNum;
 use ich::Fingerprint;
