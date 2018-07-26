@@ -39,12 +39,13 @@ enum ConstraintCategory {
 
 impl fmt::Display for ConstraintCategory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Must end with a space. Allows for empty names to be provided.
         match self {
-            ConstraintCategory::Assignment => write!(f, "assignment"),
-            ConstraintCategory::Return => write!(f, "return"),
-            ConstraintCategory::Cast => write!(f, "cast"),
-            ConstraintCategory::CallArgument => write!(f, "argument"),
-            _ => write!(f, "free region"),
+            ConstraintCategory::Assignment => write!(f, "assignment "),
+            ConstraintCategory::Return => write!(f, "return "),
+            ConstraintCategory::Cast => write!(f, "cast "),
+            ConstraintCategory::CallArgument => write!(f, "argument "),
+            _ => write!(f, ""),
         }
     }
 }
@@ -421,7 +422,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             },
             _ => {
                 diag.span_label(span, format!(
-                    "{} requires that `{}` must outlive `{}`",
+                    "{}requires that `{}` must outlive `{}`",
                     category, fr_name, outlived_fr_name,
                 ));
             },

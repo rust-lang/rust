@@ -10,7 +10,7 @@ error: unsatisfied lifetime constraints
 LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
    |                ----------^^^^^-----------------
    |                |   |     |
-   |                |   |     free region requires that `'1` must outlive `'2`
+   |                |   |     requires that `'1` must outlive `'2`
    |                |   has type `&'1 i32`
    |                lifetime `'2` appears in return type
 

@@ -9,7 +9,7 @@ LL |  ||         || {
    |  ||_________^
 LL | |||             x.push(())
 LL | |||         }
-   | |||_________^ free region requires that `'1` must outlive `'2`
+   | |||_________^ requires that `'1` must outlive `'2`
 LL |  ||     };
    |  ||     -
    |  ||_____|
