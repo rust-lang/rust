@@ -596,37 +596,38 @@ pub fn host_triple() -> &'static str {
     (option_env!("CFG_COMPILER_HOST_TRIPLE")).expect("CFG_COMPILER_HOST_TRIPLE")
 }
 
-/// Some reasonable defaults
-pub fn basic_options() -> Options {
-    Options {
-        crate_types: Vec::new(),
-        optimize: OptLevel::No,
-        debuginfo: DebugInfo::None,
-        lint_opts: Vec::new(),
-        lint_cap: None,
-        describe_lints: false,
-        output_types: OutputTypes(BTreeMap::new()),
-        search_paths: SearchPaths::new(),
-        maybe_sysroot: None,
-        target_triple: TargetTriple::from_triple(host_triple()),
-        test: false,
-        incremental: None,
-        debugging_opts: basic_debugging_options(),
-        prints: Vec::new(),
-        borrowck_mode: BorrowckMode::Ast,
-        cg: basic_codegen_options(),
-        error_format: ErrorOutputType::default(),
-        externs: Externs(BTreeMap::new()),
-        crate_name: None,
-        alt_std_name: None,
-        libs: Vec::new(),
-        unstable_features: UnstableFeatures::Disallow,
-        debug_assertions: true,
-        actually_rustdoc: false,
-        cli_forced_codegen_units: None,
-        cli_forced_thinlto_off: false,
-        remap_path_prefix: Vec::new(),
-        edition: DEFAULT_EDITION,
+impl Default for Options {
+    fn default() -> Options {
+        Options {
+            crate_types: Vec::new(),
+            optimize: OptLevel::No,
+            debuginfo: DebugInfo::None,
+            lint_opts: Vec::new(),
+            lint_cap: None,
+            describe_lints: false,
+            output_types: OutputTypes(BTreeMap::new()),
+            search_paths: SearchPaths::new(),
+            maybe_sysroot: None,
+            target_triple: TargetTriple::from_triple(host_triple()),
+            test: false,
+            incremental: None,
+            debugging_opts: basic_debugging_options(),
+            prints: Vec::new(),
+            borrowck_mode: BorrowckMode::Ast,
+            cg: basic_codegen_options(),
+            error_format: ErrorOutputType::default(),
+            externs: Externs(BTreeMap::new()),
+            crate_name: None,
+            alt_std_name: None,
+            libs: Vec::new(),
+            unstable_features: UnstableFeatures::Disallow,
+            debug_assertions: true,
+            actually_rustdoc: false,
+            cli_forced_codegen_units: None,
+            cli_forced_thinlto_off: false,
+            remap_path_prefix: Vec::new(),
+            edition: DEFAULT_EDITION,
+        }
     }
 }
 
@@ -2529,6 +2530,7 @@ mod tests {
     use syntax::symbol::Symbol;
     use syntax::edition::{Edition, DEFAULT_EDITION};
     use syntax;
+    use super::Options;
 
     fn optgroups() -> getopts::Options {
         let mut opts = getopts::Options::new();
@@ -2613,9 +2615,9 @@ mod tests {
 
     #[test]
     fn test_output_types_tracking_hash_different_paths() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
+        let mut v3 = Options::default();
 
         v1.output_types =
             OutputTypes::new(&[(OutputType::Exe, Some(PathBuf::from("./some/thing")))]);
@@ -2635,8 +2637,8 @@ mod tests {
 
     #[test]
     fn test_output_types_tracking_hash_different_construction_order() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
 
         v1.output_types = OutputTypes::new(&[
             (OutputType::Exe, Some(PathBuf::from("./some/thing"))),
@@ -2656,9 +2658,9 @@ mod tests {
 
     #[test]
     fn test_externs_tracking_hash_different_construction_order() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
+        let mut v3 = Options::default();
 
         v1.externs = Externs::new(mk_map(vec![
             (
@@ -2705,9 +2707,9 @@ mod tests {
 
     #[test]
     fn test_lints_tracking_hash_different_values() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
+        let mut v3 = Options::default();
 
         v1.lint_opts = vec![
             (String::from("a"), lint::Allow),
@@ -2742,8 +2744,8 @@ mod tests {
 
     #[test]
     fn test_lints_tracking_hash_different_construction_order() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
 
         v1.lint_opts = vec![
             (String::from("a"), lint::Allow),
@@ -2768,10 +2770,10 @@ mod tests {
 
     #[test]
     fn test_search_paths_tracking_hash_different_order() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
-        let mut v4 = super::basic_options();
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
+        let mut v3 = Options::default();
+        let mut v4 = Options::default();
 
         // Reference
         v1.search_paths
@@ -2831,10 +2833,10 @@ mod tests {
 
     #[test]
     fn test_native_libs_tracking_hash_different_values() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
-        let mut v4 = super::basic_options();
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
+        let mut v3 = Options::default();
+        let mut v4 = Options::default();
 
         // Reference
         v1.libs = vec![
@@ -2881,9 +2883,9 @@ mod tests {
 
     #[test]
     fn test_native_libs_tracking_hash_different_order() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
+        let mut v3 = Options::default();
 
         // Reference
         v1.libs = vec![
@@ -2916,8 +2918,8 @@ mod tests {
 
     #[test]
     fn test_codegen_options_tracking_hash() {
-        let reference = super::basic_options();
-        let mut opts = super::basic_options();
+        let reference = Options::default();
+        let mut opts = Options::default();
 
         // Make sure the changing an [UNTRACKED] option leaves the hash unchanged
         opts.cg.ar = Some(String::from("abc"));
@@ -3054,8 +3056,8 @@ mod tests {
 
     #[test]
     fn test_debugging_options_tracking_hash() {
-        let reference = super::basic_options();
-        let mut opts = super::basic_options();
+        let reference = Options::default();
+        let mut opts = Options::default();
 
         // Make sure the changing an [UNTRACKED] option leaves the hash unchanged
         opts.debugging_opts.verbose = true;
@@ -3184,7 +3186,7 @@ mod tests {
     #[test]
     fn test_edition_parsing() {
         // test default edition
-        let options = super::basic_options();
+        let options = Options::default();
         assert!(options.edition == DEFAULT_EDITION);
 
         let matches = optgroups()

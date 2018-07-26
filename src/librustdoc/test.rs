@@ -83,7 +83,7 @@ pub fn run(input_path: &Path,
             ..config::basic_debugging_options()
         },
         edition,
-        ..config::basic_options().clone()
+        ..config::Options::default()
     };
     driver::spawn_thread_pool(sessopts, |sessopts| {
         let codemap = Lrc::new(CodeMap::new(sessopts.file_path_mapping()));
@@ -230,7 +230,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             ..config::basic_debugging_options()
         },
         edition,
-        ..config::basic_options().clone()
+        ..config::Options::default()
     };
 
     // Shuffle around a few input and output handles here. We're going to pass

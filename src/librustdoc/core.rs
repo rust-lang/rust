@@ -43,7 +43,7 @@ use clean;
 use clean::Clean;
 use html::render::RenderInfo;
 
-pub use rustc::session::config::{Input, CodegenOptions};
+pub use rustc::session::config::{Input, Options, CodegenOptions};
 pub use rustc::session::search_paths::SearchPaths;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
@@ -127,7 +127,7 @@ pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::C
 {
     // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so
     // stick to the defaults
-    let sessopts = config::basic_options();
+    let sessopts = Options::default();
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(color_config) => Box::new(
             EmitterWriter::stderr(
@@ -243,7 +243,7 @@ pub fn run_core(search_paths: SearchPaths,
         error_format,
         edition,
         describe_lints,
-        ..config::basic_options()
+        ..Options::default()
     };
     driver::spawn_thread_pool(sessopts, move |sessopts| {
         let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
