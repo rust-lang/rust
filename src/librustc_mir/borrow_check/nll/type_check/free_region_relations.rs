@@ -53,6 +53,18 @@ crate struct UniversalRegionRelations<'tcx> {
 /// our special inference variable there, we would mess that up.
 type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 
+/// As part of computing the free region relations, we also have to
+/// normalize the input-output types, which we then need later. So we
+/// return those.  This vector consists of first the input types and
+/// then the output type as the last element.
+type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
+
+crate struct CreateResult<'tcx> {
+    crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    crate region_bound_pairs: RegionBoundPairs<'tcx>,
+    crate normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
+}
+
 crate fn create(
     infcx: &InferCtxt<'_, '_, 'tcx>,
     mir_def_id: DefId,
@@ -62,7 +74,7 @@ crate fn create(
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     all_facts: &mut Option<AllFacts>,
-) -> (Rc<UniversalRegionRelations<'tcx>>, RegionBoundPairs<'tcx>) {
+) -> CreateResult<'tcx> {
     let mir_node_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
     UniversalRegionRelationsBuilder {
         infcx,
@@ -215,7 +227,7 @@ struct UniversalRegionRelationsBuilder<'this, 'gcx: 'tcx, 'tcx: 'this> {
 }
 
 impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
-    crate fn create(mut self) -> (Rc<UniversalRegionRelations<'tcx>>, RegionBoundPairs<'tcx>) {
+    crate fn create(mut self) -> CreateResult<'tcx> {
         let unnormalized_input_output_tys = self
             .universal_regions
             .unnormalized_input_tys
@@ -231,6 +243,8 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
         //   the `region_bound_pairs` and so forth.
         // - After this is done, we'll process the constraints, once
         //   the `relations` is built.
+        let mut normalized_inputs_and_output =
+            Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
         let constraint_sets: Vec<_> = unnormalized_input_output_tys
             .flat_map(|ty| {
                 debug!("build: input_or_output={:?}", ty);
@@ -240,6 +254,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
                     .fully_perform(self.infcx)
                     .unwrap_or_else(|_| bug!("failed to normalize {:?}", ty));
                 self.add_implied_bounds(ty);
+                normalized_inputs_and_output.push(ty);
                 constraints
             })
             .collect();
@@ -280,7 +295,11 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
             ).convert_all(&data);
         }
 
-        (Rc::new(self.relations), self.region_bound_pairs)
+        CreateResult {
+            universal_region_relations: Rc::new(self.relations),
+            region_bound_pairs: self.region_bound_pairs,
+            normalized_inputs_and_output,
+        }
     }
 
     /// Update the type of a single local, which should represent

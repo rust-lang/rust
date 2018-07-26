@@ -17,7 +17,7 @@ use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
-use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
+use borrow_check::nll::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::LocalWithRegion;
 use borrow_check::nll::ToRegionVid;
@@ -132,7 +132,11 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         type_tests: Vec::default(),
     };
 
-    let (universal_region_relations, region_bound_pairs) = free_region_relations::create(
+    let CreateResult {
+        universal_region_relations,
+        region_bound_pairs,
+        normalized_inputs_and_output,
+    } = free_region_relations::create(
         infcx,
         mir_def_id,
         param_env,
@@ -168,6 +172,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
                     mir_def_id,
                     universal_regions,
                     &universal_region_relations,
+                    &normalized_inputs_and_output,
                 );
             },
         );
