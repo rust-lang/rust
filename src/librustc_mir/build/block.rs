@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             None,
                             remainder_span,
                             lint_level,
-                            &pattern,
+                            &[pattern.clone()],
                             ArmHasGuard(false),
                             Some((None, initializer_span)),
                         );
@@ -138,8 +138,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 })
                             }));
                     } else {
-                        scope = this.declare_bindings(None, remainder_span, lint_level, &pattern,
-                                                        ArmHasGuard(false), None);
+                        scope = this.declare_bindings(
+                            None, remainder_span, lint_level, &[pattern.clone()],
+                            ArmHasGuard(false), None);
 
                         // FIXME(#47184): We currently only insert `UserAssertTy` statements for
                         // patterns that are bindings, this is as we do not want to deconstruct

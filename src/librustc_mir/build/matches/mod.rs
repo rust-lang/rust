@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let body = self.hir.mirror(arm.body.clone());
             let scope = self.declare_bindings(None, body.span,
                                               LintLevel::Inherited,
-                                              &arm.patterns[0],
+                                              &arm.patterns[..],
                                               ArmHasGuard(arm.guard.is_some()),
                                               Some((Some(&discriminant_place), discriminant_span)));
             (body, scope.unwrap_or(self.source_scope))
@@ -118,11 +118,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             arms.iter()
                 .enumerate()
                 .flat_map(|(arm_index, arm)| {
-                    arm.patterns.iter()
-                                .map(move |pat| (arm_index, pat, arm.guard.clone()))
+                    arm.patterns.iter().enumerate()
+                        .map(move |(pat_index, pat)| {
+                            (arm_index, pat_index, pat, arm.guard.clone())
+                        })
                 })
                 .zip(pre_binding_blocks.iter().zip(pre_binding_blocks.iter().skip(1)))
-                .map(|((arm_index, pattern, guard),
+                .map(|((arm_index, pat_index, pattern, guard),
                        (pre_binding_block, next_candidate_pre_binding_block))| {
 
                     if let (true, Some(borrow_temp)) = (tcx.emit_read_for_match(),
@@ -168,6 +170,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         bindings: vec![],
                         guard,
                         arm_index,
+                        pat_index,
                         pre_binding_block: *pre_binding_block,
                         next_candidate_pre_binding_block: *next_candidate_pre_binding_block,
                     }
@@ -277,6 +280,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             // since we don't call `match_candidates`, next fields is unused
             arm_index: 0,
+            pat_index: 0,
             pre_binding_block: block,
             next_candidate_pre_binding_block: block
         };
@@ -324,14 +328,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             mut visibility_scope: Option<SourceScope>,
                             scope_span: Span,
                             lint_level: LintLevel,
-                            pattern: &Pattern<'tcx>,
+                            patterns: &[Pattern<'tcx>],
                             has_guard: ArmHasGuard,
                             opt_match_place: Option<(Option<&Place<'tcx>>, Span)>)
                             -> Option<SourceScope> {
         assert!(!(visibility_scope.is_some() && lint_level.is_explicit()),
                 "can't have both a visibility and a lint scope at the same time");
         let mut scope = self.source_scope;
-        self.visit_bindings(pattern, &mut |this, mutability, name, mode, var, span, ty| {
+        let num_patterns = patterns.len();
+        self.visit_bindings(&patterns[0], &mut |this, mutability, name, mode, var, span, ty| {
             if visibility_scope.is_none() {
                 visibility_scope = Some(this.new_source_scope(scope_span,
                                                            LintLevel::Inherited,
@@ -349,8 +354,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 scope,
             };
             let visibility_scope = visibility_scope.unwrap();
-            this.declare_binding(source_info, visibility_scope, mutability, name, mode, var,
-                                 ty, has_guard, opt_match_place.map(|(x, y)| (x.cloned(), y)));
+            this.declare_binding(source_info, visibility_scope, mutability, name, mode,
+                                 num_patterns, var, ty, has_guard,
+                                 opt_match_place.map(|(x, y)| (x.cloned(), y)));
         });
         visibility_scope
     }
@@ -453,6 +459,9 @@ pub struct Candidate<'pat, 'tcx:'pat> {
     // ...and the blocks for add false edges between candidates
     pre_binding_block: BasicBlock,
     next_candidate_pre_binding_block: BasicBlock,
+
+    // This uniquely identifies this candidate *within* the arm.
+    pat_index: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -972,7 +981,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let autoref = self.hir.tcx().all_pat_vars_are_implicit_refs_within_guards();
         if let Some(guard) = candidate.guard {
             if autoref {
-                self.bind_matched_candidate_for_guard(block, &candidate.bindings);
+                self.bind_matched_candidate_for_guard(
+                    block, candidate.pat_index, &candidate.bindings);
                 let guard_frame = GuardFrame {
                     locals: candidate.bindings.iter()
                         .map(|b| GuardFrameLocal::new(b.var_id, b.binding_mode))
@@ -1058,9 +1068,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // and thus all code/comments assume we are in that context.
     fn bind_matched_candidate_for_guard(&mut self,
                                         block: BasicBlock,
+                                        pat_index: usize,
                                         bindings: &[Binding<'tcx>]) {
-        debug!("bind_matched_candidate_for_guard(block={:?}, bindings={:?})",
-               block, bindings);
+        debug!("bind_matched_candidate_for_guard(block={:?}, pat_index={:?}, bindings={:?})",
+               block, pat_index, bindings);
 
         // Assign each of the bindings. Since we are binding for a
         // guard expression, this will never trigger moves out of the
@@ -1099,8 +1110,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // used by the arm body itself. This eases
                     // observing two-phase borrow restrictions.
                     let val_for_guard = self.storage_live_binding(
-                        block, binding.var_id, binding.span, ValWithinGuard);
-                    self.schedule_drop_for_binding(binding.var_id, binding.span, ValWithinGuard);
+                        block, binding.var_id, binding.span, ValWithinGuard(pat_index));
+                    self.schedule_drop_for_binding(
+                        binding.var_id, binding.span, ValWithinGuard(pat_index));
 
                     // rust-lang/rust#27282: We reuse the two-phase
                     // borrow infrastructure so that the mutable
@@ -1146,16 +1158,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Each binding (`ref mut var`/`ref var`/`mut var`/`var`, where
     /// the bound `var` has type `T` in the arm body) in a pattern
-    /// maps to *two* locals. The first local is a binding for
+    /// maps to `2+N` locals. The first local is a binding for
     /// occurrences of `var` in the guard, which will all have type
-    /// `&T`. The second local is a binding for occurrences of `var`
-    /// in the arm body, which will have type `T`.
+    /// `&T`. The N locals are bindings for the `T` that is referenced
+    /// by the first local; they are not used outside of the
+    /// guard. The last local is a binding for occurrences of `var` in
+    /// the arm body, which will have type `T`.
+    ///
+    /// The reason we have N locals rather than just 1 is to
+    /// accommodate rust-lang/rust#51348: If the arm has N candidate
+    /// patterns, then in general they can correspond to distinct
+    /// parts of the matched data, and we want them to be distinct
+    /// temps in order to simplify checks performed by our internal
+    /// leveraging of two-phase borrows).
     fn declare_binding(&mut self,
                        source_info: SourceInfo,
                        visibility_scope: SourceScope,
                        mutability: Mutability,
                        name: Name,
                        mode: BindingMode,
+                       num_patterns: usize,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>,
                        has_guard: ArmHasGuard,
@@ -1189,7 +1211,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
         let for_arm_body = self.local_decls.push(local.clone());
         let locals = if has_guard.0 && tcx.all_pat_vars_are_implicit_refs_within_guards() {
-            let val_for_guard =  self.local_decls.push(local);
+            let mut vals_for_guard = Vec::with_capacity(num_patterns);
+            for _ in 0..num_patterns {
+                let val_for_guard_idx =  self.local_decls.push(local.clone());
+                vals_for_guard.push(val_for_guard_idx);
+            }
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
                 mutability,
                 ty: tcx.mk_imm_ref(tcx.types.re_empty, var_ty),
@@ -1200,7 +1226,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 internal: false,
                 is_user_variable: Some(ClearCrossCrate::Set(BindingForm::RefForGuard)),
             });
-            LocalsForNode::Three { val_for_guard, ref_for_guard, for_arm_body }
+            LocalsForNode::ForGuard { vals_for_guard, ref_for_guard, for_arm_body }
         } else {
             LocalsForNode::One(for_arm_body)
         };
