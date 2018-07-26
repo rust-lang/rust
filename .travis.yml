@@ -32,11 +32,16 @@ script:
 - |
   # Test `cargo miri`
   cd cargo-miri-test &&
-  MIRI_SYSROOT=~/.xargo/HOST cargo miri -q -- -Zmiri-start-fn >stdout.real 2>stderr.real &&
-  cat stdout.real stderr.real &&
-  # Test `cargo miri` output.
-  diff stdout.ref stdout.real &&
-  diff stderr.ref stderr.real &&
+  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    MIRI_SYSROOT=~/.xargo/HOST cargo miri -q -- -Zmiri-start-fn
+  else
+    MIRI_SYSROOT=~/.xargo/HOST cargo miri -q -- -Zmiri-start-fn >stdout.real 2>stderr.real &&
+    cat stdout.real stderr.real &&
+    # Test `cargo miri` output. Not on mac because output redirecting doesn't
+    # work. There is no error. It just stops CI.
+    diff stdout.ref stdout.real &&
+    diff stderr.ref stderr.real
+  fi &&
   # Test `cargo miri test`
   #cargo miri test &&
   cd ..
