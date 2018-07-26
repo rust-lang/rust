@@ -33,6 +33,7 @@ script:
   # Test `cargo miri`
   cd cargo-miri-test &&
   MIRI_SYSROOT=~/.xargo/HOST cargo miri -q -- -Zmiri-start-fn >stdout.real 2>stderr.real &&
+  cat stdout.real stderr.real &&
   # Test `cargo miri` output.
   diff stdout.ref stdout.real &&
   diff stderr.ref stderr.real &&
