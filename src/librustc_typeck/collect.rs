@@ -1746,7 +1746,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &dyn AstConv<'gcx, 'tcx>,
         astconv.ast_region_to_region(r, None)
     }).collect();
 
-    trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
+    trait_bounds.sort_by_key(|t| t.def_id());
 
     let implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
         !is_unsized(astconv, ast_bounds, span)

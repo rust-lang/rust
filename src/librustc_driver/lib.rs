@@ -1229,10 +1229,7 @@ Available lint options:
     fn sort_lint_groups(lints: Vec<(&'static str, Vec<lint::LintId>, bool)>)
                         -> Vec<(&'static str, Vec<lint::LintId>)> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
-        lints.sort_by(|&(x, _): &(&'static str, Vec<lint::LintId>),
-                       &(y, _): &(&'static str, Vec<lint::LintId>)| {
-            x.cmp(y)
-        });
+        lints.sort_by_key(|ref l| l.0);
         lints
     }
 
