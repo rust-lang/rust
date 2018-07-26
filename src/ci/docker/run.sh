@@ -9,6 +9,32 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+failures=0
+
+for try in 0 1 2 3; do
+for nameserver in 8.8.8.8 8.8.4.4 1.1.1.1 1.0.0.1 169.254.169.254; do
+    for h in github.com s3-us-west-1.amazonaws.com; do
+    echo "---> $(date -u): try ${try} ${h} via ${nameserver}:"
+    if ! dig +short "@${nameserver}" "${h}"; then
+        echo "    x Failed to lookup "${h}" via ${nameserver}"
+        failures=$((failures + 1))
+    fi
+    if ! dig -6 +short "@${nameserver}" "${h}"; then
+        echo "    x Failed to lookup "${h}" via ${nameserver}"
+        failures=$((failures + 1))
+    fi
+    done
+done
+done
+
+if [[ "${failures}" -gt 0 ]]; then
+echo "===> Had ${failures} failure(s)"
+exit 1
+fi
+
+echo "===> Much Success"
+
+
 set -e
 
 export MSYS_NO_PATHCONV=1
@@ -122,6 +148,8 @@ args="$args --privileged"
 if [ "$CI" != "" ]; then
     args="$args --dns 8.8.8.8 --dns 8.8.4.4 --dns 1.1.1.1 --dns 1.0.0.1"
 fi
+
+docker info
 
 exec docker \
   run \
