@@ -71,6 +71,7 @@ macro_rules! span_mirbug_and_err {
 }
 
 mod constraint_conversion;
+mod free_region_relations;
 mod input_output;
 mod liveness;
 mod relate_tys;
@@ -110,7 +111,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
     mir_def_id: DefId,
-    universal_regions: &UniversalRegions<'tcx>,
+    universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
@@ -126,6 +127,17 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         outlives_constraints: ConstraintSet::default(),
         type_tests: Vec::default(),
     };
+
+    let _urr = free_region_relations::UniversalRegionRelations::create(
+        infcx,
+        mir_def_id,
+        param_env,
+        location_table,
+        Some(implicit_region_bound),
+        universal_regions,
+        &mut constraints,
+        all_facts,
+    );
 
     {
         let mut borrowck_context = BorrowCheckContext {

@@ -104,6 +104,8 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         None
     };
 
+    let universal_regions = Rc::new(universal_regions);
+
     let elements = &Rc::new(RegionValueElements::new(mir));
 
     // Run the MIR type-checker.

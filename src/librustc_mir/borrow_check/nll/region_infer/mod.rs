@@ -206,15 +206,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// of constraints produced by the MIR type check.
     pub(crate) fn new(
         var_infos: VarInfos,
-        universal_regions: UniversalRegions<'tcx>,
+        universal_regions: Rc<UniversalRegions<'tcx>>,
         _mir: &Mir<'tcx>,
         outlives_constraints: ConstraintSet,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
     ) -> Self {
-        let universal_regions = Rc::new(universal_regions);
-
         // Create a RegionDefinition for each inference variable.
         let definitions: IndexVec<_, _> = var_infos
             .into_iter()
