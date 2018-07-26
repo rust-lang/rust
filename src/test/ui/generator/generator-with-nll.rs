@@ -8,17 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z borrowck=compare
-
 #![feature(generators)]
 #![feature(nll)]
 
 fn main() {
     || {
         // The reference in `_a` is a Legal with NLL since it ends before the yield
-        let _a = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
-        let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
-        //~^ borrow may still be in use when generator yields (Mir)
+        let _a = &mut true;
+        let b = &mut true;
+        //~^ borrow may still be in use when generator yields
         yield ();
         println!("{}", b);
     };
