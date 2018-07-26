@@ -201,7 +201,7 @@ fn get_symbol_hash<'a, 'tcx>(
 
         if avoid_cross_crate_conflicts {
             let instantiating_crate = if is_generic {
-                if !def_id.is_local() && tcx.share_generics() {
+                if !def_id.is_local() && tcx.sess.opts.share_generics() {
                     // If we are re-using a monomorphization from another crate,
                     // we have to compute the symbol hash accordingly.
                     let upstream_monomorphizations = tcx.upstream_monomorphizations_for(def_id);

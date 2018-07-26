@@ -242,7 +242,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         symbols.push((exported_symbol, SymbolExportLevel::Rust));
     }
 
-    if tcx.share_generics() && tcx.local_crate_exports_generics() {
+    if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
         use rustc::mir::mono::{Linkage, Visibility, MonoItem};
         use rustc::ty::InstanceDef;
 

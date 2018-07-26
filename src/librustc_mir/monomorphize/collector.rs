@@ -770,7 +770,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
         // If we are not in share generics mode, we don't link to upstream
         // monomorphizations but always instantiate our own internal versions
         // instead.
-        if !tcx.share_generics() {
+        if !tcx.sess.opts.share_generics() {
             return false
         }
 

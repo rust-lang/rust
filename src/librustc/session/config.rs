@@ -653,6 +653,24 @@ impl Options {
         !self.debugging_opts.parse_only && // The file is just being parsed
             !self.debugging_opts.ls // The file is just being queried
     }
+
+    #[inline]
+    pub fn share_generics(&self) -> bool {
+        match self.debugging_opts.share_generics {
+            Some(setting) => setting,
+            None => {
+                self.incremental.is_some() ||
+                match self.optimize {
+                    OptLevel::No   |
+                    OptLevel::Less |
+                    OptLevel::Size |
+                    OptLevel::SizeMin => true,
+                    OptLevel::Default    |
+                    OptLevel::Aggressive => false,
+                }
+            }
+        }
+    }
 }
 
 // The type of entry function, so

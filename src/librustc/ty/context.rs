@@ -14,7 +14,7 @@ use dep_graph::DepGraph;
 use dep_graph::{DepNode, DepConstructor};
 use errors::DiagnosticBuilder;
 use session::Session;
-use session::config::{BorrowckMode, OutputFilenames, OptLevel};
+use session::config::{BorrowckMode, OutputFilenames};
 use session::config::CrateType;
 use middle;
 use hir::{TraitCandidate, HirId, ItemLocalId};
@@ -1470,26 +1470,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn share_generics(self) -> bool {
-        match self.sess.opts.debugging_opts.share_generics {
-            Some(setting) => setting,
-            None => {
-                self.sess.opts.incremental.is_some() ||
-                match self.sess.opts.optimize {
-                    OptLevel::No   |
-                    OptLevel::Less |
-                    OptLevel::Size |
-                    OptLevel::SizeMin => true,
-                    OptLevel::Default    |
-                    OptLevel::Aggressive => false,
-                }
-            }
-        }
-    }
-
-    #[inline]
     pub fn local_crate_exports_generics(self) -> bool {
-        debug_assert!(self.share_generics());
+        debug_assert!(self.sess.opts.share_generics());
 
         self.sess.crate_types.borrow().iter().any(|crate_type| {
             match crate_type {
