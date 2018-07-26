@@ -116,7 +116,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
             match *cty {
                 CrateType::Rlib | CrateType::Dylib | CrateType::Executable => {},
                 _ => {
-                    sess.parse_sess.span_diagnostic.warn(
+                    sess.diagnostic().warn(
                         &format!("LLVM unsupported, so output type {} is not supported", cty)
                     );
                 },

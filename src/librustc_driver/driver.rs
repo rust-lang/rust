@@ -1133,7 +1133,7 @@ where
     // Unresolved macros might be due to mistyped `#[macro_use]`,
     // so abort after checking for unknown attributes. (#49074)
     if resolver.found_unresolved_macro {
-        sess.parse_sess.span_diagnostic.abort_if_errors();
+        sess.diagnostic().abort_if_errors();
     }
 
     // Lower ast -> hir.

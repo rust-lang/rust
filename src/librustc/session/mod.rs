@@ -965,7 +965,7 @@ impl Session {
     }
 
     pub fn teach(&self, code: &DiagnosticId) -> bool {
-        self.opts.debugging_opts.teach && self.parse_sess.span_diagnostic.must_teach(code)
+        self.opts.debugging_opts.teach && self.diagnostic().must_teach(code)
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?
