@@ -484,7 +484,7 @@ fn grow() {
 
 #[test]
 fn matrix_intersection() {
-    let mut vec1 = BitMatrix::new(200, 200);
+    let mut vec1: BitMatrix<usize, usize> = BitMatrix::new(200, 200);
 
     // (*) Elements reachable from both 2 and 65.
 
@@ -515,7 +515,7 @@ fn matrix_intersection() {
 
 #[test]
 fn matrix_iter() {
-    let mut matrix = BitMatrix::new(64, 100);
+    let mut matrix: BitMatrix<usize, usize> = BitMatrix::new(64, 100);
     matrix.add(3, 22);
     matrix.add(3, 75);
     matrix.add(2, 99);
@@ -557,7 +557,7 @@ fn matrix_iter() {
 
 #[test]
 fn sparse_matrix_iter() {
-    let mut matrix = SparseBitMatrix::new(64, 100);
+    let mut matrix: SparseBitMatrix<usize, usize> = SparseBitMatrix::new(64, 100);
     matrix.add(3, 22);
     matrix.add(3, 75);
     matrix.add(2, 99);
