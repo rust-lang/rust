@@ -270,10 +270,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use cmp;
-use core::str as core_str;
-use error as std_error;
 use fmt;
-use result;
 use str;
 use memchr;
 use ptr;
@@ -798,53 +795,6 @@ pub trait Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bytes(self) -> Bytes<Self> where Self: Sized {
         Bytes { inner: self }
-    }
-
-    /// Transforms this `Read` instance to an [`Iterator`] over [`char`]s.
-    ///
-    /// This adaptor will attempt to interpret this reader as a UTF-8 encoded
-    /// sequence of characters. The returned iterator will return [`None`] once
-    /// EOF is reached for this reader. Otherwise each element yielded will be a
-    /// [`Result`]`<`[`char`]`, E>` where `E` may contain information about what I/O error
-    /// occurred or where decoding failed.
-    ///
-    /// Currently this adaptor will discard intermediate data read, and should
-    /// be avoided if this is not desired.
-    ///
-    /// # Examples
-    ///
-    /// [`File`]s implement `Read`:
-    ///
-    /// [`File`]: ../fs/struct.File.html
-    /// [`Iterator`]: ../../std/iter/trait.Iterator.html
-    /// [`Result`]: ../../std/result/enum.Result.html
-    /// [`char`]: ../../std/primitive.char.html
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    ///
-    /// ```no_run
-    /// #![feature(io)]
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut f = File::open("foo.txt")?;
-    ///
-    ///     for c in f.chars() {
-    ///         println!("{}", c.unwrap());
-    ///     }
-    ///     Ok(())
-    /// }
-    /// ```
-    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
-                                         of where errors happen is currently \
-                                         unclear and may change",
-               issue = "27802")]
-    #[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
-        https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
-    #[allow(deprecated)]
-    fn chars(self) -> Chars<Self> where Self: Sized {
-        Chars { inner: self }
     }
 
     /// Creates an adaptor which will chain this stream with another.
@@ -2002,104 +1952,6 @@ impl<R: Read> Iterator for Bytes<R> {
 
     fn next(&mut self) -> Option<Result<u8>> {
         read_one_byte(&mut self.inner)
-    }
-}
-
-/// An iterator over the `char`s of a reader.
-///
-/// This struct is generally created by calling [`chars`][chars] on a reader.
-/// Please see the documentation of `chars()` for more details.
-///
-/// [chars]: trait.Read.html#method.chars
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
-           issue = "27802")]
-#[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
-    https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
-#[derive(Debug)]
-#[allow(deprecated)]
-pub struct Chars<R> {
-    inner: R,
-}
-
-/// An enumeration of possible errors that can be generated from the `Chars`
-/// adapter.
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
-           issue = "27802")]
-#[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
-    https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
-#[derive(Debug)]
-#[allow(deprecated)]
-pub enum CharsError {
-    /// Variant representing that the underlying stream was read successfully
-    /// but it did not contain valid utf8 data.
-    NotUtf8,
-
-    /// Variant representing that an I/O error occurred.
-    Other(Error),
-}
-
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
-           issue = "27802")]
-#[allow(deprecated)]
-impl<R: Read> Iterator for Chars<R> {
-    type Item = result::Result<char, CharsError>;
-
-    fn next(&mut self) -> Option<result::Result<char, CharsError>> {
-        let first_byte = match read_one_byte(&mut self.inner)? {
-            Ok(b) => b,
-            Err(e) => return Some(Err(CharsError::Other(e))),
-        };
-        let width = core_str::utf8_char_width(first_byte);
-        if width == 1 { return Some(Ok(first_byte as char)) }
-        if width == 0 { return Some(Err(CharsError::NotUtf8)) }
-        let mut buf = [first_byte, 0, 0, 0];
-        {
-            let mut start = 1;
-            while start < width {
-                match self.inner.read(&mut buf[start..width]) {
-                    Ok(0) => return Some(Err(CharsError::NotUtf8)),
-                    Ok(n) => start += n,
-                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
-                    Err(e) => return Some(Err(CharsError::Other(e))),
-                }
-            }
-        }
-        Some(match str::from_utf8(&buf[..width]).ok() {
-            Some(s) => Ok(s.chars().next().unwrap()),
-            None => Err(CharsError::NotUtf8),
-        })
-    }
-}
-
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
-           issue = "27802")]
-#[allow(deprecated)]
-impl std_error::Error for CharsError {
-    fn description(&self) -> &str {
-        match *self {
-            CharsError::NotUtf8 => "invalid utf8 encoding",
-            CharsError::Other(ref e) => std_error::Error::description(e),
-        }
-    }
-    fn cause(&self) -> Option<&dyn std_error::Error> {
-        match *self {
-            CharsError::NotUtf8 => None,
-            CharsError::Other(ref e) => e.cause(),
-        }
-    }
-}
-
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
-           issue = "27802")]
-#[allow(deprecated)]
-impl fmt::Display for CharsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            CharsError::NotUtf8 => {
-                "byte stream did not contain valid utf8".fmt(f)
-            }
-            CharsError::Other(ref e) => e.fmt(f),
-        }
     }
 }
 

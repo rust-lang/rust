@@ -154,33 +154,6 @@ impl<R: Read> BufReader<R> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut R { &mut self.inner }
 
-    /// Returns `true` if there are no bytes in the internal buffer.
-    ///
-    /// # Examples
-    //
-    /// ```no_run
-    /// # #![feature(bufreader_is_empty)]
-    /// use std::io::BufReader;
-    /// use std::io::BufRead;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let f1 = File::open("log.txt")?;
-    ///     let mut reader = BufReader::new(f1);
-    ///     assert!(reader.is_empty());
-    ///
-    ///     if reader.fill_buf()?.len() > 0 {
-    ///         assert!(!reader.is_empty());
-    ///     }
-    ///     Ok(())
-    /// }
-    /// ```
-    #[unstable(feature = "bufreader_is_empty", issue = "45323", reason = "recently added")]
-    #[rustc_deprecated(since = "1.26.0", reason = "use .buffer().is_empty() instead")]
-    pub fn is_empty(&self) -> bool {
-        self.buffer().is_empty()
-    }
-
     /// Returns a reference to the internally buffered data.
     ///
     /// Unlike `fill_buf`, this will not attempt to fill the buffer if it is empty.
@@ -1263,25 +1236,6 @@ mod tests {
         assert_eq!(reader.read(&mut buf).unwrap(), 1);
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn read_char_buffered() {
-        let buf = [195, 159];
-        let reader = BufReader::with_capacity(1, &buf[..]);
-        assert_eq!(reader.chars().next().unwrap().unwrap(), 'ß');
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_chars() {
-        let buf = [195, 159, b'a'];
-        let reader = BufReader::with_capacity(1, &buf[..]);
-        let mut it = reader.chars();
-        assert_eq!(it.next().unwrap().unwrap(), 'ß');
-        assert_eq!(it.next().unwrap().unwrap(), 'a');
-        assert!(it.next().is_none());
     }
 
     #[test]
