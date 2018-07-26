@@ -11,7 +11,6 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command line options.
 
-pub use self::EntryFnType::*;
 pub use self::DebugInfoLevel::*;
 
 use std::str::FromStr;
@@ -662,8 +661,8 @@ impl Options {
 // functions
 #[derive(Copy, Clone, PartialEq)]
 pub enum EntryFnType {
-    EntryMain,
-    EntryStart,
+    Main,
+    Start,
 }
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]

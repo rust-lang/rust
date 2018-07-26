@@ -12,6 +12,7 @@
 use hir::map as hir_map;
 use hir::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
+use session::config::EntryFnType;
 use syntax::ast::NodeId;
 use syntax::attr;
 use syntax::entry::EntryPointType;
@@ -155,11 +156,11 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
 
 fn configure_main(this: &mut EntryContext, crate_name: &str) {
     if let Some((node_id, span)) = this.start_fn {
-        this.session.entry_fn.set(Some((node_id, span, config::EntryStart)));
+        this.session.entry_fn.set(Some((node_id, span, EntryFnType::Start)));
     } else if let Some((node_id, span)) = this.attr_main_fn {
-        this.session.entry_fn.set(Some((node_id, span, config::EntryMain)));
+        this.session.entry_fn.set(Some((node_id, span, EntryFnType::Main)));
     } else if let Some((node_id, span)) = this.main_fn {
-        this.session.entry_fn.set(Some((node_id, span, config::EntryMain)));
+        this.session.entry_fn.set(Some((node_id, span, EntryFnType::Main)));
     } else {
         // No main function
         this.session.entry_fn.set(None);

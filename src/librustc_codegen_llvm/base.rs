@@ -46,7 +46,7 @@ use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::middle::exported_symbols;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::util::profiling::ProfileCategory;
-use rustc::session::config::{self, NoDebugInfo};
+use rustc::session::config::{self, NoDebugInfo, EntryFnType};
 use rustc::session::Session;
 use rustc_incremental;
 use allocator;
@@ -560,8 +560,8 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 
     let et = cx.sess().entry_fn.get().map(|e| e.2);
     match et {
-        Some(config::EntryMain) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
-        Some(config::EntryStart) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
+        Some(EntryFnType::Main) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
+        Some(EntryFnType::Start) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
         None => {}    // Do nothing.
     }
 

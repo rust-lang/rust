@@ -1111,7 +1111,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         if let Some((id, _, entry_type)) = *fcx.tcx.sess.entry_fn.borrow() {
             if id == fn_id {
                 match entry_type {
-                    config::EntryMain => {
+                    config::EntryFnType::Main => {
                         let substs = fcx.tcx.mk_substs_trait(declared_ret_ty, &[]);
                         let trait_ref = ty::TraitRef::new(term_id, substs);
                         let return_ty_span = decl.output.span();
@@ -1122,7 +1122,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             traits::Obligation::new(
                                 cause, param_env, trait_ref.to_predicate()));
                     },
-                    config::EntryStart => {},
+                    config::EntryFnType::Start => {},
                 }
             }
         }
