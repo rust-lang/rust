@@ -188,13 +188,12 @@ impl<'a> CrateLoader<'a> {
     fn register_crate(&mut self,
                       root: &Option<CratePaths>,
                       ident: Symbol,
-                      name: Symbol,
                       span: Span,
                       lib: Library,
                       dep_kind: DepKind)
                       -> (CrateNum, Lrc<cstore::CrateMetadata>) {
-        info!("register crate `extern crate {} as {}`", name, ident);
         let crate_root = lib.metadata.get_root();
+        info!("register crate `extern crate {} as {}`", crate_root.name, ident);
         self.verify_no_symbol_conflicts(span, &crate_root);
 
         // Claim this crate number and cache it
@@ -233,7 +232,7 @@ impl<'a> CrateLoader<'a> {
             .collect();
 
         let cmeta = cstore::CrateMetadata {
-            name,
+            name: crate_root.name,
             extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
             trait_impls,
@@ -328,7 +327,7 @@ impl<'a> CrateLoader<'a> {
                 (cnum, data)
             }
             LoadResult::Loaded(library) => {
-                self.register_crate(root, ident, name, span, library, dep_kind)
+                self.register_crate(root, ident, span, library, dep_kind)
             }
         }
     }

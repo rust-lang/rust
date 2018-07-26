@@ -29,5 +29,5 @@ fn main() {
         println!("{}", a);
     });
 }
-//[mir]~^ borrowed value only lives until here
+//[mir]~^ `FOO` dropped here while still borrowed
 //[ast]~^^ temporary value only lives until here

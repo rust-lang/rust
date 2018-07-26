@@ -20,12 +20,14 @@ use monomorphize::MonoItem;
 use common::{CodegenCx, val_ty};
 use declare;
 use monomorphize::Instance;
+use syntax_pos::Span;
+use syntax_pos::symbol::LocalInternedString;
 use type_::Type;
 use type_of::LayoutLlvmExt;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Align, LayoutOf};
 
-use rustc::hir::{self, CodegenFnAttrFlags};
+use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
 use std::ffi::{CStr, CString};
 
@@ -119,6 +121,8 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
     let ty = instance.ty(cx.tcx);
     let sym = cx.tcx.symbol_name(instance).as_str();
 
+    debug!("get_static: sym={} instance={:?}", sym, instance);
+
     let g = if let Some(id) = cx.tcx.hir.as_local_node_id(def_id) {
 
         let llty = cx.layout_of(ty).llvm_type(cx);
@@ -144,49 +148,14 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
             hir_map::NodeForeignItem(&hir::ForeignItem {
                 ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
             }) => {
-                let g = if let Some(linkage) = cx.tcx.codegen_fn_attrs(def_id).linkage {
-                    // If this is a static with a linkage specified, then we need to handle
-                    // it a little specially. The typesystem prevents things like &T and
-                    // extern "C" fn() from being non-null, so we can't just declare a
-                    // static and call it a day. Some linkages (like weak) will make it such
-                    // that the static actually has a null value.
-                    let llty2 = match ty.sty {
-                        ty::TyRawPtr(ref mt) => cx.layout_of(mt.ty).llvm_type(cx),
-                        _ => {
-                            cx.sess().span_fatal(span, "must have type `*const T` or `*mut T`");
-                        }
-                    };
-                    unsafe {
-                        // Declare a symbol `foo` with the desired linkage.
-                        let g1 = declare::declare_global(cx, &sym, llty2);
-                        llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
-
-                        // Declare an internal global `extern_with_linkage_foo` which
-                        // is initialized with the address of `foo`.  If `foo` is
-                        // discarded during linking (for example, if `foo` has weak
-                        // linkage and there are no definitions), then
-                        // `extern_with_linkage_foo` will instead be initialized to
-                        // zero.
-                        let mut real_name = "_rust_extern_with_linkage_".to_string();
-                        real_name.push_str(&sym);
-                        let g2 = declare::define_global(cx, &real_name, llty).unwrap_or_else(||{
-                            cx.sess().span_fatal(span,
-                                &format!("symbol `{}` is already defined", &sym))
-                        });
-                        llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
-                        llvm::LLVMSetInitializer(g2, g1);
-                        g2
-                    }
-                } else {
-                    // Generate an external declaration.
-                    declare::declare_global(cx, &sym, llty)
-                };
-
-                (g, attrs)
+                let fn_attrs = cx.tcx.codegen_fn_attrs(def_id);
+                (check_and_apply_linkage(cx, &fn_attrs, ty, sym, Some(span)), attrs)
             }
 
             item => bug!("get_static: expected static, found {:?}", item)
         };
+
+        debug!("get_static: sym={} attrs={:?}", sym, attrs);
 
         for attr in attrs {
             if attr.check_name("thread_local") {
@@ -197,19 +166,21 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
         g
     } else {
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
-        // FIXME(nagisa): investigate whether it can be changed into define_global
-        let g = declare::declare_global(cx, &sym, cx.layout_of(ty).llvm_type(cx));
+        debug!("get_static: sym={} item_attr={:?}", sym, cx.tcx.item_attrs(def_id));
+
+        let attrs = cx.tcx.codegen_fn_attrs(def_id);
+        let g = check_and_apply_linkage(cx, &attrs, ty, sym, None);
+
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the
         // thread-local attribute locally if it was present remotely. If we
         // don't do this then linker errors can be generated where the linker
         // complains that one object files has a thread local version of the
         // symbol and another one doesn't.
-        for attr in cx.tcx.get_attrs(def_id).iter() {
-            if attr.check_name("thread_local") {
-                llvm::set_thread_local_mode(g, cx.tls_model);
-            }
+        if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+            llvm::set_thread_local_mode(g, cx.tls_model);
         }
+
         if cx.use_dll_storage_attrs && !cx.tcx.is_foreign_item(def_id) {
             // This item is external but not foreign, i.e. it originates from an external Rust
             // crate. Since we don't know whether this crate will be linked dynamically or
@@ -240,6 +211,66 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
     cx.instances.borrow_mut().insert(instance, g);
     cx.statics.borrow_mut().insert(g, def_id);
     g
+}
+
+fn check_and_apply_linkage<'tcx>(
+    cx: &CodegenCx<'_, 'tcx>,
+    attrs: &CodegenFnAttrs,
+    ty: Ty<'tcx>,
+    sym: LocalInternedString,
+    span: Option<Span>
+) -> ValueRef {
+    let llty = cx.layout_of(ty).llvm_type(cx);
+    if let Some(linkage) = attrs.linkage {
+        debug!("get_static: sym={} linkage={:?}", sym, linkage);
+
+        // If this is a static with a linkage specified, then we need to handle
+        // it a little specially. The typesystem prevents things like &T and
+        // extern "C" fn() from being non-null, so we can't just declare a
+        // static and call it a day. Some linkages (like weak) will make it such
+        // that the static actually has a null value.
+        let llty2 = match ty.sty {
+            ty::TyRawPtr(ref mt) => cx.layout_of(mt.ty).llvm_type(cx),
+            _ => {
+                if span.is_some() {
+                    cx.sess().span_fatal(span.unwrap(), "must have type `*const T` or `*mut T`")
+                } else {
+                    bug!("must have type `*const T` or `*mut T`")
+                }
+            }
+        };
+        unsafe {
+            // Declare a symbol `foo` with the desired linkage.
+            let g1 = declare::declare_global(cx, &sym, llty2);
+            llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
+
+            // Declare an internal global `extern_with_linkage_foo` which
+            // is initialized with the address of `foo`.  If `foo` is
+            // discarded during linking (for example, if `foo` has weak
+            // linkage and there are no definitions), then
+            // `extern_with_linkage_foo` will instead be initialized to
+            // zero.
+            let mut real_name = "_rust_extern_with_linkage_".to_string();
+            real_name.push_str(&sym);
+            let g2 = declare::define_global(cx, &real_name, llty).unwrap_or_else(||{
+                if span.is_some() {
+                    cx.sess().span_fatal(
+                        span.unwrap(),
+                        &format!("symbol `{}` is already defined", &sym)
+                    )
+                } else {
+                    bug!("symbol `{}` is already defined", &sym)
+                }
+            });
+            llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
+            llvm::LLVMSetInitializer(g2, g1);
+            g2
+        }
+    } else {
+        // Generate an external declaration.
+        // FIXME(nagisa): investigate whether it can be changed into define_global
+        declare::declare_global(cx, &sym, llty)
+    }
 }
 
 pub fn codegen_static<'a, 'tcx>(

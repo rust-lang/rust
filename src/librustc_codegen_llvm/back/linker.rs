@@ -218,8 +218,10 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg("-l").arg(lib); }
-    fn link_staticlib(&mut self, lib: &str) { self.hint_static(); self.cmd.arg("-l").arg(lib); }
+    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg(format!("-l{}",lib)); }
+    fn link_staticlib(&mut self, lib: &str) {
+        self.hint_static(); self.cmd.arg(format!("-l{}",lib));
+    }
     fn link_rlib(&mut self, lib: &Path) { self.hint_static(); self.cmd.arg(lib); }
     fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
     fn framework_path(&mut self, path: &Path) { self.cmd.arg("-F").arg(path); }
@@ -227,15 +229,15 @@ impl<'a> Linker for GccLinker<'a> {
     fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
     fn position_independent_executable(&mut self) { self.cmd.arg("-pie"); }
     fn no_position_independent_executable(&mut self) { self.cmd.arg("-no-pie"); }
-    fn full_relro(&mut self) { self.linker_arg("-z,relro,-z,now"); }
-    fn partial_relro(&mut self) { self.linker_arg("-z,relro"); }
-    fn no_relro(&mut self) { self.linker_arg("-z,norelro"); }
+    fn full_relro(&mut self) { self.linker_arg("-zrelro"); self.linker_arg("-znow"); }
+    fn partial_relro(&mut self) { self.linker_arg("-zrelro"); }
+    fn no_relro(&mut self) { self.linker_arg("-znorelro"); }
     fn build_static_executable(&mut self) { self.cmd.arg("-static"); }
     fn args(&mut self, args: &[String]) { self.cmd.args(args); }
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
         self.hint_dynamic();
-        self.cmd.arg("-l").arg(lib);
+        self.cmd.arg(format!("-l{}",lib));
     }
 
     fn link_framework(&mut self, framework: &str) {
@@ -253,23 +255,22 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let target = &self.sess.target.target;
         if !target.options.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg("-l").arg(lib);
+            self.linker_arg("--whole-archive").cmd.arg(format!("-l{}",lib));
             self.linker_arg("--no-whole-archive");
         } else {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
-            let mut v = OsString::from("-force_load,");
-            v.push(&archive::find_library(lib, search_path, &self.sess));
-            self.linker_arg(&v);
+            self.linker_arg("-force_load");
+            let lib = archive::find_library(lib, search_path, &self.sess);
+            self.linker_arg(&lib);
         }
     }
 
     fn link_whole_rlib(&mut self, lib: &Path) {
         self.hint_static();
         if self.sess.target.target.options.is_like_osx {
-            let mut v = OsString::from("-force_load,");
-            v.push(lib);
-            self.linker_arg(&v);
+            self.linker_arg("-force_load");
+            self.linker_arg(&lib);
         } else {
             self.linker_arg("--whole-archive").cmd.arg(lib);
             self.linker_arg("--no-whole-archive");
@@ -294,8 +295,7 @@ impl<'a> Linker for GccLinker<'a> {
         if self.sess.target.target.options.is_like_osx {
             self.linker_arg("-dead_strip");
         } else if self.sess.target.target.options.is_like_solaris {
-            self.linker_arg("-z");
-            self.linker_arg("ignore");
+            self.linker_arg("-zignore");
 
         // If we're building a dylib, we don't use --gc-sections because LLVM
         // has already done the best it can do, and we also don't want to
@@ -369,7 +369,8 @@ impl<'a> Linker for GccLinker<'a> {
             // the right `-Wl,-install_name` with an `@rpath` in it.
             if self.sess.opts.cg.rpath ||
                self.sess.opts.debugging_opts.osx_rpath_install_name {
-                let mut v = OsString::from("-install_name,@rpath/");
+                self.linker_arg("-install_name");
+                let mut v = OsString::from("@rpath/");
                 v.push(out_filename.file_name().unwrap());
                 self.linker_arg(&v);
             }
@@ -448,7 +449,8 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn subsystem(&mut self, subsystem: &str) {
-        self.linker_arg(&format!("--subsystem,{}", subsystem));
+        self.linker_arg("--subsystem");
+        self.linker_arg(&subsystem);
     }
 
     fn finalize(&mut self) -> Command {

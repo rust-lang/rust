@@ -5,7 +5,7 @@ LL |         let c_ref = &c;
    |                     ^^ borrowed value does not live long enough
 ...
 LL |     }
-   |     - borrowed value only lives until here
+   |     - `c` dropped here while still borrowed
 LL |     f.use_mut();
    |     - borrow later used here
 

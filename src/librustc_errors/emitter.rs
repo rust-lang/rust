@@ -22,7 +22,7 @@ use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::collections::HashMap;
-use std::cmp::min;
+use std::cmp::{min, Reverse};
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter};
 use termcolor::{WriteColor, Color, Buffer};
 use unicode_width;
@@ -265,9 +265,7 @@ impl EmitterWriter {
         }
 
         // Find overlapping multiline annotations, put them at different depths
-        multiline_annotations.sort_by(|a, b| {
-            (a.1.line_start, a.1.line_end).cmp(&(b.1.line_start, b.1.line_end))
-        });
+        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, ml.line_end));
         for item in multiline_annotations.clone() {
             let ann = item.1;
             for item in multiline_annotations.iter_mut() {
@@ -403,7 +401,7 @@ impl EmitterWriter {
         // otherwise the lines would end up needing to go over a message.
 
         let mut annotations = line.annotations.clone();
-        annotations.sort_by(|a,b| b.start_col.cmp(&a.start_col));
+        annotations.sort_by_key(|a| Reverse(a.start_col));
 
         // First, figure out where each label will be positioned.
         //

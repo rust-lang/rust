@@ -4,29 +4,52 @@ error: multiple unused formatting arguments
 LL |     println!("%.*3$s %s!/n", "Hello,", "World", 4); //~ ERROR multiple unused formatting arguments
    |              --------------  ^^^^^^^^  ^^^^^^^  ^
    |              |
-   |              multiple missing formatting arguments
+   |              multiple missing formatting specifiers
    |
-   = help: `%.*3$s` should be written as `{:.2$}`
-   = help: `%s` should be written as `{}`
    = note: printf formatting not supported; see the documentation for `std::fmt`
+help: format specifiers use curly braces
+   |
+LL |     println!("{:.2$} {}!/n", "Hello,", "World", 4); //~ ERROR multiple unused formatting arguments
+   |               ^^^^^^ ^^
 
 error: argument never used
   --> $DIR/format-foreign.rs:13:29
    |
 LL |     println!("%1$*2$.*3$f", 123.456); //~ ERROR never used
-   |                             ^^^^^^^
+   |               -----------   ^^^^^^^
+   |               |
+   |               help: format specifiers use curly braces: `{0:1$.2$}`
    |
-   = help: `%1$*2$.*3$f` should be written as `{0:1$.2$}`
    = note: printf formatting not supported; see the documentation for `std::fmt`
 
+error: multiple unused formatting arguments
+  --> $DIR/format-foreign.rs:16:7
+   |
+LL |       println!(r###"%.*3$s
+   |  ______________-
+LL | |         %s!/n
+LL | | "###, "Hello,", "World", 4);
+   | |    -  ^^^^^^^^  ^^^^^^^  ^
+   | |____|
+   |      multiple missing formatting specifiers
+   |
+   = note: printf formatting not supported; see the documentation for `std::fmt`
+help: format specifiers use curly braces
+   |
+LL |     println!(r###"{:.2$}
+LL |         {}!/n
+   |
+
 error: argument never used
-  --> $DIR/format-foreign.rs:17:30
+  --> $DIR/format-foreign.rs:22:30
    |
 LL |     println!("{} %f", "one", 2.0); //~ ERROR never used
-   |                              ^^^
+   |              -------         ^^^
+   |              |
+   |              formatting specifier missing
 
 error: named argument never used
-  --> $DIR/format-foreign.rs:19:39
+  --> $DIR/format-foreign.rs:24:39
    |
 LL |     println!("Hi there, $NAME.", NAME="Tim"); //~ ERROR never used
    |                                       ^^^^^
@@ -34,5 +57,5 @@ LL |     println!("Hi there, $NAME.", NAME="Tim"); //~ ERROR never used
    = help: `$NAME` should be written as `{NAME}`
    = note: shell formatting not supported; see the documentation for `std::fmt`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

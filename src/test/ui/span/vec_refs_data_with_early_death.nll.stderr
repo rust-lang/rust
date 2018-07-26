@@ -7,7 +7,7 @@ LL |     v.push(&y);
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `y` dropped here while still borrowed
    | borrow later used here, when `v` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined
@@ -21,7 +21,7 @@ LL |     v.push(&x);
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `x` dropped here while still borrowed
    | borrow later used here, when `v` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined

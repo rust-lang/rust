@@ -64,4 +64,11 @@ fn main() {
     format!("foo }"); //~ ERROR: unmatched `}` found
 
     format!("foo %s baz", "bar"); //~ ERROR: argument never used
+
+    format!(r##"
+
+        {foo}
+
+    "##);
+    //~^^^ ERROR: there is no argument named `foo`
 }

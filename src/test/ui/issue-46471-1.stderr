@@ -20,7 +20,7 @@ LL | |         &mut z
 LL | |     };
    | |     -
    | |     |
-   | |_____borrowed value only lives until here
+   | |_____`z` dropped here while still borrowed
    |       borrow later used here
 
 error: aborting due to 2 previous errors

@@ -5,7 +5,7 @@ LL |     spawn(|| books.push(4));
    |           ^^^^^^^^^^^^^^^^ borrowed value does not live long enough
 LL |     //~^ ERROR E0373
 LL | }
-   | - borrowed value only lives until here
+   | - `books` dropped here while still borrowed
    |
    = note: borrowed value must be valid for the static lifetime...
 

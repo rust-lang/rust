@@ -5,7 +5,7 @@ LL |         a = &b;
    |             ^^ borrowed value does not live long enough
 LL |         //~^ ERROR `b` does not live long enough
 LL |     };
-   |     - borrowed value only lives until here
+   |     - `b` dropped here while still borrowed
 
 error: aborting due to previous error
 

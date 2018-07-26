@@ -29,9 +29,7 @@ pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mon
         (mono_item, mono_item.symbol_name(tcx))
     }).collect();
 
-    (&mut symbols[..]).sort_by(|&(_, ref sym1), &(_, ref sym2)|{
-        sym1.cmp(sym2)
-    });
+    (&mut symbols[..]).sort_by_key(|&sym| sym.1);
 
     for pair in (&symbols[..]).windows(2) {
         let sym1 = &pair[0].1;

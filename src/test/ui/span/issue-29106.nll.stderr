@@ -6,7 +6,7 @@ LL |         y = Arc::new(Foo(&x));
 LL |     }
    |     -
    |     |
-   |     borrowed value only lives until here
+   |     `x` dropped here while still borrowed
    |     borrow later used here, when `y` is dropped
 
 error[E0597]: `x` does not live long enough
@@ -17,7 +17,7 @@ LL |         y = Rc::new(Foo(&x));
 LL |     }
    |     -
    |     |
-   |     borrowed value only lives until here
+   |     `x` dropped here while still borrowed
    |     borrow later used here, when `y` is dropped
 
 error: aborting due to 2 previous errors

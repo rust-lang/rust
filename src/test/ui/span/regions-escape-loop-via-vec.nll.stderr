@@ -41,7 +41,7 @@ LL |         _y.push(&mut z);
    |         borrow later used here
 ...
 LL |     }
-   |     - borrowed value only lives until here
+   |     - `z` dropped here while still borrowed
 
 error: aborting due to 4 previous errors
 

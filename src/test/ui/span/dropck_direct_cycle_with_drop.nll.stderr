@@ -7,7 +7,7 @@ LL |     d1.p.set(Some(&d2));
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `d2` dropped here while still borrowed
    | borrow later used here, when `d1` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined
@@ -21,7 +21,7 @@ LL |     //~^ ERROR `d1` does not live long enough
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `d1` dropped here while still borrowed
    | borrow later used here, when `d1` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined

@@ -144,18 +144,100 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         };
         let r = match f(self) {
             Ok(val) => Some(val),
-            Err(err) => {
-                match err.kind {
+            Err(error) => {
+                let (stacktrace, span) = self.ecx.generate_stacktrace(None);
+                let diagnostic = ConstEvalErr { span, error, stacktrace };
+                use rustc::mir::interpret::EvalErrorKind::*;
+                match diagnostic.error.kind {
                     // don't report these, they make no sense in a const prop context
-                    EvalErrorKind::MachineError(_) => {},
-                    _ => {
-                        let (frames, span) = self.ecx.generate_stacktrace(None);
-                        let err = ConstEvalErr {
-                            span,
-                            error: err,
-                            stacktrace: frames,
-                        };
-                        err.report_as_lint(
+                    | MachineError(_)
+                    // at runtime these transformations might make sense
+                    // FIXME: figure out the rules and start linting
+                    | FunctionPointerTyMismatch(..)
+                    // fine at runtime, might be a register address or sth
+                    | ReadBytesAsPointer
+                    // fine at runtime
+                    | ReadForeignStatic
+                    | Unimplemented(_)
+                    // don't report const evaluator limits
+                    | StackFrameLimitReached
+                    | NoMirFor(..)
+                    | InlineAsm
+                    => {},
+
+                    | InvalidMemoryAccess
+                    | DanglingPointerDeref
+                    | DoubleFree
+                    | InvalidFunctionPointer
+                    | InvalidBool
+                    | InvalidDiscriminant
+                    | PointerOutOfBounds { .. }
+                    | InvalidNullPointerUsage
+                    | MemoryLockViolation { .. }
+                    | MemoryAcquireConflict { .. }
+                    | ValidationFailure(..)
+                    | InvalidMemoryLockRelease { .. }
+                    | DeallocatedLockedMemory { .. }
+                    | InvalidPointerMath
+                    | ReadUndefBytes
+                    | DeadLocal
+                    | InvalidBoolOp(_)
+                    | DerefFunctionPointer
+                    | ExecuteMemory
+                    | Intrinsic(..)
+                    | InvalidChar(..)
+                    | AbiViolation(_)
+                    | AlignmentCheckFailed{..}
+                    | CalledClosureAsFunction
+                    | VtableForArgumentlessMethod
+                    | ModifiedConstantMemory
+                    | AssumptionNotHeld
+                    // FIXME: should probably be removed and turned into a bug! call
+                    | TypeNotPrimitive(_)
+                    | ReallocatedWrongMemoryKind(_, _)
+                    | DeallocatedWrongMemoryKind(_, _)
+                    | ReallocateNonBasePtr
+                    | DeallocateNonBasePtr
+                    | IncorrectAllocationInformation(..)
+                    | UnterminatedCString(_)
+                    | HeapAllocZeroBytes
+                    | HeapAllocNonPowerOfTwoAlignment(_)
+                    | Unreachable
+                    | ReadFromReturnPointer
+                    | GeneratorResumedAfterReturn
+                    | GeneratorResumedAfterPanic
+                    | ReferencedConstant(_)
+                    | InfiniteLoop
+                    => {
+                        // FIXME: report UB here
+                    },
+
+                    | OutOfTls
+                    | TlsOutOfBounds
+                    | PathNotFound(_)
+                    => bug!("these should not be in rustc, but in miri's machine errors"),
+
+                    | Layout(_)
+                    | UnimplementedTraitSelection
+                    | TypeckError
+                    | TooGeneric
+                    | CheckMatchError
+                    // these are just noise
+                    => {},
+
+                    // non deterministic
+                    | ReadPointerAsBytes
+                    // FIXME: implement
+                    => {},
+
+                    | Panic
+                    | BoundsCheck{..}
+                    | Overflow(_)
+                    | OverflowNeg
+                    | DivisionByZero
+                    | RemainderByZero
+                    => {
+                        diagnostic.report_as_lint(
                             self.ecx.tcx,
                             "this expression will panic at runtime",
                             lint_root,

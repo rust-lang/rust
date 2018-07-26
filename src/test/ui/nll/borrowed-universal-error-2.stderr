@@ -5,7 +5,7 @@ LL |     &v
    |     ^^ borrowed value does not live long enough
 LL |     //~^ ERROR `v` does not live long enough [E0597]
 LL | }
-   | - borrowed value only lives until here
+   | - `v` dropped here while still borrowed
    |
 note: borrowed value must be valid for the lifetime 'a as defined on the function body at 14:8...
   --> $DIR/borrowed-universal-error-2.rs:14:8
