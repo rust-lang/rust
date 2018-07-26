@@ -1,5 +1,5 @@
 warning[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-migrate-to-nll.rs:26:17
+  --> $DIR/borrowck-migrate-to-nll.rs:35:17
    |
 LL |                 (|| { let bar = foo; bar.take() })();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
@@ -9,7 +9,7 @@ LL |                 (|| { let bar = foo; bar.take() })();
            This warning will become a hard error in the future.
 
 warning[E0507]: cannot move out of `foo`, as it is immutable for the pattern guard
-  --> $DIR/borrowck-migrate-to-nll.rs:26:17
+  --> $DIR/borrowck-migrate-to-nll.rs:35:17
    |
 LL |                 (|| { let bar = foo; bar.take() })();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

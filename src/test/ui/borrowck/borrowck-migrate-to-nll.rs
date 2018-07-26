@@ -15,8 +15,17 @@
 // Therefore, for backwards-compatiblity, under borrowck=migrate the
 // NLL checks will be emitted as *warnings*.
 
-// compile-flags: -Z borrowck=migrate
-// run-pass
+// NLL mode makes this compile-fail; we cannot currently encode a
+// test that is run-pass or compile-fail based on compare-mode. So
+// just ignore it instead:
+
+// ignore-compare-mode-nll
+
+// revisions: zflag edition
+//[zflag]compile-flags: -Z borrowck=migrate
+//[edition]compile-flags: --edition 2018
+//[zflag] run-pass
+//[edition] run-pass
 
 fn main() {
     match Some(&4) {

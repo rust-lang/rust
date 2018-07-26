@@ -1,0 +1,9 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-feature-nll-overrides-migrate.rs:32:17
+   |
+LL |                 (|| { let bar = foo; bar.take() })();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -18,7 +18,9 @@
 // NLL checks will be emitted as errors *even* in the presence of `-Z
 // borrowck=migrate`.
 
-// compile-flags: -Z borrowck=migrate
+// revisions: zflag edition
+// [zflag]compile-flags: -Z borrowck=migrate
+// [edition]compile-flags: --edition 2018
 
 #![feature(nll)]
 
@@ -28,7 +30,8 @@ fn main() {
         ref mut foo
             if {
                 (|| { let bar = foo; bar.take() })();
-                //~^ ERROR cannot move out of borrowed content [E0507]
+                //[zflag]~^ ERROR cannot move out of borrowed content [E0507]
+                //[edition]~^^ ERROR cannot move out of borrowed content [E0507]
                 false
             } => {},
         Some(ref _s) => println!("Note this arm is bogus; the `Some` became `None` in the guard."),
