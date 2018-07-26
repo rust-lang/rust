@@ -22,7 +22,7 @@ use rustc::mir::{ClearCrossCrate, Local, Location, Mir, Mutability, Operand, Pla
 use rustc::mir::{Field, Projection, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
-use rustc::ty::{self, ParamEnv, TyCtxt};
+use rustc::ty::{self, ParamEnv, TyCtxt, Ty};
 
 use rustc_errors::{Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -598,7 +598,12 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // that is useful later.
                 let drop_place_ty = gcx.lift(&drop_place_ty).unwrap();
 
-                self.visit_terminator_drop(loc, term, flow_state, drop_place, drop_place_ty, span);
+                debug!("visit_terminator_drop \
+                        loc: {:?} term: {:?} drop_place: {:?} drop_place_ty: {:?} span: {:?}",
+                       loc, term, drop_place, drop_place_ty, span);
+
+                self.visit_terminator_drop(
+                    loc, term, flow_state, drop_place, drop_place_ty, span, SeenTy(None));
             }
             TerminatorKind::DropAndReplace {
                 location: ref drop_place,
@@ -832,6 +837,35 @@ impl InitializationRequiringAction {
     }
 }
 
+/// A simple linked-list threaded up the stack of recursive calls in `visit_terminator_drop`.
+#[derive(Copy, Clone, Debug)]
+struct SeenTy<'a, 'gcx: 'a>(Option<(Ty<'gcx>, &'a SeenTy<'a, 'gcx>)>);
+
+impl<'a, 'gcx> SeenTy<'a, 'gcx> {
+    /// Return a new list with `ty` prepended to the front of `self`.
+    fn cons(&'a self, ty: Ty<'gcx>) -> Self {
+        SeenTy(Some((ty, self)))
+    }
+
+    /// True if and only if `ty` occurs on the linked list `self`.
+    fn have_seen(self, ty: Ty) -> bool {
+        let mut this = self.0;
+        loop {
+            match this {
+                None => return false,
+                Some((seen_ty, recur)) => {
+                    if seen_ty == ty {
+                        return true;
+                    } else {
+                        this = recur.0;
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Invokes `access_place` as appropriate for dropping the value
     /// at `drop_place`. Note that the *actual* `Drop` in the MIR is
@@ -847,14 +881,57 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         drop_place: &Place<'tcx>,
         erased_drop_place_ty: ty::Ty<'gcx>,
         span: Span,
+        prev_seen: SeenTy<'_, 'gcx>,
     ) {
+        if prev_seen.have_seen(erased_drop_place_ty) {
+            // if we have directly seen the input ty `T`, then we must
+            // have had some *direct* ownership loop between `T` and
+            // some directly-owned (as in, actually traversed by
+            // recursive calls below) part that is also of type `T`.
+            //
+            // Note: in *all* such cases, the data in question cannot
+            // be constructed (nor destructed) in finite time/space.
+            //
+            // Proper examples, some of which are statically rejected:
+            //
+            // * `struct A { field: A, ... }`:
+            //   statically rejected as infinite size
+            //
+            // * `type B = (B, ...);`:
+            //   statically rejected as cyclic
+            //
+            // * `struct C { field: Box<C>, ... }`
+            // * `struct D { field: Box<(D, D)>, ... }`:
+            //   *accepted*, though impossible to construct
+            //
+            // Here is *NOT* an example:
+            // * `struct Z { field: Option<Box<Z>>, ... }`:
+            //   Here, the type is both representable in finite space (due to the boxed indirection)
+            //   and constructable in finite time (since the recursion can bottom out with `None`).
+            //   This is an obvious instance of something the compiler must accept.
+            //
+            // Since some of the above impossible cases like `C` and
+            // `D` are accepted by the compiler, we must take care not
+            // to infinite-loop while processing them. But since such
+            // cases cannot actually arise, it is sound for us to just
+            // skip them during drop. If the developer uses unsafe
+            // code to construct them, they should not be surprised by
+            // weird drop behavior in their resulting code.
+            debug!("visit_terminator_drop previously seen \
+                    erased_drop_place_ty: {:?} on prev_seen: {:?}; returning early.",
+                   erased_drop_place_ty, prev_seen);
+            return;
+        }
+
         let gcx = self.tcx.global_tcx();
         let drop_field = |mir: &mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
                           (index, field): (usize, ty::Ty<'gcx>)| {
             let field_ty = gcx.normalize_erasing_regions(mir.param_env, field);
             let place = drop_place.clone().field(Field::new(index), field_ty);
 
-            mir.visit_terminator_drop(loc, term, flow_state, &place, field_ty, span);
+            debug!("visit_terminator_drop drop_field place: {:?} field_ty: {:?}", place, field_ty);
+            let seen = prev_seen.cons(erased_drop_place_ty);
+            mir.visit_terminator_drop(loc, term, flow_state, &place, field_ty, span, seen);
         };
 
         match erased_drop_place_ty.sty {
@@ -899,17 +976,81 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     .enumerate()
                     .for_each(|field| drop_field(self, field));
             }
+
+            // #45696: special-case Box<T> by treating its dtor as
+            // only deep *across owned content*. Namely, we know
+            // dropping a box does not touch data behind any
+            // references it holds; if we were to instead fall into
+            // the base case below, we would have a Deep Write due to
+            // the box being `needs_drop`, and that Deep Write would
+            // touch `&mut` data in the box.
+            ty::TyAdt(def, _) if def.is_box() => {
+                // When/if we add a `&own T` type, this action would
+                // be like running the destructor of the `&own T`.
+                // (And the owner of backing storage referenced by the
+                // `&own T` would be responsible for deallocating that
+                // backing storage.)
+
+                // we model dropping any content owned by the box by
+                // recurring on box contents. This catches cases like
+                // `Box<Box<ScribbleWhenDropped<&mut T>>>`, while
+                // still restricting Write to *owned* content.
+                let ty = erased_drop_place_ty.boxed_ty();
+                let deref_place = drop_place.clone().deref();
+                debug!("visit_terminator_drop drop-box-content deref_place: {:?} ty: {:?}",
+                       deref_place, ty);
+                let seen = prev_seen.cons(erased_drop_place_ty);
+                self.visit_terminator_drop(
+                    loc, term, flow_state, &deref_place, ty, span, seen);
+            }
+
             _ => {
                 // We have now refined the type of the value being
                 // dropped (potentially) to just the type of a
                 // subfield; so check whether that field's type still
-                // "needs drop". If so, we assume that the destructor
-                // may access any data it likes (i.e., a Deep Write).
+                // "needs drop".
                 if erased_drop_place_ty.needs_drop(gcx, self.param_env) {
+                    // If so, we assume that the destructor may access
+                    // any data it likes (i.e., a Deep Write).
                     self.access_place(
                         ContextKind::Drop.new(loc),
                         (drop_place, span),
                         (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                        LocalMutationIsAllowed::Yes,
+                        flow_state,
+                    );
+                } else {
+                    // If there is no destructor, we still include a
+                    // *shallow* write.  This essentially ensures that
+                    // borrows of the memory directly at `drop_place`
+                    // cannot continue to be borrowed across the drop.
+                    //
+                    // If we were to use a Deep Write here, then any
+                    // `&mut T` that is reachable from `drop_place`
+                    // would get invalidated; fixing that is the
+                    // essence of resolving issue #45696.
+                    //
+                    // * Note: In the compiler today, doing a Deep
+                    //   Write here would not actually break
+                    //   anything beyond #45696; for example it does not
+                    //   break this example:
+                    //
+                    //   ```rust
+                    //   fn reborrow(x: &mut i32) -> &mut i32 { &mut *x }
+                    //   ```
+                    //
+                    //   Why? Because we do not schedule/emit
+                    //   `Drop(x)` in the MIR unless `x` needs drop in
+                    //   the first place.
+                    //
+                    // FIXME: Its possible this logic actually should
+                    // be attached to the `StorageDead` statement
+                    // rather than the `Drop`. See discussion on PR
+                    // #52782.
+                    self.access_place(
+                        ContextKind::Drop.new(loc),
+                        (drop_place, span),
+                        (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                         LocalMutationIsAllowed::Yes,
                         flow_state,
                     );
