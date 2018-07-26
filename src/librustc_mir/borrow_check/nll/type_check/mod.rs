@@ -17,9 +17,10 @@ use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
+use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
 use borrow_check::nll::universal_regions::UniversalRegions;
-use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::LocalWithRegion;
+use borrow_check::nll::ToRegionVid;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
@@ -36,12 +37,12 @@ use rustc::traits::query::type_op;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
+use rustc_errors::Diagnostic;
 use std::fmt;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 use util::liveness::LivenessResults;
-use rustc_errors::Diagnostic;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
@@ -71,7 +72,7 @@ macro_rules! span_mirbug_and_err {
 }
 
 mod constraint_conversion;
-mod free_region_relations;
+pub mod free_region_relations;
 mod input_output;
 mod liveness;
 mod relate_tys;
@@ -120,7 +121,10 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
     errors_buffer: &mut Vec<Diagnostic>,
-) -> MirTypeckRegionConstraints<'tcx> {
+) -> (
+    MirTypeckRegionConstraints<'tcx>,
+    Rc<UniversalRegionRelations<'tcx>>,
+) {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
         liveness_constraints: LivenessValues::new(elements),
@@ -128,16 +132,17 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         type_tests: Vec::default(),
     };
 
-    let _urr = free_region_relations::UniversalRegionRelations::create(
-        infcx,
-        mir_def_id,
-        param_env,
-        location_table,
-        Some(implicit_region_bound),
-        universal_regions,
-        &mut constraints,
-        all_facts,
-    );
+    let universal_region_relations =
+        Rc::new(free_region_relations::UniversalRegionRelations::create(
+            infcx,
+            mir_def_id,
+            param_env,
+            location_table,
+            Some(implicit_region_bound),
+            universal_regions,
+            &mut constraints,
+            all_facts,
+        ));
 
     {
         let mut borrowck_context = BorrowCheckContext {
@@ -153,17 +158,23 @@ pub(crate) fn type_check<'gcx, 'tcx>(
             mir_def_id,
             param_env,
             mir,
-            &universal_regions.region_bound_pairs,
+            &universal_region_relations.region_bound_pairs,
             Some(implicit_region_bound),
             Some(&mut borrowck_context),
             Some(errors_buffer),
             |cx| {
                 liveness::generate(cx, mir, liveness, flow_inits, move_data);
-                cx.equate_inputs_and_outputs(mir, mir_def_id, universal_regions);
+                cx.equate_inputs_and_outputs(
+                    mir,
+                    mir_def_id,
+                    universal_regions,
+                    &universal_region_relations,
+                );
             },
         );
     }
-    constraints
+
+    (constraints, universal_region_relations)
 }
 
 fn type_check_internal<'a, 'gcx, 'tcx, F>(
@@ -176,8 +187,8 @@ fn type_check_internal<'a, 'gcx, 'tcx, F>(
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
     errors_buffer: Option<&mut Vec<Diagnostic>>,
     mut extra: F,
-)
-    where F: FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>)
+) where
+    F: FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>),
 {
     let mut checker = TypeChecker::new(
         infcx,
@@ -319,8 +330,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             // don't have a handy function for that, so for
             // now we just ignore `value.val` regions.
 
-            let instantiated_predicates =
-                tcx.predicates_of(def_id).instantiate(tcx, substs);
+            let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
             type_checker.normalize_and_prove_instantiated_predicates(
                 instantiated_predicates,
                 location.boring(),
@@ -1035,9 +1045,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // all the inputs that fed into it were live.
                 for &late_bound_region in map.values() {
                     if let Some(ref mut borrowck_context) = self.borrowck_context {
-                        let region_vid = borrowck_context.universal_regions.to_region_vid(
-                            late_bound_region);
-                        borrowck_context.constraints
+                        let region_vid = borrowck_context
+                            .universal_regions
+                            .to_region_vid(late_bound_region);
+                        borrowck_context
+                            .constraints
                             .liveness_constraints
                             .add_element(region_vid, term_location);
                     }
@@ -1253,12 +1265,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_local(&mut self,
-                   mir: &Mir<'tcx>,
-                   local: Local,
-                   local_decl: &LocalDecl<'tcx>,
-                   errors_buffer: &mut Option<&mut Vec<Diagnostic>>)
-    {
+    fn check_local(
+        &mut self,
+        mir: &Mir<'tcx>,
+        local: Local,
+        local_decl: &LocalDecl<'tcx>,
+        errors_buffer: &mut Option<&mut Vec<Diagnostic>>,
+    ) {
         match mir.local_kind(local) {
             LocalKind::ReturnPointer | LocalKind::Arg => {
                 // return values of normal functions are required to be
@@ -1286,12 +1299,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             // slot or local, so to find all unsized rvalues it is enough
             // to check all temps, return slots and locals.
             if let None = self.reported_errors.replace((ty, span)) {
-                let mut diag = struct_span_err!(self.tcx().sess,
-                                                span,
-                                                E0161,
-                                                "cannot move a value of type {0}: the size of {0} \
-                                                 cannot be statically determined",
-                                                ty);
+                let mut diag = struct_span_err!(
+                    self.tcx().sess,
+                    span,
+                    E0161,
+                    "cannot move a value of type {0}: the size of {0} \
+                     cannot be statically determined",
+                    ty
+                );
                 if let Some(ref mut errors_buffer) = *errors_buffer {
                     diag.buffer(errors_buffer);
                 } else {
@@ -1589,13 +1604,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
                         ty::TyRef(ref_region, _, mutbl) => {
-                            constraints
-                                .outlives_constraints
-                                .push(OutlivesConstraint {
-                                    sup: ref_region.to_region_vid(),
-                                    sub: borrow_region.to_region_vid(),
-                                    locations: location.boring(),
-                                });
+                            constraints.outlives_constraints.push(OutlivesConstraint {
+                                sup: ref_region.to_region_vid(),
+                                sub: borrow_region.to_region_vid(),
+                                locations: location.boring(),
+                            });
 
                             if let Some(all_facts) = all_facts {
                                 all_facts.outlives.push((
@@ -1780,10 +1793,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn typeck_mir(&mut self,
-                  mir: &Mir<'tcx>,
-                  mut errors_buffer: Option<&mut Vec<Diagnostic>>)
-    {
+    fn typeck_mir(&mut self, mir: &Mir<'tcx>, mut errors_buffer: Option<&mut Vec<Diagnostic>>) {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
 
@@ -1853,7 +1863,17 @@ impl MirPass for TypeckMir {
 
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            type_check_internal(&infcx, def_id, param_env, mir, &[], None, None, None, |_| ());
+            type_check_internal(
+                &infcx,
+                def_id,
+                param_env,
+                mir,
+                &[],
+                None,
+                None,
+                None,
+                |_| (),
+            );
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)

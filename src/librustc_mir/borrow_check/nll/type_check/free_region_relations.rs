@@ -9,11 +9,13 @@
 // except according to those terms.
 
 use borrow_check::location::LocationTable;
+use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::type_check::constraint_conversion;
 use borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
+use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
+use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
 use rustc::infer::InferCtxt;
 use rustc::traits::query::outlives_bounds::{self, OutlivesBound};
@@ -92,6 +94,107 @@ impl UniversalRegionRelations<'tcx> {
         );
         self.outlives.add(fr_a, fr_b);
         self.inverse_outlives.add(fr_b, fr_a);
+    }
+
+    /// Given two universal regions, returns the postdominating
+    /// upper-bound (effectively the least upper bound).
+    ///
+    /// (See `TransitiveRelation::postdom_upper_bound` for details on
+    /// the postdominating upper bound in general.)
+    crate fn postdom_upper_bound(&self, fr1: RegionVid, fr2: RegionVid) -> RegionVid {
+        assert!(self.universal_regions.is_universal_region(fr1));
+        assert!(self.universal_regions.is_universal_region(fr2));
+        *self
+            .inverse_outlives
+            .postdom_upper_bound(&fr1, &fr2)
+            .unwrap_or(&self.universal_regions.fr_static)
+    }
+
+    /// Finds an "upper bound" for `fr` that is not local. In other
+    /// words, returns the smallest (*) known region `fr1` that (a)
+    /// outlives `fr` and (b) is not local. This cannot fail, because
+    /// we will always find `'static` at worst.
+    ///
+    /// (*) If there are multiple competing choices, we pick the "postdominating"
+    /// one. See `TransitiveRelation::postdom_upper_bound` for details.
+    crate fn non_local_upper_bound(&self, fr: RegionVid) -> RegionVid {
+        debug!("non_local_upper_bound(fr={:?})", fr);
+        self.non_local_bound(&self.inverse_outlives, fr)
+            .unwrap_or(self.universal_regions.fr_static)
+    }
+
+    /// Finds a "lower bound" for `fr` that is not local. In other
+    /// words, returns the largest (*) known region `fr1` that (a) is
+    /// outlived by `fr` and (b) is not local. This cannot fail,
+    /// because we will always find `'static` at worst.
+    ///
+    /// (*) If there are multiple competing choices, we pick the "postdominating"
+    /// one. See `TransitiveRelation::postdom_upper_bound` for details.
+    crate fn non_local_lower_bound(&self, fr: RegionVid) -> Option<RegionVid> {
+        debug!("non_local_lower_bound(fr={:?})", fr);
+        self.non_local_bound(&self.outlives, fr)
+    }
+
+    /// Helper for `non_local_upper_bound` and
+    /// `non_local_lower_bound`.  Repeatedly invokes `postdom_parent`
+    /// until we find something that is not local. Returns None if we
+    /// never do so.
+    fn non_local_bound(
+        &self,
+        relation: &TransitiveRelation<RegionVid>,
+        fr0: RegionVid,
+    ) -> Option<RegionVid> {
+        // This method assumes that `fr0` is one of the universally
+        // quantified region variables.
+        assert!(self.universal_regions.is_universal_region(fr0));
+
+        let mut external_parents = vec![];
+        let mut queue = vec![&fr0];
+
+        // Keep expanding `fr` into its parents until we reach
+        // non-local regions.
+        while let Some(fr) = queue.pop() {
+            if !self.universal_regions.is_local_free_region(*fr) {
+                external_parents.push(fr);
+                continue;
+            }
+
+            queue.extend(relation.parents(fr));
+        }
+
+        debug!("non_local_bound: external_parents={:?}", external_parents);
+
+        // In case we find more than one, reduce to one for
+        // convenience.  This is to prevent us from generating more
+        // complex constraints, but it will cause spurious errors.
+        let post_dom = relation
+            .mutual_immediate_postdominator(external_parents)
+            .cloned();
+
+        debug!("non_local_bound: post_dom={:?}", post_dom);
+
+        post_dom.and_then(|post_dom| {
+            // If the mutual immediate postdom is not local, then
+            // there is no non-local result we can return.
+            if !self.universal_regions.is_local_free_region(post_dom) {
+                Some(post_dom)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// True if fr1 is known to outlive fr2.
+    ///
+    /// This will only ever be true for universally quantified regions.
+    crate fn outlives(&self, fr1: RegionVid, fr2: RegionVid) -> bool {
+        self.outlives.contains(&fr1, &fr2)
+    }
+
+    /// Returns a vector of free regions `x` such that `fr1: x` is
+    /// known to hold.
+    crate fn regions_outlived_by(&self, fr1: RegionVid) -> Vec<&RegionVid> {
+        self.outlives.reachable_from(&fr1)
     }
 }
 
@@ -221,5 +324,18 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
                 }
             }
         }
+    }
+}
+
+/// This trait is used by the `impl-trait` constraint code to abstract
+/// over the `FreeRegionMap` from lexical regions and
+/// `UniversalRegions` (from NLL)`.
+impl<'tcx> FreeRegionRelations<'tcx> for UniversalRegionRelations<'tcx> {
+    fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool {
+        let shorter = shorter.to_region_vid();
+        assert!(self.universal_regions.is_universal_region(shorter));
+        let longer = longer.to_region_vid();
+        assert!(self.universal_regions.is_universal_region(longer));
+        self.outlives(longer, shorter)
     }
 }

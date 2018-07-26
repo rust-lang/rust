@@ -15,6 +15,7 @@ use borrow_check::nll::constraints::{
 };
 use borrow_check::nll::region_infer::values::{RegionElement, ToElementIndex};
 use borrow_check::nll::type_check::Locations;
+use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::region_constraints::{GenericKind, VarInfos};
@@ -80,8 +81,12 @@ pub struct RegionInferenceContext<'tcx> {
     type_tests: Vec<TypeTest<'tcx>>,
 
     /// Information about the universally quantified regions in scope
-    /// on this function and their (known) relations to one another.
+    /// on this function.
     universal_regions: Rc<UniversalRegions<'tcx>>,
+
+    /// Information about how the universally quantified regions in
+    /// scope on this function relate to one another.
+    universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
 }
 
 struct RegionDefinition<'tcx> {
@@ -207,6 +212,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn new(
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
+        universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
         _mir: &Mir<'tcx>,
         outlives_constraints: ConstraintSet,
         type_tests: Vec<TypeTest<'tcx>>,
@@ -249,6 +255,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             scc_values,
             type_tests,
             universal_regions,
+            universal_region_relations,
         };
 
         result.init_free_and_bound_regions();
@@ -766,7 +773,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Grow further to get smallest universal region known to
         // creator.
-        let non_local_lub = self.universal_regions.non_local_upper_bound(lub);
+        let non_local_lub = self.universal_region_relations.non_local_upper_bound(lub);
 
         debug!(
             "non_local_universal_upper_bound: non_local_lub={:?}",
@@ -802,7 +809,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut lub = self.universal_regions.fr_fn_body;
         let r_scc = self.constraint_sccs.scc(r);
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
-            lub = self.universal_regions.postdom_upper_bound(lub, ur);
+            lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
         }
 
         debug!("universal_upper_bound: r={:?} lub={:?}", r, lub);
@@ -870,7 +877,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .all(|r1| {
                 self.scc_values
                     .universal_regions_outlived_by(sup_region_scc)
-                    .any(|r2| self.universal_regions.outlives(r2, r1))
+                    .any(|r2| self.universal_region_relations.outlives(r2, r1))
             });
 
         if !universal_outlives {
@@ -975,7 +982,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // (because `fr` includes `end(o)`).
         for shorter_fr in self.scc_values.universal_regions_outlived_by(longer_fr_scc) {
             // If it is known that `fr: o`, carry on.
-            if self.universal_regions.outlives(longer_fr, shorter_fr) {
+            if self.universal_region_relations.outlives(longer_fr, shorter_fr) {
                 continue;
             }
 
@@ -989,14 +996,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
                 // We'll call that `fr-` -- it's ever so slightly smaller than `fr`.
-                if let Some(fr_minus) = self.universal_regions.non_local_lower_bound(longer_fr) {
+                if let Some(fr_minus) = self.universal_region_relations.non_local_lower_bound(longer_fr) {
                     debug!("check_universal_region: fr_minus={:?}", fr_minus);
 
                     // Grow `shorter_fr` until we find a non-local
                     // region. (We always will.)  We'll call that
                     // `shorter_fr+` -- it's ever so slightly larger than
                     // `fr`.
-                    let shorter_fr_plus = self.universal_regions.non_local_upper_bound(shorter_fr);
+                    let shorter_fr_plus = self.universal_region_relations.non_local_upper_bound(shorter_fr);
                     debug!(
                         "check_universal_region: shorter_fr_plus={:?}",
                         shorter_fr_plus

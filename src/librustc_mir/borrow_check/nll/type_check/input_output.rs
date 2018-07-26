@@ -18,6 +18,7 @@
 //! contain revealed `impl Trait` values).
 
 use borrow_check::nll::renumber;
+use borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferOk;
@@ -37,6 +38,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
         universal_regions: &UniversalRegions<'tcx>,
+        universal_region_relations: &UniversalRegionRelations<'tcx>,
     ) {
         let tcx = self.infcx.tcx;
 
@@ -160,7 +162,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 Locations::All,
                 CustomTypeOp::new(
                     |_cx| {
-                        infcx.constrain_anon_types(&anon_type_map, universal_regions);
+                        infcx.constrain_anon_types(&anon_type_map, universal_region_relations);
                         Ok(InferOk {
                             value: (),
                             obligations: vec![],

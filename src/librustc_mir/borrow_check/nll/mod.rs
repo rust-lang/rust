@@ -111,7 +111,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // Run the MIR type-checker.
     let liveness_map = NllLivenessMap::compute(&mir);
     let liveness = LivenessResults::compute(mir, &liveness_map);
-    let constraint_sets = type_check::type_check(
+    let (constraint_sets, universal_region_relations) = type_check::type_check(
         infcx,
         param_env,
         mir,
@@ -155,6 +155,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let mut regioncx = RegionInferenceContext::new(
         var_origins,
         universal_regions,
+        universal_region_relations,
         mir,
         outlives_constraints,
         type_tests,
