@@ -36,6 +36,7 @@ matrix:
         CI_JOB_NAME=dist-x86_64-apple-alt
       os: osx
       osx_image: xcode9.3-moar
+      if: branch = auto
 
     # macOS builders. These are placed near the beginning because they are very
     # slow to run.
@@ -56,6 +57,7 @@ matrix:
         CI_JOB_NAME=x86_64-apple
       os: osx
       osx_image: xcode9.3-moar
+      if: branch = auto
 
     - env: >
         RUST_CHECK_TARGET=check
@@ -69,6 +71,7 @@ matrix:
         CI_JOB_NAME=i686-apple
       os: osx
       osx_image: xcode9.3-moar
+      if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
     # just produce a bunch of artifacts.
@@ -88,6 +91,7 @@ matrix:
         CI_JOB_NAME=dist-i686-apple
       os: osx
       osx_image: xcode9.3-moar
+      if: branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -101,6 +105,7 @@ matrix:
         CI_JOB_NAME=dist-x86_64-apple
       os: osx
       osx_image: xcode9.3-moar
+      if: branch = auto
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
