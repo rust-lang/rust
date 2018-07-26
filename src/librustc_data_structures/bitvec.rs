@@ -557,7 +557,7 @@ fn matrix_iter() {
 
 #[test]
 fn sparse_matrix_iter() {
-    let mut matrix: SparseBitMatrix<usize, usize> = SparseBitMatrix::new(64, 100);
+    let mut matrix: SparseBitMatrix<usize, usize> = SparseBitMatrix::new(100);
     matrix.add(3, 22);
     matrix.add(3, 75);
     matrix.add(2, 99);
