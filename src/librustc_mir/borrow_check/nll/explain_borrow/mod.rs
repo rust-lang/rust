@@ -54,7 +54,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             borrow_region_vid
         );
 
-        let region_sub = regioncx.find_constraint(borrow_region_vid, context.loc);
+        let region_sub = regioncx.find_sub_region_live_at(borrow_region_vid, context.loc);
 
         debug!(
             "explain_why_borrow_contains_point: region_sub={:?}",

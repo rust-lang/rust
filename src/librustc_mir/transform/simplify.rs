@@ -288,15 +288,15 @@ impl MirPass for SimplifyLocals {
         let mut marker = DeclMarker { locals: BitVector::new(mir.local_decls.len()) };
         marker.visit_mir(mir);
         // Return pointer and arguments are always live
-        marker.locals.insert(RETURN_PLACE.index());
+        marker.locals.insert(RETURN_PLACE);
         for arg in mir.args_iter() {
-            marker.locals.insert(arg.index());
+            marker.locals.insert(arg);
         }
 
         // We may need to keep dead user variables live for debuginfo.
         if tcx.sess.opts.debuginfo == FullDebugInfo {
             for local in mir.vars_iter() {
-                marker.locals.insert(local.index());
+                marker.locals.insert(local);
             }
         }
 
@@ -308,35 +308,38 @@ impl MirPass for SimplifyLocals {
 }
 
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
-fn make_local_map<'tcx, I: Idx, V>(vec: &mut IndexVec<I, V>, mask: BitVector) -> Vec<usize> {
-    let mut map: Vec<usize> = ::std::iter::repeat(!0).take(vec.len()).collect();
-    let mut used = 0;
+fn make_local_map<'tcx, V>(
+    vec: &mut IndexVec<Local, V>,
+    mask: BitVector<Local>,
+) -> IndexVec<Local, Option<Local>> {
+    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*vec);
+    let mut used = Local::new(0);
     for alive_index in mask.iter() {
-        map[alive_index] = used;
+        map[alive_index] = Some(used);
         if alive_index != used {
             vec.swap(alive_index, used);
         }
-        used += 1;
+        used.increment_by(1);
     }
-    vec.truncate(used);
+    vec.truncate(used.index());
     map
 }
 
 struct DeclMarker {
-    pub locals: BitVector,
+    pub locals: BitVector<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
     fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
         // ignore these altogether, they get removed along with their otherwise unused decls.
         if ctx != PlaceContext::StorageLive && ctx != PlaceContext::StorageDead {
-            self.locals.insert(local.index());
+            self.locals.insert(*local);
         }
     }
 }
 
 struct LocalUpdater {
-    map: Vec<usize>,
+    map: IndexVec<Local, Option<Local>>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
@@ -345,7 +348,7 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         data.statements.retain(|stmt| {
             match stmt.kind {
                 StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
-                    self.map[l.index()] != !0
+                    self.map[l].is_some()
                 }
                 _ => true
             }
@@ -353,6 +356,6 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         self.super_basic_block_data(block, data);
     }
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext<'tcx>, _: Location) {
-        *l = Local::new(self.map[l.index()]);
+        *l = self.map[*l].unwrap();
     }
 }

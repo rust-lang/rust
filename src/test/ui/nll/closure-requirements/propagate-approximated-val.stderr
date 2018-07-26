@@ -24,14 +24,19 @@ LL | |     });
    = note: where '_#1r: '_#2r
 
 error[E0623]: lifetime mismatch
-  --> $DIR/propagate-approximated-val.rs:46:29
+  --> $DIR/propagate-approximated-val.rs:46:5
    |
-LL | fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-   |                              -------                -------
-   |                              |
-   |                              these two types are declared with different lifetimes...
-LL |     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
-   |                             ^^^^^^ ...but data from `cell_a` flows into `cell_b` here
+LL |   fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   |                                -------                -------
+   |                                |
+   |                                these two types are declared with different lifetimes...
+LL | /     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
+LL | |         //~^ ERROR lifetime mismatch
+LL | |
+LL | |         // Only works if 'x: 'y:
+LL | |         demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to nll
+LL | |     });
+   | |______^ ...but data from `cell_a` flows into `cell_b` here
 
 note: No external requirements
   --> $DIR/propagate-approximated-val.rs:45:1

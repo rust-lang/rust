@@ -15,8 +15,8 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
+use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
-use borrow_check::nll::region_infer::values::{RegionValues, RegionValueElements};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::LocalWithRegion;
@@ -35,7 +35,7 @@ use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants, RegionVid};
+use rustc::ty::{self, CanonicalTy, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use std::fmt;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
@@ -73,6 +73,7 @@ macro_rules! span_mirbug_and_err {
 mod constraint_conversion;
 mod input_output;
 mod liveness;
+mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
@@ -121,7 +122,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
 ) -> MirTypeckRegionConstraints<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
-        liveness_constraints: RegionValues::new(elements),
+        liveness_constraints: LivenessValues::new(elements),
         outlives_constraints: ConstraintSet::default(),
         type_tests: Vec::default(),
     };
@@ -638,7 +639,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    crate liveness_constraints: RegionValues<RegionVid>,
+    crate liveness_constraints: LivenessValues<RegionVid>,
 
     crate outlives_constraints: ConstraintSet,
 
@@ -796,16 +797,38 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     }
 
     fn sub_types(&mut self, sub: Ty<'tcx>, sup: Ty<'tcx>, locations: Locations) -> Fallible<()> {
-        let param_env = self.param_env;
-        self.fully_perform_op(
+        relate_tys::sub_types(
+            self.infcx,
+            sub,
+            sup,
             locations,
-            param_env.and(type_op::subtype::Subtype::new(sub, sup)),
+            self.borrowck_context.as_mut().map(|x| &mut **x),
         )
     }
 
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> Fallible<()> {
-        let param_env = self.param_env;
-        self.fully_perform_op(locations, param_env.and(type_op::eq::Eq::new(b, a)))
+        relate_tys::eq_types(
+            self.infcx,
+            a,
+            b,
+            locations,
+            self.borrowck_context.as_mut().map(|x| &mut **x),
+        )
+    }
+
+    fn eq_canonical_type_and_type(
+        &mut self,
+        a: CanonicalTy<'tcx>,
+        b: Ty<'tcx>,
+        locations: Locations,
+    ) -> Fallible<()> {
+        relate_tys::eq_canonical_type_and_type(
+            self.infcx,
+            a,
+            b,
+            locations,
+            self.borrowck_context.as_mut().map(|x| &mut **x),
+        )
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -877,20 +900,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
-            StatementKind::UserAssertTy(ref c_ty, ref local) => {
-                let local_ty = mir.local_decls()[*local].ty;
-                let (ty, _) = self.infcx
-                    .instantiate_canonical_with_fresh_inference_vars(stmt.source_info.span, c_ty);
-                debug!(
-                    "check_stmt: user_assert_ty ty={:?} local_ty={:?}",
-                    ty, local_ty
-                );
-                if let Err(terr) = self.eq_types(ty, local_ty, Locations::All) {
+            StatementKind::UserAssertTy(c_ty, local) => {
+                let local_ty = mir.local_decls()[local].ty;
+                if let Err(terr) = self.eq_canonical_type_and_type(c_ty, local_ty, Locations::All) {
                     span_mirbug!(
                         self,
                         stmt,
                         "bad type assert ({:?} = {:?}): {:?}",
-                        ty,
+                        c_ty,
                         local_ty,
                         terr
                     );

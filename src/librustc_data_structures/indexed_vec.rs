@@ -25,7 +25,13 @@ use rustc_serialize as serialize;
 /// (purpose: avoid mixing indexes for different bitvector domains.)
 pub trait Idx: Copy + 'static + Ord + Debug + Hash {
     fn new(idx: usize) -> Self;
+
     fn index(self) -> usize;
+
+    fn increment_by(&mut self, amount: usize) {
+        let v = self.index() + amount;
+        *self = Self::new(v);
+    }
 }
 
 impl Idx for usize {
@@ -86,6 +92,35 @@ macro_rules! newtype_index {
             #[inline]
             fn index(self) -> usize {
                 self.0 as usize
+            }
+        }
+
+        impl ::std::iter::Step for $type {
+            fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                <usize as ::std::iter::Step>::steps_between(
+                    &Idx::index(*start),
+                    &Idx::index(*end),
+                )
+            }
+
+            fn replace_one(&mut self) -> Self {
+                ::std::mem::replace(self, Self::new(1))
+            }
+
+            fn replace_zero(&mut self) -> Self {
+                ::std::mem::replace(self, Self::new(0))
+            }
+
+            fn add_one(&self) -> Self {
+                Self::new(Idx::index(*self) + 1)
+            }
+
+            fn sub_one(&self) -> Self {
+                Self::new(Idx::index(*self) - 1)
+            }
+
+            fn add_usize(&self, u: usize) -> Option<Self> {
+                Idx::index(*self).checked_add(u).map(Self::new)
             }
         }
 
@@ -475,8 +510,8 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn swap(&mut self, a: usize, b: usize) {
-        self.raw.swap(a, b)
+    pub fn swap(&mut self, a: I, b: I) {
+        self.raw.swap(a.index(), b.index())
     }
 
     #[inline]

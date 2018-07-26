@@ -231,7 +231,7 @@ pub struct InliningMap<'tcx> {
 
     // Contains one bit per mono item in the `targets` field. That bit
     // is true if that mono item needs to be inlined into every CGU.
-    inlines: BitVector,
+    inlines: BitVector<usize>,
 }
 
 impl<'tcx> InliningMap<'tcx> {

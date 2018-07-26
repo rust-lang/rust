@@ -5,12 +5,12 @@ LL |     *v = x; //~ ERROR lifetime mismatch
    |          ^
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-2.rs:11:14
+  --> $DIR/ex3-both-anon-regions-2.rs:12:5
    |
 LL | fn foo(&mut (ref mut v, w): &mut (&u8, &u8), x: &u8) {
-   |              ^^^^^^^^^            ---           --- these two types are declared with different lifetimes...
-   |              |
-   |              ...but data from `x` flows here
+   |                                   ---           --- these two types are declared with different lifetimes...
+LL |     *v = x; //~ ERROR lifetime mismatch
+   |     ^^^^^^ ...but data from `x` flows here
 
 error: aborting due to previous error
 

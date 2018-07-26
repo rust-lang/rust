@@ -11,20 +11,20 @@ LL |     z.push((x,y)); //~ ERROR lifetime mismatch
    |               ^
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-3.rs:11:33
+  --> $DIR/ex3-both-anon-regions-3.rs:12:5
    |
 LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
-   |                     ---         ^       --- these two types are declared with different lifetimes...
-   |                                 |
-   |                                 ...but data flows into `z` here
+   |                     ---                 --- these two types are declared with different lifetimes...
+LL |     z.push((x,y)); //~ ERROR lifetime mismatch
+   |     ^^^^^^^^^^^^^ ...but data flows into `z` here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-3.rs:11:33
+  --> $DIR/ex3-both-anon-regions-3.rs:12:5
    |
 LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
-   |                         ---     ^            --- these two types are declared with different lifetimes...
-   |                                 |
-   |                                 ...but data flows into `z` here
+   |                         ---                  --- these two types are declared with different lifetimes...
+LL |     z.push((x,y)); //~ ERROR lifetime mismatch
+   |     ^^^^^^^^^^^^^ ...but data flows into `z` here
 
 error: aborting due to 2 previous errors
 

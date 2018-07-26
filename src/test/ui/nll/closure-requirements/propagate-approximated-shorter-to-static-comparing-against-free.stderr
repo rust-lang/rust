@@ -5,7 +5,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |     ^^^
 
 error: borrowed data escapes outside of closure
-  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:20
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:9
    |
 LL |     foo(cell, |cell_a, cell_x| {
    |                ------  ------ `cell_x` is a reference that is only valid in the closure body
@@ -13,7 +13,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |                `cell_a` is declared here, outside of the closure body
 LL |         //~^ WARNING not reporting region error due to nll
 LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-   |                    ^^^^^^^^^^^^ `cell_x` escapes the closure body here
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ `cell_x` escapes the closure body here
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:15
