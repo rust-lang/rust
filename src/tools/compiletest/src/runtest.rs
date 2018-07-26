@@ -2624,7 +2624,11 @@ impl<'test> TestCx<'test> {
             let suggestions = get_suggestions_from_json(
                 &proc_res.stderr,
                 &HashSet::new(),
-                Filter::Everything,
+                if self.props.rustfix_only_machine_applicable {
+                    Filter::MachineApplicableOnly
+                } else {
+                    Filter::Everything
+                },
             ).unwrap();
             let fixed_code = apply_suggestions(&unfixed_code, &suggestions).expect(&format!(
                 "failed to apply suggestions for {:?} with rustfix",
@@ -2686,7 +2690,7 @@ impl<'test> TestCx<'test> {
             if !res.status.success() {
                 self.fatal_proc_rec("failed to compile fixed code", &res);
             }
-            if !res.stderr.is_empty() {
+            if !res.stderr.is_empty() && !self.props.rustfix_only_machine_applicable {
                 self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
             }
         }
