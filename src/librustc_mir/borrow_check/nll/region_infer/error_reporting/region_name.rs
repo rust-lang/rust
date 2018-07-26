@@ -16,6 +16,7 @@ use rustc::infer::InferCtxt;
 use rustc::mir::Mir;
 use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc::util::ppaux::with_highlight_region;
 use rustc_errors::DiagnosticBuilder;
 use syntax::ast::Name;
 use syntax::symbol::keywords;
@@ -228,40 +229,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
-        let mut type_name = infcx.extract_type_name(&argument_ty);
-        let argument_index = self.get_argument_index_for_region(infcx.tcx, needle_fr)?;
-        let mut first_region_name = None;
+        let type_name = with_highlight_region(needle_fr, *counter, || {
+            infcx.extract_type_name(&argument_ty)
+        });
 
-        debug!("give_name_if_we_cannot_match_hir_ty: type_name={:?}", type_name);
-        while let Some(start_index) = type_name.find("&'_#") {
-            if let Some(end_index) = type_name[start_index..].find(' ') {
-                // Need to make the `end_index` relative to the full string.
-                let end_index = start_index + end_index;
-                // `start_index + 1` skips the `&`.
-                // `end_index + 1` goes to (including) the space after the region.
-                type_name.replace_range(start_index + 1..end_index + 1, "");
-            }
-        }
-        debug!("give_name_if_we_cannot_match_hir_ty: type_name={:?}", type_name);
+        debug!("give_name_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
+               type_name, needle_fr);
+        let assigned_region_name = if type_name.find(&format!("'{}", counter)).is_some() {
+            // Only add a label if we can confirm that a region was labelled.
+            let argument_index = self.get_argument_index_for_region(infcx.tcx, needle_fr)?;
+            let (_, span) = self.get_argument_name_and_span_for_region(mir, argument_index);
+            diag.span_label(span, format!("has type `{}`", type_name));
 
-        let mut index = 0;
-        while let Some(next_index) = type_name[index..].find("&") {
-            // At this point, next_index is the index of the `&` character (starting from
-            // the last `&` character).
-            debug!("give_name_if_we_cannot_match_hir_ty: start-of-loop index={:?} type_name={:?}",
-                   index, type_name);
-            let region_name = self.synthesize_region_name(counter).as_str();
-            if first_region_name.is_none() { first_region_name = Some(region_name); }
+            // This counter value will already have been used, so this function will increment it
+            // so the next value will be used next and return the region name that would have been
+            // used.
+            Some(self.synthesize_region_name(counter))
+        } else {
+            None
+        };
 
-            // Compute the index of the character after `&` in the original string.
-            index = next_index + index + 1;
-            type_name.insert_str(index, &format!("{} ", region_name));
-        }
-
-        let (_, span) = self.get_argument_name_and_span_for_region(mir, argument_index);
-        diag.span_label(span, format!("has type `{}`", type_name));
-
-        first_region_name.map(|s| s.as_interned_str())
+        assigned_region_name
     }
 
     /// Attempts to highlight the specific part of a type annotation

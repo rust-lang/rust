@@ -19,7 +19,7 @@ use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
-use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
+use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
 use std::cell::Cell;
@@ -31,6 +31,12 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};
 use hir;
+
+thread_local! {
+    /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
+    /// Contains region to highlight and counter for number to use when highlighting.
+    static HIGHLIGHT_REGION: Cell<Option<(RegionVid, usize)>> = Cell::new(None)
+}
 
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
@@ -562,6 +568,19 @@ pub fn parameterized<F: fmt::Write>(f: &mut F,
     PrintContext::new().parameterized(f, substs, did, projections)
 }
 
+fn get_highlight_region() -> Option<(RegionVid, usize)> {
+    HIGHLIGHT_REGION.with(|hr| hr.get())
+}
+
+pub fn with_highlight_region<R>(r: RegionVid, counter: usize, op: impl FnOnce() -> R) -> R {
+    HIGHLIGHT_REGION.with(|hr| {
+        assert_eq!(hr.get(), None);
+        hr.set(Some((r, counter)));
+        let r = op();
+        hr.set(None);
+        r
+    })
+}
 
 impl<'a, T: Print> Print for &'a T {
     fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result {
@@ -733,7 +752,7 @@ define_print! {
 define_print! {
     () ty::RegionKind, (self, f, cx) {
         display {
-            if cx.is_verbose {
+            if cx.is_verbose || get_highlight_region().is_some() {
                 return self.print_debug(f, cx);
             }
 
@@ -905,6 +924,15 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some((region, counter)) = get_highlight_region() {
+            debug!("RegionVid.fmt: region={:?} self={:?} counter={:?}", region, self, counter);
+            return if *self == region {
+                write!(f, "'{:?}", counter)
+            } else {
+                write!(f, "'_")
+            }
+        }
+
         write!(f, "'_#{}r", self.index())
     }
 }
@@ -1022,9 +1050,11 @@ define_print! {
                 TyRef(r, ty, mutbl) => {
                     write!(f, "&")?;
                     let s = r.print_to_string(cx);
-                    write!(f, "{}", s)?;
-                    if !s.is_empty() {
-                        write!(f, " ")?;
+                    if s != "'_" {
+                        write!(f, "{}", s)?;
+                        if !s.is_empty() {
+                            write!(f, " ")?;
+                        }
                     }
                     ty::TypeAndMut { ty, mutbl }.print(f, cx)
                 }
