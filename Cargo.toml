@@ -30,5 +30,5 @@ log = "0.4"
 cargo_miri = ["cargo_metadata"]
 
 [dev-dependencies]
-compiletest_rs = { version = "0.3.4", features = ["tmp"] }
+compiletest_rs = { version = "0.3.12", features = ["tmp"] }
 colored = "1.6"
