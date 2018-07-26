@@ -1,5 +1,5 @@
 error: higher-ranked subtype error
-  --> $DIR/hr-fn-aau-eq-abu.rs:29:53
+  --> $DIR/hr-fn-aau-eq-abu.rs:33:53
    |
 LL |     let a: Cell<for<'a, 'b> fn(&'a u32, &'b u32)> = make_cell_aa();
    |                                                     ^^^^^^^^^^^^^^
