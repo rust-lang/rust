@@ -591,23 +591,31 @@ impl<'a> FmtVisitor<'a> {
                 buffer.push((self.buffer.clone(), item.clone()));
                 self.buffer.clear();
             }
-            // type -> const -> macro -> method
+            // type -> existential -> const -> macro -> method
             use ast::ImplItemKind::*;
             fn need_empty_line(a: &ast::ImplItemKind, b: &ast::ImplItemKind) -> bool {
                 match (a, b) {
-                    (Type(..), Type(..)) | (Const(..), Const(..)) => false,
+                    (Type(..), Type(..))
+                    | (Const(..), Const(..))
+                    | (Existential(..), Existential(..)) => false,
                     _ => true,
                 }
             }
 
             buffer.sort_by(|(_, a), (_, b)| match (&a.node, &b.node) {
+                (Type(..), Type(..))
+                | (Const(..), Const(..))
+                | (Macro(..), Macro(..))
+                | (Existential(..), Existential(..)) => a.ident.as_str().cmp(&b.ident.as_str()),
+                (Method(..), Method(..)) => a.span.lo().cmp(&b.span.lo()),
                 (Type(..), _) => Ordering::Less,
                 (_, Type(..)) => Ordering::Greater,
+                (Existential(..), _) => Ordering::Less,
+                (_, Existential(..)) => Ordering::Greater,
                 (Const(..), _) => Ordering::Less,
                 (_, Const(..)) => Ordering::Greater,
                 (Macro(..), _) => Ordering::Less,
                 (_, Macro(..)) => Ordering::Greater,
-                _ => a.span.lo().cmp(&b.span.lo()),
             });
             let mut prev_kind = None;
             for (buf, item) in buffer {
