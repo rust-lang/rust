@@ -11,6 +11,7 @@ fn main() {
     writeln!(&mut v, "Hello");
     let world = "world";
     writeln!(&mut v, "Hello {}", world);
+    writeln!(&mut v, "Hello {world}", world=world);
     writeln!(&mut v, "3 in hex is {:X}", 3);
     writeln!(&mut v, "2 + 1 = {:.4}", 3);
     writeln!(&mut v, "2 + 1 = {:5.4}", 3);
