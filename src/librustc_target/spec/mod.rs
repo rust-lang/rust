@@ -377,6 +377,8 @@ supported_targets! {
 
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
+
+    ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
