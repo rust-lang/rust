@@ -58,6 +58,9 @@ pub mod arm;
 #[cfg(all(kernel_user_helpers, target_os = "linux", target_arch = "arm"))]
 pub mod arm_linux;
 
+#[cfg(any(target_arch = "riscv32"))]
+pub mod riscv32;
+
 #[cfg(target_arch = "x86")]
 pub mod x86;
 
