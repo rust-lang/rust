@@ -733,18 +733,8 @@ fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_>, ty: Ty) ->
     let tcx = bx.tcx();
 
     let new_sty = match ty.sty {
-        TyInt(Isize) => match &tcx.sess.target.target.target_pointer_width[..] {
-            "16" => TyInt(I16),
-            "32" => TyInt(I32),
-            "64" => TyInt(I64),
-            _ => panic!("unsupported target word size")
-        },
-        TyUint(Usize) => match &tcx.sess.target.target.target_pointer_width[..] {
-            "16" => TyUint(U16),
-            "32" => TyUint(U32),
-            "64" => TyUint(U64),
-            _ => panic!("unsupported target word size")
-        },
+        TyInt(Isize) => TyInt(tcx.sess.target.isize_ty),
+        TyUint(Usize) => TyUint(tcx.sess.target.usize_ty),
         ref t @ TyUint(_) | ref t @ TyInt(_) => t.clone(),
         _ => panic!("tried to get overflow intrinsic for op applied to non-int type")
     };
