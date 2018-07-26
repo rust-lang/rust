@@ -29,18 +29,6 @@ use syntax::ast;
 crate struct UniversalRegionRelations<'tcx> {
     universal_regions: Rc<UniversalRegions<'tcx>>,
 
-    /// Each RBP `('a, GK)` indicates that `GK: 'a` can be assumed to
-    /// be true. These encode relationships like `T: 'a` that are
-    /// added via implicit bounds.
-    ///
-    /// Each region here is guaranteed to be a key in the `indices`
-    /// map.  We use the "original" regions (i.e., the keys from the
-    /// map, and not the values) because the code in
-    /// `process_registered_region_obligations` has some special-cased
-    /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
-    /// our special inference variable there, we would mess that up.
-    crate region_bound_pairs: Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
-
     /// Stores the outlives relations that are known to hold from the
     /// implied bounds, in-scope where clauses, and that sort of
     /// thing.
@@ -53,6 +41,18 @@ crate struct UniversalRegionRelations<'tcx> {
     inverse_outlives: TransitiveRelation<RegionVid>,
 }
 
+/// Each RBP `('a, GK)` indicates that `GK: 'a` can be assumed to
+/// be true. These encode relationships like `T: 'a` that are
+/// added via implicit bounds.
+///
+/// Each region here is guaranteed to be a key in the `indices`
+/// map.  We use the "original" regions (i.e., the keys from the
+/// map, and not the values) because the code in
+/// `process_registered_region_obligations` has some special-cased
+/// logic expecting to see (e.g.) `ReStatic`, and if we supplied
+/// our special inference variable there, we would mess that up.
+type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
+
 crate fn create(
     infcx: &InferCtxt<'_, '_, 'tcx>,
     mir_def_id: DefId,
@@ -62,7 +62,7 @@ crate fn create(
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     all_facts: &mut Option<AllFacts>,
-) -> Rc<UniversalRegionRelations<'tcx>> {
+) -> (Rc<UniversalRegionRelations<'tcx>>, RegionBoundPairs<'tcx>) {
     let mir_node_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
     UniversalRegionRelationsBuilder {
         infcx,
@@ -74,9 +74,9 @@ crate fn create(
         location_table,
         all_facts,
         universal_regions: universal_regions.clone(),
+        region_bound_pairs: Vec::new(),
         relations: UniversalRegionRelations {
             universal_regions: universal_regions.clone(),
-            region_bound_pairs: Vec::new(),
             outlives: TransitiveRelation::new(),
             inverse_outlives: TransitiveRelation::new(),
         },
@@ -205,14 +205,17 @@ struct UniversalRegionRelationsBuilder<'this, 'gcx: 'tcx, 'tcx: 'this> {
     param_env: ty::ParamEnv<'tcx>,
     location_table: &'this LocationTable,
     universal_regions: Rc<UniversalRegions<'tcx>>,
-    relations: UniversalRegionRelations<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     constraints: &'this mut MirTypeckRegionConstraints<'tcx>,
     all_facts: &'this mut Option<AllFacts>,
+
+    // outputs:
+    relations: UniversalRegionRelations<'tcx>,
+    region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
 impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
-    crate fn create(mut self) -> Rc<UniversalRegionRelations<'tcx>> {
+    crate fn create(mut self) -> (Rc<UniversalRegionRelations<'tcx>>, RegionBoundPairs<'tcx>) {
         let unnormalized_input_output_tys = self
             .universal_regions
             .unnormalized_input_tys
@@ -225,7 +228,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
         //   constraints, which we buffer up because we are
         //   not ready to process them yet.
         // - Then compute the implied bounds. This will adjust
-        //   the `relations.region_bound_pairs` and so forth.
+        //   the `region_bound_pairs` and so forth.
         // - After this is done, we'll process the constraints, once
         //   the `relations` is built.
         let constraint_sets: Vec<_> = unnormalized_input_output_tys
@@ -267,7 +270,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
                 self.infcx.tcx,
                 &self.universal_regions,
                 &self.location_table,
-                &self.relations.region_bound_pairs,
+                &self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
                 Locations::All,
@@ -277,7 +280,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
             ).convert_all(&data);
         }
 
-        Rc::new(self.relations)
+        (Rc::new(self.relations), self.region_bound_pairs)
     }
 
     /// Update the type of a single local, which should represent
@@ -312,14 +315,12 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
                 }
 
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    self.relations
-                        .region_bound_pairs
+                    self.region_bound_pairs
                         .push((r_a, GenericKind::Param(param_b)));
                 }
 
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
-                    self.relations
-                        .region_bound_pairs
+                    self.region_bound_pairs
                         .push((r_a, GenericKind::Projection(projection_b)));
                 }
             }

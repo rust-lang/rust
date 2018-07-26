@@ -132,7 +132,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         type_tests: Vec::default(),
     };
 
-    let universal_region_relations = free_region_relations::create(
+    let (universal_region_relations, region_bound_pairs) = free_region_relations::create(
         infcx,
         mir_def_id,
         param_env,
@@ -157,7 +157,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
             mir_def_id,
             param_env,
             mir,
-            &universal_region_relations.region_bound_pairs,
+            &region_bound_pairs,
             Some(implicit_region_bound),
             Some(&mut borrowck_context),
             Some(errors_buffer),
