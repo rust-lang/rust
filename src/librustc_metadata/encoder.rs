@@ -1466,7 +1466,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     fn encode_lib_features(&mut self, _: ()) -> LazySeq<(ast::Name, Option<ast::Name>)> {
         let tcx = self.tcx;
         let lib_features = tcx.lib_features();
-        self.lazy_seq(lib_features.iter())
+        self.lazy_seq(lib_features.to_vec())
     }
 
     fn encode_lang_items(&mut self, _: ()) -> LazySeq<(DefIndex, usize)> {

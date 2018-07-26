@@ -2846,8 +2846,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     };
     providers.get_lib_features = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        // FIXME(#42293): see comment below.
-        tcx.dep_graph.with_ignore(|| Lrc::new(middle::lib_features::collect(tcx)))
+        Lrc::new(middle::lib_features::collect(tcx))
     };
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);

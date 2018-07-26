@@ -841,7 +841,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // FIXME: only remove `libc` when `stdbuild` is active.
     remaining_lib_features.remove(&Symbol::intern("libc"));
 
-    for (feature, stable) in tcx.lib_features().iter() {
+    for (feature, stable) in tcx.lib_features().to_vec() {
         if let Some(since) = stable {
             if let Some(span) = remaining_lib_features.get(&feature) {
                 // Warn if the user has enabled an already-stable lib feature.

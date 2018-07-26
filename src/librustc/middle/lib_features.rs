@@ -37,10 +37,12 @@ impl LibFeatures {
         }
     }
 
-    pub fn iter(&self) -> Vec<(Symbol, Option<Symbol>)> {
-        self.stable.iter().map(|(f, s)| (*f, Some(*s)))
+    pub fn to_vec(&self) -> Vec<(Symbol, Option<Symbol>)> {
+        let mut all_features: Vec<_> = self.stable.iter().map(|(f, s)| (*f, Some(*s)))
             .chain(self.unstable.iter().map(|f| (*f, None)))
-            .collect()
+            .collect();
+        all_features.sort_unstable_by_key(|f| f.0.as_str());
+        all_features
     }
 }
 
