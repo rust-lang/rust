@@ -17,21 +17,27 @@ use future::{FutureObj, LocalFutureObj};
 
 /// A task executor.
 ///
-/// A *task* is a `()`-producing async value that runs at the top level, and will
-/// be `poll`ed until completion. It's also the unit at which wake-up
-/// notifications occur. Executors, such as thread pools, allow tasks to be
-/// spawned and are responsible for putting tasks onto ready queues when
-/// they are woken up, and polling them when they are ready.
+/// Futures are polled until completion by tasks, a kind of lightweight
+/// "thread". A *task executor* is responsible for the creation of these tasks
+/// and the coordination of their execution on real operating system threads. In
+/// particular, whenever a task signals that it can make further progress via a
+/// wake-up notification, it is the responsibility of the task executor to put
+/// the task into a queue to continue executing it, i.e. polling the future in
+/// it, later.
 pub trait Executor {
-    /// Spawn the given task, polling it until completion.
+    /// Spawns a new task with the given future. The future will be polled until
+    /// completion.
     ///
     /// # Errors
     ///
     /// The executor may be unable to spawn tasks, either because it has
     /// been shut down or is resource-constrained.
-    fn spawn_obj(&mut self, task: FutureObj<'static, ()>) -> Result<(), SpawnObjError>;
+    fn spawn_obj(
+        &mut self,
+        future: FutureObj<'static, ()>,
+    ) -> Result<(), SpawnObjError>;
 
-    /// Determine whether the executor is able to spawn new tasks.
+    /// Determines whether the executor is able to spawn new tasks.
     ///
     /// # Returns
     ///
@@ -75,8 +81,8 @@ pub struct SpawnObjError {
     /// The kind of error
     pub kind: SpawnErrorKind,
 
-    /// The task for which spawning was attempted
-    pub task: FutureObj<'static, ()>,
+    /// The future for which spawning inside a task was attempted
+    pub future: FutureObj<'static, ()>,
 }
 
 /// The result of a failed spawn
@@ -85,6 +91,6 @@ pub struct SpawnLocalObjError {
     /// The kind of error
     pub kind: SpawnErrorKind,
 
-    /// The task for which spawning was attempted
-    pub task: LocalFutureObj<'static, ()>,
+    /// The future for which spawning inside a task was attempted
+    pub future: LocalFutureObj<'static, ()>,
 }
