@@ -333,14 +333,21 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
 
         // Consider the borrow not activated to start. When we find an activation, we'll update
         // this field.
-        let borrow_data = &mut self.idx_vec[borrow_index];
-        borrow_data.activation_location = TwoPhaseActivation::NotActivated;
+        {
+            let borrow_data = &mut self.idx_vec[borrow_index];
+            borrow_data.activation_location = TwoPhaseActivation::NotActivated;
+        }
 
         // Insert `temp` into the list of pending activations. From
         // now on, we'll be on the lookout for a use of it. Note that
         // we are guaranteed that this use will come after the
         // assignment.
         let old_value = self.pending_activations.insert(temp, borrow_index);
-        assert!(old_value.is_none());
+        if let Some(old_index) = old_value {
+            span_bug!(self.mir.source_info(start_location).span,
+                      "found already pending activation for temp: {:?} \
+                       at borrow_index: {:?} with associated data {:?}",
+                      temp, old_index, self.idx_vec[old_index]);
+        }
     }
 }
