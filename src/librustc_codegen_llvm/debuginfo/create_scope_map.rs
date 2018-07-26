@@ -65,7 +65,7 @@ pub fn create_mir_scopes(cx: &CodegenCx, mir: &Mir, debug_context: &FunctionDebu
     let mut has_variables = BitVector::new(mir.source_scopes.len());
     for var in mir.vars_iter() {
         let decl = &mir.local_decls[var];
-        has_variables.insert(decl.visibility_scope.index());
+        has_variables.insert(decl.visibility_scope);
     }
 
     // Instantiate all scopes.
@@ -79,7 +79,7 @@ pub fn create_mir_scopes(cx: &CodegenCx, mir: &Mir, debug_context: &FunctionDebu
 
 fn make_mir_scope(cx: &CodegenCx,
                   mir: &Mir,
-                  has_variables: &BitVector,
+                  has_variables: &BitVector<SourceScope>,
                   debug_context: &FunctionDebugContextData,
                   scope: SourceScope,
                   scopes: &mut IndexVec<SourceScope, MirDebugScope>) {
@@ -102,7 +102,7 @@ fn make_mir_scope(cx: &CodegenCx,
         return;
     };
 
-    if !has_variables.contains(scope.index()) {
+    if !has_variables.contains(scope) {
         // Do not create a DIScope if there are no variables
         // defined in this MIR Scope, to avoid debuginfo bloat.
 

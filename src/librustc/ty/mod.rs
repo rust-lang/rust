@@ -1481,13 +1481,26 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// type name in a non-zero universe is a skolemized type -- an
 /// idealized representative of "types in general" that we use for
 /// checking generic functions.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct UniverseIndex(u32);
 
 impl UniverseIndex {
     /// The root universe, where things that the user defined are
     /// visible.
     pub const ROOT: Self = UniverseIndex(0);
+
+    /// The "max universe" -- this isn't really a valid universe, but
+    /// it's useful sometimes as a "starting value" when you are
+    /// taking the minimum of a (non-empty!) set of universes.
+    pub const MAX: Self = UniverseIndex(::std::u32::MAX);
+
+    /// Creates a universe index from the given integer.  Not to be
+    /// used lightly lest you pick a bad value. But sometimes we
+    /// convert universe indicies into integers and back for various
+    /// reasons.
+    pub fn from_u32(index: u32) -> Self {
+        UniverseIndex(index)
+    }
 
     /// A "subuniverse" corresponds to being inside a `forall` quantifier.
     /// So, for example, suppose we have this type in universe `U`:
@@ -1504,12 +1517,23 @@ impl UniverseIndex {
         UniverseIndex(self.0.checked_add(1).unwrap())
     }
 
+    /// True if the names in this universe are a subset of the names in `other`.
+    pub fn is_subset_of(self, other: UniverseIndex) -> bool {
+        self.0 <= other.0
+    }
+
     pub fn as_u32(&self) -> u32 {
         self.0
     }
 
     pub fn as_usize(&self) -> usize {
         self.0 as usize
+    }
+}
+
+impl fmt::Debug for UniverseIndex {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "U{}", self.as_u32())
     }
 }
 

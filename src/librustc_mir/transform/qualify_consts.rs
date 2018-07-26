@@ -116,7 +116,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     local_qualif: IndexVec<Local, Option<Qualif>>,
     qualif: Qualif,
-    const_fn_arg_vars: BitVector,
+    const_fn_arg_vars: BitVector<Local>,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
@@ -344,7 +344,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                         // Make sure there are no extra unassigned variables.
                         self.qualif = Qualif::NOT_CONST;
                         for index in mir.vars_iter() {
-                            if !self.const_fn_arg_vars.contains(index.index()) {
+                            if !self.const_fn_arg_vars.contains(index) {
                                 debug!("unassigned variable {:?}", index);
                                 self.assign(&Place::Local(index), Location {
                                     block: bb,
@@ -1021,7 +1021,7 @@ This does not pose a problem by itself because they can't be accessed directly."
         // Check the allowed const fn argument forms.
         if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
             if self.mir.local_kind(index) == LocalKind::Var &&
-               self.const_fn_arg_vars.insert(index.index()) &&
+               self.const_fn_arg_vars.insert(index) &&
                !self.tcx.sess.features_untracked().const_let {
 
                 // Direct use of an argument is permitted.

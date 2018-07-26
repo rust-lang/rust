@@ -1353,6 +1353,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "generate build artifacts that are compatible with linker-based LTO."),
     no_parallel_llvm: bool = (false, parse_bool, [UNTRACKED],
           "don't run LLVM in parallel (while keeping codegen-units and ThinLTO)"),
+    no_leak_check: bool = (false, parse_bool, [UNTRACKED],
+        "disables the 'leak check' for subtyping; unsound, but useful for tests"),
 }
 
 pub fn default_lib_output() -> CrateType {

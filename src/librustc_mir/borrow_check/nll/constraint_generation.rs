@@ -12,7 +12,7 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::region_infer::values::LivenessValues;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
@@ -20,11 +20,11 @@ use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
 use rustc::mir::{Local, Statement, Terminator};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts};
+use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, RegionVid};
 
 pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
-    regioncx: &mut RegionInferenceContext<'tcx>,
+    liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     mir: &Mir<'tcx>,
@@ -33,7 +33,7 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     let mut cg = ConstraintGeneration {
         borrow_set,
         infcx,
-        regioncx,
+        liveness_constraints,
         location_table,
         all_facts,
     };
@@ -48,7 +48,7 @@ struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
-    regioncx: &'cg mut RegionInferenceContext<'tcx>,
+    liveness_constraints: &'cg mut LivenessValues<RegionVid>,
     borrow_set: &'cg BorrowSet<'tcx>,
 }
 
@@ -202,7 +202,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
             .tcx
             .for_each_free_region(&live_ty, |live_region| {
                 let vid = live_region.to_region_vid();
-                self.regioncx.add_live_element(vid, location);
+                self.liveness_constraints.add_element(vid, location);
             });
     }
 }

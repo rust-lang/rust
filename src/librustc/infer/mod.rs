@@ -377,7 +377,23 @@ pub enum NLLRegionVariableOrigin {
     // elsewhere. This origin indices we've got one of those.
     FreeRegion,
 
-    Inferred(::mir::visit::TyContext),
+    BoundRegion(ty::UniverseIndex),
+
+    Existential,
+}
+
+impl NLLRegionVariableOrigin {
+    pub fn is_universal(self) -> bool {
+        match self {
+            NLLRegionVariableOrigin::FreeRegion => true,
+            NLLRegionVariableOrigin::BoundRegion(..) => true,
+            NLLRegionVariableOrigin::Existential => false,
+        }
+    }
+
+    pub fn is_existential(self) -> bool {
+        !self.is_universal()
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -1380,6 +1396,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     fn universe(&self) -> ty::UniverseIndex {
         self.universe.get()
+    }
+
+    /// Create and return a new subunivese of the current universe;
+    /// update `self.universe` to that new subuniverse. At present,
+    /// used only in the NLL subtyping code, which uses the new
+    /// universe-based scheme instead of the more limited leak-check
+    /// scheme.
+    pub fn create_subuniverse(&self) -> ty::UniverseIndex {
+        let u = self.universe.get().subuniverse();
+        self.universe.set(u);
+        u
     }
 }
 

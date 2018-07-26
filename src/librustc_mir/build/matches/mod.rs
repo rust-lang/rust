@@ -487,7 +487,7 @@ enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
         adt_def: &'tcx ty::AdtDef,
-        variants: BitVector,
+        variants: BitVector<usize>,
     },
 
     // test the branches of enum

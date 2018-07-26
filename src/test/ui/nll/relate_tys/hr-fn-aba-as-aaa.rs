@@ -8,17 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Zborrowck=mir
+// Test that the NLL `relate_tys` code correctly deduces that a
+// function returning always its first argument can be upcast to one
+// that returns either first or second argument.
+//
+// compile-pass
+// compile-flags:-Zno-leak-check
 
-#![allow(dead_code)]
+#![feature(nll)]
 
-fn bar<'a>(input: &'a u32, f: fn(&'a u32) -> &'a u32) -> &'static u32 {
-    // Here the NLL checker must relate the types in `f` to the types
-    // in `g`. These are related via the `UnsafeFnPointer` cast.
-    let g: unsafe fn(_) -> _ = f;
-    //~^ WARNING not reporting region error due to nll
-    //~| ERROR unsatisfied lifetime constraints
-    unsafe { g(input) }
+fn make_it() -> for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 {
+    panic!()
 }
 
-fn main() {}
+fn main() {
+    let a: for<'a> fn(&'a u32, &'a u32) -> &'a u32 = make_it();
+    drop(a);
+}
