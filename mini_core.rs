@@ -17,6 +17,7 @@ unsafe impl Copy for i8 {}
 unsafe impl Copy for i16 {}
 unsafe impl Copy for i32 {}
 unsafe impl Copy for isize {}
+unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
 
@@ -48,6 +49,11 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 impl PartialEq for u8 {
     fn eq(&self, other: &u8) -> bool { (*self) == (*other) }
     fn ne(&self, other: &u8) -> bool { (*self) != (*other) }
+}
+
+impl PartialEq for char {
+    fn eq(&self, other: &char) -> bool { (*self) == (*other) }
+    fn ne(&self, other: &char) -> bool { (*self) != (*other) }
 }
 
 impl<T: ?Sized> PartialEq for *const T {
@@ -86,5 +92,6 @@ pub mod intrinsics {
     extern "rust-intrinsic" {
         pub fn size_of<T>() -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
+        pub fn transmute<T, U>(e: T) -> U;
     }
 }

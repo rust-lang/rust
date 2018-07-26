@@ -248,6 +248,9 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                         TypeVariants::TyInt(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true, false)
                         }
+                        TypeVariants::TyChar => {
+                            trans_char_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
+                        }
                         TypeVariants::TyRawPtr(..) => {
                             trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
                         }
@@ -423,9 +426,9 @@ macro_rules! binop_match {
     }
 }
 
-fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
+pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
     let res = binop_match! {
-        fx, bin_op, signed, lhs, rhs, "non ptr";
+        fx, bin_op, signed, lhs, rhs, "int/uint";
         Add (_) iadd;
         Sub (_) isub;
         Mul (_) imul;
@@ -455,6 +458,33 @@ fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, l
     };
 
     // TODO: return correct value for checked binops
+    CValue::ByVal(res, fx.layout_of(ty))
+}
+
+pub fn trans_char_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
+    let res = binop_match! {
+        fx, bin_op, false, lhs, rhs, "char";
+        Add (_) bug;
+        Sub (_) bug;
+        Mul (_) bug;
+        Div (_) bug;
+        Rem (_) bug;
+        BitXor (_) bug;
+        BitAnd (_) bug;
+        BitOr (_) bug;
+        Shl (_) bug;
+        Shr (_) bug;
+
+        Eq (_) icmp(Equal);
+        Lt (_) icmp(UnsignedLessThan);
+        Le (_) icmp(UnsignedLessThanOrEqual);
+        Ne (_) icmp(NotEqual);
+        Ge (_) icmp(UnsignedGreaterThanOrEqual);
+        Gt (_) icmp(UnsignedGreaterThan);
+
+        Offset (_) bug;
+    };
+
     CValue::ByVal(res, fx.layout_of(ty))
 }
 

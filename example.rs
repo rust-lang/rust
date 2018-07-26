@@ -115,3 +115,11 @@ fn call_closure() {
 
     })(0u8, 42u8, 0u8)
 }
+
+fn eq_char(a: char, b: char) -> bool {
+    a == b
+}
+
+unsafe fn transmute(c: char) -> u32 {
+    intrinsics::transmute(c)
+}
