@@ -17,16 +17,16 @@ matrix:
   include:
     # Images used in testing PR and try-build should be run first.
     - env: IMAGE=x86_64-gnu-llvm-5.0 RUST_BACKTRACE=1
-      if: type = pull_request OR branch = auto
+
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
-      if: branch = try OR branch = auto
+
 
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
     # additional testing.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1 CI_JOB_NAME=dist-x86_64-linux-alt
-      if: branch = try OR branch = auto
+
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -40,7 +40,7 @@ matrix:
         CI_JOB_NAME=dist-x86_64-apple-alt
       os: osx
       osx_image: xcode9.3-moar
-      if: branch = auto
+
 
     # macOS builders. These are placed near the beginning because they are very
     # slow to run.
@@ -61,7 +61,7 @@ matrix:
         CI_JOB_NAME=x86_64-apple
       os: osx
       osx_image: xcode9.3-moar
-      if: branch = auto
+
 
     - env: >
         RUST_CHECK_TARGET=check
@@ -75,7 +75,7 @@ matrix:
         CI_JOB_NAME=i686-apple
       os: osx
       osx_image: xcode9.3-moar
-      if: branch = auto
+
 
     # OSX builders producing releases. These do not run the full test suite and
     # just produce a bunch of artifacts.
@@ -95,7 +95,7 @@ matrix:
         CI_JOB_NAME=dist-i686-apple
       os: osx
       osx_image: xcode9.3-moar
-      if: branch = auto
+
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -109,89 +109,89 @@ matrix:
         CI_JOB_NAME=dist-x86_64-apple
       os: osx
       osx_image: xcode9.3-moar
-      if: branch = auto
+
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
-      if: branch = auto
-    - env: IMAGE=armhf-gnu
-      if: branch = auto
-    - env: IMAGE=dist-various-1 DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-various-2 DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-aarch64-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-android DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-arm-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-armhf-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-armv7-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-i586-gnu-i586-i686-musl DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-i686-freebsd DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-i686-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-mips-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-mips64-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-mips64el-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-mipsel-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-powerpc-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-powerpc64-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-s390x-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-x86_64-musl DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=asmjs
-      if: branch = auto
-    - env: IMAGE=i686-gnu
-      if: branch = auto
-    - env: IMAGE=i686-gnu-nopt
-      if: branch = auto
-    - env: IMAGE=wasm32-unknown
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-full-bootstrap
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-aux
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-tools
-      if: branch = auto OR (type = pull_request AND commit_message =~ /(?i:^update.*\b(rls|rustfmt|clippy|miri)\b)/)
-    - env: IMAGE=x86_64-gnu-debug
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-nopt
-      if: branch = auto
-    - env: IMAGE=x86_64-gnu-distcheck
-      if: branch = auto
-    - env: IMAGE=mingw-check
-      if: type = pull_request OR branch = auto
 
-    - stage: publish toolstate
-      if: branch = master AND type = push
-      before_install: []
-      install: []
-      sudo: false
-      script:
-        MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
-        . src/ci/docker/x86_64-gnu-tools/repo.sh;
-        commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN";
+    - env: IMAGE=armhf-gnu
+
+    - env: IMAGE=dist-various-1 DEPLOY=1
+
+    - env: IMAGE=dist-various-2 DEPLOY=1
+
+    - env: IMAGE=dist-aarch64-linux DEPLOY=1
+
+    - env: IMAGE=dist-android DEPLOY=1
+
+    - env: IMAGE=dist-arm-linux DEPLOY=1
+
+    - env: IMAGE=dist-armhf-linux DEPLOY=1
+
+    - env: IMAGE=dist-armv7-linux DEPLOY=1
+
+    - env: IMAGE=dist-i586-gnu-i586-i686-musl DEPLOY=1
+
+    - env: IMAGE=dist-i686-freebsd DEPLOY=1
+
+    - env: IMAGE=dist-i686-linux DEPLOY=1
+
+    - env: IMAGE=dist-mips-linux DEPLOY=1
+
+    - env: IMAGE=dist-mips64-linux DEPLOY=1
+
+    - env: IMAGE=dist-mips64el-linux DEPLOY=1
+
+    - env: IMAGE=dist-mipsel-linux DEPLOY=1
+
+    - env: IMAGE=dist-powerpc-linux DEPLOY=1
+
+    - env: IMAGE=dist-powerpc64-linux DEPLOY=1
+
+    - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
+
+    - env: IMAGE=dist-s390x-linux DEPLOY=1
+
+    - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
+
+    - env: IMAGE=dist-x86_64-musl DEPLOY=1
+
+    - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
+
+    - env: IMAGE=asmjs
+
+    - env: IMAGE=i686-gnu
+
+    - env: IMAGE=i686-gnu-nopt
+
+    - env: IMAGE=wasm32-unknown
+
+    - env: IMAGE=x86_64-gnu
+
+    - env: IMAGE=x86_64-gnu-full-bootstrap
+
+    - env: IMAGE=x86_64-gnu-aux
+
+    - env: IMAGE=x86_64-gnu-tools
+
+    - env: IMAGE=x86_64-gnu-debug
+
+    - env: IMAGE=x86_64-gnu-nopt
+
+    - env: IMAGE=x86_64-gnu-distcheck
+
+    - env: IMAGE=mingw-check
+
+
+    # - stage: publish toolstate
+
+    #   before_install: []
+    #   install: []
+    #   sudo: false
+    #   script:
+    #     MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
+    #     . src/ci/docker/x86_64-gnu-tools/repo.sh;
+    #     commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN";
 
 env:
   global:
@@ -262,7 +262,6 @@ before_script:
 script:
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
-  - stamp sh -x -c "$RUN_SCRIPT"
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
 
