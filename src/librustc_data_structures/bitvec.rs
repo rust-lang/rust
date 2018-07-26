@@ -412,7 +412,7 @@ fn word_mask<C: Idx>(index: C) -> (usize, Word) {
 
 #[test]
 fn bitvec_iter_works() {
-    let mut bitvec = BitVector::new(100);
+    let mut bitvec: BitVector<usize> = BitVector::new(100);
     bitvec.insert(1);
     bitvec.insert(10);
     bitvec.insert(19);
@@ -430,7 +430,7 @@ fn bitvec_iter_works() {
 
 #[test]
 fn bitvec_iter_works_2() {
-    let mut bitvec = BitVector::new(319);
+    let mut bitvec: BitVector<usize> = BitVector::new(319);
     bitvec.insert(0);
     bitvec.insert(127);
     bitvec.insert(191);
@@ -441,8 +441,8 @@ fn bitvec_iter_works_2() {
 
 #[test]
 fn union_two_vecs() {
-    let mut vec1 = BitVector::new(65);
-    let mut vec2 = BitVector::new(65);
+    let mut vec1: BitVector<usize> = BitVector::new(65);
+    let mut vec2: BitVector<usize> = BitVector::new(65);
     assert!(vec1.insert(3));
     assert!(!vec1.insert(3));
     assert!(vec2.insert(5));
@@ -458,7 +458,7 @@ fn union_two_vecs() {
 
 #[test]
 fn grow() {
-    let mut vec1 = BitVector::new(65);
+    let mut vec1: BitVector<usize> = BitVector::new(65);
     for index in 0..65 {
         assert!(vec1.insert(index));
         assert!(!vec1.insert(index));
