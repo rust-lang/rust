@@ -1,6 +1,6 @@
 use std::fmt;
 
-use syntax::ast::{IntTy, UintTy};
+use syntax::ast::{IntTy, UintTy, FloatTy};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::{Module, FuncId, DataId};
@@ -46,6 +46,12 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>
             }
         }
         TypeVariants::TyChar => types::I32,
+        TypeVariants::TyFloat(size) => {
+            match size {
+                FloatTy::F32 => types::I32,
+                FloatTy::F64 => types::I64,
+            }
+        }
         TypeVariants::TyFnPtr(_) => types::I64,
         TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) | TypeVariants::TyRef(_, ty, _) => {
             if ty.is_sized(tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
@@ -57,6 +63,22 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>
         TypeVariants::TyParam(_)  => bug!("{:?}: {:?}", ty, ty.sty),
         _ => return None,
     })
+}
+
+fn codegen_field<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    base: Value,
+    layout: TyLayout<'tcx>,
+    field: mir::Field
+) -> (Value, TyLayout<'tcx>) {
+    let field_offset = layout.fields.offset(field.index());
+    let field_ty = layout.field(&*fx, field.index());
+    if field_offset.bytes() > 0 {
+        let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
+        (fx.bcx.ins().iadd(base, field_offset), field_ty)
+    } else {
+        (base, field_ty)
+    }
 }
 
 /// A read-only value
@@ -117,29 +139,13 @@ impl<'tcx> CValue<'tcx> {
     }
 
     pub fn value_field<'a>(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field) -> CValue<'tcx> where 'tcx: 'a {
-        use rustc::ty::util::IntTypeExt;
-
         let (base, layout) = match self {
             CValue::ByRef(addr, layout) => (addr, layout),
             _ => bug!("place_field for {:?}", self),
         };
-        let field_offset = layout.fields.offset(field.index());
-        let field_layout = if field.index() == 0 {
-            fx.layout_of(if let ty::TyAdt(adt_def, _) = layout.ty.sty {
-                adt_def.repr.discr_type().to_ty(fx.tcx)
-            } else {
-                // This can only be `0`, for now, so `u8` will suffice.
-                fx.tcx.types.u8
-            })
-        } else {
-            layout.field(&*fx, field.index())
-        };
-        if field_offset.bytes() > 0 {
-            let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
-            CValue::ByRef(fx.bcx.ins().iadd(base, field_offset), field_layout)
-        } else {
-            CValue::ByRef(base, field_layout)
-        }
+
+        let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
+        CValue::ByRef(field_ptr, field_layout)
     }
 
     pub fn const_val<'a>(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>, const_val: i64) -> CValue<'tcx> where 'tcx: 'a {
@@ -252,14 +258,9 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn place_field(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field) -> CPlace<'tcx> {
         let base = self.expect_addr();
         let layout = self.layout();
-        let field_offset = layout.fields.offset(field.index());
-        let field_ty = layout.field(&*fx, field.index());
-        if field_offset.bytes() > 0 {
-            let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
-            CPlace::Addr(fx.bcx.ins().iadd(base, field_offset), field_ty)
-        } else {
-            CPlace::Addr(base, field_ty)
-        }
+
+        let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
+        CPlace::Addr(field_ptr, field_layout)
     }
 
     pub fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {

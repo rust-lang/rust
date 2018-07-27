@@ -1,4 +1,4 @@
-#![feature(no_core)]
+#![feature(no_core, unboxed_closures)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -120,6 +120,24 @@ fn call_closure_2arg() {
     (|_, _| {
 
     })(0u8, 42u16)
+}
+
+struct IsNotEmpty;
+
+impl<'a, 'b> FnOnce<(&'a &'b [u16], )> for IsNotEmpty {
+    type Output = bool;
+
+    #[inline]
+    extern "rust-call" fn call_once(mut self, arg: (&'a &'b [u16], )) -> bool {
+        self.call_mut(arg)
+    }
+}
+
+impl<'a, 'b> FnMut<(&'a &'b [u16], )> for IsNotEmpty {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, arg: (&'a &'b [u16], )) -> bool {
+        true
+    }
 }
 
 fn eq_char(a: char, b: char) -> bool {

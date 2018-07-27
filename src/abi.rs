@@ -26,7 +26,6 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
             )
         }
         Abi::System => bug!("system abi should be selected elsewhere"),
-        // TODO: properly implement intrinsics
         Abi::RustIntrinsic => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
@@ -122,27 +121,70 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
         offset: None,
     }); // Dummy stack slot for debugging
 
+    enum ArgKind {
+        Normal(Value),
+        Spread(Vec<Value>),
+    }
+
     let func_params = fx.mir.args_iter().map(|local| {
-        let layout = fx.layout_of(fx.mir.local_decls[local].ty);
+        let arg_ty = fx.mir.local_decls[local].ty;
+
+        // Adapted from https://github.com/rust-lang/rust/blob/145155dc96757002c7b2e9de8489416e2fdbbd57/src/librustc_codegen_llvm/mir/mod.rs#L442-L482
+        if Some(local) == fx.mir.spread_arg {
+            // This argument (e.g. the last argument in the "rust-call" ABI)
+            // is a tuple that was spread at the ABI level and now we have
+            // to reconstruct it into a tuple local variable, from multiple
+            // individual function arguments.
+
+            let tupled_arg_tys = match arg_ty.sty {
+                ty::TyTuple(ref tys) => tys,
+                _ => bug!("spread argument isn't a tuple?!")
+            };
+
+            let mut ebb_params = Vec::new();
+            for arg_ty in tupled_arg_tys.iter() {
+                let cton_type = fx.cton_type(arg_ty).unwrap_or(types::I64);
+                ebb_params.push(fx.bcx.append_ebb_param(start_ebb, cton_type));
+            }
+
+            (local, ArgKind::Spread(ebb_params), arg_ty)
+        } else {
+            let cton_type = fx.cton_type(arg_ty).unwrap_or(types::I64);
+            (local, ArgKind::Normal(fx.bcx.append_ebb_param(start_ebb, cton_type)), arg_ty)
+        }
+    }).collect::<Vec<(Local, ArgKind, Ty)>>();
+
+    let ret_layout = fx.layout_of(fx.return_type());
+    fx.local_map.insert(RETURN_PLACE, CPlace::Addr(ret_param, ret_layout));
+
+    for (local, arg_kind, ty) in func_params {
+        let layout = fx.layout_of(ty);
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             size: layout.size.bytes() as u32,
             offset: None,
         });
-        let ty = fx.mir.local_decls[local].ty;
-        let cton_type = fx.cton_type(ty).unwrap_or(types::I64);
-        (local, fx.bcx.append_ebb_param(start_ebb, cton_type), ty, stack_slot)
-    }).collect::<Vec<(Local, Value, Ty, StackSlot)>>();
 
-    let ret_layout = fx.layout_of(fx.return_type());
-    fx.local_map.insert(RETURN_PLACE, CPlace::Addr(ret_param, ret_layout));
-
-    for (local, ebb_param, ty, stack_slot) in func_params {
         let place = CPlace::from_stack_slot(fx, stack_slot, ty);
-        if fx.cton_type(ty).is_some() {
-            place.write_cvalue(fx, CValue::ByVal(ebb_param, place.layout()));
-        } else {
-            place.write_cvalue(fx, CValue::ByRef(ebb_param, place.layout()));
+
+        match arg_kind {
+            ArgKind::Normal(ebb_param) => {
+                if fx.cton_type(ty).is_some() {
+                    place.write_cvalue(fx, CValue::ByVal(ebb_param, place.layout()));
+                } else {
+                    place.write_cvalue(fx, CValue::ByRef(ebb_param, place.layout()));
+                }
+            }
+            ArgKind::Spread(ebb_params) => {
+                for (i, ebb_param) in ebb_params.into_iter().enumerate() {
+                    let sub_place = place.place_field(fx, mir::Field::new(i));
+                    if fx.cton_type(sub_place.layout().ty).is_some() {
+                        sub_place.write_cvalue(fx, CValue::ByVal(ebb_param, sub_place.layout()));
+                    } else {
+                        sub_place.write_cvalue(fx, CValue::ByRef(ebb_param, sub_place.layout()));
+                    }
+                }
+            }
         }
         fx.local_map.insert(local, place);
     }
@@ -191,6 +233,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             },
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         }
+        println!("{:?} {:?}", pack_arg.layout().ty, args.iter().map(|a|a.layout().ty).collect::<Vec<_>>());
         args
     } else {
         args
@@ -209,7 +252,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             let usize_layout = fx.layout_of(fx.tcx.types.usize);
             let ret = return_place.unwrap();
             match intrinsic {
-                "copy" => {
+                "copy" | "copy_nonoverlapping" => {
                     /*let elem_ty = substs.type_at(0);
                     assert_eq!(args.len(), 3);
                     let src = args[0];

@@ -88,7 +88,7 @@ impl<T: ?Sized> PartialEq for *const T {
 
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
-trait FnOnce<Args> {
+pub trait FnOnce<Args> {
     type Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
@@ -96,7 +96,7 @@ trait FnOnce<Args> {
 
 #[lang = "fn_mut"]
 #[rustc_paren_sugar]
-trait FnMut<Args> : FnOnce<Args> {
+pub trait FnMut<Args> : FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
