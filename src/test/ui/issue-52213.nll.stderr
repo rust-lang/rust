@@ -8,7 +8,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/issue-52213.rs:13:11
    |
 LL |         ((u,),) => u,
-   |           ^ free region requires that `'a` must outlive `'b`
+   |           ^ requires that `'a` must outlive `'b`
 
 error: aborting due to previous error
 

@@ -8,9 +8,9 @@ error: unsatisfied lifetime constraints
   --> $DIR/propagate-approximated-fail-no-postdom.rs:57:13
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
-   |          ----------              ---------- lifetime `'2` appears in this argument
+   |          ----------              ---------- has type `std::cell::Cell<&'2 &u32>`
    |          |
-   |          lifetime `'1` appears in this argument
+   |          has type `std::cell::Cell<&&'1 u32>`
 ...
 LL |             demand_y(x, y, p) //~ ERROR
    |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`

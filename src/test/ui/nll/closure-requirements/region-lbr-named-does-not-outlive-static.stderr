@@ -8,7 +8,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/region-lbr-named-does-not-outlive-static.rs:19:5
    |
 LL |     &*x
-   |     ^^^ free region requires that `'a` must outlive `'static`
+   |     ^^^ requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 

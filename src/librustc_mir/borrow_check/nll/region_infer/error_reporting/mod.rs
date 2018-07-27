@@ -31,9 +31,7 @@ mod var_name;
 enum ConstraintCategory {
     Cast,
     Assignment,
-    AssignmentToUpvar,
     Return,
-    CallArgumentToUpvar,
     CallArgument,
     Other,
     Boring,
@@ -41,16 +39,13 @@ enum ConstraintCategory {
 
 impl fmt::Display for ConstraintCategory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Must end with a space. Allows for empty names to be provided.
         match self {
-            ConstraintCategory::Assignment | ConstraintCategory::AssignmentToUpvar => {
-                write!(f, "assignment")
-            }
-            ConstraintCategory::Return => write!(f, "return"),
-            ConstraintCategory::Cast => write!(f, "cast"),
-            ConstraintCategory::CallArgument | ConstraintCategory::CallArgumentToUpvar => {
-                write!(f, "argument")
-            }
-            _ => write!(f, "free region"),
+            ConstraintCategory::Assignment => write!(f, "assignment "),
+            ConstraintCategory::Return => write!(f, "return "),
+            ConstraintCategory::Cast => write!(f, "cast "),
+            ConstraintCategory::CallArgument => write!(f, "argument "),
+            _ => write!(f, ""),
         }
     }
 }
@@ -224,10 +219,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "constraint_is_interesting: locations={:?} constraint={:?}",
             constraint.locations, constraint
         );
-        if let Locations::Interesting(_) = constraint.locations {
-            true
-        } else {
-            false
+
+        match constraint.locations {
+            Locations::Interesting(_) | Locations::All => true,
+            _ => false,
         }
     }
 
@@ -320,45 +315,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        let category = match (
-            category,
+        let (fr_is_local, outlived_fr_is_local): (bool, bool) = (
             self.universal_regions.is_local_free_region(fr),
             self.universal_regions.is_local_free_region(outlived_fr),
-        ) {
-            (ConstraintCategory::Assignment, true, false) => ConstraintCategory::AssignmentToUpvar,
-            (ConstraintCategory::CallArgument, true, false) => {
-                ConstraintCategory::CallArgumentToUpvar
-            }
-            (category, _, _) => category,
-        };
+        );
+        debug!("report_error: fr_is_local={:?} outlived_fr_is_local={:?} category={:?}",
+               fr_is_local, outlived_fr_is_local, category);
 
-        debug!("report_error: category={:?}", category);
-        match category {
-            ConstraintCategory::AssignmentToUpvar | ConstraintCategory::CallArgumentToUpvar => self
-                .report_closure_error(
-                    mir,
-                    infcx,
-                    mir_def_id,
-                    fr,
-                    outlived_fr,
-                    category,
-                    span,
-                    errors_buffer,
-                ),
-            _ => self.report_general_error(
-                mir,
-                infcx,
-                mir_def_id,
-                fr,
-                outlived_fr,
-                category,
-                span,
-                errors_buffer,
-            ),
-        }
+        match (category, fr_is_local, outlived_fr_is_local) {
+            (ConstraintCategory::Assignment, true, false) |
+            (ConstraintCategory::CallArgument, true, false) =>
+                self.report_escaping_data_error(mir, infcx, mir_def_id, fr, outlived_fr,
+                                                category, span, errors_buffer),
+            _ =>
+                self.report_general_error(mir, infcx, mir_def_id, fr, fr_is_local,
+                                          outlived_fr, outlived_fr_is_local,
+                                          category, span, errors_buffer),
+        };
     }
 
-    fn report_closure_error(
+    fn report_escaping_data_error(
         &self,
         mir: &Mir<'tcx>,
         infcx: &InferCtxt<'_, '_, 'tcx>,
@@ -373,29 +349,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let outlived_fr_name_and_span =
             self.get_var_name_and_span_for_region(infcx.tcx, mir, outlived_fr);
 
+        let escapes_from = if infcx.tcx.is_closure(mir_def_id) { "closure" } else { "function" };
+
         if fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none() {
-            return self.report_general_error(
-                mir,
-                infcx,
-                mir_def_id,
-                fr,
-                outlived_fr,
-                category,
-                span,
-                errors_buffer,
-            );
+            return self.report_general_error(mir, infcx, mir_def_id,
+                                             fr, true, outlived_fr, false,
+                                             category, span, errors_buffer);
         }
 
-        let mut diag = infcx
-            .tcx
-            .sess
-            .struct_span_err(span, &format!("borrowed data escapes outside of closure"));
+        let mut diag = infcx.tcx.sess.struct_span_err(
+            span, &format!("borrowed data escapes outside of {}", escapes_from),
+        );
 
         if let Some((outlived_fr_name, outlived_fr_span)) = outlived_fr_name_and_span {
             if let Some(name) = outlived_fr_name {
                 diag.span_label(
                     outlived_fr_span,
-                    format!("`{}` is declared here, outside of the closure body", name),
+                    format!("`{}` is declared here, outside of the {} body", name, escapes_from),
                 );
             }
         }
@@ -404,13 +374,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(name) = fr_name {
                 diag.span_label(
                     fr_span,
-                    format!(
-                        "`{}` is a reference that is only valid in the closure body",
-                        name
-                    ),
+                    format!("`{}` is a reference that is only valid in the {} body",
+                            name, escapes_from),
                 );
 
-                diag.span_label(span, format!("`{}` escapes the closure body here", name));
+                diag.span_label(span, format!("`{}` escapes the {} body here",
+                                               name, escapes_from));
             }
         }
 
@@ -423,7 +392,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
+        fr_is_local: bool,
         outlived_fr: RegionVid,
+        outlived_fr_is_local: bool,
         category: ConstraintCategory,
         span: Span,
         errors_buffer: &mut Vec<Diagnostic>,
@@ -434,17 +405,28 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         let counter = &mut 1;
-        let fr_name = self.give_region_a_name(infcx.tcx, mir, mir_def_id, fr, counter, &mut diag);
-        let outlived_fr_name =
-            self.give_region_a_name(infcx.tcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
+        let fr_name = self.give_region_a_name(
+            infcx, mir, mir_def_id, fr, counter, &mut diag);
+        let outlived_fr_name = self.give_region_a_name(
+            infcx, mir, mir_def_id, outlived_fr, counter, &mut diag);
 
-        diag.span_label(
-            span,
-            format!(
-                "{} requires that `{}` must outlive `{}`",
-                category, fr_name, outlived_fr_name,
-            ),
-        );
+        let mir_def_name = if infcx.tcx.is_closure(mir_def_id) { "closure" } else { "function" };
+
+        match (category, outlived_fr_is_local, fr_is_local) {
+            (ConstraintCategory::Return, true, _) => {
+                diag.span_label(span, format!(
+                    "{} was supposed to return data with lifetime `{}` but it is returning \
+                    data with lifetime `{}`",
+                    mir_def_name, fr_name, outlived_fr_name,
+                ));
+            },
+            _ => {
+                diag.span_label(span, format!(
+                    "{}requires that `{}` must outlive `{}`",
+                    category, fr_name, outlived_fr_name,
+                ));
+            },
+        }
 
         diag.buffer(errors_buffer);
     }

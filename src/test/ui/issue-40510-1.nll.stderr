@@ -6,7 +6,7 @@ LL |        || {
    |  |_____|
    | ||
 LL | ||         &mut x
-   | ||         ^^^^^^ free region requires that `'1` must outlive `'2`
+   | ||         ^^^^^^ return requires that `'1` must outlive `'2`
 LL | ||     };
    | ||     -
    | ||_____|
