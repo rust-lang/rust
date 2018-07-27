@@ -6,13 +6,6 @@ main() {
         return
     fi
 
-    # test that the functions don't contain invocations of `panic!`
-    case $TARGET in
-        armv7-unknown-linux-gnueabihf)
-            cross build --release --target $TARGET --example no-panic
-            ;;
-    esac
-
     # quick check
     cargo check
 
@@ -23,6 +16,13 @@ main() {
     cargo run -p input-generator --target x86_64-unknown-linux-musl
     cargo run -p musl-generator --target x86_64-unknown-linux-musl
     cargo run -p newlib-generator
+
+    # test that the functions don't contain invocations of `panic!`
+    case $TARGET in
+        armv7-unknown-linux-gnueabihf)
+            cross build --release --target $TARGET --example no-panic
+            ;;
+    esac
 
     # run unit tests
     cross test --lib --features checked --target $TARGET --release
