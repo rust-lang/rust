@@ -211,8 +211,7 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
             ty::AssociatedKind::Existential => {
-                // FIXME(oli-obk) implement existential types in trait impls
-                unimplemented!()
+                // do nothing, existential types check themselves
             }
         }
 
