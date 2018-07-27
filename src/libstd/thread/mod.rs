@@ -731,7 +731,8 @@ const NOTIFIED: usize = 2;
 ///   specifying a maximum time to block the thread for.
 ///
 /// * The [`unpark`] method on a [`Thread`] atomically makes the token available
-///   if it wasn't already.
+///   if it wasn't already. Because the token is initially absent, [`unpark`] 
+///   followed by [`park`] will result in the second call returning immediately.
 ///
 /// In other words, each [`Thread`] acts a bit like a spinlock that can be
 /// locked and unlocked using `park` and `unpark`.
@@ -766,6 +767,8 @@ const NOTIFIED: usize = 2;
 /// // Let some time pass for the thread to be spawned.
 /// thread::sleep(Duration::from_millis(10));
 ///
+/// // There is no race condition here, if `unpark`
+/// // happens first, `park` will return immediately.
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
