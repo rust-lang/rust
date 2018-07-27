@@ -26,6 +26,7 @@
 #![feature(entry_and_modify)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
+#![feature(const_fn)]
 
 #![recursion_limit="256"]
 
@@ -367,8 +368,8 @@ fn main_args(args: &[String]) -> isize {
 
     if matches.opt_strs("passes") == ["list"] {
         println!("Available passes for running rustdoc:");
-        for &(name, _, description) in passes::PASSES {
-            println!("{:>20} - {}", name, description);
+        for pass in passes::PASSES {
+            println!("{:>20} - {}", pass.name(), pass.description());
         }
         println!("\nDefault passes for rustdoc:");
         for &name in passes::DEFAULT_PASSES {
@@ -751,8 +752,13 @@ where R: 'static + Send,
 
         for pass in &passes {
             // determine if we know about this pass
-            let pass = match passes::PASSES.iter().find(|(p, ..)| p == pass) {
-                Some(pass) => pass.1,
+            let pass = match passes::PASSES.iter().find(|p| p.name() == pass) {
+                Some(pass) => if let Some(pass) = pass.late_fn() {
+                    pass
+                } else {
+                    // not a late pass, but still valid so don't report the error
+                    continue
+                }
                 None => {
                     error!("unknown pass {}, skipping", *pass);
 

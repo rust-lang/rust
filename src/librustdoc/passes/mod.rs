@@ -18,61 +18,65 @@ use fold;
 use fold::StripItem;
 
 mod collapse_docs;
-pub use self::collapse_docs::collapse_docs;
+pub use self::collapse_docs::COLLAPSE_DOCS;
 
 mod strip_hidden;
-pub use self::strip_hidden::strip_hidden;
+pub use self::strip_hidden::STRIP_HIDDEN;
 
 mod strip_private;
-pub use self::strip_private::strip_private;
+pub use self::strip_private::STRIP_PRIVATE;
 
 mod strip_priv_imports;
-pub use self::strip_priv_imports::strip_priv_imports;
+pub use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
 
 mod unindent_comments;
-pub use self::unindent_comments::unindent_comments;
+pub use self::unindent_comments::UNINDENT_COMMENTS;
 
 mod propagate_doc_cfg;
-pub use self::propagate_doc_cfg::propagate_doc_cfg;
+pub use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
-type Pass = (
-    &'static str,                     // name
-    fn(clean::Crate) -> clean::Crate, // fn
-    &'static str,
-); // description
+#[derive(Copy, Clone, Debug)]
+pub enum Pass {
+    LatePass {
+        name: &'static str,
+        pass: fn(clean::Crate) -> clean::Crate,
+        description: &'static str,
+    }
+}
+
+impl Pass {
+    pub const fn late(name: &'static str,
+                      pass: fn(clean::Crate) -> clean::Crate,
+                      description: &'static str) -> Pass {
+        Pass::LatePass { name, pass, description }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Pass::LatePass { name, .. } => name,
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            Pass::LatePass { description, .. } => description,
+        }
+    }
+
+    pub fn late_fn(self) -> Option<fn(clean::Crate) -> clean::Crate> {
+        match self {
+            Pass::LatePass { pass, .. } => Some(pass),
+        }
+    }
+}
 
 pub const PASSES: &'static [Pass] = &[
-    (
-        "strip-hidden",
-        strip_hidden,
-        "strips all doc(hidden) items from the output",
-    ),
-    (
-        "unindent-comments",
-        unindent_comments,
-        "removes excess indentation on comments in order for markdown to like it",
-    ),
-    (
-        "collapse-docs",
-        collapse_docs,
-        "concatenates all document attributes into one document attribute",
-    ),
-    (
-        "strip-private",
-        strip_private,
-        "strips all private items from a crate which cannot be seen externally, \
-         implies strip-priv-imports",
-    ),
-    (
-        "strip-priv-imports",
-        strip_priv_imports,
-        "strips all private import statements (`use`, `extern crate`) from a crate",
-    ),
-    (
-        "propagate-doc-cfg",
-        propagate_doc_cfg,
-        "propagates `#[doc(cfg(...))]` to child items",
-    ),
+    STRIP_HIDDEN,
+    UNINDENT_COMMENTS,
+    COLLAPSE_DOCS,
+    STRIP_PRIVATE,
+    STRIP_PRIV_IMPORTS,
+    PROPAGATE_DOC_CFG,
 ];
 
 pub const DEFAULT_PASSES: &'static [&'static str] = &[

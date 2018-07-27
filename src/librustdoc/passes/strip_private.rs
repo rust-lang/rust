@@ -12,7 +12,12 @@ use rustc::util::nodemap::DefIdSet;
 
 use clean;
 use fold::DocFolder;
-use passes::{ImplStripper, ImportStripper, Stripper};
+use passes::{ImplStripper, ImportStripper, Stripper, Pass};
+
+pub const STRIP_PRIVATE: Pass =
+    Pass::late("strip-private", strip_private,
+        "strips all private items from a crate which cannot be seen externally, \
+         implies strip-priv-imports");
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.

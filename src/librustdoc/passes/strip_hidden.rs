@@ -16,7 +16,11 @@ use clean::Item;
 use fold;
 use fold::DocFolder;
 use fold::StripItem;
-use passes::ImplStripper;
+use passes::{ImplStripper, Pass};
+
+pub const STRIP_HIDDEN: Pass =
+    Pass::late("strip-hidden", strip_hidden,
+               "strips all doc(hidden) items from the output");
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate) -> clean::Crate {
