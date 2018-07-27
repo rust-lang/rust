@@ -1992,6 +1992,17 @@ impl Step for Lldb {
     fn run(self, builder: &Builder) -> Option<PathBuf> {
         let target = self.target;
 
+        // Do nothing if lldb was not built.  This is difficult to
+        // determine in should_run because the target is not available
+        // at that point.
+        let bindir = builder
+            .llvm_out(target)
+            .join("bin");
+        let lldb_exe = bindir.join(exe("lldb", &target));
+        if !lldb_exe.exists() {
+            return None;
+        }
+
         builder.info(&format!("Dist Lldb ({})", target));
         let src = builder.src.join("src/lldb");
         let name = pkgname(builder, "lldb");
@@ -2001,9 +2012,6 @@ impl Step for Lldb {
         drop(fs::remove_dir_all(&image));
 
         // Prepare the image directory
-        let bindir = builder
-            .llvm_out(target)
-            .join("bin");
         let dst = image.join("bin");
         t!(fs::create_dir_all(&dst));
         for program in &["lldb", "lldb-argdumper", "lldb-mi", "lldb-server"] {
