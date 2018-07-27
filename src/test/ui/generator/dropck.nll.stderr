@@ -9,8 +9,6 @@ LL | }
    | |
    | `*cell` dropped here while still borrowed
    | borrow later used here, when `gen` is dropped
-   |
-   = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `ref_` does not live long enough
   --> $DIR/dropck.rs:22:11

@@ -9,8 +9,6 @@ LL | }
    | |
    | `*m` dropped here while still borrowed
    | borrow later used here, when `m` is dropped
-   |
-   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to previous error
 
