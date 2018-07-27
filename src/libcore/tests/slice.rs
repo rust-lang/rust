@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::result::Result::{Ok, Err};
+use core::ops::Bound::*;
 
 #[test]
 fn test_position() {
@@ -83,6 +84,56 @@ fn test_binary_search_implementation_details() {
     let b = [1, 1, 1, 1, 3, 3, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(3));
     assert_eq!(b.binary_search(&3), Ok(8));
+}
+
+#[test]
+fn test_binary_search_limit() {
+    fn test_slice<T, I: Iterator<Item=T>>(slice: &mut [T], iter: I)
+        where T: ::core::cmp::PartialOrd + Copy {
+        for val in iter {
+            let res_incl = slice.binary_search_limit(Included(&val));
+            assert!(res_incl <= slice.len());
+            for (i, item) in slice.iter().enumerate() {
+                assert_eq!(i >= res_incl, *item >= val);
+            }
+
+            let res_excl = slice.binary_search_limit(Excluded(&val));
+            assert!(res_excl <= slice.len());
+            for (i, item) in slice.iter().enumerate() {
+                assert_eq!(i >= res_excl, *item > val);
+            }
+
+            let res = slice.binary_search_limit_by_key(Included(&val), |x| *x);
+            assert_eq!(res, res_incl);
+            let res = slice.binary_search_limit_by_key(Excluded(&val), |x| *x);
+            assert_eq!(res, res_excl);
+
+            let res = slice.binary_search_limit_by(|x| *x >= val);
+            assert_eq!(res, res_incl);
+            let res = slice.binary_search_limit_by(|x| *x > val);
+            assert_eq!(res, res_excl);
+
+            slice.reverse();
+            let res = slice.binary_search_limit_by(|x| *x < val);
+            assert_eq!(slice.len() - res, res_incl);
+            let res = slice.binary_search_limit_by(|x| *x <= val);
+            assert_eq!(slice.len() - res, res_excl);
+            slice.reverse();
+        }
+
+        assert_eq!(slice.binary_search_limit(Unbounded), 0);
+    }
+
+    test_slice(&mut [12i32][0..0], -2..=2);
+    test_slice(&mut [4], 3..=5);
+    test_slice(&mut [2, 4, 6, 8], 0..=11);
+    test_slice(&mut [1, 3, 3, 3, 5], 0..=8);
+    test_slice(&mut [-5i8, -5, -5, -5, -5, -4, -4], -6..=0);
+    test_slice(&mut [1, 1, 1, 1], 0..=2);
+    test_slice(&mut [0.1f32, 0.2, 1.0, 10.1],
+               [::core::f32::NEG_INFINITY, -10000.0, 0.0, 0.1, 0.15, 0.2, 0.3,
+                1.0, 1.000001, 5.0, 10.01, 10.1, 10.11, 1000000.0,
+                ::core::f32::INFINITY].iter().cloned());
 }
 
 #[test]

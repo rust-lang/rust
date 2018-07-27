@@ -45,6 +45,8 @@ use option::Option;
 use option::Option::{None, Some};
 use result::Result;
 use result::Result::{Ok, Err};
+use ops::Bound;
+use ops::Bound::*;
 use ptr;
 use mem;
 use marker::{Copy, Send, Sync, Sized, self};
@@ -1337,6 +1339,166 @@ impl<T> [T] {
               B: Ord
     {
         self.binary_search_by(|k| f(k).cmp(b))
+    }
+
+    /// Binary searches this sorted slice for the first above the given
+    /// limit.
+    ///
+    /// When passed `Included(x)`, the limit is inclusive.
+    /// `binary_search_limit` will return the index of the first value
+    /// greater than or equal to `x`. If no value is greater than or equal
+    /// to `x`, the length of the slice is returned.
+    ///
+    /// When passed `Excluded(x)`, the limit is exclusive.
+    /// `binary_search_limit` will return the index of the first value
+    /// greater than `x`. If no value is greater than `x`, the length of
+    /// the slice is returned.
+    ///
+    /// When passed `Unbounded` there is no limit and
+    /// `binary_search_limit` will return `0`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// use std::ops::Bound::*;
+    ///
+    /// let s = [5, 13, 21, 34, 55];
+    ///
+    /// assert_eq!(s.binary_search_limit(Included(&0)),   0);
+    /// assert_eq!(s.binary_search_limit(Included(&5)),   0);
+    /// assert_eq!(s.binary_search_limit(Included(&6)),   1);
+    /// assert_eq!(s.binary_search_limit(Included(&30)),  3);
+    /// assert_eq!(s.binary_search_limit(Included(&55)),  4);
+    /// assert_eq!(s.binary_search_limit(Included(&100)), 5);
+    ///
+    /// assert_eq!(s.binary_search_limit(Excluded(&0)),   0);
+    /// assert_eq!(s.binary_search_limit(Excluded(&5)),   1);
+    /// assert_eq!(s.binary_search_limit(Excluded(&6)),   1);
+    /// assert_eq!(s.binary_search_limit(Excluded(&30)),  3);
+    /// assert_eq!(s.binary_search_limit(Excluded(&55)),  5);
+    /// assert_eq!(s.binary_search_limit(Excluded(&100)), 5);
+    ///
+    /// assert_eq!(s.binary_search_limit(Unbounded), 0);
+    /// ```
+    #[unstable(feature = "slice_binary_search_limit", issue = "52529")]
+    pub fn binary_search_limit(&self, x: Bound<&T>) -> usize
+        where T: PartialOrd
+    {
+        match x {
+            Included(limit) => self.binary_search_limit_by(|p| *p >= *limit),
+            Excluded(limit) => self.binary_search_limit_by(|p| *p > *limit),
+            Unbounded => 0,
+        }
+    }
+
+    /// Binary searches this sorted slice for the first element where
+    /// the comparator function returns true.
+    ///
+    /// Assumes that the slice is sorted such that all the comparator
+    /// function returns `true` for all elements above certain limit,
+    /// and `false` for all ements below that limit.
+    ///
+    /// If the comparator returns false for all elements, this function
+    /// returns the length of the slice.
+    ///
+    /// # Examples
+    ///
+    /// Uses `binary_search_limit_by` to search using either inclusive
+    /// or exclusive limits.
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// let s = [5, 13, 21, 34, 55];
+    /// assert_eq!(s.binary_search_limit_by(|&item| item > 13),  2);
+    /// assert_eq!(s.binary_search_limit_by(|&item| item >= 13), 1);
+    /// ```
+    ///
+    /// Same thing, but seaching using a value retrived from a more
+    /// complex type.
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// let t = [(5, 'a'), (13, 'z'), (21, 'k'), (34, 'j')];
+    /// assert_eq!(t.binary_search_limit_by(|item| item.0 > 21),  3);
+    /// assert_eq!(t.binary_search_limit_by(|item| item.0 >= 21), 2);
+    /// ```
+    ///
+    /// Searchs a reversly sorted list, and using more complex expressions.
+    /// It's required that the comparator function return `true` for all
+    /// items over the searched for limit, and `false` foritems below it.
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// let u = [100.0f32, 32.0, 18.0, 2.0];
+    /// assert_eq!(u.binary_search_limit_by(|&item| item < 50.0), 1);
+    /// assert_eq!(u.binary_search_limit_by(|&item| 100.0f32 / item > 5.0), 2);
+    /// ```
+    #[unstable(feature = "slice_binary_search_limit", issue = "52529")]
+    #[inline]
+    pub fn binary_search_limit_by<'a, F>(&'a self, mut f: F) -> usize
+        where F: FnMut(&'a T) -> bool
+    {
+        self.binary_search_by(|p| if f(p) { Greater } else { Less })
+            .unwrap_err()
+    }
+
+    /// Binary searches this sorted slice with a key extraction function.
+    ///
+    /// Returns the index of the first element for which the extraction
+    /// function returns a value above the given limit.
+    ///
+    /// When passed `Included(x)` as limit, the limit is inclusive.
+    /// `binary_search_limit_by_key` will return the index of the first value
+    /// greater than or equal to `x`. If no value is greater than or equal
+    /// to `x`, the length of the slice is returned.
+    ///
+    /// When passed `Excluded(x)` as limit, the limit is exclusive.
+    /// `binary_search_limit_by_key` will return the index of the first value
+    /// greater than `x`. If no value is greater than `x`, the length of
+    /// the slice is returned.
+    ///
+    /// When passed `Unbounded` there is no limit and
+    /// `binary_search_limit` will return `0`.
+    ///
+    /// Assumes that the slice is sorted by the key, for instance with
+    /// [`sort_by_key`] using the same key extraction function.
+    ///
+    /// [`sort_by_key`]: #method.sort_by_key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_binary_search_limit)]
+    /// use std::ops::Bound::*;
+    ///
+    /// let s = [(5, "foo"), (13, "bar"), (21, "baz"), (34, "bin")];
+    ///
+    /// assert_eq!(s.binary_search_limit_by_key(Included(&3),   |&(a, b)| a), 0);
+    /// assert_eq!(s.binary_search_limit_by_key(Included(&5),   |&(a, b)| a), 0);
+    /// assert_eq!(s.binary_search_limit_by_key(Included(&6),   |&(a, b)| a), 1);
+    /// assert_eq!(s.binary_search_limit_by_key(Included(&30),  |&(a, b)| a), 3);
+    /// assert_eq!(s.binary_search_limit_by_key(Included(&34),  |&(a, b)| a), 3);
+    ///
+    /// assert_eq!(s.binary_search_limit_by_key(Excluded(&3),   |&(a, b)| a), 0);
+    /// assert_eq!(s.binary_search_limit_by_key(Excluded(&5),   |&(a, b)| a), 1);
+    /// assert_eq!(s.binary_search_limit_by_key(Excluded(&6),   |&(a, b)| a), 1);
+    /// assert_eq!(s.binary_search_limit_by_key(Excluded(&30),  |&(a, b)| a), 3);
+    /// assert_eq!(s.binary_search_limit_by_key(Excluded(&34),  |&(a, b)| a), 4);
+    ///
+    /// assert_eq!(s.binary_search_limit_by_key(Unbounded, |&(a, b)| a), 0);
+    /// ```
+    #[unstable(feature = "slice_binary_search_limit", issue = "52529")]
+    #[inline]
+    pub fn binary_search_limit_by_key<'a, B, F>(&'a self, b: Bound<&B>, mut f: F) -> usize
+        where F: FnMut(&'a T) -> B,
+              B: PartialOrd
+    {
+        match b {
+            Included(limit) => self.binary_search_limit_by(|p| f(p) >= *limit),
+            Excluded(limit) => self.binary_search_limit_by(|p| f(p) > *limit),
+            Unbounded => 0,
+        }
     }
 
     /// Sorts the slice, but may not preserve the order of equal elements.
