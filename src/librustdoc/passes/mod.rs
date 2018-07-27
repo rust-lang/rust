@@ -63,6 +63,33 @@ pub const DEFAULT_PASSES: &'static [&'static str] = &[
     "propagate-doc-cfg",
 ];
 
+pub const DEFAULT_PRIVATE_PASSES: &'static [&'static str] = &[
+    "strip-priv-imports",
+    "collapse-docs",
+    "unindent-comments",
+    "propagate-doc-cfg",
+];
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum DefaultPassOption {
+    Default,
+    Private,
+    None,
+}
+
+pub fn defaults(default_set: DefaultPassOption) -> &'static [&'static str] {
+    match default_set {
+        DefaultPassOption::Default => {
+            DEFAULT_PASSES
+        },
+        DefaultPassOption::Private => {
+            DEFAULT_PRIVATE_PASSES
+        },
+        DefaultPassOption::None => {
+            &[]
+        },
+    }
+}
 
 struct Stripper<'a> {
     retained: &'a mut DefIdSet,
