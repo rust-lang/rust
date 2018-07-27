@@ -769,7 +769,11 @@ fn fmt_impl(i: &clean::Impl,
         write!(f, " for ")?;
     }
 
-    fmt_type(&i.for_, f, use_absolute)?;
+    if let Some(ref ty) = i.blanket_impl {
+        fmt_type(ty, f, use_absolute)?;
+    } else {
+        fmt_type(&i.for_, f, use_absolute)?;
+    }
 
     fmt::Display::fmt(&WhereClause { gens: &i.generics, indent: 0, end_newline: true }, f)?;
     Ok(())

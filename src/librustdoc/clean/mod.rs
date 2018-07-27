@@ -3881,6 +3881,7 @@ pub struct Impl {
     pub items: Vec<Item>,
     pub polarity: Option<ImplPolarity>,
     pub synthetic: bool,
+    pub blanket_impl: Option<Type>,
 }
 
 pub fn get_auto_traits_with_node_id(cx: &DocContext, id: ast::NodeId, name: String) -> Vec<Item> {
@@ -3948,6 +3949,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                 items,
                 polarity: Some(self.polarity.clean(cx)),
                 synthetic: false,
+                blanket_impl: None,
             })
         });
         ret

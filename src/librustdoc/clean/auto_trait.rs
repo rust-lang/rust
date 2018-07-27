@@ -198,7 +198,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                          .collect();
 
                             let ty = self.get_real_ty(def_id, def_ctor, &real_name, generics);
-                            let predicates = infcx.tcx.predicates_of(def_id);
+                            let predicates = infcx.tcx.predicates_of(impl_def_id);
 
                             traits.push(Item {
                                 source: infcx.tcx.def_span(impl_def_id).clean(self.cx),
@@ -218,7 +218,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                                     .collect::<Vec<_>>()
                                                     .clean(self.cx),
                                     polarity: None,
-                                    synthetic: true,
+                                    synthetic: false,
+                                    blanket_impl: Some(infcx.tcx.type_of(impl_def_id)
+                                                                .clean(self.cx)),
                                 }),
                             });
                             debug!("{:?} => {}", trait_ref, may_apply);
@@ -345,6 +347,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     items: Vec::new(),
                     polarity,
                     synthetic: true,
+                    blanket_impl: None,
                 }),
             });
         }

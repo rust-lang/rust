@@ -12,10 +12,10 @@
 
 use std::fmt;
 
-// @!has foo/struct.Bar.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for Bar'
+// @!has foo/struct.Bar.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for T'
 pub struct Bar;
 
-// @has foo/struct.Foo.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for Foo'
+// @has foo/struct.Foo.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for T'
 pub struct Foo;
 
 impl fmt::Display for Foo {
