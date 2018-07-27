@@ -881,6 +881,29 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 }
                             }
                         }
+
+                        // We add a special note about `IndexMut`, if the source of this error
+                        // is the fact that `Index` is implemented, but `IndexMut` is not. Needing
+                        // to implement two traits for "one operator" is not very intuitive for
+                        // many programmers.
+                        if err.cmt.note == mc::NoteIndex {
+                            let node_id = self.tcx.hir.hir_to_node_id(err.cmt.hir_id);
+                            let node =  self.tcx.hir.get(node_id);
+
+                            // This pattern probably always matches.
+                            if let hir_map::NodeExpr(
+                                hir::Expr { node: hir::ExprKind::Index(lhs, _), ..}
+                            ) = node {
+                                let ty = self.tables.expr_ty(lhs);
+
+                                db.help(&format!(
+                                    "trait `IndexMut` is required to modify indexed content, but \
+                                     it is not implemented for {}",
+                                    ty
+                                ));
+                            }
+                        }
+
                         db
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
