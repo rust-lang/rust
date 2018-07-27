@@ -731,7 +731,7 @@ const NOTIFIED: usize = 2;
 ///   specifying a maximum time to block the thread for.
 ///
 /// * The [`unpark`] method on a [`Thread`] atomically makes the token available
-///   if it wasn't already. Because the token is initially absent, [`unpark`] 
+///   if it wasn't already. Because the token is initially absent, [`unpark`]
 ///   followed by [`park`] will result in the second call returning immediately.
 ///
 /// In other words, each [`Thread`] acts a bit like a spinlock that can be
