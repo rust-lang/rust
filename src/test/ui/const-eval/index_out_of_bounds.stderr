@@ -4,14 +4,6 @@ error[E0080]: could not evaluate static initializer
 LL | static FOO: i32 = [][0];
    |                   ^^^^^ index out of bounds: the len is 0 but the index is 0
 
-error: index out of bounds: the len is 1 but the index is 1
-  --> $DIR/index_out_of_bounds.rs:16:5
-   |
-LL |     array[1]; //~ ERROR index out of bounds
-   |     ^^^^^^^^
-   |
-   = note: #[deny(const_err)] on by default
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

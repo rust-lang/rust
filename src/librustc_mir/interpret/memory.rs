@@ -763,6 +763,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
+            // this inflates undefined bytes to the entire scalar, even if only a few bytes are undefined
             return Ok(Scalar::undef().into());
         }
         // Now we do the actual reading

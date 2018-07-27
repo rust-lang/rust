@@ -9,6 +9,10 @@ LL |     fn bar(&mut self, other: &Foo) {}
    |
    = note: expected type `fn(&mut Baz, &mut dyn Foo)`
               found type `fn(&mut Baz, &dyn Foo)`
+help: consider change the type to match the mutability in trait
+   |
+LL |     fn bar(&mut self, other: &mut Foo) {}
+   |                              ^^^^^^^^
 
 error: aborting due to previous error
 

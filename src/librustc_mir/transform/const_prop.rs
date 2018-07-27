@@ -65,7 +65,7 @@ impl MirPass for ConstProp {
     }
 }
 
-type Const<'tcx> = (Value, ty::Ty<'tcx>, Span);
+type Const<'tcx> = (Value, TyLayout<'tcx>, Span);
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
@@ -258,7 +258,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
         match self.ecx.const_to_value(c.literal.val) {
-            Ok(val) => Some((val, c.literal.ty, c.span)),
+            Ok(val) => {
+                let layout = self.tcx.layout_of(self.param_env.and(c.literal.ty)).ok()?;
+                Some((val, layout, c.span))
+            },
             Err(error) => {
                 let (stacktrace, span) = self.ecx.generate_stacktrace(None);
                 let err = ConstEvalErr {
@@ -281,11 +284,11 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(field, _) => {
                     trace!("field proj on {:?}", proj.base);
-                    let (base, ty, span) = self.eval_place(&proj.base, source_info)?;
+                    let (base, layout, span) = self.eval_place(&proj.base, source_info)?;
                     let valty = self.use_ecx(source_info, |this| {
-                        this.ecx.read_field(base, None, field, ty)
+                        this.ecx.read_field(base, None, field, layout)
                     })?;
-                    Some((valty.value, valty.ty, span))
+                    Some((valty.0, valty.1, span))
                 },
                 _ => None,
             },
@@ -325,14 +328,14 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     fn const_prop(
         &mut self,
         rvalue: &Rvalue<'tcx>,
-        place_ty: ty::Ty<'tcx>,
+        place_layout: TyLayout<'tcx>,
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
         match *rvalue {
             // This branch exists for the sanity type check
             Rvalue::Use(Operand::Constant(ref c)) => {
-                assert_eq!(c.ty, place_ty);
+                assert_eq!(c.ty, place_layout.ty);
                 self.eval_constant(c, source_info)
             },
             Rvalue::Use(ref op) => {
@@ -345,15 +348,15 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Rvalue::Discriminant(..) => None,
 
             Rvalue::Cast(kind, ref operand, _) => {
-                let (value, ty, span) = self.eval_operand(operand, source_info)?;
+                let (value, layout, span) = self.eval_operand(operand, source_info)?;
                 self.use_ecx(source_info, |this| {
-                    let dest_ptr = this.ecx.alloc_ptr(place_ty)?;
-                    let place_align = this.ecx.layout_of(place_ty)?.align;
+                    let dest_ptr = this.ecx.alloc_ptr(place_layout)?;
+                    let place_align = place_layout.align;
                     let dest = ::interpret::Place::from_ptr(dest_ptr, place_align);
-                    this.ecx.cast(ValTy { value, ty }, kind, place_ty, dest)?;
+                    this.ecx.cast(ValTy { value, ty: layout.ty }, kind, place_layout.ty, dest)?;
                     Ok((
                         Value::ByRef(dest_ptr.into(), place_align),
-                        place_ty,
+                        place_layout,
                         span,
                     ))
                 })
@@ -362,15 +365,14 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             // FIXME(oli-obk): evaluate static/constant slice lengths
             Rvalue::Len(_) => None,
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
-                let param_env = self.tcx.param_env(self.source.def_id);
-                type_size_of(self.tcx, param_env, ty).map(|n| (
+                type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some((
                     Value::Scalar(Scalar::Bits {
                         bits: n as u128,
                         defined: self.tcx.data_layout.pointer_size.bits() as u8,
                     }),
-                    self.tcx.types.usize,
+                    self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
                     span,
-                ))
+                )))
             }
             Rvalue::UnaryOp(op, ref arg) => {
                 let def_id = if self.tcx.is_closure(self.source.def_id) {
@@ -386,10 +388,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
 
                 let val = self.eval_operand(arg, source_info)?;
                 let prim = self.use_ecx(source_info, |this| {
-                    this.ecx.value_to_scalar(ValTy { value: val.0, ty: val.1 })
+                    this.ecx.value_to_scalar(ValTy { value: val.0, ty: val.1.ty })
                 })?;
-                let val = self.use_ecx(source_info, |this| this.ecx.unary_op(op, prim, val.1))?;
-                Some((Value::Scalar(val), place_ty, span))
+                let val = self.use_ecx(source_info, |this| this.ecx.unary_op(op, prim, val.1.ty))?;
+                Some((Value::Scalar(val), place_layout, span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
@@ -407,7 +409,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 }
 
                 let r = self.use_ecx(source_info, |this| {
-                    this.ecx.value_to_scalar(ValTy { value: right.0, ty: right.1 })
+                    this.ecx.value_to_scalar(ValTy { value: right.0, ty: right.1.ty })
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
                     let left_ty = left.ty(self.mir, self.tcx);
@@ -417,7 +419,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         .unwrap()
                         .size
                         .bits();
-                    let right_size = self.tcx.layout_of(self.param_env.and(right.1)).unwrap().size;
+                    let right_size = right.1.size;
                     if r.to_bits(right_size).ok().map_or(false, |b| b >= left_bits as u128) {
                         let source_scope_local_data = match self.mir.source_scope_local_data {
                             ClearCrossCrate::Set(ref data) => data,
@@ -439,11 +441,11 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 }
                 let left = self.eval_operand(left, source_info)?;
                 let l = self.use_ecx(source_info, |this| {
-                    this.ecx.value_to_scalar(ValTy { value: left.0, ty: left.1 })
+                    this.ecx.value_to_scalar(ValTy { value: left.0, ty: left.1.ty })
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 let (val, overflow) = self.use_ecx(source_info, |this| {
-                    this.ecx.binary_op(op, l, left.1, r, right.1)
+                    this.ecx.binary_op(op, l, left.1.ty, r, right.1.ty)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Value::ScalarPair(
@@ -458,7 +460,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     }
                     Value::Scalar(val)
                 };
-                Some((val, place_ty, span))
+                Some((val, place_layout, span))
             },
         }
     }
@@ -544,16 +546,18 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
     ) {
         trace!("visit_statement: {:?}", statement);
         if let StatementKind::Assign(ref place, ref rval) = statement.kind {
-            let place_ty = place
+            let place_ty: ty::Ty<'tcx> = place
                 .ty(&self.mir.local_decls, self.tcx)
                 .to_ty(self.tcx);
-            if let Some(value) = self.const_prop(rval, place_ty, statement.source_info) {
-                if let Place::Local(local) = *place {
-                    trace!("checking whether {:?} can be stored to {:?}", value, local);
-                    if self.can_const_prop[local] {
-                        trace!("storing {:?} to {:?}", value, local);
-                        assert!(self.places[local].is_none());
-                        self.places[local] = Some(value);
+            if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
+                if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
+                    if let Place::Local(local) = *place {
+                        trace!("checking whether {:?} can be stored to {:?}", value, local);
+                        if self.can_const_prop[local] {
+                            trace!("storing {:?} to {:?}", value, local);
+                            assert!(self.places[local].is_none());
+                            self.places[local] = Some(value);
+                        }
                     }
                 }
             }

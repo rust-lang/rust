@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repeat_generic_slice)]
-
 fn main() {
-    assert_eq!([1, 2].repeat(2), vec![1, 2, 1, 2]);
-    assert_eq!([1, 2, 3, 4].repeat(0), vec![]);
-    assert_eq!([1, 2, 3, 4].repeat(1), vec![1, 2, 3, 4]);
-    assert_eq!([1, 2, 3, 4].repeat(3),
-               vec![1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]);
+    let array = [std::env::args().len()];
+    array[1]; //~ ERROR index out of bounds
 }
