@@ -1,5 +1,7 @@
 #![feature(dyn_trait)]
+
 fn main() {
+    // #2506
     // checks rustfmt doesn't remove dyn
     trait MyTrait {
         fn method(&self) -> u64;
@@ -19,4 +21,7 @@ fn main() {
         >,
     ) {
     }
+
+    // #2582
+    let _: &dyn (::std::any::Any) = &msg;
 }
