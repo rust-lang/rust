@@ -95,11 +95,143 @@ extern "C" {
     fn vsum4sbs(a: vector_signed_char, b: vector_signed_int) -> vector_signed_int;
     #[link_name = "llvm.ppc.altivec.vsum4shs"]
     fn vsum4shs(a: vector_signed_short, b: vector_signed_int) -> vector_signed_int;
+    #[link_name = "llvm.ppc.altivec.vmuleub"]
+    fn vmuleub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short;
+    #[link_name = "llvm.ppc.altivec.vmulesb"]
+    fn vmulesb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vmuleuh"]
+    fn vmuleuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
+    #[link_name = "llvm.ppc.altivec.vmulesh"]
+    fn vmulesh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_int;
+    #[link_name = "llvm.ppc.altivec.vmuloub"]
+    fn vmuloub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short;
+    #[link_name = "llvm.ppc.altivec.vmulosb"]
+    fn vmulosb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vmulouh"]
+    fn vmulouh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
+    #[link_name = "llvm.ppc.altivec.vmulosh"]
+    fn vmulosh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_int;
 }
 
 mod sealed {
 
     use super::*;
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmuleub))]
+    unsafe fn vec_vmuleub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short {
+        vmuleub(a, b)
+    }
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmulesb))]
+    unsafe fn vec_vmulesb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_short {
+        vmulesb(a, b)
+    }
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmuleuh))]
+    unsafe fn vec_vmuleuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int {
+        vmuleuh(a, b)
+    }
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmulesh))]
+    unsafe fn vec_vmulesh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_int {
+        vmulesh(a, b)
+    }
+
+    pub trait VectorMule<Result> {
+        unsafe fn vec_mule(self, b: Self) -> Result;
+    }
+
+    impl VectorMule<vector_unsigned_short> for vector_unsigned_char {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mule(self, b: Self) -> vector_unsigned_short {
+            vmuleub(self, b)
+        }
+    }
+    impl VectorMule<vector_signed_short> for vector_signed_char {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mule(self, b: Self) -> vector_signed_short {
+            vmulesb(self, b)
+        }
+    }
+    impl VectorMule<vector_unsigned_int> for vector_unsigned_short {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mule(self, b: Self) -> vector_unsigned_int {
+            vmuleuh(self, b)
+        }
+    }
+    impl VectorMule<vector_signed_int> for vector_signed_short {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mule(self, b: Self) -> vector_signed_int {
+            vmulesh(self, b)
+        }
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmuloub))]
+    unsafe fn vec_vmuloub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short {
+        vmuloub(a, b)
+    }
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmulosb))]
+    unsafe fn vec_vmulosb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_short {
+        vmulosb(a, b)
+    }
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmulouh))]
+    unsafe fn vec_vmulouh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int {
+        vmulouh(a, b)
+    }
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vmulosh))]
+    unsafe fn vec_vmulosh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_int {
+        vmulosh(a, b)
+    }
+
+    pub trait VectorMulo<Result> {
+        unsafe fn vec_mulo(self, b: Self) -> Result;
+    }
+
+    impl VectorMulo<vector_unsigned_short> for vector_unsigned_char {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mulo(self, b: Self) -> vector_unsigned_short {
+            vmuloub(self, b)
+        }
+    }
+    impl VectorMulo<vector_signed_short> for vector_signed_char {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mulo(self, b: Self) -> vector_signed_short {
+            vmulosb(self, b)
+        }
+    }
+    impl VectorMulo<vector_unsigned_int> for vector_unsigned_short {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mulo(self, b: Self) -> vector_unsigned_int {
+            vmulouh(self, b)
+        }
+    }
+    impl VectorMulo<vector_signed_int> for vector_signed_short {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_mulo(self, b: Self) -> vector_signed_int {
+            vmulosh(self, b)
+        }
+    }
 
     #[inline]
     #[target_feature(enable = "altivec")]
@@ -683,6 +815,24 @@ mod endian {
 
         vec_perm(c, c, flip)
     }
+
+    // Even and Odd are swapped in little-endian
+    /// Vector Multiply Even
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    pub unsafe fn vec_mule<T, U>(a: T, b: T) -> U
+    where
+        T: sealed::VectorMulo<U> {
+        a.vec_mulo(b)
+    }
+    /// Vector Multiply Odd
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    pub unsafe fn vec_mulo<T, U>(a: T, b: T) -> U
+    where
+        T: sealed::VectorMule<U> {
+        a.vec_mule(b)
+    }
 }
 
 /// Vector Multiply Add Saturated
@@ -772,6 +922,24 @@ mod endian {
     pub unsafe fn vec_sum2s(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
         vsum2sws(a, b)
     }
+
+    /// Vector Multiply Even
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    pub unsafe fn vec_mule<T, U>(a: T, b: T) -> U
+    where
+        T: sealed::VectorMule<U> {
+        a.vec_mule(b)
+    }
+    /// Vector Multiply Odd
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    pub unsafe fn vec_mulo<T, U>(a: T, b: T) -> U
+    where
+        T: sealed::VectorMulo<U> {
+        a.vec_mulo(b)
+    }
+
 }
 
 pub use self::endian::*;
@@ -1251,6 +1419,234 @@ mod tests {
         );
 
         assert_eq!(d, ::mem::transmute(vec_sum4s(a, b)));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_mule_unsigned_char() {
+        let a: vector_unsigned_char = ::mem::transmute(u8x16::new(
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+        ));
+        let d = u16x8::new(
+            0 * 0,
+            2 * 2,
+            4 * 4,
+            6 * 6,
+            0 * 0,
+            2 * 2,
+            4 * 4,
+            6 * 6,
+        );
+
+        assert_eq!(d, ::mem::transmute(vec_mule(a, a)));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_mule_signed_char() {
+        let a: vector_signed_char = ::mem::transmute(i8x16::new(
+            0,
+            1,
+            -2,
+            3,
+            -4,
+            5,
+            -6,
+            7,
+
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+        ));
+        let d = i16x8::new(
+            0 * 0,
+            2 * 2,
+            4 * 4,
+            6 * 6,
+            0 * 0,
+            2 * 2,
+            4 * 4,
+            6 * 6,
+        );
+
+        assert_eq!(d, ::mem::transmute(vec_mule(a, a)));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_mule_unsigned_short() {
+        let a: vector_unsigned_short = ::mem::transmute(u16x8::new(
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+        ));
+        let d = u32x4::new(
+            0 * 0,
+            2 * 2,
+            4 * 4,
+            6 * 6,
+        );
+
+        assert_eq!(d, ::mem::transmute(vec_mule(a, a)));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_mule_signed_short() {
+        let a: vector_signed_short = ::mem::transmute(i16x8::new(
+            0,
+            1,
+            -2,
+            3,
+            -4,
+            5,
+            -6,
+            7,
+        ));
+        let d = i32x4::new(
+            0 * 0,
+            2 * 2,
+            4 * 4,
+            6 * 6,
+        );
+
+        assert_eq!(d, ::mem::transmute(vec_mule(a, a)));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_mulo_unsigned_char() {
+        let a: vector_unsigned_char = ::mem::transmute(u8x16::new(
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+        ));
+        let d = u16x8::new(
+            1 * 1,
+            3 * 3,
+            5 * 5,
+            7 * 7,
+            1 * 1,
+            3 * 3,
+            5 * 5,
+            7 * 7,
+        );
+
+        assert_eq!(d, ::mem::transmute(vec_mulo(a, a)));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_mulo_signed_char() {
+        let a: vector_signed_char = ::mem::transmute(i8x16::new(
+            0,
+            1,
+            -2,
+            3,
+            -4,
+            5,
+            -6,
+            7,
+
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+        ));
+        let d = i16x8::new(
+            1 * 1,
+            3 * 3,
+            5 * 5,
+            7 * 7,
+            1 * 1,
+            3 * 3,
+            5 * 5,
+            7 * 7,
+        );
+
+        assert_eq!(d, ::mem::transmute(vec_mulo(a, a)));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_mulo_unsigned_short() {
+        let a: vector_unsigned_short = ::mem::transmute(u16x8::new(
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+        ));
+        let d = u32x4::new(
+            1 * 1,
+            3 * 3,
+            5 * 5,
+            7 * 7,
+        );
+
+        assert_eq!(d, ::mem::transmute(vec_mulo(a, a)));
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_mulo_signed_short() {
+        let a: vector_signed_short = ::mem::transmute(i16x8::new(
+            0,
+            1,
+            -2,
+            3,
+            -4,
+            5,
+            -6,
+            7,
+        ));
+        let d = i32x4::new(
+            1 * 1,
+            3 * 3,
+            5 * 5,
+            7 * 7,
+        );
+
+        assert_eq!(d, ::mem::transmute(vec_mulo(a, a)));
     }
 
     #[simd_test(enable = "altivec")]
