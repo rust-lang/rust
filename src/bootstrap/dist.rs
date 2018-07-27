@@ -1992,9 +1992,10 @@ impl Step for Lldb {
     fn run(self, builder: &Builder) -> Option<PathBuf> {
         let target = self.target;
 
-        // Do nothing if lldb was not built.  This is difficult to
-        // determine in should_run because the target is not available
-        // at that point.
+        if builder.config.dry_run {
+            return None;
+        }
+
         let bindir = builder
             .llvm_out(target)
             .join("bin");
