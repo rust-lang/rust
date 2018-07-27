@@ -595,7 +595,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 Some(self.lazy(&tcx.fn_sig(def_id)))
             } else {
                 None
-            }
+            },
+            can_extend_field_list: variant.can_extend_field_list,
         };
 
         let enum_id = tcx.hir.as_local_node_id(enum_did).unwrap();
@@ -721,7 +722,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 Some(self.lazy(&tcx.fn_sig(def_id)))
             } else {
                 None
-            }
+            },
+            can_extend_field_list: variant.can_extend_field_list,
         };
 
         let struct_id = tcx.hir.as_local_node_id(adt_def_id).unwrap();
@@ -735,7 +737,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         // If the structure is marked as non_exhaustive then lower the visibility
         // to within the crate.
-        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+        if variant.can_extend_field_list && ctor_vis == ty::Visibility::Public {
             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
 
@@ -1089,6 +1091,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     discr: variant.discr,
                     struct_ctor,
                     ctor_sig: None,
+                    can_extend_field_list: variant.can_extend_field_list,
                 }), repr_options)
             }
             hir::ItemKind::Union(..) => {
@@ -1100,6 +1103,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     discr: variant.discr,
                     struct_ctor: None,
                     ctor_sig: None,
+                    can_extend_field_list: variant.can_extend_field_list,
                 }), repr_options)
             }
             hir::ItemKind::Impl(_, polarity, defaultness, ..) => {

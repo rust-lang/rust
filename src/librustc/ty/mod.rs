@@ -1679,6 +1679,8 @@ pub struct VariantDef {
     pub discr: VariantDiscr,
     pub fields: Vec<FieldDef>,
     pub ctor_kind: CtorKind,
+    /// Field list can be extended if this struct/variant is marked as non-exhaustive.
+    pub can_extend_field_list: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -1940,9 +1942,16 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.flags.intersects(AdtFlags::IS_ENUM)
     }
 
+    /// Variant list can be extended if this enum is marked as non-exhaustive (only `true` if adt
+    /// represents an enum).
     #[inline]
-    pub fn is_non_exhaustive(&self) -> bool {
-        self.flags.intersects(AdtFlags::IS_NON_EXHAUSTIVE)
+    pub fn can_extend_variant_list(&self) -> bool {
+        // AdtDef represents structs and enums where structs have a single variant.
+        // We represent a non-exhaustive enum by setting the non-exhaustive flag on the
+        // AdtDef and non-exhaustive variants and structs by setting the non-exhaustive
+        // flag on the VariantDef. Therefore, we should double check here that the
+        // AdtDef represents an enum.
+        self.is_enum() && self.flags.intersects(AdtFlags::IS_NON_EXHAUSTIVE)
     }
 
     /// Returns the kind of the ADT - Struct or Enum.

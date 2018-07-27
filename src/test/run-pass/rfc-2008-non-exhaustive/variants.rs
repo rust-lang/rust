@@ -13,13 +13,15 @@ extern crate variants;
 
 use variants::NonExhaustiveVariants;
 
-fn main() {
-    let variant_tuple = NonExhaustiveVariants::Tuple { 0: 340 };
-    let variant_struct = NonExhaustiveVariants::Struct { field: 340 };
+// We only test matching here as we cannot create non-exhaustive
+// variants from another crate. ie. they'll never pass in run-pass tests.
 
-    match variant_struct {
+fn match_variants(non_exhaustive_enum: NonExhaustiveVariants) {
+    match non_exhaustive_enum {
         NonExhaustiveVariants::Unit => "",
         NonExhaustiveVariants::Struct { field, .. } => "",
         NonExhaustiveVariants::Tuple(fe_tpl, ..) => ""
     };
 }
+
+fn main() {}

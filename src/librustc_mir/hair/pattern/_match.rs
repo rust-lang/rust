@@ -220,7 +220,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyAdt(adt_def, ..) => adt_def.is_enum() && adt_def.is_non_exhaustive(),
+            ty::TyAdt(adt_def, ..) => adt_def.can_extend_variant_list(),
             _ => false,
         }
     }

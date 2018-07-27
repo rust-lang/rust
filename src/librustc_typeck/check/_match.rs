@@ -13,6 +13,7 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
 use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::session::Session;
 use rustc::traits::ObligationCauseCode;
 use rustc::ty::{self, Ty, TypeFoldable};
 use check::{FnCtxt, Expectation, Diverges, Needs};
@@ -789,7 +790,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
         // Resolve the path and check the definition for errors.
         let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.id, pat.span);
-        let variant = match def {
+        let (variant, kind_name) = match def {
             Def::Err => {
                 self.set_tainted_by_errors();
                 on_error();
@@ -799,10 +800,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 report_unexpected_def(def);
                 return tcx.types.err;
             }
-            Def::VariantCtor(_, CtorKind::Fn) |
-            Def::StructCtor(_, CtorKind::Fn) => {
-                tcx.expect_variant_def(def)
-            }
+            Def::VariantCtor(_, CtorKind::Fn) => (tcx.expect_variant_def(def), "variant"),
+            Def::StructCtor(_, CtorKind::Fn) => (tcx.expect_variant_def(def), "struct"),
             _ => bug!("unexpected pattern definition: {:?}", def)
         };
 
@@ -813,6 +812,11 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let pat_ty = pat_ty.no_late_bound_regions().expect("expected fn type");
 
         self.demand_eqtype(pat.span, expected, pat_ty);
+
+        // Require `..` if tuple struct/variant has non_exhaustive attribute.
+        if variant.can_extend_field_list && !variant.did.is_local() && ddpos.is_none() {
+            self.report_non_exhaustive_error(&tcx.sess, &pat.span, kind_name);
+        }
 
         // Type check subpatterns.
         if subpats.len() == variant.fields.len() ||
@@ -948,10 +952,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         }
 
         // Require `..` if struct has non_exhaustive attribute.
-        if adt.is_struct() && adt.is_non_exhaustive() && !adt.did.is_local() && !etc {
-            span_err!(tcx.sess, span, E0638,
-                      "`..` required with {} marked as non-exhaustive",
-                      kind_name);
+        if variant.can_extend_field_list && !variant.did.is_local() && !etc {
+            self.report_non_exhaustive_error(&tcx.sess, &span, kind_name);
         }
 
         // Report an error if incorrect number of the fields were specified.
@@ -997,5 +999,10 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             }
         }
         no_field_errors
+    }
+
+    fn report_non_exhaustive_error(&self, sess: &Session, span: &Span, kind_name: &str) {
+        span_err!(sess, *span, E0638, "`..` required with {} marked as non-exhaustive",
+                  kind_name);
     }
 }

@@ -3573,12 +3573,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Prohibit struct expressions when non exhaustive flag is set.
+        let mut is_struct = false;
         if let ty::TyAdt(adt, _) = struct_ty.sty {
-            if !adt.did.is_local() && adt.is_non_exhaustive() {
-                span_err!(self.tcx.sess, expr.span, E0639,
-                          "cannot create non-exhaustive {} using struct expression",
-                          adt.variant_descr());
-            }
+            is_struct = adt.is_struct();
+        }
+
+        if !variant.did.is_local() && variant.can_extend_field_list {
+            span_err!(self.tcx.sess, expr.span, E0639,
+                      "cannot create non-exhaustive {} using struct expression",
+                      if is_struct { "struct" } else { "variant" });
         }
 
         let error_happened = self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span,

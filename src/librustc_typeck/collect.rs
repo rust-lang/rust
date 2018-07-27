@@ -546,12 +546,14 @@ fn convert_struct_variant<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             vis: ty::Visibility::from_hir(&f.vis, node_id, tcx)
         }
     }).collect();
+
     ty::VariantDef {
         did,
         name,
         discr,
         fields,
         ctor_kind: CtorKind::from_hir(def),
+        can_extend_field_list: tcx.has_attr(did, "non_exhaustive"),
     }
 }
 

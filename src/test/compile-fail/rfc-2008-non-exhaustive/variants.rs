@@ -21,6 +21,12 @@ fn main() {
     //~^ ERROR cannot create non-exhaustive variant
 
     match variant_struct {
+        NonExhaustiveVariants::Tuple { 0: fe_tpl } => "",
+        //~^ ERROR `..` required with variant marked as non-exhaustive
+        _ => "",
+    };
+
+    match variant_struct {
         NonExhaustiveVariants::Unit => "",
         NonExhaustiveVariants::Tuple(fe_tpl) => "",
         //~^ ERROR `..` required with variant marked as non-exhaustive
