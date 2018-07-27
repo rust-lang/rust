@@ -23,6 +23,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                 let func_id = {
                     let module = &mut cx.module;
                     *cx.def_id_fn_id_map.entry(inst).or_insert_with(|| {
+                        // WARNING: keep in sync with FunctionCx::get_function_ref
                         let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
                         let mut name = String::new();
                         def_path_based_names.push_instance_as_string(inst, &mut name);

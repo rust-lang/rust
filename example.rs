@@ -110,10 +110,16 @@ fn use_const() -> u8 {
     Abc
 }
 
-fn call_closure() {
+fn call_closure_3arg() {
     (|_, _, _| {
 
-    })(0u8, 42u8, 0u8)
+    })(0u8, 42u16, 0u8)
+}
+
+fn call_closure_2arg() {
+    (|_, _| {
+
+    })(0u8, 42u16)
 }
 
 fn eq_char(a: char, b: char) -> bool {

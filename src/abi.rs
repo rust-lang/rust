@@ -12,11 +12,12 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
         Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
             println!("rust-call sig: {:?} inputs: {:?} output: {:?}", sig, sig.inputs(), sig.output());
+            assert_eq!(sig.inputs().len(), 2);
             let extra_args = match sig.inputs().last().unwrap().sty {
                 ty::TyTuple(ref tupled_arguments) => tupled_arguments,
                 _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
             };
-            let mut inputs: Vec<Ty> = sig.inputs()[0..sig.inputs().len() - 1].to_vec();
+            let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
             inputs.extend(extra_args.into_iter());
             (
                 CallConv::SystemV,
@@ -96,7 +97,10 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
         let func_id = *self.def_id_fn_id_map.entry(inst).or_insert_with(|| {
             let fn_ty = inst.ty(tcx);
             let sig = cton_sig_from_fn_ty(tcx, fn_ty);
-            module.declare_function(&tcx.absolute_item_path_str(inst.def_id()), Linkage::Local, &sig).unwrap()
+            let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
+            let mut name = String::new();
+            def_path_based_names.push_instance_as_string(inst, &mut name);
+            module.declare_function(&name, Linkage::Local, &sig).unwrap()
         });
         module.declare_func_in_func(func_id, &mut self.bcx.func)
     }
