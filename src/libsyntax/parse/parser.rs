@@ -6508,11 +6508,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_crate_name_with_dashes(
-        &mut self,
-        error_msg: &str,
-        suggestion_msg: &str,
-    ) -> PResult<'a, ast::Ident> {
+    fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, ast::Ident> {
+        let error_msg = "crate name using dashes are not valid in `extern crate` statements";
+        let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
+                              in the code";
         let mut ident = self.parse_ident()?;
         let mut idents = vec![];
         let mut replacement = vec![];
@@ -6554,14 +6553,11 @@ impl<'a> Parser<'a> {
                                attrs: Vec<Attribute>)
                                -> PResult<'a, P<Item>> {
         // Accept `extern crate name-like-this` for better diagnostics
-        let ident = self.parse_crate_name_with_dashes(
-            "crate name using dashes are not valid in `extern crate` statements",
-            "if the original crate name uses dashes you need to use underscores in the code",
-        )?;
+        let orig_name = self.parse_crate_name_with_dashes()?;
         let (item_name, orig_name) = if let Some(rename) = self.parse_rename()? {
-            (rename, Some(ident.name))
+            (rename, Some(orig_name.name))
         } else {
-            (ident, None)
+            (orig_name, None)
         };
         self.expect(&token::Semi)?;
 
