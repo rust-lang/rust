@@ -624,9 +624,6 @@ impl Session {
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
     }
-    pub fn nonzeroing_move_hints(&self) -> bool {
-        self.opts.debugging_opts.enable_nonzeroing_move_hints
-    }
     pub fn overflow_checks(&self) -> bool {
         self.opts
             .cg
