@@ -6,28 +6,28 @@ matrix:
   include:
     - env: TARGET=aarch64-unknown-linux-gnu
       rust: nightly
-    # - env: TARGET=armv7-unknown-linux-gnueabihf
-    #   rust: nightly
-    # - env: TARGET=i686-unknown-linux-gnu
-    #   rust: nightly
-    # - env: TARGET=mips-unknown-linux-gnu
-    #   rust: nightly
-    # - env: TARGET=mips64-unknown-linux-gnuabi64
-    #   rust: nightly
-    # - env: TARGET=mips64el-unknown-linux-gnuabi64
-    #   rust: nightly
-    # - env: TARGET=mipsel-unknown-linux-gnu
-    #   rust: nightly
-    # - env: TARGET=powerpc-unknown-linux-gnu
-    #   rust: nightly
-    # - env: TARGET=powerpc64-unknown-linux-gnu
-    #   rust: nightly
-    # - env: TARGET=powerpc64le-unknown-linux-gnu
-    #   rust: nightly
+    - env: TARGET=armv7-unknown-linux-gnueabihf
+      rust: nightly
+    - env: TARGET=i686-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=mips-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=mips64-unknown-linux-gnuabi64
+      rust: nightly
+    - env: TARGET=mips64el-unknown-linux-gnuabi64
+      rust: nightly
+    - env: TARGET=mipsel-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=powerpc-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=powerpc64-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=powerpc64le-unknown-linux-gnu
+      rust: nightly
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: nightly
-    # - env: TARGET=cargo-fmt
-    #   rust: beta
+    - env: TARGET=cargo-fmt
+      rust: beta
 
 before_install: set -e
 
