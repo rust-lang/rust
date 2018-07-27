@@ -58,7 +58,7 @@ impl UdpSocket {
 
     pub fn recv(&self, buf: &mut [u8]) -> Result<usize> {
         if let Some(addr) = *self.get_conn() {
-            let from = self.0.dup(format!("{}", addr).as_bytes())?;
+            let from = self.0.dup(addr.to_string().as_bytes())?;
             from.read(buf)
         } else {
             Err(Error::new(ErrorKind::Other, "UdpSocket::recv not connected"))

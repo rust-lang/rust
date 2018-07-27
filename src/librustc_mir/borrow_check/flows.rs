@@ -114,7 +114,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
             };
             saw_one = true;
             let borrow_data = &self.borrows.operator().borrows()[borrow];
-            s.push_str(&format!("{}", borrow_data));
+            s.push_str(&borrow_data.to_string());
         });
         s.push_str("] ");
 
@@ -126,7 +126,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
             };
             saw_one = true;
             let borrow_data = &self.borrows.operator().borrows()[borrow];
-            s.push_str(&format!("{}", borrow_data));
+            s.push_str(&borrow_data.to_string());
         });
         s.push_str("] ");
 
@@ -138,7 +138,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
             };
             saw_one = true;
             let move_path = &self.uninits.operator().move_data().move_paths[mpi_uninit];
-            s.push_str(&format!("{}", move_path));
+            s.push_str(&move_path.to_string());
         });
         s.push_str("] ");
 

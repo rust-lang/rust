@@ -557,7 +557,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // Output the lifetimes fot the first type
         let lifetimes = sub.regions()
             .map(|lifetime| {
-                let s = format!("{}", lifetime);
+                let s = lifetime.to_string();
                 if s.is_empty() {
                     "'_".to_string()
                 } else {
@@ -582,7 +582,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 value.0.extend((values.0).0);
                 other_value.0.extend((values.1).0);
             } else {
-                value.push_highlighted(format!("{}", type_arg));
+                value.push_highlighted(type_arg.to_string());
             }
 
             if len > 0 && i != len - 1 {
@@ -716,7 +716,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             mutbl: hir::Mutability,
             s: &mut DiagnosticStyledString,
         ) {
-            let r = &format!("{}", r);
+            let r = &r.to_string();
             s.push_highlighted(format!(
                 "&{}{}{}",
                 r,
@@ -727,7 +727,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ""
                 }
             ));
-            s.push_normal(format!("{}", ty));
+            s.push_normal(ty.to_string());
         }
 
         match (&t1.sty, &t2.sty) {
@@ -768,7 +768,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     fn lifetime_display(lifetime: Region) -> String {
-                        let s = format!("{}", lifetime);
+                        let s = lifetime.to_string();
                         if s.is_empty() {
                             "'_".to_string()
                         } else {
@@ -863,8 +863,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // We couldn't find anything in common, highlight everything.
                     //     let x: Bar<Qux> = y::<Foo<Zar>>();
                     (
-                        DiagnosticStyledString::highlighted(format!("{}", t1)),
-                        DiagnosticStyledString::highlighted(format!("{}", t2)),
+                        DiagnosticStyledString::highlighted(t1.to_string()),
+                        DiagnosticStyledString::highlighted(t2.to_string()),
                     )
                 }
             }
@@ -873,12 +873,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             (&ty::TyRef(r1, ref_ty1, mutbl1), _) if equals(&ref_ty1, &t2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 push_ty_ref(&r1, ref_ty1, mutbl1, &mut values.0);
-                values.1.push_normal(format!("{}", t2));
+                values.1.push_normal(t2.to_string());
                 values
             }
             (_, &ty::TyRef(r2, ref_ty2, mutbl2)) if equals(&t1, &ref_ty2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                values.0.push_normal(format!("{}", t1));
+                values.0.push_normal(t1.to_string());
                 push_ty_ref(&r2, ref_ty2, mutbl2, &mut values.1);
                 values
             }
@@ -902,8 +902,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     // We couldn't find anything in common, highlight everything.
                     (
-                        DiagnosticStyledString::highlighted(format!("{}", t1)),
-                        DiagnosticStyledString::highlighted(format!("{}", t2)),
+                        DiagnosticStyledString::highlighted(t1.to_string()),
+                        DiagnosticStyledString::highlighted(t2.to_string()),
                     )
                 }
             }
@@ -1073,8 +1073,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         Some((
-            DiagnosticStyledString::highlighted(format!("{}", exp_found.expected)),
-            DiagnosticStyledString::highlighted(format!("{}", exp_found.found)),
+            DiagnosticStyledString::highlighted(exp_found.expected.to_string()),
+            DiagnosticStyledString::highlighted(exp_found.found.to_string()),
         ))
     }
 

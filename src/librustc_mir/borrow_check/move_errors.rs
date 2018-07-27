@@ -312,7 +312,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             err.span_suggestion(
                                 span,
                                 "consider removing this dereference operator",
-                                format!("{}", &snippet[1..]),
+                                (&snippet[1..]).to_owned(),
                             );
                         }
                         _ => {

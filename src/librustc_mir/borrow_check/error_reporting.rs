@@ -642,7 +642,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.append_local_to_string(local, buf)?;
             }
             Place::Static(ref static_) => {
-                buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
+                buf.push_str(&self.tcx.item_name(static_.def_id).to_string());
             }
             Place::Projection(ref proj) => {
                 match proj.elem {
@@ -766,7 +766,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let local = &self.mir.local_decls[local_index];
         match local.name {
             Some(name) => {
-                buf.push_str(&format!("{}", name));
+                buf.push_str(&name.to_string());
                 Ok(())
             }
             None => Err(()),
@@ -794,7 +794,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    format!("{}", self.describe_field(&proj.base, field))
+                    self.describe_field(&proj.base, field).to_string()
                 }
             },
         }
@@ -808,11 +808,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         } else {
             match ty.sty {
                 ty::TyAdt(def, _) => if def.is_enum() {
-                    format!("{}", field.index())
+                    field.index().to_string()
                 } else {
-                    format!("{}", def.non_enum_variant().fields[field.index()].ident)
+                    def.non_enum_variant().fields[field.index()].ident.to_string()
                 },
-                ty::TyTuple(_) => format!("{}", field.index()),
+                ty::TyTuple(_) => field.index().to_string(),
                 ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                     self.describe_field_from_ty(&ty, field)
                 }

@@ -925,7 +925,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
         }
 
-        cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
+        cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
 
         // in std, we want to avoid denying warnings for stage 0 as that makes cfg's painful.
         if self.config.deny_warnings && !(mode == Mode::Std && stage == 0) {

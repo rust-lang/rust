@@ -810,7 +810,7 @@ fn link_natively(sess: &Session,
                 }
             };
 
-            linker_error.note(&format!("{}", e));
+            linker_error.note(&e.to_string());
 
             if !linker_not_found {
                 linker_error.note(&format!("{:?}", &cmd));

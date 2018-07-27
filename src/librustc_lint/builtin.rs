@@ -190,7 +190,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant", ident));
                         let subspan = cx.tcx.sess.codemap().span_through_char(fieldpat.span, ':');
-                        err.span_suggestion_short(subspan, "remove this", format!("{}", ident));
+                        err.span_suggestion_short(subspan, "remove this", ident.to_string());
                         err.emit();
                     }
                 }
@@ -701,7 +701,7 @@ impl EarlyLintPass for BadRepr {
                         attr.span,
                         "`repr` attribute isn't configurable with a literal",
                     );
-                    match format!("{}", lit).as_ref() {
+                    match lit.to_string().as_ref() {
                         | "C" | "packed" | "rust" | "transparent"
                         | "u8" | "u16" | "u32" | "u64" | "u128" | "usize"
                         | "i8" | "i16" | "i32" | "i64" | "i128" | "isize" => {

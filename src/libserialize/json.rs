@@ -2094,7 +2094,7 @@ macro_rules! expect {
         match $e {
             Json::Null => Ok(()),
             other => Err(ExpectedError("Null".to_owned(),
-                                       format!("{}", other)))
+                                       other.to_string()))
         }
     });
     ($e:expr, $t:ident) => ({
@@ -2102,7 +2102,7 @@ macro_rules! expect {
             Json::$t(v) => Ok(v),
             other => {
                 Err(ExpectedError(stringify!($t).to_owned(),
-                                  format!("{}", other)))
+                                  other.to_string()))
             }
         }
     })
@@ -2114,14 +2114,14 @@ macro_rules! read_primitive {
             match self.pop() {
                 Json::I64(f) => Ok(f as $ty),
                 Json::U64(f) => Ok(f as $ty),
-                Json::F64(f) => Err(ExpectedError("Integer".to_owned(), format!("{}", f))),
+                Json::F64(f) => Err(ExpectedError("Integer".to_owned(), f.to_string())),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
                 // is going to have a string here, as per JSON spec.
                 Json::String(s) => match s.parse().ok() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_owned(), s)),
                 },
-                value => Err(ExpectedError("Number".to_owned(), format!("{}", value))),
+                value => Err(ExpectedError("Number".to_owned(), value.to_string())),
             }
         }
     }
@@ -2163,7 +2163,7 @@ impl ::Decoder for Decoder {
                 }
             },
             Json::Null => Ok(f64::NAN),
-            value => Err(ExpectedError("Number".to_owned(), format!("{}", value)))
+            value => Err(ExpectedError("Number".to_owned(), value.to_string()))
         }
     }
 
@@ -2181,7 +2181,7 @@ impl ::Decoder for Decoder {
                 _ => ()
             }
         }
-        Err(ExpectedError("single character string".to_owned(), format!("{}", s)))
+        Err(ExpectedError("single character string".to_owned(), s.to_string()))
     }
 
     fn read_str(&mut self) -> DecodeResult<Cow<str>> {
@@ -2204,7 +2204,7 @@ impl ::Decoder for Decoder {
                 let n = match o.remove(&"variant".to_owned()) {
                     Some(Json::String(s)) => s,
                     Some(val) => {
-                        return Err(ExpectedError("String".to_owned(), format!("{}", val)))
+                        return Err(ExpectedError("String".to_owned(), val.to_string()))
                     }
                     None => {
                         return Err(MissingFieldError("variant".to_owned()))
@@ -2217,7 +2217,7 @@ impl ::Decoder for Decoder {
                         }
                     },
                     Some(val) => {
-                        return Err(ExpectedError("Array".to_owned(), format!("{}", val)))
+                        return Err(ExpectedError("Array".to_owned(), val.to_string()))
                     }
                     None => {
                         return Err(MissingFieldError("fields".to_owned()))
@@ -2226,7 +2226,7 @@ impl ::Decoder for Decoder {
                 n
             }
             json => {
-                return Err(ExpectedError("String or Object".to_owned(), format!("{}", json)))
+                return Err(ExpectedError("String or Object".to_owned(), json.to_string()))
             }
         };
         let idx = match names.iter().position(|n| *n == &name[..]) {
@@ -2845,21 +2845,21 @@ mod tests {
     fn test_write_enum() {
         let animal = Dog;
         assert_eq!(
-            format!("{}", super::as_json(&animal)),
+            super::as_json(&animal).to_string(),
             "\"Dog\""
         );
         assert_eq!(
-            format!("{}", super::as_pretty_json(&animal)),
+            super::as_pretty_json(&animal).to_string(),
             "\"Dog\""
         );
 
         let animal = Frog("Henry".to_string(), 349);
         assert_eq!(
-            format!("{}", super::as_json(&animal)),
+            super::as_json(&animal).to_string(),
             "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
         );
         assert_eq!(
-            format!("{}", super::as_pretty_json(&animal)),
+            super::as_pretty_json(&animal).to_string(),
             "{\n  \
                \"variant\": \"Frog\",\n  \
                \"fields\": [\n    \
@@ -2872,10 +2872,10 @@ mod tests {
 
     macro_rules! check_encoder_for_simple {
         ($value:expr, $expected:expr) => ({
-            let s = format!("{}", super::as_json(&$value));
+            let s = super::as_json(&$value).to_string();
             assert_eq!(s, $expected);
 
-            let s = format!("{}", super::as_pretty_json(&$value));
+            let s = super::as_pretty_json(&$value).to_string();
             assert_eq!(s, $expected);
         })
     }

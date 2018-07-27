@@ -1245,7 +1245,7 @@ mod tests {
     #[test]
     fn wtf8_display() {
         fn d(b: &[u8]) -> String {
-            format!("{}", &unsafe { Wtf8::from_bytes_unchecked(b) })
+            (&unsafe { Wtf8::from_bytes_unchecked(b) }).to_string()
         }
 
         assert_eq!("", d("".as_bytes()));

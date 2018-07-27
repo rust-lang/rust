@@ -2093,7 +2093,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                 // When printing regions, add trailing space if necessary.
                 let region = if ppaux::verbose() || ppaux::identify_regions() {
-                    let mut region = format!("{}", region);
+                    let mut region = region.to_string();
                     if region.len() > 0 {
                         region.push(' ');
                     }

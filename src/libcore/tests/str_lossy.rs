@@ -79,7 +79,7 @@ fn chunks() {
 fn display() {
     assert_eq!(
         "Hello\u{FFFD}\u{FFFD} There\u{FFFD} Goodbye",
-        &format!("{}", Utf8Lossy::from_bytes(b"Hello\xC0\x80 There\xE6\x83 Goodbye")));
+        &Utf8Lossy::from_bytes(b"Hello\xC0\x80 There\xE6\x83 Goodbye").to_string());
 }
 
 #[test]

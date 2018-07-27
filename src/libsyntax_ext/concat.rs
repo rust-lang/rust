@@ -42,10 +42,10 @@ pub fn expand_syntax_ext(
                 ast::LitKind::Int(i, ast::LitIntType::Unsigned(_))
                 | ast::LitKind::Int(i, ast::LitIntType::Signed(_))
                 | ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
-                    accumulator.push_str(&format!("{}", i));
+                    accumulator.push_str(&i.to_string());
                 }
                 ast::LitKind::Bool(b) => {
-                    accumulator.push_str(&format!("{}", b));
+                    accumulator.push_str(&b.to_string());
                 }
                 ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..) => {
                     cx.span_err(e.span, "cannot concatenate a byte string literal");

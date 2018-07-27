@@ -243,7 +243,7 @@ pub fn to_readable_str(mut val: usize) -> String {
         val /= 1000;
 
         if val == 0 {
-            groups.push(format!("{}", group));
+            groups.push(group.to_string());
             break;
         } else {
             groups.push(format!("{:03}", group));

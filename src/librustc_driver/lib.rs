@@ -533,7 +533,7 @@ fn run_compiler_with_pool<'a>(
     if let Some(err) = input_err {
         // Immediately stop compilation if there was an issue reading
         // the input (for example if the input stream is not UTF-8).
-        sess.err(&format!("{}", err));
+        sess.err(&err.to_string());
         return (Err(CompileIncomplete::Stopped), Some(sess));
     }
 
@@ -1113,7 +1113,7 @@ impl RustcDefaultCalls {
                         cfgs.push(if let Some(value) = value {
                             format!("{}=\"{}\"", name, value)
                         } else {
-                            format!("{}", name)
+                            name.to_string()
                         });
                     }
 

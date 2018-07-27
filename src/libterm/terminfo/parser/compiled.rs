@@ -189,7 +189,7 @@ pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
     macro_rules! t( ($e:expr) => (
         match $e {
             Ok(e) => e,
-            Err(e) => return Err(format!("{}", e))
+            Err(e) => return Err(e.to_string())
         }
     ) );
 

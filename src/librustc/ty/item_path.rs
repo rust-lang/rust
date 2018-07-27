@@ -315,7 +315,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::TyUint(_) |
             ty::TyFloat(_) |
             ty::TyStr => {
-                buffer.push(&format!("{}", self_ty));
+                buffer.push(&self_ty.to_string());
             }
 
             _ => {
