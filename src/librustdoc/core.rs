@@ -214,7 +214,7 @@ pub fn run_core(search_paths: SearchPaths,
         } else {
             vec![]
         },
-        lint_cap: Some(lint::Forbid),
+        lint_cap: Some(lint::Allow),
         cg,
         externs,
         target_triple: triple.unwrap_or(host_triple),

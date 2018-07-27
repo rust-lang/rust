@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test
+
 // compile-pass
 
        //! Test with [Foo::baz], [Bar::foo], ...

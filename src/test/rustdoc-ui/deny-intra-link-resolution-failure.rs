@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test
+
 #![deny(intra_doc_link_resolution_failure)]
 
 /// [v2] //~ ERROR
