@@ -1162,8 +1162,8 @@ impl<T: ?Sized> *const T {
     ///
     /// Care must be taken with the ownership of `self` and `dest`.
     /// This method semantically moves the values of `self` into `dest`.
-    /// However it does not drop the contents of `self`, or prevent the contents
-    /// of `dest` from being dropped or used.
+    /// However it does not drop the contents of `dest`, or prevent the contents
+    /// of `self` from being dropped or used.
     ///
     /// # Examples
     ///
