@@ -1,4 +1,8 @@
 //! ARM DSP Intrinsics.
+//!
+//! Based on "Arm C Language Extensions (ACLE) Version Q2 2018"
+//!
+//! https://developer.arm.com/products/software-development-tools/compilers/arm-compiler-5/docs/101028/0006
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -53,6 +57,12 @@ extern "C" {
 
     #[link_name = "llvm.arm.sasx"]
     fn arm_sasx(a: i32, b: i32) -> i32;
+
+    #[link_name = "llvm.arm.smlad"]
+    fn arm_smlad(a: i32, b: i32, c: i32) -> i32;
+
+    #[link_name = "llvm.arm.smlsd"]
+    fn arm_smlsd(a: i32, b: i32, c: i32) -> i32;
 
     #[link_name = "llvm.arm.sel"]
     fn arm_sel(a: i32, b: i32) -> i32;
@@ -201,6 +211,28 @@ pub unsafe fn sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_sadd8, a, b)
 }
 
+/// Dual 16-bit Signed Multiply with Addition of products
+/// and 32-bit accumulation.
+///
+/// Returns the 16-bit signed equivalent of
+/// res = a\[0\] * b\[0\] + a\[1\] * b\[1\] + c
+#[inline]
+#[cfg_attr(test, assert_instr(smlad))]
+pub unsafe fn smlad(a: int16x2_t , b: int16x2_t, c: i32) -> i32 {
+    arm_smlad(::mem::transmute(a), ::mem::transmute(b), c)
+}
+
+/// Dual 16-bit Signed Multiply with Subtraction  of products
+/// and 32-bit accumulation and overflow detection.
+///
+/// Returns the 16-bit signed equivalent of
+/// res = a\[0\] * b\[0\] - a\[1\] * b\[1\] + c
+#[inline]
+#[cfg_attr(test, assert_instr(smlsd))]
+pub unsafe fn smlsd(a: int16x2_t , b: int16x2_t, c: i32) -> i32 {
+    arm_smlsd(::mem::transmute(a), ::mem::transmute(b), c)
+}
+
 /// Returns the 16-bit signed equivalent of
 ///
 /// res\[0\] = a\[0\] - b\[1\]
@@ -213,6 +245,8 @@ pub unsafe fn sasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_sasx, a, b)
 }
 
+/// Select bytes from each operand according to APSR GE flags
+///
 /// Returns the equivalent of
 ///
 /// res\[0\] = GE\[0\] ? a\[0\] : b\[0\]
@@ -477,6 +511,26 @@ mod tests {
             let c = i16x2::new(0, 4);
             let r: i16x2 = dsp_call!(dsp::sasx, a, b);
             assert_eq!(r, c);
+        }
+    }
+
+    #[test]
+    fn smlad() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(3, 4);
+            let r = dsp::smlad(::mem::transmute(a), ::mem::transmute(b), 10);
+            assert_eq!(r, (1 * 3) + (2 * 4) + 10);
+        }
+    }
+
+    #[test]
+    fn smlsd() {
+        unsafe {
+            let a = i16x2::new(1, 2);
+            let b = i16x2::new(3, 4);
+            let r = dsp::smlsd(::mem::transmute(a), ::mem::transmute(b), 10);
+            assert_eq!(r, ((1 * 3) - (2 * 4)) + 10);
         }
     }
 
