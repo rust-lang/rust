@@ -1,0 +1,11 @@
+[target.thumbv7em-none-eabi]
+rustflags = [
+  "-C", "link-arg=-Wl,-Tlink.x",
+  "-C", "link-arg=-nostartfiles",
+  "-C", "link-arg=-mthumb",
+  "-C", "link-arg=-march=armv7e-m",
+  "-C", "link-arg=-mfloat-abi=soft",
+]
+
+[build]
+target = "thumbv7em-none-eabi"

@@ -7,10 +7,11 @@ main() {
     fi
 
     # test that the functions don't contain invocations of `panic!`
-    if [ $TRAVIS_RUST_VERSION = nightly ]; then
-        cross build --release --target $TARGET --example no-panic
-        return
-    fi
+    case $TARGET in
+        armv7-unknown-linux-gnueabihf)
+            cross build --release --target $TARGET --example no-panic
+            ;;
+    esac
 
     # quick check
     cargo check
@@ -18,11 +19,13 @@ main() {
     # check that we can source import libm into compiler-builtins
     cargo check --package cb
 
+    # generate tests
+    cargo run -p input-generator --target x86_64-unknown-linux-musl
+    cargo run -p musl-generator --target x86_64-unknown-linux-musl
+    cargo run -p newlib-generator
+
     # run unit tests
     cross test --lib --features checked --target $TARGET --release
-
-    # generate tests
-    cargo run --package test-generator --target x86_64-unknown-linux-musl
 
     # run generated tests
     cross test --tests --features checked --target $TARGET --release

@@ -21,14 +21,34 @@ pub use math::*;
 /// Approximate equality with 1 ULP of tolerance
 #[doc(hidden)]
 #[inline]
-pub fn _eqf(a: u32, b: u32) -> bool {
-    (a as i32).wrapping_sub(b as i32).abs() <= 1
+pub fn _eqf(a: f32, b: f32) -> Result<(), u32> {
+    if a.is_nan() && b.is_nan() {
+        Ok(())
+    } else {
+        let err = (a.to_bits() as i32).wrapping_sub(b.to_bits() as i32).abs();
+
+        if err <= 1 {
+            Ok(())
+        } else {
+            Err(err as u32)
+        }
+    }
 }
 
 #[doc(hidden)]
 #[inline]
-pub fn _eq(a: u64, b: u64) -> bool {
-    (a as i64).wrapping_sub(b as i64).abs() <= 1
+pub fn _eq(a: f64, b: f64) -> Result<(), u64> {
+    if a.is_nan() && b.is_nan() {
+        Ok(())
+    } else {
+        let err = (a.to_bits() as i64).wrapping_sub(b.to_bits() as i64).abs();
+
+        if err <= 1 {
+            Ok(())
+        } else {
+            Err(err as u64)
+        }
+    }
 }
 
 /// Math support for `f32`
