@@ -2690,7 +2690,7 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
     for it in &implementor.inner_impl().items {
         if let clean::TypedefItem(ref tydef, _) = it.inner {
             write!(w, "<span class=\"where fmt-newline\">  ")?;
-            assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
+            assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
             write!(w, ";</span>")?;
         }
     }
@@ -3040,7 +3040,7 @@ fn assoc_const(w: &mut fmt::Formatter,
 }
 
 fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
-                             bounds: &Vec<clean::GenericBound>,
+                             bounds: &[clean::GenericBound],
                              default: Option<&clean::Type>,
                              link: AssocItemLink) -> fmt::Result {
     write!(w, "type <a href='{}' class=\"type\">{}</a>",
@@ -3749,7 +3749,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                     for it in &impl_.items {
                         if let clean::TypedefItem(ref tydef, _) = it.inner {
                             out.push_str("<span class=\"where fmt-newline\">    ");
-                            assoc_type(&mut out, it, &vec![],
+                            assoc_type(&mut out, it, &[],
                                        Some(&tydef.type_),
                                        AssocItemLink::GotoSource(t_did, &FxHashSet()))?;
                             out.push_str(";</span>");

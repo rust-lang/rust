@@ -107,7 +107,7 @@ fn html_of_fraction(frac: f64) -> (String, String) {
     else { (format!("< 0.1%", ), css) }
 }
 
-fn total_duration(traces: &Vec<Rec>) -> Duration {
+fn total_duration(traces: &[Rec]) -> Duration {
     let mut sum : Duration = Duration::new(0,0);
     for t in traces.iter() {
         sum += t.dur_total;
@@ -123,7 +123,7 @@ fn duration_div(nom: Duration, den: Duration) -> f64 {
     to_nanos(nom) as f64 / to_nanos(den) as f64
 }
 
-fn write_traces_rec(file: &mut File, traces: &Vec<Rec>, total: Duration, depth: usize) {
+fn write_traces_rec(file: &mut File, traces: &[Rec], total: Duration, depth: usize) {
     for t in traces {
         let (eff_text, eff_css_classes) = html_of_effect(&t.effect);
         let (dur_text, dur_css_classes) = html_of_duration(&t.start, &t.dur_total);
@@ -149,7 +149,7 @@ fn write_traces_rec(file: &mut File, traces: &Vec<Rec>, total: Duration, depth: 
     }
 }
 
-fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec>) {
+fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &[Rec]) {
     for t in traces.iter() {
         match t.effect {
             Effect::TimeBegin(ref msg) => {
@@ -218,7 +218,7 @@ pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetr
     }
 }
 
-pub fn write_traces(html_file: &mut File, counts_file: &mut File, traces: &Vec<Rec>) {
+pub fn write_traces(html_file: &mut File, counts_file: &mut File, traces: &[Rec]) {
     let capacity = traces.iter().fold(0, |acc, t| acc + 1 + t.extent.len());
     let mut counts : HashMap<String, QueryMetric> = HashMap::with_capacity(capacity);
     compute_counts_rec(&mut counts, traces);

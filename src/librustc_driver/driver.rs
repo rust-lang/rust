@@ -1395,7 +1395,7 @@ fn generated_output_paths(
 
 // Runs `f` on every output file path and returns the first non-None result, or None if `f`
 // returns None for every file path.
-fn check_output<F, T>(output_paths: &Vec<PathBuf>, f: F) -> Option<T>
+fn check_output<F, T>(output_paths: &[PathBuf], f: F) -> Option<T>
 where
     F: Fn(&PathBuf) -> Option<T>,
 {
@@ -1407,7 +1407,7 @@ where
     None
 }
 
-pub fn output_contains_path(output_paths: &Vec<PathBuf>, input_path: &PathBuf) -> bool {
+pub fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool {
     let input_path = input_path.canonicalize().ok();
     if input_path.is_none() {
         return false;
@@ -1422,7 +1422,7 @@ pub fn output_contains_path(output_paths: &Vec<PathBuf>, input_path: &PathBuf) -
     check_output(output_paths, check).is_some()
 }
 
-pub fn output_conflicts_with_dir(output_paths: &Vec<PathBuf>) -> Option<PathBuf> {
+pub fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
     let check = |output_path: &PathBuf| {
         if output_path.is_dir() {
             Some(output_path.clone())
@@ -1433,7 +1433,7 @@ pub fn output_conflicts_with_dir(output_paths: &Vec<PathBuf>) -> Option<PathBuf>
     check_output(output_paths, check)
 }
 
-fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &Vec<PathBuf>) {
+fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
     // Write out dependency rules to the dep-info file if requested
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;

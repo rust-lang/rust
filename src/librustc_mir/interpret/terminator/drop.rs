@@ -78,7 +78,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         self.eval_fn_call(
             instance,
             Some((Place::undef(), target)),
-            &vec![valty],
+            &[valty],
             span,
             fn_sig,
         )

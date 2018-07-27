@@ -783,7 +783,7 @@ impl<'a> Resolver<'a> {
                 }
             };
             let ident = Ident::new(Symbol::intern(name), span);
-            self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro, span)
+            self.lookup_typo_candidate(&[ident], MacroNS, is_macro, span)
         });
 
         if let Some(suggestion) = suggestion {
