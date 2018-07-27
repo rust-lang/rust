@@ -28,7 +28,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 3
+   = note: number of external vids: 5
    = note: where '_#1r: '_#2r
 
 error: unsatisfied lifetime constraints
@@ -67,7 +67,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where '_#2r: '_#3r
 
 error: unsatisfied lifetime constraints
@@ -107,7 +107,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where '_#2r: '_#3r
 
 error: unsatisfied lifetime constraints
@@ -147,7 +147,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where '_#2r: '_#3r
 
 note: No external requirements
@@ -180,7 +180,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 3
+   = note: number of external vids: 4
    = note: where '_#1r: '_#2r
 
 note: No external requirements

@@ -270,12 +270,16 @@ impl<'tcx> UniversalRegions<'tcx> {
         tcx: TyCtxt<'_, '_, 'tcx>,
         closure_ty: Ty<'tcx>,
         expected_num_vars: usize,
+        closure_base_def_id: DefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
         region_mapping.push(tcx.types.re_static);
         tcx.for_each_free_region(&closure_ty, |fr| {
             region_mapping.push(fr);
         });
+
+        for_each_late_bound_region_defined_on(
+            tcx, closure_base_def_id, |r| { region_mapping.push(r); });
 
         assert_eq!(
             region_mapping.len(),
@@ -479,6 +483,20 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let mut indices = self.compute_indices(fr_static, defining_ty);
         debug!("build: indices={:?}", indices);
 
+        let closure_base_def_id = self.infcx.tcx.closure_base_def_id(self.mir_def_id);
+
+        // If this is a closure or generator, then the late-bound regions from the enclosing
+        // function are actually external regions to us. For example, here, 'a is not local
+        // to the closure c (although it is local to the fn foo):
+        // fn foo<'a>() {
+        //     let c = || { let x: &'a u32 = ...; }
+        // }
+        if self.mir_def_id != closure_base_def_id {
+            self.infcx.replace_late_bound_regions_with_nll_infer_vars(
+                self.mir_def_id,
+                &mut indices)
+        }
+
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
 
         // "Liberate" the late-bound regions. These correspond to
@@ -490,6 +508,14 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             &bound_inputs_and_output,
             &mut indices,
         );
+        // Converse of above, if this is a function then the late-bound regions declared on its
+        // signature are local to the fn.
+        if self.mir_def_id == closure_base_def_id {
+            self.infcx.replace_late_bound_regions_with_nll_infer_vars(
+                self.mir_def_id,
+                &mut indices);
+        }
+
         let fr_fn_body = self.infcx.next_nll_region_var(FR).to_region_vid();
         let num_universals = self.infcx.num_region_vars();
 
@@ -782,6 +808,13 @@ trait InferCtxtExt<'tcx> {
     ) -> T
     where
         T: TypeFoldable<'tcx>;
+
+
+    fn replace_late_bound_regions_with_nll_infer_vars(
+        &self,
+        mir_def_id: DefId,
+        indices: &mut UniversalRegionIndices<'tcx>
+    );
 }
 
 impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
@@ -826,6 +859,28 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
             region_vid
         });
         value
+    }
+
+    /// Finds late-bound regions that do not appear in the parameter listing and adds them to the
+    /// indices vector. Typically, we identify late-bound regions as we process the inputs and
+    /// outputs of the closure/function. However, sometimes there are late-bound regions which do
+    /// not appear in the fn parameters but which are nonetheless in scope. The simplest case of
+    /// this are unused functions, like fn foo<'a>() { } (see eg., #51351). Despite not being used,
+    /// users can still reference these regions (e.g., let x: &'a u32 = &22;), so we need to create
+    /// entries for them and store them in the indices map. This code iterates over the complete
+    /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
+    /// inputs vector.
+    fn replace_late_bound_regions_with_nll_infer_vars(
+        &self,
+        mir_def_id: DefId,
+        indices: &mut UniversalRegionIndices<'tcx>,
+    ) {
+        let closure_base_def_id = self.tcx.closure_base_def_id(mir_def_id);
+        for_each_late_bound_region_defined_on(self.tcx, closure_base_def_id, |r| {
+            if !indices.indices.contains_key(&r) {
+                let region_vid = self.next_nll_region_var(FR);
+                indices.insert_late_bound_region(r, region_vid.to_region_vid());
+            }});
     }
 }
 
@@ -880,5 +935,27 @@ impl<'tcx> FreeRegionRelations<'tcx> for UniversalRegions<'tcx> {
         let longer = longer.to_region_vid();
         assert!(self.is_universal_region(longer));
         self.outlives(longer, shorter)
+    }
+}
+
+/// Iterates over the late-bound regions defined on fn_def_id and
+/// invokes `f` with the liberated form of each one.
+fn for_each_late_bound_region_defined_on<'tcx>(
+    tcx: TyCtxt<'_, '_, 'tcx>,
+    fn_def_id: DefId,
+    mut f: impl FnMut(ty::Region<'tcx>)
+    ) {
+    if let Some(late_bounds) = tcx.is_late_bound_map(fn_def_id.index) {
+        for late_bound in late_bounds.iter() {
+            let hir_id = HirId{ owner: fn_def_id.index, local_id: *late_bound };
+            let region_node_id = tcx.hir.hir_to_node_id(hir_id);
+            let name = tcx.hir.name(region_node_id).as_interned_str();
+            let region_def_id = tcx.hir.local_def_id(region_node_id);
+            let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
+                scope: fn_def_id,
+                bound_region: ty::BoundRegion::BrNamed(region_def_id, name),
+            }));
+            f(liberated_region);
+        }
     }
 }

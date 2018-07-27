@@ -1155,8 +1155,8 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         // Extract the values of the free regions in `user_closure_ty`
         // into a vector.  These are the regions that we will be
         // relating to one another.
-        let closure_mapping =
-            &UniversalRegions::closure_mapping(tcx, user_closure_ty, self.num_external_vids);
+        let closure_mapping = &UniversalRegions::closure_mapping(
+            tcx, user_closure_ty, self.num_external_vids, tcx.closure_base_def_id(closure_def_id));
         debug!("apply_requirements: closure_mapping={:?}", closure_mapping);
 
         // Create the predicates.
