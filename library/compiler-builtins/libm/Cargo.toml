@@ -14,4 +14,13 @@ version = "0.1.2"
 checked = []
 
 [workspace]
-members = ["cb", "test-generator"]
+members = [
+  "cb",
+  "input-generator",
+  "musl-generator",
+  "newlib-generator",
+  "shared",
+]
+
+[dev-dependencies]
+shared = { path = "shared" }

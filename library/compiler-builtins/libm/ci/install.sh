@@ -15,6 +15,11 @@ main() {
     if [ $TARGET != x86_64-unknown-linux-gnu ]; then
         rustup target add $TARGET
     fi
+
+    mkdir -p ~/.local/bin
+    curl -L https://github.com/japaric/qemu-bin/raw/master/14.04/qemu-arm-2.12.0 > ~/.local/bin/qemu-arm
+    chmod +x ~/.local/bin/qemu-arm
+    qemu-arm --version
 }
 
 main

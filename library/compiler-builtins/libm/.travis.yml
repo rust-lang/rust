@@ -5,21 +5,29 @@ sudo: required
 matrix:
   include:
     - env: TARGET=aarch64-unknown-linux-gnu
-    - env: TARGET=armv7-unknown-linux-gnueabihf
-    - env: TARGET=i686-unknown-linux-gnu
-    - env: TARGET=mips-unknown-linux-gnu
-    - env: TARGET=mips64-unknown-linux-gnuabi64
-    - env: TARGET=mips64el-unknown-linux-gnuabi64
-    - env: TARGET=mipsel-unknown-linux-gnu
-    - env: TARGET=powerpc-unknown-linux-gnu
-    - env: TARGET=powerpc64-unknown-linux-gnu
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-    - env: TARGET=x86_64-unknown-linux-gnu
-    - env: TARGET=cargo-fmt
-      rust: beta
-      # no-panic link test
+      rust: nightly
     - env: TARGET=armv7-unknown-linux-gnueabihf
       rust: nightly
+    - env: TARGET=i686-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=mips-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=mips64-unknown-linux-gnuabi64
+      rust: nightly
+    - env: TARGET=mips64el-unknown-linux-gnuabi64
+      rust: nightly
+    - env: TARGET=mipsel-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=powerpc-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=powerpc64-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=powerpc64le-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: nightly
+    - env: TARGET=cargo-fmt
+      rust: beta
 
 before_install: set -e
 
@@ -27,6 +35,7 @@ install:
   - bash ci/install.sh
 
 script:
+  - export PATH=$HOME/.local/bin:$PATH
   - bash ci/script.sh
 
 after_script: set +e
