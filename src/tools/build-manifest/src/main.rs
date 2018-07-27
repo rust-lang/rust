@@ -46,9 +46,9 @@ static HOSTS: &'static [&'static str] = &[
 
 static TARGETS: &'static [&'static str] = &[
     "aarch64-apple-ios",
+    "aarch64-fuchsia",
     "aarch64-linux-android",
     "aarch64-unknown-cloudabi",
-    "aarch64-unknown-fuchsia",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
     "arm-linux-androideabi",
@@ -101,6 +101,7 @@ static TARGETS: &'static [&'static str] = &[
     "wasm32-unknown-unknown",
     "x86_64-apple-darwin",
     "x86_64-apple-ios",
+    "x86_64-fuchsia",
     "x86_64-linux-android",
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-msvc",
@@ -108,7 +109,6 @@ static TARGETS: &'static [&'static str] = &[
     "x86_64-sun-solaris",
     "x86_64-unknown-cloudabi",
     "x86_64-unknown-freebsd",
-    "x86_64-unknown-fuchsia",
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-gnux32",
     "x86_64-unknown-linux-musl",
