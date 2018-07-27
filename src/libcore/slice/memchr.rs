@@ -102,32 +102,13 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     let ptr = text.as_ptr();
     let usize_bytes = mem::size_of::<usize>();
 
-    // a version of align_offset that says how much must be *subtracted*
-    // from a pointer to be aligned.
-    #[inline(always)]
-    fn align_offset_down(ptr: *const u8, align: usize) -> usize {
-        let align_offset = ptr.align_offset(align);
-        if align_offset > align {
-            // Not possible to align
-            usize::max_value()
-        } else if align_offset == 0 {
-            0
-        } else {
-            // E.g. if align=8 and we have to add 1, then we can also subtract 7.
-            align - align_offset
-        }
-    }
-
-    // search to an aligned boundary
-    let end_align = align_offset_down(unsafe { ptr.offset(len as isize) }, usize_bytes);
-    let mut offset;
-    if end_align > 0 {
-        offset = if end_align >= len { 0 } else { len - end_align };
-        if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
-            return Some(offset + index);
-        }
-    } else {
-        offset = len;
+    let mut offset = {
+        // We call this just to obtain the length of the suffix
+        let (_, _, suffix) = unsafe { text.align_to::<usize>() };
+        len - suffix.len()
+    };
+    if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
+        return Some(offset + index);
     }
 
     // search the body of the text
