@@ -351,8 +351,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
                                 for (i, arg_local) in arg_locals.enumerate() {
                                     let field = mir::Field::new(i);
-                                    let valty = self.read_field(args[1].value, None, field, args[1].ty)?;
+                                    let (value, layout) = self.read_field(args[1].value, None, field, layout)?;
                                     let dest = self.eval_place(&mir::Place::Local(arg_local))?;
+                                    let valty = ValTy {
+                                        value,
+                                        ty: layout.ty,
+                                    };
                                     self.write_value(valty, dest)?;
                                 }
                             } else {

@@ -5,7 +5,7 @@ use rustc::hir;
 use rustc::mir::interpret::{ConstEvalErr};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
-use rustc::ty::layout::{self, LayoutOf, Primitive};
+use rustc::ty::layout::{self, LayoutOf, Primitive, TyLayout};
 use rustc::ty::subst::Subst;
 
 use syntax::ast::Mutability;
@@ -16,7 +16,7 @@ use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
     Value, Scalar, AllocId, Allocation, ConstValue,
 };
-use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory, MemoryKind};
+use super::{Place, EvalContext, StackPopCleanup, ValTy, Memory, MemoryKind};
 
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -63,7 +63,7 @@ pub fn eval_promoted<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, (Value, Scalar, Ty<'tcx>)> {
+) -> EvalResult<'tcx, (Value, Scalar, TyLayout<'tcx>)> {
     ecx.with_fresh_body(|ecx| {
         eval_body_using_ecx(ecx, cid, Some(mir), param_env)
     })
@@ -121,7 +121,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, (Value, Scalar, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
+) -> (EvalResult<'tcx, (Value, Scalar, TyLayout<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
     debug!("eval_body_and_ecx: {:?}, {:?}", cid, param_env);
     // we start out with the best span we have
     // and try improving it down the road when more information is available
@@ -137,7 +137,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, (Value, Scalar, Ty<'tcx>)> {
+) -> EvalResult<'tcx, (Value, Scalar, TyLayout<'tcx>)> {
     debug!("eval_body: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
     let mut mir = match mir {
@@ -182,7 +182,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
         // point at the allocation
         _ => Value::ByRef(ptr, layout.align),
     };
-    Ok((value, ptr, layout.ty))
+    Ok((value, ptr, layout))
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -434,19 +434,7 @@ pub fn const_val_field<'a, 'tcx>(
         let ty = value.ty;
         let value = ecx.const_to_value(value.val)?;
         let layout = ecx.layout_of(ty)?;
-        let (ptr, align) = match value {
-            Value::ByRef(ptr, align) => (ptr, align),
-            Value::ScalarPair(..) | Value::Scalar(_) => {
-                let ptr = ecx.alloc_ptr(ty)?.into();
-                ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
-                (ptr, layout.align)
-            },
-        };
-        let place = Place::Ptr {
-            ptr,
-            align,
-            extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
-        };
+        let place = ecx.allocate_place_for_value(value, layout, variant)?;
         let (place, layout) = ecx.place_field(place, field, layout)?;
         let (ptr, align) = place.to_ptr_align();
         let mut new_value = Value::ByRef(ptr, align);
@@ -484,9 +472,9 @@ pub fn const_variant_index<'a, 'tcx>(
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let value = ecx.const_to_value(val.val)?;
+    let layout = ecx.layout_of(val.ty)?;
     let (ptr, align) = match value {
         Value::ScalarPair(..) | Value::Scalar(_) => {
-            let layout = ecx.layout_of(val.ty)?;
             let ptr = ecx.memory.allocate(layout.size, layout.align, MemoryKind::Stack)?.into();
             ecx.write_value_to_ptr(value, ptr, layout.align, val.ty)?;
             (ptr, layout.align)
@@ -494,7 +482,7 @@ pub fn const_variant_index<'a, 'tcx>(
         Value::ByRef(ptr, align) => (ptr, align),
     };
     let place = Place::from_scalar_ptr(ptr, align);
-    ecx.read_discriminant_as_variant_index(place, val.ty)
+    ecx.read_discriminant_as_variant_index(place, layout)
 }
 
 pub fn const_value_to_allocation_provider<'a, 'tcx>(
@@ -560,11 +548,11 @@ pub fn const_eval_provider<'a, 'tcx>(
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.and_then(|(mut val, _, miri_ty)| {
+    res.and_then(|(mut val, _, layout)| {
         if tcx.is_static(def_id).is_none() && cid.promoted.is_none() {
-            val = ecx.try_read_by_ref(val, miri_ty)?;
+            val = ecx.try_read_by_ref(val, layout.ty)?;
         }
-        Ok(value_to_const_value(&ecx, val, miri_ty))
+        Ok(value_to_const_value(&ecx, val, layout.ty))
     }).map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
         let err = ConstEvalErr {

@@ -8,7 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static FOO: i32 = [][0];
-//~^ ERROR E0080
+#[repr(usize)]
+#[derive(Copy, Clone)]
+enum Enum {
+    A = 0,
+}
 
-fn main() {}
+union Foo {
+    a: &'static u8,
+    b: Enum,
+}
+
+// A pointer is guaranteed non-null
+const BAD_ENUM: Enum = unsafe { Foo { a: &1 }.b};
+//~^ ERROR this constant likely exhibits undefined behavior
+
+fn main() {
+}

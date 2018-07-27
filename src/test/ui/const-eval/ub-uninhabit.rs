@@ -8,7 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static FOO: i32 = [][0];
-//~^ ERROR E0080
+union Foo {
+    a: u8,
+    b: Bar,
+}
 
-fn main() {}
+#[derive(Copy, Clone)]
+enum Bar {}
+
+const BAD_BAD_BAD: Bar = unsafe { Foo { a: 1 }.b};
+//~^ ERROR this constant likely exhibits undefined behavior
+
+fn main() {
+}

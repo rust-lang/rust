@@ -21,6 +21,7 @@ pub use self::memory::{Memory, MemoryKind, HasMemory};
 pub use self::const_eval::{
     eval_promoted,
     mk_borrowck_eval_cx,
+    mk_eval_cx,
     CompileTimeEvaluator,
     const_value_to_allocation_provider,
     const_eval_provider,
