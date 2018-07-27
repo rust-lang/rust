@@ -51,14 +51,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn invalid_non_exhaustive_attribute(&self, variant: &Variant) {
-        let has_non_exhaustive = attr::contains_name(&variant.node.attrs, "non_exhaustive");
-        if has_non_exhaustive {
-            self.err_handler().span_err(variant.span,
-                                        "#[non_exhaustive] is not yet supported on variants");
-        }
-    }
-
     fn invalid_visibility(&self, vis: &Visibility, note: Option<&str>) {
         if let VisibilityKind::Inherited = vis.node {
             return
@@ -309,7 +301,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
-                    self.invalid_non_exhaustive_attribute(variant);
                     for field in variant.node.data.fields() {
                         self.invalid_visibility(&field.vis, None);
                     }
