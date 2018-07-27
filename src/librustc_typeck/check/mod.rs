@@ -3915,7 +3915,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             }
             hir::ExprKind::Continue(destination) => {
-                if let Ok(_) = destination.target_id {
+                if destination.target_id.is_ok() {
                     tcx.types.never
                 } else {
                     // There was an error, make typecheck fail
