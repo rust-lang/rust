@@ -30,7 +30,7 @@ use compile;
 use dist;
 use flags::Subcommand;
 use native;
-use tool::{self, Tool};
+use tool::{self, Tool, SourceType};
 use toolstate::ToolState;
 use util::{self, dylib_path, dylib_path_var};
 use Crate as CargoCrate;
@@ -222,16 +222,17 @@ impl Step for Cargo {
             compiler,
             target: self.host,
         });
-        let mut cargo = builder.cargo(compiler, Mode::ToolRustc, self.host, "test");
-        cargo
-            .arg("--manifest-path")
-            .arg(builder.src.join("src/tools/cargo/Cargo.toml"));
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::ToolRustc,
+                                                 self.host,
+                                                 "test",
+                                                 "src/tools/cargo",
+                                                 SourceType::Submodule);
+
         if !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
-
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
@@ -286,10 +287,8 @@ impl Step for Rls {
                                                  Mode::ToolRustc,
                                                  host,
                                                  "test",
-                                                 "src/tools/rls");
-
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+                                                 "src/tools/rls",
+                                                 SourceType::Submodule);
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
@@ -341,10 +340,9 @@ impl Step for Rustfmt {
                                                  Mode::ToolRustc,
                                                  host,
                                                  "test",
-                                                 "src/tools/rustfmt");
+                                                 "src/tools/rustfmt",
+                                                 SourceType::Submodule);
 
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
@@ -392,13 +390,14 @@ impl Step for Miri {
             extra_features: Vec::new(),
         });
         if let Some(miri) = miri {
-            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "test");
-            cargo
-                .arg("--manifest-path")
-                .arg(builder.src.join("src/tools/miri/Cargo.toml"));
+            let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::ToolRustc,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/miri",
+                                                 SourceType::Submodule);
 
-            // Don't build tests dynamically, just a pain to work with
-            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
             cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
@@ -450,13 +449,14 @@ impl Step for Clippy {
             extra_features: Vec::new(),
         });
         if let Some(clippy) = clippy {
-            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "test");
-            cargo
-                .arg("--manifest-path")
-                .arg(builder.src.join("src/tools/clippy/Cargo.toml"));
+            let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::ToolRustc,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/clippy",
+                                                 SourceType::Submodule);
 
-            // Don't build tests dynamically, just a pain to work with
-            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
             // clippy tests need to know about the stage sysroot
             cargo.env("SYSROOT", builder.sysroot(compiler));
             cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
@@ -1739,7 +1739,8 @@ impl Step for CrateRustdoc {
                                                  Mode::ToolRustc,
                                                  target,
                                                  test_kind.subcommand(),
-                                                 "src/tools/rustdoc");
+                                                 "src/tools/rustdoc",
+                                                 SourceType::InTree);
         if test_kind.subcommand() == "test" && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }

@@ -43,7 +43,7 @@ use fmt;
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
-    payload: &'a (Any + Send),
+    payload: &'a (dyn Any + Send),
     message: Option<&'a fmt::Arguments<'a>>,
     location: Location<'a>,
 }
@@ -64,7 +64,7 @@ impl<'a> PanicInfo<'a> {
 
     #[doc(hidden)]
     #[inline]
-    pub fn set_payload(&mut self, info: &'a (Any + Send)) {
+    pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
         self.payload = info;
     }
 
@@ -86,7 +86,7 @@ impl<'a> PanicInfo<'a> {
     /// panic!("Normal panic");
     /// ```
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn payload(&self) -> &(Any + Send) {
+    pub fn payload(&self) -> &(dyn Any + Send) {
         self.payload
     }
 
@@ -270,6 +270,6 @@ impl<'a> fmt::Display for Location<'a> {
 #[unstable(feature = "std_internals", issue = "0")]
 #[doc(hidden)]
 pub unsafe trait BoxMeUp {
-    fn box_me_up(&mut self) -> *mut (Any + Send);
-    fn get(&mut self) -> &(Any + Send);
+    fn box_me_up(&mut self) -> *mut (dyn Any + Send);
+    fn get(&mut self) -> &(dyn Any + Send);
 }

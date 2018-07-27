@@ -10,7 +10,6 @@
 
 #![no_std]
 #![allow(unused_attributes)]
-#![deny(bare_trait_objects)]
 #![unstable(feature = "alloc_jemalloc",
             reason = "implementation detail of std, does not provide any public API",
             issue = "0")]

@@ -21,7 +21,6 @@
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![panic_runtime]
 #![allow(unused_features)]
-#![deny(bare_trait_objects)]
 
 #![feature(core_intrinsics)]
 #![feature(libc)]

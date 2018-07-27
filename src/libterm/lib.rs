@@ -66,9 +66,9 @@ pub mod terminfo;
 mod win;
 
 /// Alias for stdout terminals.
-pub type StdoutTerminal = Terminal<Output = Stdout> + Send;
+pub type StdoutTerminal = dyn Terminal<Output = Stdout> + Send;
 /// Alias for stderr terminals.
-pub type StderrTerminal = Terminal<Output = Stderr> + Send;
+pub type StderrTerminal = dyn Terminal<Output = Stderr> + Send;
 
 #[cfg(not(windows))]
 /// Return a Terminal wrapping stdout, or None if a terminal couldn't be

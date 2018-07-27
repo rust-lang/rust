@@ -240,7 +240,7 @@ fn test_collect() {
     assert!(v == None);
 
     // test that it does not take more elements than it needs
-    let mut functions: [Box<Fn() -> Option<()>>; 3] =
+    let mut functions: [Box<dyn Fn() -> Option<()>>; 3] =
         [box || Some(()), box || None, box || panic!()];
 
     let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();

@@ -1822,7 +1822,7 @@ impl Context {
     }
 
     fn render_item(&self,
-                   writer: &mut io::Write,
+                   writer: &mut dyn io::Write,
                    it: &clean::Item,
                    pushname: bool)
                    -> io::Result<()> {

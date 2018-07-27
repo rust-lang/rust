@@ -32,7 +32,7 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 impl Thread {
-    pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>) -> io::Result<Thread> {
+    pub unsafe fn new<'a>(stack: usize, p: Box<dyn FnBox() + 'a>) -> io::Result<Thread> {
         let p = box p;
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: libc::pthread_attr_t = mem::zeroed();

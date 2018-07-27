@@ -49,7 +49,7 @@ pub struct Frame {
 const MAX_NB_FRAMES: usize = 100;
 
 /// Prints the current backtrace.
-pub fn print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
+pub fn print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
     static LOCK: Mutex = Mutex::new();
 
     // Use a lock to prevent mixed output in multithreading context.
@@ -62,7 +62,7 @@ pub fn print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     }
 }
 
-fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
+fn _print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
     let mut frames = [Frame {
         exact_position: ptr::null(),
         symbol_addr: ptr::null(),
@@ -176,7 +176,7 @@ pub fn log_enabled() -> Option<PrintFormat> {
 ///
 /// These output functions should now be used everywhere to ensure consistency.
 /// You may want to also use `output_fileline`.
-fn output(w: &mut Write, idx: usize, frame: Frame,
+fn output(w: &mut dyn Write, idx: usize, frame: Frame,
               s: Option<&str>, format: PrintFormat) -> io::Result<()> {
     // Remove the `17: 0x0 - <unknown>` line.
     if format == PrintFormat::Short && frame.exact_position == ptr::null() {
@@ -201,7 +201,7 @@ fn output(w: &mut Write, idx: usize, frame: Frame,
 ///
 /// See also `output`.
 #[allow(dead_code)]
-fn output_fileline(w: &mut Write,
+fn output_fileline(w: &mut dyn Write,
                    file: &[u8],
                    line: u32,
                    format: PrintFormat) -> io::Result<()> {
@@ -253,7 +253,7 @@ fn output_fileline(w: &mut Write,
 // Note that this demangler isn't quite as fancy as it could be. We have lots
 // of other information in our symbols like hashes, version, type information,
 // etc. Additionally, this doesn't handle glue symbols at all.
-pub fn demangle(writer: &mut Write, mut s: &str, format: PrintFormat) -> io::Result<()> {
+pub fn demangle(writer: &mut dyn Write, mut s: &str, format: PrintFormat) -> io::Result<()> {
     // During ThinLTO LLVM may import and rename internal symbols, so strip out
     // those endings first as they're one of the last manglings applied to
     // symbol names.

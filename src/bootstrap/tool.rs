@@ -76,13 +76,20 @@ impl Step for CleanTools {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum SourceType {
+    InTree,
+    Submodule,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
     compiler: Compiler,
     target: Interned<String>,
     tool: &'static str,
     path: &'static str,
     mode: Mode,
-    is_ext_tool: bool,
+    is_optional_tool: bool,
+    source_type: SourceType,
     extra_features: Vec<String>,
 }
 
@@ -102,7 +109,7 @@ impl Step for ToolBuild {
         let target = self.target;
         let tool = self.tool;
         let path = self.path;
-        let is_ext_tool = self.is_ext_tool;
+        let is_optional_tool = self.is_optional_tool;
 
         match self.mode {
             Mode::ToolRustc => {
@@ -115,7 +122,15 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build")
         }
 
-        let mut cargo = prepare_tool_cargo(builder, compiler, self.mode, target, "build", path);
+        let mut cargo = prepare_tool_cargo(
+            builder,
+            compiler,
+            self.mode,
+            target,
+            "build",
+            path,
+            self.source_type,
+        );
         cargo.arg("--features").arg(self.extra_features.join(" "));
 
         let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
@@ -216,7 +231,7 @@ impl Step for ToolBuild {
         });
 
         if !is_expected {
-            if !is_ext_tool {
+            if !is_optional_tool {
                 exit(1);
             } else {
                 return None;
@@ -238,6 +253,7 @@ pub fn prepare_tool_cargo(
     target: Interned<String>,
     command: &'static str,
     path: &'static str,
+    source_type: SourceType,
 ) -> Command {
     let mut cargo = builder.cargo(compiler, mode, target, command);
     let dir = builder.src.join(path);
@@ -246,6 +262,10 @@ pub fn prepare_tool_cargo(
     // We don't want to build tools dynamically as they'll be running across
     // stages and such and it's just easier if they're not dynamically linked.
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+    if source_type == SourceType::Submodule {
+        cargo.env("RUSTC_EXTERNAL_TOOL", "1");
+    }
 
     if let Some(dir) = builder.openssl_install_dir(target) {
         cargo.env("OPENSSL_STATIC", "1");
@@ -274,7 +294,8 @@ pub fn prepare_tool_cargo(
 }
 
 macro_rules! tool {
-    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr $(,llvm_tools = $llvm:expr)*;)+) => {
+    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr
+        $(,llvm_tools = $llvm:expr)* $(,is_external_tool = $external:expr)*;)+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
         pub enum Tool {
             $(
@@ -351,7 +372,12 @@ macro_rules! tool {
                     tool: $tool_name,
                     mode: $mode,
                     path: $path,
-                    is_ext_tool: false,
+                    is_optional_tool: false,
+                    source_type: if false $(|| $external)* {
+                        SourceType::Submodule
+                    } else {
+                        SourceType::InTree
+                    },
                     extra_features: Vec::new(),
                 }).expect("expected to build -- essential tool")
             }
@@ -370,7 +396,8 @@ tool!(
     Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolBootstrap, llvm_tools = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolBootstrap;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolBootstrap;
-    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolBootstrap;
+    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolBootstrap,
+        is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::ToolBootstrap;
 );
 
@@ -401,7 +428,8 @@ impl Step for RemoteTestServer {
             tool: "remote-test-server",
             mode: Mode::ToolStd,
             path: "src/tools/remote-test-server",
-            is_ext_tool: false,
+            is_optional_tool: false,
+            source_type: SourceType::InTree,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -449,12 +477,15 @@ impl Step for Rustdoc {
             target: builder.config.build,
         });
 
-        let mut cargo = prepare_tool_cargo(builder,
-                                           build_compiler,
-                                           Mode::ToolRustc,
-                                           target,
-                                           "build",
-                                           "src/tools/rustdoc");
+        let mut cargo = prepare_tool_cargo(
+            builder,
+            build_compiler,
+            Mode::ToolRustc,
+            target,
+            "build",
+            "src/tools/rustdoc",
+            SourceType::InTree,
+        );
 
         // Most tools don't get debuginfo, but rustdoc should.
         cargo.env("RUSTC_DEBUGINFO", builder.config.rust_debuginfo.to_string())
@@ -525,7 +556,8 @@ impl Step for Cargo {
             tool: "cargo",
             mode: Mode::ToolRustc,
             path: "src/tools/cargo",
-            is_ext_tool: false,
+            is_optional_tool: false,
+            source_type: SourceType::Submodule,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -574,7 +606,8 @@ macro_rules! tool_extended {
                     mode: Mode::ToolRustc,
                     path: $path,
                     extra_features: $sel.extra_features,
-                    is_ext_tool: true,
+                    is_optional_tool: true,
+                    source_type: SourceType::Submodule,
                 })
             }
         }

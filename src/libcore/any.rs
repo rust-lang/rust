@@ -120,7 +120,7 @@ impl<T: 'static + ?Sized > Any for T {
 ///////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for Any {
+impl fmt::Debug for dyn Any {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Any")
     }
@@ -130,20 +130,20 @@ impl fmt::Debug for Any {
 // hence used with `unwrap`. May eventually no longer be needed if
 // dispatch works with upcasting.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for Any + Send {
+impl fmt::Debug for dyn Any + Send {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Any")
     }
 }
 
 #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
-impl fmt::Debug for Any + Send + Sync {
+impl fmt::Debug for dyn Any + Send + Sync {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Any")
     }
 }
 
-impl Any {
+impl dyn Any {
     /// Returns `true` if the boxed type is the same as `T`.
     ///
     /// # Examples
@@ -203,7 +203,7 @@ impl Any {
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
             unsafe {
-                Some(&*(self as *const Any as *const T))
+                Some(&*(self as *const dyn Any as *const T))
             }
         } else {
             None
@@ -240,7 +240,7 @@ impl Any {
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
             unsafe {
-                Some(&mut *(self as *mut Any as *mut T))
+                Some(&mut *(self as *mut dyn Any as *mut T))
             }
         } else {
             None
@@ -248,7 +248,7 @@ impl Any {
     }
 }
 
-impl Any+Send {
+impl dyn Any+Send {
     /// Forwards to the method defined on the type `Any`.
     ///
     /// # Examples
@@ -332,7 +332,7 @@ impl Any+Send {
     }
 }
 
-impl Any+Send+Sync {
+impl dyn Any+Send+Sync {
     /// Forwards to the method defined on the type `Any`.
     ///
     /// # Examples

@@ -70,7 +70,6 @@ This API is completely unstable and subject to change.
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![allow(non_camel_case_types)]
-#![deny(bare_trait_objects)]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]

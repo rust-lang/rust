@@ -21,7 +21,7 @@ pub unsafe fn start_thread(main: *mut u8) {
     let _handler = stack_overflow::Handler::new();
 
     // Finally, let's run some code.
-    Box::from_raw(main as *mut Box<FnBox()>)()
+    Box::from_raw(main as *mut Box<dyn FnBox()>)()
 }
 
 pub fn min_stack() -> usize {

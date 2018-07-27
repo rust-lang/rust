@@ -334,7 +334,7 @@ fn get_and_check_lib_features(base_src_path: &Path,
 }
 
 fn map_lib_features(base_src_path: &Path,
-                    mf: &mut FnMut(Result<(&str, Feature), &str>, &Path, usize)) {
+                    mf: &mut dyn FnMut(Result<(&str, Feature), &str>, &Path, usize)) {
     let mut contents = String::new();
     super::walk(base_src_path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),

@@ -249,7 +249,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         }
         fn flush(&mut self) -> io::Result<()> { Ok(()) }
     }
-    struct Bomb(Arc<Mutex<Vec<u8>>>, Box<Write+Send>);
+    struct Bomb(Arc<Mutex<Vec<u8>>>, Box<dyn Write+Send>);
     impl Drop for Bomb {
         fn drop(&mut self) {
             let _ = self.1.write_all(&self.0.lock().unwrap());

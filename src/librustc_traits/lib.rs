@@ -11,8 +11,6 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
-#![deny(bare_trait_objects)]
-
 #![feature(crate_in_paths)]
 #![feature(crate_visibility_modifier)]
 #![feature(extern_prelude)]

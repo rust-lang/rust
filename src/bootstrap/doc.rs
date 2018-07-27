@@ -28,7 +28,7 @@ use build_helper::up_to_date;
 
 use util::symlink_dir;
 use builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
-use tool::{self, prepare_tool_cargo, Tool};
+use tool::{self, prepare_tool_cargo, Tool, SourceType};
 use compile;
 use cache::{INTERNER, Interned};
 use config::Config;
@@ -814,6 +814,7 @@ impl Step for Rustdoc {
             target,
             "doc",
             "src/tools/rustdoc",
+            SourceType::InTree,
         );
 
         cargo.env("RUSTDOCFLAGS", "--document-private-items");

@@ -15,5 +15,4 @@
             reason = "internal implementation detail of rustc right now",
             issue = "0")]
 #![allow(unused_features)]
-#![deny(bare_trait_objects)]
 #![feature(staged_api)]

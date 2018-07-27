@@ -22,7 +22,6 @@
 //! See [the book](../book/first-edition/procedural-macros.html) for more.
 
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
-#![deny(bare_trait_objects)]
 #![deny(missing_docs)]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",

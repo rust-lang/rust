@@ -93,7 +93,7 @@ pub struct Handle<'rx, T:Send+'rx> {
     next: *mut Handle<'static, ()>,
     prev: *mut Handle<'static, ()>,
     added: bool,
-    packet: &'rx (Packet+'rx),
+    packet: &'rx (dyn Packet+'rx),
 
     // due to our fun transmutes, we be sure to place this at the end. (nothing
     // previous relies on T)

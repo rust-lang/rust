@@ -10,7 +10,6 @@
 
 #![no_std]
 #![allow(unused_attributes)]
-#![deny(bare_trait_objects)]
 #![unstable(feature = "alloc_system",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
