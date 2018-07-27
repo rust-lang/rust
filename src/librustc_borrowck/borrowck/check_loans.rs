@@ -447,10 +447,12 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                       .region_scope_tree
                                       .yield_in_scope_for_expr(scope,
                                                                cmt.hir_id,
-                                                               self.bccx.body) {
+                                                               self.bccx.body)
+        {
             self.bccx.cannot_borrow_across_generator_yield(borrow_span,
                                                            yield_span,
                                                            Origin::Ast).emit();
+            self.bccx.signal_error();
         }
     }
 
@@ -507,9 +509,13 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             new_loan, old_loan, old_loan, new_loan).err();
 
         match (err_old_new, err_new_old) {
-            (Some(mut err), None) | (None, Some(mut err)) => err.emit(),
+            (Some(mut err), None) | (None, Some(mut err)) => {
+                err.emit();
+                self.bccx.signal_error();
+            }
             (Some(mut err_old), Some(mut err_new)) => {
                 err_old.emit();
+                self.bccx.signal_error();
                 err_new.cancel();
             }
             (None, None) => return true,
@@ -695,6 +701,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         loan_span, &self.bccx.loan_path_to_string(&loan_path),
                         Origin::Ast)
                     .emit();
+                self.bccx.signal_error();
             }
         }
     }
@@ -745,6 +752,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 };
 
                 err.emit();
+                self.bccx.signal_error();
             }
         }
     }
@@ -914,5 +922,6 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         self.bccx.cannot_assign_to_borrowed(
             span, loan.span, &self.bccx.loan_path_to_string(loan_path), Origin::Ast)
             .emit();
+        self.bccx.signal_error();
     }
 }

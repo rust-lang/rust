@@ -100,25 +100,6 @@ impl<'a> DiagnosticBuilder<'a> {
         buffered_diagnostics.push(diagnostic);
     }
 
-    pub fn is_error(&self) -> bool {
-        match self.level {
-            Level::Bug |
-            Level::Fatal |
-            Level::PhaseFatal |
-            Level::Error |
-            Level::FailureNote => {
-                true
-            }
-
-            Level::Warning |
-            Level::Note |
-            Level::Help |
-            Level::Cancelled => {
-                false
-            }
-        }
-    }
-
     /// Convenience function for internal use, clients should use one of the
     /// span_* methods instead.
     pub fn sub<S: Into<MultiSpan>>(

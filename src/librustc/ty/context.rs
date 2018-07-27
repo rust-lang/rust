@@ -74,6 +74,7 @@ use rustc_target::spec::abi;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
 use syntax::codemap::MultiSpan;
+use syntax::edition::Edition;
 use syntax::feature_gate;
 use syntax::symbol::{Symbol, keywords, InternedString};
 use syntax_pos::Span;
@@ -1366,6 +1367,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.borrowck_mode().use_mir()
     }
 
+    /// If true, we should use the MIR-based borrow check, but also
+    /// fall back on the AST borrow check if the MIR-based one errors.
+    pub fn migrate_borrowck(self) -> bool {
+        self.borrowck_mode().migrate()
+    }
+
     /// If true, make MIR codegen for `match` emit a temp that holds a
     /// borrow of the input to the match expression.
     pub fn generate_borrow_of_any_match_input(&self) -> bool {
@@ -1397,18 +1404,51 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// What mode(s) of borrowck should we run? AST? MIR? both?
     /// (Also considers the `#![feature(nll)]` setting.)
     pub fn borrowck_mode(&self) -> BorrowckMode {
+        // Here are the main constraints we need to deal with:
+        //
+        // 1. An opts.borrowck_mode of `BorrowckMode::Ast` is
+        //    synonymous with no `-Z borrowck=...` flag at all.
+        //    (This is arguably a historical accident.)
+        //
+        // 2. `BorrowckMode::Migrate` is the limited migration to
+        //    NLL that we are deploying with the 2018 edition.
+        //
+        // 3. We want to allow developers on the Nightly channel
+        //    to opt back into the "hard error" mode for NLL,
+        //    (which they can do via specifying `#![feature(nll)]`
+        //    explicitly in their crate).
+        //
+        // So, this precedence list is how pnkfelix chose to work with
+        // the above constraints:
+        //
+        // * `#![feature(nll)]` *always* means use NLL with hard
+        //   errors. (To simplify the code here, it now even overrides
+        //   a user's attempt to specify `-Z borrowck=compare`, which
+        //   we arguably do not need anymore and should remove.)
+        //
+        // * Otherwise, if no `-Z borrowck=...` flag was given (or
+        //   if `borrowck=ast` was specified), then use the default
+        //   as required by the edition.
+        //
+        // * Otherwise, use the behavior requested via `-Z borrowck=...`
+
+        if self.features().nll { return BorrowckMode::Mir; }
+
         match self.sess.opts.borrowck_mode {
             mode @ BorrowckMode::Mir |
-            mode @ BorrowckMode::Compare => mode,
+            mode @ BorrowckMode::Compare |
+            mode @ BorrowckMode::Migrate => mode,
 
-            mode @ BorrowckMode::Ast => {
-                if self.features().nll {
-                    BorrowckMode::Mir
-                } else {
-                    mode
-                }
-            }
+            BorrowckMode::Ast => match self.sess.edition() {
+                Edition::Edition2015 => BorrowckMode::Ast,
+                Edition::Edition2018 => BorrowckMode::Migrate,
 
+                // For now, future editions mean Migrate. (But it
+                // would make a lot of sense for it to be changed to
+                // `BorrowckMode::Mir`, depending on how we plan to
+                // time the forcing of full migration to NLL.)
+                _ => BorrowckMode::Migrate,
+            },
         }
     }
 

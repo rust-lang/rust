@@ -28,7 +28,7 @@ use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
-use rustc::middle::borrowck::BorrowCheckResult;
+use rustc::middle::borrowck::{BorrowCheckResult, SignalledError};
 use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
@@ -42,7 +42,7 @@ use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 use rustc_mir::util::suggest_ref_mut;
 use rustc::util::nodemap::FxHashSet;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 use rustc_data_structures::sync::Lrc;
@@ -90,7 +90,7 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
 fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     -> Lrc<BorrowCheckResult>
 {
-    assert!(tcx.use_ast_borrowck());
+    assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());
 
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
@@ -105,6 +105,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
             // and do not need borrowchecking.
             return Lrc::new(BorrowCheckResult {
                 used_mut_nodes: FxHashSet(),
+                signalled_any_error: SignalledError::NoErrorsSeen,
             })
         }
         _ => { }
@@ -121,6 +122,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
         owner_def_id,
         body,
         used_mut_nodes: RefCell::new(FxHashSet()),
+        signalled_any_error: Cell::new(SignalledError::NoErrorsSeen),
     };
 
     // Eventually, borrowck will always read the MIR, but at the
@@ -154,6 +156,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
 
     Lrc::new(BorrowCheckResult {
         used_mut_nodes: bccx.used_mut_nodes.into_inner(),
+        signalled_any_error: bccx.signalled_any_error.into_inner(),
     })
 }
 
@@ -234,6 +237,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
         owner_def_id,
         body,
         used_mut_nodes: RefCell::new(FxHashSet()),
+        signalled_any_error: Cell::new(SignalledError::NoErrorsSeen),
     };
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx, true, body_id, |_| cfg);
@@ -257,6 +261,15 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     body: &'tcx hir::Body,
 
     used_mut_nodes: RefCell<FxHashSet<HirId>>,
+
+    signalled_any_error: Cell<SignalledError>,
+}
+
+
+impl<'a, 'tcx: 'a> BorrowckCtxt<'a, 'tcx> {
+    fn signal_error(&self) {
+        self.signalled_any_error.set(SignalledError::SawSomeError);
+    }
 }
 
 impl<'a, 'b, 'tcx: 'b> BorrowckErrors<'a> for &'a BorrowckCtxt<'b, 'tcx> {
@@ -645,6 +658,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     .span_label(use_span, format!("use of possibly uninitialized `{}`",
                                                   self.loan_path_to_string(lp)))
                     .emit();
+                self.signal_error();
                 return;
             }
             _ => {
@@ -760,6 +774,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         // not considered particularly helpful.
 
         err.emit();
+        self.signal_error();
     }
 
     pub fn report_partial_reinitialization_of_uninitialized_structure(
@@ -770,6 +785,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                       &self.loan_path_to_string(lp),
                                                       Origin::Ast)
             .emit();
+        self.signal_error();
     }
 
     pub fn report_reassigned_immutable_variable(&self,
@@ -787,6 +803,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                 self.loan_path_to_string(lp)));
         }
         err.emit();
+        self.signal_error();
     }
 
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(&self,
@@ -908,6 +925,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     self.tcx.hir.hir_to_node_id(err.cmt.hir_id)
                 );
                 db.emit();
+                self.signal_error();
             }
             err_out_of_scope(super_scope, sub_scope, cause) => {
                 let msg = match opt_loan_path(&err.cmt) {
@@ -1022,6 +1040,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
 
                 db.emit();
+                self.signal_error();
             }
             err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
                 let descr = self.cmt_to_path_or_string(err.cmt);
@@ -1047,6 +1066,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     "");
 
                 db.emit();
+                self.signal_error();
             }
         }
     }
@@ -1125,6 +1145,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             err.help("closures behind references must be called via `&mut`");
         }
         err.emit();
+        self.signal_error();
     }
 
     /// Given a type, if it is an immutable reference, return a suggestion to make it mutable
@@ -1307,6 +1328,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                        cmt_path_or_string),
                              suggestion)
             .emit();
+        self.signal_error();
     }
 
     fn region_end_span(&self, region: ty::Region<'tcx>) -> Option<Span> {

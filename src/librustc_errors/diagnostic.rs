@@ -99,6 +99,25 @@ impl Diagnostic {
         }
     }
 
+    pub fn is_error(&self) -> bool {
+        match self.level {
+            Level::Bug |
+            Level::Fatal |
+            Level::PhaseFatal |
+            Level::Error |
+            Level::FailureNote => {
+                true
+            }
+
+            Level::Warning |
+            Level::Note |
+            Level::Help |
+            Level::Cancelled => {
+                false
+            }
+        }
+    }
+
     /// Cancel the diagnostic (a structured diagnostic must either be emitted or
     /// canceled or it will panic when dropped).
     pub fn cancel(&mut self) {

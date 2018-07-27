@@ -41,7 +41,20 @@ impl MirPass for ElaborateDrops {
 
         let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
         let param_env = tcx.param_env(src.def_id).with_reveal_all();
-        let move_data = MoveData::gather_moves(mir, tcx).unwrap();
+        let move_data = match MoveData::gather_moves(mir, tcx) {
+            Ok(move_data) => move_data,
+            Err((move_data, _move_errors)) => {
+                // The only way we should be allowing any move_errors
+                // in here is if we are in the migration path for the
+                // NLL-based MIR-borrowck.
+                //
+                // If we are in the migration path, we have already
+                // reported these errors as warnings to the user. So
+                // we will just ignore them here.
+                assert!(tcx.migrate_borrowck());
+                move_data
+            }
+        };
         let elaborate_patch = {
             let mir = &*mir;
             let env = MoveDataParamEnv {
