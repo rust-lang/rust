@@ -90,30 +90,29 @@ mod tests {
     use std::mem;
 
     #[test]
-    fn test_loading_cosine() {
+    fn test_loading_atoi() {
         if cfg!(windows) {
             return
         }
 
-        // The math library does not need to be loaded since it is already
-        // statically linked in
-        let libm = match DynamicLibrary::open(None) {
+        // The C library does not need to be loaded since it is already linked in
+        let lib = match DynamicLibrary::open(None) {
             Err(error) => panic!("Could not load self as module: {}", error),
-            Ok(libm) => libm
+            Ok(lib) => lib
         };
 
-        let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
-            match libm.symbol("cos") {
-                Err(error) => panic!("Could not load function cos: {}", error),
-                Ok(cosine) => mem::transmute::<*mut u8, _>(cosine)
+        let atoi: extern fn(*const libc::c_char) -> libc::c_int = unsafe {
+            match lib.symbol("atoi") {
+                Err(error) => panic!("Could not load function atoi: {}", error),
+                Ok(atoi) => mem::transmute::<*mut u8, _>(atoi)
             }
         };
 
-        let argument = 0.0;
-        let expected_result = 1.0;
-        let result = cosine(argument);
+        let argument = CString::new("1383428980").unwrap();
+        let expected_result = 0x52757374;
+        let result = atoi(argument.as_ptr());
         if result != expected_result {
-            panic!("cos({}) != {} but equaled {} instead", argument,
+            panic!("atoi({:?}) != {} but equaled {} instead", argument,
                    expected_result, result)
         }
     }
