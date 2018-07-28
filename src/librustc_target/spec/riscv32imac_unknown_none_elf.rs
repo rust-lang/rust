@@ -28,7 +28,8 @@ pub fn target() -> TargetResult {
             linker: Some("riscv32-unknown-elf-ld".to_string()),
             cpu: "generic-rv32".to_string(),
             max_atomic_width: Some(32),
-            features: "+m,+a,+c".to_string(),
+            atomic_cas: false, // incomplete +a extension
+            features: "+m,+a".to_string(), // disable +c extension
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: "static".to_string(),
