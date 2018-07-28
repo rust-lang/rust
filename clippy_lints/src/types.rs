@@ -700,7 +700,7 @@ declare_clippy_lint! {
 
 /// **What it does:** Checks for casts of a function pointer to a numeric type not enough to store address.
 ///
-/// **Why is this bad?** Casting a function pointer to not eligable type could truncate the address value.
+/// **Why is this bad?** Casting a function pointer to not eligible type could truncate the address value.
 ///
 /// **Known problems:** None.
 ///

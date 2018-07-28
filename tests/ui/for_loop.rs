@@ -389,7 +389,7 @@ fn main() {
     let m: Rc<HashMap<u64, u64>> = Rc::new(HashMap::new());
     for (_, v) in &*m {
         let _v = v;
-        // Here the `*` is not actually necesarry, but the test tests that we don't
+        // Here the `*` is not actually necessary, but the test tests that we don't
         // suggest
         // `in *m.values()` as we used to
     }

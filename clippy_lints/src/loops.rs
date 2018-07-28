@@ -2217,7 +2217,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr) {
         match ex.node {
             ExprKind::Path(_) => self.insert_def_id(ex),
-            // If there is any fuction/method call… we just stop analysis
+            // If there is any function/method call… we just stop analysis
             ExprKind::Call(..) | ExprKind::MethodCall(..) => self.skip = true,
 
             _ => walk_expr(self, ex),

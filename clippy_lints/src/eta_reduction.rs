@@ -15,7 +15,11 @@ pub struct EtaPass;
 /// **Why is this bad?** Needlessly creating a closure adds code for no benefit
 /// and gives the optimizer more work.
 ///
-/// **Known problems:** None.
+/// **Known problems:** If creating the closure inside the closure has a side-
+/// effect then moving the closure creation out will change when that side-
+/// effect runs.
+/// See https://github.com/rust-lang-nursery/rust-clippy/issues/1439 for more
+/// details.
 ///
 /// **Example:**
 /// ```rust

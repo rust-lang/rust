@@ -6,21 +6,21 @@ use if_chain::if_chain;
 use crate::utils::{self, paths, span_lint};
 
 /// **What it does:**
-/// Checks for the usage of negated comparision operators on types which only implement
+/// Checks for the usage of negated comparison operators on types which only implement
 /// `PartialOrd` (e.g. `f64`).
 ///
 /// **Why is this bad?**
 /// These operators make it easy to forget that the underlying types actually allow not only three
-/// potential Orderings (Less, Equal, Greater) but also a forth one (Uncomparable). Escpeccially if
-/// the operator based comparision result is negated it is easy to miss that fact.
+/// potential Orderings (Less, Equal, Greater) but also a fourth one (Uncomparable). This is
+/// especially easy to miss if the operator based comparison result is negated.
 ///
 /// **Known problems:** None.
 ///
 /// **Example:**
 ///
 /// ```rust
-/// use core::cmp::Ordering;
-///
+/// use std::cmp::Ordering;
+/// 
 /// // Bad
 /// let a = 1.0;
 /// let b = std::f64::NAN;
@@ -39,7 +39,7 @@ use crate::utils::{self, paths, span_lint};
 declare_clippy_lint! {
     pub NEG_CMP_OP_ON_PARTIAL_ORD,
     complexity,
-    "The use of negated comparision operators on partially orded types may produce confusing code."
+    "The use of negated comparison operators on partially ordered types may produce confusing code."
 }
 
 pub struct NoNegCompOpForPartialOrd;
@@ -85,10 +85,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
                         cx,
                         NEG_CMP_OP_ON_PARTIAL_ORD,
                         expr.span,
-                        "The use of negated comparision operators on partially orded \
+                        "The use of negated comparison operators on partially ordered \
                         types produces code that is hard to read and refactor. Please \
-                        consider to use the `partial_cmp` instead, to make it clear \
-                        that the two values could be incomparable."
+                        consider using the `partial_cmp` method instead, to make it \
+                        clear that the two values could be incomparable."
                     )
                 }
             }

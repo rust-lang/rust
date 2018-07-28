@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
 }
 
 impl ExcessivePrecision {
-    // None if nothing to lint, Some(suggestion) if lint neccessary
+    // None if nothing to lint, Some(suggestion) if lint necessary
     fn check(&self, sym: Symbol, fty: FloatTy) -> Option<String> {
         let max = max_digits(fty);
         let sym_str = sym.as_str();

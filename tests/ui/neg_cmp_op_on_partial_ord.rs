@@ -59,9 +59,9 @@ fn main() {
 
     // Issue 2856: False positive on assert!()
     //
-    // The macro always negates the result of the given comparision in its
+    // The macro always negates the result of the given comparison in its
     // internal check which automatically triggered the lint. As it's an
-    // external macro there was no chance to do anything about it which lead
+    // external macro there was no chance to do anything about it which led
     // to a whitelisting of all external macros.
     assert!(a_value < another_value);
 }

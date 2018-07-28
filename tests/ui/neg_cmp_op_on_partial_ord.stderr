@@ -1,4 +1,4 @@
-error: The use of negated comparision operators on partially orded types produces code that is hard to read and refactor. Please consider to use the `partial_cmp` instead, to make it clear that the two values could be incomparable.
+error: The use of negated comparison operators on partially ordered types produces code that is hard to read and refactor. Please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable.
   --> $DIR/neg_cmp_op_on_partial_ord.rs:17:21
    |
 17 |     let _not_less = !(a_value < another_value);
@@ -6,19 +6,19 @@ error: The use of negated comparision operators on partially orded types produce
    |
    = note: `-D neg-cmp-op-on-partial-ord` implied by `-D warnings`
 
-error: The use of negated comparision operators on partially orded types produces code that is hard to read and refactor. Please consider to use the `partial_cmp` instead, to make it clear that the two values could be incomparable.
+error: The use of negated comparison operators on partially ordered types produces code that is hard to read and refactor. Please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable.
   --> $DIR/neg_cmp_op_on_partial_ord.rs:20:30
    |
 20 |     let _not_less_or_equal = !(a_value <= another_value);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: The use of negated comparision operators on partially orded types produces code that is hard to read and refactor. Please consider to use the `partial_cmp` instead, to make it clear that the two values could be incomparable.
+error: The use of negated comparison operators on partially ordered types produces code that is hard to read and refactor. Please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable.
   --> $DIR/neg_cmp_op_on_partial_ord.rs:23:24
    |
 23 |     let _not_greater = !(a_value > another_value);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: The use of negated comparision operators on partially orded types produces code that is hard to read and refactor. Please consider to use the `partial_cmp` instead, to make it clear that the two values could be incomparable.
+error: The use of negated comparison operators on partially ordered types produces code that is hard to read and refactor. Please consider using the `partial_cmp` method instead, to make it clear that the two values could be incomparable.
   --> $DIR/neg_cmp_op_on_partial_ord.rs:26:33
    |
 26 |     let _not_greater_or_equal = !(a_value >= another_value);
