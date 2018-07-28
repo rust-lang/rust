@@ -102,16 +102,13 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     let ptr = text.as_ptr();
     let usize_bytes = mem::size_of::<usize>();
 
-    // search to an aligned boundary
-    let end_align = (ptr as usize + len) & (usize_bytes - 1);
-    let mut offset;
-    if end_align > 0 {
-        offset = if end_align >= len { 0 } else { len - end_align };
-        if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
-            return Some(offset + index);
-        }
-    } else {
-        offset = len;
+    let mut offset = {
+        // We call this just to obtain the length of the suffix
+        let (_, _, suffix) = unsafe { text.align_to::<usize>() };
+        len - suffix.len()
+    };
+    if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
+        return Some(offset + index);
     }
 
     // search the body of the text
