@@ -21,6 +21,10 @@ LL |     fn bar(&mut self) { }
    |
    = note: expected type `fn(&Bar)`
               found type `fn(&mut Bar)`
+help: consider change the type to match the mutability in trait
+   |
+LL |     fn bar(&self) { }
+   |            ^^^^^
 
 error: aborting due to 2 previous errors
 
