@@ -13,7 +13,7 @@ use syntax::errors::Handler;
 use syntax::parse::{self, ParseSess};
 
 use comment::{CharClasses, FullCodeCharKind};
-use config::{Config, FileName, NewlineStyle, Verbosity};
+use config::{Config, FileName, Verbosity};
 use issues::BadIssueSeeker;
 use visitor::{FmtVisitor, SnippetProvider};
 use {filemap, modules, ErrorKind, FormatReport, Input, Session};
@@ -166,7 +166,9 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             &self.config,
             &self.report,
         );
-        replace_with_system_newlines(&mut visitor.buffer, &self.config);
+        self.config
+            .newline_style()
+            .apply(&mut visitor.buffer, &big_snippet);
 
         if visitor.macro_rewrite_failure {
             self.report.add_macro_format_failure();
@@ -643,34 +645,6 @@ fn make_parse_sess(codemap: Rc<CodeMap>, config: &Config) -> ParseSess {
     };
 
     ParseSess::with_span_handler(tty_handler, codemap)
-}
-
-fn replace_with_system_newlines(text: &mut String, config: &Config) -> () {
-    let style = if config.newline_style() == NewlineStyle::Native {
-        if cfg!(windows) {
-            NewlineStyle::Windows
-        } else {
-            NewlineStyle::Unix
-        }
-    } else {
-        config.newline_style()
-    };
-
-    match style {
-        NewlineStyle::Unix => return,
-        NewlineStyle::Windows => {
-            let mut transformed = String::with_capacity(text.capacity());
-            for c in text.chars() {
-                match c {
-                    '\n' => transformed.push_str("\r\n"),
-                    '\r' => continue,
-                    c => transformed.push(c),
-                }
-            }
-            *text = transformed;
-        }
-        NewlineStyle::Native => unreachable!(),
-    }
 }
 
 fn should_emit_verbose<F>(is_stdin: bool, config: &Config, f: F)

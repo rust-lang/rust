@@ -1338,8 +1338,8 @@ fn main() {
 
 Unix or Windows line endings
 
-- **Default value**: `"Native"`
-- **Possible values**: `"Native"`, `"Unix"`, `"Windows"`
+- **Default value**: `"Auto"`
+- **Possible values**: `"Auto"`, `"Native"`, `"Unix"`, `"Windows"`
 - **Stable**: Yes
 
 ## `normalize_comments`

@@ -39,7 +39,7 @@ create_config! {
     max_width: usize, 100, true, "Maximum width of each line";
     hard_tabs: bool, false, true, "Use tab characters for indentation, spaces for alignment";
     tab_spaces: usize, 4, true, "Number of spaces per tab";
-    newline_style: NewlineStyle, NewlineStyle::Native, true, "Unix or Windows line endings";
+    newline_style: NewlineStyle, NewlineStyle::Auto, true, "Unix or Windows line endings";
     use_small_heuristics: Heuristics, Heuristics::Default, true, "Whether to use different \
         formatting for items and expressions if they satisfy a heuristic notion of 'small'";
     indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items";
