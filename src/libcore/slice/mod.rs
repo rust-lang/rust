@@ -2337,18 +2337,25 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     }
 }
 
+// Macro helper functions
+#[inline(always)]
+fn size_from_ptr<T>(_: *const T) -> usize {
+    mem::size_of::<T>()
+}
+
 // Inlining is_empty and len makes a huge performance difference
 macro_rules! is_empty {
     // The way we encode the length of a ZST iterator, this works both for ZST
     // and non-ZST.
-    ($self: expr) => {$self.ptr == $self.end}
+    ($self: ident) => {$self.ptr == $self.end}
 }
 macro_rules! len {
-    ($T: ty, $self: expr) => {{
-        if mem::size_of::<$T>() == 0 {
-            ($self.end as usize).wrapping_sub($self.ptr as usize)
+    ($self: ident) => {{
+        let start = $self.ptr;
+        if size_from_ptr(start) == 0 {
+            ($self.end as usize).wrapping_sub(start as usize)
         } else {
-            $self.end.offset_from($self.ptr) as usize
+            $self.end.offset_from(start) as usize
         }
     }}
 }
@@ -2360,7 +2367,7 @@ macro_rules! iterator {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
             fn make_slice(&self) -> &'a [T] {
-                unsafe { from_raw_parts(self.ptr, len!(T, self)) }
+                unsafe { from_raw_parts(self.ptr, len!(self)) }
             }
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
@@ -2398,7 +2405,7 @@ macro_rules! iterator {
         impl<'a, T> ExactSizeIterator for $name<'a, T> {
             #[inline(always)]
             fn len(&self) -> usize {
-                unsafe { len!(T, self) }
+                unsafe { len!(self) }
             }
 
             #[inline(always)]
@@ -2429,7 +2436,7 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let exact = unsafe { len!(T, self) };
+                let exact = unsafe { len!(self) };
                 (exact, Some(exact))
             }
 
@@ -2440,7 +2447,7 @@ macro_rules! iterator {
 
             #[inline]
             fn nth(&mut self, n: usize) -> Option<$elem> {
-                if n >= unsafe { len!(T, self) } {
+                if n >= unsafe { len!(self) } {
                     // This iterator is now empty.
                     if mem::size_of::<T>() == 0 {
                         // We have to do it this way as `ptr` may never be 0, but `end`
@@ -2471,7 +2478,7 @@ macro_rules! iterator {
                 // manual unrolling is needed when there are conditional exits from the loop
                 let mut accum = init;
                 unsafe {
-                    while len!(T, self) >= 4 {
+                    while len!(self) >= 4 {
                         accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
                         accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
                         accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
@@ -2562,7 +2569,7 @@ macro_rules! iterator {
                 // manual unrolling is needed when there are conditional exits from the loop
                 let mut accum = init;
                 unsafe {
-                    while len!(T, self) >= 4 {
+                    while len!(self) >= 4 {
                         accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
                         accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
                         accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
@@ -2769,7 +2776,7 @@ impl<'a, T> IterMut<'a, T> {
     /// ```
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn into_slice(self) -> &'a mut [T] {
-        unsafe { from_raw_parts_mut(self.ptr, len!(T, self)) }
+        unsafe { from_raw_parts_mut(self.ptr, len!(self)) }
     }
 }
 
