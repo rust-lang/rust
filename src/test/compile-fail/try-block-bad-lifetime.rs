@@ -12,18 +12,22 @@
 
 #![feature(try_blocks)]
 
+#![inline(never)]
+fn do_something_with<T>(_x: T) {}
+
 // This test checks that borrows made and returned inside try blocks are properly constrained
 pub fn main() {
     {
         // Test that borrows returned from a try block must be valid for the lifetime of the
         // result variable
-        let _result: Result<(), &str> = try {
+        let result: Result<(), &str> = try {
             let my_string = String::from("");
             let my_str: & str = & my_string;
             //~^ ERROR `my_string` does not live long enough
             Err(my_str) ?;
             Err("") ?;
         };
+        do_something_with(result);
     }
 
     {

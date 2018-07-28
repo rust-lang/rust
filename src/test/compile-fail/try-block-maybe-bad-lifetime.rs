@@ -12,6 +12,9 @@
 
 #![feature(try_blocks)]
 
+#![inline(never)]
+fn do_something_with<T>(_x: T) {}
+
 // This test checks that borrows made and returned inside try blocks are properly constrained
 pub fn main() {
     {
@@ -21,9 +24,9 @@ pub fn main() {
             Err(())?;
             &i
         };
-        x.ok().cloned();
         i = 0; //~ ERROR cannot assign to `i` because it is borrowed
         let _ = i;
+        do_something_with(x);
     }
 
     {
@@ -32,20 +35,21 @@ pub fn main() {
             Err(())?;
             ::std::mem::drop(x);
         };
-        println!("{}", x); //~ ERROR use of moved value: `x`
+        println!("{}", x); //~ ERROR borrow of moved value: `x`
     }
 
     {
         // Test that a borrow which *might* be assigned to an outer variable still freezes
         // its referent
         let mut i = 222;
-        let j;
-        let x: Result<(), ()> = try {
+        let mut j = &-1;
+        let _x: Result<(), ()> = try {
             Err(())?;
             j = &i;
         };
         i = 0; //~ ERROR cannot assign to `i` because it is borrowed
         let _ = i;
+        do_something_with(j);
     }
 }
 
