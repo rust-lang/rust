@@ -490,7 +490,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                     operator `{}`", op.as_str()));
                     match actual.sty {
                         TyUint(_) if op == hir::UnNeg => {
-                            err.note(&format!("unsigned values cannot be negated"));
+                            err.note("unsigned values cannot be negated");
                         },
                         TyStr | TyNever | TyChar | TyTuple(_) | TyArray(_,_) => {},
                         TyRef(_, ref lty, _) if lty.sty == TyStr => {},

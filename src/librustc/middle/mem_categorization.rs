@@ -1512,15 +1512,15 @@ impl<'tcx> cmt_<'tcx> {
                     None => {
                         match pk {
                             Unique => {
-                                format!("`Box` content")
+                                "`Box` content".to_string()
                             }
                             UnsafePtr(..) => {
-                                format!("dereference of raw pointer")
+                                "dereference of raw pointer".to_string()
                             }
                             BorrowedPtr(..) => {
                                 match self.note {
-                                    NoteIndex => format!("indexed content"),
-                                    _ => format!("borrowed content"),
+                                    NoteIndex => "indexed content".to_string(),
+                                    _ => "borrowed content".to_string(),
                                 }
                             }
                         }

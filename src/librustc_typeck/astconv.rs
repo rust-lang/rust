@@ -1298,7 +1298,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         for br in late_bound_in_ret.difference(&late_bound_in_args) {
             let lifetime_name = match *br {
                 ty::BrNamed(_, name) => format!("lifetime `{}`,", name),
-                ty::BrAnon(_) | ty::BrFresh(_) | ty::BrEnv => format!("an anonymous lifetime"),
+                ty::BrAnon(_) | ty::BrFresh(_) | ty::BrEnv => "an anonymous lifetime".to_string(),
             };
             let mut err = struct_span_err!(tcx.sess,
                                            decl.output.span(),

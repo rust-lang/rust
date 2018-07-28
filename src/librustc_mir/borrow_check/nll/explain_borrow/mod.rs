@@ -65,7 +65,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Some(Cause::LiveVar(_local, location)) => {
                 err.span_label(
                     mir.source_info(location).span,
-                    format!("borrow later used here"),
+                    "borrow later used here".to_string(),
                 );
             }
 

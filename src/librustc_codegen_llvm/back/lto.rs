@@ -421,7 +421,7 @@ fn thin_lto(diag_handler: &Handler,
             symbol_white_list.len() as u32,
         );
         if data.is_null() {
-            let msg = format!("failed to prepare thin LTO context");
+            let msg = "failed to prepare thin LTO context".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
         let data = ThinData(data);
@@ -647,7 +647,7 @@ impl ThinModule {
             self.shared.module_names[self.idx].as_ptr(),
         );
         if llmod.is_null() {
-            let msg = format!("failed to parse bitcode for thin LTO module");
+            let msg = "failed to parse bitcode for thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg));
         }
         let module = ModuleCodegen {
@@ -670,7 +670,7 @@ impl ThinModule {
         let mut cu2 = ptr::null_mut();
         llvm::LLVMRustThinLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
         if !cu2.is_null() {
-            let msg = format!("multiple source DICompileUnits found");
+            let msg = "multiple source DICompileUnits found".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
 
@@ -691,25 +691,25 @@ impl ThinModule {
         // You can find some more comments about these functions in the LLVM
         // bindings we've got (currently `PassWrapper.cpp`)
         if !llvm::LLVMRustPrepareThinLTORename(self.shared.data.0, llmod) {
-            let msg = format!("failed to prepare thin LTO module");
+            let msg = "failed to prepare thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
         cgcx.save_temp_bitcode(&module, "thin-lto-after-rename");
         timeline.record("rename");
         if !llvm::LLVMRustPrepareThinLTOResolveWeak(self.shared.data.0, llmod) {
-            let msg = format!("failed to prepare thin LTO module");
+            let msg = "failed to prepare thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
         cgcx.save_temp_bitcode(&module, "thin-lto-after-resolve");
         timeline.record("resolve");
         if !llvm::LLVMRustPrepareThinLTOInternalize(self.shared.data.0, llmod) {
-            let msg = format!("failed to prepare thin LTO module");
+            let msg = "failed to prepare thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
         cgcx.save_temp_bitcode(&module, "thin-lto-after-internalize");
         timeline.record("internalize");
         if !llvm::LLVMRustPrepareThinLTOImport(self.shared.data.0, llmod) {
-            let msg = format!("failed to prepare thin LTO module");
+            let msg = "failed to prepare thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
         cgcx.save_temp_bitcode(&module, "thin-lto-after-import");

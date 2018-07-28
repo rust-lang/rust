@@ -686,7 +686,7 @@ impl Step for Rustc {
         };
 
         if !builder.config.compiler_docs {
-            builder.info(&format!("\tskipping - compiler/librustdoc docs disabled"));
+            builder.info("\tskipping - compiler/librustdoc docs disabled");
             return;
         }
 
@@ -788,7 +788,7 @@ impl Step for Rustdoc {
         };
 
         if !builder.config.compiler_docs {
-            builder.info(&format!("\tskipping - compiler/librustdoc docs disabled"));
+            builder.info("\tskipping - compiler/librustdoc docs disabled");
             return;
         }
 

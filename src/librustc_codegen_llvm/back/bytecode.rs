@@ -108,37 +108,37 @@ pub struct DecodedBytecode<'a> {
 impl<'a> DecodedBytecode<'a> {
     pub fn new(data: &'a [u8]) -> Result<DecodedBytecode<'a>, String> {
         if !data.starts_with(RLIB_BYTECODE_OBJECT_MAGIC) {
-            return Err(format!("magic bytecode prefix not found"))
+            return Err("magic bytecode prefix not found".to_string())
         }
         let data = &data[RLIB_BYTECODE_OBJECT_MAGIC.len()..];
         if !data.starts_with(&[RLIB_BYTECODE_OBJECT_VERSION, 0, 0, 0]) {
-            return Err(format!("wrong version prefix found in bytecode"))
+            return Err("wrong version prefix found in bytecode".to_string())
         }
         let data = &data[4..];
         if data.len() < 4 {
-            return Err(format!("bytecode corrupted"))
+            return Err("bytecode corrupted".to_string())
         }
         let identifier_len = unsafe {
             u32::from_le(ptr::read_unaligned(data.as_ptr() as *const u32)) as usize
         };
         let data = &data[4..];
         if data.len() < identifier_len {
-            return Err(format!("bytecode corrupted"))
+            return Err("bytecode corrupted".to_string())
         }
         let identifier = match str::from_utf8(&data[..identifier_len]) {
             Ok(s) => s,
-            Err(_) => return Err(format!("bytecode corrupted"))
+            Err(_) => return Err("bytecode corrupted".to_string())
         };
         let data = &data[identifier_len..];
         if data.len() < 8 {
-            return Err(format!("bytecode corrupted"))
+            return Err("bytecode corrupted".to_string())
         }
         let bytecode_len = unsafe {
             u64::from_le(ptr::read_unaligned(data.as_ptr() as *const u64)) as usize
         };
         let data = &data[8..];
         if data.len() < bytecode_len {
-            return Err(format!("bytecode corrupted"))
+            return Err("bytecode corrupted".to_string())
         }
         let encoded_bytecode = &data[..bytecode_len];
 

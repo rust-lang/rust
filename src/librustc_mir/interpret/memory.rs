@@ -680,7 +680,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         (dest.offset <= src.offset && dest.offset + size > src.offset)
                     {
                         return err!(Intrinsic(
-                            format!("copy_nonoverlapping called on overlapping ranges"),
+                            "copy_nonoverlapping called on overlapping ranges".to_string(),
                         ));
                     }
                 }

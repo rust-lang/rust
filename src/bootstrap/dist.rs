@@ -94,7 +94,7 @@ impl Step for Docs {
 
         builder.info(&format!("Dist docs ({})", host));
         if !builder.config.docs {
-            builder.info(&format!("\tskipping - docs disabled"));
+            builder.info("\tskipping - docs disabled");
             return distdir(builder).join(format!("{}-{}.tar.gz", name, host));
         }
 
@@ -156,7 +156,7 @@ impl Step for RustcDocs {
 
         builder.info(&format!("Dist compiler docs ({})", host));
         if !builder.config.compiler_docs {
-            builder.info(&format!("\tskipping - compiler docs disabled"));
+            builder.info("\tskipping - compiler docs disabled");
             return distdir(builder).join(format!("{}-{}.tar.gz", name, host));
         }
 
@@ -639,7 +639,7 @@ impl Step for Std {
         // The only true set of target libraries came from the build triple, so
         // let's reduce redundant work by only producing archives from that host.
         if compiler.host != builder.config.build {
-            builder.info(&format!("\tskipping, not a build host"));
+            builder.info("\tskipping, not a build host");
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
@@ -715,11 +715,11 @@ impl Step for Analysis {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
-        builder.info(&format!("Dist analysis"));
+        builder.info("Dist analysis");
         let name = pkgname(builder, "rust-analysis");
 
         if &compiler.host != builder.config.build {
-            builder.info(&format!("\tskipping, not a build host"));
+            builder.info("\tskipping, not a build host");
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
@@ -824,7 +824,7 @@ impl Step for Src {
 
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder) -> PathBuf {
-        builder.info(&format!("Dist src"));
+        builder.info("Dist src");
 
         let name = pkgname(builder, "rust-src");
         let image = tmpdir(builder).join(format!("{}-image", name));
@@ -918,7 +918,7 @@ impl Step for PlainSourceTarball {
 
     /// Creates the plain source tarball
     fn run(self, builder: &Builder) -> PathBuf {
-        builder.info(&format!("Create plain source tarball"));
+        builder.info("Create plain source tarball");
 
         // Make sure that the root folder of tarball has the correct name
         let plain_name = format!("{}-src", pkgname(builder, "rustc"));
@@ -998,7 +998,7 @@ impl Step for PlainSourceTarball {
         if let Some(dir) = tarball.parent() {
             builder.create_dir(&dir);
         }
-        builder.info(&format!("running installer"));
+        builder.info("running installer");
         let mut cmd = rust_installer(builder);
         cmd.arg("tarball")
            .arg("--input").arg(&plain_name)

@@ -387,11 +387,11 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
     // FIXME: when we make this a hard error, this should have its
     // own error code.
     let message = if tcx.generics_of(def_id).own_counts().types != 0 {
-        format!("#[derive] can't be used on a #[repr(packed)] struct with \
-                 type parameters (error E0133)")
+        "#[derive] can't be used on a #[repr(packed)] struct with \
+         type parameters (error E0133)".to_string()
     } else {
-        format!("#[derive] can't be used on a #[repr(packed)] struct that \
-                 does not derive Copy (error E0133)")
+        "#[derive] can't be used on a #[repr(packed)] struct that \
+         does not derive Copy (error E0133)".to_string()
     };
     tcx.lint_node(SAFE_PACKED_BORROWS,
                   lint_node_id,

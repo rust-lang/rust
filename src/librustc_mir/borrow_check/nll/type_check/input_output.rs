@@ -137,7 +137,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             obligations: obligations.into_vec(),
                         })
                     },
-                    || format!("input_output"),
+                    || "input_output".to_string(),
                 ),
             ).unwrap_or_else(|terr| {
                 span_mirbug!(
@@ -166,7 +166,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             obligations: vec![],
                         })
                     },
-                    || format!("anon_type_map"),
+                    || "anon_type_map".to_string(),
                 ),
             ).unwrap();
         }
