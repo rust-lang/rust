@@ -137,8 +137,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         let ty = self.cx.tcx.type_of(def_id);
         let mut traits = Vec::new();
-        if self.cx.crate_name != Some("core".to_string()) &&
-           self.cx.access_levels.borrow().is_doc_reachable(def_id) {
+        if self.cx.access_levels.borrow().is_doc_reachable(def_id) {
             let real_name = name.clone().map(|name| Ident::from_str(&name));
             let param_env = self.cx.tcx.param_env(def_id);
             for &trait_def_id in self.cx.all_traits.iter() {
@@ -234,17 +233,18 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             "get_auto_trait_impls(def_id={:?}, def_ctor=..., generics={:?}",
             def_id, generics
         );
-        let auto_traits: Vec<_> =
-            self.cx.send_trait
-                          .and_then(|send_trait| {
-                    self.get_auto_trait_impl_for(
-                        def_id,
-                        name.clone(),
-                        generics.clone(),
-                        def_ctor,
-                        send_trait,
-                    )
-                }).into_iter()
+        let auto_traits: Vec<_> = self.cx
+            .send_trait
+            .and_then(|send_trait| {
+                self.get_auto_trait_impl_for(
+                    def_id,
+                    name.clone(),
+                    generics.clone(),
+                    def_ctor,
+                    send_trait,
+                )
+            })
+            .into_iter()
             .chain(self.get_auto_trait_impl_for(
                 def_id,
                 name.clone(),
