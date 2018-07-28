@@ -196,8 +196,24 @@ impl<'tcx> LocalValue {
 }
 
 /// The virtual machine state during const-evaluation at a given point in time.
-type EvalSnapshot<'a, 'mir, 'tcx, M>
-    = (M, Vec<Frame<'mir, 'tcx>>, Memory<'a, 'mir, 'tcx, M>);
+#[derive(Eq, PartialEq, Hash)]
+pub(crate) struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+    machine: M,
+    memory: Memory<'a, 'mir, 'tcx, M>,
+    stack: Vec<Frame<'mir, 'tcx>>,
+}
+
+impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+{
+    fn new<'b>(machine: &M, memory: &Memory<'a, 'mir, 'tcx, M>, stack: &[Frame<'mir, 'tcx>]) -> Self {
+        EvalSnapshot {
+            machine: machine.clone(),
+            memory: memory.clone(),
+            stack: stack.into(),
+        }
+    }
+}
 
 pub(super) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The set of all `EvalSnapshot` *hashes* observed by this detector.
@@ -238,13 +254,12 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
     pub fn observe_and_analyze(
         &mut self,
         machine: &M,
-        stack: &Vec<Frame<'mir, 'tcx>>,
         memory: &Memory<'a, 'mir, 'tcx, M>,
+        stack: &[Frame<'mir, 'tcx>],
     ) -> EvalResult<'tcx, ()> {
-        let snapshot = (machine, stack, memory);
 
         let mut fx = FxHasher::default();
-        snapshot.hash(&mut fx);
+        (machine, memory, stack).hash(&mut fx);
         let hash = fx.finish();
 
         if self.hashes.insert(hash) {
@@ -252,7 +267,7 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
             return Ok(())
         }
 
-        if self.snapshots.insert((machine.clone(), stack.clone(), memory.clone())) {
+        if self.snapshots.insert(EvalSnapshot::new(machine, memory, stack)) {
             // Spurious collision or first cycle
             return Ok(())
         }
