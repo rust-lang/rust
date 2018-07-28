@@ -111,30 +111,14 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         }
     }
 
-    pub fn get_auto_trait_impls<F>(
+    pub fn get_blanket_impls<F>(
         &self,
         def_id: DefId,
         def_ctor: &F,
         name: Option<String>,
+        generics: &ty::Generics,
     ) -> Vec<Item>
     where F: Fn(DefId) -> Def {
-        if self.cx
-            .tcx
-            .get_attrs(def_id)
-            .lists("doc")
-            .has_word("hidden")
-        {
-            debug!(
-                "get_auto_trait_impls(def_id={:?}, def_ctor=...): item has doc('hidden'), \
-                 aborting",
-                def_id
-            );
-            return Vec::new();
-        }
-
-        let tcx = self.cx.tcx;
-        let generics = self.cx.tcx.generics_of(def_id);
-
         let ty = self.cx.tcx.type_of(def_id);
         let mut traits = Vec::new();
         if self.cx.access_levels.borrow().is_doc_reachable(def_id) {
@@ -228,6 +212,32 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 });
             }
         }
+        traits
+    }
+
+    pub fn get_auto_trait_impls<F>(
+        &self,
+        def_id: DefId,
+        def_ctor: &F,
+        name: Option<String>,
+    ) -> Vec<Item>
+    where F: Fn(DefId) -> Def {
+        if self.cx
+            .tcx
+            .get_attrs(def_id)
+            .lists("doc")
+            .has_word("hidden")
+        {
+            debug!(
+                "get_auto_trait_impls(def_id={:?}, def_ctor=...): item has doc('hidden'), \
+                 aborting",
+                def_id
+            );
+            return Vec::new();
+        }
+
+        let tcx = self.cx.tcx;
+        let generics = self.cx.tcx.generics_of(def_id);
 
         debug!(
             "get_auto_trait_impls(def_id={:?}, def_ctor=..., generics={:?}",
@@ -252,7 +262,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 def_ctor,
                 tcx.require_lang_item(lang_items::SyncTraitLangItem),
             ).into_iter())
-            .chain(traits.into_iter())
+            .chain(self.get_blanket_impls(def_id, def_ctor, name, &generics).into_iter())
             .collect();
 
         debug!(
