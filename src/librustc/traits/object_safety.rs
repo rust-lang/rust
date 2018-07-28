@@ -98,13 +98,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn astconv_object_safety_violations(self, trait_def_id: DefId)
                                             -> Vec<ObjectSafetyViolation>
     {
-        let mut violations = vec![];
-
-        for def_id in traits::supertrait_def_ids(self, trait_def_id) {
-            if self.predicates_reference_self(def_id, true) {
-                violations.push(ObjectSafetyViolation::SupertraitSelf);
-            }
-        }
+        let violations = traits::supertrait_def_ids(self, trait_def_id)
+            .filter(|&def_id| self.predicates_reference_self(def_id, true))
+            .map(|_| ObjectSafetyViolation::SupertraitSelf)
+            .collect();
 
         debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}",
                trait_def_id,

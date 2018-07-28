@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repeat_generic_slice)]
+extern crate krate-name-here;
+//~^ ERROR crate name using dashes are not valid in `extern crate` statements
+//~| ERROR can't find crate for `krate_name_here`
 
-fn main() {
-    assert_eq!([1, 2].repeat(2), vec![1, 2, 1, 2]);
-    assert_eq!([1, 2, 3, 4].repeat(0), vec![]);
-    assert_eq!([1, 2, 3, 4].repeat(1), vec![1, 2, 3, 4]);
-    assert_eq!([1, 2, 3, 4].repeat(3),
-               vec![1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]);
-}
+fn main() {}

@@ -222,7 +222,7 @@ impl RestoreSubsliceArrayMoveOut {
     // indices is an integer interval. If all checks pass do the replacent.
     // items are Vec<Option<LocalUse, index in source array, source place for init local>>
     fn check_and_patch<'tcx>(candidate: Location,
-                             items: &Vec<Option<(&LocalUse, u32, &Place<'tcx>)>>,
+                             items: &[Option<(&LocalUse, u32, &Place<'tcx>)>],
                              opt_size: Option<u64>,
                              patch: &mut MirPatch<'tcx>,
                              dst_place: &Place<'tcx>) {

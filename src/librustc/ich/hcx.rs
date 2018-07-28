@@ -396,7 +396,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
 pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher<W>,
-    blanket_impls: &Vec<DefId>,
+    blanket_impls: &[DefId],
     non_blanket_impls: &HashMap<fast_reject::SimplifiedType, Vec<DefId>, R>)
     where W: StableHasherResult,
           R: std_hash::BuildHasher,

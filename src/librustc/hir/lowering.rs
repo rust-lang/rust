@@ -746,7 +746,7 @@ impl<'a> LoweringContext<'a> {
     // This is used to track which lifetimes have already been defined, and
     // which are new in-band lifetimes that need to have a definition created
     // for them.
-    fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &Vec<GenericParam>, f: F) -> T
+    fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &[GenericParam], f: F) -> T
     where
         F: FnOnce(&mut LoweringContext) -> T,
     {
@@ -2237,7 +2237,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_generic_params(
         &mut self,
-        params: &Vec<GenericParam>,
+        params: &[GenericParam],
         add_bounds: &NodeMap<Vec<GenericBound>>,
         mut itctx: ImplTraitContext,
     ) -> hir::HirVec<hir::GenericParam> {

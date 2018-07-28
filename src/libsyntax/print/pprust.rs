@@ -3065,7 +3065,7 @@ impl<'a> State<'a> {
                        unsafety: ast::Unsafety,
                        decl: &ast::FnDecl,
                        name: Option<ast::Ident>,
-                       generic_params: &Vec<ast::GenericParam>)
+                       generic_params: &[ast::GenericParam])
                        -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
         if !generic_params.is_empty() {

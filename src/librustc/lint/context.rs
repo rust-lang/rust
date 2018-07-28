@@ -219,7 +219,7 @@ impl LintStore {
             }
         }
 
-        let mut future_incompatible = vec![];
+        let mut future_incompatible = Vec::with_capacity(lints.len());
         for lint in lints {
             future_incompatible.push(lint.id);
             self.future_incompatible.insert(lint.id, lint);

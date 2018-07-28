@@ -120,7 +120,7 @@ struct FactWriter<'w> {
 impl<'w> FactWriter<'w> {
     fn write_facts_to_path<T>(
         &self,
-        rows: &Vec<T>,
+        rows: &[T],
         file_name: &str,
     ) -> Result<(), Box<dyn Error>>
     where

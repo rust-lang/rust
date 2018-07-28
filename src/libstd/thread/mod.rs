@@ -1276,6 +1276,11 @@ impl<T> JoinInner<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
 
+#[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
+unsafe impl<T> Send for JoinHandle<T> {}
+#[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
+unsafe impl<T> Sync for JoinHandle<T> {}
+
 impl<T> JoinHandle<T> {
     /// Extracts a handle to the underlying thread.
     ///
