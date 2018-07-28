@@ -505,11 +505,7 @@ where
     }
 
     fn recursive_type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
-        let mut bounds = vec![];
-
-        for subty in ty.walk_shallow() {
-            bounds.push(self.type_bound(subty));
-        }
+        let mut bounds = ty.walk_shallow().map(|subty| self.type_bound(subty)).collect::<Vec<_>>();
 
         let mut regions = ty.regions();
         regions.retain(|r| !r.is_late_bound()); // ignore late-bound regions

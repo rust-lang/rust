@@ -105,7 +105,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
               .collect();
 
             // Try to map those to something more useful
-            let mut missing_items = vec![];
+            let mut missing_items = Vec::with_capacity(missing.len());
 
             for local_id in missing {
                 let hir_id = HirId {

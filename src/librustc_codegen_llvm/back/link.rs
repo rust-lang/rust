@@ -40,6 +40,7 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::io;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::str;
@@ -885,9 +886,9 @@ fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &
     }
     let file = tmpdir.join("linker-arguments");
     let bytes = if sess.target.target.options.is_like_msvc {
-        let mut out = vec![];
+        let mut out = Vec::with_capacity((1 + args.len()) * 2);
         // start the stream with a UTF-16 BOM
-        for c in vec![0xFEFF].into_iter().chain(args.encode_utf16()) {
+        for c in iter::once(0xFEFF).chain(args.encode_utf16()) {
             // encode in little endian
             out.push(c as u8);
             out.push((c >> 8) as u8);
