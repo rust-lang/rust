@@ -11,7 +11,7 @@ impl<'s> Ptr<'s> {
     pub fn new(text: &'s str) -> Ptr<'s> {
         Ptr {
             text,
-            len: TextUnit::new(0),
+            len: 0.into(),
         }
     }
 
@@ -47,7 +47,7 @@ impl<'s> Ptr<'s> {
 
     pub fn bump(&mut self) -> Option<char> {
         let ch = self.chars().next()?;
-        self.len += TextUnit::len_of_char(ch);
+        self.len += TextUnit::of_char(ch);
         Some(ch)
     }
 

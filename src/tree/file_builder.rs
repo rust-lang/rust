@@ -31,7 +31,7 @@ impl Sink for FileBuilder {
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit) {
         let leaf = NodeData {
             kind,
-            range: TextRange::from_len(self.pos, len),
+            range: TextRange::offset_len(self.pos, len),
             parent: None,
             first_child: None,
             next_sibling: None,
@@ -44,7 +44,7 @@ impl Sink for FileBuilder {
     fn start_internal(&mut self, kind: SyntaxKind) {
         let node = NodeData {
             kind,
-            range: TextRange::from_len(self.pos, 0.into()),
+            range: TextRange::offset_len(self.pos, 0.into()),
             parent: None,
             first_child: None,
             next_sibling: None,
@@ -83,7 +83,7 @@ impl FileBuilder {
             nodes: Vec::new(),
             errors: Vec::new(),
             in_progress: Vec::new(),
-            pos: TextUnit::new(0),
+            pos: 0.into(),
         }
     }
 

@@ -1,9 +1,7 @@
-use text::{TextRange, TextUnit};
-
-use std::fmt;
-use std::cmp;
-
 mod file_builder;
+
+use ::{TextRange, TextUnit};
+use std::{fmt, cmp};
 pub(crate) use self::file_builder::{ErrorMsg, FileBuilder, Sink};
 
 pub use syntax_kinds::SyntaxKind;

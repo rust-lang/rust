@@ -16,14 +16,14 @@
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
 extern crate unicode_xid;
+extern crate text_unit;
 
-mod text;
 mod tree;
 mod lexer;
 mod parser;
 
 pub mod syntax_kinds;
-pub use text::{TextRange, TextUnit};
+pub use text_unit::{TextRange, TextUnit};
 pub use tree::{File, Node, SyntaxKind, Token};
 pub(crate) use tree::{ErrorMsg, FileBuilder, Sink};
 pub use lexer::{next_token, tokenize};

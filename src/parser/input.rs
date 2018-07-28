@@ -14,7 +14,7 @@ impl<'t> ParserInput<'t> {
     pub fn new(text: &'t str, raw_tokens: &'t [Token]) -> ParserInput<'t> {
         let mut tokens = Vec::new();
         let mut start_offsets = Vec::new();
-        let mut len = TextUnit::new(0);
+        let mut len = 0.into();
         for &token in raw_tokens.iter() {
             if !is_insignificant(token.kind) {
                 tokens.push(token);
@@ -44,7 +44,7 @@ impl<'t> ParserInput<'t> {
         if !(idx < self.tokens.len()) {
             return "";
         }
-        let range = TextRange::from_len(self.start_offsets[idx], self.tokens[idx].len);
+        let range = TextRange::offset_len(self.start_offsets[idx], self.tokens[idx].len);
         &self.text[range]
     }
 }

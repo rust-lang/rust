@@ -1,5 +1,7 @@
-use {ErrorMsg, File, FileBuilder, Sink, SyntaxKind, TextUnit, Token};
-use syntax_kinds::TOMBSTONE;
+use {
+    ErrorMsg, File, FileBuilder, Sink, SyntaxKind, Token,
+    syntax_kinds::TOMBSTONE,
+};
 use super::is_insignificant;
 
 /// `Parser` produces a flat list of `Event`s.
@@ -133,7 +135,7 @@ pub(super) fn to_file(text: String, tokens: &[Token], events: Vec<Event>) -> Fil
                     builder.leaf(token.kind, token.len);
                     idx += 1
                 }
-                let mut len = TextUnit::new(0);
+                let mut len = 0.into();
                 for _ in 0..n_raw_tokens {
                     len += tokens[idx].len;
                     idx += 1;

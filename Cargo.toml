@@ -9,6 +9,7 @@ members = [ "tools" ]
 
 [dependencies]
 unicode-xid = "0.1.0"
+text_unit = "0.1.1"
 
 [dev-dependencies]
 testutils = { path = "./tests/testutils" }
