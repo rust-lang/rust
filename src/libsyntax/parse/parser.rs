@@ -6514,6 +6514,39 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, ast::Ident> {
+        let error_msg = "crate name using dashes are not valid in `extern crate` statements";
+        let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
+                              in the code";
+        let mut ident = self.parse_ident()?;
+        let mut idents = vec![];
+        let mut replacement = vec![];
+        let mut fixed_crate_name = false;
+        // Accept `extern crate name-like-this` for better diagnostics
+        let dash = token::Token::BinOp(token::BinOpToken::Minus);
+        if self.token == dash {  // Do not include `-` as part of the expected tokens list
+            while self.eat(&dash) {
+                fixed_crate_name = true;
+                replacement.push((self.prev_span, "_".to_string()));
+                idents.push(self.parse_ident()?);
+            }
+        }
+        if fixed_crate_name {
+            let fixed_name_sp = ident.span.to(idents.last().unwrap().span);
+            let mut fixed_name = format!("{}", ident.name);
+            for part in idents {
+                fixed_name.push_str(&format!("_{}", part.name));
+            }
+            ident = Ident::from_str(&fixed_name).with_span_pos(fixed_name_sp);
+
+            let mut err = self.struct_span_err(fixed_name_sp, error_msg);
+            err.span_label(fixed_name_sp, "dash-separated idents are not valid");
+            err.multipart_suggestion(suggestion_msg, replacement);
+            err.emit();
+        }
+        Ok(ident)
+    }
+
     /// Parse extern crate links
     ///
     /// # Examples
@@ -6525,7 +6558,8 @@ impl<'a> Parser<'a> {
                                visibility: Visibility,
                                attrs: Vec<Attribute>)
                                -> PResult<'a, P<Item>> {
-        let orig_name = self.parse_ident()?;
+        // Accept `extern crate name-like-this` for better diagnostics
+        let orig_name = self.parse_crate_name_with_dashes()?;
         let (item_name, orig_name) = if let Some(rename) = self.parse_rename()? {
             (rename, Some(orig_name.name))
         } else {
