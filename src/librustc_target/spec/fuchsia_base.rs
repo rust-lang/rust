@@ -33,7 +33,7 @@ pub fn opts() -> TargetOptions {
         executables: true,
         target_family: Some("unix".to_string()),
         linker_is_gnu: true,
-        has_rpath: true,
+        has_rpath: false,
         pre_link_args: args,
         position_independent_executables: true,
         has_elf_tls: true,

@@ -18,7 +18,7 @@ pub fn target() -> TargetResult {
     base.stack_probes = true;
 
     Ok(Target {
-        llvm_target: "x86_64-unknown-fuchsia".to_string(),
+        llvm_target: "x86_64-fuchsia".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
         target_c_int_width: "32".to_string(),
@@ -26,7 +26,7 @@ pub fn target() -> TargetResult {
         arch: "x86_64".to_string(),
         target_os: "fuchsia".to_string(),
         target_env: "".to_string(),
-        target_vendor: "unknown".to_string(),
+        target_vendor: "".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
