@@ -177,7 +177,7 @@ pub enum ExternalLocation {
 }
 
 /// Metadata about implementations for a type or trait.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Impl {
     pub impl_item: clean::Item,
 }
@@ -2900,18 +2900,18 @@ fn item_trait(
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)?;
 
     let cache = cache();
-    let impl_header = "
-        <h2 id='implementors' class='small-section-header'>
-          Implementors<a href='#implementors' class='anchor'></a>
-        </h2>
-        <ul class='item-list' id='implementors-list'>
+    let impl_header = "\
+        <h2 id='implementors' class='small-section-header'>\
+          Implementors<a href='#implementors' class='anchor'></a>\
+        </h2>\
+        <ul class='item-list' id='implementors-list'>\
     ";
 
-    let synthetic_impl_header = "
-        <h2 id='synthetic-implementors' class='small-section-header'>
-          Auto implementors<a href='#synthetic-implementors' class='anchor'></a>
-        </h2>
-        <ul class='item-list' id='synthetic-implementors-list'>
+    let synthetic_impl_header = "\
+        <h2 id='synthetic-implementors' class='small-section-header'>\
+          Auto implementors<a href='#synthetic-implementors' class='anchor'></a>\
+        </h2>\
+        <ul class='item-list' id='synthetic-implementors-list'>\
     ";
 
     let mut synthetic_types = Vec::new();
@@ -2942,9 +2942,9 @@ fn item_trait(
                                          .map_or(true, |d| cache.paths.contains_key(&d)));
 
 
-        let (synthetic, concrete) = local.iter()
-            .partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
-
+        let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) = local.iter()
+            .filter(|i| i.inner_impl().blanket_impl.is_none())
+            .partition(|i| i.inner_impl().synthetic);
 
         if !foreign.is_empty() {
             write!(w, "
@@ -3590,18 +3590,19 @@ fn render_assoc_items(w: &mut fmt::Formatter,
     if !non_trait.is_empty() {
         let render_mode = match what {
             AssocItemRender::All => {
-                write!(w, "
-                    <h2 id='methods' class='small-section-header'>
-                      Methods<a href='#methods' class='anchor'></a>
-                    </h2>
+                write!(w, "\
+                    <h2 id='methods' class='small-section-header'>\
+                      Methods<a href='#methods' class='anchor'></a>\
+                    </h2>\
                 ")?;
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
-                write!(w, "
-                    <h2 id='deref-methods' class='small-section-header'>
-                      Methods from {}&lt;Target = {}&gt;<a href='#deref-methods' class='anchor'></a>
-                    </h2>
+                write!(w, "\
+                    <h2 id='deref-methods' class='small-section-header'>\
+                      Methods from {}&lt;Target = {}&gt;\
+                      <a href='#deref-methods' class='anchor'></a>\
+                    </h2>\
                 ", trait_, type_)?;
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
@@ -3625,9 +3626,12 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut)?;
         }
 
-        let (synthetic, concrete) = traits
+        let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) = traits
             .iter()
-            .partition::<Vec<_>, _>(|t| t.inner_impl().synthetic);
+            .partition(|t| t.inner_impl().synthetic);
+        let (blanket_impl, concrete) = concrete
+            .into_iter()
+            .partition(|t| t.inner_impl().blanket_impl.is_some());
 
         struct RendererStruct<'a, 'b, 'c>(&'a Context, Vec<&'b &'b Impl>, &'c clean::Item);
 
@@ -3639,21 +3643,34 @@ fn render_assoc_items(w: &mut fmt::Formatter,
 
         let impls = format!("{}", RendererStruct(cx, concrete, containing_item));
         if !impls.is_empty() {
-            write!(w, "
-                <h2 id='implementations' class='small-section-header'>
-                  Trait Implementations<a href='#implementations' class='anchor'></a>
-                </h2>
+            write!(w, "\
+                <h2 id='implementations' class='small-section-header'>\
+                  Trait Implementations<a href='#implementations' class='anchor'></a>\
+                </h2>\
                 <div id='implementations-list'>{}</div>", impls)?;
         }
 
         if !synthetic.is_empty() {
-            write!(w, "
-                <h2 id='synthetic-implementations' class='small-section-header'>
-                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
-                </h2>
-                <div id='synthetic-implementations-list'>
+            write!(w, "\
+                <h2 id='synthetic-implementations' class='small-section-header'>\
+                  Auto Trait Implementations\
+                  <a href='#synthetic-implementations' class='anchor'></a>\
+                </h2>\
+                <div id='synthetic-implementations-list'>\
             ")?;
             render_impls(cx, w, &synthetic, containing_item)?;
+            write!(w, "</div>")?;
+        }
+
+        if !blanket_impl.is_empty() {
+            write!(w, "\
+                <h2 id='blanket-implementations' class='small-section-header'>\
+                  Blanket Implementations\
+                  <a href='#blanket-implementations' class='anchor'></a>\
+                </h2>\
+                <div id='blanket-implementations-list'>\
+            ")?;
+            render_impls(cx, w, &blanket_impl, containing_item)?;
             write!(w, "</div>")?;
         }
     }
@@ -4201,12 +4218,16 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                            .collect::<String>()
             };
 
-            let (synthetic, concrete) = v
+            let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) = v
                 .iter()
                 .partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
+            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) = concrete
+                .into_iter()
+                .partition::<Vec<_>, _>(|i| i.inner_impl().blanket_impl.is_some());
 
             let concrete_format = format_impls(concrete);
             let synthetic_format = format_impls(synthetic);
+            let blanket_format = format_impls(blanket_impl);
 
             if !concrete_format.is_empty() {
                 out.push_str("<a class=\"sidebar-title\" href=\"#implementations\">\
@@ -4218,6 +4239,12 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 out.push_str("<a class=\"sidebar-title\" href=\"#synthetic-implementations\">\
                               Auto Trait Implementations</a>");
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", synthetic_format));
+            }
+
+            if !blanket_format.is_empty() {
+                out.push_str("<a class=\"sidebar-title\" href=\"#blanket-implementations\">\
+                              Blanket Implementations</a>");
+                out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", blanket_format));
             }
         }
     }

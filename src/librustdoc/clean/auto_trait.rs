@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::traits::auto_trait as auto;
-use rustc::ty::TypeFoldable;
 use rustc::hir;
+use rustc::traits::{self, auto_trait as auto};
+use rustc::ty::{self, ToPredicate, TypeFoldable};
+use rustc::ty::subst::Subst;
+use rustc::infer::InferOk;
 use std::fmt::Debug;
+use syntax_pos::DUMMY_SP;
+
+use core::DocAccessLevels;
 
 use super::*;
 
@@ -75,6 +80,141 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         self.get_auto_trait_impls(did, &def_ctor, Some(name))
     }
 
+    fn get_real_ty<F>(&self,
+                      def_id: DefId,
+                      def_ctor: &F,
+                      real_name: &Option<Ident>,
+                      generics: &ty::Generics,
+    ) -> hir::Ty
+    where F: Fn(DefId) -> Def {
+        let path = get_path_for_type(self.cx.tcx, def_id, def_ctor);
+        let mut segments = path.segments.into_vec();
+        let last = segments.pop().unwrap();
+
+        segments.push(hir::PathSegment::new(
+            real_name.unwrap_or(last.ident),
+            self.generics_to_path_params(generics.clone()),
+            false,
+        ));
+
+        let new_path = hir::Path {
+            span: path.span,
+            def: path.def,
+            segments: HirVec::from_vec(segments),
+        };
+
+        hir::Ty {
+            id: ast::DUMMY_NODE_ID,
+            node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
+            span: DUMMY_SP,
+            hir_id: hir::DUMMY_HIR_ID,
+        }
+    }
+
+    pub fn get_blanket_impls<F>(
+        &self,
+        def_id: DefId,
+        def_ctor: &F,
+        name: Option<String>,
+        generics: &ty::Generics,
+    ) -> Vec<Item>
+    where F: Fn(DefId) -> Def {
+        let ty = self.cx.tcx.type_of(def_id);
+        let mut traits = Vec::new();
+        if self.cx.access_levels.borrow().is_doc_reachable(def_id) {
+            let real_name = name.clone().map(|name| Ident::from_str(&name));
+            let param_env = self.cx.tcx.param_env(def_id);
+            for &trait_def_id in self.cx.all_traits.iter() {
+                if !self.cx.access_levels.borrow().is_doc_reachable(trait_def_id) ||
+                   self.cx.generated_synthetics
+                          .borrow_mut()
+                          .get(&(def_id, trait_def_id))
+                          .is_some() {
+                    continue
+                }
+                self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
+                    self.cx.tcx.infer_ctxt().enter(|infcx| {
+                        let t_generics = infcx.tcx.generics_of(impl_def_id);
+                        let trait_ref = infcx.tcx.impl_trait_ref(impl_def_id).unwrap();
+
+                        match infcx.tcx.type_of(impl_def_id).sty {
+                            ::rustc::ty::TypeVariants::TyParam(_) => {},
+                            _ => return,
+                        }
+
+                        let substs = infcx.fresh_substs_for_item(DUMMY_SP, def_id);
+                        let ty = ty.subst(infcx.tcx, substs);
+                        let param_env = param_env.subst(infcx.tcx, substs);
+
+                        let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
+                        let trait_ref = trait_ref.subst(infcx.tcx, impl_substs);
+
+                        // Require the type the impl is implemented on to match
+                        // our type, and ignore the impl if there was a mismatch.
+                        let cause = traits::ObligationCause::dummy();
+                        let eq_result = infcx.at(&cause, param_env)
+                                             .eq(trait_ref.self_ty(), ty);
+                        if let Ok(InferOk { value: (), obligations }) = eq_result {
+                            // FIXME(eddyb) ignoring `obligations` might cause false positives.
+                            drop(obligations);
+
+                            let may_apply = infcx.predicate_may_hold(&traits::Obligation::new(
+                                cause.clone(),
+                                param_env,
+                                trait_ref.to_predicate(),
+                            ));
+                            if !may_apply {
+                                return
+                            }
+                            self.cx.generated_synthetics.borrow_mut()
+                                                        .insert((def_id, trait_def_id));
+                            let trait_ = hir::TraitRef {
+                                path: get_path_for_type(infcx.tcx,
+                                                        trait_def_id,
+                                                        hir::def::Def::Trait),
+                                ref_id: ast::DUMMY_NODE_ID,
+                            };
+                            let provided_trait_methods =
+                                infcx.tcx.provided_trait_methods(trait_def_id)
+                                         .into_iter()
+                                         .map(|meth| meth.ident.to_string())
+                                         .collect();
+
+                            let ty = self.get_real_ty(def_id, def_ctor, &real_name, generics);
+                            let predicates = infcx.tcx.predicates_of(impl_def_id);
+
+                            traits.push(Item {
+                                source: infcx.tcx.def_span(impl_def_id).clean(self.cx),
+                                name: None,
+                                attrs: Default::default(),
+                                visibility: None,
+                                def_id: self.next_def_id(impl_def_id.krate),
+                                stability: None,
+                                deprecation: None,
+                                inner: ImplItem(Impl {
+                                    unsafety: hir::Unsafety::Normal,
+                                    generics: (t_generics, &predicates).clean(self.cx),
+                                    provided_trait_methods,
+                                    trait_: Some(trait_.clean(self.cx)),
+                                    for_: ty.clean(self.cx),
+                                    items: infcx.tcx.associated_items(impl_def_id)
+                                                    .collect::<Vec<_>>()
+                                                    .clean(self.cx),
+                                    polarity: None,
+                                    synthetic: false,
+                                    blanket_impl: Some(infcx.tcx.type_of(impl_def_id)
+                                                                .clean(self.cx)),
+                                }),
+                            });
+                            debug!("{:?} => {}", trait_ref, may_apply);
+                        }
+                    });
+                });
+            }
+        }
+        traits
+    }
+
     pub fn get_auto_trait_impls<F>(
         &self,
         def_id: DefId,
@@ -122,6 +262,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 def_ctor,
                 tcx.require_lang_item(lang_items::SyncTraitLangItem),
             ).into_iter())
+            .chain(self.get_blanket_impls(def_id, def_ctor, name, &generics).into_iter())
             .collect();
 
         debug!(
@@ -196,31 +337,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 }
                 _ => unreachable!(),
             };
-
-            let path = get_path_for_type(self.cx.tcx, def_id, def_ctor);
-            let mut segments = path.segments.into_vec();
-            let last = segments.pop().unwrap();
-
             let real_name = name.map(|name| Ident::from_str(&name));
-
-            segments.push(hir::PathSegment::new(
-                real_name.unwrap_or(last.ident),
-                self.generics_to_path_params(generics.clone()),
-                false,
-            ));
-
-            let new_path = hir::Path {
-                span: path.span,
-                def: path.def,
-                segments: HirVec::from_vec(segments),
-            };
-
-            let ty = hir::Ty {
-                id: ast::DUMMY_NODE_ID,
-                node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
-                span: DUMMY_SP,
-                hir_id: hir::DUMMY_HIR_ID,
-            };
+            let ty = self.get_real_ty(def_id, def_ctor, &real_name, &generics);
 
             return Some(Item {
                 source: Span::empty(),
@@ -239,6 +357,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     items: Vec::new(),
                     polarity,
                     synthetic: true,
+                    blanket_impl: None,
                 }),
             });
         }

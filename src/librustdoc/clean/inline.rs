@@ -275,7 +275,6 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
     if auto_traits {
         let auto_impls = get_auto_traits_with_def_id(cx, did);
         let mut renderinfo = cx.renderinfo.borrow_mut();
-
         let new_impls: Vec<clean::Item> = auto_impls.into_iter()
             .filter(|i| renderinfo.inlined.insert(i.def_id)).collect();
 
@@ -415,6 +414,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
             items: trait_items,
             polarity: Some(polarity.clean(cx)),
             synthetic: false,
+            blanket_impl: None,
         }),
         source: tcx.def_span(did).clean(cx),
         name: None,
