@@ -98,6 +98,8 @@ pub enum FileName {
     ProcMacroSourceCode,
     /// Strings provided as --cfg [cfgspec] stored in a crate_cfg
     CfgSpec,
+    /// Strings provided as crate attributes in the CLI
+    CliCrateAttr,
     /// Custom sources for explicit parser calls from plugins and drivers
     Custom(String),
 }
@@ -113,6 +115,7 @@ impl std::fmt::Display for FileName {
             Anon => write!(fmt, "<anon>"),
             ProcMacroSourceCode => write!(fmt, "<proc-macro source code>"),
             CfgSpec => write!(fmt, "cfgspec"),
+            CliCrateAttr => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{}>", s),
         }
     }
@@ -135,6 +138,7 @@ impl FileName {
             MacroExpansion |
             ProcMacroSourceCode |
             CfgSpec |
+            CliCrateAttr |
             Custom(_) |
             QuoteExpansion => false,
         }
@@ -148,6 +152,7 @@ impl FileName {
             MacroExpansion |
             ProcMacroSourceCode |
             CfgSpec |
+            CliCrateAttr |
             Custom(_) |
             QuoteExpansion => false,
             Macros(_) => true,

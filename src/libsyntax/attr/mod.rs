@@ -22,11 +22,11 @@ pub use self::ReprAttr::*;
 pub use self::StabilityLevel::*;
 
 use ast;
-use ast::{AttrId, Attribute, Name, Ident, Path, PathSegment};
+use ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
 use codemap::{BytePos, Spanned, respan, dummy_spanned};
-use syntax_pos::Span;
+use syntax_pos::{FileName, Span};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::parser::Parser;
 use parse::{self, ParseSess, PResult};
@@ -820,4 +820,34 @@ macro_rules! derive_has_attrs {
 derive_has_attrs! {
     Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm,
     ast::Field, ast::FieldPat, ast::Variant_
+}
+
+pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -> ast::Crate {
+    for raw_attr in attrs {
+        let mut parser = parse::new_parser_from_source_str(
+            parse_sess,
+            FileName::CliCrateAttr,
+            raw_attr.clone(),
+        );
+
+        let start_span = parser.span;
+        let (path, tokens) = panictry!(parser.parse_path_and_tokens());
+        let end_span = parser.span;
+        if parser.token != token::Eof {
+            parse_sess.span_diagnostic
+                .span_err(start_span.to(end_span), "invalid crate attribute");
+            continue;
+        }
+
+        krate.attrs.push(Attribute {
+            id: mk_attr_id(),
+            style: AttrStyle::Inner,
+            path,
+            tokens,
+            is_sugared_doc: false,
+            span: start_span.to(end_span),
+        });
+    }
+
+    krate
 }
