@@ -596,6 +596,8 @@ pub fn run_core(search_paths: SearchPaths,
                 }
             }
 
+            ctxt.sess().abort_if_errors();
+
             (krate, ctxt.renderinfo.into_inner(), passes)
         }), &sess)
     })

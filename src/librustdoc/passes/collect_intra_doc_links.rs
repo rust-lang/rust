@@ -379,8 +379,6 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
             }
         }
 
-        cx.sess().abort_if_errors();
-
         if item.is_mod() && !item.attrs.inner_docs {
             self.mod_ids.push(item_node_id.unwrap());
         }
