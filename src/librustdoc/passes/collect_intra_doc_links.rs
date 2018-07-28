@@ -239,7 +239,8 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
             ImplItem(Impl { ref for_, .. }) => {
                 for_.def_id().map(|did| self.cx.tcx.item_name(did).to_string())
             }
-            ExternCrateItem(ref name, ..) => Some(name.clone()),
+            // we don't display docs on `extern crate` items anyway, so don't process them
+            ExternCrateItem(..) => return self.fold_item_recur(item),
             ImportItem(Import::Simple(ref name, ..)) => Some(name.clone()),
             MacroItem(..) => None,
             _ => item.name.clone(),
