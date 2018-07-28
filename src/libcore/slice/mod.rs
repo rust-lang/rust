@@ -2337,6 +2337,22 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     }
 }
 
+// Inlining is_empty and len makes a huge performance difference
+macro_rules! is_empty {
+    // The way we encode the length of a ZST iterator, this works both for ZST
+    // and non-ZST.
+    ($self: expr) => {$self.ptr == $self.end}
+}
+macro_rules! len {
+    ($T: ty, $self: expr) => {{
+        if mem::size_of::<$T>() == 0 {
+            ($self.end as usize).wrapping_sub($self.ptr as usize)
+        } else {
+            $self.end.offset_from($self.ptr) as usize
+        }
+    }}
+}
+
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty, $raw_mut:tt, $( $mut_:tt )*) => {
@@ -2344,7 +2360,7 @@ macro_rules! iterator {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
             fn make_slice(&self) -> &'a [T] {
-                unsafe { from_raw_parts(self.ptr, self.len()) }
+                unsafe { from_raw_parts(self.ptr, len!(T, self)) }
             }
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
@@ -2382,20 +2398,12 @@ macro_rules! iterator {
         impl<'a, T> ExactSizeIterator for $name<'a, T> {
             #[inline(always)]
             fn len(&self) -> usize {
-                let diff = (self.end as usize).wrapping_sub(self.ptr as usize);
-                if mem::size_of::<T>() == 0 {
-                    // end is really ptr+len, so we are already done
-                    diff
-                } else {
-                    diff / mem::size_of::<T>()
-                }
+                unsafe { len!(T, self) }
             }
 
             #[inline(always)]
             fn is_empty(&self) -> bool {
-                // The way we encode the length of a ZST iterator, this works both for ZST
-                // and non-ZST.
-                self.ptr == self.end
+                is_empty!(self)
             }
         }
 
@@ -2411,7 +2419,7 @@ macro_rules! iterator {
                     if mem::size_of::<T>() != 0 {
                         assume(!self.end.is_null());
                     }
-                    if self.is_empty() {
+                    if is_empty!(self) {
                         None
                     } else {
                         Some(& $( $mut_ )* *self.post_inc_start(1))
@@ -2421,7 +2429,7 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let exact = self.len();
+                let exact = unsafe { len!(T, self) };
                 (exact, Some(exact))
             }
 
@@ -2432,7 +2440,7 @@ macro_rules! iterator {
 
             #[inline]
             fn nth(&mut self, n: usize) -> Option<$elem> {
-                if n >= self.len() {
+                if n >= unsafe { len!(T, self) } {
                     // This iterator is now empty.
                     if mem::size_of::<T>() == 0 {
                         // We have to do it this way as `ptr` may never be 0, but `end`
@@ -2463,13 +2471,13 @@ macro_rules! iterator {
                 // manual unrolling is needed when there are conditional exits from the loop
                 let mut accum = init;
                 unsafe {
-                    while self.len() >= 4 {
+                    while len!(T, self) >= 4 {
                         accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
                         accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
                         accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
                         accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
                     }
-                    while !self.is_empty() {
+                    while !is_empty!(self) {
                         accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
                     }
                 }
@@ -2539,7 +2547,7 @@ macro_rules! iterator {
                     if mem::size_of::<T>() != 0 {
                         assume(!self.end.is_null());
                     }
-                    if self.is_empty() {
+                    if is_empty!(self) {
                         None
                     } else {
                         Some(& $( $mut_ )* *self.pre_dec_end(1))
@@ -2554,13 +2562,14 @@ macro_rules! iterator {
                 // manual unrolling is needed when there are conditional exits from the loop
                 let mut accum = init;
                 unsafe {
-                    while self.len() >= 4 {
+                    while len!(T, self) >= 4 {
                         accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
                         accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
                         accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
                         accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
                     }
-                    while !self.is_empty() {
+                    // inlining is_empty everywhere makes a huge performance difference
+                    while !is_empty!(self) {
                         accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
                     }
                 }
@@ -2760,7 +2769,7 @@ impl<'a, T> IterMut<'a, T> {
     /// ```
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn into_slice(self) -> &'a mut [T] {
-        unsafe { from_raw_parts_mut(self.ptr, self.len()) }
+        unsafe { from_raw_parts_mut(self.ptr, len!(T, self)) }
     }
 }
 
