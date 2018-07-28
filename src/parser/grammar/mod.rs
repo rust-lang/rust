@@ -47,6 +47,11 @@ fn visibility(p: &mut Parser) {
         p.bump();
         if p.at(L_PAREN) {
             match p.nth(1) {
+                // test crate_visibility
+                // pub(crate) struct S;
+                // pub(self) struct S;
+                // pub(self) struct S;
+                // pub(self) struct S;
                 CRATE_KW | SELF_KW | SUPER_KW => {
                     p.bump();
                     p.bump();
