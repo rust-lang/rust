@@ -63,13 +63,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // injects a borrow of the matched input, which should have the same effect
         // as eddyb's hack. Once NLL is the default, we can remove the hack.
 
-        let dummy_source_info = self.source_info(span);
+        let dummy_source_info = self.source_info(discriminant_span);
         let dummy_access = Rvalue::Discriminant(discriminant_place.clone());
         let dummy_ty = dummy_access.ty(&self.local_decls, tcx);
         let dummy_temp = self.temp(dummy_ty, dummy_source_info.span);
         self.cfg.push_assign(block, dummy_source_info, &dummy_temp, dummy_access);
 
-        let source_info = self.source_info(span);
+        let source_info = self.source_info(discriminant_span);
         let borrowed_input_temp = if tcx.generate_borrow_of_any_match_input() {
             // The region is unknown at this point; we rely on NLL
             // inference to find an appropriate one. Therefore you can
@@ -136,9 +136,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         // This should ensure that you cannot change
                         // the variant for an enum while you are in
                         // the midst of matching on it.
-
+                        let pattern_source_info = self.source_info(pattern.span);
                         self.cfg.push(*pre_binding_block, Statement {
-                            source_info,
+                            source_info: pattern_source_info,
                             kind: StatementKind::ReadForMatch(borrow_temp.clone()),
                         });
                     }

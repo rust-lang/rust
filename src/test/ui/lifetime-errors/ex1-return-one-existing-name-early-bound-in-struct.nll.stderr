@@ -5,18 +5,12 @@ LL |                     other //~ ERROR explicit lifetime
    |                     ^^^^^
 
 error[E0621]: explicit lifetime required in the type of `other`
-  --> $DIR/ex1-return-one-existing-name-early-bound-in-struct.rs:18:9
+  --> $DIR/ex1-return-one-existing-name-early-bound-in-struct.rs:18:15
    |
-LL |       fn bar(&self, other: Foo) -> Foo<'a> {
-   |                     ----- consider changing the type of `other` to `Foo<'a>`
-LL | /         match *self {
-LL | |             Foo::Bar(s) => {
-LL | |                 if s == "test" {
-LL | |                     other //~ ERROR explicit lifetime
-...  |
-LL | |             }
-LL | |         }
-   | |_________^ lifetime `'a` required
+LL |     fn bar(&self, other: Foo) -> Foo<'a> {
+   |                   ----- consider changing the type of `other` to `Foo<'a>`
+LL |         match *self {
+   |               ^^^^^ lifetime `'a` required
 
 error: aborting due to previous error
 
