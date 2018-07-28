@@ -1,7 +1,7 @@
 #[cfg(feature = "serde")]
 extern crate serde;
 
-use std::{fmt, ops};
+use std::{fmt, ops, iter};
 
 
 /// An offset into text.
@@ -52,29 +52,63 @@ impl From<u32> for TextUnit {
     }
 }
 
-impl ops::Add<TextUnit> for TextUnit {
+macro_rules! ops_impls {
+    ($T:ident, $f:ident, $op:tt, $AT:ident, $af:ident) => {
+
+impl ops::$T<TextUnit> for TextUnit {
     type Output = TextUnit;
-    fn add(self, rhs: TextUnit) -> TextUnit {
-        TextUnit(self.0 + rhs.0)
+    fn $f(self, rhs: TextUnit) -> TextUnit {
+        TextUnit(self.0 $op rhs.0)
     }
 }
 
-impl ops::AddAssign<TextUnit> for TextUnit {
-    fn add_assign(&mut self, rhs: TextUnit) {
-        self.0 += rhs.0
-    }
-}
-
-impl ops::Sub<TextUnit> for TextUnit {
+impl<'a> ops::$T<&'a TextUnit> for TextUnit {
     type Output = TextUnit;
-    fn sub(self, rhs: TextUnit) -> TextUnit {
-        TextUnit(self.0 - rhs.0)
+    fn $f(self, rhs: &'a TextUnit) -> TextUnit {
+        ops::$T::$f(self, *rhs)
     }
 }
 
-impl ops::SubAssign<TextUnit> for TextUnit {
-    fn sub_assign(&mut self, rhs: TextUnit) {
-        self.0 -= rhs.0
+impl<'a> ops::$T<TextUnit> for &'a TextUnit {
+    type Output = TextUnit;
+    fn $f(self, rhs: TextUnit) -> TextUnit {
+        ops::$T::$f(*self, rhs)
+    }
+}
+
+impl<'a, 'b> ops::$T<&'a TextUnit> for &'b TextUnit {
+    type Output = TextUnit;
+    fn $f(self, rhs: &'a TextUnit) -> TextUnit {
+        ops::$T::$f(*self, *rhs)
+    }
+}
+
+impl ops::$AT<TextUnit> for TextUnit {
+    fn $af(&mut self, rhs: TextUnit) {
+        self.0 = self.0 $op rhs.0
+    }
+}
+
+impl<'a> ops::$AT<&'a TextUnit> for TextUnit {
+    fn $af(&mut self, rhs: &'a TextUnit) {
+        ops::$AT::$af(self, *rhs)
+    }
+}
+    };
+}
+
+ops_impls!(Add, add, +, AddAssign, add_assign);
+ops_impls!(Sub, sub, -, SubAssign, sub_assign);
+
+impl<'a> iter::Sum<&'a TextUnit> for TextUnit {
+    fn sum<I: Iterator<Item=&'a TextUnit>>(iter: I) -> TextUnit {
+        iter.fold(TextUnit::from(0), ops::Add::add)
+    }
+}
+
+impl iter::Sum<TextUnit> for TextUnit {
+    fn sum<I: Iterator<Item=TextUnit>>(iter: I) -> TextUnit {
+        iter.fold(TextUnit::from(0), ops::Add::add)
     }
 }
 
@@ -182,5 +216,17 @@ mod serde_impls {
             let (start, end) = Deserialize::deserialize(deserializer)?;
             Ok(TextRange { start, end })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sum() {
+        let xs: Vec<TextUnit> = vec![0.into(), 1.into(), 2.into()];
+        assert_eq!(xs.iter().sum::<TextUnit>(), 3.into());
+        assert_eq!(xs.into_iter().sum::<TextUnit>(), 3.into());
     }
 }
