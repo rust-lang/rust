@@ -243,7 +243,10 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) ->
 
         ty::TyAdt(def, _) => {
             if def.is_union() {
-                // Unions never run have a dtor.
+                // Unions never have a dtor.
+                true
+            } else if Some(def.did) == tcx.lang_items().manually_drop() {
+                // `ManuallyDrop` never has a dtor.
                 true
             } else {
                 // Other types might. Moreover, PhantomData doesn't

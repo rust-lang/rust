@@ -369,7 +369,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             });
         }
 
-        let contents_drop = if adt.is_union() {
+        let skip_contents =
+            adt.is_union() || Some(adt.did) == self.tcx().lang_items().manually_drop();
+        let contents_drop = if skip_contents {
             (self.succ, self.unwind)
         } else {
             self.open_drop_for_adt_contents(adt, substs)

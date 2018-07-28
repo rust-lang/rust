@@ -932,6 +932,9 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Foreign types can never have destructors
         ty::TyForeign(..) => false,
 
+        // `ManuallyDrop` doesn't have a destructor regardless of field types.
+        ty::TyAdt(def, _) if Some(def.did) == tcx.lang_items().manually_drop() => false,
+
         // Issue #22536: We first query type_moves_by_default.  It sees a
         // normalized version of the type, and therefore will definitely
         // know whether the type implements Copy (and thus needs no
@@ -967,7 +970,8 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         ty::TyTuple(ref tys) => tys.iter().cloned().any(needs_drop),
 
-        // unions don't have destructors regardless of the child types
+        // unions don't have destructors because of the child types,
+        // only if they manually implement `Drop` (handled above).
         ty::TyAdt(def, _) if def.is_union() => false,
 
         ty::TyAdt(def, substs) =>
