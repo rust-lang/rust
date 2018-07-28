@@ -48,7 +48,7 @@ use syntax_pos::{DUMMY_SP, Span};
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_fulfillment_errors(&self,
-                                     errors: &Vec<FulfillmentError<'tcx>>,
+                                     errors: &[FulfillmentError<'tcx>],
                                      body_id: Option<hir::BodyId>,
                                      fallback_has_occurred: bool) {
         #[derive(Debug)]
@@ -1015,7 +1015,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         let kind = if is_closure { "closure" } else { "function" };
 
-        let args_str = |arguments: &Vec<ArgKind>, other: &Vec<ArgKind>| {
+        let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {
             let arg_length = arguments.len();
             let distinct = match &other[..] {
                 &[ArgKind::Tuple(..)] => true,

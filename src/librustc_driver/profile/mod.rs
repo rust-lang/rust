@@ -62,7 +62,7 @@ struct StackFrame {
     pub traces:   Vec<trace::Rec>,
 }
 
-fn total_duration(traces: &Vec<trace::Rec>) -> Duration {
+fn total_duration(traces: &[trace::Rec]) -> Duration {
     let mut sum : Duration = Duration::new(0,0);
     for t in traces.iter() { sum += t.dur_total; }
     return sum
