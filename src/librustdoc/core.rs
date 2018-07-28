@@ -26,7 +26,7 @@ use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
-use syntax::ast::{self, Ident, Name, NodeId};
+use syntax::ast::{self, Ident};
 use syntax::codemap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
@@ -58,7 +58,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub resolver: &'a RefCell<resolve::Resolver<'rcx, 'cstore>>,
     /// The stack of module NodeIds up till this point
-    pub mod_ids: RefCell<Vec<NodeId>>,
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
     pub populated_all_crate_impls: Cell<bool>,
@@ -88,7 +87,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Maps (type_id, trait_id) -> auto trait impl
     pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>,
-    pub current_item_name: RefCell<Option<Name>>,
     pub all_traits: Vec<DefId>,
 }
 
@@ -325,7 +323,8 @@ pub fn run_core(search_paths: SearchPaths,
                 lint_cap: Option<lint::Level>,
                 describe_lints: bool,
                 mut manual_passes: Vec<String>,
-                mut default_passes: passes::DefaultPassOption) -> (clean::Crate, RenderInfo, Vec<String>)
+                mut default_passes: passes::DefaultPassOption)
+    -> (clean::Crate, RenderInfo, Vec<String>)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -520,12 +519,10 @@ pub fn run_core(search_paths: SearchPaths,
                 ty_substs: Default::default(),
                 lt_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
-                mod_ids: Default::default(),
                 send_trait: send_trait,
                 fake_def_ids: RefCell::new(FxHashMap()),
                 all_fake_def_ids: RefCell::new(FxHashSet()),
                 generated_synthetics: RefCell::new(FxHashSet()),
-                current_item_name: RefCell::new(None),
                 all_traits: tcx.all_traits(LOCAL_CRATE).to_vec(),
             };
             debug!("crate: {:?}", tcx.hir.krate());
