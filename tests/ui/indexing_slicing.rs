@@ -1,7 +1,9 @@
+#![feature(tool_lints)]
+
 #![feature(plugin)]
-#![warn(indexing_slicing)]
-#![warn(out_of_bounds_indexing)]
-#![allow(no_effect, unnecessary_operation)]
+#![warn(clippy::indexing_slicing)]
+#![warn(clippy::out_of_bounds_indexing)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation)]
 
 fn main() {
     let x = [1, 2, 3, 4];

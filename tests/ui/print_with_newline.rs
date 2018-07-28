@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
-
-#![allow(print_literal)]
-#![warn(print_with_newline)]
+#![allow(clippy::print_literal)]
+#![warn(clippy::print_with_newline)]
 
 fn main() {
     print!("Hello\n");

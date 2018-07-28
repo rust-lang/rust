@@ -1,9 +1,9 @@
+#![feature(tool_lints)]
 
+#![warn(clippy::all)]
 
-#![warn(clippy)]
-
-#![allow(blacklisted_name)]
-#![warn(used_underscore_binding)]
+#![allow(clippy::blacklisted_name)]
+#![warn(clippy::used_underscore_binding)]
 
 macro_rules! test_macro {
     () => {{

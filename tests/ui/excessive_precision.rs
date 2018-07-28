@@ -1,6 +1,6 @@
-
-#![warn(excessive_precision)]
-#![allow(print_literal)]
+#![feature(tool_lints)]
+#![warn(clippy::excessive_precision)]
+#![allow(clippy::print_literal)]
 
 fn main() {
     // Consts

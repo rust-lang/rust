@@ -1,8 +1,10 @@
+#![feature(tool_lints)]
+
 #![allow(dead_code)]
 
 fn main() {}
 
-#[allow(unnecessary_operation)]
+#[allow(clippy::unnecessary_operation)]
 fn starts_with() {
     "".chars().next() == Some(' ');
     Some(' ') != "".chars().next();
@@ -30,7 +32,7 @@ fn chars_cmp_with_unwrap() {
     }
 }
 
-#[allow(unnecessary_operation)]
+#[allow(clippy::unnecessary_operation)]
 fn ends_with() {
     "".chars().last() == Some(' ');
     Some(' ') != "".chars().last();

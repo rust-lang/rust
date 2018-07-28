@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy)]
-#![allow(blacklisted_name, unused_assignments)]
+#![warn(clippy::all)]
+#![allow(clippy::blacklisted_name, unused_assignments)]
 
 struct Foo(u32);
 

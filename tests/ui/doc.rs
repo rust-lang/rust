@@ -1,9 +1,11 @@
+#![feature(tool_lints)]
+
 //! This file tests for the DOC_MARKDOWN lint
 
 
 
 #![allow(dead_code)]
-#![warn(doc_markdown)]
+#![warn(clippy::doc_markdown)]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
 /// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
@@ -50,7 +52,7 @@ fn test_units() {
 }
 
 /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
-/// See also [the issue tracker](https://github.com/rust-lang-nursery/rust-clippy/search?q=doc_markdown&type=Issues)
+/// See also [the issue tracker](https://github.com/rust-lang-nursery/rust-clippy/search?q=clippy::doc_markdown&type=Issues)
 /// on GitHub (which is a camel-cased word, but is OK). And here is another [inline link][inline_link].
 /// It can also be [inline_link2].
 ///

@@ -1,9 +1,9 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy)]
-#![allow(boxed_local, needless_pass_by_value)]
-#![allow(blacklisted_name)]
+#![warn(clippy::all)]
+#![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
+#![allow(clippy::blacklisted_name)]
 
 macro_rules! boxit {
     ($init:expr, $x:ty) => {

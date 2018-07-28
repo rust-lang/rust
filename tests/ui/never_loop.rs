@@ -1,10 +1,10 @@
+#![feature(tool_lints)]
 
-
-#![allow(single_match, unused_assignments, unused_variables, while_immutable_condition)]
+#![allow(clippy::single_match, unused_assignments, unused_variables, clippy::while_immutable_condition)]
 
 fn test1() {
     let mut x = 0;
-    loop { // never_loop
+    loop { // clippy::never_loop
         x += 1;
         if x == 1 {
             return

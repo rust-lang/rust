@@ -1,9 +1,9 @@
-
+#![feature(tool_lints)]
 
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![warn(large_enum_variant)]
+#![warn(clippy::large_enum_variant)]
 
 enum LargeEnum {
     A(i32),

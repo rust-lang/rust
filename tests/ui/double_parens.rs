@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(double_parens)]
+#![warn(clippy::double_parens)]
 #![allow(dead_code)]
 
 fn dummy_fn<T>(_: T) {}

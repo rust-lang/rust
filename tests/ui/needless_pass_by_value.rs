@@ -1,5 +1,7 @@
-#![warn(needless_pass_by_value)]
-#![allow(dead_code, single_match, if_let_redundant_pattern_matching, many_single_char_names, option_option)]
+#![feature(tool_lints)]
+
+#![warn(clippy::needless_pass_by_value)]
+#![allow(dead_code, clippy::single_match, clippy::if_let_redundant_pattern_matching, clippy::many_single_char_names, clippy::option_option)]
 
 use std::borrow::Borrow;
 use std::convert::AsRef;

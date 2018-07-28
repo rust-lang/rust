@@ -1,9 +1,9 @@
-
+#![feature(tool_lints)]
 
 use std::fs::OpenOptions;
 
 #[allow(unused_must_use)]
-#[warn(nonsensical_open_options)]
+#[warn(clippy::nonsensical_open_options)]
 fn main() {
     OpenOptions::new().read(true).truncate(true).open("foo.txt");
     OpenOptions::new().append(true).truncate(true).open("foo.txt");

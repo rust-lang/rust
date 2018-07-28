@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#[warn(large_digit_groups)]
+#[warn(clippy::large_digit_groups)]
 #[allow(unused_variables)]
 fn main() {
     let good = (0b1011_i64, 0o1_234_u32, 0x1_234_567, 1_2345_6789, 1234_f32, 1_234.12_f32, 1_234.123_f32, 1.123_4_f32);

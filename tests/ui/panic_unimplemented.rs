@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(panic_params, unimplemented)]
+#![warn(clippy::panic_params, clippy::unimplemented)]
 
 fn missing() {
     if true {

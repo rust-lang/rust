@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy)]
+#![warn(clippy::all)]
 #![allow(unused)]
 
 fn the_answer(ref mut x: u8) {

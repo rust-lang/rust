@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(needless_update)]
-#![allow(no_effect)]
+#![warn(clippy::needless_update)]
+#![allow(clippy::no_effect)]
 
 struct S {
     pub a: i32,

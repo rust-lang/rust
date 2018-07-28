@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(while_let_loop, empty_loop, while_let_on_iterator)]
-#![allow(dead_code, never_loop, unused, cyclomatic_complexity)]
+#![warn(clippy::while_let_loop, clippy::empty_loop, clippy::while_let_on_iterator)]
+#![allow(dead_code, clippy::never_loop, unused, clippy::cyclomatic_complexity)]
 
 fn main() {
     let y = Some(true);
@@ -184,7 +184,7 @@ fn refutable() {
         }
     }
 
-    // should not trigger while_let_loop lint because break passes an expression
+    // should not trigger clippy::while_let_loop lint because break passes an expression
     let a = Some(10);
     let b = loop {
         if let Some(c) = a {

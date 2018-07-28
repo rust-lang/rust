@@ -1,4 +1,6 @@
-#![deny(fallible_impl_from)]
+#![feature(tool_lints)]
+
+#![deny(clippy::fallible_impl_from)]
 
 // docs example
 struct Foo(i32);

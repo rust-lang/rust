@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(needless_return)]
+#![warn(clippy::needless_return)]
 
 fn test_end_of_fn() -> bool {
     if true {

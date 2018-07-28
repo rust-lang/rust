@@ -1,13 +1,13 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(useless_vec)]
+#![warn(clippy::useless_vec)]
 
 #[derive(Debug)]
 struct NonCopy;
 
 fn on_slice(_: &[u8]) {}
-#[allow(ptr_arg)]
+#[allow(clippy::ptr_arg)]
 fn on_vec(_: &Vec<u8>) {}
 
 struct Line {

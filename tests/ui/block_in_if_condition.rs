@@ -1,10 +1,10 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(block_in_if_condition_expr)]
-#![warn(block_in_if_condition_stmt)]
-#![allow(unused, let_and_return)]
-#![warn(nonminimal_bool)]
+#![warn(clippy::block_in_if_condition_expr)]
+#![warn(clippy::block_in_if_condition_stmt)]
+#![allow(unused, clippy::let_and_return)]
+#![warn(clippy::nonminimal_bool)]
 
 
 macro_rules! blocky {

@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
+#![warn(clippy::needless_bool)]
 
-#![warn(needless_bool)]
-
-#[allow(if_same_then_else)]
+#[allow(clippy::if_same_then_else)]
 fn main() {
     let x = true;
     let y = false;
@@ -20,32 +20,32 @@ fn main() {
     bool_ret6(x, x);
 }
 
-#[allow(if_same_then_else, needless_return)]
+#[allow(clippy::if_same_then_else, clippy::needless_return)]
 fn bool_ret(x: bool) -> bool {
     if x { return true } else { return true };
 }
 
-#[allow(if_same_then_else, needless_return)]
+#[allow(clippy::if_same_then_else, clippy::needless_return)]
 fn bool_ret2(x: bool) -> bool {
     if x { return false } else { return false };
 }
 
-#[allow(needless_return)]
+#[allow(clippy::needless_return)]
 fn bool_ret3(x: bool) -> bool {
     if x { return true } else { return false };
 }
 
-#[allow(needless_return)]
+#[allow(clippy::needless_return)]
 fn bool_ret5(x: bool, y: bool) -> bool {
     if x && y { return true } else { return false };
 }
 
-#[allow(needless_return)]
+#[allow(clippy::needless_return)]
 fn bool_ret4(x: bool) -> bool {
     if x { return false } else { return true };
 }
 
-#[allow(needless_return)]
+#[allow(clippy::needless_return)]
 fn bool_ret6(x: bool, y: bool) -> bool {
     if x && y { return false } else { return true };
 }

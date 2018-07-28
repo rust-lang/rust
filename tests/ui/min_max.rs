@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy)]
+#![warn(clippy::all)]
 
 use std::cmp::{min, max};
 use std::cmp::min as my_min;

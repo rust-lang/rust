@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(clippy, clippy_pedantic)]
-#![allow(missing_docs_in_private_items)]
+#![warn(clippy::all, clippy::pedantic)]
+#![allow(clippy::missing_docs_in_private_items)]
 
 fn main() {
     let _: Vec<_> = vec![5; 6].into_iter()

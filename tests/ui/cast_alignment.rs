@@ -1,11 +1,13 @@
+#![feature(tool_lints)]
+
 //! Test casts for alignment issues
 
 #![feature(libc)]
 
 extern crate libc;
 
-#[warn(cast_ptr_alignment)]
-#[allow(no_effect, unnecessary_operation, cast_lossless)]
+#[warn(clippy::cast_ptr_alignment)]
+#[allow(clippy::no_effect, clippy::unnecessary_operation, clippy::cast_lossless)]
 fn main() {
     /* These should be warned against */
 

@@ -1,5 +1,7 @@
+#![feature(tool_lints)]
+
 #![feature(const_string_new, const_vec_new)]
-#![allow(ref_in_deref, dead_code)]
+#![allow(clippy::ref_in_deref, dead_code)]
 
 use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
 use std::cell::Cell;
@@ -30,7 +32,7 @@ const NO_ANN: &Display = &70;
 static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 //^ there should be no lints on this line
 
-#[allow(declare_interior_mutable_const)]
+#[allow(clippy::declare_interior_mutable_const)]
 const ONCE_INIT: Once = Once::new();
 
 trait Trait<T>: Copy {

@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(cmp_nan)]
-#[allow(float_cmp, no_effect, unnecessary_operation)]
+#[warn(clippy::cmp_nan)]
+#[allow(clippy::float_cmp, clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
     let x = 5f32;
     x == std::f32::NAN;

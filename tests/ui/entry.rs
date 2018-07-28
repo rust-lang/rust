@@ -1,8 +1,8 @@
+#![feature(tool_lints)]
 
+#![allow(unused, clippy::needless_pass_by_value)]
 
-#![allow(unused, needless_pass_by_value)]
-
-#![warn(map_entry)]
+#![warn(clippy::map_entry)]
 
 use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;

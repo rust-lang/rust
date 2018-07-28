@@ -1,4 +1,6 @@
-#![warn(explicit_write)]
+#![feature(tool_lints)]
+
+#![warn(clippy::explicit_write)]
 
 
 fn stdout() -> String {

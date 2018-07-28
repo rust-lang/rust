@@ -1,10 +1,12 @@
+#![feature(tool_lints)]
+
 //! This test case utilizes `f64` an easy example for `PartialOrd` only types
 //! but the lint itself actually validates any expression where the left
 //! operand implements `PartialOrd` but not `Ord`.
 
 use std::cmp::Ordering;
 
-#[warn(neg_cmp_op_on_partial_ord)]
+#[warn(clippy::neg_cmp_op_on_partial_ord)]
 fn main() {
 
     let a_value = 1.0;

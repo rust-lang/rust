@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(duplicate_underscore_argument)]
+#![warn(clippy::duplicate_underscore_argument)]
 #[allow(dead_code, unused)]
 
 fn join_the_dark_side(darth: i32, _darth: i32) {}

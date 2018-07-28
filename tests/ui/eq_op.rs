@@ -1,10 +1,10 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(eq_op)]
-#[allow(identity_op, double_parens, many_single_char_names)]
-#[allow(no_effect, unused_variables, unnecessary_operation, short_circuit_statement)]
-#[warn(nonminimal_bool)]
+#[warn(clippy::eq_op)]
+#[allow(clippy::identity_op, clippy::double_parens, clippy::many_single_char_names)]
+#[allow(clippy::no_effect, unused_variables, clippy::unnecessary_operation, clippy::short_circuit_statement)]
+#[warn(clippy::nonminimal_bool)]
 fn main() {
     // simple values and comparisons
     1 == 1;

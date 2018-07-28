@@ -1,9 +1,9 @@
+#![feature(tool_lints)]
 
 
-
-#![warn(float_cmp_const)]
-#![allow(float_cmp)]
-#![allow(unused, no_effect, unnecessary_operation)]
+#![warn(clippy::float_cmp_const)]
+#![allow(clippy::float_cmp)]
+#![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]
 
 const ONE: f32 = 1.0;
 const TWO: f32 = 2.0;
@@ -36,7 +36,7 @@ fn main() {
     ONE != ::std::f32::INFINITY;
     ONE == ::std::f32::NEG_INFINITY;
 
-    // no errors, but will warn float_cmp if '#![allow(float_cmp)]' above is removed
+    // no errors, but will warn clippy::float_cmp if '#![allow(float_cmp)]' above is removed
     let w = 1.1;
     v == w;
     v != w;

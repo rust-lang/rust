@@ -1,7 +1,7 @@
+#![feature(tool_lints)]
 
 
-
-#[warn(bool_comparison)]
+#[warn(clippy::bool_comparison)]
 fn main() {
     let x = true;
     if x == true { "yes" } else { "no" };

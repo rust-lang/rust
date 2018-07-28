@@ -1,12 +1,12 @@
-
+#![feature(tool_lints)]
 
 
 const ONE : i64 = 1;
 const NEG_ONE : i64 = -1;
 const ZERO : i64 = 0;
 
-#[allow(eq_op, no_effect, unnecessary_operation, double_parens)]
-#[warn(identity_op)]
+#[allow(clippy::eq_op, clippy::no_effect, clippy::unnecessary_operation, clippy::double_parens)]
+#[warn(clippy::identity_op)]
 fn main() {
     let x = 0;
 
