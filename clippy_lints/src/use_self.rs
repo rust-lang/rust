@@ -130,6 +130,10 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
         None
     };
 
+    // `impl_decl_ty` (of type `hir::Ty`) represents the type declared in the signature.
+    // `impl_ty` (of type `ty:TyS`) is the concrete type that the compiler has determined for
+    // that declaration.  We use `impl_decl_ty` to see if the type was declared as `Self`
+    // and use `impl_ty` to check its concrete type.
     for (impl_decl_ty, (impl_ty, trait_ty)) in impl_decl.inputs.iter().chain(output_ty).zip(
         impl_method_sig
             .inputs_and_output
