@@ -2615,16 +2615,7 @@ dependencies = [
  "rustc_lsan 0.0.0",
  "rustc_msan 0.0.0",
  "rustc_tsan 0.0.0",
- "std_unicode 0.0.0",
  "unwind 0.0.0",
-]
-
-[[package]]
-name = "std_unicode"
-version = "0.0.0"
-dependencies = [
- "compiler_builtins 0.0.0",
- "core 0.0.0",
 ]
 
 [[package]]
