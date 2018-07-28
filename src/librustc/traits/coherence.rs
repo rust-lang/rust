@@ -59,7 +59,7 @@ where
     F1: FnOnce(OverlapResult<'_>) -> R,
     F2: FnOnce() -> R,
 {
-    debug!("impl_can_satisfy(\
+    debug!("overlapping_impls(\
            impl1_def_id={:?}, \
            impl2_def_id={:?},
            intercrate_mode={:?})",
