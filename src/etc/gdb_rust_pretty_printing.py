@@ -286,12 +286,14 @@ class RustStdVecDequePrinter(object):
         return "array"
 
     def to_string(self):
-        (tail, head, data_ptr, cap) = rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
+        (tail, head, data_ptr, cap) = \
+            rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
         return (self.__val.type.get_unqualified_type_name() +
                 ("(len: %i, cap: %i)" % (head - tail, cap)))
 
     def children(self):
-        (tail, head, data_ptr, cap) = rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
+        (tail, head, data_ptr, cap) = \
+            rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
         gdb_ptr = data_ptr.get_wrapped_value()
         for index in xrange(tail, head):
             yield (str(index), (gdb_ptr + index).dereference())
