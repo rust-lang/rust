@@ -120,13 +120,13 @@ pub fn unsafe_slice(_: &[UnsafeInner]) {
 pub fn str(_: &[u8]) {
 }
 
-// CHECK: @trait_borrow({}* nonnull %arg0.0, {}* noalias nonnull readonly %arg0.1)
+// CHECK: @trait_borrow({}* nonnull %arg0.0, [4 x [[USIZE]]]* noalias readonly dereferenceable({{.*}}) %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn trait_borrow(_: &Drop) {
 }
 
-// CHECK: @trait_box({}* noalias nonnull, {}* noalias nonnull readonly)
+// CHECK: @trait_box({}* noalias nonnull, [4 x [[USIZE]]]* noalias readonly dereferenceable({{.*}}))
 #[no_mangle]
 pub fn trait_box(_: Box<Drop>) {
 }
