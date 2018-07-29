@@ -1092,7 +1092,7 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
     auto MOrErr = getLazyBitcodeModule(Memory, Context, true, true);
 
     if (!MOrErr)
-      return std::move(MOrErr);
+      return MOrErr;
 
     // The rest of this closure is a workaround for
     // https://bugs.llvm.org/show_bug.cgi?id=38184 where during ThinLTO imports
@@ -1110,14 +1110,14 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
     // shouldn't be a perf hit.
     if (Error Err = (*MOrErr)->materializeMetadata()) {
       Expected<std::unique_ptr<Module>> Ret(std::move(Err));
-      return std::move(Ret);
+      return Ret;
     }
 
     auto *WasmCustomSections = (*MOrErr)->getNamedMetadata("wasm.custom_sections");
     if (WasmCustomSections)
       WasmCustomSections->eraseFromParent();
 
-    return std::move(MOrErr);
+    return MOrErr;
   };
   FunctionImporter Importer(Data->Index, Loader);
   Expected<bool> Result = Importer.importFunctions(Mod, ImportList);
