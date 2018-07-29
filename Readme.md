@@ -41,7 +41,6 @@ $ ./build.sh
 * Unsized types
 * Slice indexing
 * Sub slice
-* Closures
 * Some rvalue's
 
 * Inline assembly

@@ -252,6 +252,9 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                         TypeVariants::TyInt(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true, false)
                         }
+                        TypeVariants::TyFloat(_) => {
+                            trans_float_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
+                        }
                         TypeVariants::TyChar => {
                             trans_char_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
@@ -413,6 +416,10 @@ macro_rules! binop_match {
         let b = $fx.bcx.ins().icmp(IntCC::$cc, $lhs, $rhs);
         $fx.bcx.ins().bint(types::I8, b)
     }};
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, fcmp($cc:ident)) => {{
+        let b = $fx.bcx.ins().fcmp(FloatCC::$cc, $lhs, $rhs);
+        $fx.bcx.ins().bint(types::I8, b)
+    }};
     (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $name:ident) => {
         $fx.bcx.ins().$name($lhs, $rhs)
     };
@@ -430,7 +437,7 @@ macro_rules! binop_match {
     }
 }
 
-pub fn trans_bool_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
+fn trans_bool_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
     let res = binop_match! {
         fx, bin_op, false, lhs, rhs, "bool";
         Add (_) bug;
@@ -492,7 +499,34 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinO
     CValue::ByVal(res, fx.layout_of(ty))
 }
 
-pub fn trans_char_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
+fn trans_float_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
+    let res = binop_match! {
+        fx, bin_op, false, lhs, rhs, "bool";
+        Add (_) fadd;
+        Sub (_) fsub;
+        Mul (_) fmul;
+        Div (_) fdiv;
+        Rem (_) bug;
+        BitXor (_) bxor;
+        BitAnd (_) band;
+        BitOr (_) bor;
+        Shl (_) bug;
+        Shr (_) bug;
+
+        Eq (_) fcmp(Equal);
+        Lt (_) fcmp(LessThan);
+        Le (_) fcmp(LessThanOrEqual);
+        Ne (_) fcmp(NotEqual);
+        Ge (_) fcmp(GreaterThanOrEqual);
+        Gt (_) fcmp(GreaterThan);
+
+        Offset (_) bug;
+    };
+
+    CValue::ByVal(res, fx.layout_of(ty))
+}
+
+fn trans_char_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
     let res = binop_match! {
         fx, bin_op, false, lhs, rhs, "char";
         Add (_) bug;
