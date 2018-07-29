@@ -100,7 +100,7 @@ impl Grammar {
 }
 
 fn grammar_file() -> PathBuf {
-    base_dir().join("grammar.ron")
+    base_dir().join("src/grammar.ron")
 }
 
 fn generated_file() -> PathBuf {
