@@ -4,7 +4,8 @@ use std::{
 };
 
 use {
-    TextRange, TextUnit, SyntaxKind,
+    TextRange, TextUnit,
+    SyntaxKind::{self, *},
     yellow::{Ptr, RedNode, GreenNode, TextLen},
 };
 
@@ -18,17 +19,17 @@ pub struct SyntaxNode {
 #[derive(Clone)]
 pub struct SyntaxRoot {
     red: Arc<RedNode>,
-    pub(crate) errors: Arc<Vec<SError>>,
+    pub(crate) errors: Arc<Vec<SyntaxError>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub(crate) struct SError {
+pub(crate) struct SyntaxError {
     pub(crate) message: String,
     pub(crate) offset: TextUnit,
 }
 
 impl SyntaxNode {
-    pub(crate) fn new(root: Arc<GreenNode>, errors: Vec<SError>) -> SyntaxNode {
+    pub(crate) fn new(root: Arc<GreenNode>, errors: Vec<SyntaxError>) -> SyntaxNode {
         let root = Arc::new(RedNode::new_root(root));
         let red = Ptr::new(&root);
         let root = SyntaxRoot { red: root, errors: Arc::new(errors) };
@@ -123,7 +124,6 @@ impl fmt::Debug for SyntaxNode {
 }
 
 fn has_short_text(kind: SyntaxKind) -> bool {
-    use syntax_kinds::*;
     match kind {
         IDENT | LIFETIME => true,
         _ => false,

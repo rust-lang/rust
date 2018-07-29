@@ -1,7 +1,6 @@
 use lexer::ptr::Ptr;
 
-use SyntaxKind;
-use syntax_kinds::*;
+use SyntaxKind::{self, *};
 
 pub(crate) fn scan_shebang(ptr: &mut Ptr) -> bool {
     if ptr.next_is('!') && ptr.nnext_is('/') {

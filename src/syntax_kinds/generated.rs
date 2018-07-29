@@ -1,7 +1,7 @@
 #![allow(bad_style, missing_docs, unreachable_pub)]
 #![cfg_attr(rustfmt, rustfmt_skip)]
 //! Generated from grammar.ron
-use tree::SyntaxInfo;
+use super::SyntaxInfo;
 
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -288,39 +288,39 @@ impl SyntaxKind {
             EOF => &SyntaxInfo { name: "EOF" },
         }
     }
-}
-
-pub(crate) fn ident_to_keyword(ident: &str) -> Option<SyntaxKind> {
-    match ident {
-        "use" => Some(USE_KW),
-        "fn" => Some(FN_KW),
-        "struct" => Some(STRUCT_KW),
-        "enum" => Some(ENUM_KW),
-        "trait" => Some(TRAIT_KW),
-        "impl" => Some(IMPL_KW),
-        "true" => Some(TRUE_KW),
-        "false" => Some(FALSE_KW),
-        "as" => Some(AS_KW),
-        "extern" => Some(EXTERN_KW),
-        "crate" => Some(CRATE_KW),
-        "mod" => Some(MOD_KW),
-        "pub" => Some(PUB_KW),
-        "self" => Some(SELF_KW),
-        "super" => Some(SUPER_KW),
-        "in" => Some(IN_KW),
-        "where" => Some(WHERE_KW),
-        "for" => Some(FOR_KW),
-        "loop" => Some(LOOP_KW),
-        "while" => Some(WHILE_KW),
-        "if" => Some(IF_KW),
-        "match" => Some(MATCH_KW),
-        "const" => Some(CONST_KW),
-        "static" => Some(STATIC_KW),
-        "mut" => Some(MUT_KW),
-        "unsafe" => Some(UNSAFE_KW),
-        "type" => Some(TYPE_KW),
-        "ref" => Some(REF_KW),
-        "let" => Some(LET_KW),
-        _ => None,
+    pub(crate) fn from_keyword(ident: &str) -> Option<SyntaxKind> {
+        match ident {
+            "use" => Some(USE_KW),
+            "fn" => Some(FN_KW),
+            "struct" => Some(STRUCT_KW),
+            "enum" => Some(ENUM_KW),
+            "trait" => Some(TRAIT_KW),
+            "impl" => Some(IMPL_KW),
+            "true" => Some(TRUE_KW),
+            "false" => Some(FALSE_KW),
+            "as" => Some(AS_KW),
+            "extern" => Some(EXTERN_KW),
+            "crate" => Some(CRATE_KW),
+            "mod" => Some(MOD_KW),
+            "pub" => Some(PUB_KW),
+            "self" => Some(SELF_KW),
+            "super" => Some(SUPER_KW),
+            "in" => Some(IN_KW),
+            "where" => Some(WHERE_KW),
+            "for" => Some(FOR_KW),
+            "loop" => Some(LOOP_KW),
+            "while" => Some(WHILE_KW),
+            "if" => Some(IF_KW),
+            "match" => Some(MATCH_KW),
+            "const" => Some(CONST_KW),
+            "static" => Some(STATIC_KW),
+            "mut" => Some(MUT_KW),
+            "unsafe" => Some(UNSAFE_KW),
+            "type" => Some(TYPE_KW),
+            "ref" => Some(REF_KW),
+            "let" => Some(LET_KW),
+            _ => None,
+        }
     }
 }
+

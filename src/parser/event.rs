@@ -1,8 +1,29 @@
+//! This module provides a way to construct a `File`.
+//! It is intended to be completely decoupled from the
+//! parser, so as to allow to evolve the tree representation
+//! and the parser algorithm independently.
+//!
+//! The `Sink` trait is the bridge between the parser and the
+//! tree builder: the parser produces a stream of events like
+//! `start node`, `finish node`, and `FileBuilder` converts
+//! this stream to a real tree.
 use {
-    Sink, SyntaxKind, Token,
-    syntax_kinds::TOMBSTONE,
+    TextUnit,
+    SyntaxKind::{self, TOMBSTONE},
+    lexer::Token,
 };
-use super::is_insignificant;
+
+pub(crate) trait Sink {
+    type Tree;
+
+    fn new(text: String) -> Self;
+
+    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
+    fn start_internal(&mut self, kind: SyntaxKind);
+    fn finish_internal(&mut self);
+    fn error(&mut self, err: String);
+    fn finish(self) -> Self::Tree;
+}
 
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in
@@ -67,7 +88,7 @@ pub(crate) enum Event {
     },
 }
 
-pub(super) fn process(builder: &mut Sink, tokens: &[Token], events: Vec<Event>) {
+pub(super) fn process(builder: &mut impl Sink, tokens: &[Token], events: Vec<Event>) {
     let mut idx = 0;
 
     let mut holes = Vec::new();
@@ -111,7 +132,7 @@ pub(super) fn process(builder: &mut Sink, tokens: &[Token], events: Vec<Event>) 
             &Event::Finish => {
                 while idx < tokens.len() {
                     let token = tokens[idx];
-                    if is_insignificant(token.kind) {
+                    if token.kind.is_trivia() {
                         idx += 1;
                         builder.leaf(token.kind, token.len);
                     } else {
@@ -128,7 +149,7 @@ pub(super) fn process(builder: &mut Sink, tokens: &[Token], events: Vec<Event>) 
                 // this should be done in a sensible manner instead
                 loop {
                     let token = tokens[idx];
-                    if !is_insignificant(token.kind) {
+                    if !token.kind.is_trivia() {
                         break;
                     }
                     builder.leaf(token.kind, token.len);

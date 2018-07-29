@@ -1,5 +1,4 @@
-use SyntaxKind;
-use syntax_kinds::ERROR;
+use SyntaxKind::{self, ERROR};
 
 pub(super) mod imp;
 use self::imp::ParserImpl;

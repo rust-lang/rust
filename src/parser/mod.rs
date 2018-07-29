@@ -5,18 +5,16 @@ mod input;
 mod event;
 mod grammar;
 
-use std::sync::Arc;
 use {
-    Token,
-    yellow::SyntaxNode,
-    syntax_kinds::*
+    lexer::Token,
+    parser::event::{process}
 };
-use GreenBuilder;
-use parser::event::process;
+
+pub(crate) use self::event::Sink;
 
 
 /// Parse a sequence of tokens into the representative node tree
-pub fn parse_green(text: String, tokens: &[Token]) -> SyntaxNode {
+pub(crate) fn parse<S: Sink>(text: String, tokens: &[Token]) -> S::Tree {
     let events = {
         let input = input::ParserInput::new(&text, tokens);
         let parser_impl = parser::imp::ParserImpl::new(&input);
@@ -24,15 +22,7 @@ pub fn parse_green(text: String, tokens: &[Token]) -> SyntaxNode {
         grammar::file(&mut parser);
         parser.0.into_events()
     };
-    let mut builder = GreenBuilder::new(text);
-    process(&mut builder, tokens, events);
-    let (green, errors) = builder.finish();
-    SyntaxNode::new(Arc::new(green), errors)
-}
-
-fn is_insignificant(kind: SyntaxKind) -> bool {
-    match kind {
-        WHITESPACE | COMMENT => true,
-        _ => false,
-    }
+    let mut sink = S::new(text);
+    process(&mut sink, tokens, events);
+    sink.finish()
 }

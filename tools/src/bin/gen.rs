@@ -36,7 +36,7 @@ impl Grammar {
         acc.push_str("#![allow(bad_style, missing_docs, unreachable_pub)]\n");
         acc.push_str("#![cfg_attr(rustfmt, rustfmt_skip)]\n");
         acc.push_str("//! Generated from grammar.ron\n");
-        acc.push_str("use tree::SyntaxInfo;\n");
+        acc.push_str("use super::SyntaxInfo;\n");
         acc.push_str("\n");
 
         let syntax_kinds: Vec<String> = self.tokens
@@ -82,19 +82,19 @@ impl Grammar {
         acc.push_str("            EOF => &SyntaxInfo { name: \"EOF\" },\n");
         acc.push_str("        }\n");
         acc.push_str("    }\n");
-        acc.push_str("}\n");
-        acc.push_str("\n");
 
-        // fn ident_to_keyword
-        acc.push_str("pub(crate) fn ident_to_keyword(ident: &str) -> Option<SyntaxKind> {\n");
-        acc.push_str("    match ident {\n");
+        // fn from_keyword
+        acc.push_str("    pub(crate) fn from_keyword(ident: &str) -> Option<SyntaxKind> {\n");
+        acc.push_str("        match ident {\n");
         // NB: no contextual_keywords here!
         for kw in self.keywords.iter() {
-            write!(acc, "        {:?} => Some({}),\n", kw, kw_token(kw)).unwrap();
+            write!(acc, "            {:?} => Some({}),\n", kw, kw_token(kw)).unwrap();
         }
-        acc.push_str("        _ => None,\n");
+        acc.push_str("            _ => None,\n");
+        acc.push_str("        }\n");
         acc.push_str("    }\n");
         acc.push_str("}\n");
+        acc.push_str("\n");
         acc
     }
 }
@@ -104,7 +104,7 @@ fn grammar_file() -> PathBuf {
 }
 
 fn generated_file() -> PathBuf {
-    base_dir().join("src/syntax_kinds.rs")
+    base_dir().join("src/syntax_kinds/generated.rs")
 }
 
 fn scream(word: &str) -> String {

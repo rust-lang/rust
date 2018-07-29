@@ -1,6 +1,8 @@
-use {SyntaxKind, TextRange, TextUnit, Token};
-use syntax_kinds::EOF;
-use super::is_insignificant;
+use {
+    SyntaxKind, TextRange, TextUnit,
+    SyntaxKind::EOF,
+    lexer::Token,
+};
 
 use std::ops::{Add, AddAssign};
 
@@ -16,7 +18,7 @@ impl<'t> ParserInput<'t> {
         let mut start_offsets = Vec::new();
         let mut len = 0.into();
         for &token in raw_tokens.iter() {
-            if !is_insignificant(token.kind) {
+            if !token.kind.is_trivia() {
                 tokens.push(token);
                 start_offsets.push(len);
             }

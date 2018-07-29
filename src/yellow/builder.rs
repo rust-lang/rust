@@ -1,36 +1,26 @@
-//! This module provides a way to construct a `File`.
-//! It is intended to be completely decoupled from the
-//! parser, so as to allow to evolve the tree representation
-//! and the parser algorithm independently.
-//!
-//! The `Sink` trait is the bridge between the parser and the
-//! tree builder: the parser produces a stream of events like
-//! `start node`, `finish node`, and `FileBuilder` converts
-//! this stream to a real tree.
 use std::sync::Arc;
 use {
     SyntaxKind, TextRange, TextUnit,
-    yellow::GreenNode
+    yellow::{SyntaxNode, GreenNode, SyntaxError},
+    parser::Sink
 };
-use SError;
-
-pub(crate) trait Sink {
-    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
-    fn start_internal(&mut self, kind: SyntaxKind);
-    fn finish_internal(&mut self);
-    fn error(&mut self, err: String);
-}
 
 pub(crate) struct GreenBuilder {
     text: String,
     stack: Vec<GreenNode>,
     pos: TextUnit,
     root: Option<GreenNode>,
-    errors: Vec<SError>,
+    errors: Vec<SyntaxError>,
 }
 
 impl GreenBuilder {
-    pub(crate) fn new(text: String) -> GreenBuilder {
+
+}
+
+impl Sink for GreenBuilder {
+    type Tree = SyntaxNode;
+
+    fn new(text: String) -> Self {
         GreenBuilder {
             text,
             stack: Vec::new(),
@@ -40,12 +30,6 @@ impl GreenBuilder {
         }
     }
 
-    pub(crate) fn finish(self) -> (GreenNode, Vec<SError>) {
-        (self.root.unwrap(), self.errors)
-    }
-}
-
-impl Sink for GreenBuilder {
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit) {
         let range = TextRange::offset_len(self.pos, len);
         self.pos += len;
@@ -73,15 +57,12 @@ impl Sink for GreenBuilder {
     }
 
     fn error(&mut self, message: String) {
-        self.errors.push(SError { message, offset: self.pos })
+        self.errors.push(SyntaxError { message, offset: self.pos })
+    }
+
+    fn finish(self) -> SyntaxNode {
+        SyntaxNode::new(Arc::new(self.root.unwrap()), self.errors)
     }
 }
-impl SyntaxKind {
-    fn is_trivia(self) -> bool {
-        match self {
-            SyntaxKind::WHITESPACE | SyntaxKind::DOC_COMMENT | SyntaxKind::COMMENT => true,
-            _ => false
-        }
-    }
-}
+
 

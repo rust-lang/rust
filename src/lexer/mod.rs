@@ -1,21 +1,32 @@
-use {SyntaxKind, Token};
-use syntax_kinds::*;
-
 mod ptr;
-use self::ptr::Ptr;
-
-mod classes;
-use self::classes::*;
-
-mod numbers;
-use self::numbers::scan_number;
-
-mod strings;
-use self::strings::{is_string_literal_start, scan_byte_char_or_string, scan_char, scan_raw_string,
-                    scan_string};
-
 mod comments;
-use self::comments::{scan_comment, scan_shebang};
+mod strings;
+mod numbers;
+mod classes;
+
+use {
+    TextUnit,
+    SyntaxKind::{self, *},
+};
+
+use self::{
+    ptr::Ptr,
+    classes::*,
+    numbers::scan_number,
+    strings::{
+        is_string_literal_start, scan_byte_char_or_string, scan_char,
+        scan_raw_string, scan_string},
+    comments::{scan_comment, scan_shebang},
+};
+
+/// A token of Rust source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Token {
+    /// The kind of token.
+    pub kind: SyntaxKind,
+    /// The length of the token.
+    pub len: TextUnit,
+}
 
 /// Break a string up into its component tokens
 pub fn tokenize(text: &str) -> Vec<Token> {
@@ -29,6 +40,7 @@ pub fn tokenize(text: &str) -> Vec<Token> {
     }
     acc
 }
+
 /// Get the next token from a string
 pub fn next_token(text: &str) -> Token {
     assert!(!text.is_empty());
@@ -109,7 +121,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                     DOTDOT
                 }
                 _ => DOT,
-            }
+            };
         }
         ':' => {
             return match ptr.next() {
@@ -118,7 +130,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                     COLONCOLON
                 }
                 _ => COLON,
-            }
+            };
         }
         '=' => {
             return match ptr.next() {
@@ -131,7 +143,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                     FAT_ARROW
                 }
                 _ => EQ,
-            }
+            };
         }
         '!' => {
             return match ptr.next() {
@@ -140,7 +152,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                     NEQ
                 }
                 _ => EXCL,
-            }
+            };
         }
         '-' => {
             return if ptr.next_is('>') {
@@ -148,7 +160,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                 THIN_ARROW
             } else {
                 MINUS
-            }
+            };
         }
 
         // If the character is an ident start not followed by another single
@@ -202,7 +214,7 @@ fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
         return if c == '_' { UNDERSCORE } else { IDENT };
     }
     ptr.bump_while(is_ident_continue);
-    if let Some(kind) = ident_to_keyword(ptr.current_token_text()) {
+    if let Some(kind) = SyntaxKind::from_keyword(ptr.current_token_text()) {
         return kind;
     }
     IDENT

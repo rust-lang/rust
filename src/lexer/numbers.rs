@@ -1,8 +1,7 @@
 use lexer::ptr::Ptr;
 use lexer::classes::*;
 
-use SyntaxKind;
-use syntax_kinds::*;
+use SyntaxKind::{self, *};
 
 pub(crate) fn scan_number(c: char, ptr: &mut Ptr) -> SyntaxKind {
     if c == '0' {

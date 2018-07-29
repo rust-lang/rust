@@ -1,6 +1,7 @@
 mod green;
 mod red;
 mod syntax;
+mod builder;
 
 use std::{
     sync::{Arc, Weak},
@@ -9,7 +10,8 @@ use std::{
 pub(crate) use self::{
     green::{GreenNode, TextLen},
     red::RedNode,
-    syntax::SError,
+    syntax::SyntaxError,
+    builder::GreenBuilder,
 };
 pub use self::syntax::SyntaxNode;
 

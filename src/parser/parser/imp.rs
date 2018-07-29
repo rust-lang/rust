@@ -1,8 +1,7 @@
 use parser::input::{InputPosition, ParserInput};
 use parser::event::Event;
 
-use SyntaxKind;
-use syntax_kinds::{EOF, TOMBSTONE};
+use SyntaxKind::{self, EOF, TOMBSTONE};
 
 /// Implementation details of `Parser`, extracted
 /// to a separate struct in order not to pollute

@@ -19,27 +19,36 @@
 extern crate unicode_xid;
 extern crate text_unit;
 
-mod tree;
 mod lexer;
 mod parser;
 mod yellow;
+mod syntax_kinds;
 
-pub mod syntax_kinds;
-pub use text_unit::{TextRange, TextUnit};
-pub use tree::{SyntaxKind, Token};
-pub(crate) use tree::{Sink, GreenBuilder};
-pub use lexer::{next_token, tokenize};
-pub use yellow::SyntaxNode;
-pub(crate) use yellow::SError;
-pub use parser::{parse_green};
+pub use {
+    text_unit::{TextRange, TextUnit},
+    syntax_kinds::SyntaxKind,
+    yellow::{SyntaxNode},
+    lexer::{tokenize, Token},
+};
+
+pub(crate) use {
+    yellow::SyntaxError
+};
+
+pub fn parse(text: String) -> SyntaxNode {
+    let tokens = tokenize(&text);
+    parser::parse::<yellow::GreenBuilder>(text, &tokens)
+}
+
 
 /// Utilities for simple uses of the parser.
 pub mod utils {
-    use std::fmt::Write;
+    use std::{
+        fmt::Write,
+        collections::BTreeSet
+    };
 
-    use {SyntaxNode};
-    use std::collections::BTreeSet;
-    use SError;
+    use {SyntaxNode, SyntaxError};
 
     /// Parse a file and create a string representation of the resulting parse tree.
     pub fn dump_tree_green(syntax: &SyntaxNode) -> String {
@@ -48,7 +57,7 @@ pub mod utils {
         go(syntax, &mut result, 0, &mut errors);
         return result;
 
-        fn go(node: &SyntaxNode, buff: &mut String, level: usize, errors: &mut BTreeSet<SError>) {
+        fn go(node: &SyntaxNode, buff: &mut String, level: usize, errors: &mut BTreeSet<SyntaxError>) {
             buff.push_str(&String::from("  ").repeat(level));
             write!(buff, "{:?}\n", node).unwrap();
             let my_errors: Vec<_> = errors.iter().filter(|e| e.offset == node.range().start())
