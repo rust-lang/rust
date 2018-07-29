@@ -31,10 +31,11 @@ python2.7 "$X_PY" test --no-fail-fast \
     src/doc/nomicon \
     src/doc/reference \
     src/doc/rust-by-example \
+    src/tools/clippy \
     src/tools/rls \
     src/tools/rustfmt \
     src/tools/miri \
-    src/tools/clippy
+
 set -e
 
 cat "$TOOLSTATE_FILE"
