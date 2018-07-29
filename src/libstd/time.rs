@@ -590,4 +590,30 @@ mod tests {
         let hundred_twenty_years = thirty_years * 4;
         assert!(a < hundred_twenty_years);
     }
+
+    #[test]
+    fn duration_float_ops() {
+        let dur = Duration::new(2, 700_000_000);
+
+        let dur2 = 3.14*dur;
+        assert_eq!(dur2, dur*3.14);
+        assert_eq!(dur2.as_secs(), 8);
+        assert_eq!(dur2.subsec_nanos(), 478_000_000);
+
+        let dur3 = 3.14e5*dur;
+        assert_eq!(dur3, dur*3.14e5);
+        assert_eq!(dur3.as_secs(), 847_800);
+        assert_eq!(dur3.subsec_nanos(), 0);
+
+        let dur4 = dur/3.14;
+        assert_eq!(dur4.as_secs(), 0);
+        assert_eq!(dur4.subsec_nanos(), 859_872_611);
+
+        let dur5 = dur/3.14e5;
+        assert_eq!(dur5.as_secs(), 0);
+        // we are using truncation and not rounding
+        assert_eq!(dur5.subsec_nanos(), 8598);
+
+        assert_eq!(dur/Duration::new(5, 400_000_000), 0.5);
+    }
 }
