@@ -239,9 +239,9 @@ impl<'a> FnSig<'a> {
         // Vis defaultness constness unsafety abi.
         result.push_str(&*format_visibility(context, &self.visibility));
         result.push_str(format_defaultness(self.defaultness));
-        result.push_str(format_asyncness(self.asyncness));
         result.push_str(format_constness(self.constness));
         result.push_str(format_unsafety(self.unsafety));
+        result.push_str(format_asyncness(self.asyncness));
         result.push_str(&format_abi(
             self.abi,
             context.config.force_explicit_abi(),

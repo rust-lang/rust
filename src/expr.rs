@@ -345,17 +345,28 @@ pub fn format_expr(
         }
         // FIXME(#2743)
         ast::ExprKind::ObsoleteInPlace(..) => unimplemented!(),
-        ast::ExprKind::Async(_capture_by, _node_id, ref block) => {
-            if let rw @ Some(_) =
-                rewrite_single_line_block(context, "async ", block, Some(&expr.attrs), None, shape)
-            {
+        ast::ExprKind::Async(capture_by, _node_id, ref block) => {
+            let mover = if capture_by == ast::CaptureBy::Value {
+                "move "
+            } else {
+                ""
+            };
+            if let rw @ Some(_) = rewrite_single_line_block(
+                context,
+                format!("{}{}", "async ", mover).as_str(),
+                block,
+                Some(&expr.attrs),
+                None,
+                shape,
+            ) {
                 rw
             } else {
                 // 6 = `async `
                 let budget = shape.width.saturating_sub(6);
                 Some(format!(
-                    "{}{}",
+                    "{}{}{}",
                     "async ",
+                    mover,
                     rewrite_block(
                         block,
                         Some(&expr.attrs),
