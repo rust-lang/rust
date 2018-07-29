@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, Ty, TyCtxt, TypeckTables};
 use rustc::ty::layout::LayoutOf;

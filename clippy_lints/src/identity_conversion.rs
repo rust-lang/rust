@@ -1,5 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use syntax::ast::NodeId;
 use crate::utils::{in_macro, match_def_path, match_trait_method, same_tys, snippet, span_lint_and_then};

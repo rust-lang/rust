@@ -2,7 +2,7 @@
 
 use rustc::cfg::CFG;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

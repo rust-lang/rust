@@ -3,7 +3,7 @@
 //! checks for attributes
 
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir;
 use rustc::hir::print;
 use syntax::ast::Attribute;

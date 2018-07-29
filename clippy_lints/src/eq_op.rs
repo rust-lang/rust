@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use crate::utils::{in_macro, implements_trait, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq};
 
 /// **What it does:** Checks for equal operands to comparison, logical and

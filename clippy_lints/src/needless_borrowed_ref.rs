@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::hir::{BindingAnnotation, MutImmutable, Pat, PatKind};
 use crate::utils::{in_macro, snippet, span_lint_and_then};

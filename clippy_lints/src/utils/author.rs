@@ -4,7 +4,7 @@
 #![allow(print_stdout, use_debug)]
 
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::hir;
 use rustc::hir::{Expr, ExprKind, QPath, TyKind, Pat, PatKind, BindingAnnotation, StmtKind, DeclKind, Stmt};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};

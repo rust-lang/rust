@@ -1,5 +1,5 @@
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use syntax::ptr::P;

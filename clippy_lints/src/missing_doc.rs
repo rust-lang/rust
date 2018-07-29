@@ -20,7 +20,7 @@
 
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use rustc::ty;
 use syntax::ast;
 use syntax::attr;

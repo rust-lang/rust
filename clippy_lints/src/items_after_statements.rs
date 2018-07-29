@@ -2,7 +2,7 @@
 
 use matches::matches;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::ast::*;
 use crate::utils::{in_macro, span_lint};
 

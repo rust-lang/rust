@@ -1,7 +1,7 @@
 use crate::consts::{constant_simple, Constant};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use syntax::source_map::Span;
 use crate::utils::{in_macro, snippet, span_lint, unsext, clip};
 use rustc::ty;

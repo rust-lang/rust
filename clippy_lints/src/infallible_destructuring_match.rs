@@ -1,7 +1,7 @@
 use super::utils::{get_arg_name, match_var, remove_blocks, snippet, span_lint_and_sugg};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 
 /// **What it does:** Checks for matches being used to destructure a single-variant enum

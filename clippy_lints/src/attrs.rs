@@ -7,7 +7,7 @@ use crate::utils::{
 };
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint, lint_array};
+use rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use rustc::ty::{self, TyCtxt};
 use semver::Version;
