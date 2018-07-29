@@ -11,7 +11,24 @@
 fn foo(_: &'static [&'static str]) {}
 fn bar(_: &'static [&'static str; 3]) {}
 
+struct Foo {
+    a: usize,
+    b: u32,
+}
+
 fn main() {
     foo(&["a", "b", "c"]);
     bar(&["d", "e", "f"]);
+}
+
+trait Trait {
+    const INT: usize;
+}
+
+fn generic<T: Trait>() -> &'static Foo {
+    &(Foo {a: T::INT, b: 42})
+}
+
+fn generic2<T: Trait>() -> &'static usize {
+    &T::INT
 }

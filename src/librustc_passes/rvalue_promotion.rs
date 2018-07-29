@@ -27,27 +27,24 @@
 use rustc::ty::cast::CastKind;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, Promotability};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
-use rustc::util::nodemap::{ItemLocalSet, NodeSet};
+use rustc::util::nodemap::{ItemLocalMap, NodeSet, FxHashSet};
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::{Span, DUMMY_SP};
 use self::Promotability::*;
-use std::ops::{BitAnd, BitOr};
 
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         rvalue_promotable_map,
-        const_is_rvalue_promotable_to_static,
         ..*providers
     };
 }
@@ -55,28 +52,23 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &body_id in &tcx.hir.krate().body_ids {
         let def_id = tcx.hir.body_owner_def_id(body_id);
-        tcx.const_is_rvalue_promotable_to_static(def_id);
+        tcx.rvalue_promotable_map(def_id);
     }
     tcx.sess.abort_if_errors();
 }
 
-fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                  def_id: DefId)
-                                                  -> bool
-{
-    assert!(def_id.is_local());
-
-    let node_id = tcx.hir.as_local_node_id(def_id)
-        .expect("rvalue_promotable_map invoked with non-local def-id");
-    let body_id = tcx.hir.body_owned_by(node_id);
-    let body_hir_id = tcx.hir.node_to_hir_id(body_id.node_id);
-    tcx.rvalue_promotable_map(def_id).contains(&body_hir_id.local_id)
-}
-
 fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    def_id: DefId)
-                                   -> Lrc<ItemLocalSet>
+                                   -> Lrc<ItemLocalMap<Promotability>>
 {
+    rvalue_promotable_map_inner(tcx, def_id, &mut FxHashSet())
+}
+
+fn rvalue_promotable_map_inner<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    seen: &mut FxHashSet<DefId>,
+) -> Lrc<ItemLocalMap<Promotability>> {
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
         return tcx.rvalue_promotable_map(outer_def_id);
@@ -90,8 +82,11 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         mut_rvalue_borrows: NodeSet(),
         param_env: ty::ParamEnv::empty(),
         identity_substs: Substs::empty(),
-        result: ItemLocalSet(),
+        result: ItemLocalMap(),
+        seen,
     };
+
+    visitor.seen.insert(def_id);
 
     // `def_id` should be a `Body` owner
     let node_id = tcx.hir.as_local_node_id(def_id)
@@ -110,40 +105,8 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: &'tcx Substs<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
-    result: ItemLocalSet,
-}
-
-#[must_use]
-#[derive(Debug, PartialEq)]
-enum Promotability {
-    Promotable,
-    NotPromotable
-}
-
-impl BitAnd for Promotability {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self {
-        match (self, rhs) {
-            (Promotable, NotPromotable) => NotPromotable,
-            (NotPromotable, Promotable) => NotPromotable,
-            (NotPromotable, NotPromotable) => NotPromotable,
-            (Promotable, Promotable) => Promotable,
-        }
-    }
-}
-
-impl BitOr for Promotability {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self {
-        match (self, rhs) {
-            (Promotable, NotPromotable) => Promotable,
-            (NotPromotable, Promotable) => Promotable,
-            (NotPromotable, NotPromotable) => NotPromotable,
-            (Promotable, Promotable) => Promotable,
-        }
-    }
+    result: ItemLocalMap<Promotability>,
+    seen: &'a mut FxHashSet<DefId>,
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
@@ -159,24 +122,12 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         }
     }
 
-    fn handle_const_fn_call(&mut self, def_id: DefId,
-                            ret_ty: Ty<'gcx>, span: Span) -> Promotability {
-        if let NotPromotable = self.type_promotability(ret_ty) {
-            return NotPromotable;
-        }
-
-        let node_check = if let Some(fn_id) = self.tcx.hir.as_local_node_id(def_id) {
-            FnLikeNode::from_node(self.tcx.hir.get(fn_id)).map_or(false, |fn_like| {
-                fn_like.constness() == hir::Constness::Const
-            })
-        } else {
-            self.tcx.is_const_fn(def_id)
-        };
-
-        if !node_check {
-            return NotPromotable
-        }
-
+    fn handle_const_fn_call(
+        &mut self,
+        def_id: DefId,
+        ret_ty: Ty<'gcx>,
+        span: Span,
+    ) -> Promotability {
         if let Some(&attr::Stability {
             rustc_const_unstable: Some(attr::RustcConstUnstable {
                                            feature: ref feature_name
@@ -197,8 +148,22 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             if !stable_check {
                 return NotPromotable
             }
-        };
-        Promotable
+        }
+
+        if !self.tcx.is_const_fn(def_id) {
+            return NotPromotable;
+        }
+
+        // do not promote unsafe function calls
+        let fn_ty = self.tcx.type_of(def_id);
+        if fn_ty.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
+            return NotPromotable;
+        }
+
+        // At this point the user needed to do something not-const inside a const fn to make this
+        // not promotable. We will just error when actually computing the promoted's value in that
+        // case.
+        self.type_promotability(ret_ty)
     }
 
     /// While the `ExprUseVisitor` walks, we will identify which
@@ -298,8 +263,9 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             outer = NotPromotable
         }
 
-        if outer == Promotable {
-            self.result.insert(ex.hir_id.local_id);
+        // No need to add entries for nonpromotable nodes
+        if outer != NotPromotable {
+            assert!(self.result.insert(ex.hir_id.local_id, outer.clone()).is_none());
         }
         outer
     }
@@ -339,7 +305,7 @@ fn check_expr_kind<'a, 'tcx>(
             NotPromotable
         }
         hir::ExprKind::Unary(op, ref expr) => {
-            let expr_promotability = v.check_expr(expr);
+            let expr_promotability = v.check_expr(expr).inspect();
             if v.tables.is_method_call(e) {
                 return NotPromotable;
             }
@@ -349,8 +315,8 @@ fn check_expr_kind<'a, 'tcx>(
             expr_promotability
         }
         hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
-            let lefty = v.check_expr(lhs);
-            let righty = v.check_expr(rhs);
+            let lefty = v.check_expr(lhs).inspect();
+            let righty = v.check_expr(rhs).inspect();
             if v.tables.is_method_call(e) {
                 return NotPromotable;
             }
@@ -366,7 +332,7 @@ fn check_expr_kind<'a, 'tcx>(
             }
         }
         hir::ExprKind::Cast(ref from, _) => {
-            let expr_promotability = v.check_expr(from);
+            let expr_promotability = v.check_expr(from).inspect();
             debug!("Checking const cast(id={})", from.id);
             match v.tables.cast_kinds().get(from.hir_id) {
                 None => {
@@ -410,18 +376,8 @@ fn check_expr_kind<'a, 'tcx>(
 
                 Def::Const(did) |
                 Def::AssociatedConst(did) => {
-                    let promotable = if v.tcx.trait_of_item(did).is_some() {
-                        // Don't peek inside trait associated constants.
-                        NotPromotable
-                    } else if v.tcx.at(e.span).const_is_rvalue_promotable_to_static(did) {
-                        Promotable
-                    } else {
-                        NotPromotable
-                    };
-                    // Just in case the type is more specific than the definition,
-                    // e.g. impl associated const with type parameters, check it.
-                    // Also, trait associated consts are relaxed by this.
-                    promotable | v.type_promotability(node_ty)
+                    let ty = v.tcx.type_of(did);
+                    v.type_promotability(ty)
                 }
                 _ => NotPromotable
             }
@@ -522,10 +478,10 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         hir::ExprKind::Field(ref expr, _ident) => {
-            let expr_promotability = v.check_expr(&expr);
+            let expr_promotability = v.check_expr(&expr).inspect();
             if let Some(def) = v.tables.expr_ty(expr).ty_adt_def() {
                 if def.is_union() {
-                    return NotPromotable;
+                    return expr_promotability & NotInspectable;
                 }
             }
             expr_promotability
@@ -536,8 +492,8 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         hir::ExprKind::Index(ref lhs, ref rhs) => {
-            let lefty = v.check_expr(lhs);
-            let righty = v.check_expr(rhs);
+            let lefty = v.check_expr(lhs).inspect();
+            let righty = v.check_expr(rhs).inspect();
             if v.tables.is_method_call(e) {
                 return NotPromotable;
             }
@@ -553,7 +509,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         hir::ExprKind::Type(ref expr, ref _ty) => {
-            v.check_expr(&expr)
+            v.check_expr(&expr).inspect()
         }
 
         hir::ExprKind::Tup(ref hirvec) => {
@@ -659,6 +615,7 @@ fn check_adjustments<'a, 'tcx>(
 
     let mut adjustments = v.tables.expr_adjustments(e).iter().peekable();
     while let Some(adjustment) = adjustments.next() {
+        // FIXME: do some of these make the value not inspectable?
         match adjustment.kind {
             Adjust::NeverToAny |
             Adjust::ReifyFnPointer |

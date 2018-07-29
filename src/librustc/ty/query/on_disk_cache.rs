@@ -223,9 +223,7 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<unsafety_check_result, _>(tcx, enc, qri)?;
                 encode_query_results::<borrowck, _>(tcx, enc, qri)?;
                 encode_query_results::<mir_borrowck, _>(tcx, enc, qri)?;
-                encode_query_results::<mir_const_qualif, _>(tcx, enc, qri)?;
                 encode_query_results::<def_symbol_name, _>(tcx, enc, qri)?;
-                encode_query_results::<const_is_rvalue_promotable_to_static, _>(tcx, enc, qri)?;
                 encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
                 encode_query_results::<check_match, _>(tcx, enc, qri)?;
                 encode_query_results::<codegen_fn_attrs, _>(tcx, enc, qri)?;

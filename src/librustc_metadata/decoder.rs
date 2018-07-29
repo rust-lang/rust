@@ -770,14 +770,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
-        match self.entry(id).kind {
-            EntryKind::AssociatedConst(_, data, _) |
-            EntryKind::Const(data, _) => data.ast_promotable,
-            _ => bug!(),
-        }
-    }
-
     pub fn is_item_mir_available(&self, id: DefIndex) -> bool {
         !self.is_proc_macro(id) &&
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
@@ -793,17 +785,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn mir_const_qualif(&self, id: DefIndex) -> u8 {
-        match self.entry(id).kind {
-            EntryKind::Const(qualif, _) |
-            EntryKind::AssociatedConst(AssociatedContainer::ImplDefault, qualif, _) |
-            EntryKind::AssociatedConst(AssociatedContainer::ImplFinal, qualif, _) => {
-                qualif.mir
-            }
-            _ => bug!(),
-        }
-    }
-
     pub fn get_associated_item(&self, id: DefIndex) -> ty::AssociatedItem {
         let item = self.entry(id);
         let def_key = self.def_key(id);
@@ -811,7 +792,7 @@ impl<'a, 'tcx> CrateMetadata {
         let name = def_key.disambiguated_data.data.get_opt_name().unwrap();
 
         let (kind, container, has_self) = match item.kind {
-            EntryKind::AssociatedConst(container, _, _) => {
+            EntryKind::AssociatedConst(container, _) => {
                 (ty::AssociatedKind::Const, container, false)
             }
             EntryKind::Method(data) => {
@@ -1006,8 +987,8 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_rendered_const(&self, id: DefIndex) -> String {
         match self.entry(id).kind {
-            EntryKind::Const(_, data) |
-            EntryKind::AssociatedConst(_, _, data) => data.decode(self).0,
+            EntryKind::Const(data) |
+            EntryKind::AssociatedConst(_, data) => data.decode(self).0,
             _ => bug!(),
         }
     }

@@ -802,18 +802,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         let kind = match trait_item.kind {
             ty::AssociatedKind::Const => {
-                let const_qualif =
-                    if let hir::TraitItemKind::Const(_, Some(body)) = ast_item.node {
-                        self.const_qualif(0, body)
-                    } else {
-                        ConstQualif { mir: 0, ast_promotable: false }
-                    };
-
                 let rendered =
                     hir::print::to_string(&self.tcx.hir, |s| s.print_trait_item(ast_item));
                 let rendered_const = self.lazy(&RenderedConst(rendered));
 
-                EntryKind::AssociatedConst(container, const_qualif, rendered_const)
+                EntryKind::AssociatedConst(container, rendered_const)
             }
             ty::AssociatedKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
@@ -886,13 +879,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         !self.tcx.sess.opts.output_types.should_codegen()
     }
 
-    fn const_qualif(&self, mir: u8, body_id: hir::BodyId) -> ConstQualif {
-        let body_owner_def_id = self.tcx.hir.body_owner_def_id(body_id);
-        let ast_promotable = self.tcx.const_is_rvalue_promotable_to_static(body_owner_def_id);
-
-        ConstQualif { mir, ast_promotable }
-    }
-
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
@@ -911,20 +897,17 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let kind = match impl_item.kind {
             ty::AssociatedKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.node {
-                    let mir = self.tcx.at(ast_item.span).mir_const_qualif(def_id).0;
-
                     EntryKind::AssociatedConst(container,
-                        self.const_qualif(mir, body_id),
                         self.encode_rendered_const_for_body(body_id))
                 } else {
                     bug!()
                 }
             }
             ty::AssociatedKind::Method => {
-                let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
+                let fn_data = if let hir::ImplItemKind::Method(ref sig, body_id) = ast_item.node {
                     FnData {
                         constness: sig.header.constness,
-                        arg_names: self.encode_fn_arg_names_for_body(body),
+                        arg_names: self.encode_fn_arg_names_for_body(body_id),
                         sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
@@ -1047,19 +1030,14 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             hir::ItemKind::Static(_, hir::MutMutable, _) => EntryKind::MutStatic,
             hir::ItemKind::Static(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
-                let mir = tcx.at(item.span).mir_const_qualif(def_id).0;
-                EntryKind::Const(
-                    self.const_qualif(mir, body_id),
-                    self.encode_rendered_const_for_body(body_id)
-                )
+                EntryKind::Const(self.encode_rendered_const_for_body(body_id))
             }
-            hir::ItemKind::Fn(_, header, .., body) => {
+            hir::ItemKind::Fn(_, header, .., body_id) => {
                 let data = FnData {
                     constness: header.constness,
-                    arg_names: self.encode_fn_arg_names_for_body(body),
+                    arg_names: self.encode_fn_arg_names_for_body(body_id),
                     sig: self.lazy(&tcx.fn_sig(def_id)),
                 };
-
                 EntryKind::Fn(self.lazy(&data))
             }
             hir::ItemKind::Mod(ref m) => {
@@ -1383,10 +1361,9 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         let body_id = tcx.hir.body_owned_by(id);
         let const_data = self.encode_rendered_const_for_body(body_id);
-        let mir = tcx.mir_const_qualif(def_id).0;
 
         Entry {
-            kind: EntryKind::Const(self.const_qualif(mir, body_id), const_data),
+            kind: EntryKind::Const(const_data),
             visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),

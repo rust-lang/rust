@@ -73,6 +73,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(macro_at_most_once_rep)]
 #![feature(inclusive_range_methods)]
+#![feature(extern_prelude)]
 
 #![recursion_limit="512"]
 

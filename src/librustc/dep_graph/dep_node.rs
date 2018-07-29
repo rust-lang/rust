@@ -476,7 +476,6 @@ define_dep_nodes!( <'tcx>
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
-    [] MirConstQualif(DefId),
     [] MirBuilt(DefId),
     [] MirConst(DefId),
     [] MirValidated(DefId),
@@ -559,7 +558,6 @@ define_dep_nodes!( <'tcx>
     [input] DefSpan(DefId),
     [] LookupStability(DefId),
     [] LookupDeprecationEntry(DefId),
-    [] ConstIsRvaluePromotableToStatic(DefId),
     [] RvaluePromotableMap(DefId),
     [] ImplParent(DefId),
     [] TraitOfItem(DefId),

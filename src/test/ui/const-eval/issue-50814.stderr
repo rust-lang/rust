@@ -4,13 +4,13 @@ error[E0080]: referenced constant has errors
 LL |     const MAX: u8 = A::MAX + B::MAX;
    |                     --------------- attempt to add with overflow
 ...
-LL |     &Sum::<U8,U8>::MAX //~ ERROR erroneous constant used
+LL |     &Sum::<U8,U8>::MAX //~ ERROR erroneous constant
    |     ^^^^^^^^^^^^^^^^^^
 
 error[E0080]: erroneous constant used
   --> $DIR/issue-50814.rs:27:5
    |
-LL |     &Sum::<U8,U8>::MAX //~ ERROR erroneous constant used
+LL |     &Sum::<U8,U8>::MAX //~ ERROR erroneous constant
    |     ^-----------------
    |      |
    |      referenced constant has errors

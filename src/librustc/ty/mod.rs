@@ -3022,3 +3022,46 @@ impl fmt::Debug for SymbolName {
         fmt::Display::fmt(&self.name, fmt)
     }
 }
+
+impl_stable_hash_for!(enum self::Promotability {
+    Promotable,
+    NotInspectable,
+    NotPromotable
+});
+
+#[must_use]
+#[derive(Debug, PartialEq, Clone, RustcEncodable, RustcDecodable)]
+/// A fancy `bool` for making it less fragile to compute the promotability of something
+pub enum Promotability {
+    Promotable,
+    /// The value is promotable as long as that promotion will not cause parts of it to be inspected
+    /// at compile-time. So it can't be used in a BinOp or UnOp, or dereferenced, or...
+    NotInspectable,
+    NotPromotable
+}
+
+impl Promotability {
+    pub fn inspect(self) -> Self {
+        match self {
+            // We are allowed to promote operations inspecting the value on these
+            Promotability::Promotable => Promotability::Promotable,
+            // We are *not* allowed to inspect values of this
+            Promotability::NotInspectable => Promotability::NotPromotable,
+            // This isn't promoted anyway
+            Promotability::NotPromotable => Promotability::NotPromotable,
+        }
+    }
+}
+
+impl std::ops::BitAnd for Promotability {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        use self::Promotability::*;
+        match (self, rhs) {
+            (NotPromotable, _) | (_, NotPromotable) => NotPromotable,
+            (NotInspectable, _) | (_, NotInspectable) => NotInspectable,
+            (Promotable, Promotable) => Promotable,
+        }
+    }
+}
