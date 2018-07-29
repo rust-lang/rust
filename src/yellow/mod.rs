@@ -8,7 +8,7 @@ use std::{
     mem
 };
 pub(crate) use self::{
-    green::{GreenNode, TextLen},
+    green::{GreenNode, GreenNodeBuilder},
     red::RedNode,
     syntax::SyntaxError,
     builder::GreenBuilder,

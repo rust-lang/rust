@@ -1,187 +1,159 @@
 use std::sync::Arc;
-use text_unit::TextUnit;
-use SyntaxKind;
+use {SyntaxKind::{self, *}, TextUnit};
 
-type TokenText = String;
-
-#[derive(Debug)]
-pub(crate) struct GreenNode {
-    kind: SyntaxKind,
-    data: GreenNodeData,
+#[derive(Clone, Debug)]
+pub(crate) enum GreenNode {
+    Leaf(GreenLeaf),
+    Branch(Arc<GreenBranch>),
 }
 
 impl GreenNode {
-    pub(crate) fn new_leaf(kind: SyntaxKind, text: TokenText) -> GreenNode {
-        GreenNode {
-            kind,
-            data: GreenNodeData::Leaf(GreenLeaf { text }),
+    pub fn kind(&self) -> SyntaxKind {
+        match self {
+            GreenNode::Leaf(l) => l.kind(),
+            GreenNode::Branch(b) => b.kind(),
         }
     }
 
-    pub(crate) fn new_branch(
-        kind: SyntaxKind,
-    ) -> GreenNode {
-        let branch = GreenBranch {
-            text_len: 0.into(),
-            leading_trivia: Trivias::default(),
-            children: Vec::new(),
-        };
-        GreenNode {
-            kind,
-            data: GreenNodeData::Branch(branch),
+    pub fn text_len(&self) -> TextUnit {
+        match self {
+            GreenNode::Leaf(l) => l.text_len(),
+            GreenNode::Branch(b) => b.text_len(),
         }
     }
 
-    pub(crate) fn push_trivia(&mut self, kind: SyntaxKind, text: TokenText) {
-        let branch = match &mut self.data {
-            GreenNodeData::Branch(branch) => branch,
-            _ => panic!()
-        };
-        branch.text_len += TextUnit::of_str(&text);
-        let leading = &mut branch.leading_trivia;
-        branch.children.last_mut().map(|(_, t)| t).unwrap_or(leading)
-            .push(Arc::new(GreenTrivia { kind, text }));
-    }
-
-    pub(crate) fn push_child(&mut self, node: Arc<GreenNode>) {
-        let branch = match &mut self.data {
-            GreenNodeData::Branch(branch) => branch,
-            _ => panic!()
-        };
-        branch.text_len += node.text_len();
-        branch.children.push((node, Trivias::default()));
-    }
-
-    pub(crate) fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
-    pub(crate) fn text_len(&self) -> TextUnit {
-        match &self.data {
-            GreenNodeData::Leaf(l) => l.text_len(),
-            GreenNodeData::Branch(b) => b.text_len(),
+    pub fn children(&self) -> &[GreenNode] {
+        match self {
+            GreenNode::Leaf(_) => &[],
+            GreenNode::Branch(b) => b.children(),
         }
     }
 
-    pub(crate) fn text(&self) -> String {
+    pub fn text(&self) -> String {
         let mut buff = String::new();
         go(self, &mut buff);
         return buff;
         fn go(node: &GreenNode, buff: &mut String) {
-            match &node.data {
-                GreenNodeData::Leaf(l) => buff.push_str(&l.text),
-                GreenNodeData::Branch(branch) => {
-                    add_trivia(&branch.leading_trivia, buff);
-                    branch.children.iter().for_each(|(child, trivias)| {
-                        go(child, buff);
-                        add_trivia(trivias, buff);
-                    })
+            match node {
+                GreenNode::Leaf(l) => buff.push_str(&l.text()),
+                GreenNode::Branch(b) => {
+                    b.children().iter().for_each(|child| go(child, buff))
                 }
             }
         }
-
-        fn add_trivia(trivias: &Trivias, buff: &mut String) {
-            trivias.iter().for_each(|t| buff.push_str(&t.text))
-        }
-    }
-
-    pub(crate) fn n_children(&self) -> usize {
-        match &self.data {
-            GreenNodeData::Leaf(_) => 0,
-            GreenNodeData::Branch(branch) => branch.children.len(),
-        }
-    }
-
-    pub(crate) fn nth_child(&self, idx: usize) -> &Arc<GreenNode> {
-        match &self.data {
-            GreenNodeData::Leaf(_) => panic!("leaf nodes have no children"),
-            GreenNodeData::Branch(branch) => &branch.children[idx].0,
-        }
-    }
-
-    pub(crate) fn nth_trivias(&self, idx: usize) -> &Trivias {
-        match &self.data {
-            GreenNodeData::Leaf(_) => panic!("leaf nodes have no children"),
-            GreenNodeData::Branch(branch) => if idx == 0 {
-                &branch.leading_trivia
-            } else {
-                &branch.children[idx - 1].1
-            },
-        }
-    }
-
-    pub(crate) fn is_leaf(&self) -> bool {
-        match self.data {
-            GreenNodeData::Leaf(_) => true,
-            GreenNodeData::Branch(_) => false
-        }
     }
 }
 
-#[derive(Debug)]
-enum GreenNodeData {
-    Leaf(GreenLeaf),
-    Branch(GreenBranch),
+pub(crate) struct GreenNodeBuilder {
+    kind: SyntaxKind,
+    children: Vec<GreenNode>,
 }
 
-#[derive(Debug)]
-struct GreenLeaf {
-    text: TokenText
+impl GreenNodeBuilder {
+    pub(crate) fn new_leaf(kind: SyntaxKind, text: &str) -> GreenNode {
+        GreenNode::Leaf(GreenLeaf::new(kind, text))
+    }
+
+    pub(crate) fn new_internal(kind: SyntaxKind) -> GreenNodeBuilder {
+        GreenNodeBuilder {
+            kind,
+            children: Vec::new(),
+        }
+    }
+
+    pub(crate) fn push_child(&mut self, node: GreenNode) {
+        self.children.push(node)
+    }
+
+    pub(crate) fn build(self) -> GreenNode {
+        let branch = GreenBranch::new(self.kind, self.children);
+        GreenNode::Branch(Arc::new(branch))
+    }
 }
 
-#[derive(Debug)]
-struct GreenBranch {
+
+#[test]
+fn assert_send_sync() {
+    fn f<T: Send + Sync>() {}
+    f::<GreenNode>();
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum GreenLeaf {
+    Whitespace {
+        newlines: u8,
+        spaces: u8,
+    },
+    Token {
+        kind: SyntaxKind,
+        text: Arc<str>,
+    },
+}
+
+impl GreenLeaf {
+    fn new(kind: SyntaxKind, text: &str) -> Self {
+        if kind == WHITESPACE {
+            let newlines = text.bytes().take_while(|&b| b == b'\n').count();
+            let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
+            if newlines + spaces == text.len() && newlines <= N_NEWLINES && spaces <= N_SPACES {
+                return GreenLeaf::Whitespace { newlines: newlines as u8, spaces: spaces as u8 };
+            }
+        }
+        GreenLeaf::Token { kind, text: text.to_owned().into_boxed_str().into() }
+    }
+
+    pub(crate) fn kind(&self) -> SyntaxKind {
+        match self {
+            GreenLeaf::Whitespace { .. } => WHITESPACE,
+            GreenLeaf::Token { kind, .. } => *kind,
+        }
+    }
+
+    pub(crate) fn text(&self) -> &str {
+        match self {
+            &GreenLeaf::Whitespace { newlines, spaces } => {
+                let newlines = newlines as usize;
+                let spaces = spaces as usize;
+                assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
+                &WS[N_NEWLINES - newlines..N_NEWLINES + spaces]
+            }
+            GreenLeaf::Token { text, .. } => text,
+        }
+    }
+
+    pub(crate) fn text_len(&self) -> TextUnit {
+        TextUnit::of_str(self.text())
+    }
+}
+
+const N_NEWLINES: usize = 16;
+const N_SPACES: usize = 64;
+const WS: &str =
+    "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                ";
+
+#[derive(Clone, Debug)]
+pub(crate) struct GreenBranch {
     text_len: TextUnit,
-    leading_trivia: Trivias,
-    children: Vec<(Arc<GreenNode>, Trivias)>,
+    kind: SyntaxKind,
+    children: Vec<GreenNode>,
 }
 
-#[derive(Debug)]
-pub(crate) struct GreenTrivia {
-    pub(crate) kind: SyntaxKind,
-    pub(crate) text: TokenText,
-}
-
-type Trivias = Vec<Arc<GreenTrivia>>;
-
-
-pub(crate) trait TextLen {
-    fn text_len(&self) -> TextUnit;
-}
-
-impl TextLen for GreenTrivia {
-    fn text_len(&self) -> TextUnit {
-        TextUnit::of_str(&self.text)
+impl GreenBranch {
+    fn new(kind: SyntaxKind, children: Vec<GreenNode>) -> GreenBranch {
+        let text_len = children.iter().map(|x| x.text_len()).sum::<TextUnit>();
+        GreenBranch { text_len, kind, children }
     }
-}
 
-impl<T: TextLen> TextLen for Arc<T> {
-    fn text_len(&self) -> TextUnit {
-        let this: &T = self;
-        this.text_len()
+    pub fn kind(&self) -> SyntaxKind {
+        self.kind
     }
-}
 
-impl TextLen for GreenNode {
-    fn text_len(&self) -> TextUnit {
-        self.text_len()
-    }
-}
-
-impl TextLen for GreenLeaf {
-    fn text_len(&self) -> TextUnit {
-        TextUnit::of_str(&self.text)
-    }
-}
-
-impl TextLen for GreenBranch {
-    fn text_len(&self) -> TextUnit {
+    pub fn text_len(&self) -> TextUnit {
         self.text_len
     }
-}
 
-impl<T: TextLen> TextLen for [T] {
-    fn text_len(&self) -> TextUnit {
-        self.iter().map(TextLen::text_len).sum()
+    pub fn children(&self) -> &[GreenNode] {
+        self.children.as_slice()
     }
 }
+

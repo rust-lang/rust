@@ -1,12 +1,12 @@
 use std::sync::{Arc, RwLock};
 use {
     TextUnit,
-    yellow::{Ptr, GreenNode, TextLen}
+    yellow::{Ptr, GreenNode},
 };
 
 #[derive(Debug)]
 pub(crate) struct RedNode {
-    green: Arc<GreenNode>,
+    green: GreenNode,
     parent: Option<ParentData>,
     children: RwLock<Vec<Option<Arc<RedNode>>>>,
 }
@@ -20,30 +20,30 @@ struct ParentData {
 
 impl RedNode {
     pub fn new_root(
-        green: Arc<GreenNode>,
+        green: GreenNode,
     ) -> RedNode {
         RedNode::new(green, None)
     }
 
     fn new_child(
-        green: Arc<GreenNode>,
+        green: GreenNode,
         parent: Ptr<RedNode>,
         start_offset: TextUnit,
-        index_in_parent: usize
+        index_in_parent: usize,
     ) -> RedNode {
         let parent_data = ParentData {
             parent,
             start_offset,
-            index_in_parent
+            index_in_parent,
         };
         RedNode::new(green, Some(parent_data))
     }
 
     fn new(
-        green: Arc<GreenNode>,
+        green: GreenNode,
         parent: Option<ParentData>,
     ) -> RedNode {
-        let children = vec![None; green.n_children()];
+        let children = vec![None; green.children().len()];
         RedNode { green, parent, children: RwLock::new(children) }
     }
 
@@ -59,29 +59,22 @@ impl RedNode {
     }
 
     pub(crate) fn n_children(&self) -> usize {
-        self.green.n_children()
+        self.green.children().len()
     }
 
-    pub(crate) fn nth_child(&self, me: Ptr<RedNode>, n: usize) -> Arc<RedNode> {
-        match &self.children.read().unwrap()[n] {
+    pub(crate) fn nth_child(&self, me: Ptr<RedNode>, idx: usize) -> Arc<RedNode> {
+        match &self.children.read().unwrap()[idx] {
             Some(child) => return child.clone(),
             None => (),
         }
         let mut children = self.children.write().unwrap();
-        if children[n].is_none() {
-            let start_offset = {
-                let mut acc = self.start_offset();
-                for i in 0..n {
-                    acc += self.green.nth_trivias(i).text_len();
-                    acc += self.green.nth_child(i).text_len();
-                }
-                acc += self.green.nth_trivias(n).text_len();
-                acc
-            };
-            let green = self.green.nth_child(n).clone();
-            let child = RedNode::new_child(green, me, start_offset, n);
-            children[n] = Some(Arc::new(child))
+        if children[idx].is_none() {
+            let green_children = self.green.children();
+            let start_offset = self.start_offset()
+                + green_children[..idx].iter().map(|x| x.text_len()).sum::<TextUnit>();
+            let child = RedNode::new_child(green_children[idx].clone(), me, start_offset, idx);
+            children[idx] = Some(Arc::new(child))
         }
-        children[n].as_ref().unwrap().clone()
+        children[idx].as_ref().unwrap().clone()
     }
 }
