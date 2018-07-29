@@ -1,40 +1,124 @@
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:14:21
+  --> $DIR/use_self.rs:11:21
    |
-14 |         fn new() -> Foo {
+11 |         fn new() -> Foo {
    |                     ^^^ help: use the applicable keyword: `Self`
    |
    = note: `-D use-self` implied by `-D warnings`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:15:13
+  --> $DIR/use_self.rs:12:13
    |
-15 |             Foo {}
+12 |             Foo {}
    |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:17:22
+  --> $DIR/use_self.rs:14:22
    |
-17 |         fn test() -> Foo {
+14 |         fn test() -> Foo {
    |                      ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:18:13
+  --> $DIR/use_self.rs:15:13
    |
-18 |             Foo::new()
+15 |             Foo::new()
    |             ^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:23:25
+  --> $DIR/use_self.rs:20:25
    |
-23 |         fn default() -> Foo {
+20 |         fn default() -> Foo {
    |                         ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:24:13
+  --> $DIR/use_self.rs:21:13
    |
-24 |             Foo::new()
+21 |             Foo::new()
    |             ^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 6 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:84:22
+   |
+84 |         fn refs(p1: &Bad) -> &Bad {
+   |                      ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:84:31
+   |
+84 |         fn refs(p1: &Bad) -> &Bad {
+   |                               ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:88:37
+   |
+88 |         fn ref_refs<'a>(p1: &'a &'a Bad) -> &'a &'a Bad {
+   |                                     ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:88:53
+   |
+88 |         fn ref_refs<'a>(p1: &'a &'a Bad) -> &'a &'a Bad {
+   |                                                     ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:92:30
+   |
+92 |         fn mut_refs(p1: &mut Bad) -> &mut Bad {
+   |                              ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:92:43
+   |
+92 |         fn mut_refs(p1: &mut Bad) -> &mut Bad {
+   |                                           ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:96:28
+   |
+96 |         fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {
+   |                            ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:96:46
+   |
+96 |         fn nested(_p1: Box<Bad>, _p2: (&u8, &Bad)) {
+   |                                              ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:99:20
+   |
+99 |         fn vals(_: Bad) -> Bad {
+   |                    ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:99:28
+   |
+99 |         fn vals(_: Bad) -> Bad {
+   |                            ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/use_self.rs:100:13
+    |
+100 |             Bad::default()
+    |             ^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/use_self.rs:105:23
+    |
+105 |         type Output = Bad;
+    |                       ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/use_self.rs:107:27
+    |
+107 |         fn mul(self, rhs: Bad) -> Bad {
+    |                           ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/use_self.rs:107:35
+    |
+107 |         fn mul(self, rhs: Bad) -> Bad {
+    |                                   ^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 20 previous errors
 
