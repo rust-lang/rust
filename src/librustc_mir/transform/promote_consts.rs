@@ -390,7 +390,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             LocalDecl::new_return_place(tcx.types.never, mir.span)
         ).collect();
 
-        let mut promoter = Promoter {
+        let promoter = Promoter {
             promoted: Mir::new(
                 IndexVec::new(),
                 // FIXME: maybe try to filter this to avoid blowing up

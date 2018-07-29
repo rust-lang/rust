@@ -353,7 +353,7 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Visibility::Hidden
             }
         };
-        let (linkage, mut visibility) = match mono_item.explicit_linkage(tcx) {
+        let (linkage, visibility) = match mono_item.explicit_linkage(tcx) {
             Some(explicit_linkage) => (explicit_linkage, Visibility::Default),
             None => {
                 match mono_item {

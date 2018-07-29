@@ -2814,7 +2814,7 @@ impl<'a> LoweringContext<'a> {
                 let mut defs = self.expect_full_def_from_use(id);
                 // we want to return *something* from this function, so hang onto the first item
                 // for later
-                let mut ret_def = defs.next().unwrap_or(Def::Err);
+                let ret_def = defs.next().unwrap_or(Def::Err);
 
                 for (def, &new_node_id) in defs.zip([id1, id2].iter()) {
                     let vis = vis.clone();

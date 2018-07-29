@@ -1054,7 +1054,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // found arguments is empty (assume the user just wants to ignore args in this case).
             // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
-                let mut underscores = "_".repeat(expected_args.len())
+                let underscores = "_".repeat(expected_args.len())
                                       .split("")
                                       .filter(|s| !s.is_empty())
                                       .collect::<Vec<_>>()
