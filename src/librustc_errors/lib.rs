@@ -608,9 +608,8 @@ impl Handler {
         if can_show_explain && are_there_diagnostics {
             let mut error_codes =
                 self.emitted_diagnostic_codes.borrow()
-                                             .clone()
-                                             .into_iter()
-                                             .filter_map(|x| match x {
+                                             .iter()
+                                             .filter_map(|x| match *x {
                                                  DiagnosticId::Error(ref s) => Some(s.clone()),
                                                  _ => None,
                                              })

@@ -32,7 +32,7 @@ use arena::TypedArena;
 
 use std::cmp::{self, Ordering};
 use std::fmt;
-use std::iter::{FromIterator, IntoIterator, repeat};
+use std::iter::{FromIterator, IntoIterator};
 
 pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
                                 -> &'a Pattern<'tcx>
@@ -115,7 +115,7 @@ impl<'a, 'tcx> fmt::Debug for Matrix<'a, 'tcx> {
         }).collect();
 
         let total_width = column_widths.iter().cloned().sum::<usize>() + column_count * 3 + 1;
-        let br = repeat('+').take(total_width).collect::<String>();
+        let br = "+".repeat(total_width);
         write!(f, "{}\n", br)?;
         for row in pretty_printed_matrix {
             write!(f, "+")?;

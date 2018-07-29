@@ -805,7 +805,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     //     Foo<_, Qux>
                     //         ^ elided type as this type argument was the same in both sides
                     let type_arguments = sub1.types().zip(sub2.types());
-                    let regions_len = sub1.regions().collect::<Vec<_>>().len();
+                    let regions_len = sub1.regions().count();
                     for (i, (ta1, ta2)) in type_arguments.take(len).enumerate() {
                         let i = i + regions_len;
                         if ta1 == ta2 {

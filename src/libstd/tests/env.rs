@@ -11,7 +11,6 @@
 extern crate rand;
 
 use std::env::*;
-use std::iter::repeat;
 use std::ffi::{OsString, OsStr};
 
 use rand::Rng;
@@ -72,7 +71,7 @@ fn test_var_big() {
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn test_env_set_get_huge() {
     let n = make_rand_name();
-    let s = repeat("x").take(10000).collect::<String>();
+    let s = "x".repeat(10000);
     set_var(&n, &s);
     eq(var_os(&n), Some(&s));
     remove_var(&n);

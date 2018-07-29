@@ -29,13 +29,13 @@ pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mon
         (mono_item, mono_item.symbol_name(tcx))
     }).collect();
 
-    (&mut symbols[..]).sort_by_key(|&sym| sym.1);
+    symbols.sort_by_key(|sym| sym.1);
 
-    for pair in (&symbols[..]).windows(2) {
+    for pair in symbols.windows(2) {
         let sym1 = &pair[0].1;
         let sym2 = &pair[1].1;
 
-        if *sym1 == *sym2 {
+        if sym1 == sym2 {
             let mono_item1 = pair[0].0;
             let mono_item2 = pair[1].0;
 
@@ -51,9 +51,7 @@ pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mon
                         span2
                     })
                 }
-                (Some(span), None) |
-                (None, Some(span)) => Some(span),
-                _ => None
+                (span1, span2) => span1.or(span2),
             };
 
             let error_message = format!("symbol `{}` is already defined", sym1);

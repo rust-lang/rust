@@ -46,7 +46,6 @@ use std::ffi::OsStr;
 use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
-use std::iter::repeat;
 use std::mem;
 use std::path::{PathBuf, Path, Component};
 use std::str;
@@ -1712,7 +1711,7 @@ impl Context {
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     fn root_path(&self) -> String {
-        repeat("../").take(self.current.len()).collect::<String>()
+        "../".repeat(self.current.len())
     }
 
     /// Recurse in the directory structure and change the "root path" to make
@@ -2113,8 +2112,7 @@ impl<'a> fmt::Display for Item<'a> {
             let amt = if self.item.is_mod() { cur.len() - 1 } else { cur.len() };
             for (i, component) in cur.iter().enumerate().take(amt) {
                 write!(fmt, "<a href='{}index.html'>{}</a>::<wbr>",
-                       repeat("../").take(cur.len() - i - 1)
-                                    .collect::<String>(),
+                       "../".repeat(cur.len() - i - 1),
                        component)?;
             }
         }

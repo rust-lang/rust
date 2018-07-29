@@ -528,9 +528,7 @@ impl EmitterWriter {
 
         // If there are no annotations or the only annotations on this line are
         // MultilineLine, then there's only code being shown, stop processing.
-        if line.annotations.is_empty() || line.annotations.iter()
-            .filter(|a| !a.is_line()).collect::<Vec<_>>().len() == 0
-        {
+        if line.annotations.iter().all(|a| a.is_line()) {
             return vec![];
         }
 
@@ -901,9 +899,7 @@ impl EmitterWriter {
         //    |  |   length of label
         //    |  magic `3`
         //    `max_line_num_len`
-        let padding = (0..padding + label.len() + 5)
-            .map(|_| " ")
-            .collect::<String>();
+        let padding = " ".repeat(padding + label.len() + 5);
 
         /// Return whether `style`, or the override if present and the style is `NoStyle`.
         fn style_or_override(style: Style, override_style: Option<Style>) -> Style {

@@ -96,7 +96,6 @@ use std::error::Error;
 use std::ffi::OsString;
 use std::fmt::{self, Display};
 use std::io::{self, Read, Write};
-use std::iter::repeat;
 use std::mem;
 use std::panic;
 use std::path::{PathBuf, Path};
@@ -1227,7 +1226,7 @@ Available lint options:
     fn sort_lint_groups(lints: Vec<(&'static str, Vec<lint::LintId>, bool)>)
                         -> Vec<(&'static str, Vec<lint::LintId>)> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
-        lints.sort_by_key(|ref l| l.0);
+        lints.sort_by_key(|l| l.0);
         lints
     }
 
@@ -1251,9 +1250,7 @@ Available lint options:
                              .max()
                              .unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = repeat(" ")
-                        .take(max_name_len - x.chars().count())
-                        .collect::<String>();
+        let mut s = " ".repeat(max_name_len - x.chars().count());
         s.push_str(x);
         s
     };
@@ -1285,9 +1282,7 @@ Available lint options:
                                         .unwrap_or(0));
 
     let padded = |x: &str| {
-        let mut s = repeat(" ")
-                        .take(max_name_len - x.chars().count())
-                        .collect::<String>();
+        let mut s = " ".repeat(max_name_len - x.chars().count());
         s.push_str(x);
         s
     };

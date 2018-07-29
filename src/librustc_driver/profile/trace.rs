@@ -208,7 +208,7 @@ pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetr
     for (ref cons, ref qm) in counts.iter() {
         data.push((cons.clone(), qm.count.clone(), qm.dur_total.clone(), qm.dur_self.clone()));
     };
-    data.sort_by_key(|&k| Reverse(k.3));
+    data.sort_by_key(|k| Reverse(k.3));
     for (cons, count, dur_total, dur_self) in data {
         write!(count_file, "{}, {}, {}, {}\n",
                cons, count,
