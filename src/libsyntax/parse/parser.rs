@@ -6320,7 +6320,7 @@ impl<'a> Parser<'a> {
                 mod_name: mod_name.clone(),
                 default_path: default_path_str,
                 secondary_path: secondary_path_str,
-                dir_path: format!("{}", dir_path.display()),
+                dir_path: dir_path.display().to_string(),
             }),
             (true, true) => Err(Error::DuplicatePaths {
                 mod_name: mod_name.clone(),

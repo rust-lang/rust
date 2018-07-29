@@ -89,9 +89,9 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
     reset_ids(false);
 
     let text = if include_toc {
-        format!("{}", MarkdownWithToc(text))
+        MarkdownWithToc(text).to_string()
     } else {
-        format!("{}", Markdown(text, &[]))
+        Markdown(text, &[]).to_string()
     };
 
     let err = write!(

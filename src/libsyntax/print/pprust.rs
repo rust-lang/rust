@@ -631,7 +631,7 @@ pub trait PrintState<'a> {
                         self.writer().word(&ut.val_to_string(i))
                     }
                     ast::LitIntType::Unsuffixed => {
-                        self.writer().word(&format!("{}", i))
+                        self.writer().word(&i.to_string())
                     }
                 }
             }

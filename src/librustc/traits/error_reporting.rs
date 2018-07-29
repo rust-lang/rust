@@ -543,7 +543,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     &data.parent_trait_ref);
                 match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),
-                    None => Some(format!("{}", parent_trait_ref.skip_binder().self_ty())),
+                    None => Some(parent_trait_ref.skip_binder().self_ty().to_string()),
                 }
             }
             _ => None,
@@ -797,12 +797,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             ty::TypeVariants::TyTuple(ref tys) => ArgKind::Tuple(
                                 Some(span),
                                 tys.iter()
-                                    .map(|ty| ("_".to_owned(), format!("{}", ty.sty)))
+                                    .map(|ty| ("_".to_owned(), ty.sty.to_string()))
                                     .collect::<Vec<_>>()
                             ),
-                            _ => ArgKind::Arg("_".to_owned(), format!("{}", t.sty)),
+                            _ => ArgKind::Arg("_".to_owned(), t.sty.to_string()),
                         }).collect(),
-                    ref sty => vec![ArgKind::Arg("_".to_owned(), format!("{}", sty))],
+                    ref sty => vec![ArgKind::Arg("_".to_owned(), sty.to_string())],
                 };
                 if found.len() == expected.len() {
                     self.report_closure_arg_mismatch(span,
@@ -989,7 +989,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }) => {
                 (self.tcx.sess.codemap().def_span(span),
                  fields.iter().map(|field| {
-                     ArgKind::Arg(format!("{}", field.ident), "_".to_string())
+                     ArgKind::Arg(field.ident.to_string(), "_".to_string())
                  }).collect::<Vec<_>>())
             }
             hir::map::NodeStructCtor(ref variant_data) => {
@@ -1152,7 +1152,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ::rustc_target::spec::abi::Abi::Rust
                 )
             };
-            format!("{}", ty::Binder::bind(sig))
+            ty::Binder::bind(sig).to_string()
         }
 
         let argument_is_closure = expected_ref.skip_binder().substs.type_at(0).is_closure();
@@ -1575,10 +1575,10 @@ impl ArgKind {
             ty::TyTuple(ref tys) => ArgKind::Tuple(
                 None,
                 tys.iter()
-                   .map(|ty| ("_".to_owned(), format!("{}", ty.sty)))
+                   .map(|ty| ("_".to_owned(), ty.sty.to_string()))
                    .collect::<Vec<_>>()
             ),
-            _ => ArgKind::Arg("_".to_owned(), format!("{}", t.sty)),
+            _ => ArgKind::Arg("_".to_owned(), t.sty.to_string()),
         }
     }
 }

@@ -57,7 +57,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                         let lifetime_name = match sup_r {
                             RegionKind::ReFree(FreeRegion {
                                 bound_region: BoundRegion::BrNamed(_, ref name), ..
-                            }) => format!("{}", name),
+                            }) => name.to_string(),
                             _ => "'_".to_owned(),
                         };
                         if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(return_sp) {

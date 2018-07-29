@@ -206,7 +206,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
                             clause.push_str(" + ");
                         }
 
-                        clause.push_str(&format!("{}", lifetime));
+                        clause.push_str(&lifetime.to_string());
                     }
                 }
                 &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
@@ -458,10 +458,10 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                             fqp[..fqp.len() - 1].join("::"),
                             HRef::new(did, fqp.last().unwrap()))
                 }
-                None => format!("{}", HRef::new(did, &last.name)),
+                None => HRef::new(did, &last.name).to_string(),
             }
         } else {
-            format!("{}", HRef::new(did, &last.name))
+            HRef::new(did, &last.name).to_string()
         };
         write!(w, "{}{}", path, last.args)?;
     }
@@ -883,7 +883,7 @@ impl<'a> fmt::Display for Method<'a> {
                 if f.alternate() {
                     args.push_str(&format!("{:#}", input.type_));
                 } else {
-                    args.push_str(&format!("{}", input.type_));
+                    args.push_str(&input.type_.to_string());
                 }
                 args_plain.push_str(&format!("{:#}", input.type_));
             }
@@ -902,7 +902,7 @@ impl<'a> fmt::Display for Method<'a> {
         let arrow = if f.alternate() {
             format!("{:#}", decl.output)
         } else {
-            format!("{}", decl.output)
+            decl.output.to_string()
         };
 
         let pad = " ".repeat(name_len);

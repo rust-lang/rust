@@ -149,7 +149,7 @@ impl<'a> ArchiveBuilder<'a> {
         // Ignoring obj file starting with the crate name
         // as simple comparison is not enough - there
         // might be also an extra name suffix
-        let obj_start = format!("{}", name);
+        let obj_start = name.to_owned();
 
         self.add_archive(rlib, move |fname: &str| {
             // Ignore bytecode/metadata files, no matter the name.

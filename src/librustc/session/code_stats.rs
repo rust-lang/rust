@@ -135,8 +135,8 @@ impl CodeStats {
                 let VariantInfo { ref name, kind: _, align: _, size, ref fields } = *variant_info;
                 let indent = if !struct_like {
                     let name = match name.as_ref() {
-                        Some(name) => format!("{}", name),
-                        None => format!("{}", i),
+                        Some(name) => name.to_owned(),
+                        None => i.to_string(),
                     };
                     println!("print-type-size {}variant `{}`: {} bytes",
                              indent, name, size - discr_size);

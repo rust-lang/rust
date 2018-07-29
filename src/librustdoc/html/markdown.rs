@@ -881,14 +881,14 @@ mod tests {
     #[test]
     fn issue_17736() {
         let markdown = "# title";
-        format!("{}", Markdown(markdown, &[]));
+        Markdown(markdown, &[]).to_string();
         reset_ids(true);
     }
 
     #[test]
     fn test_header() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input, &[]));
+            let output = Markdown(input, &[]).to_string();
             assert_eq!(output, expect, "original: {}", input);
             reset_ids(true);
         }
@@ -910,7 +910,7 @@ mod tests {
     #[test]
     fn test_header_ids_multiple_blocks() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input, &[]));
+            let output = Markdown(input, &[]).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 
@@ -951,7 +951,7 @@ mod tests {
     #[test]
     fn test_markdown_html_escape() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", MarkdownHtml(input));
+            let output = MarkdownHtml(input).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 

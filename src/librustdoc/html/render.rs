@@ -2058,7 +2058,7 @@ impl<'a> Item<'a> {
         };
 
         let lines = if self.item.source.loline == self.item.source.hiline {
-            format!("{}", self.item.source.loline)
+            self.item.source.loline.to_string()
         } else {
             format!("{}-{}", self.item.source.loline, self.item.source.hiline)
         };
@@ -2233,7 +2233,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
             format!("{} [Read more]({})",
                     &plain_summary_line(Some(s)), naive_assoc_href(item, link))
         } else {
-            format!("{}", &plain_summary_line(Some(s)))
+            plain_summary_line(Some(s)).to_string()
         };
         render_markdown(w, &markdown, item.links(), prefix)?;
     } else if !prefix.is_empty() {
@@ -2730,7 +2730,7 @@ fn bounds(t_bounds: &[clean::GenericBound]) -> String {
                 bounds.push_str(" + ");
                 bounds_plain.push_str(" + ");
             }
-            bounds.push_str(&format!("{}", *p));
+            bounds.push_str(&(*p).to_string());
             bounds_plain.push_str(&format!("{:#}", *p));
         }
     }
@@ -3391,7 +3391,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     let name = attr.name();
 
     if attr.is_word() {
-        Some(format!("{}", name))
+        Some(name.to_string())
     } else if let Some(v) = attr.value_str() {
         Some(format!("{} = {:?}", name, v.as_str()))
     } else if let Some(values) = attr.meta_item_list() {
@@ -3639,7 +3639,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             }
         }
 
-        let impls = format!("{}", RendererStruct(cx, concrete, containing_item));
+        let impls = RendererStruct(cx, concrete, containing_item).to_string();
         if !impls.is_empty() {
             write!(w, "\
                 <h2 id='implementations' class='small-section-header'>\
@@ -3755,7 +3755,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                             &format!("<h3 class=\"important\">Important traits for {}</h3>\
                                       <code class=\"content\">",
                                      impl_.for_));
-                        trait_.push_str(&format!("{}", impl_.for_));
+                        trait_.push_str(&impl_.for_.to_string());
                     }
 
                     //use the "where" class here to make it small

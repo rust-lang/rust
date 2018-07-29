@@ -722,7 +722,7 @@ impl<'a> Context<'a> {
                   root.triple);
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: format!("{}", root.triple),
+                got: root.triple.to_string(),
             });
             return None;
         }

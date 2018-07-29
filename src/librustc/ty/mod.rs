@@ -225,7 +225,7 @@ impl AssociatedItem {
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
-                format!("{}", tcx.fn_sig(self.def_id).skip_binder())
+                tcx.fn_sig(self.def_id).skip_binder().to_string()
             }
             ty::AssociatedKind::Type => format!("type {};", self.ident),
             ty::AssociatedKind::Existential => format!("existential type {};", self.ident),

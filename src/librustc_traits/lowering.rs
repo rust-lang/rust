@@ -523,7 +523,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
                             Clause::Implies(program_clause) => program_clause,
                             Clause::ForAll(program_clause) => program_clause.skip_binder(),
                         };
-                        format!("{}", program_clause)
+                        program_clause.to_string()
                     })
                     .collect();
 

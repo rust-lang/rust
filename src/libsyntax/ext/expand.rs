@@ -380,7 +380,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                                             structs, enums and unions");
                         if let ast::AttrStyle::Inner = attr.style {
                             let trait_list = traits.iter()
-                                .map(|t| format!("{}", t)).collect::<Vec<_>>();
+                                .map(|t| t.to_string()).collect::<Vec<_>>();
                             let suggestion = format!("#[derive({})]", trait_list.join(", "));
                             err.span_suggestion_with_applicability(
                                 span, "try an outer attribute", suggestion,
@@ -558,7 +558,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         invoc.expansion_data.mark.set_expn_info(ExpnInfo {
             call_site: attr.span,
             def_site: None,
-            format: MacroAttribute(Symbol::intern(&format!("{}", attr.path))),
+            format: MacroAttribute(Symbol::intern(&attr.path.to_string())),
             allow_internal_unstable: false,
             allow_internal_unsafe: false,
             local_inner_macros: false,

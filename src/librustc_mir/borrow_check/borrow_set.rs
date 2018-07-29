@@ -86,7 +86,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
             mir::BorrowKind::Unique => "uniq ",
             mir::BorrowKind::Mut { .. } => "mut ",
         };
-        let region = format!("{}", self.region);
+        let region = self.region.to_string();
         let region = if region.len() > 0 {
             format!("{} ", region)
         } else {
