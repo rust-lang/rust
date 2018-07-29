@@ -65,9 +65,9 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
             );
             return impls;
         }
-        if self.cx.access_levels.borrow().is_doc_reachable(def_id) {
+        let ty = self.cx.tcx.type_of(def_id);
+        if self.cx.access_levels.borrow().is_doc_reachable(def_id) || ty.is_primitive() {
             let generics = self.cx.tcx.generics_of(def_id);
-            let ty = self.cx.tcx.type_of(def_id);
             let real_name = name.clone().map(|name| Ident::from_str(&name));
             let param_env = self.cx.tcx.param_env(def_id);
             for &trait_def_id in self.cx.all_traits.iter() {
@@ -84,8 +84,8 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
                         let trait_ref = infcx.tcx.impl_trait_ref(impl_def_id)
                                                  .expect("Cannot get impl trait");
 
-                        match infcx.tcx.type_of(impl_def_id).sty {
-                            ::rustc::ty::TypeVariants::TyParam(_) => {},
+                        match trait_ref.self_ty().sty {
+                            ty::TypeVariants::TyParam(_) => {},
                             _ => return,
                         }
 
@@ -153,7 +153,6 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
                                                                 .clean(self.cx)),
                                 }),
                             });
-                            debug!("{:?} => {}", trait_ref, may_apply);
                         }
                     });
                 });
