@@ -7,25 +7,13 @@ mod grammar;
 
 use std::sync::Arc;
 use {
-    File, SyntaxKind, Token,
+    Token,
     yellow::SyntaxNode,
     syntax_kinds::*
 };
 use GreenBuilder;
 use parser::event::process;
 
-
-/// Parse a sequence of tokens into the representative node tree
-pub fn parse(text: String, tokens: &[Token]) -> File {
-    let events = {
-        let input = input::ParserInput::new(&text, tokens);
-        let parser_impl = parser::imp::ParserImpl::new(&input);
-        let mut parser = parser::Parser(parser_impl);
-        grammar::file(&mut parser);
-        parser.0.into_events()
-    };
-    event::to_file(text, tokens, events)
-}
 
 /// Parse a sequence of tokens into the representative node tree
 pub fn parse_green(text: String, tokens: &[Token]) -> SyntaxNode {

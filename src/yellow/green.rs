@@ -116,13 +116,6 @@ impl GreenNode {
             GreenNodeData::Branch(_) => false
         }
     }
-
-    pub(crate) fn leaf_text(&self) -> &str {
-        match &self.data {
-            GreenNodeData::Leaf(l) => l.text.as_str(),
-            GreenNodeData::Branch(_) => panic!("not a leaf")
-        }
-    }
 }
 
 #[derive(Debug)]

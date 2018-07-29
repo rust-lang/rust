@@ -1,6 +1,6 @@
-use std::sync::{Arc, Weak, RwLock};
+use std::sync::{Arc, RwLock};
 use {
-    TextUnit, SyntaxKind, TextRange,
+    TextUnit,
     yellow::{Ptr, GreenNode, TextLen}
 };
 

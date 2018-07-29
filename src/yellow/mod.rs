@@ -4,7 +4,6 @@ mod syntax;
 
 use std::{
     sync::{Arc, Weak},
-    ops::Deref,
     mem
 };
 pub(crate) use self::{

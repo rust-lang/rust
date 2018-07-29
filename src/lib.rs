@@ -26,51 +26,20 @@ mod yellow;
 
 pub mod syntax_kinds;
 pub use text_unit::{TextRange, TextUnit};
-pub use tree::{File, Node, SyntaxKind, Token};
-pub(crate) use tree::{ErrorMsg, FileBuilder, Sink, GreenBuilder};
+pub use tree::{SyntaxKind, Token};
+pub(crate) use tree::{Sink, GreenBuilder};
 pub use lexer::{next_token, tokenize};
 pub use yellow::SyntaxNode;
 pub(crate) use yellow::SError;
-pub use parser::{parse, parse_green};
+pub use parser::{parse_green};
 
 /// Utilities for simple uses of the parser.
 pub mod utils {
     use std::fmt::Write;
 
-    use {File, Node, SyntaxNode};
+    use {SyntaxNode};
     use std::collections::BTreeSet;
     use SError;
-
-    /// Parse a file and create a string representation of the resulting parse tree.
-    pub fn dump_tree(file: &File) -> String {
-        let mut result = String::new();
-        go(file.root(), &mut result, 0);
-        return result;
-
-        fn go(node: Node, buff: &mut String, level: usize) {
-            buff.push_str(&String::from("  ").repeat(level));
-            write!(buff, "{:?}\n", node).unwrap();
-            let my_errors = node.errors().filter(|e| e.after_child().is_none());
-            let parent_errors = node.parent()
-                .into_iter()
-                .flat_map(|n| n.errors())
-                .filter(|e| e.after_child() == Some(node));
-
-            for err in my_errors {
-                buff.push_str(&String::from("  ").repeat(level));
-                write!(buff, "err: `{}`\n", err.message()).unwrap();
-            }
-
-            for child in node.children() {
-                go(child, buff, level + 1)
-            }
-
-            for err in parent_errors {
-                buff.push_str(&String::from("  ").repeat(level));
-                write!(buff, "err: `{}`\n", err.message()).unwrap();
-            }
-        }
-    }
 
     /// Parse a file and create a string representation of the resulting parse tree.
     pub fn dump_tree_green(syntax: &SyntaxNode) -> String {
@@ -82,12 +51,6 @@ pub mod utils {
         fn go(node: &SyntaxNode, buff: &mut String, level: usize, errors: &mut BTreeSet<SError>) {
             buff.push_str(&String::from("  ").repeat(level));
             write!(buff, "{:?}\n", node).unwrap();
-//            let my_errors = node.errors().filter(|e| e.after_child().is_none());
-//            let parent_errors = node.parent()
-//                .into_iter()
-//                .flat_map(|n| n.errors())
-//                .filter(|e| e.after_child() == Some(node));
-//
             let my_errors: Vec<_> = errors.iter().filter(|e| e.offset == node.range().start())
                 .cloned().collect();
             for err in my_errors {

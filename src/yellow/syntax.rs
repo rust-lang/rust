@@ -7,7 +7,6 @@ use {
     TextRange, TextUnit, SyntaxKind,
     yellow::{Ptr, RedNode, GreenNode, TextLen},
 };
-use yellow::green::GreenTrivia;
 
 #[derive(Clone)]
 pub struct SyntaxNode {
