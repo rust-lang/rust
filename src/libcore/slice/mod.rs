@@ -2359,6 +2359,22 @@ macro_rules! len {
         }
     }}
 }
+// To get rid of some bounds checks (see `position`), for some reason it
+// makes a difference to compute the length in this way.
+// (Tested by `codegen/slice-position-bounds-check`.)
+macro_rules! len2 {
+    ($self: ident) => {{
+        let start = $self.ptr;
+        let diff = ($self.end as usize).wrapping_sub(start as usize);
+        let size = size_from_ptr(start);
+        if size == 0 {
+            diff
+        } else {
+            // Using division instead of `offset_from` helps LLVM remove bounds checks
+            diff / size
+        }
+    }}
+}
 
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
@@ -2367,7 +2383,7 @@ macro_rules! iterator {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
             fn make_slice(&self) -> &'a [T] {
-                unsafe { from_raw_parts(self.ptr, len!(self)) }
+                unsafe { from_raw_parts(self.ptr, len2!(self)) }
             }
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
@@ -2510,9 +2526,8 @@ macro_rules! iterator {
                 Self: Sized,
                 P: FnMut(Self::Item) -> bool,
             {
-                // The addition might panic on overflow
-                // Use the len of the slice to hint optimizer to remove result index bounds check.
-                let n = self.make_slice().len();
+                // The addition might panic on overflow.
+                let n = len2!(self);
                 self.try_fold(0, move |i, x| {
                     if predicate(x) { Err(i) }
                     else { Ok(i + 1) }
@@ -2529,9 +2544,7 @@ macro_rules! iterator {
                 Self: Sized + ExactSizeIterator + DoubleEndedIterator
             {
                 // No need for an overflow check here, because `ExactSizeIterator`
-                // implies that the number of elements fits into a `usize`.
-                // Use the len of the slice to hint optimizer to remove result index bounds check.
-                let n = self.make_slice().len();
+                let n = len2!(self);
                 self.try_rfold(n, move |i, x| {
                     let i = i - 1;
                     if predicate(x) { Err(i) }
@@ -2776,7 +2789,7 @@ impl<'a, T> IterMut<'a, T> {
     /// ```
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn into_slice(self) -> &'a mut [T] {
-        unsafe { from_raw_parts_mut(self.ptr, len!(self)) }
+        unsafe { from_raw_parts_mut(self.ptr, len2!(self)) }
     }
 }
 
