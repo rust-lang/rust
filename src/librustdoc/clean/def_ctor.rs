@@ -16,7 +16,7 @@ pub fn get_def_ctor_from_def_id<F>(cx: &DocContext,
                                    def_id: DefId,
                                    callback: &F,
 ) -> Vec<Item>
-where F: Fn(&Fn(DefId) -> Def) -> Vec<Item> {
+where F: Fn(& dyn Fn(DefId) -> Def) -> Vec<Item> {
     let ty = cx.tcx.type_of(def_id);
 
     match ty.sty {
@@ -53,7 +53,7 @@ pub fn get_def_ctor_from_node_id<F>(cx: &DocContext,
                                     name: String,
                                     callback: &F,
 ) -> Vec<Item>
-where F: Fn(&Fn(DefId) -> Def, String) -> Vec<Item> {
+where F: Fn(& dyn Fn(DefId) -> Def, String) -> Vec<Item> {
     let item = &cx.tcx.hir.expect_item(id).node;
 
     callback(&match *item {
