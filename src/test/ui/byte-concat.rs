@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,8 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    concat!(b'f');
-    concat!(b"foo");
-    concat!(foo);   //~ ERROR: expected a literal
-    concat!(foo()); //~ ERROR: expected a literal
+    let _ = concat!(b"abc", b"def");
+    let _ = concat!("abc", b"def", "ghi", b"jkl");
+    //~^ ERROR cannot concatenate a byte string literal with string literals
 }
