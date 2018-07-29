@@ -50,6 +50,12 @@ To run:
 cargo +nightly fmt
 ```
 
+To format code that requires edition 2018, create a `rustfmt.toml` [configuration](#configuring-rustfmt) file containing:
+
+```toml
+edition = "Edition2018"
+```
+
 ## Limitations
 
 Rustfmt tries to work on as much Rust code as possible, sometimes, the code
