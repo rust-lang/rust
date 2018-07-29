@@ -96,7 +96,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
             if !trait_is_same_or_supertrait(cx, did, trait_did) {
                 return false
             }
-            let last = path.segments.last_mut().unwrap();
+            let last = path.segments.last_mut().expect("segments were empty");
             match last.args {
                 PP::AngleBracketed { ref mut bindings, .. } => {
                     bindings.push(clean::TypeBinding {

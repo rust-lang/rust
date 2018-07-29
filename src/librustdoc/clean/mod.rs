@@ -73,9 +73,13 @@ pub mod inline;
 pub mod cfg;
 mod simplify;
 mod auto_trait;
+mod blanket_impl;
+pub mod def_ctor;
+mod finder_trait;
 
 use self::cfg::Cfg;
 use self::auto_trait::AutoTraitFinder;
+use self::blanket_impl::BlanketImplFinder;
 
 thread_local!(static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = RefCell::new(FxHashMap()));
 
@@ -569,7 +573,7 @@ pub struct Module {
 impl Clean<Item> for doctree::Module {
     fn clean(&self, cx: &DocContext) -> Item {
         let name = if self.name.is_some() {
-            self.name.unwrap().clean(cx)
+            self.name.expect("No name provided").clean(cx)
         } else {
             "".to_string()
         };
@@ -1064,7 +1068,7 @@ fn span_of_attrs(attrs: &Attributes) -> syntax_pos::Span {
         return DUMMY_SP;
     }
     let start = attrs.doc_strings[0].span();
-    let end = attrs.doc_strings.last().unwrap().span();
+    let end = attrs.doc_strings.last().expect("No doc strings provided").span();
     start.to(end)
 }
 
@@ -1728,7 +1732,7 @@ impl Clean<Lifetime> for hir::GenericParam {
                         hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
                     });
-                    let name = bounds.next().unwrap().name.ident();
+                    let name = bounds.next().expect("no more bounds").name.ident();
                     let mut s = format!("{}: {}", self.name.ident(), name);
                     for bound in bounds {
                         s.push_str(&format!(" + {}", bound.name.ident()));
@@ -1841,8 +1845,8 @@ impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Region<'tcx>, ty:
     fn clean(&self, cx: &DocContext) -> WherePredicate {
         let ty::OutlivesPredicate(ref a, ref b) = *self;
         WherePredicate::RegionPredicate {
-            lifetime: a.clean(cx).unwrap(),
-            bounds: vec![GenericBound::Outlives(b.clean(cx).unwrap())]
+            lifetime: a.clean(cx).expect("failed to clean lifetime"),
+            bounds: vec![GenericBound::Outlives(b.clean(cx).expect("failed to clean bounds"))]
         }
     }
 }
@@ -1853,7 +1857,7 @@ impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<
 
         WherePredicate::BoundPredicate {
             ty: ty.clean(cx),
-            bounds: vec![GenericBound::Outlives(lt.clean(cx).unwrap())]
+            bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))]
         }
     }
 }
@@ -1947,7 +1951,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
                         hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
                     });
-                    let name = bounds.next().unwrap().name.ident();
+                    let name = bounds.next().expect("no more bounds").name.ident();
                     let mut s = format!("{}: {}", self.name.ident(), name);
                     for bound in bounds {
                         s.push_str(&format!(" + {}", bound.name.ident()));
@@ -2933,7 +2937,7 @@ impl Clean<Type> for hir::Ty {
                 };
 
                 if let Some(&hir::ItemKind::Ty(ref ty, ref generics)) = alias {
-                    let provided_params = &path.segments.last().unwrap();
+                    let provided_params = &path.segments.last().expect("segments were empty");
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
                     provided_params.with_generic_args(|generic_args| {
@@ -3006,7 +3010,7 @@ impl Clean<Type> for hir::Ty {
                     segments: segments.into(),
                 };
                 Type::QPath {
-                    name: p.segments.last().unwrap().ident.name.clean(cx),
+                    name: p.segments.last().expect("segments were empty").ident.name.clean(cx),
                     self_type: box qself.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
@@ -3062,7 +3066,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TySlice(ty) => Slice(box ty.clean(cx)),
             ty::TyArray(ty, n) => {
-                let mut n = cx.tcx.lift(&n).unwrap();
+                let mut n = cx.tcx.lift(&n).expect("array lift failed");
                 if let ConstValue::Unevaluated(def_id, substs) = n.val {
                     let param_env = cx.tcx.param_env(def_id);
                     let cid = GlobalId {
@@ -3084,7 +3088,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             },
             ty::TyFnDef(..) |
             ty::TyFnPtr(_) => {
-                let ty = cx.tcx.lift(self).unwrap();
+                let ty = cx.tcx.lift(self).expect("TyFnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
@@ -3175,7 +3179,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the projections associated with the def_id.
                 let predicates_of = cx.tcx.predicates_of(def_id);
-                let substs = cx.tcx.lift(&substs).unwrap();
+                let substs = cx.tcx.lift(&substs).expect("TyAnon lift failed");
                 let bounds = predicates_of.instantiate(cx.tcx, substs);
                 let mut regions = vec![];
                 let mut has_sized = false;
@@ -3314,6 +3318,7 @@ impl Clean<Vec<Item>> for doctree::Struct {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
         let name = self.name.clean(cx);
         let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
+        ret.extend(get_blanket_impls_with_node_id(cx, self.id, name.clone()));
 
         *cx.current_item_name.borrow_mut() = Some(self.name);
         ret.push(Item {
@@ -3340,6 +3345,7 @@ impl Clean<Vec<Item>> for doctree::Union {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
         let name = self.name.clean(cx);
         let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
+        ret.extend(get_blanket_impls_with_node_id(cx, self.id, name.clone()));
 
         *cx.current_item_name.borrow_mut() = Some(self.name);
         ret.push(Item {
@@ -3393,6 +3399,7 @@ impl Clean<Vec<Item>> for doctree::Enum {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
         let name = self.name.clean(cx);
         let mut ret = get_auto_traits_with_node_id(cx, self.id, name.clone());
+        ret.extend(get_blanket_impls_with_node_id(cx, self.id, name.clone()));
 
         *cx.current_item_name.borrow_mut() = Some(self.name);
         ret.push(Item {
@@ -3545,7 +3552,7 @@ pub struct Path {
 
 impl Path {
     pub fn last_name(&self) -> &str {
-        self.segments.last().unwrap().name.as_str()
+        self.segments.last().expect("segments were empty").name.as_str()
     }
 }
 
@@ -3875,6 +3882,17 @@ pub fn get_auto_traits_with_def_id(cx: &DocContext, id: DefId) -> Vec<Item> {
     finder.get_with_def_id(id)
 }
 
+pub fn get_blanket_impls_with_node_id(cx: &DocContext, id: ast::NodeId, name: String) -> Vec<Item> {
+    let finder = BlanketImplFinder::new(cx);
+    finder.get_with_node_id(id, name)
+}
+
+pub fn get_blanket_impls_with_def_id(cx: &DocContext, id: DefId) -> Vec<Item> {
+    let finder = BlanketImplFinder::new(cx);
+
+    finder.get_with_def_id(id)
+}
+
 fn get_name_if_possible(cx: &DocContext, node: NodeId) -> Option<Name> {
     match cx.tcx.hir.get(node) {
         Node::NodeItem(_) |
@@ -4196,7 +4214,7 @@ fn print_const(cx: &DocContext, n: &ty::Const) -> String {
         },
         _ => {
             let mut s = String::new();
-            ::rustc::mir::fmt_const_val(&mut s, n).unwrap();
+            ::rustc::mir::fmt_const_val(&mut s, n).expect("fmt_const_val failed");
             // array lengths are obviously usize
             if s.ends_with("usize") {
                 let n = s.len() - "usize".len();
@@ -4257,7 +4275,8 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::TyForeign(i) => (i, TypeKind::Foreign),
         Def::Const(i) => (i, TypeKind::Const),
         Def::Static(i, _) => (i, TypeKind::Static),
-        Def::Variant(i) => (cx.tcx.parent_def_id(i).unwrap(), TypeKind::Enum),
+        Def::Variant(i) => (cx.tcx.parent_def_id(i).expect("cannot get parent def id"),
+                            TypeKind::Enum),
         Def::Macro(i, _) => (i, TypeKind::Macro),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
         Def::SelfTy(_, Some(impl_def_id)) => {
