@@ -118,5 +118,6 @@ pub mod intrinsics {
         pub fn size_of<T>() -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
+        pub fn uninit<T>() -> T;
     }
 }

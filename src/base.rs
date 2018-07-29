@@ -501,7 +501,7 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinO
 
 fn trans_float_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
     let res = binop_match! {
-        fx, bin_op, false, lhs, rhs, "bool";
+        fx, bin_op, false, lhs, rhs, "float";
         Add (_) fadd;
         Sub (_) fsub;
         Mul (_) fmul;

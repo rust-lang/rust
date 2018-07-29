@@ -252,6 +252,9 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             let usize_layout = fx.layout_of(fx.tcx.types.usize);
             let ret = return_place.unwrap();
             match intrinsic {
+                "abort" => {
+                    fx.bcx.ins().trap(TrapCode::User(!0 - 1));
+                }
                 "copy" | "copy_nonoverlapping" => {
                     /*let elem_ty = substs.type_at(0);
                     assert_eq!(args.len(), 3);
@@ -265,6 +268,18 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     let size_of = fx.layout_of(substs.type_at(0)).size.bytes();
                     let size_of = CValue::const_val(fx, usize_layout.ty, size_of as i64);
                     ret.write_cvalue(fx, size_of);
+                }
+                "type_id" => {
+                    assert_eq!(args.len(), 0);
+                    let type_id = fx.tcx.type_id_hash(substs.type_at(0));
+                    let type_id = CValue::const_val(fx, usize_layout.ty, type_id as i64);
+                    ret.write_cvalue(fx, type_id);
+                }
+                "min_align_of" => {
+                    assert_eq!(args.len(), 0);
+                    let min_align = fx.layout_of(substs.type_at(0)).align.abi();
+                    let min_align = CValue::const_val(fx, usize_layout.ty, min_align as i64);
+                    ret.write_cvalue(fx, min_align);
                 }
                 _ if intrinsic.starts_with("unchecked_") => {
                     assert_eq!(args.len(), 2);
@@ -303,6 +318,20 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     let addr = args[0].force_stack(fx);
                     let dst_layout = fx.layout_of(dst_ty);
                     ret.write_cvalue(fx, CValue::ByRef(addr, dst_layout))
+                }
+                "uninit" => {
+                    assert_eq!(args.len(), 0);
+                    let ty = substs.type_at(0);
+                    let layout = fx.layout_of(ty);
+                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                        kind: StackSlotKind::ExplicitSlot,
+                        size: layout.size.bytes() as u32,
+                        offset: None,
+                    });
+
+                    let uninit_place = CPlace::from_stack_slot(fx, stack_slot, ty);
+                    let uninit_val = uninit_place.to_cvalue(fx);
+                    ret.write_cvalue(fx, uninit_val);
                 }
                 _ => fx.tcx.sess.fatal(&format!("unsupported intrinsic {}", intrinsic)),
             }

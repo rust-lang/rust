@@ -147,3 +147,7 @@ fn eq_char(a: char, b: char) -> bool {
 unsafe fn transmute(c: char) -> u32 {
     intrinsics::transmute(c)
 }
+
+unsafe fn call_uninit() -> u8 {
+    intrinsics::uninit()
+}
