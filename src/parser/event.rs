@@ -1,5 +1,5 @@
 use {
-    ErrorMsg, File, FileBuilder, Sink, SyntaxKind, Token,
+    ErrorMsg, File, FileBuilder, Sink, SyntaxKind, Token, GreenBuilder,
     syntax_kinds::TOMBSTONE,
 };
 use super::is_insignificant;
@@ -69,6 +69,11 @@ pub(crate) enum Event {
 
 pub(super) fn to_file(text: String, tokens: &[Token], events: Vec<Event>) -> File {
     let mut builder = FileBuilder::new(text);
+    process(&mut builder, tokens, events);
+    builder.finish()
+}
+
+pub(super) fn process(builder: &mut Sink, tokens: &[Token], events: Vec<Event>) {
     let mut idx = 0;
 
     let mut holes = Vec::new();
@@ -145,5 +150,4 @@ pub(super) fn to_file(text: String, tokens: &[Token], events: Vec<Event>) -> Fil
             &Event::Error { ref msg } => builder.error(ErrorMsg { msg: msg.clone() }),
         }
     }
-    builder.finish()
 }

@@ -12,18 +12,18 @@ FILE@[0; 95)
       WHITESPACE@[10; 11)
       R_CURLY@[11; 12)
       WHITESPACE@[12; 14)
+      err: `expected item`
   ERROR@[14; 17)
-  err: `expected item`
     IDENT@[14; 17) "bar"
+    err: `expected item`
   ERROR@[17; 18)
-  err: `expected item`
     L_PAREN@[17; 18)
+    err: `expected item`
   ERROR@[18; 20)
-  err: `expected item`
     R_PAREN@[18; 19)
     WHITESPACE@[19; 20)
+    err: `expected item`
   ERROR@[20; 82)
-  err: `expected item`
     L_CURLY@[20; 21)
     WHITESPACE@[21; 26)
     IF_KW@[26; 28)

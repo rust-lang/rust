@@ -2,7 +2,7 @@ mod file_builder;
 
 use ::{TextRange, TextUnit};
 use std::{fmt, cmp};
-pub(crate) use self::file_builder::{ErrorMsg, FileBuilder, Sink};
+pub(crate) use self::file_builder::{ErrorMsg, FileBuilder, Sink, GreenBuilder};
 
 pub use syntax_kinds::SyntaxKind;
 

@@ -22,23 +22,26 @@ FILE@[0; 74)
       WHITESPACE@[22; 27)
       PUB_KW@[27; 30)
       WHITESPACE@[30; 31)
+      err: `expected field declaration`
     ERROR@[31; 38)
-    err: `expected field declaration`
       INT_NUMBER@[31; 33)
       WHITESPACE@[33; 38)
-    err: `expected COMMA`
+      err: `expected COMMA`
+      err: `expected field declaration`
     ERROR@[38; 40)
-    err: `expected field declaration`
       PLUS@[38; 39)
       WHITESPACE@[39; 40)
+      err: `expected COMMA`
+      err: `expected field declaration`
     ERROR@[40; 42)
-    err: `expected field declaration`
       MINUS@[40; 41)
       WHITESPACE@[41; 42)
+      err: `expected COMMA`
+      err: `expected field declaration`
     ERROR@[42; 48)
-    err: `expected field declaration`
       STAR@[42; 43)
       WHITESPACE@[43; 48)
+      err: `expected COMMA`
     NAMED_FIELD@[48; 58)
       VISIBILITY@[48; 52)
         PUB_KW@[48; 51)

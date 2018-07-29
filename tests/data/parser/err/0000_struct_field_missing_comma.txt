@@ -18,7 +18,7 @@ FILE@[0; 34)
               WHITESPACE@[17; 18)
               IDENT@[18; 21) "u32"
               WHITESPACE@[21; 26)
-    err: `expected COMMA`
+              err: `expected COMMA`
     NAMED_FIELD@[26; 33)
       NAME@[26; 27)
         IDENT@[26; 27) "b"

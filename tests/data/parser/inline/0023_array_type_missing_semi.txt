@@ -13,16 +13,16 @@ FILE@[0; 18)
         L_PAREN@[10; 11)
         R_PAREN@[11; 12)
         WHITESPACE@[12; 13)
-      err: `expected `;` or `]``
-    err: `expected SEMI`
+        err: `expected SEMI`
+        err: `expected `;` or `]``
+        err: `expected item`
   ERROR@[13; 15)
-  err: `expected item`
     INT_NUMBER@[13; 15)
+    err: `expected item`
   ERROR@[15; 16)
-  err: `expected item`
     R_BRACK@[15; 16)
-  ERROR@[16; 18)
-  err: `expected item, found `;`
+    err: `expected item, found `;`
 consider removing this semicolon`
+  ERROR@[16; 18)
     SEMI@[16; 17)
     WHITESPACE@[17; 18)

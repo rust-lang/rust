@@ -32,7 +32,7 @@ FILE@[0; 40)
     COMMA@[36; 37)
     WHITESPACE@[37; 38)
     R_CURLY@[38; 39)
-  ERROR@[39; 40)
-  err: `expected item, found `;`
+    err: `expected item, found `;`
 consider removing this semicolon`
+  ERROR@[39; 40)
     SEMI@[39; 40)

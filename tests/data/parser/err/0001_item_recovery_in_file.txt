@@ -1,10 +1,10 @@
 FILE@[0; 21)
+err: `expected item`
   ERROR@[0; 3)
-  err: `expected item`
     IF_KW@[0; 2)
     WHITESPACE@[2; 3)
+    err: `expected item`
   ERROR@[3; 10)
-  err: `expected item`
     MATCH_KW@[3; 8)
     WHITESPACE@[8; 10)
   STRUCT_ITEM@[10; 21)

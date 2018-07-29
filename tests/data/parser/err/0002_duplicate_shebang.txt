@@ -1,7 +1,7 @@
 FILE@[0; 42)
   SHEBANG@[0; 20)
-  ERROR@[20; 42)
   err: `expected item`
+  ERROR@[20; 42)
     WHITESPACE@[20; 21)
     SHEBANG@[21; 41)
     WHITESPACE@[41; 42)

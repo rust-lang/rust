@@ -6,26 +6,26 @@ FILE@[0; 43)
       IDENT@[7; 8) "S"
     TYPE_PARAM_LIST@[8; 12)
       L_ANGLE@[8; 9)
-      ERROR@[9; 12)
       err: `expected type parameter`
+      ERROR@[9; 12)
         INT_NUMBER@[9; 11)
         WHITESPACE@[11; 12)
-      err: `expected COMMA`
-      err: `expected R_ANGLE`
-    err: `expected `;`, `{`, or `(``
+        err: `expected COMMA`
+        err: `expected R_ANGLE`
+        err: `expected `;`, `{`, or `(``
+        err: `expected item`
   ERROR@[12; 14)
-  err: `expected item`
     PLUS@[12; 13)
     WHITESPACE@[13; 14)
+    err: `expected item`
   ERROR@[14; 15)
-  err: `expected item`
     INT_NUMBER@[14; 15)
+    err: `expected item`
   ERROR@[15; 17)
-  err: `expected item`
     R_ANGLE@[15; 16)
     WHITESPACE@[16; 17)
+    err: `expected item`
   ERROR@[17; 33)
-  err: `expected item`
     L_CURLY@[17; 18)
     WHITESPACE@[18; 23)
     IDENT@[23; 24) "f"

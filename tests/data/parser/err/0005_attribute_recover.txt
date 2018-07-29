@@ -9,12 +9,12 @@ FILE@[0; 54)
         META_ITEM@[6; 9)
           IDENT@[6; 9) "foo"
         COMMA@[9; 10)
-        ERROR@[10; 12)
         err: `expected attribute`
+        ERROR@[10; 12)
           WHITESPACE@[10; 11)
           PLUS@[11; 12)
+          err: `expected attribute`
         ERROR@[12; 14)
-        err: `expected attribute`
           COMMA@[12; 13)
           WHITESPACE@[13; 14)
         LITERAL@[14; 16)
@@ -43,7 +43,7 @@ FILE@[0; 54)
         L_PAREN@[39; 40)
         err: `expected attribute`
         WHITESPACE@[40; 41)
-      err: `expected R_BRACK`
+        err: `expected R_BRACK`
     FN_KW@[41; 43)
     NAME@[43; 47)
       WHITESPACE@[43; 44)

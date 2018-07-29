@@ -9,13 +9,13 @@ FILE@[0; 12)
               WHITESPACE@[3; 4)
               IDENT@[4; 7) "foo"
         COLONCOLON@[7; 9)
-        PATH_SEGMENT@[9; 9)
+        err: `expected SEMI`
         err: `expected identifier`
-    err: `expected SEMI`
+        err: `expected item`
+        PATH_SEGMENT@[9; 9)
   ERROR@[9; 11)
-  err: `expected item`
     INT_NUMBER@[9; 11)
-  ERROR@[11; 12)
-  err: `expected item, found `;`
+    err: `expected item, found `;`
 consider removing this semicolon`
+  ERROR@[11; 12)
     SEMI@[11; 12)
