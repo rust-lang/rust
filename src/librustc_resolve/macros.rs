@@ -11,7 +11,7 @@
 use {AmbiguityError, CrateLint, Resolver, ResolutionError, resolve_error};
 use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult};
 use Namespace::{self, MacroNS};
-use build_reduced_graph::BuildReducedGraphVisitor;
+use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex,
                          DefIndexAddressSpace};
@@ -193,7 +193,9 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         self.current_module = invocation.module.get();
         self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
+        self.unresolved_invocations_macro_export.remove(&mark);
         self.current_module.unresolved_invocations.borrow_mut().extend(derives);
+        self.unresolved_invocations_macro_export.extend(derives);
         for &derive in derives {
             self.invocations.insert(derive, invocation);
         }
@@ -215,7 +217,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         let kind = ext.kind();
         self.macro_map.insert(def_id, ext);
         let binding = self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Def(Def::Macro(def_id, kind)),
+            kind: NameBindingKind::Def(Def::Macro(def_id, kind), false),
             span: DUMMY_SP,
             vis: ty::Visibility::Invisible,
             expansion: Mark::root(),
@@ -711,12 +713,15 @@ impl<'a> Resolver<'a> {
 
             match (legacy_resolution, resolution) {
                 (Some(MacroBinding::Legacy(legacy_binding)), Ok(MacroBinding::Modern(binding))) => {
-                    let msg1 = format!("`{}` could refer to the macro defined here", ident);
-                    let msg2 = format!("`{}` could also refer to the macro imported here", ident);
-                    self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
-                        .span_note(legacy_binding.span, &msg1)
-                        .span_note(binding.span, &msg2)
-                        .emit();
+                    if legacy_binding.def_id != binding.def_ignoring_ambiguity().def_id() {
+                        let msg1 = format!("`{}` could refer to the macro defined here", ident);
+                        let msg2 =
+                            format!("`{}` could also refer to the macro imported here", ident);
+                        self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
+                            .span_note(legacy_binding.span, &msg1)
+                            .span_note(binding.span, &msg2)
+                            .emit();
+                    }
                 },
                 (None, Err(_)) => {
                     assert!(def.is_none());
@@ -850,12 +855,19 @@ impl<'a> Resolver<'a> {
             let def = Def::Macro(def_id, MacroKind::Bang);
             self.all_macros.insert(ident.name, def);
             if attr::contains_name(&item.attrs, "macro_export") {
-                self.macro_exports.push(Export {
-                    ident: ident.modern(),
-                    def: def,
-                    vis: ty::Visibility::Public,
-                    span: item.span,
-                });
+                if self.use_extern_macros {
+                    let module = self.graph_root;
+                    let vis = ty::Visibility::Public;
+                    self.define(module, ident, MacroNS,
+                                (def, vis, item.span, expansion, IsMacroExport));
+                } else {
+                    self.macro_exports.push(Export {
+                        ident: ident.modern(),
+                        def: def,
+                        vis: ty::Visibility::Public,
+                        span: item.span,
+                    });
+                }
             } else {
                 self.unused_macros.insert(def_id);
             }

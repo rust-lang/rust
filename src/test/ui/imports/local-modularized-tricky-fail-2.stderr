@@ -1,0 +1,36 @@
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/local-modularized-tricky-fail-2.rs:30:32
+   |
+LL | exported!();
+   | ------------ in this macro invocation
+...
+LL |                 () => ( struct Б; ) //~ ERROR non-ascii idents are not fully supported
+   |                                ^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/local-modularized-tricky-fail-2.rs:46:24
+   |
+LL |     panic!();
+   |     --------- in this macro invocation
+...
+LL |         () => ( struct Г; ) //~ ERROR non-ascii idents are not fully supported
+   |                        ^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/local-modularized-tricky-fail-2.rs:56:24
+   |
+LL | include!();
+   | ----------- in this macro invocation
+...
+LL |         () => ( struct Д; ) //~ ERROR non-ascii idents are not fully supported
+   |                        ^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
