@@ -373,6 +373,10 @@ pub fn main_args(args: &[String]) -> isize {
         for &name in passes::DEFAULT_PASSES {
             println!("{:>20}", name);
         }
+        println!("\nPasses run with `--document-private-items`:");
+        for &name in passes::DEFAULT_PRIVATE_PASSES {
+            println!("{:>20}", name);
+        }
         return 0;
     }
 
@@ -623,20 +627,16 @@ fn rust_input<R, F>(cratefile: PathBuf,
 where R: 'static + Send,
       F: 'static + Send + FnOnce(Output) -> R
 {
-    let mut default_passes = !matches.opt_present("no-defaults");
-    let mut passes = matches.opt_strs("passes");
+    let mut default_passes = if matches.opt_present("no-defaults") {
+        passes::DefaultPassOption::None
+    } else if matches.opt_present("document-private-items") {
+        passes::DefaultPassOption::Private
+    } else {
+        passes::DefaultPassOption::Default
+    };
+
+    let mut manual_passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
-
-    // We hardcode in the passes here, as this is a new flag and we
-    // are generally deprecating passes.
-    if matches.opt_present("document-private-items") {
-        default_passes = false;
-
-        passes = vec![
-            String::from("collapse-docs"),
-            String::from("unindent-comments"),
-        ];
-    }
 
     // First, parse the crate and extract all relevant information.
     let mut paths = SearchPaths::new();
@@ -706,13 +706,15 @@ where R: 'static + Send,
             if attr.is_word() {
                 if name == Some("no_default_passes") {
                     report_deprecated_attr("no_default_passes", &diag);
-                    default_passes = false;
+                    if default_passes == passes::DefaultPassOption::Default {
+                        default_passes = passes::DefaultPassOption::None;
+                    }
                 }
             } else if let Some(value) = attr.value_str() {
                 let sink = match name {
                     Some("passes") => {
                         report_deprecated_attr("passes = \"...\"", &diag);
-                        &mut passes
+                        &mut manual_passes
                     },
                     Some("plugins") => {
                         report_deprecated_attr("plugins = \"...\"", &diag);
@@ -726,20 +728,15 @@ where R: 'static + Send,
             }
 
             if attr.is_word() && name == Some("document_private_items") {
-                default_passes = false;
-
-                passes = vec![
-                    String::from("collapse-docs"),
-                    String::from("unindent-comments"),
-                ];
+                if default_passes == passes::DefaultPassOption::Default {
+                    default_passes = passes::DefaultPassOption::Private;
+                }
             }
         }
 
-        if default_passes {
-            for name in passes::DEFAULT_PASSES.iter().rev() {
-                passes.insert(0, name.to_string());
-            }
-        }
+        let mut passes: Vec<String> =
+            passes::defaults(default_passes).iter().map(|p| p.to_string()).collect();
+        passes.extend(manual_passes);
 
         if !plugins.is_empty() {
             eprintln!("WARNING: --plugins no longer functions; see CVE-2018-1000622");
