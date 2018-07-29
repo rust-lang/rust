@@ -32,3 +32,11 @@ pub fn position_no_bounds_check(y: &mut [u32], x: &u32, z: &u32) -> bool {
       false
     }
 }
+
+// just to make sure that panicking really emits "panic" somewhere in the IR
+// CHECK-LABEL: @test_check
+#[no_mangle]
+pub fn test_check() {
+    // CHECK: panic
+    unreachable!()
+}
