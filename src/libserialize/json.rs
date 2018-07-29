@@ -1364,9 +1364,7 @@ impl Stack {
     // Used by Parser to insert StackElement::Key elements at the top of the stack.
     fn push_key(&mut self, key: string::String) {
         self.stack.push(InternalKey(self.str_buffer.len() as u16, key.len() as u16));
-        for c in key.as_bytes() {
-            self.str_buffer.push(*c);
-        }
+        self.str_buffer.extend(key.as_bytes());
     }
 
     // Used by Parser to insert StackElement::Index elements at the top of the stack.
@@ -2212,9 +2210,7 @@ impl ::Decoder for Decoder {
                 };
                 match o.remove(&"fields".to_string()) {
                     Some(Json::Array(l)) => {
-                        for field in l.into_iter().rev() {
-                            self.stack.push(field);
-                        }
+                        self.stack.extend(l.into_iter().rev());
                     },
                     Some(val) => {
                         return Err(ExpectedError("Array".to_owned(), val.to_string()))
@@ -2346,9 +2342,7 @@ impl ::Decoder for Decoder {
     {
         let array = expect!(self.pop(), Array)?;
         let len = array.len();
-        for v in array.into_iter().rev() {
-            self.stack.push(v);
-        }
+        self.stack.extend(array.into_iter().rev());
         f(self, len)
     }
 

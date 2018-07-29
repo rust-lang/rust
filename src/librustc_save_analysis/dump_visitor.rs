@@ -1318,14 +1318,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 };
 
                 // Make a comma-separated list of names of imported modules.
-                let mut names = vec![];
                 let glob_map = &self.save_ctxt.analysis.glob_map;
                 let glob_map = glob_map.as_ref().unwrap();
-                if glob_map.contains_key(&id) {
-                    for n in glob_map.get(&id).unwrap() {
-                        names.push(n.to_string());
-                    }
-                }
+                let names = if glob_map.contains_key(&id) {
+                    glob_map.get(&id).unwrap().iter().map(|n| n.to_string()).collect()
+                } else {
+                    Vec::new()
+                };
 
                 let sub_span = self.span.sub_span_of_token(use_tree.span,
                                                            token::BinOp(token::Star));

@@ -722,9 +722,7 @@ where R: 'static + Send,
                     },
                     _ => continue,
                 };
-                for p in value.as_str().split_whitespace() {
-                    sink.push(p.to_string());
-                }
+                sink.extend(value.as_str().split_whitespace().map(|p| p.to_string()));
             }
 
             if attr.is_word() && name == Some("document_private_items") {

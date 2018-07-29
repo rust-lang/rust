@@ -204,10 +204,9 @@ pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetr
     use rustc::util::common::duration_to_secs_str;
     use std::cmp::Reverse;
 
-    let mut data = vec![];
-    for (ref cons, ref qm) in counts.iter() {
-        data.push((cons.clone(), qm.count.clone(), qm.dur_total.clone(), qm.dur_self.clone()));
-    };
+    let mut data = counts.iter().map(|(ref cons, ref qm)|
+        (cons.clone(), qm.count.clone(), qm.dur_total.clone(), qm.dur_self.clone())
+    ).collect::<Vec<_>>();
     data.sort_by_key(|k| Reverse(k.3));
     for (cons, count, dur_total, dur_self) in data {
         write!(count_file, "{}, {}, {}, {}\n",

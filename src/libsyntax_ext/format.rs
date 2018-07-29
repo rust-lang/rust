@@ -406,10 +406,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // Map the arguments
         for i in 0..args_len {
             let ref arg_types = self.arg_types[i];
-            let mut arg_offsets = Vec::with_capacity(arg_types.len());
-            for offset in arg_types {
-                arg_offsets.push(sofar + *offset);
-            }
+            let arg_offsets = arg_types.iter().map(|offset| sofar + *offset).collect::<Vec<_>>();
             self.arg_index_map.push(arg_offsets);
             sofar += self.arg_unique_types[i].len();
         }
@@ -581,10 +578,12 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually builds the expression which the format_args! block will be
     /// expanded to
     fn into_expr(self) -> P<ast::Expr> {
-        let mut locals = Vec::new();
-        let mut counts = Vec::new();
-        let mut pats = Vec::new();
-        let mut heads = Vec::new();
+        let mut locals = Vec::with_capacity(
+            (0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum()
+        );
+        let mut counts = Vec::with_capacity(self.count_args.len());
+        let mut pats = Vec::with_capacity(self.args.len());
+        let mut heads = Vec::with_capacity(self.args.len());
 
         let names_pos: Vec<_> = (0..self.args.len())
             .map(|i| self.ecx.ident_of(&format!("arg{}", i)).gensym())

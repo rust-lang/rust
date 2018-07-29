@@ -64,9 +64,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
             let data = &self.mir[idx];
 
             if let Some(ref term) = data.terminator {
-                for &succ in term.successors() {
-                    self.worklist.push(succ);
-                }
+                self.worklist.extend(term.successors());
             }
 
             return Some((idx, data));

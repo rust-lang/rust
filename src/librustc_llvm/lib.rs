@@ -275,12 +275,8 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
 fn get_params(llfn: ValueRef) -> Vec<ValueRef> {
     unsafe {
         let num_params = LLVMCountParams(llfn);
-        let mut params = Vec::with_capacity(num_params as usize);
-        for idx in 0..num_params {
-            params.push(LLVMGetParam(llfn, idx));
-        }
 
-        params
+        (0..num_params).map(|idx| LLVMGetParam(llfn, idx)).collect()
     }
 }
 

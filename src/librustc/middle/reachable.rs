@@ -367,9 +367,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
         // We need only trait impls here, not inherent impls, and only non-exported ones
         if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
             if !self.access_levels.is_reachable(item.id) {
-                for impl_item_ref in impl_item_refs {
-                    self.worklist.push(impl_item_ref.id.node_id);
-                }
+                self.worklist.extend(impl_item_refs.iter().map(|r| r.id.node_id));
 
                 let trait_def_id = match trait_ref.path.def {
                     Def::Trait(def_id) => def_id,
@@ -426,9 +424,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     //         If other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    for (id, _) in &access_levels.map {
-        reachable_context.worklist.push(*id);
-    }
+    reachable_context.worklist.extend(access_levels.map.iter().map(|(id, _)| *id));
     for item in tcx.lang_items().items().iter() {
         if let Some(did) = *item {
             if let Some(node_id) = tcx.hir.as_local_node_id(did) {

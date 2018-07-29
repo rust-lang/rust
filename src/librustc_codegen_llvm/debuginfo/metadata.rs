@@ -39,6 +39,7 @@ use rustc::util::common::path2cstr;
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;
 use std::fmt::Write;
+use std::iter;
 use std::ptr;
 use std::path::{Path, PathBuf};
 use syntax::ast;
@@ -364,18 +365,16 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         &signature,
     );
 
-    let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs().len() + 1);
-
-    // return type
-    signature_metadata.push(match signature.output().sty {
-        ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
-        _ => type_metadata(cx, signature.output(), span)
-    });
-
-    // regular arguments
-    for &argument_type in signature.inputs() {
-        signature_metadata.push(type_metadata(cx, argument_type, span));
-    }
+    let signature_metadata: Vec<DIType> = iter::once(
+        // return type
+        match signature.output().sty {
+            ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
+            _ => type_metadata(cx, signature.output(), span)
+        }
+    ).chain(
+        // regular arguments
+        signature.inputs().iter().map(|argument_type| type_metadata(cx, argument_type, span))
+    ).collect();
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
 

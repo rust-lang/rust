@@ -962,19 +962,21 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &["<closure_kind>", "<closure_signature>"][..]
         };
 
-        for (i, &arg) in dummy_args.iter().enumerate() {
-            params.push(ty::GenericParamDef {
-                index: type_start + i as u32,
-                name: Symbol::intern(arg).as_interned_str(),
-                def_id,
-                pure_wrt_drop: false,
-                kind: ty::GenericParamDefKind::Type {
-                    has_default: false,
-                    object_lifetime_default: rl::Set1::Empty,
-                    synthetic: None,
-                },
-            });
-        }
+        params.extend(
+            dummy_args.iter().enumerate().map(|(i, &arg)|
+                ty::GenericParamDef {
+                    index: type_start + i as u32,
+                    name: Symbol::intern(arg).as_interned_str(),
+                    def_id,
+                    pure_wrt_drop: false,
+                    kind: ty::GenericParamDefKind::Type {
+                        has_default: false,
+                        object_lifetime_default: rl::Set1::Empty,
+                        synthetic: None,
+                    },
+                }
+            )
+        );
 
         tcx.with_freevars(node_id, |fv| {
             params.extend(fv.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
@@ -1651,10 +1653,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                                                                     &mut projections);
 
                             predicates.push(trait_ref.to_predicate());
-
-                            for projection in &projections {
-                                predicates.push(projection.to_predicate());
-                            }
+                            predicates.extend(projections.iter().map(|p| p.to_predicate()));
                         }
 
                         &hir::GenericBound::Outlives(ref lifetime) => {

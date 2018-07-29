@@ -899,9 +899,7 @@ macro_rules! options {
                       -> bool {
             match v {
                 Some(s) => {
-                    for s in s.split_whitespace() {
-                        slot.push(s.to_string());
-                    }
+                    slot.extend(s.split_whitespace().map(|s| s.to_string()));
                     true
                 },
                 None => false,
