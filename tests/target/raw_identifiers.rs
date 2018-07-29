@@ -10,7 +10,7 @@ fn main() {
     #[r#attr]
     r#foo::r#bar();
 
-    let r#local = 3;
+    let r#local = r#Struct { r#field: () };
     let r#async = r#foo(r#local);
     r#macro!();
 

@@ -1651,7 +1651,7 @@ pub fn rewrite_field(
     if !attrs_str.is_empty() {
         attrs_str.push_str(&shape.indent.to_string_with_newline(context.config));
     };
-    let name = &field.ident.name.to_string();
+    let name = context.snippet(field.ident.span);
     if field.is_shorthand {
         Some(attrs_str + &name)
     } else {
