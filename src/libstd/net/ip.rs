@@ -385,6 +385,22 @@ impl Ipv4Addr {
                issue = "44582")]
     pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
 
+    /// An IPv4 address representing the broadcast address: 255.255.255.255
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_constructors)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::BROADCAST;
+    /// assert_eq!(addr, Ipv4Addr::new(255, 255, 255, 255));
+    /// ```
+    #[unstable(feature = "ip_constructors",
+               reason = "requires greater scrutiny before stabilization",
+               issue = "44582")]
+    pub const BROADCAST: Self = Ipv4Addr::new(255, 255, 255, 255);
+
     /// Returns the four eight-bit integers that make up this address.
     ///
     /// # Examples
@@ -1850,6 +1866,8 @@ mod tests {
         assert!(Ipv4Addr::LOCALHOST.is_loopback());
         assert_eq!(Ipv4Addr::UNSPECIFIED, Ipv4Addr::new(0, 0, 0, 0));
         assert!(Ipv4Addr::UNSPECIFIED.is_unspecified());
+        assert_eq!(Ipv4Addr::BROADCAST, Ipv4Addr::new(255, 255, 255, 255));
+        assert!(Ipv4Addr::BROADCAST.is_broadcast());
     }
 
     #[test]
