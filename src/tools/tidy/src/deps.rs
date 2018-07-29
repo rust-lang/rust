@@ -49,6 +49,7 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "clippy_lints",       // MPL-2.0, rls
     "colored",            // MPL-2.0, rustfmt
     "ordslice",           // Apache-2.0, rls
+    "cloudabi",           // BSD-2-Clause, (rls -> crossbeam-channel 0.2 -> rand 0.5)
 ];
 
 /// Which crates to check against the whitelist?
