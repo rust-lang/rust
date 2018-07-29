@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 use {
     TextUnit,
-    yellow::{Ptr, GreenNode},
+    yellow::GreenNode,
 };
 
 #[derive(Debug)]
@@ -13,7 +13,7 @@ pub(crate) struct RedNode {
 
 #[derive(Debug)]
 struct ParentData {
-    parent: Ptr<RedNode>,
+    parent: *const RedNode,
     start_offset: TextUnit,
     index_in_parent: usize,
 }
@@ -27,7 +27,7 @@ impl RedNode {
 
     fn new_child(
         green: GreenNode,
-        parent: Ptr<RedNode>,
+        parent: *const RedNode,
         start_offset: TextUnit,
         index_in_parent: usize,
     ) -> RedNode {
@@ -62,7 +62,7 @@ impl RedNode {
         self.green.children().len()
     }
 
-    pub(crate) fn nth_child(&self, me: Ptr<RedNode>, idx: usize) -> Arc<RedNode> {
+    pub(crate) fn nth_child(&self, idx: usize) -> Arc<RedNode> {
         match &self.children.read().unwrap()[idx] {
             Some(child) => return child.clone(),
             None => (),
@@ -72,7 +72,7 @@ impl RedNode {
             let green_children = self.green.children();
             let start_offset = self.start_offset()
                 + green_children[..idx].iter().map(|x| x.text_len()).sum::<TextUnit>();
-            let child = RedNode::new_child(green_children[idx].clone(), me, start_offset, idx);
+            let child = RedNode::new_child(green_children[idx].clone(), self, start_offset, idx);
             children[idx] = Some(Arc::new(child))
         }
         children[idx].as_ref().unwrap().clone()
