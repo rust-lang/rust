@@ -345,8 +345,27 @@ pub fn format_expr(
         }
         // FIXME(#2743)
         ast::ExprKind::ObsoleteInPlace(..) => unimplemented!(),
-        // FIXME(topecongiro) Format async block.
-        ast::ExprKind::Async(..) => None,
+        ast::ExprKind::Async(_capture_by, _node_id, ref block) => {
+            if let rw @ Some(_) =
+                rewrite_single_line_block(context, "async ", block, Some(&expr.attrs), None, shape)
+            {
+                rw
+            } else {
+                // 6 = `async `
+                let budget = shape.width.saturating_sub(6);
+                Some(format!(
+                    "{}{}",
+                    "async ",
+                    rewrite_block(
+                        block,
+                        Some(&expr.attrs),
+                        None,
+                        context,
+                        Shape::legacy(budget, shape.indent)
+                    )?
+                ))
+            }
+        }
     };
 
     expr_rw

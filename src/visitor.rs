@@ -253,7 +253,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     // Note that this only gets called for function definitions. Required methods
     // on traits do not get handled here.
-    // FIXME(topecongiro) Format async fn (#2812).
     fn visit_fn(
         &mut self,
         fk: visit::FnKind,

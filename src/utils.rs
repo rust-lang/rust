@@ -82,6 +82,14 @@ pub fn format_visibility(context: &RewriteContext, vis: &Visibility) -> Cow<'sta
 }
 
 #[inline]
+pub fn format_asyncness(asyncness: ast::IsAsync) -> &'static str {
+    match asyncness {
+        ast::IsAsync::Async { .. } => "async ",
+        ast::IsAsync::NotAsync => "",
+    }
+}
+
+#[inline]
 pub fn format_constness(constness: ast::Constness) -> &'static str {
     match constness {
         ast::Constness::Const => "const ",
