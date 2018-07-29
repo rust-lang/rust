@@ -370,7 +370,7 @@ impl Class {
     }
 }
 
-fn write_header(class: Option<&str>, out: &mut Write) -> io::Result<()> {
+fn write_header(class: Option<&str>, out: &mut dyn Write) -> io::Result<()> {
     write!(out, "<pre class=\"rust {}\">\n", class.unwrap_or(""))
 }
 
