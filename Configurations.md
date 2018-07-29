@@ -1342,6 +1342,25 @@ Unix or Windows line endings
 - **Possible values**: `"Auto"`, `"Native"`, `"Unix"`, `"Windows"`
 - **Stable**: Yes
 
+#### `Auto` (default):
+
+The newline style is detected automatically on a per-file basis. Files
+with mixed line endings will be converted to the first detected line
+ending style.
+
+#### `Native`
+
+Line endings will be converted to `\r\n` on Windows and `\n` on all
+other platforms.
+
+#### `Unix`
+
+Line endings will be converted to `\n`.
+
+#### `Windows`
+
+Line endings will be converted to `\r\n`.
+
 ## `normalize_comments`
 
 Convert /* */ comments to // comments where possible
