@@ -30,6 +30,7 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
 const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
+const MAX_NANOS_F64: f64 = ((u64::MAX as u128)*(NANOS_PER_SEC as u128)) as f64;
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -523,7 +524,7 @@ impl Mul<f64> for Duration {
         if !nanos_f64.is_finite() {
             panic!("got non-finite value when multiplying duration by float");
         }
-        if nanos_f64 > ((u64::MAX as u128)*(NANOS_PER_SEC as u128)) as f64 {
+        if nanos_f64 > MAX_NANOS_F64 {
             panic!("overflow when multiplying duration by float");
         };
         let nanos_u128 = nanos_f64 as u128;
@@ -547,7 +548,7 @@ impl Mul<Duration> for f64 {
         if !nanos_f64.is_finite() {
             panic!("got non-finite value when multiplying float by duration");
         }
-        if nanos_f64 > ((u64::MAX as u128)*(NANOS_PER_SEC as u128)) as f64 {
+        if nanos_f64 > MAX_NANOS_F64 {
             panic!("overflow when multiplying float by duration");
         };
         let nanos_u128 = nanos_f64 as u128;
@@ -594,7 +595,7 @@ impl Div<f64> for Duration {
         if !nanos_f64.is_finite() {
             panic!("got non-finite value when dividing duration by float");
         }
-        if nanos_f64 > ((u64::MAX as u128)*(NANOS_PER_SEC as u128)) as f64 {
+        if nanos_f64 > MAX_NANOS_F64 {
             panic!("overflow when dividing duration by float");
         };
         let nanos_u128 = nanos_f64 as u128;
