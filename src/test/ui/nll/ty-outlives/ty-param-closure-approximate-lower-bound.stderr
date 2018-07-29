@@ -27,7 +27,7 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
                i16,
                for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) T))
            ]
-   = note: number of external vids: 2
+   = note: number of external vids: 3
    = note: where T: '_#1r
 
 note: No external requirements
@@ -57,7 +57,7 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
                i16,
                for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) T))
            ]
-   = note: number of external vids: 2
+   = note: number of external vids: 4
    = note: where T: '_#1r
 
 error[E0309]: the parameter type `T` may not live long enough

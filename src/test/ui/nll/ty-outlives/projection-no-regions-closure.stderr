@@ -22,7 +22,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>
            ]
-   = note: number of external vids: 3
+   = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#2r
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
@@ -62,7 +62,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>
            ]
-   = note: number of external vids: 3
+   = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#2r
 
 note: No external requirements
@@ -94,7 +94,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
@@ -136,7 +136,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
 note: No external requirements

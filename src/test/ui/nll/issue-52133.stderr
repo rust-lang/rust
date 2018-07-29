@@ -1,0 +1,11 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/issue-52133.rs:43:9
+   |
+LL | fn produce_err<'a, 'b: 'a>(data: &'b mut Vec<&'b u32>, value: &'a u32) -> impl Bazinga + 'b {
+   |                                  --------------------         ------- these two types are declared with different lifetimes...
+LL |     let x = move || { //~ ERROR lifetime mismatch
+   |         ^ ...but data from `value` flows into `data` here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

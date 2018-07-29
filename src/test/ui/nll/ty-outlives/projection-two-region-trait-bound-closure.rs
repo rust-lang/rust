@@ -47,7 +47,7 @@ where
 {
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to nll
-    //~| ERROR associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
+    //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
 }
 
 #[rustc_regions]
@@ -58,7 +58,7 @@ where
 {
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to nll
-    //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+    //~| ERROR associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
 }
 
 #[rustc_regions]
@@ -79,7 +79,7 @@ where
 
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to nll
-    //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+    //~| ERROR associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
 }
 
 #[rustc_regions]

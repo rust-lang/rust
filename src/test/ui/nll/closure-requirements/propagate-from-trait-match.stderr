@@ -23,7 +23,7 @@ LL | |     });
                i32,
                extern "rust-call" fn((T,))
            ]
-   = note: number of external vids: 2
+   = note: number of external vids: 3
    = note: where T: '_#1r
 
 error[E0309]: the parameter type `T` may not live long enough
