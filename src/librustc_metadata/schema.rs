@@ -455,13 +455,18 @@ pub struct VariantData<'tcx> {
     /// If this is a tuple struct or variant
     /// ctor, this is its "function" signature.
     pub ctor_sig: Option<Lazy<ty::PolyFnSig<'tcx>>>,
+
+    /// Field list can be extended if this struct/variant
+    /// is marked as non-exhaustive.
+    pub can_extend_field_list: bool,
 }
 
 impl_stable_hash_for!(struct VariantData<'tcx> {
     ctor_kind,
     discr,
     struct_ctor,
-    ctor_sig
+    ctor_sig,
+    can_extend_field_list,
 });
 
 #[derive(RustcEncodable, RustcDecodable)]

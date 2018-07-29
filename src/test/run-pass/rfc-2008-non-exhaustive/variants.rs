@@ -13,19 +13,15 @@ extern crate variants;
 
 use variants::NonExhaustiveVariants;
 
-/*
- * The initial implementation of #[non_exhaustive] (RFC 2008) does not include support for
- * variants. See issue #44109 and PR 45394.
- */
-// ignore-test
+// We only test matching here as we cannot create non-exhaustive
+// variants from another crate. ie. they'll never pass in run-pass tests.
 
-fn main() {
-    let variant_tuple = NonExhaustiveVariants::Tuple { 0: 340 };
-    let variant_struct = NonExhaustiveVariants::Struct { field: 340 };
-
-    match variant_struct {
+fn match_variants(non_exhaustive_enum: NonExhaustiveVariants) {
+    match non_exhaustive_enum {
         NonExhaustiveVariants::Unit => "",
         NonExhaustiveVariants::Struct { field, .. } => "",
         NonExhaustiveVariants::Tuple(fe_tpl, ..) => ""
     };
 }
+
+fn main() {}

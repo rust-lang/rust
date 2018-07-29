@@ -349,7 +349,8 @@ impl_stable_hash_for!(struct ty::VariantDef {
     name,
     discr,
     fields,
-    ctor_kind
+    ctor_kind,
+    can_extend_field_list
 });
 
 impl_stable_hash_for!(enum ty::VariantDiscr {

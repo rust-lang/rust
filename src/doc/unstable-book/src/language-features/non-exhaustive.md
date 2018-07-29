@@ -7,10 +7,11 @@ The tracking issue for this feature is: [#44109]
 ------------------------
 
 The `non_exhaustive` gate allows you to use the `#[non_exhaustive]` attribute
-on structs and enums. When applied within a crate, users of the crate will need
-to use the `_` pattern when matching enums and use the `..` pattern when
-matching structs. Structs marked as `non_exhaustive` will not be able to be
-created normally outside of the defining crate. This is demonstrated below:
+on structs, enums and variants. When applied within a crate, users of the crate
+will need to use the `_` pattern when matching enums and use the `..` pattern
+when matching structs or variants. Structs and variants marked as
+`non_exhaustive` will not be able to be created normally outside of the
+defining crate. This is demonstrated below:
 
 ```rust,ignore (pseudo-Rust)
 use std::error::Error as StdError;

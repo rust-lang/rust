@@ -2052,7 +2052,7 @@ where 'x: 'y
 
 E0701: r##"
 This error indicates that a `#[non_exhaustive]` attribute was incorrectly placed
-on something other than a struct or enum.
+on something other than a struct, enum or variant.
 
 Examples of erroneous code:
 

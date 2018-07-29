@@ -526,6 +526,7 @@ impl<'a, 'tcx> CrateMetadata {
             }).collect(),
             discr: data.discr,
             ctor_kind: data.ctor_kind,
+            can_extend_field_list: data.can_extend_field_list,
         }
     }
 

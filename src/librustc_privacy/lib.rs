@@ -672,9 +672,11 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
                         // visibility to within the crate.
                         let struct_def_id = self.tcx.hir.get_parent_did(node_id);
                         let adt_def = self.tcx.adt_def(struct_def_id);
-                        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
-                            ctor_vis = ty::Visibility::Restricted(
-                                DefId::local(CRATE_DEF_INDEX));
+                        if let Some(variant) = adt_def.variants.first() {
+                            if variant.can_extend_field_list && ctor_vis == ty::Visibility::Public {
+                                ctor_vis = ty::Visibility::Restricted(
+                                    DefId::local(CRATE_DEF_INDEX));
+                            }
                         }
 
                         return ctor_vis;
