@@ -60,7 +60,7 @@ impl SyntaxNode {
         for i in 0..n_children {
             res.push(SyntaxNode {
                 root: self.root.clone(),
-                red: (&*red.nth_child(i)).into(),
+                red: red.nth_child(i),
             });
         }
         res

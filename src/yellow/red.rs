@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    ptr,
+    sync::RwLock,
+};
 use {
     TextUnit,
     yellow::GreenNode,
@@ -8,7 +11,7 @@ use {
 pub(crate) struct RedNode {
     green: GreenNode,
     parent: Option<ParentData>,
-    children: RwLock<Vec<Option<Arc<RedNode>>>>,
+    children: RwLock<Vec<Option<Box<RedNode>>>>,
 }
 
 #[derive(Debug)]
@@ -43,7 +46,8 @@ impl RedNode {
         green: GreenNode,
         parent: Option<ParentData>,
     ) -> RedNode {
-        let children = vec![None; green.children().len()];
+        let n_children = green.children().len();
+        let children = (0..n_children).map(|_| None).collect();
         RedNode { green, parent, children: RwLock::new(children) }
     }
 
@@ -62,9 +66,9 @@ impl RedNode {
         self.green.children().len()
     }
 
-    pub(crate) fn nth_child(&self, idx: usize) -> Arc<RedNode> {
+    pub(crate) fn nth_child(&self, idx: usize) -> ptr::NonNull<RedNode> {
         match &self.children.read().unwrap()[idx] {
-            Some(child) => return child.clone(),
+            Some(child) => return ptr::NonNull::from(&**child),
             None => (),
         }
         let mut children = self.children.write().unwrap();
@@ -73,8 +77,9 @@ impl RedNode {
             let start_offset = self.start_offset()
                 + green_children[..idx].iter().map(|x| x.text_len()).sum::<TextUnit>();
             let child = RedNode::new_child(green_children[idx].clone(), self, start_offset, idx);
-            children[idx] = Some(Arc::new(child))
+            children[idx] = Some(Box::new(child))
         }
-        children[idx].as_ref().unwrap().clone()
+        let child = children[idx].as_ref().unwrap();
+        ptr::NonNull::from(&**child)
     }
 }
