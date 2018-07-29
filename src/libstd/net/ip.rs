@@ -587,8 +587,7 @@ impl Ipv4Addr {
     /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_broadcast(&self) -> bool {
-        self.octets()[0] == 255 && self.octets()[1] == 255 &&
-        self.octets()[2] == 255 && self.octets()[3] == 255
+        self == &Self::BROADCAST
     }
 
     /// Returns [`true`] if this address is in a range designated for documentation.
