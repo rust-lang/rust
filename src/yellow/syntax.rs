@@ -18,6 +18,15 @@ pub struct SyntaxNode<R: TreeRoot = Arc<SyntaxRoot>> {
     red: ptr::NonNull<RedNode>,
 }
 
+impl <R1: TreeRoot, R2: TreeRoot> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2> {
+    fn eq(&self, other: &SyntaxNode<R1>) -> bool {
+        self.red == other.red
+    }
+}
+
+impl <R: TreeRoot> Eq for SyntaxNode<R> {
+}
+
 pub type SyntaxNodeRef<'a> = SyntaxNode<&'a SyntaxRoot>;
 
 #[derive(Debug)]
@@ -53,7 +62,7 @@ impl SyntaxNode<Arc<SyntaxRoot>> {
 }
 
 impl<R: TreeRoot> SyntaxNode<R> {
-    pub fn borrow<'a>(&'a self) -> SyntaxNode<&'a SyntaxRoot> {
+    pub fn as_ref<'a>(&'a self) -> SyntaxNode<&'a SyntaxRoot> {
         SyntaxNode {
             root: &*self.root,
             red: ptr::NonNull::clone(&self.red),
@@ -89,6 +98,23 @@ impl<R: TreeRoot> SyntaxNode<R> {
         Some(SyntaxNode {
             root: self.root.clone(),
             red: parent,
+        })
+    }
+
+    pub fn first_child(&self) -> Option<SyntaxNode<R>> {
+        self.children().next()
+    }
+
+    pub fn next_sibling(&self) -> Option<SyntaxNode<R>> {
+        let red = self.red();
+        let parent = self.parent()?;
+        let next_sibling_idx = red.index_in_parent()? + 1;
+        if next_sibling_idx == red.n_children() {
+            return None;
+        }
+        Some(SyntaxNode {
+            root: self.root.clone(),
+            red: parent.red().nth_child(next_sibling_idx),
         })
     }
 

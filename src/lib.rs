@@ -22,6 +22,7 @@
 
 extern crate text_unit;
 extern crate unicode_xid;
+extern crate itertools;
 
 mod lexer;
 mod parser;
@@ -30,6 +31,7 @@ mod yellow;
 /// Utilities for simple uses of the parser.
 pub mod utils;
 pub mod ast;
+pub mod algo;
 
 pub use {
     lexer::{tokenize, Token},

@@ -3,7 +3,7 @@ use {SyntaxError, SyntaxNode, SyntaxNodeRef};
 
 /// Parse a file and create a string representation of the resulting parse tree.
 pub fn dump_tree(syntax: &SyntaxNode) -> String {
-    let syntax = syntax.borrow();
+    let syntax = syntax.as_ref();
     let mut errors: BTreeSet<_> = syntax.root.errors.iter().cloned().collect();
     let mut result = String::new();
     go(syntax, &mut result, 0, &mut errors);

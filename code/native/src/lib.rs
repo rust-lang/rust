@@ -7,6 +7,7 @@ use libsyntax2::{
     File,
     utils::dump_tree,
     SyntaxKind::*,
+    algo,
 };
 use neon::prelude::*;
 
@@ -17,11 +18,12 @@ pub struct Wrapper {
 impl Wrapper {
     fn highlight(&self) -> Vec<(TextRange, &'static str)> {
         let mut res = Vec::new();
-        self.inner.for_each_node(|node| {
+        let syntax = self.inner.syntax();
+        for node in algo::walk::preorder(syntax.as_ref()) {
             if node.kind() == ERROR {
                 res.push((node.range(), "error"))
             }
-        });
+        }
         res
     }
 }

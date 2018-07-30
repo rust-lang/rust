@@ -84,4 +84,7 @@ impl RedNode {
     pub(crate) fn parent(&self) -> Option<ptr::NonNull<RedNode>> {
         Some(self.parent.as_ref()?.parent)
     }
+    pub(crate) fn index_in_parent(&self) -> Option<usize> {
+        Some(self.parent.as_ref()?.index_in_parent)
+    }
 }
