@@ -1,5 +1,9 @@
 use super::*;
 
+// test expr_literals
+// fn foo() {
+//     let _ = 92;
+// }
 pub(super) fn literal(p: &mut Parser) -> bool {
     match p.current() {
         TRUE_KW | FALSE_KW | INT_NUMBER | FLOAT_NUMBER | BYTE | CHAR | STRING | RAW_STRING

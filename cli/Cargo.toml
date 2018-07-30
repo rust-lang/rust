@@ -1,0 +1,11 @@
+[package]
+name = "cli"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+publish = false
+
+[dependencies]
+clap = "2.32.0"
+failure = "0.1.1"
+libsyntax2 = { path = "../" }
+tools = { path = "../tools" }

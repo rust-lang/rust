@@ -1,4 +1,5 @@
 [alias]
-parse = "run --package tools --bin parse"
 gen-kinds = "run --package tools -- gen-kinds"
 gen-tests = "run --package tools -- gen-tests"
+render-test = "run --package cli -- render-test"
+parse = "run --package cli -- parse"

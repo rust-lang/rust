@@ -1,14 +1,14 @@
 extern crate clap;
 #[macro_use]
 extern crate failure;
-extern crate itertools;
 extern crate ron;
 extern crate tera;
 extern crate walkdir;
+extern crate tools;
 
-use clap::{App, Arg, SubCommand};
-use itertools::Itertools;
 use std::{collections::HashSet, fs, path::Path};
+use clap::{App, Arg, SubCommand};
+use tools::{collect_tests, Test};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -96,17 +96,6 @@ fn gen_tests(verify: bool) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Eq)]
-struct Test {
-    name: String,
-    text: String,
-}
-
-impl PartialEq for Test {
-    fn eq(&self, other: &Test) -> bool {
-        self.name.eq(&other.name)
-    }
-}
 
 impl ::std::hash::Hash for Test {
     fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
@@ -133,34 +122,6 @@ fn tests_from_dir(dir: &Path) -> Result<HashSet<Test>> {
         }
     }
     Ok(res)
-}
-
-fn collect_tests(s: &str) -> Vec<Test> {
-    let mut res = vec![];
-    let prefix = "// ";
-    let comment_blocks = s
-        .lines()
-        .map(str::trim_left)
-        .group_by(|line| line.starts_with(prefix));
-
-    'outer: for (is_comment, block) in comment_blocks.into_iter() {
-        if !is_comment {
-            continue;
-        }
-        let mut block = block.map(|line| &line[prefix.len()..]);
-
-        let name = loop {
-            match block.next() {
-                Some(line) if line.starts_with("test ") => break line["test ".len()..].to_string(),
-                Some(_) => (),
-                None => continue 'outer,
-            }
-        };
-        let text: String = itertools::join(block.chain(::std::iter::once("")), "\n");
-        assert!(!text.trim().is_empty() && text.ends_with("\n"));
-        res.push(Test { name, text })
-    }
-    res
 }
 
 fn existing_tests(dir: &Path) -> Result<HashSet<Test>> {
