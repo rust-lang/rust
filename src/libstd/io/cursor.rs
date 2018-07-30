@@ -551,26 +551,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_read_char() {
-        let b = &b"Vi\xE1\xBB\x87t"[..];
-        let mut c = Cursor::new(b).chars();
-        assert_eq!(c.next().unwrap().unwrap(), 'V');
-        assert_eq!(c.next().unwrap().unwrap(), 'i');
-        assert_eq!(c.next().unwrap().unwrap(), 'ệ');
-        assert_eq!(c.next().unwrap().unwrap(), 't');
-        assert!(c.next().is_none());
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_read_bad_char() {
-        let b = &b"\x80"[..];
-        let mut c = Cursor::new(b).chars();
-        assert!(c.next().unwrap().is_err());
-    }
-
-    #[test]
     fn seek_past_end() {
         let buf = [0xff];
         let mut r = Cursor::new(&buf[..]);
