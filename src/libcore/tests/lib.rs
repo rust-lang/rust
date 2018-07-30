@@ -43,6 +43,7 @@
 #![feature(align_offset)]
 #![feature(reverse_bits)]
 #![feature(iterator_find_map)]
+#![feature(inner_deref)]
 #![feature(slice_internals)]
 #![feature(option_replace)]
 
