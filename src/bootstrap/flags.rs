@@ -261,7 +261,7 @@ Arguments:
 
         ./x.py build --stage 1 src/libtest
 
-    This will first build everything once (like --stage 0 without further
+    This will first build everything once (like `--stage 0` without further
     arguments would), and then use the compiler built in stage 0 to build
     src/libtest and its dependencies.
     Once this is done, build/$ARCH/stage1 contains a usable compiler.",
@@ -293,9 +293,13 @@ Arguments:
 
         ./x.py test src/test/run-pass
         ./x.py test src/libstd --test-args hash_map
-        ./x.py test src/libstd --stage 0
+        ./x.py test src/libstd --stage 0 --no-doc
         ./x.py test src/test/ui --bless
         ./x.py test src/test/ui --compare-mode nll
+
+    Note that `test src/test/* --stage N` does NOT depend on `build src/rustc --stage N`;
+    just like `build src/libstd --stage N` it tests the compiler produced by the previous
+    stage.
 
     If no arguments are passed then the complete artifacts for that stage are
     compiled and tested.
