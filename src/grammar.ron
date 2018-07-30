@@ -120,6 +120,7 @@ Grammar(
         "PLACEHOLDER_PAT",
 
         "TUPLE_EXPR",
+        "PATH_EXPR",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
@@ -133,15 +134,18 @@ Grammar(
         "LITERAL",
         "ALIAS",
         "VISIBILITY",
-        "TYPE_PARAM_LIST",
         "WHERE_CLAUSE",
-        "LIFETIME_PARAM",
-        "TYPE_PARAM",
         "ABI",
         "NAME",
         "NAME_REF",
         "VALUE_PARAMETER",
         "BLOCK",
         "LET_STMT",
+
+        "TYPE_PARAM",
+        "LIFETIME_PARAM",
+        "TYPE_PARAM_LIST",
+        "TYPE_ARG_LIST",
+
     ]
 )

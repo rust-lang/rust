@@ -27,6 +27,7 @@ mod items;
 mod paths;
 mod patterns;
 mod type_params;
+mod type_args;
 mod types;
 
 use {
