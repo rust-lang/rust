@@ -1162,6 +1162,14 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
         get_codegen_sysroot("llvm")().print_version();
+
+        if nightly_options::is_nightly_build() {
+            println!("parallel-queries: {}", if cfg!(parallel_queries) {
+                "yes"
+            } else {
+                "no"
+            });
+        }
     }
 }
 
