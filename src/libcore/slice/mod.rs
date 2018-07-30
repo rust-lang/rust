@@ -2349,20 +2349,9 @@ macro_rules! is_empty {
     // and non-ZST.
     ($self: ident) => {$self.ptr == $self.end}
 }
+// To get rid of some bounds checks (see `position`), we compute the length in a somewhat
+// unexpected way. (Tested by `codegen/slice-position-bounds-check`.)
 macro_rules! len {
-    ($self: ident) => {{
-        let start = $self.ptr;
-        if size_from_ptr(start) == 0 {
-            ($self.end as usize).wrapping_sub(start as usize)
-        } else {
-            $self.end.offset_from(start) as usize
-        }
-    }}
-}
-// To get rid of some bounds checks (see `position`), for some reason it
-// makes a difference to compute the length in this way.
-// (Tested by `codegen/slice-position-bounds-check`.)
-macro_rules! len2 {
     ($self: ident) => {{
         let start = $self.ptr;
         let diff = ($self.end as usize).wrapping_sub(start as usize);
@@ -2383,7 +2372,7 @@ macro_rules! iterator {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
             fn make_slice(&self) -> &'a [T] {
-                unsafe { from_raw_parts(self.ptr, len2!(self)) }
+                unsafe { from_raw_parts(self.ptr, len!(self)) }
             }
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
@@ -2421,7 +2410,7 @@ macro_rules! iterator {
         impl<'a, T> ExactSizeIterator for $name<'a, T> {
             #[inline(always)]
             fn len(&self) -> usize {
-                unsafe { len!(self) }
+                len!(self)
             }
 
             #[inline(always)]
@@ -2452,18 +2441,18 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let exact = unsafe { len!(self) };
+                let exact = len!(self);
                 (exact, Some(exact))
             }
 
             #[inline]
             fn count(self) -> usize {
-                self.len()
+                len!(self)
             }
 
             #[inline]
             fn nth(&mut self, n: usize) -> Option<$elem> {
-                if n >= unsafe { len!(self) } {
+                if n >= len!(self) {
                     // This iterator is now empty.
                     if mem::size_of::<T>() == 0 {
                         // We have to do it this way as `ptr` may never be 0, but `end`
@@ -2527,7 +2516,7 @@ macro_rules! iterator {
                 P: FnMut(Self::Item) -> bool,
             {
                 // The addition might panic on overflow.
-                let n = len2!(self);
+                let n = len!(self);
                 self.try_fold(0, move |i, x| {
                     if predicate(x) { Err(i) }
                     else { Ok(i + 1) }
@@ -2544,7 +2533,7 @@ macro_rules! iterator {
                 Self: Sized + ExactSizeIterator + DoubleEndedIterator
             {
                 // No need for an overflow check here, because `ExactSizeIterator`
-                let n = len2!(self);
+                let n = len!(self);
                 self.try_rfold(n, move |i, x| {
                     let i = i - 1;
                     if predicate(x) { Err(i) }
@@ -2789,7 +2778,7 @@ impl<'a, T> IterMut<'a, T> {
     /// ```
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn into_slice(self) -> &'a mut [T] {
-        unsafe { from_raw_parts_mut(self.ptr, len2!(self)) }
+        unsafe { from_raw_parts_mut(self.ptr, len!(self)) }
     }
 }
 
