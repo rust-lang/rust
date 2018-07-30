@@ -396,7 +396,7 @@ declare_features! (
     // Infer outlives requirements; RFC 2093
     (active, infer_outlives_requirements, "1.26.0", Some(44493), None),
 
-    // Infer outlives requirements; RFC 2093
+    // Infer static outlives requirements; RFC 2093
     (active, infer_static_outlives_requirements, "1.26.0", Some(44493), None),
 
     // Multiple patterns with `|` in `if let` and `while let`
