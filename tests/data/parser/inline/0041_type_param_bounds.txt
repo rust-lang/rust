@@ -1,0 +1,33 @@
+FILE@[0; 35)
+  STRUCT_ITEM@[0; 35)
+    STRUCT_KW@[0; 6)
+    NAME@[6; 8)
+      WHITESPACE@[6; 7)
+      IDENT@[7; 8) "S"
+    TYPE_PARAM_LIST@[8; 33)
+      L_ANGLE@[8; 9)
+      TYPE_PARAM@[9; 32)
+        IDENT@[9; 10) "T"
+        COLON@[10; 11)
+        WHITESPACE@[11; 12)
+        LIFETIME@[12; 14) "'a"
+        WHITESPACE@[14; 15)
+        PLUS@[15; 16)
+        WHITESPACE@[16; 17)
+        QUESTION@[17; 18)
+        PATH@[18; 24)
+          PATH_SEGMENT@[18; 24)
+            NAME_REF@[18; 24)
+              IDENT@[18; 23) "Sized"
+              WHITESPACE@[23; 24)
+        PLUS@[24; 25)
+        WHITESPACE@[25; 26)
+        L_PAREN@[26; 27)
+        PATH@[27; 31)
+          PATH_SEGMENT@[27; 31)
+            NAME_REF@[27; 31)
+              IDENT@[27; 31) "Copy"
+        R_PAREN@[31; 32)
+      R_ANGLE@[32; 33)
+    SEMI@[33; 34)
+    WHITESPACE@[34; 35)

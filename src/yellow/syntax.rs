@@ -11,8 +11,8 @@ impl TreeRoot for Arc<SyntaxRoot> {}
 impl<'a> TreeRoot for &'a SyntaxRoot {}
 
 #[derive(Clone, Copy)]
-pub struct SyntaxNode<ROOT: TreeRoot = Arc<SyntaxRoot>> {
-    pub(crate) root: ROOT,
+pub struct SyntaxNode<R: TreeRoot = Arc<SyntaxRoot>> {
+    pub(crate) root: R,
     // Guaranteed to not dangle, because `root` holds a
     // strong reference to red's ancestor
     red: ptr::NonNull<RedNode>,
@@ -52,7 +52,7 @@ impl SyntaxNode<Arc<SyntaxRoot>> {
     }
 }
 
-impl<ROOT: TreeRoot> SyntaxNode<ROOT> {
+impl<R: TreeRoot> SyntaxNode<R> {
     pub fn borrow<'a>(&'a self) -> SyntaxNode<&'a SyntaxRoot> {
         SyntaxNode {
             root: &*self.root,
@@ -73,20 +73,18 @@ impl<ROOT: TreeRoot> SyntaxNode<ROOT> {
         self.red().green().text()
     }
 
-    pub fn children(&self) -> Vec<SyntaxNode<ROOT>> {
+    pub fn children<'a>(&'a self) -> impl Iterator<Item=SyntaxNode<R>> + 'a {
         let red = self.red();
         let n_children = red.n_children();
-        let mut res = Vec::with_capacity(n_children);
-        for i in 0..n_children {
-            res.push(SyntaxNode {
+        (0..n_children).map(move |i| {
+            SyntaxNode {
                 root: self.root.clone(),
                 red: red.nth_child(i),
-            });
-        }
-        res
+            }
+        })
     }
 
-    pub fn parent(&self) -> Option<SyntaxNode<ROOT>> {
+    pub fn parent(&self) -> Option<SyntaxNode<R>> {
         let parent = self.red().parent()?;
         Some(SyntaxNode {
             root: self.root.clone(),
@@ -99,7 +97,7 @@ impl<ROOT: TreeRoot> SyntaxNode<ROOT> {
     }
 }
 
-impl<ROOT: TreeRoot> fmt::Debug for SyntaxNode<ROOT> {
+impl<R: TreeRoot> fmt::Debug for SyntaxNode<R> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;
         if has_short_text(self.kind()) {

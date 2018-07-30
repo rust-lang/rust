@@ -1,0 +1,21 @@
+FILE@[0; 19)
+  STRUCT_ITEM@[0; 19)
+    STRUCT_KW@[0; 6)
+    NAME@[6; 8)
+      WHITESPACE@[6; 7)
+      IDENT@[7; 8) "S"
+    TYPE_PARAM_LIST@[8; 17)
+      L_ANGLE@[8; 9)
+      TYPE_PARAM@[9; 16)
+        IDENT@[9; 10) "T"
+        WHITESPACE@[10; 11)
+        EQ@[11; 12)
+        PATH_TYPE@[12; 16)
+          PATH@[12; 16)
+            PATH_SEGMENT@[12; 16)
+              NAME_REF@[12; 16)
+                WHITESPACE@[12; 13)
+                IDENT@[13; 16) "i32"
+      R_ANGLE@[16; 17)
+    SEMI@[17; 18)
+    WHITESPACE@[18; 19)
