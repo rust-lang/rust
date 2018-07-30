@@ -1,4 +1,6 @@
 extern crate itertools;
+
+use std::hash;
 use itertools::Itertools;
 
 #[derive(Debug, Eq)]
@@ -14,6 +16,12 @@ impl PartialEq for Test {
     }
 }
 
+impl hash::Hash for Test {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state)
+    }
+}
+
 pub fn collect_tests(s: &str) -> Vec<Test> {
     let mut res = vec![];
     let prefix = "// ";
@@ -21,7 +29,7 @@ pub fn collect_tests(s: &str) -> Vec<Test> {
         .lines()
         .map(str::trim_left)
         .enumerate()
-        .group_by(|(idx, line)| line.starts_with(prefix));
+        .group_by(|(_idx, line)| line.starts_with(prefix));
 
     'outer: for (is_comment, block) in comment_blocks.into_iter() {
         if !is_comment {

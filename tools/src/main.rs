@@ -96,13 +96,6 @@ fn gen_tests(verify: bool) -> Result<()> {
     Ok(())
 }
 
-
-impl ::std::hash::Hash for Test {
-    fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state)
-    }
-}
-
 fn tests_from_dir(dir: &Path) -> Result<HashSet<Test>> {
     let mut res = HashSet::new();
     for entry in ::walkdir::WalkDir::new(dir) {
