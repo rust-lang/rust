@@ -39,8 +39,8 @@ struct E { field: F }
 struct F { field: Box<E> }
 
 // indirect non-regular recursion with indirect ownership via box.
-struct G { field: (F, F) }
-struct H { field: Box<E> }
+struct G { field: (H, H) }
+struct H { field: Box<G> }
 
 // These enums are cases that are not currently hit by the
 // `visit_terminator_drop` recursion down a type's structural
