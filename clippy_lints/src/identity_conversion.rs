@@ -5,7 +5,7 @@ use syntax::ast::NodeId;
 use crate::utils::{in_macro, match_def_path, match_trait_method, same_tys, snippet, span_lint_and_then};
 use crate::utils::{opt_def_id, paths, resolve_node};
 
-/// **What it does:** Checks for always-identical `Into`/`From` conversions.
+/// **What it does:** Checks for always-identical `Into`/`From`/`IntoIter` conversions.
 ///
 /// **Why is this bad?** Redundant code.
 ///
@@ -19,7 +19,7 @@ use crate::utils::{opt_def_id, paths, resolve_node};
 declare_clippy_lint! {
     pub IDENTITY_CONVERSION,
     complexity,
-    "using always-identical `Into`/`From` conversions"
+    "using always-identical `Into`/`From`/`IntoIter` conversions"
 }
 
 #[derive(Default)]
@@ -64,6 +64,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                         let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
                         span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
                             db.span_suggestion(e.span, "consider removing `.into()`", sugg);
+                        });
+                    }
+                }
+                if match_trait_method(cx, e, &paths::INTO_ITERATOR) && &*name.ident.as_str() == "into_iter" {
+                    let a = cx.tables.expr_ty(e);
+                    let b = cx.tables.expr_ty(&args[0]);
+                    if same_tys(cx, a, b) {
+                        let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
+                        span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
+                            db.span_suggestion(e.span, "consider removing `.into_iter()`", sugg);
                         });
                     }
                 }

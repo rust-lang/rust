@@ -23,22 +23,34 @@ error: identical conversion
    |                      ^^^^^^^^^^^ help: consider removing `.into()`: `0i32`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:37:21
+  --> $DIR/identity_conversion.rs:38:21
    |
-37 |     let _: String = "foo".to_string().into();
+38 |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:38:21
+  --> $DIR/identity_conversion.rs:39:21
    |
-38 |     let _: String = From::from("foo".to_string());
+39 |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:39:13
+  --> $DIR/identity_conversion.rs:40:13
    |
-39 |     let _ = String::from("foo".to_string());
+40 |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
-error: aborting due to 6 previous errors
+error: identical conversion
+  --> $DIR/identity_conversion.rs:41:13
+   |
+41 |     let _ = "".lines().into_iter();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
+
+error: identical conversion
+  --> $DIR/identity_conversion.rs:42:13
+   |
+42 |     let _ = vec![1, 2, 3].into_iter().into_iter();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
+
+error: aborting due to 8 previous errors
 
