@@ -245,10 +245,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "discriminant_value" => {
                 let ty = substs.type_at(0);
+                let layout = self.layout_of(ty)?;
                 let adt_ptr = self.into_ptr(args[0].value)?;
                 let adt_align = self.layout_of(args[0].ty)?.align;
                 let place = Place::from_scalar_ptr(adt_ptr, adt_align);
-                let discr_val = self.read_discriminant_value(place, ty)?;
+                let discr_val = self.read_discriminant_value(place, layout)?;
                 self.write_scalar(dest, Scalar::from_u128(discr_val), dest_layout.ty)?;
             }
 
@@ -343,7 +344,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                                 ty::layout::Abi::Scalar(_) => Value::Scalar(Scalar::null()),
                                 _ => {
                                     // FIXME(oli-obk): pass TyLayout to alloc_ptr instead of Ty
-                                    let ptr = this.alloc_ptr(dest_layout.ty)?;
+                                    let ptr = this.alloc_ptr(dest_layout)?;
                                     let ptr = Scalar::Ptr(ptr);
                                     this.memory.write_repeat(ptr, 0, size)?;
                                     Value::ByRef(ptr, dest_layout.align)

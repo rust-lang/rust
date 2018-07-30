@@ -1,5 +1,3 @@
-cargo-features = ["default-run"]
-
 [package]
 authors = ["Scott Olson <scott@solson.me>"]
 description = "An experimental interpreter for Rust MIR."
@@ -8,7 +6,6 @@ name = "miri"
 repository = "https://github.com/solson/miri"
 version = "0.1.0"
 build = "build.rs"
-default-run = "miri"
 
 [[bin]]
 doc = false
@@ -33,5 +30,5 @@ log = "0.4"
 cargo_miri = ["cargo_metadata"]
 
 [dev-dependencies]
-compiletest_rs = { version = "0.3.4", features = ["tmp"] }
+compiletest_rs = { version = "0.3.12", features = ["tmp"] }
 colored = "1.6"
