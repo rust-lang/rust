@@ -11,16 +11,35 @@
 // ignore-wasm32
 // ignore-emscripten
 
-#![feature(const_fn)]
+#![feature(const_fn, libc)]
 #![allow(const_err)]
+
+extern crate libc;
 
 use std::env;
 use std::process::{Command, Stdio};
 
+// this will panic in debug mode
 const fn bar() -> usize { 0 - 1 }
 
 fn foo() {
     let _: &'static _ = &bar();
+}
+
+#[cfg(unix)]
+fn check_status(status: std::process::ExitStatus)
+{
+    use libc;
+    use std::os::unix::process::ExitStatusExt;
+
+    assert!(status.signal() == Some(libc::SIGILL)
+            || status.signal() == Some(libc::SIGABRT));
+}
+
+#[cfg(not(unix))]
+fn check_status(status: std::process::ExitStatus)
+{
+    assert!(!status.success());
 }
 
 fn main() {
@@ -34,5 +53,5 @@ fn main() {
         .stdout(Stdio::piped())
         .stdin(Stdio::piped())
         .arg("test").output().unwrap();
-    assert!(!p.status.success());
+    check_status(p.status);
 }
