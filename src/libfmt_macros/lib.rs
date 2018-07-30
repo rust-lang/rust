@@ -168,7 +168,7 @@ impl<'a> Iterator for Parser<'a> {
                     if self.consume('{') {
                         Some(String(self.string(pos + 1)))
                     } else {
-                        let mut arg = self.argument();
+                        let arg = self.argument();
                         if let Some(arg_pos) = self.must_consume('}').map(|end| {
                             (pos + raw + 1, end + raw + 2)
                         }) {

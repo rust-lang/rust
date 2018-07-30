@@ -28,8 +28,8 @@ impl ConstraintGraph {
         let mut next_constraints = IndexVec::from_elem(None, &set.constraints);
 
         for (idx, constraint) in set.constraints.iter_enumerated().rev() {
-            let mut head = &mut first_constraints[constraint.sup];
-            let mut next = &mut next_constraints[idx];
+            let head = &mut first_constraints[constraint.sup];
+            let next = &mut next_constraints[idx];
             debug_assert!(next.is_none());
             *next = *head;
             *head = Some(idx);

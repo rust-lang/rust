@@ -423,7 +423,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             let mut qualname = String::from("<");
                             qualname.push_str(&self.tcx.hir.node_to_pretty_string(ty.id));
 
-                            let mut trait_id = self.tcx.trait_id_of_impl(impl_id);
+                            let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut decl_id = None;
                             let mut docs = String::new();
                             let mut attrs = vec![];

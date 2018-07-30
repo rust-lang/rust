@@ -1172,7 +1172,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
 
         // Try looking for methods and associated items
         let mut split = path_str.rsplitn(2, "::");
-        let mut item_name = if let Some(first) = split.next() {
+        let item_name = if let Some(first) = split.next() {
             first
         } else {
             return Err(())

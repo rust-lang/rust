@@ -865,7 +865,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| if let Some(binding) = result[ns].get().ok() {
-            let mut import = this.import_map.entry(directive.id).or_default();
+            let import = this.import_map.entry(directive.id).or_default();
             import[ns] = Some(PathResolution::new(binding.def()));
         });
 

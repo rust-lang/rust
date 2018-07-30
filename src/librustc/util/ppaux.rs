@@ -354,7 +354,7 @@ impl PrintContext {
                 };
                 if has_default {
                     if let Some(substs) = tcx.lift(&substs) {
-                        let mut types = substs.types().rev().skip(child_types);
+                        let types = substs.types().rev().skip(child_types);
                         for ((def_id, has_default), actual) in type_params.zip(types) {
                             if !has_default {
                                 break;

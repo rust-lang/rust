@@ -259,7 +259,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::Eq { value, mut ty } => {
-                let mut val = Operand::Copy(place.clone());
+                let val = Operand::Copy(place.clone());
                 let mut expect = self.literal_operand(test.span, ty, value);
                 // Use PartialEq::eq instead of BinOp::Eq
                 // (the binop can only handle primitives)
