@@ -986,28 +986,40 @@ impl<E> Executor for Box<E>
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<'a, F: Future<Output = ()> + Send + 'a> From<PinBox<F>> for FutureObj<'a, ()> {
+impl<'a, F> From<PinBox<F>> for FutureObj<'a, F::Output>
+where
+    F: Future + Send + 'a,
+{
     fn from(boxed: PinBox<F>) -> Self {
         FutureObj::new(boxed)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<'a, F: Future<Output = ()> + Send + 'a> From<Box<F>> for FutureObj<'a, ()> {
+impl<'a, F> From<Box<F>> for FutureObj<'a, F::Output>
+where
+    F: Future + Send + 'a,
+{
     fn from(boxed: Box<F>) -> Self {
         FutureObj::new(boxed)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<'a, F: Future<Output = ()> + 'a> From<PinBox<F>> for LocalFutureObj<'a, ()> {
+impl<'a, F> From<PinBox<F>> for LocalFutureObj<'a, F::Output>
+where
+    F: Future + 'a,
+{
     fn from(boxed: PinBox<F>) -> Self {
         LocalFutureObj::new(boxed)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<'a, F: Future<Output = ()> + 'a> From<Box<F>> for LocalFutureObj<'a, ()> {
+impl<'a, F> From<Box<F>> for LocalFutureObj<'a, F::Output>
+where
+    F: Future + 'a,
+{
     fn from(boxed: Box<F>) -> Self {
         LocalFutureObj::new(boxed)
     }
