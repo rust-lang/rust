@@ -1194,7 +1194,8 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
         })?;
         match ty.def {
             Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
-                let item = cx.tcx.inherent_impls(did).iter()
+                let item = cx.tcx.inherent_impls(did)
+                                 .iter()
                                  .flat_map(|imp| cx.tcx.associated_items(*imp))
                                  .find(|item| item.ident.name == item_name);
                 if let Some(item) = item {
@@ -1205,26 +1206,23 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                     };
                     Ok((ty.def, Some(format!("{}.{}", out, item_name))))
                 } else {
-                    let is_enum = match ty.def {
-                        Def::Enum(_) => true,
-                        _ => false,
-                    };
-                    let elem = if is_enum {
-                        cx.tcx.adt_def(did).all_fields().find(|item| item.ident.name == item_name)
-                    } else {
-                        cx.tcx.adt_def(did)
-                              .non_enum_variant()
-                              .fields
-                              .iter()
-                              .find(|item| item.ident.name == item_name)
-                    };
-                    if let Some(item) = elem {
-                        Ok((ty.def,
-                            Some(format!("{}.{}",
-                                         if is_enum { "variant" } else { "structfield" },
-                                         item.ident))))
-                    } else {
-                        Err(())
+                    match cx.tcx.type_of(did).sty {
+                        ty::TyAdt(def, _) => {
+                            if let Some(item) = def.all_fields()
+                                                   .find(|item| item.ident.name == item_name) {
+                                Ok((ty.def,
+                                    Some(format!("{}.{}",
+                                                 if def.is_enum() {
+                                                     "variant"
+                                                 } else {
+                                                     "structfield"
+                                                 },
+                                                 item.ident))))
+                            } else {
+                                Err(())
+                            }
+                        }
+                        _ => Err(()),
                     }
                 }
             }
