@@ -227,8 +227,10 @@ impl<'a> LintLevelsBuilder<'a> {
                         continue
                     }
                 };
-                if let Some(lint_tool) = word.is_scoped() {
-                    if !self.sess.features_untracked().tool_lints {
+                let tool_name = if let Some(lint_tool) = word.is_scoped() {
+                    let gate_feature = !self.sess.features_untracked().tool_lints;
+                    let known_tool = attr::is_known_lint_tool(lint_tool);
+                    if gate_feature {
                         feature_gate::emit_feature_err(&sess.parse_sess,
                                                        "tool_lints",
                                                        word.span,
@@ -236,8 +238,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                                        &format!("scoped lint `{}` is experimental",
                                                                 word.ident));
                     }
-
-                    if !attr::is_known_lint_tool(lint_tool) {
+                    if !known_tool {
                         span_err!(
                             sess,
                             lint_tool.span,
@@ -247,15 +248,34 @@ impl<'a> LintLevelsBuilder<'a> {
                         );
                     }
 
-                    continue
-                }
+                    if gate_feature || !known_tool {
+                        continue
+                    }
+
+                    Some(lint_tool.as_str())
+                } else {
+                    None
+                };
                 let name = word.name();
-                match store.check_lint_name(&name.as_str()) {
+                match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span);
                         for id in ids {
                             specs.insert(*id, (level, src));
                         }
+                    }
+
+                    CheckLintNameResult::Tool(result) => {
+                        if let Some(ids) = result {
+                            let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
+                            let src = LintSource::Node(Symbol::intern(complete_name), li.span);
+                            for id in ids {
+                                specs.insert(*id, (level, src));
+                            }
+                        }
+                        //FIXME: if Tool(None) is returned than the lint either does not exist in
+                        //the lint tool or the code doesn't get compiled with the lint tool and
+                        //therefore the lint cannot exist.
                     }
 
                     _ if !self.warn_about_weird_lints => {}
@@ -298,7 +318,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         if name.as_str().chars().any(|c| c.is_uppercase()) {
                             let name_lower = name.as_str().to_lowercase().to_string();
                             if let CheckLintNameResult::NoLint =
-                                    store.check_lint_name(&name_lower) {
+                                    store.check_lint_name(&name_lower, tool_name) {
                                 db.emit();
                             } else {
                                 db.span_suggestion_with_applicability(
