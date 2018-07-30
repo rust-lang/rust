@@ -61,21 +61,21 @@ environment:
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     SCRIPT: make appveyor-subset-1
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+    MINGW_ARCHIVE: i686-8.1.0-release-posix-dwarf-rt_v6-rev0.7z
     MINGW_DIR: mingw32
     CI_JOB_NAME: i686-mingw-1
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     SCRIPT: make appveyor-subset-2
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+    MINGW_ARCHIVE: i686-8.1.0-release-posix-dwarf-rt_v6-rev0.7z
     MINGW_DIR: mingw32
     CI_JOB_NAME: i686-mingw-2
   - MSYS_BITS: 64
     SCRIPT: python x.py test
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
+    MINGW_ARCHIVE: x86_64-8.1.0-release-posix-seh-rt_v6-rev0.7z
     MINGW_DIR: mingw64
     CI_JOB_NAME: x86_64-mingw
 
@@ -99,7 +99,7 @@ environment:
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools
     SCRIPT: python x.py dist
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+    MINGW_ARCHIVE: i686-8.1.0-release-posix-dwarf-rt_v6-rev0.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
     CI_JOB_NAME: dist-i686-mingw
@@ -107,7 +107,7 @@ environment:
     SCRIPT: python x.py dist
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
-    MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
+    MINGW_ARCHIVE: x86_64-8.1.0-release-posix-seh-rt_v6-rev0.7z
     MINGW_DIR: mingw64
     DEPLOY: 1
     CI_JOB_NAME: dist-x86_64-mingw
@@ -151,26 +151,6 @@ install:
   - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-6.0.0-win64.exe
   - if NOT defined MINGW_URL .\LLVM-6.0.0-win64.exe /S /NCRC /D=C:\clang-rust
   - if NOT defined MINGW_URL set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=C:\clang-rust\bin\clang-cl.exe
-
-  # Here we do a pretty heinous thing which is to mangle the MinGW installation
-  # we just had above. Currently, as of this writing, we're using MinGW-w64
-  # builds of gcc, and that's currently at 6.3.0. We use 6.3.0 as it appears to
-  # be the first version which contains a fix for #40546, builds randomly
-  # failing during LLVM due to ar.exe/ranlib.exe failures.
-  #
-  # Unfortunately, though, 6.3.0 *also* is the first version of MinGW-w64 builds
-  # to contain a regression in gdb (#40184). As a result if we were to use the
-  # gdb provided (7.11.1) then we would fail all debuginfo tests.
-  #
-  # In order to fix spurious failures (pretty high priority) we use 6.3.0. To
-  # avoid disabling gdb tests we download an *old* version of gdb, specifically
-  # that found inside the 6.2.0 distribution. We then overwrite the 6.3.0 gdb
-  # with the 6.2.0 gdb to get tests passing.
-  #
-  # Note that we don't literally overwrite the gdb.exe binary because it appears
-  # to just use gdborig.exe, so that's the binary we deal with instead.
-  - if defined MINGW_URL appveyor-retry appveyor DownloadFile %MINGW_URL%/2017-04-20-%MSYS_BITS%bit-gdborig.exe
-  - if defined MINGW_URL mv 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_DIR%\bin\gdborig.exe
 
   # Otherwise pull in the MinGW installed on appveyor
   - if NOT defined MINGW_URL set PATH=C:\msys64\mingw%MSYS_BITS%\bin;C:\msys64\usr\bin;%PATH%
