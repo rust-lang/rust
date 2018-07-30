@@ -89,7 +89,6 @@ use crate::prelude::*;
 pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub module: &'a mut Module<B>,
-    pub def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
     pub constants: HashMap<AllocId, DataId>,
 }
 
@@ -225,13 +224,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host()).unwrap().finish(flags);
         let mut module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
         let mut context = Context::new();
-        let mut def_id_fn_id_map = HashMap::new();
 
         {
             let mut cx = CodegenCx {
                 tcx,
                 module: &mut module,
-                def_id_fn_id_map: &mut def_id_fn_id_map,
                 constants: HashMap::new(),
             };
 
@@ -251,12 +248,30 @@ impl CodegenBackend for CraneliftCodegenBackend {
             module.finalize_all();
             tcx.sess.warn("Finalized everything");
 
-            for (inst, func_id) in def_id_fn_id_map.iter() {
+            for mono_item in
+                collector::collect_crate_mono_items(
+                    tcx,
+                    collector::MonoItemCollectionMode::Eager
+                ).0 {
+
+                let inst = match mono_item {
+                    MonoItem::Fn(inst) => inst,
+                    _ => continue,
+                };
+
                 //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
                 if tcx.absolute_item_path_str(inst.def_id()) != "example::option_unwrap_or" {
                     continue;
                 }
-                let finalized_function: *const u8 = module.finalize_function(*func_id);
+
+                let fn_ty = inst.ty(tcx);
+                let sig = cton_sig_from_fn_ty(tcx, fn_ty);
+                let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
+                let mut name = String::new();
+                def_path_based_names.push_instance_as_string(inst, &mut name);
+                let func_id = module.declare_function(&name, Linkage::Import, &sig).unwrap();
+
+                let finalized_function: *const u8 = module.finalize_function(func_id);
                 /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
                 let mut res = 0u32;
                 f(&mut res);

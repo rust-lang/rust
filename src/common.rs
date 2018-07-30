@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift_module::{Module, FuncId, DataId};
+use cranelift_module::{Module, DataId};
 
 use crate::prelude::*;
 
@@ -295,7 +295,6 @@ pub fn cton_intcast<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, fro
 pub struct FunctionCx<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub module: &'a mut Module<CurrentBackend>,
-    pub def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
     pub instance: Instance<'tcx>,
     pub mir: &'tcx Mir<'tcx>,
     pub param_substs: &'tcx Substs<'tcx>,
@@ -308,7 +307,6 @@ pub struct FunctionCx<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> fmt::Debug for FunctionCx<'a, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:?}", self.def_id_fn_id_map)?;
         writeln!(f, "{:?}", self.param_substs)?;
         writeln!(f, "{:?}", self.local_map)?;
 

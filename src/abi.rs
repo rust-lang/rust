@@ -9,7 +9,8 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
     let sig = ty_fn_sig(tcx, fn_ty);
     assert!(!sig.variadic, "Variadic function are not yet supported");
     let (call_conv, inputs, _output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
-        Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
+        Abi::Rust => (CallConv::Fast, sig.inputs().to_vec(), sig.output()),
+        Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
             println!("rust-call sig: {:?} inputs: {:?} output: {:?}", sig, sig.inputs(), sig.output());
             assert_eq!(sig.inputs().len(), 2);
@@ -20,7 +21,7 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
             let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
             inputs.extend(extra_args.into_iter());
             (
-                CallConv::SystemV,
+                CallConv::Fast,
                 inputs,
                 sig.output(),
             )
@@ -31,7 +32,17 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
     };
     Signature {
         params: Some(types::I64).into_iter() // First param is place to put return val
-            .chain(inputs.into_iter().map(|ty| cton_type_from_ty(tcx, ty).unwrap_or(types::I64)))
+            .chain(inputs.into_iter().map(|ty| {
+                let cton_ty = cton_type_from_ty(tcx, ty);
+                if let Some(cton_ty) = cton_ty {
+                    cton_ty
+                } else {
+                    if sig.abi == Abi::C {
+                        unimplemented!("Non scalars are not yet supported for \"C\" abi");
+                    }
+                    types::I64
+                }
+            }))
             .map(AbiParam::new).collect(),
         returns: vec![],
         call_conv,
@@ -91,17 +102,13 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
     /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
-        let tcx = self.tcx;
-        let module = &mut self.module;
-        let func_id = *self.def_id_fn_id_map.entry(inst).or_insert_with(|| {
-            let fn_ty = inst.ty(tcx);
-            let sig = cton_sig_from_fn_ty(tcx, fn_ty);
-            let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
-            let mut name = String::new();
-            def_path_based_names.push_instance_as_string(inst, &mut name);
-            module.declare_function(&name, Linkage::Local, &sig).unwrap()
-        });
-        module.declare_func_in_func(func_id, &mut self.bcx.func)
+        let fn_ty = inst.ty(self.tcx);
+        let sig = cton_sig_from_fn_ty(self.tcx, fn_ty);
+        let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(self.tcx, false, false);
+        let mut name = String::new();
+        def_path_based_names.push_instance_as_string(inst, &mut name);
+        let func_id = self.module.declare_function(&name, Linkage::Import, &sig).unwrap();
+        self.module.declare_func_in_func(func_id, &mut self.bcx.func)
     }
 
     fn lib_call(
@@ -156,6 +163,11 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
 }
 
 pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb: Ebb) {
+    match fx.self_sig().abi {
+        Abi::Rust | Abi::RustCall => {}
+        _ => unimplemented!("declared function with non \"rust\" or \"rust-call\" abi"),
+    }
+
     let ret_param = fx.bcx.append_ebb_param(start_ebb, types::I64);
     let _ = fx.bcx.create_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,

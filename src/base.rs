@@ -20,15 +20,13 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                     &fn_ty,
                 );
                 let sig = cton_sig_from_fn_ty(tcx, fn_ty);
+
                 let func_id = {
-                    let module = &mut cx.module;
-                    *cx.def_id_fn_id_map.entry(inst).or_insert_with(|| {
-                        // WARNING: keep in sync with FunctionCx::get_function_ref
-                        let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
-                        let mut name = String::new();
-                        def_path_based_names.push_instance_as_string(inst, &mut name);
-                        module.declare_function(&name, Linkage::Local, &sig).unwrap()
-                    })
+                    // WARNING: keep in sync with FunctionCx::get_function_ref
+                    let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(cx.tcx, false, false);
+                    let mut name = String::new();
+                    def_path_based_names.push_instance_as_string(inst, &mut name);
+                    cx.module.declare_function(&name, Linkage::Export, &sig).unwrap()
                 };
 
                 let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
@@ -84,7 +82,6 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
     let mut fx = FunctionCx {
         tcx: cx.tcx,
         module: &mut cx.module,
-        def_id_fn_id_map: &mut cx.def_id_fn_id_map,
         instance,
         mir,
         bcx,
