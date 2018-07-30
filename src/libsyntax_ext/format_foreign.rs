@@ -774,31 +774,41 @@ pub mod shell {
 
     #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {
-        Ordinal(u8),
-        Name(&'a str),
-        Escape,
+        Ordinal(u8, (usize, usize)),
+        Name(&'a str, (usize, usize)),
+        Escape((usize, usize)),
     }
 
     impl<'a> Substitution<'a> {
         pub fn as_str(&self) -> String {
-            match *self {
-                Substitution::Ordinal(n) => format!("${}", n),
-                Substitution::Name(n) => format!("${}", n),
-                Substitution::Escape => "$$".into(),
+            match self {
+                Substitution::Ordinal(n, _) => format!("${}", n),
+                Substitution::Name(n, _) => format!("${}", n),
+                Substitution::Escape(_) => "$$".into(),
             }
         }
 
         pub fn position(&self) -> Option<(usize, usize)> {
-            match *self {
-                _ => None,
+            match self {
+                Substitution::Ordinal(_, pos) |
+                Substitution::Name(_, pos) |
+                Substitution::Escape(pos) => Some(*pos),
+            }
+        }
+
+        pub fn set_position(&mut self, start: usize, end: usize) {
+            match self {
+                Substitution::Ordinal(_, ref mut pos) |
+                Substitution::Name(_, ref mut pos) |
+                Substitution::Escape(ref mut pos) => *pos = (start, end),
             }
         }
 
         pub fn translate(&self) -> Option<String> {
             match *self {
-                Substitution::Ordinal(n) => Some(format!("{{{}}}", n)),
-                Substitution::Name(n) => Some(format!("{{{}}}", n)),
-                Substitution::Escape => None,
+                Substitution::Ordinal(n, _) => Some(format!("{{{}}}", n)),
+                Substitution::Name(n, _) => Some(format!("{{{}}}", n)),
+                Substitution::Escape(_) => None,
             }
         }
     }
@@ -807,20 +817,26 @@ pub mod shell {
     pub fn iter_subs(s: &str) -> Substitutions {
         Substitutions {
             s,
+            pos: 0,
         }
     }
 
     /// Iterator over substitutions in a string.
     pub struct Substitutions<'a> {
         s: &'a str,
+        pos: usize,
     }
 
     impl<'a> Iterator for Substitutions<'a> {
         type Item = Substitution<'a>;
         fn next(&mut self) -> Option<Self::Item> {
             match parse_next_substitution(self.s) {
-                Some((sub, tail)) => {
+                Some((mut sub, tail)) => {
                     self.s = tail;
+                    if let Some((start, end)) = sub.position() {
+                        sub.set_position(start + self.pos, end + self.pos);
+                        self.pos += end;
+                    }
                     Some(sub)
                 },
                 None => None,
@@ -837,15 +853,15 @@ pub mod shell {
         let at = {
             let start = s.find('$')?;
             match s[start+1..].chars().next()? {
-                '$' => return Some((Substitution::Escape, &s[start+2..])),
+                '$' => return Some((Substitution::Escape((start, start+2)), &s[start+2..])),
                 c @ '0' ..= '9' => {
                     let n = (c as u8) - b'0';
-                    return Some((Substitution::Ordinal(n), &s[start+2..]));
+                    return Some((Substitution::Ordinal(n, (start, start+2)), &s[start+2..]));
                 },
                 _ => {/* fall-through */},
             }
 
-            Cur::new_at_start(&s[start..])
+            Cur::new_at(&s[..], start)
         };
 
         let at = at.at_next_cp()?;
@@ -855,7 +871,10 @@ pub mod shell {
             None
         } else {
             let end = at_next_cp_while(inner, is_ident_tail);
-            Some((Substitution::Name(at.slice_between(end).unwrap()), end.slice_after()))
+            let slice = at.slice_between(end).unwrap();
+            let start = at.at - 1;
+            let end_pos = at.at + slice.len();
+            Some((Substitution::Name(slice, (start, end_pos)), end.slice_after()))
         }
     }
 
@@ -907,24 +926,24 @@ pub mod shell {
         fn test_escape() {
             assert_eq!(pns("has no escapes"), None);
             assert_eq!(pns("has no escapes, either $"), None);
-            assert_eq!(pns("*so* has a $$ escape"), Some((S::Escape, " escape")));
-            assert_eq!(pns("$$ leading escape"), Some((S::Escape, " leading escape")));
-            assert_eq!(pns("trailing escape $$"), Some((S::Escape, "")));
+            assert_eq!(pns("*so* has a $$ escape"), Some((S::Escape((11, 13)), " escape")));
+            assert_eq!(pns("$$ leading escape"), Some((S::Escape((0, 2)), " leading escape")));
+            assert_eq!(pns("trailing escape $$"), Some((S::Escape((16, 18)), "")));
         }
 
         #[test]
         fn test_parse() {
             macro_rules! assert_pns_eq_sub {
-                ($in_:expr, $kind:ident($arg:expr)) => {
-                    assert_eq!(pns(concat!($in_, "!")), Some((S::$kind($arg.into()), "!")))
+                ($in_:expr, $kind:ident($arg:expr, $pos:expr)) => {
+                    assert_eq!(pns(concat!($in_, "!")), Some((S::$kind($arg.into(), $pos), "!")))
                 };
             }
 
-            assert_pns_eq_sub!("$0", Ordinal(0));
-            assert_pns_eq_sub!("$1", Ordinal(1));
-            assert_pns_eq_sub!("$9", Ordinal(9));
-            assert_pns_eq_sub!("$N", Name("N"));
-            assert_pns_eq_sub!("$NAME", Name("NAME"));
+            assert_pns_eq_sub!("$0", Ordinal(0, (0, 2)));
+            assert_pns_eq_sub!("$1", Ordinal(1, (0, 2)));
+            assert_pns_eq_sub!("$9", Ordinal(9, (0, 2)));
+            assert_pns_eq_sub!("$N", Name("N", (0, 2)));
+            assert_pns_eq_sub!("$NAME", Name("NAME", (0, 5)));
         }
 
         #[test]
@@ -961,13 +980,6 @@ mod strcursor {
     }
 
     impl<'a> StrCursor<'a> {
-        pub fn new_at_start(s: &'a str) -> StrCursor<'a> {
-            StrCursor {
-                s,
-                at: 0,
-            }
-        }
-
         pub fn new_at(s: &'a str, at: usize) -> StrCursor<'a> {
             StrCursor {
                 s,

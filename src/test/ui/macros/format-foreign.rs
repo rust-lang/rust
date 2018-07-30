@@ -22,4 +22,6 @@ fn main() {
     println!("{} %f", "one", 2.0); //~ ERROR never used
 
     println!("Hi there, $NAME.", NAME="Tim"); //~ ERROR never used
+    println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
+    //~^ ERROR multiple unused formatting arguments
 }

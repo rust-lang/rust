@@ -52,10 +52,25 @@ error: named argument never used
   --> $DIR/format-foreign.rs:24:39
    |
 LL |     println!("Hi there, $NAME.", NAME="Tim"); //~ ERROR never used
-   |                                       ^^^^^
+   |                         -----         ^^^^^
+   |                         |
+   |                         help: format specifiers use curly braces: `{NAME}`
    |
-   = help: `$NAME` should be written as `{NAME}`
    = note: shell formatting not supported; see the documentation for `std::fmt`
 
-error: aborting due to 5 previous errors
+error: multiple unused formatting arguments
+  --> $DIR/format-foreign.rs:25:32
+   |
+LL |     println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
+   |              ----------------  ^  ^       ^
+   |              |
+   |              multiple missing formatting specifiers
+   |
+   = note: shell formatting not supported; see the documentation for `std::fmt`
+help: format specifiers use curly braces
+   |
+LL |     println!("{1} {0} $$ {NAME}", 1, 2, NAME=3);
+   |               ^^^ ^^^    ^^^^^^
+
+error: aborting due to 6 previous errors
 
