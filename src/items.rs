@@ -164,7 +164,7 @@ pub struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     abi: abi::Abi,
-    asyncness: ast::IsAsync,
+    is_async: ast::IsAsync,
     constness: ast::Constness,
     defaultness: ast::Defaultness,
     unsafety: ast::Unsafety,
@@ -181,7 +181,7 @@ impl<'a> FnSig<'a> {
             decl,
             generics,
             abi: abi::Abi::Rust,
-            asyncness: ast::IsAsync::NotAsync,
+            is_async: ast::IsAsync::NotAsync,
             constness: ast::Constness::NotConst,
             defaultness: ast::Defaultness::Final,
             unsafety: ast::Unsafety::Normal,
@@ -195,7 +195,7 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.header.unsafety,
-            asyncness: method_sig.header.asyncness,
+            is_async: method_sig.header.asyncness,
             constness: method_sig.header.constness.node,
             defaultness: ast::Defaultness::Final,
             abi: method_sig.header.abi,
@@ -217,7 +217,7 @@ impl<'a> FnSig<'a> {
                 generics,
                 abi: fn_header.abi,
                 constness: fn_header.constness.node,
-                asyncness: fn_header.asyncness,
+                is_async: fn_header.asyncness,
                 defaultness,
                 unsafety: fn_header.unsafety,
                 visibility: visibility.clone(),
@@ -241,7 +241,7 @@ impl<'a> FnSig<'a> {
         result.push_str(format_defaultness(self.defaultness));
         result.push_str(format_constness(self.constness));
         result.push_str(format_unsafety(self.unsafety));
-        result.push_str(format_asyncness(self.asyncness));
+        result.push_str(format_async(self.is_async));
         result.push_str(&format_abi(
             self.abi,
             context.config.force_explicit_abi(),

@@ -5,3 +5,15 @@ fn main() {
         Ok(())
     };
 }
+
+fn baz() {
+    // test
+    let x = async {
+        // async blocks are great
+        Ok(())
+    };
+
+    let y = async {
+        Ok(())
+    }; // comment
+}

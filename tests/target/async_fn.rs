@@ -11,3 +11,10 @@ pub async fn baz() -> Result<(), ()> {
 unsafe async fn foo() {
     async move { Ok(()) }
 }
+
+unsafe async fn rust() {
+    async move {
+        // comment
+        Ok(())
+    }
+}
