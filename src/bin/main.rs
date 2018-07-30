@@ -473,6 +473,25 @@ impl GetOptsOptions {
             if let Some(ref file_lines) = matches.opt_str("file-lines") {
                 options.file_lines = file_lines.parse().map_err(err_msg)?;
             }
+        } else {
+            let mut unstable_options = vec![];
+            if matches.opt_present("skip-children") {
+                unstable_options.push("`--skip-children`");
+            }
+            if matches.opt_present("error-on-unformatted") {
+                unstable_options.push("`--error-on-unformatted`");
+            }
+            if matches.opt_present("file-lines") {
+                unstable_options.push("`--file-lines`");
+            }
+            if !unstable_options.is_empty() {
+                let s = if unstable_options.len() == 1 { "" } else { "s" };
+                return Err(format_err!(
+                    "Unstable option{} ({}) used without `--unstable-features`",
+                    s,
+                    unstable_options.join(", "),
+                ));
+            }
         }
 
         options.config_path = matches.opt_str("config-path").map(PathBuf::from);
