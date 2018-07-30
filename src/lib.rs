@@ -29,12 +29,14 @@ mod syntax_kinds;
 mod yellow;
 /// Utilities for simple uses of the parser.
 pub mod utils;
+pub mod ast;
 
 pub use {
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
     text_unit::{TextRange, TextUnit},
-    yellow::{SyntaxNode, SyntaxNodeRef},
+    yellow::{SyntaxNode, SyntaxNodeRef, TreeRoot, SyntaxRoot},
+    ast::File,
 };
 
 pub(crate) use yellow::SyntaxError;

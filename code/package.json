@@ -1,0 +1,52 @@
+{
+    "name": "libsyntax-rust",
+    "displayName": "libsyntax-rust",
+    "description": "An experimental Rust plugin for VS Code based on libsyntax2",
+    "license": "MIT",
+    "repository": "http://github.com/matklad/libsyntax2/",
+    "version": "0.0.1",
+    "publisher": "matklad",
+    "engines": {
+        "vscode": "^1.18.0"
+    },
+    "devDependencies": {
+        "@types/node": "^6.0.112",
+        "neon-cli": "^0.2.0",
+        "typescript": "^2.9.1",
+        "vsce": "^1.42.0",
+        "vscode": "^1.1.18"
+    },
+    "scripts": {
+        "vscode:prepublish": "tsc -p ./",
+        "compile": "tsc -watch -p ./",
+        "install": "neon build",
+        "postinstall": "node ./node_modules/vscode/bin/install"
+    },
+    "main": "./out/src/main",
+    "contributes": {
+        "languages": [
+            {
+                "id": "rust",
+                "extensions": [
+                    ".rs"
+                ]
+            }
+        ],
+        "commands": [
+            {
+                "command": "libsyntax-rust.syntaxTree",
+                "title": "Show Rust syntax tree"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "libsyntax-rust.semanticSelection",
+                "key": "ctrl+w",
+                "when": "editorTextFocus && editorLangId == rust"
+            }
+        ]
+    },
+    "activationEvents": [
+        "onLanguage:rust"
+    ]
+}
