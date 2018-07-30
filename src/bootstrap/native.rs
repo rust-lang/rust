@@ -474,7 +474,7 @@ impl Step for TestHelpers {
         }
 
         let _folder = builder.fold_output(|| "build_test_helpers");
-        builder.info(&format!("Building test helpers"));
+        builder.info("Building test helpers");
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
 

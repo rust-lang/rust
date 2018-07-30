@@ -229,7 +229,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn dump_graph(tcx: TyCtxt) {
-    let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| format!("dep_graph"));
+    let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
     let query = tcx.dep_graph.query();
 
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {

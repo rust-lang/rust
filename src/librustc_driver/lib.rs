@@ -1175,7 +1175,7 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     for option in groups.iter().filter(|x| include_unstable_options || x.is_stable()) {
         (option.apply)(&mut options);
     }
-    let message = format!("Usage: rustc [OPTIONS] INPUT");
+    let message = "Usage: rustc [OPTIONS] INPUT".to_string();
     let nightly_help = if nightly_options::is_nightly_build() {
         "\n    -Z help             Print internal options for debugging rustc"
     } else {

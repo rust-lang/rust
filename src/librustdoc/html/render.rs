@@ -2564,7 +2564,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                                    text));
                 }
             } else {
-                stability.push(format!("<div class='stab unstable'>Experimental</div>"))
+                stability.push("<div class='stab unstable'>Experimental</div>".to_string())
             }
         };
     } else if let Some(depr) = item.deprecation.as_ref() {

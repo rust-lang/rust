@@ -364,7 +364,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                 match tcx.span_of_impl(overlap.with_impl) {
                     Ok(span) => {
                         err.span_label(tcx.sess.codemap().def_span(span),
-                                       format!("first implementation here"));
+                                       "first implementation here".to_string());
                         err.span_label(impl_span,
                                        format!("conflicting implementation{}",
                                                 overlap.self_desc

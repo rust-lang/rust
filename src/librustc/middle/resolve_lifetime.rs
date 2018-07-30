@@ -2665,7 +2665,7 @@ pub fn report_missing_lifetime_specifiers(
     let msg = if count > 1 {
         format!("expected {} lifetime parameters", count)
     } else {
-        format!("expected lifetime parameter")
+        "expected lifetime parameter".to_string()
     };
 
     err.span_label(span, msg);

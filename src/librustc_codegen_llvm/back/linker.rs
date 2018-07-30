@@ -206,7 +206,7 @@ impl<'a> GccLinker<'a> {
         match self.sess.opts.cg.lto {
             config::Lto::Thin |
             config::Lto::ThinLocal => {
-                self.linker_arg(&format!("-plugin-opt=thin"));
+                self.linker_arg("-plugin-opt=thin");
             }
             config::Lto::Fat |
             config::Lto::Yes |

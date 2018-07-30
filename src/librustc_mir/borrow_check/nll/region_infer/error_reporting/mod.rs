@@ -401,7 +401,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         let mut diag = infcx.tcx.sess.struct_span_err(
             span,
-            &format!("unsatisfied lifetime constraints"), // FIXME
+            "unsatisfied lifetime constraints", // FIXME
         );
 
         let counter = &mut 1;

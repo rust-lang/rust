@@ -261,14 +261,14 @@ pub(crate) fn each_linked_rlib(sess: &Session,
                    .or_else(|| fmts.get(&config::CrateTypeProcMacro));
     let fmts = match fmts {
         Some(f) => f,
-        None => return Err(format!("could not find formats for rlibs"))
+        None => return Err("could not find formats for rlibs".to_string())
     };
     for &(cnum, ref path) in crates {
         match fmts.get(cnum.as_usize() - 1) {
             Some(&Linkage::NotLinked) |
             Some(&Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
-            None => return Err(format!("could not find formats for rlibs"))
+            None => return Err("could not find formats for rlibs".to_string())
         }
         let name = &info.crate_name[&cnum];
         let path = match *path {

@@ -204,7 +204,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
                     format!("&{}", tymut_string)
                 }
             }
-            ty::TyFnDef(..) => format!("fn item"),
+            ty::TyFnDef(..) => "fn item".to_string(),
             ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyDynamic(ref inner, ..) => {
                 inner.principal().map_or_else(|| "trait".to_string(),

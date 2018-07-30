@@ -21,7 +21,7 @@ pub fn errno() -> i32 {
 }
 
 pub fn error_string(_errno: i32) -> String {
-    format!("operation successful")
+    "operation successful".to_string()
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {

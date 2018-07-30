@@ -557,7 +557,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let test_threads = match matches.opt_str("test-threads") {
         Some(n_str) => match n_str.parse::<usize>() {
-            Ok(0) => return Some(Err(format!("argument for --test-threads must not be 0"))),
+            Ok(0) => return Some(Err("argument for --test-threads must not be 0".to_string())),
             Ok(n) => Some(n),
             Err(e) => {
                 return Some(Err(format!(

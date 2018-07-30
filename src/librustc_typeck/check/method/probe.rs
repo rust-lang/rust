@@ -343,7 +343,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                                 scope_expr_id,
                                 span,
-                                &format!("type annotations needed"));
+                                "type annotations needed");
                         }
                     } else {
                         let t = self.structurally_resolved_type(span, final_ty);

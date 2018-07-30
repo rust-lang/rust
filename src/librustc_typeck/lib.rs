@@ -191,9 +191,9 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         hir::ItemKind::Fn(.., ref generics, _) => {
                             let mut error = false;
                             if !generics.params.is_empty() {
-                                let msg = format!("`main` function is not allowed to have generic \
-                                                   parameters");
-                                let label = format!("`main` cannot have generic parameters");
+                                let msg = "`main` function is not allowed to have generic \
+                                           parameters".to_string();
+                                let label = "`main` cannot have generic parameters".to_string();
                                 struct_span_err!(tcx.sess, generics.span, E0131, "{}", msg)
                                     .span_label(generics.span, label)
                                     .emit();

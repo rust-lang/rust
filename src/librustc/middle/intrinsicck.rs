@@ -107,7 +107,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
                 }
                 Err(LayoutError::Unknown(bad)) => {
                     if bad == ty {
-                        format!("this type's size can vary")
+                        "this type's size can vary".to_string()
                     } else {
                         format!("size can vary because of {}", bad)
                     }

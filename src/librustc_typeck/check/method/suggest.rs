@@ -113,7 +113,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let impl_ty = self.impl_self_ty(span, impl_did).ty;
 
                         let insertion = match self.tcx.impl_trait_ref(impl_did) {
-                            None => format!(""),
+                            None => String::new(),
                             Some(trait_ref) => {
                                 format!(" of the trait `{}`",
                                         self.tcx.item_path_str(trait_ref.def_id))

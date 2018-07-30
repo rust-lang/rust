@@ -181,10 +181,10 @@ fn dump_path(
     };
 
     let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
-        format!("")
+        String::new()
     } else {
         match pass_num {
-            None => format!(".-------"),
+            None => ".-------".to_string(),
             Some(pass_num) => format!(".{}", pass_num),
         }
     };
@@ -398,7 +398,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, ty, literal } = constant;
-        self.push(&format!("mir::Constant"));
+        self.push("mir::Constant");
         self.push(&format!("+ span: {:?}", span));
         self.push(&format!("+ ty: {:?}", ty));
         self.push(&format!("+ literal: {:?}", literal));
@@ -407,7 +407,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
         let ty::Const { ty, val, .. } = constant;
-        self.push(&format!("ty::Const"));
+        self.push("ty::Const");
         self.push(&format!("+ ty: {:?}", ty));
         self.push(&format!("+ val: {:?}", val));
     }
@@ -417,13 +417,13 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
         match rvalue {
             Rvalue::Aggregate(kind, _) => match **kind {
                 AggregateKind::Closure(def_id, substs) => {
-                    self.push(&format!("closure"));
+                    self.push("closure");
                     self.push(&format!("+ def_id: {:?}", def_id));
                     self.push(&format!("+ substs: {:#?}", substs));
                 }
 
                 AggregateKind::Generator(def_id, substs, movability) => {
-                    self.push(&format!("generator"));
+                    self.push("generator");
                     self.push(&format!("+ def_id: {:?}", def_id));
                     self.push(&format!("+ substs: {:#?}", substs));
                     self.push(&format!("+ movability: {:?}", movability));

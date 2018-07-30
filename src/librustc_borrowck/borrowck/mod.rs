@@ -1314,7 +1314,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         let suggestion =
             match self.tcx.sess.codemap().span_to_snippet(err.span) {
                 Ok(string) => format!("move {}", string),
-                Err(_) => format!("move |<args>| <body>")
+                Err(_) => "move |<args>| <body>".to_string()
             };
 
         self.cannot_capture_in_long_lived_closure(err.span,

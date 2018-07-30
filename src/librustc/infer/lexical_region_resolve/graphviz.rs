@@ -204,7 +204,7 @@ impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
         match *e {
             Edge::Constraint(ref c) =>
                 dot::LabelText::label(format!("{:?}", self.map.get(c).unwrap())),
-            Edge::EnclScope(..) => dot::LabelText::label(format!("(enclosed)")),
+            Edge::EnclScope(..) => dot::LabelText::label("(enclosed)".to_string()),
         }
     }
 }
@@ -273,7 +273,7 @@ fn dump_region_data_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, '
     debug!("dump_region_data map (len: {}) path: {}",
            map.len(),
            path);
-    let g = ConstraintGraph::new(format!("region_data"), region_rels, map);
+    let g = ConstraintGraph::new("region_data".to_string(), region_rels, map);
     debug!("dump_region_data calling render");
     let mut v = Vec::new();
     dot::render(&g, &mut v).unwrap();

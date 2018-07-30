@@ -85,7 +85,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     reason = if self.is_upvar(access_place) {
                         ", as it is a captured variable in a `Fn` closure".to_string()
                     } else {
-                        format!(", as `Fn` closures cannot mutate their captured variables")
+                        ", as `Fn` closures cannot mutate their captured variables".to_string()
                     }
                 } else if {
                     if let Place::Local(local) = *base {
@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     }
                 } {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
-                    reason = format!(", as it is immutable for the pattern guard");
+                    reason = ", as it is immutable for the pattern guard".to_string();
                 } else {
                     let pointer_type =
                         if base.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {

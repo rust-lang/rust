@@ -424,7 +424,7 @@ impl BuiltinLintDiagnostics {
                     Ok(ref s) if is_global => (format!("dyn ({})", s),
                                                Applicability::MachineApplicable),
                     Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                    Err(_) => (format!("dyn <type>"), Applicability::HasPlaceholders)
+                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders)
                 };
                 db.span_suggestion_with_applicability(span, "use `dyn`", sugg, app);
             }
@@ -441,7 +441,7 @@ impl BuiltinLintDiagnostics {
 
                         (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
                     }
-                    Err(_) => (format!("crate::<path>"), Applicability::HasPlaceholders)
+                    Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders)
                 };
                 db.span_suggestion_with_applicability(span, "use `crate`", sugg, app);
             }

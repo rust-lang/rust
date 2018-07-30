@@ -1080,7 +1080,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut diag = infcx
             .tcx
             .sess
-            .struct_span_err(span, &format!("higher-ranked subtype error"));
+            .struct_span_err(span, "higher-ranked subtype error");
         diag.emit();
     }
 }

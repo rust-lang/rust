@@ -248,8 +248,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     self.emit_repr_error(
                         attr.span,
                         stmt.span,
-                        &format!("attribute should not be applied to a statement"),
-                        &format!("not a struct, enum or union"),
+                        "attribute should not be applied to a statement",
+                        "not a struct, enum or union",
                     );
                 }
             }
@@ -269,8 +269,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 self.emit_repr_error(
                     attr.span,
                     expr.span,
-                    &format!("attribute should not be applied to an expression"),
-                    &format!("not defining a struct, enum or union"),
+                    "attribute should not be applied to an expression",
+                    "not defining a struct, enum or union",
                 );
             }
         }

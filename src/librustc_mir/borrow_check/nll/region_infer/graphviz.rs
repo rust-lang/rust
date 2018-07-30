@@ -50,7 +50,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
     type Edge = OutlivesConstraint;
 
     fn graph_id(&'this self) -> dot::Id<'this> {
-        dot::Id::new(format!("RegionInferenceContext")).unwrap()
+        dot::Id::new("RegionInferenceContext".to_string()).unwrap()
     }
     fn node_id(&'this self, n: &RegionVid) -> dot::Id<'this> {
         dot::Id::new(format!("r{}", n.index())).unwrap()
@@ -100,7 +100,7 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for SccConstraints<'a, 'tcx> {
     type Edge = (ConstraintSccIndex, ConstraintSccIndex);
 
     fn graph_id(&'this self) -> dot::Id<'this> {
-        dot::Id::new(format!("RegionInferenceContext")).unwrap()
+        dot::Id::new("RegionInferenceContext".to_string()).unwrap()
     }
     fn node_id(&'this self, n: &ConstraintSccIndex) -> dot::Id<'this> {
         dot::Id::new(format!("r{}", n.index())).unwrap()

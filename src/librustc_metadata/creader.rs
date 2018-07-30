@@ -802,7 +802,7 @@ impl<'a> CrateLoader<'a> {
                                            name));
                 }
             } else {
-                self.sess.err(&format!("Must link std to be compiled with `-Z sanitizer`"));
+                self.sess.err("Must link std to be compiled with `-Z sanitizer`");
             }
         }
     }

@@ -333,7 +333,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             infcx.note_type_err(&mut diag,
                                 &cause,
-                                trait_err_span.map(|sp| (sp, format!("type in trait"))),
+                                trait_err_span.map(|sp| (sp, "type in trait".to_string())),
                                 Some(infer::ValuePairs::Types(ExpectedFound {
                                     expected: trait_fty,
                                     found: impl_fty,
@@ -633,7 +633,7 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 &if num_impl_m_type_params != 1 {
                                     format!("{} type parameters", num_impl_m_type_params)
                                 } else {
-                                    format!("1 type parameter")
+                                    "1 type parameter".to_string()
                                 },
                                 suffix.as_ref().map(|s| &s[..]).unwrap_or("")));
 
@@ -975,7 +975,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             infcx.note_type_err(&mut diag,
                                 &cause,
-                                trait_c_span.map(|span| (span, format!("type in trait"))),
+                                trait_c_span.map(|span| (span, "type in trait".to_string())),
                                 Some(infer::ValuePairs::Types(ExpectedFound {
                                     expected: trait_ty,
                                     found: impl_ty,
