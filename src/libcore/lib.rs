@@ -87,6 +87,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]
 #![feature(extern_types)]
+#![feature(external_doc)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
@@ -204,6 +205,9 @@ pub mod fmt;
 pub mod time;
 
 pub mod unicode;
+
+/* OS-specific functionality */
+pub mod os;
 
 /* Async */
 pub mod future;
