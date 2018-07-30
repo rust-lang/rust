@@ -5,6 +5,14 @@
 #[lang="sized"]
 pub trait Sized {}
 
+#[lang = "unsize"]
+pub trait Unsize<T: ?Sized> {}
+
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+
 #[lang="copy"]
 pub unsafe trait Copy {}
 
