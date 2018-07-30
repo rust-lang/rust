@@ -1891,12 +1891,16 @@ impl Async2018 {
             span,
             "`async` is a keyword in the 2018 edition",
         );
-        lint.span_suggestion_with_applicability(
-            span,
-            "you can use a raw identifier to stay compatible",
-            "r#async".to_string(),
-            Applicability::MachineApplicable,
-        );
+
+        // Don't suggest about raw identifiers if the feature isn't active
+        if cx.sess.features_untracked().raw_identifiers {
+            lint.span_suggestion_with_applicability(
+                span,
+                "you can use a raw identifier to stay compatible",
+                "r#async".to_string(),
+                Applicability::MachineApplicable,
+            );
+        }
         lint.emit()
     }
 }

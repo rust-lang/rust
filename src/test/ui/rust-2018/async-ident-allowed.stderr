@@ -1,0 +1,17 @@
+error: `async` is a keyword in the 2018 edition
+  --> $DIR/async-ident-allowed.rs:19:9
+   |
+LL |     let async = 3; //~ ERROR: is a keyword
+   |         ^^^^^
+   |
+note: lint level defined here
+  --> $DIR/async-ident-allowed.rs:13:9
+   |
+LL | #![deny(rust_2018_compatibility)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: #[deny(async_idents)] implied by #[deny(rust_2018_compatibility)]
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: aborting due to previous error
+

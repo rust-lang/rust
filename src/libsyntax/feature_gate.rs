@@ -412,7 +412,7 @@ declare_features! (
     (active, underscore_imports, "1.26.0", Some(48216), None),
 
     // Allows keywords to be escaped for use as identifiers
-    (active, raw_identifiers, "1.26.0", Some(48589), None),
+    (active, raw_identifiers, "1.26.0", Some(48589), Some(Edition::Edition2018)),
 
     // Allows macro invocations in `extern {}` blocks
     (active, macros_in_extern, "1.27.0", Some(49476), None),
