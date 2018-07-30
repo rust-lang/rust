@@ -489,7 +489,7 @@ impl Step for Std {
         // Keep a whitelist so we do not build internal stdlib crates, these will be
         // build by the rustc step later if enabled.
         cargo.arg("--no-deps");
-        for krate in &["alloc", "core", "std", "std_unicode"] {
+        for krate in &["alloc", "core", "std"] {
             cargo.arg("-p").arg(krate);
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
