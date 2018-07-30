@@ -8,7 +8,6 @@ use colored::*;
 use std::slice::SliceConcatExt;
 use std::path::{PathBuf, Path};
 use std::io::Write;
-use std::env;
 
 macro_rules! eprintln {
     ($($arg:tt)*) => {
@@ -111,9 +110,6 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
         // For now, only validate without optimizations.  Inlining breaks validation.
         flags.push("-Zmir-emit-validate=1".to_owned());
     }
-    // Control miri logging. This is okay despite concurrent test execution as all tests
-    // will set this env var to the same value.
-    env::set_var("MIRI_LOG", "warn");
     config.target_rustcflags = Some(flags.join(" "));
     compiletest::run_tests(&config);
 }

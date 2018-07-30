@@ -612,7 +612,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
             // Stub out all the other pthread calls to just return 0
             link_name if link_name.starts_with("pthread_") => {
-                info!("ignoring C ABI call: {}", link_name);
+                debug!("ignoring C ABI call: {}", link_name);
                 self.write_null(dest, dest_ty)?;
             }
 
@@ -759,7 +759,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         match &path[..] {
             // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
             // Still, we can make many things mostly work by "emulating" or ignoring some functions.
-            "std::io::_print" => {
+            "std::io::_print" |
+            "std::io::_eprint" => {
                 warn!(
                     "Ignoring output.  To run programs that print, make sure you have a libstd with full MIR."
                 );
