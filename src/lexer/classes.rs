@@ -1,12 +1,17 @@
 use unicode_xid::UnicodeXID;
 
 pub fn is_ident_start(c: char) -> bool {
-    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+    (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || c == '_'
         || (c > '\x7f' && UnicodeXID::is_xid_start(c))
 }
 
 pub fn is_ident_continue(c: char) -> bool {
-    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+    (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || (c >= '0' && c <= '9')
+        || c == '_'
         || (c > '\x7f' && UnicodeXID::is_xid_continue(c))
 }
 

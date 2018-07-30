@@ -1,5 +1,5 @@
-use lexer::ptr::Ptr;
 use lexer::classes::*;
+use lexer::ptr::Ptr;
 
 use SyntaxKind::{self, *};
 

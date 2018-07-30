@@ -1,8 +1,4 @@
-use {
-    SyntaxKind, TextRange, TextUnit,
-    SyntaxKind::EOF,
-    lexer::Token,
-};
+use {lexer::Token, SyntaxKind, SyntaxKind::EOF, TextRange, TextUnit};
 
 use std::ops::{Add, AddAssign};
 

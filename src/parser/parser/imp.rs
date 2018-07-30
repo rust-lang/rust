@@ -1,5 +1,5 @@
-use parser::input::{InputPosition, ParserInput};
 use parser::event::Event;
+use parser::input::{InputPosition, ParserInput};
 
 use SyntaxKind::{self, EOF, TOMBSTONE};
 

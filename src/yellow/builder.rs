@@ -1,7 +1,7 @@
 use {
+    parser::Sink,
+    yellow::{GreenNode, GreenNodeBuilder, SyntaxError, SyntaxNode, SyntaxRoot},
     SyntaxKind, TextRange, TextUnit,
-    yellow::{SyntaxNode, SyntaxRoot, GreenNode, GreenNodeBuilder, SyntaxError},
-    parser::Sink
 };
 
 pub(crate) struct GreenBuilder {
@@ -12,9 +12,7 @@ pub(crate) struct GreenBuilder {
     errors: Vec<SyntaxError>,
 }
 
-impl GreenBuilder {
-
-}
+impl GreenBuilder {}
 
 impl Sink for GreenBuilder {
     type Tree = SyntaxNode;
@@ -53,7 +51,10 @@ impl Sink for GreenBuilder {
     }
 
     fn error(&mut self, message: String) {
-        self.errors.push(SyntaxError { message, offset: self.pos })
+        self.errors.push(SyntaxError {
+            message,
+            offset: self.pos,
+        })
     }
 
     fn finish(self) -> SyntaxNode {
@@ -61,5 +62,3 @@ impl Sink for GreenBuilder {
         SyntaxNode::new_owned(root)
     }
 }
-
-

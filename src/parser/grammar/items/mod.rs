@@ -1,9 +1,9 @@
 use super::*;
 
-mod structs;
-mod use_item;
 mod consts;
+mod structs;
 mod traits;
+mod use_item;
 
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
@@ -12,9 +12,8 @@ pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     }
 }
 
-pub(super) const ITEM_FIRST: TokenSet = token_set![
-    EXTERN_KW, MOD_KW, USE_KW, STRUCT_KW, ENUM_KW, FN_KW, PUB_KW, POUND
-];
+pub(super) const ITEM_FIRST: TokenSet =
+    token_set![EXTERN_KW, MOD_KW, USE_KW, STRUCT_KW, ENUM_KW, FN_KW, PUB_KW, POUND];
 
 fn item(p: &mut Parser) {
     let item = p.start();

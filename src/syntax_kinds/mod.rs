@@ -1,7 +1,7 @@
 mod generated;
 
 use std::fmt;
-use ::{SyntaxKind::*};
+use SyntaxKind::*;
 
 pub use self::generated::SyntaxKind;
 
@@ -15,7 +15,6 @@ impl fmt::Debug for SyntaxKind {
 pub(crate) struct SyntaxInfo {
     pub name: &'static str,
 }
-
 
 impl SyntaxKind {
     pub(crate) fn is_trivia(self: SyntaxKind) -> bool {

@@ -1,8 +1,8 @@
 extern crate libsyntax2;
 extern crate testutils;
 
-use libsyntax2::{parse};
-use libsyntax2::utils::{dump_tree_green};
+use libsyntax2::parse;
+use libsyntax2::utils::dump_tree_green;
 use testutils::dir_tests;
 
 #[test]

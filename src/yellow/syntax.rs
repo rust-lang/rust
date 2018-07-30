@@ -1,17 +1,12 @@
-use std::{
-    fmt,
-    sync::Arc,
-    ptr,
-    ops::Deref,
-};
+use std::{fmt, ops::Deref, ptr, sync::Arc};
 
 use {
-    TextRange, TextUnit,
+    yellow::{GreenNode, RedNode},
     SyntaxKind::{self, *},
-    yellow::{RedNode, GreenNode},
+    TextRange, TextUnit,
 };
 
-pub trait TreeRoot: Deref<Target=SyntaxRoot> + Clone {}
+pub trait TreeRoot: Deref<Target = SyntaxRoot> + Clone {}
 impl TreeRoot for Arc<SyntaxRoot> {}
 impl<'a> TreeRoot for &'a SyntaxRoot {}
 
@@ -50,7 +45,10 @@ impl SyntaxNode<Arc<SyntaxRoot>> {
     pub(crate) fn new_owned(root: SyntaxRoot) -> Self {
         let root = Arc::new(root);
         let red_weak = ptr::NonNull::from(&root.red);
-        SyntaxNode { root, red: red_weak }
+        SyntaxNode {
+            root,
+            red: red_weak,
+        }
     }
 }
 
@@ -68,10 +66,7 @@ impl<ROOT: TreeRoot> SyntaxNode<ROOT> {
 
     pub fn range(&self) -> TextRange {
         let red = self.red();
-        TextRange::offset_len(
-            red.start_offset(),
-            red.green().text_len(),
-        )
+        TextRange::offset_len(red.start_offset(), red.green().text_len())
     }
 
     pub fn text(&self) -> String {

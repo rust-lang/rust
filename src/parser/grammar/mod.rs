@@ -21,20 +21,17 @@
 //! After adding a new inline-test, run `cargo collect-tests` to extract
 //! it as a standalone text-fixture into `tests/data/parser/inline`, and
 //! run `cargo test` once to create the "gold" value.
-mod items;
 mod attributes;
 mod expressions;
-mod types;
-mod patterns;
+mod items;
 mod paths;
+mod patterns;
 mod type_params;
+mod types;
 
 use {
+    parser::{parser::Parser, token_set::TokenSet},
     SyntaxKind::{self, *},
-    parser::{
-        parser::Parser,
-        token_set::TokenSet
-    }
 };
 
 pub(crate) fn file(p: &mut Parser) {

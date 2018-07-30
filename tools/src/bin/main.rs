@@ -1,18 +1,14 @@
 extern crate clap;
 #[macro_use]
 extern crate failure;
-extern crate tera;
-extern crate ron;
-extern crate walkdir;
 extern crate itertools;
+extern crate ron;
+extern crate tera;
+extern crate walkdir;
 
-use std::{
-    fs,
-    path::{Path},
-    collections::HashSet,
-};
 use clap::{App, Arg, SubCommand};
 use itertools::Itertools;
+use std::{collections::HashSet, fs, path::Path};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -29,7 +25,7 @@ fn main() -> Result<()> {
             Arg::with_name("verify")
                 .long("--verify")
                 .help("Verify that generated code is up-to-date")
-                .global(true)
+                .global(true),
         )
         .subcommand(SubCommand::with_name("gen-kinds"))
         .subcommand(SubCommand::with_name("gen-tests"))
@@ -66,9 +62,8 @@ fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
 fn get_kinds() -> Result<String> {
     let grammar = grammar()?;
     let template = fs::read_to_string(SYNTAX_KINDS_TEMPLATE)?;
-    let ret = tera::Tera::one_off(&template, &grammar, false).map_err(|e| {
-        format_err!("template error: {}", e)
-    })?;
+    let ret = tera::Tera::one_off(&template, &grammar, false)
+        .map_err(|e| format_err!("template error: {}", e))?;
     Ok(ret)
 }
 
@@ -142,7 +137,8 @@ fn tests_from_dir(dir: &Path) -> Result<HashSet<Test>> {
 fn collect_tests(s: &str) -> Vec<Test> {
     let mut res = vec![];
     let prefix = "// ";
-    let comment_blocks = s.lines()
+    let comment_blocks = s
+        .lines()
         .map(str::trim_left)
         .group_by(|line| line.starts_with(prefix));
 
@@ -181,4 +177,3 @@ fn existing_tests(dir: &Path) -> Result<HashSet<Test>> {
     }
     Ok(res)
 }
-

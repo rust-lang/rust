@@ -1,17 +1,13 @@
 #[macro_use]
 mod token_set;
-mod parser;
-mod input;
 mod event;
 mod grammar;
+mod input;
+mod parser;
 
-use {
-    lexer::Token,
-    parser::event::{process}
-};
+use {lexer::Token, parser::event::process};
 
 pub(crate) use self::event::Sink;
-
 
 /// Parse a sequence of tokens into the representative node tree
 pub(crate) fn parse<S: Sink>(text: String, tokens: &[Token]) -> S::Tree {

@@ -1,12 +1,12 @@
+mod builder;
 mod green;
 mod red;
 mod syntax;
-mod builder;
 
+pub use self::syntax::{SyntaxNode, SyntaxNodeRef};
 pub(crate) use self::{
+    builder::GreenBuilder,
     green::{GreenNode, GreenNodeBuilder},
     red::RedNode,
     syntax::{SyntaxError, SyntaxRoot},
-    builder::GreenBuilder,
 };
-pub use self::syntax::{SyntaxNode, SyntaxNodeRef};

@@ -1,8 +1,8 @@
 extern crate difference;
 extern crate file;
 
-use std::path::{Path, PathBuf};
 use std::fs::read_dir;
+use std::path::{Path, PathBuf};
 
 use difference::Changeset;
 

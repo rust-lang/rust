@@ -1,11 +1,5 @@
-use std::{
-    ptr,
-    sync::RwLock,
-};
-use {
-    TextUnit,
-    yellow::GreenNode,
-};
+use std::{ptr, sync::RwLock};
+use {yellow::GreenNode, TextUnit};
 
 #[derive(Debug)]
 pub(crate) struct RedNode {
@@ -22,9 +16,7 @@ struct ParentData {
 }
 
 impl RedNode {
-    pub fn new_root(
-        green: GreenNode,
-    ) -> RedNode {
+    pub fn new_root(green: GreenNode) -> RedNode {
         RedNode::new(green, None)
     }
 
@@ -42,13 +34,14 @@ impl RedNode {
         RedNode::new(green, Some(parent_data))
     }
 
-    fn new(
-        green: GreenNode,
-        parent: Option<ParentData>,
-    ) -> RedNode {
+    fn new(green: GreenNode, parent: Option<ParentData>) -> RedNode {
         let n_children = green.children().len();
         let children = (0..n_children).map(|_| None).collect();
-        RedNode { green, parent, children: RwLock::new(children) }
+        RedNode {
+            green,
+            parent,
+            children: RwLock::new(children),
+        }
     }
 
     pub(crate) fn green(&self) -> &GreenNode {
@@ -75,12 +68,15 @@ impl RedNode {
         if children[idx].is_none() {
             let green_children = self.green.children();
             let start_offset = self.start_offset()
-                + green_children[..idx].iter().map(|x| x.text_len()).sum::<TextUnit>();
-            let child = RedNode::new_child(green_children[idx].clone(), self.into(), start_offset, idx);
+                + green_children[..idx]
+                    .iter()
+                    .map(|x| x.text_len())
+                    .sum::<TextUnit>();
+            let child =
+                RedNode::new_child(green_children[idx].clone(), self.into(), start_offset, idx);
             children[idx] = Some(child)
         }
         children[idx].as_ref().unwrap().into()
-
     }
 
     pub(crate) fn parent(&self) -> Option<ptr::NonNull<RedNode>> {

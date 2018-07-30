@@ -8,9 +8,9 @@
 //! `start node`, `finish node`, and `FileBuilder` converts
 //! this stream to a real tree.
 use {
-    TextUnit,
-    SyntaxKind::{self, TOMBSTONE},
     lexer::Token,
+    SyntaxKind::{self, TOMBSTONE},
+    TextUnit,
 };
 
 pub(crate) trait Sink {

@@ -1,22 +1,22 @@
-mod ptr;
-mod comments;
-mod strings;
-mod numbers;
 mod classes;
+mod comments;
+mod numbers;
+mod ptr;
+mod strings;
 
 use {
-    TextUnit,
     SyntaxKind::{self, *},
+    TextUnit,
 };
 
 use self::{
-    ptr::Ptr,
     classes::*,
-    numbers::scan_number,
-    strings::{
-        is_string_literal_start, scan_byte_char_or_string, scan_char,
-        scan_raw_string, scan_string},
     comments::{scan_comment, scan_shebang},
+    numbers::scan_number,
+    ptr::Ptr,
+    strings::{
+        is_string_literal_start, scan_byte_char_or_string, scan_char, scan_raw_string, scan_string,
+    },
 };
 
 /// A token of Rust source.

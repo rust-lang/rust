@@ -6,7 +6,7 @@ matrix:
       before_script:
         - rustup component add rustfmt-preview
       script:
-        - cargo fmt --all -- --write-mode=diff
+        - cargo fmt --all -- --check
         - cargo test
         - cargo gen-kinds --verify
         - cargo gen-tests --verify

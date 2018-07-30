@@ -1,5 +1,8 @@
 use std::sync::Arc;
-use {SyntaxKind::{self, *}, TextUnit};
+use {
+    SyntaxKind::{self, *},
+    TextUnit,
+};
 
 #[derive(Clone, Debug)]
 pub(crate) enum GreenNode {
@@ -36,9 +39,7 @@ impl GreenNode {
         fn go(node: &GreenNode, buff: &mut String) {
             match node {
                 GreenNode::Leaf(l) => buff.push_str(&l.text()),
-                GreenNode::Branch(b) => {
-                    b.children().iter().for_each(|child| go(child, buff))
-                }
+                GreenNode::Branch(b) => b.children().iter().for_each(|child| go(child, buff)),
             }
         }
     }
@@ -71,7 +72,6 @@ impl GreenNodeBuilder {
     }
 }
 
-
 #[test]
 fn assert_send_sync() {
     fn f<T: Send + Sync>() {}
@@ -80,14 +80,8 @@ fn assert_send_sync() {
 
 #[derive(Clone, Debug)]
 pub(crate) enum GreenLeaf {
-    Whitespace {
-        newlines: u8,
-        spaces: u8,
-    },
-    Token {
-        kind: SyntaxKind,
-        text: Arc<str>,
-    },
+    Whitespace { newlines: u8, spaces: u8 },
+    Token { kind: SyntaxKind, text: Arc<str> },
 }
 
 impl GreenLeaf {
@@ -96,10 +90,16 @@ impl GreenLeaf {
             let newlines = text.bytes().take_while(|&b| b == b'\n').count();
             let spaces = text[newlines..].bytes().take_while(|&b| b == b' ').count();
             if newlines + spaces == text.len() && newlines <= N_NEWLINES && spaces <= N_SPACES {
-                return GreenLeaf::Whitespace { newlines: newlines as u8, spaces: spaces as u8 };
+                return GreenLeaf::Whitespace {
+                    newlines: newlines as u8,
+                    spaces: spaces as u8,
+                };
             }
         }
-        GreenLeaf::Token { kind, text: text.to_owned().into_boxed_str().into() }
+        GreenLeaf::Token {
+            kind,
+            text: text.to_owned().into_boxed_str().into(),
+        }
     }
 
     pub(crate) fn kind(&self) -> SyntaxKind {
@@ -141,7 +141,11 @@ pub(crate) struct GreenBranch {
 impl GreenBranch {
     fn new(kind: SyntaxKind, children: Vec<GreenNode>) -> GreenBranch {
         let text_len = children.iter().map(|x| x.text_len()).sum::<TextUnit>();
-        GreenBranch { text_len, kind, children }
+        GreenBranch {
+            text_len,
+            kind,
+            children,
+        }
     }
 
     pub fn kind(&self) -> SyntaxKind {
@@ -156,4 +160,3 @@ impl GreenBranch {
         self.children.as_slice()
     }
 }
-
