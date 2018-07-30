@@ -1,6 +1,5 @@
 #![allow(bad_style, missing_docs, unreachable_pub)]
 #![cfg_attr(rustfmt, rustfmt_skip)]
-//! Generated from grammar.ron
 use super::SyntaxInfo;
 
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
@@ -138,7 +137,6 @@ pub enum SyntaxKind {
     VALUE_PARAMETER,
     BLOCK,
     LET_STMT,
-
     // Technical SyntaxKinds: they appear temporally during parsing,
     // but never end up in the final tree
     #[doc(hidden)]
@@ -146,7 +144,7 @@ pub enum SyntaxKind {
     #[doc(hidden)]
     EOF,
 }
-pub(crate) use self::SyntaxKind::*;
+use self::SyntaxKind::*;
 
 impl SyntaxKind {
     pub(crate) fn info(self) -> &'static SyntaxInfo {
@@ -289,38 +287,39 @@ impl SyntaxKind {
         }
     }
     pub(crate) fn from_keyword(ident: &str) -> Option<SyntaxKind> {
-        match ident {
-            "use" => Some(USE_KW),
-            "fn" => Some(FN_KW),
-            "struct" => Some(STRUCT_KW),
-            "enum" => Some(ENUM_KW),
-            "trait" => Some(TRAIT_KW),
-            "impl" => Some(IMPL_KW),
-            "true" => Some(TRUE_KW),
-            "false" => Some(FALSE_KW),
-            "as" => Some(AS_KW),
-            "extern" => Some(EXTERN_KW),
-            "crate" => Some(CRATE_KW),
-            "mod" => Some(MOD_KW),
-            "pub" => Some(PUB_KW),
-            "self" => Some(SELF_KW),
-            "super" => Some(SUPER_KW),
-            "in" => Some(IN_KW),
-            "where" => Some(WHERE_KW),
-            "for" => Some(FOR_KW),
-            "loop" => Some(LOOP_KW),
-            "while" => Some(WHILE_KW),
-            "if" => Some(IF_KW),
-            "match" => Some(MATCH_KW),
-            "const" => Some(CONST_KW),
-            "static" => Some(STATIC_KW),
-            "mut" => Some(MUT_KW),
-            "unsafe" => Some(UNSAFE_KW),
-            "type" => Some(TYPE_KW),
-            "ref" => Some(REF_KW),
-            "let" => Some(LET_KW),
-            _ => None,
-        }
+        let kw = match ident {
+            "use" => USE_KW,
+            "fn" => FN_KW,
+            "struct" => STRUCT_KW,
+            "enum" => ENUM_KW,
+            "trait" => TRAIT_KW,
+            "impl" => IMPL_KW,
+            "true" => TRUE_KW,
+            "false" => FALSE_KW,
+            "as" => AS_KW,
+            "extern" => EXTERN_KW,
+            "crate" => CRATE_KW,
+            "mod" => MOD_KW,
+            "pub" => PUB_KW,
+            "self" => SELF_KW,
+            "super" => SUPER_KW,
+            "in" => IN_KW,
+            "where" => WHERE_KW,
+            "for" => FOR_KW,
+            "loop" => LOOP_KW,
+            "while" => WHILE_KW,
+            "if" => IF_KW,
+            "match" => MATCH_KW,
+            "const" => CONST_KW,
+            "static" => STATIC_KW,
+            "mut" => MUT_KW,
+            "unsafe" => UNSAFE_KW,
+            "type" => TYPE_KW,
+            "ref" => REF_KW,
+            "let" => LET_KW,
+            _ => return None,
+        };
+        Some(kw)
     }
 }
 

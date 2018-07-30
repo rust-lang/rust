@@ -2,8 +2,9 @@ extern crate libsyntax2;
 
 use std::io::Read;
 
-use libsyntax2::{parse};
-use libsyntax2::utils::dump_tree_green;
+use libsyntax2::{
+    parse, utils::dump_tree_green
+};
 
 fn main() {
     let text = read_input();

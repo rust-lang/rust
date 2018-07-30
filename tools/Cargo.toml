@@ -5,10 +5,9 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 publish = false
 
 [dependencies]
-serde = "1.0.26"
-serde_derive = "1.0.26"
-file = "1.1.1"
-ron = "0.1.5"
-walkdir = "2"
-itertools = "0.7"
-libsyntax2 = { path = "../" }
+ron = "0.1.7"
+walkdir = "2.1.3"
+itertools = "0.7.8"
+tera = "0.11"
+clap = "2.32.0"
+failure = "0.1.1"

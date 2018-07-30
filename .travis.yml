@@ -8,6 +8,8 @@ matrix:
       script:
         - cargo fmt --all -- --write-mode=diff
         - cargo test
+        - cargo gen-kinds --verify
+        - cargo gen-tests --verify
     - rust: nightly
       before_script:
         - rustup component add clippy-preview
