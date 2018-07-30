@@ -5,23 +5,14 @@ use super::SyntaxInfo;
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SyntaxKind {
-{%- for t in single_byte_tokens %}
+{%- for t in concat(a=single_byte_tokens, b=multi_byte_tokens) %}
     {{t.1}},
 {%- endfor -%}
-{% for t in multi_byte_tokens %}
-    {{t.1}},
+{% for kw in concat(a=keywords, b=contextual_keywords) %}
+    {{kw | upper}}_KW,
 {%- endfor -%}
-{% for t in tokens %}
+{% for t in concat(a=tokens, b=nodes) %}
     {{t}},
-{%- endfor -%}
-{% for kw in keywords %}
-    {{kw | upper}}_KW,
-{%- endfor -%}
-{% for kw in contextual_keywords %}
-    {{kw | upper}}_KW,
-{%- endfor -%}
-{% for node in nodes %}
-    {{node}},
 {%- endfor %}
     // Technical SyntaxKinds: they appear temporally during parsing,
     // but never end up in the final tree
@@ -35,25 +26,15 @@ use self::SyntaxKind::*;
 impl SyntaxKind {
     pub(crate) fn info(self) -> &'static SyntaxInfo {
         match self {
-{%- for t in single_byte_tokens %}
+{%- for t in concat(a=single_byte_tokens, b=multi_byte_tokens) %}
             {{t.1}} => &SyntaxInfo { name: "{{t.1}}" },
 {%- endfor -%}
-{% for t in multi_byte_tokens %}
-            {{t.1}} => &SyntaxInfo { name: "{{t.1}}" },
+{% for kw in concat(a=keywords, b=contextual_keywords) %}
+            {{kw | upper}}_KW => &SyntaxInfo { name: "{{kw | upper}}_KW" },
 {%- endfor -%}
-{% for t in tokens %}
+{% for t in concat(a=tokens, b=nodes) %}
             {{t}} => &SyntaxInfo { name: "{{t}}" },
-{%- endfor -%}
-{% for kw in keywords %}
-            {{kw | upper}}_KW => &SyntaxInfo { name: "{{kw | upper}}_KW" },
-{%- endfor -%}
-{% for kw in contextual_keywords %}
-            {{kw | upper}}_KW => &SyntaxInfo { name: "{{kw | upper}}_KW" },
-{%- endfor -%}
-{% for node in nodes %}
-            {{node}} => &SyntaxInfo { name: "{{node}}" },
 {%- endfor %}
-
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
             EOF => &SyntaxInfo { name: "EOF" },
         }

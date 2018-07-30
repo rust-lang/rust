@@ -6,7 +6,7 @@ extern crate tera;
 extern crate walkdir;
 extern crate tools;
 
-use std::{collections::HashSet, fs, path::Path};
+use std::{collections::{HashSet, HashMap}, fs, path::Path};
 use clap::{App, Arg, SubCommand};
 use tools::{collect_tests, Test};
 
@@ -63,9 +63,26 @@ fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
 fn get_kinds() -> Result<String> {
     let grammar = grammar()?;
     let template = fs::read_to_string(SYNTAX_KINDS_TEMPLATE)?;
-    let ret = tera::Tera::one_off(&template, &grammar, false)
+    let mut tera = tera::Tera::default();
+    tera.add_raw_template("grammar", &template)
         .map_err(|e| format_err!("template error: {:?}", e))?;
-    Ok(ret)
+    tera.register_global_function("concat", Box::new(concat));
+    let ret = tera.render("grammar", &grammar)
+        .map_err(|e| format_err!("template error: {:?}", e))?;
+    return Ok(ret);
+
+    fn concat(args: HashMap<String, tera::Value>) -> tera::Result<tera::Value> {
+        let mut elements = Vec::new();
+        for &key in ["a", "b", "c"].iter() {
+            let val = match args.get(key) {
+                Some(val) => val,
+                None => continue,
+            };
+            let val = val.as_array().unwrap();
+            elements.extend(val.iter().cloned());
+        }
+        Ok(tera::Value::Array(elements))
+    }
 }
 
 fn grammar() -> Result<ron::value::Value> {
