@@ -1365,11 +1365,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         // has no special checks for chars
         match ty.sty {
             ty::TyChar => {
-                assert_eq!(size.bytes(), 4);
-                let c = self.memory.read_scalar(ptr, ptr_align, Size::from_bytes(4))?.read()?.to_bits(Size::from_bytes(4))? as u32;
-                match ::std::char::from_u32(c) {
-                    Some(..) => (),
-                    None => return err!(InvalidChar(c as u128)),
+                debug_assert_eq!(size.bytes(), 4);
+                if ::std::char::from_u32(bits as u32).is_none() {
+                    return err!(InvalidChar(bits));
                 }
             }
             _ => {},
