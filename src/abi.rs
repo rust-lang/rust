@@ -263,6 +263,12 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     let count = args[2];*/
                     unimplemented!("copy");
                 }
+                "discriminant_value" => {
+                    assert_eq!(args.len(), 1);
+                    let discr = ::base::trans_get_discriminant(fx, args[0], ret.layout());
+                    ret.write_cvalue(fx, discr);
+                    unimplemented!("discriminant");
+                }
                 "size_of" => {
                     assert_eq!(args.len(), 0);
                     let size_of = fx.layout_of(substs.type_at(0)).size.bytes();

@@ -11,7 +11,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
             } => {
                 let mut mir = ::std::io::Cursor::new(Vec::new());
                 ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
-                tcx.sess.warn(&format!("{:?}:\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner())));
+                tcx.sess.warn(&format!("{:?}:\n\n{}", inst, String::from_utf8_lossy(&mir.into_inner())));
 
                 let fn_ty = inst.ty(tcx);
                 let fn_ty = tcx.subst_and_normalize_erasing_regions(
@@ -334,65 +334,9 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                 Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty),
                 Rvalue::Cast(CastKind::Unsize, operand, ty) => return Err(format!("rval unsize {:?} {:?}", operand, ty)),
                 Rvalue::Discriminant(place) => {
-                    let place = trans_place(fx, place);
-                    let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();
-                    let layout = lval.layout();
-
-                    if layout.abi == layout::Abi::Uninhabited {
-                        fx.bcx.ins().trap(TrapCode::User(!0));
-                    }
-                    match layout.variants {
-                        layout::Variants::Single { index } => {
-                            let discr_val = layout.ty.ty_adt_def().map_or(
-                                index as u128,
-                                |def| def.discriminant_for_variant(fx.tcx, index).val);
-                            let val = CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
-                            lval.write_cvalue(fx, val);
-                            return Ok(());
-                        }
-                        layout::Variants::Tagged { .. } |
-                        layout::Variants::NicheFilling { .. } => {},
-                    }
-
-                    let discr = place.to_cvalue(fx).value_field(fx, mir::Field::new(0));
-                    let discr_ty = discr.layout().ty;
-                    let lldiscr = discr.load_value(fx);
-                    match layout.variants {
-                        layout::Variants::Single { .. } => bug!(),
-                        layout::Variants::Tagged { ref tag, .. } => {
-                            let signed = match tag.value {
-                                layout::Int(_, signed) => signed,
-                                _ => false
-                            };
-                            let val = cton_intcast(fx, lldiscr, discr_ty, dest_layout.ty, signed);
-                            lval.write_cvalue(fx, CValue::ByVal(val, dest_layout));
-                        }
-                        layout::Variants::NicheFilling {
-                            dataful_variant,
-                            ref niche_variants,
-                            niche_start,
-                            ..
-                        } => {
-                            let niche_llty = fx.cton_type(discr_ty).unwrap();
-                            if niche_variants.start() == niche_variants.end() {
-                                let b = fx.bcx.ins().icmp_imm(IntCC::Equal, lldiscr, niche_start as u64 as i64);
-                                let if_true = fx.bcx.ins().iconst(dest_cton_ty, *niche_variants.start() as u64 as i64);
-                                let if_false = fx.bcx.ins().iconst(dest_cton_ty, dataful_variant as u64 as i64);
-                                let val = fx.bcx.ins().select(b, if_true, if_false);
-                                lval.write_cvalue(fx, CValue::ByVal(val, dest_layout));
-                            } else {
-                                // Rebase from niche values to discriminant values.
-                                let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
-                                let delta = fx.bcx.ins().iconst(niche_llty, delta as u64 as i64);
-                                let lldiscr = fx.bcx.ins().isub(lldiscr, delta);
-                                let b = fx.bcx.ins().icmp_imm(IntCC::UnsignedLessThanOrEqual, lldiscr, *niche_variants.end() as u64 as i64);
-                                let if_true = cton_intcast(fx, lldiscr, discr_ty, dest_layout.ty, false);
-                                let if_false = fx.bcx.ins().iconst(niche_llty, dataful_variant as u64 as i64);
-                                let val = fx.bcx.ins().select(b, if_true, if_false);
-                                lval.write_cvalue(fx, CValue::ByVal(val, dest_layout));
-                            }
-                        }
-                    }
+                    let place = trans_place(fx, place).to_cvalue(fx);
+                    let discr = trans_get_discriminant(fx, place, dest_layout);
+                    lval.write_cvalue(fx, discr);
                 }
                 Rvalue::Repeat(operand, times) => unimplemented!("rval repeat {:?} {:?}", operand, times),
                 Rvalue::Len(lval) => return Err(format!("rval len {:?}", lval)),
@@ -406,6 +350,65 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
     }
 
     Ok(())
+}
+
+pub fn trans_get_discriminant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, value: CValue<'tcx>, dest_layout: TyLayout<'tcx>) -> CValue<'tcx> {
+    let layout = value.layout();
+
+    if layout.abi == layout::Abi::Uninhabited {
+        fx.bcx.ins().trap(TrapCode::User(!0));
+    }
+    match layout.variants {
+        layout::Variants::Single { index } => {
+            let discr_val = layout.ty.ty_adt_def().map_or(
+                index as u128,
+                |def| def.discriminant_for_variant(fx.tcx, index).val);
+            return CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
+        }
+        layout::Variants::Tagged { .. } |
+        layout::Variants::NicheFilling { .. } => {},
+    }
+
+    let discr = value.value_field(fx, mir::Field::new(0));
+    let discr_ty = discr.layout().ty;
+    let lldiscr = discr.load_value(fx);
+    match layout.variants {
+        layout::Variants::Single { .. } => bug!(),
+        layout::Variants::Tagged { ref tag, .. } => {
+            let signed = match tag.value {
+                layout::Int(_, signed) => signed,
+                _ => false
+            };
+            let val = cton_intcast(fx, lldiscr, discr_ty, dest_layout.ty, signed);
+            return CValue::ByVal(val, dest_layout);
+        }
+        layout::Variants::NicheFilling {
+            dataful_variant,
+            ref niche_variants,
+            niche_start,
+            ..
+        } => {
+            let niche_llty = fx.cton_type(discr_ty).unwrap();
+            if niche_variants.start() == niche_variants.end() {
+                let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();
+                let b = fx.bcx.ins().icmp_imm(IntCC::Equal, lldiscr, niche_start as u64 as i64);
+                let if_true = fx.bcx.ins().iconst(dest_cton_ty, *niche_variants.start() as u64 as i64);
+                let if_false = fx.bcx.ins().iconst(dest_cton_ty, dataful_variant as u64 as i64);
+                let val = fx.bcx.ins().select(b, if_true, if_false);
+                return CValue::ByVal(val, dest_layout);
+            } else {
+                // Rebase from niche values to discriminant values.
+                let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
+                let delta = fx.bcx.ins().iconst(niche_llty, delta as u64 as i64);
+                let lldiscr = fx.bcx.ins().isub(lldiscr, delta);
+                let b = fx.bcx.ins().icmp_imm(IntCC::UnsignedLessThanOrEqual, lldiscr, *niche_variants.end() as u64 as i64);
+                let if_true = cton_intcast(fx, lldiscr, discr_ty, dest_layout.ty, false);
+                let if_false = fx.bcx.ins().iconst(niche_llty, dataful_variant as u64 as i64);
+                let val = fx.bcx.ins().select(b, if_true, if_false);
+                return CValue::ByVal(val, dest_layout);
+            }
+        }
+    }
 }
 
 macro_rules! binop_match {
