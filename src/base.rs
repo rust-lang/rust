@@ -239,8 +239,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                 }
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
                     let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
-                    let lhs = trans_operand(fx, lhs).load_value(fx);
-                    let rhs = trans_operand(fx, rhs).load_value(fx);
+                    let lhs = trans_operand(fx, lhs);
+                    let rhs = trans_operand(fx, rhs);
 
                     let res = match ty.sty {
                         TypeVariants::TyBool => {
@@ -267,8 +267,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                 }
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
                     let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
-                    let lhs = trans_operand(fx, lhs).load_value(fx);
-                    let rhs = trans_operand(fx, rhs).load_value(fx);
+                    let lhs = trans_operand(fx, lhs);
+                    let rhs = trans_operand(fx, rhs);
 
                     let res = match ty.sty {
                         TypeVariants::TyUint(_) => {
@@ -412,37 +412,47 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, value
 }
 
 macro_rules! binop_match {
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, bug) => {
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, bug) => {
         bug!("bin op {} on {} lhs: {:?} rhs: {:?}", stringify!($var), $bug_fmt, $lhs, $rhs)
     };
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, icmp($cc:ident)) => {{
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, icmp($cc:ident)) => {{
+        assert_eq!($fx.tcx.types.bool, $ret_ty);
+        let ret_layout = $fx.layout_of($ret_ty);
         let b = $fx.bcx.ins().icmp(IntCC::$cc, $lhs, $rhs);
-        $fx.bcx.ins().bint(types::I8, b)
+        CValue::ByVal($fx.bcx.ins().bint(types::I8, b), ret_layout)
     }};
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, fcmp($cc:ident)) => {{
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, fcmp($cc:ident)) => {{
+        assert_eq!($fx.tcx.types.bool, $ret_ty);
+        let ret_layout = $fx.layout_of($ret_ty);
         let b = $fx.bcx.ins().fcmp(FloatCC::$cc, $lhs, $rhs);
-        $fx.bcx.ins().bint(types::I8, b)
+        CValue::ByVal($fx.bcx.ins().bint(types::I8, b), ret_layout)
     }};
-    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $name:ident) => {
-        $fx.bcx.ins().$name($lhs, $rhs)
-    };
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, custom(|| $body:expr)) => {{
+        $body
+    }};
+    (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, $name:ident) => {{
+        let ret_layout = $fx.layout_of($ret_ty);
+        CValue::ByVal($fx.bcx.ins().$name($lhs, $rhs), ret_layout)
+    }};
     (
-        $fx:expr, $bin_op:expr, $signed:expr, $lhs:expr, $rhs:expr, $bug_fmt:expr;
+        $fx:expr, $bin_op:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, $bug_fmt:expr;
         $(
-            $var:ident ($sign:pat) $name:tt $( ( $next:tt ) )? ;
+            $var:ident ($sign:pat) $name:tt $( ( $($next:tt)* ) )? ;
         )*
-    ) => {
+    ) => {{
+        let lhs = $lhs.load_value($fx);
+        let rhs = $rhs.load_value($fx);
         match ($bin_op, $signed) {
             $(
-                (BinOp::$var, $sign) => binop_match!(@single $fx, $bug_fmt, $var, $lhs, $rhs, $name $( ( $next ) )?),
+                (BinOp::$var, $sign) => binop_match!(@single $fx, $bug_fmt, $var, lhs, rhs, $ret_ty, $name $( ( $($next)* ) )?),
             )*
         }
-    }
+    }}
 }
 
-fn trans_bool_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
+fn trans_bool_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>) -> CValue<'tcx> {
     let res = binop_match! {
-        fx, bin_op, false, lhs, rhs, "bool";
+        fx, bin_op, false, lhs, rhs, ty, "bool";
         Add (_) bug;
         Sub (_) bug;
         Mul (_) bug;
@@ -464,12 +474,12 @@ fn trans_bool_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, 
         Offset (_) bug;
     };
 
-    CValue::ByVal(res, fx.layout_of(ty))
+    res
 }
 
-pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
+pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
     let res = binop_match! {
-        fx, bin_op, signed, lhs, rhs, "int/uint";
+        fx, bin_op, signed, lhs, rhs, ty, "int/uint";
         Add (_) iadd;
         Sub (_) isub;
         Mul (_) imul;
@@ -499,17 +509,25 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinO
     };
 
     // TODO: return correct value for checked binops
-    CValue::ByVal(res, fx.layout_of(ty))
+    res
 }
 
-fn trans_float_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
+fn trans_float_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>) -> CValue<'tcx> {
     let res = binop_match! {
-        fx, bin_op, false, lhs, rhs, "float";
+        fx, bin_op, false, lhs, rhs, ty, "float";
         Add (_) fadd;
         Sub (_) fsub;
         Mul (_) fmul;
         Div (_) fdiv;
-        Rem (_) bug;
+        Rem (_) custom(|| {
+            assert_eq!(lhs.layout().ty, ty);
+            assert_eq!(rhs.layout().ty, ty);
+            match ty.sty {
+                TypeVariants::TyFloat(FloatTy::F32) => fx.easy_call("fmodf", &[lhs, rhs], ty),
+                TypeVariants::TyFloat(FloatTy::F64) => fx.easy_call("fmod", &[lhs, rhs], ty),
+                _ => bug!(),
+            }
+        });
         BitXor (_) bxor;
         BitAnd (_) band;
         BitOr (_) bor;
@@ -526,12 +544,12 @@ fn trans_float_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp,
         Offset (_) bug;
     };
 
-    CValue::ByVal(res, fx.layout_of(ty))
+    res
 }
 
-fn trans_char_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>) -> CValue<'tcx> {
+fn trans_char_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>) -> CValue<'tcx> {
     let res = binop_match! {
-        fx, bin_op, false, lhs, rhs, "char";
+        fx, bin_op, false, lhs, rhs, ty, "char";
         Add (_) bug;
         Sub (_) bug;
         Mul (_) bug;
@@ -553,12 +571,12 @@ fn trans_char_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, 
         Offset (_) bug;
     };
 
-    CValue::ByVal(res, fx.layout_of(ty))
+    res
 }
 
-fn trans_ptr_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, _checked: bool) -> CValue<'tcx> {
-    let res = binop_match! {
-        fx, bin_op, false, lhs, rhs, "ptr";
+fn trans_ptr_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>, _checked: bool) -> CValue<'tcx> {
+    binop_match! {
+        fx, bin_op, false, lhs, rhs, ty, "ptr";
         Add (_) bug;
         Sub (_) bug;
         Mul (_) bug;
@@ -578,10 +596,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, l
         Gt (_) icmp(UnsignedGreaterThan);
 
         Offset (_) iadd;
-    };
-
-    // TODO: return correct value for checked binops
-    CValue::ByVal(res, fx.layout_of(ty))
+    }
 }
 
 pub fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>) -> CPlace<'tcx> {

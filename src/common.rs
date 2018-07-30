@@ -1,6 +1,5 @@
 use std::fmt;
 
-use syntax::ast::{IntTy, UintTy, FloatTy};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::{Module, FuncId, DataId};

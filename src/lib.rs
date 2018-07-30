@@ -54,6 +54,7 @@ mod prelude {
     pub use std::collections::{HashMap, HashSet};
 
     pub use syntax::codemap::DUMMY_SP;
+    pub use syntax::ast::{IntTy, UintTy, FloatTy};
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
     pub use rustc::mir;
     pub use rustc::mir::*;

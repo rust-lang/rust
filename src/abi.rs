@@ -104,6 +104,34 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
         module.declare_func_in_func(func_id, &mut self.bcx.func)
     }
 
+    pub fn lib_call(
+        &mut self,
+        name: &str,
+        input_tys: Vec<types::Type>,
+        output_ty: types::Type,
+        args: &[Value],
+    ) -> Value {
+        let sig = Signature {
+            params: input_tys.iter().cloned().map(AbiParam::new).collect(),
+            returns: vec![AbiParam::new(output_ty)],
+            call_conv: CallConv::SystemV,
+            argument_bytes: None,
+        };
+        let func_id = self.module.declare_function(&name, Linkage::Import, &sig).unwrap();
+        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let call_inst = self.bcx.ins().call(func_ref, args);
+        let results = self.bcx.inst_results(call_inst);
+        assert_eq!(results.len(), 1);
+        results[0]
+    }
+
+    pub fn easy_call(&mut self, name: &str, args: &[CValue<'tcx>], return_ty: Ty<'tcx>) -> CValue<'tcx> {
+        let (input_tys, args): (Vec<_>, Vec<_>) = args.into_iter().map(|arg| (self.cton_type(arg.layout().ty).unwrap(), arg.load_value(self))).unzip();
+        let return_layout = self.layout_of(return_ty);
+        let return_ty = self.cton_type(return_ty).unwrap();
+        CValue::ByVal(self.lib_call(name, input_tys, return_ty, &args), return_layout)
+    }
+
     fn self_sig(&self) -> FnSig<'tcx> {
         ty_fn_sig(self.tcx, self.instance.ty(self.tcx))
     }
@@ -267,7 +295,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     assert_eq!(args.len(), 1);
                     let discr = ::base::trans_get_discriminant(fx, args[0], ret.layout());
                     ret.write_cvalue(fx, discr);
-                    unimplemented!("discriminant");
                 }
                 "size_of" => {
                     assert_eq!(args.len(), 0);
@@ -289,8 +316,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                 }
                 _ if intrinsic.starts_with("unchecked_") => {
                     assert_eq!(args.len(), 2);
-                    let lhs = args[0].load_value(fx);
-                    let rhs = args[1].load_value(fx);
                     let bin_op = match intrinsic {
                         "unchecked_div" => BinOp::Div,
                         "unchecked_rem" => BinOp::Rem,
@@ -300,10 +325,10 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     };
                     let res = match ret.layout().ty.sty {
                         TypeVariants::TyUint(_) => {
-                            ::base::trans_int_binop(fx, bin_op, lhs, rhs, args[0].layout().ty, false, false)
+                            ::base::trans_int_binop(fx, bin_op, args[0], args[1], ret.layout().ty, false, false)
                         }
                         TypeVariants::TyInt(_) => {
-                            ::base::trans_int_binop(fx, bin_op, lhs, rhs, args[0].layout().ty, true, false)
+                            ::base::trans_int_binop(fx, bin_op, args[0], args[1], ret.layout().ty, true, false)
                         }
                         _ => panic!(),
                     };
