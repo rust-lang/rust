@@ -4,5 +4,4 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
-file = "1.0"
 difference = "2.0.0"

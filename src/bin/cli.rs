@@ -3,13 +3,13 @@ extern crate libsyntax2;
 use std::io::Read;
 
 use libsyntax2::{
-    parse, utils::dump_tree_green
+    parse, utils::dump_tree
 };
 
 fn main() {
     let text = read_input();
     let file = parse(text);
-    let tree = dump_tree_green(&file);
+    let tree = dump_tree(&file);
     println!("{}", tree);
 }
 
