@@ -122,6 +122,7 @@
 #![feature(const_slice_len)]
 #![feature(const_str_as_bytes)]
 #![feature(const_str_len)]
+#![feature(try_unicode_encode_char)]
 
 #[prelude_import]
 #[allow(unused)]
