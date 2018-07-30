@@ -169,10 +169,18 @@ impl<A: Array> FromIterator<A::Element> for SmallVec<A> {
 
 impl<A: Array> Extend<A::Element> for SmallVec<A> {
     fn extend<I: IntoIterator<Item=A::Element>>(&mut self, iter: I) {
-        let iter = iter.into_iter();
-        self.reserve(iter.size_hint().0);
-        for el in iter {
-            self.push(el);
+        if self.is_array() {
+            let iter = iter.into_iter();
+            self.reserve(iter.size_hint().0);
+
+            for el in iter {
+                self.push(el);
+            }
+        } else {
+            match self.0 {
+                AccumulateVec::Heap(ref mut vec) => vec.extend(iter),
+                _ => unreachable!()
+            }
         }
     }
 }
