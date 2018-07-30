@@ -5,7 +5,13 @@ use super::SyntaxInfo;
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SyntaxKind {
-{%- for t in tokens %}
+{%- for t in single_byte_tokens %}
+    {{t.1}},
+{%- endfor -%}
+{% for t in multi_byte_tokens %}
+    {{t.1}},
+{%- endfor -%}
+{% for t in tokens %}
     {{t}},
 {%- endfor -%}
 {% for kw in keywords %}
@@ -29,7 +35,13 @@ use self::SyntaxKind::*;
 impl SyntaxKind {
     pub(crate) fn info(self) -> &'static SyntaxInfo {
         match self {
-{%- for t in tokens %}
+{%- for t in single_byte_tokens %}
+            {{t.1}} => &SyntaxInfo { name: "{{t.1}}" },
+{%- endfor -%}
+{% for t in multi_byte_tokens %}
+            {{t.1}} => &SyntaxInfo { name: "{{t.1}}" },
+{%- endfor -%}
+{% for t in tokens %}
             {{t}} => &SyntaxInfo { name: "{{t}}" },
 {%- endfor -%}
 {% for kw in keywords %}
@@ -54,6 +66,16 @@ impl SyntaxKind {
             _ => return None,
         };
         Some(kw)
+    }
+
+    pub(crate) fn from_char(c: char) -> Option<SyntaxKind> {
+        let tok = match c {
+{%- for t in single_byte_tokens %}
+            '{{t.0}}' => {{t.1}},
+{%- endfor %}
+            _ => return None,
+        };
+        Some(tok)
     }
 }
 

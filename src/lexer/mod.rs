@@ -79,30 +79,11 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
     }
 
     // One-byte tokens.
-    match c {
-        ';' => return SEMI,
-        ',' => return COMMA,
-        '(' => return L_PAREN,
-        ')' => return R_PAREN,
-        '{' => return L_CURLY,
-        '}' => return R_CURLY,
-        '[' => return L_BRACK,
-        ']' => return R_BRACK,
-        '<' => return L_ANGLE,
-        '>' => return R_ANGLE,
-        '@' => return AT,
-        '#' => return POUND,
-        '~' => return TILDE,
-        '?' => return QUESTION,
-        '$' => return DOLLAR,
-        '&' => return AMPERSAND,
-        '|' => return PIPE,
-        '+' => return PLUS,
-        '*' => return STAR,
-        '/' => return SLASH,
-        '^' => return CARET,
-        '%' => return PERCENT,
+    if let Some(kind) = SyntaxKind::from_char(c) {
+        return kind;
+    }
 
+    match c {
         // Multi-byte tokens.
         '.' => {
             return match (ptr.next(), ptr.nnext()) {

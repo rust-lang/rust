@@ -64,7 +64,7 @@ fn get_kinds() -> Result<String> {
     let grammar = grammar()?;
     let template = fs::read_to_string(SYNTAX_KINDS_TEMPLATE)?;
     let ret = tera::Tera::one_off(&template, &grammar, false)
-        .map_err(|e| format_err!("template error: {}", e))?;
+        .map_err(|e| format_err!("template error: {:?}", e))?;
     Ok(ret)
 }
 
