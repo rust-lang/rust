@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![allow(clippy)]
+#![allow(clippy::all)]
 
 fn main() { }
 

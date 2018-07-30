@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![deny(clippy)]
+#![deny(clippy::all)]
 #![allow(unused_imports)]
 
 use std::*;

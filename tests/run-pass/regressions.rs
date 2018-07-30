@@ -1,6 +1,6 @@
+#![feature(tool_lints)]
 
-
-#![allow(blacklisted_name)]
+#![allow(clippy::blacklisted_name)]
 
 pub fn foo(bar: *const u8) {
     println!("{:#p}", bar);

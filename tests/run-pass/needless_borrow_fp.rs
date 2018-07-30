@@ -1,4 +1,6 @@
-#[deny(clippy)]
+#![feature(tool_lints)]
+
+#[deny(clippy::all)]
 
 #[derive(Debug)]
 pub enum Error {
