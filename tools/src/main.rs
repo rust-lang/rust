@@ -5,6 +5,8 @@ extern crate ron;
 extern crate tera;
 extern crate walkdir;
 extern crate tools;
+#[macro_use]
+extern crate commandspec;
 
 use std::{collections::{HashSet, HashMap}, fs, path::Path};
 use clap::{App, Arg, SubCommand};
@@ -29,8 +31,10 @@ fn main() -> Result<()> {
         )
         .subcommand(SubCommand::with_name("gen-kinds"))
         .subcommand(SubCommand::with_name("gen-tests"))
+        .subcommand(SubCommand::with_name("install-code"))
         .get_matches();
     match matches.subcommand() {
+        ("install-code", _) => install_code_extension()?,
         (name, Some(matches)) => run_gen_command(name, matches.is_present("verify"))?,
         _ => unreachable!(),
     }
@@ -148,4 +152,20 @@ fn existing_tests(dir: &Path) -> Result<HashSet<Test>> {
         res.insert(Test { name, text });
     }
     Ok(res)
+}
+
+fn install_code_extension() -> Result<()> {
+    execute!(r"
+cd code
+npm install
+    ")?;
+    execute!(r"
+cd code
+./node_modules/vsce/out/vsce package
+    ")?;
+    execute!(r"
+cd code
+code --install-extension ./libsyntax-rust-0.0.1.vsix
+    ")?;
+    Ok(())
 }
