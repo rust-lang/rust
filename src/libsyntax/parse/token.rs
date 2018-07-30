@@ -14,7 +14,7 @@ pub use self::DelimToken::*;
 pub use self::Lit::*;
 pub use self::Token::*;
 
-use ast::{self};
+use ast;
 use parse::ParseSess;
 use print::pprust;
 use ptr::P;
@@ -224,6 +224,17 @@ impl Token {
         }
     }
 
+    crate fn to_meta_ident(&self) -> Option<ast::Path> {
+        if let Interpolated(ref nt) = self {
+            if let NtMeta(ref meta) = nt.0 {
+                if let ast::MetaItemKind::Word = meta.node {
+                    return Some(meta.ident.clone());
+                }
+            }
+        }
+        None
+    }
+
     /// Returns `true` if the token can appear at the start of an expression.
     crate fn can_begin_expr(&self) -> bool {
         match *self {
@@ -363,6 +374,10 @@ impl Token {
 
     crate fn is_qpath_start(&self) -> bool {
         self == &Lt || self == &BinOp(Shl)
+    }
+
+    crate fn is_args_start(&self) -> bool {
+        self.is_qpath_start() || self == &OpenDelim(Paren)
     }
 
     crate fn is_path_start(&self) -> bool {

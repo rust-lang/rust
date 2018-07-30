@@ -1038,6 +1038,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn check_tokens(&mut self, kets: &[&token::Token], expect: TokenExpectType) -> bool {
+        kets.iter().any(|k| match expect {
+            TokenExpectType::Expect => self.check(k),
+            TokenExpectType::NoExpect => self.token == **k,
+        })
+    }
+
     /// Eat and discard tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
@@ -1089,12 +1096,7 @@ impl<'a> Parser<'a> {
     {
         let mut first: bool = true;
         let mut v = vec![];
-        while !kets.iter().any(|k| {
-                match expect {
-                    TokenExpectType::Expect => self.check(k),
-                    TokenExpectType::NoExpect => self.token == **k,
-                }
-            }) {
+        while !self.check_tokens(kets, expect) {
             match self.token {
                 token::CloseDelim(..) | token::Eof => break,
                 _ => {}
@@ -1125,12 +1127,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            if sep.trailing_sep_allowed && kets.iter().any(|k| {
-                match expect {
-                    TokenExpectType::Expect => self.check(k),
-                    TokenExpectType::NoExpect => self.token == **k,
-                }
-            }) {
+            if sep.trailing_sep_allowed && self.check_tokens(kets, expect) {
                 break;
             }
 
@@ -1154,9 +1151,7 @@ impl<'a> Parser<'a> {
     {
         self.expect(bra)?;
         let result = self.parse_seq_to_before_end(ket, sep, f)?;
-        if self.token == *ket {
-            self.bump();
-        }
+        self.eat(ket);
         Ok(result)
     }
 
@@ -1352,8 +1347,7 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident()?;
             self.expect(&token::Colon)?;
             let ty = self.parse_ty()?;
-            let default = if self.check(&token::Eq) {
-                self.bump();
+            let default = if self.eat(&token::Eq) {
                 let expr = self.parse_expr()?;
                 self.expect(&token::Semi)?;
                 Some(expr)
@@ -1838,8 +1832,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::False) {
             LitKind::Bool(false)
         } else {
-            let lit = self.parse_lit_token()?;
-            lit
+            self.parse_lit_token()?
         };
         Ok(codemap::Spanned { node: lit, span: lo.to(self.prev_span) })
     }
@@ -1850,10 +1843,8 @@ impl<'a> Parser<'a> {
 
         let minus_lo = self.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
-        let lo = self.span;
         let literal = P(self.parse_lit()?);
-        let hi = self.prev_span;
-        let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), ThinVec::new());
+        let expr = self.mk_expr(literal.span, ExprKind::Lit(literal), ThinVec::new());
 
         if minus_present {
             let minus_hi = self.prev_span;
@@ -1949,17 +1940,7 @@ impl<'a> Parser<'a> {
     /// Like `parse_path`, but also supports parsing `Word` meta items into paths for back-compat.
     /// This is used when parsing derive macro paths in `#[derive]` attributes.
     pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
-        let meta_ident = match self.token {
-            token::Interpolated(ref nt) => match nt.0 {
-                token::NtMeta(ref meta) => match meta.node {
-                    ast::MetaItemKind::Word => Some(meta.ident.clone()),
-                    _ => None,
-                },
-                _ => None,
-            },
-            _ => None,
-        };
-        if let Some(path) = meta_ident {
+        if let Some(path) = self.token.to_meta_ident() {
             self.bump();
             return Ok(path);
         }
@@ -1984,20 +1965,16 @@ impl<'a> Parser<'a> {
                           -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
-        let is_args_start = |token: &token::Token| match *token {
-            token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren) => true,
-            _ => false,
-        };
         let check_args_start = |this: &mut Self| {
             this.expected_tokens.extend_from_slice(
                 &[TokenType::Token(token::Lt), TokenType::Token(token::OpenDelim(token::Paren))]
             );
-            is_args_start(&this.token)
+            this.token.is_args_start()
         };
 
         Ok(if style == PathStyle::Type && check_args_start(self) ||
               style != PathStyle::Mod && self.check(&token::ModSep)
-                                      && self.look_ahead(1, |t| is_args_start(t)) {
+                                      && self.look_ahead(1, |t| t.is_args_start()) {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
             let lo = self.span;
             if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
@@ -2212,10 +2189,8 @@ impl<'a> Parser<'a> {
                 while self.token != token::CloseDelim(token::Paren) {
                     es.push(self.parse_expr()?);
                     self.expect_one_of(&[], &[token::Comma, token::CloseDelim(token::Paren)])?;
-                    if self.check(&token::Comma) {
+                    if self.eat(&token::Comma) {
                         trailing_comma = true;
-
-                        self.bump();
                     } else {
                         trailing_comma = false;
                         break;
@@ -2241,25 +2216,22 @@ impl<'a> Parser<'a> {
 
                 attrs.extend(self.parse_inner_attributes()?);
 
-                if self.check(&token::CloseDelim(token::Bracket)) {
+                if self.eat(&token::CloseDelim(token::Bracket)) {
                     // Empty vector.
-                    self.bump();
                     ex = ExprKind::Array(Vec::new());
                 } else {
                     // Nonempty vector.
                     let first_expr = self.parse_expr()?;
-                    if self.check(&token::Semi) {
+                    if self.eat(&token::Semi) {
                         // Repeating array syntax: [ 0; 512 ]
-                        self.bump();
                         let count = AnonConst {
                             id: ast::DUMMY_NODE_ID,
                             value: self.parse_expr()?,
                         };
                         self.expect(&token::CloseDelim(token::Bracket))?;
                         ex = ExprKind::Repeat(first_expr, count);
-                    } else if self.check(&token::Comma) {
+                    } else if self.eat(&token::Comma) {
                         // Vector with two or more elements.
-                        self.bump();
                         let remaining_exprs = self.parse_seq_to_end(
                             &token::CloseDelim(token::Bracket),
                             SeqSep::trailing_allowed(token::Comma),
@@ -2493,14 +2465,13 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            match self.expect_one_of(&[token::Comma],
-                                     &[token::CloseDelim(token::Brace)]) {
-                Ok(()) => {}
-                Err(mut e) => {
-                    e.emit();
-                    self.recover_stmt();
-                    break;
-                }
+            if let Err(mut e) = self.expect_one_of(
+                &[token::Comma],
+                &[token::CloseDelim(token::Brace)],
+            ) {
+                e.emit();
+                self.recover_stmt();
+                break;
             }
         }
 
@@ -2882,7 +2853,7 @@ impl<'a> Parser<'a> {
                     return self.parse_dot_or_call_expr(Some(attrs));
                 }
             }
-            _ => { return self.parse_dot_or_call_expr(Some(attrs)); }
+            _ => return self.parse_dot_or_call_expr(Some(attrs)),
         };
         return Ok(self.mk_expr(lo.to(hi), ex, attrs));
     }
@@ -3000,7 +2971,7 @@ impl<'a> Parser<'a> {
                     RangeLimits::Closed
                 };
 
-                let r = try!(self.mk_range(Some(lhs), rhs, limits));
+                let r = self.mk_range(Some(lhs), rhs, limits)?;
                 lhs = self.mk_expr(lhs_span.to(rhs_span), r, ThinVec::new());
                 break
             }
@@ -3208,9 +3179,7 @@ impl<'a> Parser<'a> {
             RangeLimits::Closed
         };
 
-        let r = try!(self.mk_range(None,
-                                   opt_end,
-                                   limits));
+        let r = self.mk_range(None, opt_end, limits)?;
         Ok(self.mk_expr(lo.to(hi), r, attrs))
     }
 
@@ -3562,8 +3531,7 @@ impl<'a> Parser<'a> {
 
     /// Parse the RHS of a local variable declaration (e.g. '= 14;')
     fn parse_initializer(&mut self, skip_eq: bool) -> PResult<'a, Option<P<Expr>>> {
-        if self.check(&token::Eq) {
-            self.bump();
+        if self.eat(&token::Eq) {
             Ok(Some(self.parse_expr()?))
         } else if skip_eq {
             Ok(Some(self.parse_expr()?))
@@ -3589,8 +3557,7 @@ impl<'a> Parser<'a> {
                 );
                 err.emit();
                 self.bump();
-            } else if self.check(&token::BinOp(token::Or)) {
-                self.bump();
+            } else if self.eat(&token::BinOp(token::Or)) {
             } else {
                 return Ok(pats);
             }
@@ -6209,8 +6176,7 @@ impl<'a> Parser<'a> {
 
         let id_span = self.span;
         let id = self.parse_ident()?;
-        if self.check(&token::Semi) {
-            self.bump();
+        if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
                 let ModulePathSuccess { path, directory_ownership, warn } =
