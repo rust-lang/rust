@@ -504,12 +504,18 @@ impl Ipv4Addr {
     ///
     /// The following return false:
     ///
-    /// - private address (10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16)
-    /// - the loopback address (127.0.0.0/8)
-    /// - the link-local address (169.254.0.0/16)
-    /// - the broadcast address (255.255.255.255/32)
-    /// - test addresses used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
-    /// - the unspecified address (0.0.0.0)
+    /// - private addresses (see [`is_private()`](#method.is_private))
+    /// - the loopback address (see [`is_loopback()`](#method.is_loopback))
+    /// - the link-local address (see [`is_link_local()`](#method.is_link_local))
+    /// - the broadcast address (see [`is_broadcast()`](#method.is_broadcast))
+    /// - addresses used for documentation (see [`is_documentation()`](#method.is_documentation))
+    /// - the unspecified address (see [`is_unspecified()`](#method.is_unspecified)), and the whole 0.0.0.0/8 block
+    /// - addresses reserved for future protocols (see
+    /// [`is_ietf_protocol_assignment()`](#method.is_ietf_protocol_assignment), except
+    /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
+    /// - addresses reserved for future use (see [`is_reserved()`](#method.is_reserved())
+    /// - addresses reserved for networking devices benchmarking (see
+    /// [`is_benchmarking`](#method.is_benchmarking))
     ///
     /// [ipv4-sr]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     /// [`true`]: ../../std/primitive.bool.html
@@ -530,8 +536,121 @@ impl Ipv4Addr {
     /// }
     /// ```
     pub fn is_global(&self) -> bool {
-        !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
-        !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
+        // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
+        // globally routable addresses in the 192.0.0.0/24 range.
+        if u32::from(*self) == 0xc0000009 || u32::from(*self) == 0xc000000a {
+            return true;
+        }
+        !self.is_private()
+            && !self.is_loopback()
+            && !self.is_link_local()
+            && !self.is_broadcast()
+            && !self.is_documentation()
+            && !self.is_shared()
+            && !self.is_ietf_protocol_assignment()
+            && !self.is_reserved()
+            && !self.is_benchmarking()
+            // Make sure the address is not in 0.0.0.0/8
+            && self.octets()[0] != 0
+    }
+
+    /// Returns [`true`] if this address is part of the Shared Address Space defined in
+    /// [IETF RFC 6598] (`100.64.0.0/10`).
+    ///
+    /// [IETF RFC 6598]: https://tools.ietf.org/html/rfc6598
+    /// [`true`]: ../../std/primitive.bool.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// fn main() {
+    ///     assert_eq!(Ipv4Addr::new(100, 64, 0, 0).is_shared(), true);
+    ///     assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
+    ///     assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
+    /// }
+    /// ```
+    pub fn is_shared(&self) -> bool {
+        self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
+    }
+
+    /// Returns [`true`] if this address is part of `192.0.0.0/24`, which is reserved to
+    /// IANA for IETF protocol assignments, as documented in [IETF RFC 6890].
+    ///
+    /// Note that parts of this block are in use:
+    ///
+    /// - `192.0.0.8/32` is the "IPv4 dummy address" (see [IETF RFC 7600])
+    /// - `192.0.0.9/32` is the "Port Control Protocol Anycast" (see [IETF RFC 7723])
+    /// - `192.0.0.10/32` is used for NAT traversal (see [IETF RFC 8155])
+    ///
+    /// [IETF RFC 6890]: https://tools.ietf.org/html/rfc6890
+    /// [IETF RFC 7600]: https://tools.ietf.org/html/rfc7600
+    /// [IETF RFC 7723]: https://tools.ietf.org/html/rfc7723
+    /// [IETF RFC 8155]: https://tools.ietf.org/html/rfc8155
+    /// [`true`]: ../../std/primitive.bool.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// fn main() {
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(192, 255, 255, 255).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(193, 0, 0, 0).is_ietf_protocol_assignment(), false);
+    /// }
+    /// ```
+    pub fn is_ietf_protocol_assignment(&self) -> bool {
+        self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
+    }
+
+    /// Returns [`true`] if this address part of the `198.18.0.0/15` range, which is reserved for
+    /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
+    /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
+    ///
+    /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
+    /// [errate 423]: https://www.rfc-editor.org/errata/eid423
+    /// [`true`]: ../../std/primitive.bool.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// fn main() {
+    ///     assert_eq!(Ipv4Addr::new(198, 17, 255, 255).is_benchmarking(), false);
+    ///     assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_benchmarking(), true);
+    ///     assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
+    ///     assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
+    /// }
+    /// ```
+    pub fn is_benchmarking(&self) -> bool {
+        self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
+    }
+
+    /// Returns [`true`] if this address is reserved by IANA for future use. [IETF RFC 1112]
+    /// defines the block of reserved addresses as `240.0.0.0/4`. This range normally includes the
+    /// broadcast address `255.255.255.255`, but this implementation explicitely excludes it, since
+    /// it is obviously not reserved for future use.
+    ///
+    /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
+    /// [`true`]: ../../std/primitive.bool.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// fn main() {
+    ///     assert_eq!(Ipv4Addr::new(240, 0, 0, 0).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(255, 255, 255, 254).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_ietf_protocol_assignment(), false);
+    ///     assert_eq!(Ipv4Addr::new(239, 255, 255, 255).is_ietf_protocol_assignment(), false);
+    /// }
+    /// ```
+    pub fn is_reserved(&self) -> bool {
+        self.octets()[0] & 240 == 240 && !self.is_broadcast()
     }
 
     /// Returns [`true`] if this is a multicast address (224.0.0.0/4).
@@ -1027,11 +1146,23 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns [`true`] if the address is unicast and link-local (fe80::/10).
+    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
     ///
-    /// This property is defined in [IETF RFC 4291].
+    /// A common mis-conception is to think that unicast link-local addresses start with
+    /// `fe80::`, but the [IETF RFC 4291] actually defines a stricter format for these addresses:
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// ```no_rust
+    /// |   10     |
+    /// |  bits    |         54 bits         |          64 bits           |
+    /// +----------+-------------------------+----------------------------+
+    /// |1111111010|           0             |       interface ID         |
+    /// +----------+-------------------------+----------------------------+
+    /// ```
+    ///
+    /// This method validates the format defined in the RFC and won't recognize the following
+    /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
+    ///
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.5.6
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -1042,13 +1173,19 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_link_local(),
-    ///                false);
-    ///     assert_eq!(Ipv6Addr::new(0xfe8a, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
+    ///     assert!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local());
+    ///     assert!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff).is_unicast_link_local());
+    ///     // fe80::0:0:1:: is not a valid unicast link-local address
+    ///     assert!(!Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local());
+    ///     // neither is fe81::
+    ///     assert!(!Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local());
     /// }
     /// ```
     pub fn is_unicast_link_local(&self) -> bool {
-        (self.segments()[0] & 0xffc0) == 0xfe80
+        (self.segments()[0] & 0xffff) == 0xfe80
+            && (self.segments()[1] & 0xffff) == 0
+            && (self.segments()[2] & 0xffff) == 0
+            && (self.segments()[3] & 0xffff) == 0
     }
 
     /// Returns [`true`] if this is a deprecated unicast site-local address
