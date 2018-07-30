@@ -3,17 +3,16 @@ language: rust
 matrix:
   include:
     - rust: stable
-      before_script:
-        - rustup component add rustfmt-preview
       script:
-        - cargo fmt --all -- --check
-        - cargo test
         - cargo gen-kinds --verify
         - cargo gen-tests --verify
+        - cargo test
     - rust: nightly
       before_script:
         - rustup component add clippy-preview
+        - rustup component add rustfmt-preview
       script:
+        - cargo fmt --all -- --check
         - cargo clippy
 
 branches:
