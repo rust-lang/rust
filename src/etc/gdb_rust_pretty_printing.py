@@ -124,6 +124,9 @@ def rust_pretty_printer_lookup_function(gdb_val):
     if type_kind == rustpp.TYPE_KIND_STD_VEC:
         return RustStdVecPrinter(val)
 
+    if type_kind == rustpp.TYPE_KIND_STD_VECDEQUE:
+        return RustStdVecDequePrinter(val)
+
     if type_kind == rustpp.TYPE_KIND_STD_STRING:
         return RustStdStringPrinter(val)
 
@@ -271,6 +274,28 @@ class RustStdVecPrinter(object):
         (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(self.__val)
         gdb_ptr = data_ptr.get_wrapped_value()
         for index in xrange(0, length):
+            yield (str(index), (gdb_ptr + index).dereference())
+
+
+class RustStdVecDequePrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    @staticmethod
+    def display_hint():
+        return "array"
+
+    def to_string(self):
+        (tail, head, data_ptr, cap) = \
+            rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
+        return (self.__val.type.get_unqualified_type_name() +
+                ("(len: %i, cap: %i)" % (head - tail, cap)))
+
+    def children(self):
+        (tail, head, data_ptr, cap) = \
+            rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
+        gdb_ptr = data_ptr.get_wrapped_value()
+        for index in xrange(tail, head):
             yield (str(index), (gdb_ptr + index).dereference())
 
 
