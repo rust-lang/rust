@@ -47,6 +47,7 @@ cfg_if! {
         #[cfg(target_os = "solaris")]    pub mod solaris;
         #[cfg(target_os = "emscripten")] pub mod emscripten;
         #[cfg(target_os = "fuchsia")]    pub mod fuchsia;
+        #[cfg(target_os = "hermit")]     pub mod hermit;
 
         #[cfg(any(target_os = "redox", unix))]
         #[stable(feature = "rust1", since = "1.0.0")]
