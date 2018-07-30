@@ -11,7 +11,6 @@
 //! This module is used to store stuff from Rust's AST in a more convenient
 //! manner (and with prettier names) before cleaning.
 pub use self::StructType::*;
-pub use self::TypeBound::*;
 
 use syntax::ast;
 use syntax::ast::{Name, NodeId};
@@ -89,11 +88,6 @@ pub enum StructType {
     Tuple,
     /// A unit struct
     Unit,
-}
-
-pub enum TypeBound {
-    RegionBound,
-    TraitBound(hir::TraitRef)
 }
 
 pub struct Struct {

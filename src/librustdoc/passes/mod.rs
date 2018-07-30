@@ -15,7 +15,7 @@ use std::mem;
 
 use clean::{self, GetDefId, Item};
 use fold;
-use fold::FoldItem::Strip;
+use fold::StripItem;
 
 mod collapse_docs;
 pub use self::collapse_docs::collapse_docs;
@@ -35,24 +35,44 @@ pub use self::unindent_comments::unindent_comments;
 mod propagate_doc_cfg;
 pub use self::propagate_doc_cfg::propagate_doc_cfg;
 
-type Pass = (&'static str,                                      // name
-             fn(clean::Crate) -> clean::Crate,                  // fn
-             &'static str);                                     // description
+type Pass = (
+    &'static str,                     // name
+    fn(clean::Crate) -> clean::Crate, // fn
+    &'static str,
+); // description
 
 pub const PASSES: &'static [Pass] = &[
-    ("strip-hidden", strip_hidden,
-     "strips all doc(hidden) items from the output"),
-    ("unindent-comments", unindent_comments,
-     "removes excess indentation on comments in order for markdown to like it"),
-    ("collapse-docs", collapse_docs,
-     "concatenates all document attributes into one document attribute"),
-    ("strip-private", strip_private,
-     "strips all private items from a crate which cannot be seen externally, \
-      implies strip-priv-imports"),
-    ("strip-priv-imports", strip_priv_imports,
-     "strips all private import statements (`use`, `extern crate`) from a crate"),
-    ("propagate-doc-cfg", propagate_doc_cfg,
-     "propagates `#[doc(cfg(...))]` to child items"),
+    (
+        "strip-hidden",
+        strip_hidden,
+        "strips all doc(hidden) items from the output",
+    ),
+    (
+        "unindent-comments",
+        unindent_comments,
+        "removes excess indentation on comments in order for markdown to like it",
+    ),
+    (
+        "collapse-docs",
+        collapse_docs,
+        "concatenates all document attributes into one document attribute",
+    ),
+    (
+        "strip-private",
+        strip_private,
+        "strips all private items from a crate which cannot be seen externally, \
+         implies strip-priv-imports",
+    ),
+    (
+        "strip-priv-imports",
+        strip_priv_imports,
+        "strips all private import statements (`use`, `extern crate`) from a crate",
+    ),
+    (
+        "propagate-doc-cfg",
+        propagate_doc_cfg,
+        "propagates `#[doc(cfg(...))]` to child items",
+    ),
 ];
 
 pub const DEFAULT_PASSES: &'static [&'static str] = &[
@@ -79,15 +99,9 @@ pub enum DefaultPassOption {
 
 pub fn defaults(default_set: DefaultPassOption) -> &'static [&'static str] {
     match default_set {
-        DefaultPassOption::Default => {
-            DEFAULT_PASSES
-        },
-        DefaultPassOption::Private => {
-            DEFAULT_PRIVATE_PASSES
-        },
-        DefaultPassOption::None => {
-            &[]
-        },
+        DefaultPassOption::Default => DEFAULT_PASSES,
+        DefaultPassOption::Private => DEFAULT_PRIVATE_PASSES,
+        DefaultPassOption::None => &[],
     }
 }
 
@@ -110,14 +124,21 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 return ret;
             }
             // These items can all get re-exported
-            clean::ExistentialItem(..) |
-            clean::TypedefItem(..) | clean::StaticItem(..) |
-            clean::StructItem(..) | clean::EnumItem(..) |
-            clean::TraitItem(..) | clean::FunctionItem(..) |
-            clean::VariantItem(..) | clean::MethodItem(..) |
-            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
-            clean::ConstantItem(..) | clean::UnionItem(..) |
-            clean::AssociatedConstItem(..) | clean::ForeignTypeItem => {
+            clean::ExistentialItem(..)
+            | clean::TypedefItem(..)
+            | clean::StaticItem(..)
+            | clean::StructItem(..)
+            | clean::EnumItem(..)
+            | clean::TraitItem(..)
+            | clean::FunctionItem(..)
+            | clean::VariantItem(..)
+            | clean::MethodItem(..)
+            | clean::ForeignFunctionItem(..)
+            | clean::ForeignStaticItem(..)
+            | clean::ConstantItem(..)
+            | clean::UnionItem(..)
+            | clean::AssociatedConstItem(..)
+            | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;
@@ -127,14 +148,14 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             clean::StructFieldItem(..) => {
                 if i.visibility != Some(clean::Public) {
-                    return Strip(i).fold();
+                    return StripItem(i).strip();
                 }
             }
 
             clean::ModuleItem(..) => {
                 if i.def_id.is_local() && i.visibility != Some(clean::Public) {
                     let old = mem::replace(&mut self.update_retained, false);
-                    let ret = Strip(self.fold_item_recur(i).unwrap()).fold();
+                    let ret = StripItem(self.fold_item_recur(i).unwrap()).strip();
                     self.update_retained = old;
                     return ret;
                 }
@@ -167,7 +188,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
             // Struct variant fields have inherited visibility
             clean::VariantItem(clean::Variant {
-                kind: clean::VariantKind::Struct(..)
+                kind: clean::VariantKind::Struct(..),
             }) => true,
             _ => false,
         };
@@ -192,7 +213,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
 // This stripper discards all impls which reference stripped items
 struct ImplStripper<'a> {
-    retained: &'a DefIdSet
+    retained: &'a DefIdSet,
 }
 
 impl<'a> fold::DocFolder for ImplStripper<'a> {
@@ -203,9 +224,7 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
                 return None;
             }
             if let Some(did) = imp.for_.def_id() {
-                if did.is_local() && !imp.for_.is_generic() &&
-                    !self.retained.contains(&did)
-                {
+                if did.is_local() && !imp.for_.is_generic() && !self.retained.contains(&did) {
                     return None;
                 }
             }
@@ -233,9 +252,12 @@ struct ImportStripper;
 impl fold::DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
-            clean::ExternCrateItem(..) |
-            clean::ImportItem(..) if i.visibility != Some(clean::Public) => None,
-            _ => self.fold_item_recur(i)
+            clean::ExternCrateItem(..) | clean::ImportItem(..)
+                if i.visibility != Some(clean::Public) =>
+            {
+                None
+            }
+            _ => self.fold_item_recur(i),
         }
     }
 }

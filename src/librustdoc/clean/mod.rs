@@ -425,9 +425,6 @@ impl Item {
     pub fn is_enum(&self) -> bool {
         self.type_() == ItemType::Enum
     }
-    pub fn is_fn(&self) -> bool {
-        self.type_() == ItemType::Function
-    }
     pub fn is_associated_type(&self) -> bool {
         self.type_() == ItemType::AssociatedType
     }
@@ -2188,10 +2185,6 @@ pub struct FnDecl {
 }
 
 impl FnDecl {
-    pub fn has_self(&self) -> bool {
-        self.inputs.values.len() > 0 && self.inputs.values[0].name == "self"
-    }
-
     pub fn self_type(&self) -> Option<SelfTy> {
         self.inputs.values.get(0).and_then(|v| v.to_self())
     }
@@ -3547,21 +3540,6 @@ pub struct Path {
 }
 
 impl Path {
-    pub fn singleton(name: String) -> Path {
-        Path {
-            global: false,
-            def: Def::Err,
-            segments: vec![PathSegment {
-                name,
-                args: GenericArgs::AngleBracketed {
-                    lifetimes: Vec::new(),
-                    types: Vec::new(),
-                    bindings: Vec::new(),
-                }
-            }]
-        }
-    }
-
     pub fn last_name(&self) -> &str {
         self.segments.last().unwrap().name.as_str()
     }
