@@ -1011,11 +1011,11 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 let vtable = mem.read_ptr_sized(
                     ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
-                )?.read()?.to_ptr()?;
+                )?.unwrap_or_err()?.to_ptr()?;
                 Ok((ptr, vtable))
             }
 
-            Value::ScalarPair(ptr, vtable) => Ok((ptr, vtable.read()?.to_ptr()?)),
+            Value::ScalarPair(ptr, vtable) => Ok((ptr, vtable.unwrap_or_err()?.to_ptr()?)),
             _ => bug!("expected ptr and vtable, got {:?}", value),
         }
     }
@@ -1031,11 +1031,11 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 let len = mem.read_ptr_sized(
                     ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
-                )?.read()?.to_bits(mem.pointer_size())? as u64;
+                )?.unwrap_or_err()?.to_bits(mem.pointer_size())? as u64;
                 Ok((ptr, len))
             }
             Value::ScalarPair(ptr, val) => {
-                let len = val.read()?.to_bits(self.memory().pointer_size())?;
+                let len = val.unwrap_or_err()?.to_bits(self.memory().pointer_size())?;
                 Ok((ptr, len as u64))
             }
             Value::Scalar(_) => bug!("expected ptr and length, got {:?}", value),

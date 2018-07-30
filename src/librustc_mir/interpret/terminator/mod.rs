@@ -392,7 +392,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let fn_ptr = self.memory.read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
                     ptr_align
-                )?.read()?.to_ptr()?;
+                )?.unwrap_or_err()?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
                 let mut args = args.to_vec();
                 let ty = self.layout_of(args[0].ty)?.field(&self, 0)?.ty;

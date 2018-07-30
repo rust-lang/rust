@@ -88,8 +88,8 @@ pub fn value_to_const_value<'tcx>(
     }
     let val = (|| {
         match val {
-            Value::Scalar(val) => Ok(ConstValue::Scalar(val.read()?)),
-            Value::ScalarPair(a, b) => Ok(ConstValue::ScalarPair(a.read()?, b.read()?)),
+            Value::Scalar(val) => Ok(ConstValue::Scalar(val.unwrap_or_err()?)),
+            Value::ScalarPair(a, b) => Ok(ConstValue::ScalarPair(a.unwrap_or_err()?, b.unwrap_or_err()?)),
             Value::ByRef(ptr, align) => {
                 let ptr = ptr.to_ptr().unwrap();
                 let alloc = ecx.memory.get(ptr.alloc_id)?;
@@ -441,7 +441,7 @@ pub fn const_val_field<'a, 'tcx>(
         let place = ecx.allocate_place_for_value(value, layout, variant)?;
         let (place, layout) = ecx.place_field(place, field, layout)?;
         let (ptr, align) = place.to_ptr_align();
-        let mut new_value = Value::ByRef(ptr.read()?, align);
+        let mut new_value = Value::ByRef(ptr.unwrap_or_err()?, align);
         new_value = ecx.try_read_by_ref(new_value, layout.ty)?;
         use rustc_data_structures::indexed_vec::Idx;
         match (value, new_value) {
@@ -485,7 +485,7 @@ pub fn const_variant_index<'a, 'tcx>(
         },
         Value::ByRef(ptr, align) => (ptr, align),
     };
-    let place = Place::from_scalar_ptr(ptr, align);
+    let place = Place::from_scalar_ptr(ptr.into(), align);
     ecx.read_discriminant_as_variant_index(place, layout)
 }
 

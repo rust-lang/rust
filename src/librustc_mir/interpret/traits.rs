@@ -72,7 +72,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         // we don't care about the pointee type, we just want a pointer
         let pointer_align = self.tcx.data_layout.pointer_align;
-        let drop_fn = self.memory.read_ptr_sized(vtable, pointer_align)?.read()?.to_ptr()?;
+        let drop_fn = self.memory.read_ptr_sized(vtable, pointer_align)?.unwrap_or_err()?.to_ptr()?;
         self.memory.get_fn(drop_fn)
     }
 
@@ -82,11 +82,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, (Size, Align)> {
         let pointer_size = self.memory.pointer_size();
         let pointer_align = self.tcx.data_layout.pointer_align;
-        let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?, pointer_align)?.read()?.to_bits(pointer_size)? as u64;
+        let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?, pointer_align)?.unwrap_or_err()?.to_bits(pointer_size)? as u64;
         let align = self.memory.read_ptr_sized(
             vtable.offset(pointer_size * 2, self)?,
             pointer_align
-        )?.read()?.to_bits(pointer_size)? as u64;
+        )?.unwrap_or_err()?.to_bits(pointer_size)? as u64;
         Ok((Size::from_bytes(size), Align::from_bytes(align, align).unwrap()))
     }
 }

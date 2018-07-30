@@ -52,7 +52,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let instance = match ty.sty {
             ty::TyDynamic(..) => {
                 if let Value::ScalarPair(_, vtable) = arg {
-                    self.read_drop_type_from_vtable(vtable.read()?.to_ptr()?)?
+                    self.read_drop_type_from_vtable(vtable.unwrap_or_err()?.to_ptr()?)?
                 } else {
                     bug!("expected fat ptr, got {:?}", arg);
                 }

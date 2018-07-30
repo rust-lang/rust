@@ -616,7 +616,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 if let Place::Ptr { ptr, .. } = frame.return_place {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
                     self.memory.mark_static_initialized(
-                        ptr.read()?.to_ptr()?.alloc_id,
+                        ptr.unwrap_or_err()?.to_ptr()?.alloc_id,
                         mutable,
                     )?
                 } else {
@@ -744,7 +744,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
 
                 if length > 0 {
-                    let dest = dest.read()?;
+                    let dest = dest.unwrap_or_err()?;
                     //write the first value
                     self.write_value_to_ptr(value, dest, dest_align, elem_ty)?;
 
@@ -1082,7 +1082,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             },
         };
         Ok(Place::Ptr {
-            ptr,
+            ptr: ptr.into(),
             align,
             extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
         })
@@ -1120,7 +1120,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     /// ensures this Value is not a ByRef
     pub fn follow_by_ref_value(
-        &mut self,
+        &self,
         value: Value,
         ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
@@ -1133,13 +1133,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn value_to_scalar(
-        &mut self,
+        &self,
         ValTy { value, ty } : ValTy<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
         match self.follow_by_ref_value(value, ty)? {
             Value::ByRef { .. } => bug!("follow_by_ref_value can't result in `ByRef`"),
 
-            Value::Scalar(scalar) => Ok(scalar),
+            Value::Scalar(scalar) => scalar.unwrap_or_err(),
 
             Value::ScalarPair(..) => bug!("value_to_scalar can't work with fat pointers"),
         }
@@ -1179,7 +1179,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         match dest {
             Place::Ptr { ptr, align, extra } => {
                 assert_eq!(extra, PlaceExtra::None);
-                self.write_value_to_ptr(src_val, ptr.read()?, align, dest_ty)
+                self.write_value_to_ptr(src_val, ptr.unwrap_or_err()?, align, dest_ty)
             }
 
             Place::Local { frame, local } => {
@@ -1288,37 +1288,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub(crate) fn read_ptr(
-        &self,
-        ptr: Pointer,
-        ptr_align: Align,
-        pointee_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Value> {
-        let ptr_size = self.memory.pointer_size();
-        let p: ScalarMaybeUndef = self.memory.read_ptr_sized(ptr, ptr_align)?;
-        if self.type_is_sized(pointee_ty) {
-            Ok(Value::Scalar(p))
-        } else {
-            trace!("reading fat pointer extra of type {}", pointee_ty);
-            let extra = ptr.offset(ptr_size, self)?;
-            match self.tcx.struct_tail(pointee_ty).sty {
-                ty::TyDynamic(..) => Ok(Value::ScalarPair(
-                    p,
-                    self.memory.read_ptr_sized(extra, ptr_align)?,
-                )),
-                ty::TySlice(..) | ty::TyStr => {
-                    let len = self
-                        .memory
-                        .read_ptr_sized(extra, ptr_align)?
-                        .read()?
-                        .to_bits(ptr_size)?;
-                    Ok(p.to_value_with_len(len as u64, self.tcx.tcx))
-                },
-                _ => bug!("unsized scalar ptr read from {:?}", pointee_ty),
-            }
-        }
-    }
-
     fn validate_scalar(
         &self,
         value: Scalar,
@@ -1330,8 +1299,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         trace!("validate scalar: {:#?}, {:#?}, {:#?}, {}", value, size, scalar, ty);
         let (lo, hi) = scalar.valid_range.clone().into_inner();
 
-        let (bits, defined) = match value {
-            Scalar::Bits { bits, defined } => (bits, defined),
+        let bits = match value {
+            Scalar::Bits { bits, size: value_size } => {
+                assert_eq!(value_size as u64, size.bytes());
+                bits
+            },
             Scalar::Ptr(_) => {
                 let ptr_size = self.memory.pointer_size();
                 let ptr_max = u128::max_value() >> (128 - ptr_size.bits());
@@ -1374,30 +1346,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
 
         use std::ops::RangeInclusive;
-        let in_range = |bound: RangeInclusive<u128>| {
-            defined as u64 >= size.bits() && bound.contains(&bits)
-        };
+        let in_range = |bound: RangeInclusive<u128>| bound.contains(&bits);
         if lo > hi {
             if in_range(0..=hi) || in_range(lo..=u128::max_value()) {
                 Ok(())
-            } else if defined as u64 >= size.bits() {
-                validation_failure!(
-                    bits,
-                    path,
-                    format!("something in the range {:?} or {:?}", ..=hi, lo..)
-                )
             } else {
                 validation_failure!("undefined bytes", path)
             }
         } else {
             if in_range(scalar.valid_range.clone()) {
                 Ok(())
-            } else if defined as u64 >= size.bits() {
-                validation_failure!(
-                    bits,
-                    path,
-                    format!("something in the range {:?}", scalar.valid_range)
-                )
             } else {
                 validation_failure!("undefined bytes", path)
             }
@@ -1455,7 +1413,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     // expectation.
                     layout::Abi::Scalar(ref scalar) => {
                         let size = scalar.value.size(self);
-                        let value = self.memory.read_scalar(ptr, ptr_align, size)?;
+                        let value = self.memory.read_scalar(ptr, ptr_align, size)?.unwrap_or_err()?;
                         self.validate_scalar(value, size, scalar, &path, layout.ty)?;
                         if scalar.value == Primitive::Pointer {
                             // ignore integer pointers, we can't reason about the final hardware
@@ -1538,7 +1496,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn try_read_by_ref(&mut self, mut val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn try_read_by_ref(&self, mut val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         // Convert to ByVal or ScalarPair if possible
         if let Value::ByRef(ptr, align) = val {
             if let Some(read_val) = self.try_read_value(ptr, align, ty)? {
@@ -1548,7 +1506,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(val)
     }
 
-    pub fn try_read_value(&mut self, ptr: Scalar, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+    pub fn try_read_value(&self, ptr: Scalar, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         let mut layout = self.layout_of(ty)?;
         self.memory.check_align(ptr, ptr_align)?;
 
@@ -1563,9 +1521,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             layout::Variants::Tagged { .. } => {
                 let variant_index = self.read_discriminant_as_variant_index(
                     Place::from_ptr(ptr, ptr_align),
-                    layout.ty,
+                    layout,
                 )?;
-                layout = layout.for_variant(&self, variant_index);
+                layout = layout.for_variant(self, variant_index);
                 trace!("variant layout: {:#?}", layout);
             },
             layout::Variants::Single { .. } => {},
@@ -1578,10 +1536,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
                 let (a, b) = (&a.value, &b.value);
-                let (a_size, b_size) = (a.size(&self), b.size(&self));
+                let (a_size, b_size) = (a.size(self), b.size(self));
                 let a_ptr = ptr;
-                let b_offset = a_size.abi_align(b.align(&self));
-                let b_ptr = ptr.offset(b_offset, &self)?.into();
+                let b_offset = a_size.abi_align(b.align(self));
+                let b_ptr = ptr.offset(b_offset, self)?.into();
                 let a_val = self.memory.read_scalar(a_ptr, ptr_align, a_size)?;
                 let b_val = self.memory.read_scalar(b_ptr, ptr_align, b_size)?;
                 Ok(Some(Value::ScalarPair(a_val, b_val)))
@@ -1929,7 +1887,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 ScalarMaybeUndef::Undef,
                 ScalarMaybeUndef::Undef,
             ),
-            _ => Value::ByRef(self.alloc_ptr(ty)?.into(), layout.align),
+            _ => Value::ByRef(self.alloc_ptr(layout)?.into(), layout.align),
         })
     }
 }

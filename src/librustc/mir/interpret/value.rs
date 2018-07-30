@@ -28,8 +28,11 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn from_byval_value(val: Value) -> EvalResult<'static, Self> {
         Ok(match val {
             Value::ByRef(..) => bug!(),
-            Value::ScalarPair(a, b) => ConstValue::ScalarPair(a.read()?, b.read()?),
-            Value::Scalar(val) => ConstValue::Scalar(val.read()?),
+            Value::ScalarPair(a, b) => ConstValue::ScalarPair(
+                a.unwrap_or_err()?,
+                b.unwrap_or_err()?,
+            ),
+            Value::Scalar(val) => ConstValue::Scalar(val.unwrap_or_err()?),
         })
     }
 
@@ -197,7 +200,7 @@ impl From<Scalar> for ScalarMaybeUndef {
 }
 
 impl ScalarMaybeUndef {
-    pub fn read(self) -> EvalResult<'static, Scalar> {
+    pub fn unwrap_or_err(self) -> EvalResult<'static, Scalar> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUndef::Undef => err!(ReadUndefBytes),

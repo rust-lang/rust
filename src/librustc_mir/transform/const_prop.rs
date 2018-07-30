@@ -369,7 +369,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     Value::Scalar(Scalar::Bits {
                         bits: n as u128,
                         size: self.tcx.data_layout.pointer_size.bytes() as u8,
-                    }),
+                    }.into()),
                     self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
                     span,
                 )))
@@ -391,7 +391,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     this.ecx.value_to_scalar(ValTy { value: val.0, ty: val.1.ty })
                 })?;
                 let val = self.use_ecx(source_info, |this| this.ecx.unary_op(op, prim, val.1))?;
-                Some((Value::Scalar(val), place_layout, span))
+                Some((Value::Scalar(val.into()), place_layout, span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {

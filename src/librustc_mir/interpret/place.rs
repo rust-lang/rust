@@ -197,7 +197,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match place {
             Place::Ptr { ptr, align, extra } => {
                 assert_eq!(extra, PlaceExtra::None);
-                Ok(Value::ByRef(ptr.read()?, align))
+                Ok(Value::ByRef(ptr.unwrap_or_err()?, align))
             }
             Place::Local { frame, local } => self.stack[frame].locals[local].access(),
         }
