@@ -22,24 +22,54 @@
 
 // run-pass
 
-type Boxed<'a, 'b> = Box<(&'a mut u32, &'b mut u32)>;
+// This function shows quite directly what is going on: We have a
+// reborrow of contents within the box.
+fn return_borrow_from_dropped_box_1(x: Box<&mut u32>) -> &mut u32 { &mut **x }
 
-fn return_borrow_from_dropped_box<'a>(x: Boxed<'a, '_>) -> &'a mut u32 {
+// This function is the way you'll probably see this in practice (the
+// reborrow is now implicit).
+fn return_borrow_from_dropped_box_2(x: Box<&mut u32>) -> &mut u32 { *x }
+
+// For the remaining tests we just add some fields or other
+// indirection to ensure that the compiler isn't just special-casing
+// the above `Box<&mut T>` as the only type that would work.
+
+// Here we add a tuple of indirection between the box and the
+// reference.
+type BoxedTup<'a, 'b> = Box<(&'a mut u32, &'b mut u32)>;
+
+fn return_borrow_of_field_from_dropped_box_1<'a>(x: BoxedTup<'a, '_>) -> &'a mut u32 {
     &mut *x.0
 }
 
-fn return_borrow_from_dropped_tupled_box<'a>(x: (Boxed<'a, '_>, &mut u32)) -> &'a mut u32 {
+fn return_borrow_of_field_from_dropped_box_2<'a>(x: BoxedTup<'a, '_>) -> &'a mut u32 {
+    x.0
+}
+
+fn return_borrow_from_dropped_tupled_box_1<'a>(x: (BoxedTup<'a, '_>, &mut u32)) -> &'a mut u32 {
     &mut *(x.0).0
+}
+
+fn return_borrow_from_dropped_tupled_box_2<'a>(x: (BoxedTup<'a, '_>, &mut u32)) -> &'a mut u32 {
+    (x.0).0
 }
 
 fn basic_tests() {
     let mut x = 2;
     let mut y = 3;
     let mut z = 4;
-    *return_borrow_from_dropped_box(Box::new((&mut x, &mut y))) += 10;
+    *return_borrow_from_dropped_box_1(Box::new(&mut x)) += 10;
     assert_eq!((x, y, z), (12, 3, 4));
-    *return_borrow_from_dropped_tupled_box((Box::new((&mut x, &mut y)), &mut z)) += 10;
+    *return_borrow_from_dropped_box_2(Box::new(&mut x)) += 10;
     assert_eq!((x, y, z), (22, 3, 4));
+    *return_borrow_of_field_from_dropped_box_1(Box::new((&mut x, &mut y))) += 10;
+    assert_eq!((x, y, z), (32, 3, 4));
+    *return_borrow_of_field_from_dropped_box_2(Box::new((&mut x, &mut y))) += 10;
+    assert_eq!((x, y, z), (42, 3, 4));
+    *return_borrow_from_dropped_tupled_box_1((Box::new((&mut x, &mut y)), &mut z)) += 10;
+    assert_eq!((x, y, z), (52, 3, 4));
+    *return_borrow_from_dropped_tupled_box_2((Box::new((&mut x, &mut y)), &mut z)) += 10;
+    assert_eq!((x, y, z), (62, 3, 4));
 }
 
 // These scribbling tests have been transcribed from
