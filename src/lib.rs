@@ -27,7 +27,7 @@ mod syntax_kinds;
 pub use {
     text_unit::{TextRange, TextUnit},
     syntax_kinds::SyntaxKind,
-    yellow::{SyntaxNode},
+    yellow::{SyntaxNode, SyntaxNodeRef},
     lexer::{tokenize, Token},
 };
 
@@ -48,16 +48,17 @@ pub mod utils {
         collections::BTreeSet
     };
 
-    use {SyntaxNode, SyntaxError};
+    use {SyntaxNode, SyntaxNodeRef, SyntaxError};
 
     /// Parse a file and create a string representation of the resulting parse tree.
     pub fn dump_tree_green(syntax: &SyntaxNode) -> String {
+        let syntax = syntax.borrow();
         let mut errors: BTreeSet<_> = syntax.root.errors.iter().cloned().collect();
         let mut result = String::new();
         go(syntax, &mut result, 0, &mut errors);
         return result;
 
-        fn go(node: &SyntaxNode, buff: &mut String, level: usize, errors: &mut BTreeSet<SyntaxError>) {
+        fn go(node: SyntaxNodeRef, buff: &mut String, level: usize, errors: &mut BTreeSet<SyntaxError>) {
             buff.push_str(&String::from("  ").repeat(level));
             write!(buff, "{:?}\n", node).unwrap();
             let my_errors: Vec<_> = errors.iter().filter(|e| e.offset == node.range().start())
@@ -68,7 +69,7 @@ pub mod utils {
                 write!(buff, "err: `{}`\n", err.message).unwrap();
             }
 
-            for child in node.children().iter() {
+            for child in node.children() {
                 go(child, buff, level + 1, errors)
             }
 

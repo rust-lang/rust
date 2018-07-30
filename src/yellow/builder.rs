@@ -1,6 +1,6 @@
 use {
     SyntaxKind, TextRange, TextUnit,
-    yellow::{SyntaxNode, GreenNode, GreenNodeBuilder, SyntaxError},
+    yellow::{SyntaxNode, SyntaxRoot, GreenNode, GreenNodeBuilder, SyntaxError},
     parser::Sink
 };
 
@@ -57,7 +57,8 @@ impl Sink for GreenBuilder {
     }
 
     fn finish(self) -> SyntaxNode {
-        SyntaxNode::new(self.root.unwrap(), self.errors)
+        let root = SyntaxRoot::new(self.root.unwrap(), self.errors);
+        SyntaxNode::new_owned(root)
     }
 }
 
