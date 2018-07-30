@@ -90,6 +90,14 @@ impl<ROOT: TreeRoot> SyntaxNode<ROOT> {
         res
     }
 
+    pub fn parent(&self) -> Option<SyntaxNode<ROOT>> {
+        let parent = self.red().parent()?;
+        Some(SyntaxNode {
+            root: self.root.clone(),
+            red: parent,
+        })
+    }
+
     fn red(&self) -> &RedNode {
         unsafe { self.red.as_ref() }
     }

@@ -16,7 +16,7 @@ pub(crate) struct RedNode {
 
 #[derive(Debug)]
 struct ParentData {
-    parent: *const RedNode,
+    parent: ptr::NonNull<RedNode>,
     start_offset: TextUnit,
     index_in_parent: usize,
 }
@@ -30,7 +30,7 @@ impl RedNode {
 
     fn new_child(
         green: GreenNode,
-        parent: *const RedNode,
+        parent: ptr::NonNull<RedNode>,
         start_offset: TextUnit,
         index_in_parent: usize,
     ) -> RedNode {
@@ -76,10 +76,14 @@ impl RedNode {
             let green_children = self.green.children();
             let start_offset = self.start_offset()
                 + green_children[..idx].iter().map(|x| x.text_len()).sum::<TextUnit>();
-            let child = RedNode::new_child(green_children[idx].clone(), self, start_offset, idx);
+            let child = RedNode::new_child(green_children[idx].clone(), self.into(), start_offset, idx);
             children[idx] = Some(Box::new(child))
         }
         let child = children[idx].as_ref().unwrap();
         ptr::NonNull::from(&**child)
+    }
+
+    pub(crate) fn parent(&self) -> Option<ptr::NonNull<RedNode>> {
+        Some(self.parent.as_ref()?.parent)
     }
 }
