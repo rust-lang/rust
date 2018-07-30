@@ -58,5 +58,18 @@ impl SyntaxKind {
         };
         Some(tok)
     }
+
+    pub(crate) fn static_text(self) -> Option<&'static str> {
+        let tok = match self {
+{%- for t in concat(a=single_byte_tokens, b=multi_byte_tokens) %}
+            {{t.1}} => "{{t.0}}",
+{%- endfor %}
+{% for kw in concat(a=keywords, b=contextual_keywords) %}
+            {{kw | upper}}_KW => "{{kw}}",
+{%- endfor %}
+            _ => return None,
+        };
+        Some(tok)
+    }
 }
 

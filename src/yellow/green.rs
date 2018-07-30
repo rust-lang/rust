@@ -81,7 +81,7 @@ fn assert_send_sync() {
 #[derive(Clone, Debug)]
 pub(crate) enum GreenLeaf {
     Whitespace { newlines: u8, spaces: u8 },
-    Token { kind: SyntaxKind, text: Arc<str> },
+    Token { kind: SyntaxKind, text: Option<Arc<str>> },
 }
 
 impl GreenLeaf {
@@ -96,10 +96,14 @@ impl GreenLeaf {
                 };
             }
         }
-        GreenLeaf::Token {
-            kind,
-            text: text.to_owned().into_boxed_str().into(),
-        }
+        let text = match SyntaxKind::static_text(kind) {
+            Some(t) => {
+                debug_assert_eq!(t, text);
+                None
+            }
+            None => Some(text.to_owned().into_boxed_str().into()),
+        };
+        GreenLeaf::Token { kind, text }
     }
 
     pub(crate) fn kind(&self) -> SyntaxKind {
@@ -117,7 +121,10 @@ impl GreenLeaf {
                 assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
                 &WS[N_NEWLINES - newlines..N_NEWLINES + spaces]
             }
-            GreenLeaf::Token { text, .. } => text,
+            GreenLeaf::Token { kind, text, } => match text {
+                None => kind.static_text().unwrap(),
+                Some(t) => t,
+            },
         }
     }
 
