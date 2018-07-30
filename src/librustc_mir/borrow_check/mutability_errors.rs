@@ -307,7 +307,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 let local_decl = &self.mir.local_decls[*local];
                 let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
                     ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf) => {
-                        Some(suggest_ampmut_self(local_decl))
+                        Some(suggest_ampmut_self(self.tcx, local_decl))
                     }
 
                     ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
@@ -418,8 +418,22 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(local_decl: &mir::LocalDecl<'tcx>) -> (Span, String) {
-    (local_decl.source_info.span, "&mut self".to_string())
+fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    local_decl: &mir::LocalDecl<'tcx>,
+) -> (Span, String) {
+    let sp = local_decl.source_info.span;
+    (sp, match tcx.sess.codemap().span_to_snippet(sp) {
+        Ok(snippet) => {
+            let lt_pos = snippet.find('\'');
+            if let Some(lt_pos) = lt_pos {
+                format!("&{}mut self", &snippet[lt_pos..snippet.len() - 4])
+            } else {
+                "&mut self".to_string()
+            }
+        }
+        _ => "&mut self".to_string()
+    })
 }
 
 // When we want to suggest a user change a local variable to be a `&mut`, there
@@ -447,9 +461,15 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
     let locations = mir.find_assignments(local);
     if locations.len() > 0 {
         let assignment_rhs_span = mir.source_info(locations[0]).span;
-        let snippet = tcx.sess.codemap().span_to_snippet(assignment_rhs_span);
-        if let Ok(src) = snippet {
-            if src.starts_with('&') {
+        if let Ok(src) = tcx.sess.codemap().span_to_snippet(assignment_rhs_span) {
+            if let (true, Some(ws_pos)) = (
+                src.starts_with("&'"),
+                src.find(|c: char| -> bool { c.is_whitespace() }),
+            ) {
+                let lt_name = &src[1..ws_pos];
+                let ty = &src[ws_pos..];
+                return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
+            } else if src.starts_with('&') {
                 let borrowed_expr = src[1..].to_string();
                 return (assignment_rhs_span, format!("&mut {}", borrowed_expr));
             }
@@ -466,13 +486,25 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
         None => local_decl.source_info.span,
     };
 
+    if let Ok(src) = tcx.sess.codemap().span_to_snippet(highlight_span) {
+        if let (true, Some(ws_pos)) = (
+            src.starts_with("&'"),
+            src.find(|c: char| -> bool { c.is_whitespace() }),
+        ) {
+            let lt_name = &src[1..ws_pos];
+            let ty = &src[ws_pos..];
+            return (highlight_span, format!("&{} mut{}", lt_name, ty));
+        }
+    }
+
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
     assert_eq!(ty_mut.mutbl, hir::MutImmutable);
-    if local_decl.ty.is_region_ptr() {
-        (highlight_span, format!("&mut {}", ty_mut.ty))
-    } else {
-        (highlight_span, format!("*mut {}", ty_mut.ty))
-    }
+    (highlight_span,
+     if local_decl.ty.is_region_ptr() {
+         format!("&mut {}", ty_mut.ty)
+     } else {
+         format!("*mut {}", ty_mut.ty)
+     })
 }
 
 fn is_closure_or_generator(ty: ty::Ty) -> bool {
