@@ -298,6 +298,13 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                 "abort" => {
                     fx.bcx.ins().trap(TrapCode::User(!0 - 1));
                 }
+                "assume" => {
+                    assert_eq!(args.len(), 1);
+                }
+                "likely" | "unlikely" => {
+                    assert_eq!(args.len(), 1);
+                    ret.write_cvalue(fx, args[0]);
+                }
                 "copy" | "copy_nonoverlapping" => {
                     let elem_ty = substs.type_at(0);
                     let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
