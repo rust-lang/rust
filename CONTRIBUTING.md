@@ -7,7 +7,7 @@ Hello fellow Rustacean! Great to see your interest in compiler internals and lin
 Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document explains how
 you can contribute and how to get started.
 If you have any questions about contributing or need help with anything, feel free to ask questions on issues or
-visit the `#clippy` IRC channel on `irc.mozilla.org`.
+visit the `#clippy` IRC channel on `irc.mozilla.org` or meet us in `#wg-clippy` on [Discord](https://discord.gg/rust-lang).
 
 All contributors are expected to follow the [Rust Code of Conduct](http://www.rust-lang.org/conduct.html).
 
