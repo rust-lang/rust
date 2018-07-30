@@ -273,9 +273,10 @@ impl<'a> LintLevelsBuilder<'a> {
                                 specs.insert(*id, (level, src));
                             }
                         }
-                        //FIXME: if Tool(None) is returned than the lint either does not exist in
-                        //the lint tool or the code doesn't get compiled with the lint tool and
-                        //therefore the lint cannot exist.
+                        // If Tool(None) is returned, then either the lint does not exist in the
+                        // tool or the code was not compiled with the tool and therefore the lint
+                        // was never added to the `LintStore`. To detect this is the responsibility
+                        // of the lint tool.
                     }
 
                     _ if !self.warn_about_weird_lints => {}
