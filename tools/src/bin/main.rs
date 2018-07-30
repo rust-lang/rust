@@ -55,6 +55,7 @@ fn update(path: &Path, contents: &str, verify: bool) -> Result<()> {
     if verify {
         bail!("`{}` is not up-to-date", path.display());
     }
+    eprintln!("updating {}", path.display());
     fs::write(path, contents)?;
     Ok(())
 }

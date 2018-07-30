@@ -206,6 +206,7 @@ fn extern_block(p: &mut Parser) {
     p.expect(R_CURLY);
 }
 
+
 fn fn_item(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();
@@ -216,7 +217,10 @@ fn fn_item(p: &mut Parser) {
     } else {
         p.error("expected function arguments");
     }
-
+    // test fn_item_ret_type
+    // fn foo() {}
+    // fn bar() -> () {}
+    fn_ret_type(p);
     block(p);
 
     fn block(p: &mut Parser) {
