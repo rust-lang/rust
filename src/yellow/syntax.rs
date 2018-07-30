@@ -1,7 +1,8 @@
 use std::{
     fmt,
     sync::Arc,
-    ptr
+    ptr,
+    ops::Deref,
 };
 
 use {
@@ -10,8 +11,12 @@ use {
     yellow::{RedNode, GreenNode},
 };
 
+pub trait TreeRoot: Deref<Target=SyntaxRoot> + Clone {}
+impl TreeRoot for Arc<SyntaxRoot> {}
+impl<'a> TreeRoot for &'a SyntaxRoot {}
+
 #[derive(Clone, Copy)]
-pub struct SyntaxNode<ROOT: ::std::ops::Deref<Target=SyntaxRoot> + Clone = Arc<SyntaxRoot>> {
+pub struct SyntaxNode<ROOT: TreeRoot = Arc<SyntaxRoot>> {
     pub(crate) root: ROOT,
     // guaranteed to be alive bc SyntaxRoot holds a strong ref
     red: ptr::NonNull<RedNode>,
@@ -48,7 +53,7 @@ impl SyntaxNode<Arc<SyntaxRoot>> {
     }
 }
 
-impl<ROOT: ::std::ops::Deref<Target=SyntaxRoot> + Clone> SyntaxNode<ROOT> {
+impl<ROOT: TreeRoot> SyntaxNode<ROOT> {
     pub fn borrow<'a>(&'a self) -> SyntaxNode<&'a SyntaxRoot> {
         SyntaxNode {
             root: &*self.root,
@@ -90,7 +95,7 @@ impl<ROOT: ::std::ops::Deref<Target=SyntaxRoot> + Clone> SyntaxNode<ROOT> {
     }
 }
 
-impl<ROOT: ::std::ops::Deref<Target=SyntaxRoot> + Clone> fmt::Debug for SyntaxNode<ROOT> {
+impl<ROOT: TreeRoot> fmt::Debug for SyntaxNode<ROOT> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;
         if has_short_text(self.kind()) {
