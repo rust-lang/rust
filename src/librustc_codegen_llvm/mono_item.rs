@@ -181,7 +181,7 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
     if instance.def.is_inline(cx.tcx) {
-        attributes::inline(lldecl, attributes::InlineAttr::Hint);
+        attributes::inline(cx, lldecl, attributes::InlineAttr::Hint);
     }
     attributes::from_fn_attrs(cx, lldecl, instance.def.def_id());
 

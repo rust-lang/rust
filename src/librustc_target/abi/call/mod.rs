@@ -13,6 +13,7 @@ use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 use spec::HasTargetSpec;
 
 mod aarch64;
+mod amdgpu;
 mod arm;
 mod asmjs;
 mod hexagon;
@@ -480,6 +481,7 @@ impl<'a, Ty> FnType<'a, Ty> {
                 x86_64::compute_abi_info(cx, self);
             },
             "aarch64" => aarch64::compute_abi_info(cx, self),
+            "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
             "mips" => mips::compute_abi_info(cx, self),
             "mips64" => mips64::compute_abi_info(cx, self),

@@ -16,6 +16,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
+use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
@@ -30,12 +31,16 @@ use context::CodegenCx;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-pub fn inline(val: ValueRef, inline: InlineAttr) {
+pub fn inline(cx: &CodegenCx, val: ValueRef, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
         Hint   => Attribute::InlineHint.apply_llfn(Function, val),
         Always => Attribute::AlwaysInline.apply_llfn(Function, val),
-        Never  => Attribute::NoInline.apply_llfn(Function, val),
+        Never  => {
+            if !cx.tcx().sess.target.target.options.ignore_inline_never {
+                Attribute::NoInline.apply_llfn(Function, val);
+            }
+        },
         None   => {
             Attribute::InlineHint.unapply_llfn(Function, val);
             Attribute::AlwaysInline.unapply_llfn(Function, val);
@@ -126,7 +131,7 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
 pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(id);
 
-    inline(llfn, codegen_fn_attrs.inline);
+    inline(cx, llfn, codegen_fn_attrs.inline);
 
     set_frame_pointer_elimination(cx, llfn);
     set_probestack(cx, llfn);
