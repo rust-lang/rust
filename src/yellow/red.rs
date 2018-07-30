@@ -11,7 +11,7 @@ use {
 pub(crate) struct RedNode {
     green: GreenNode,
     parent: Option<ParentData>,
-    children: RwLock<Vec<Option<Box<RedNode>>>>,
+    children: RwLock<Vec<Option<RedNode>>>,
 }
 
 #[derive(Debug)]
@@ -68,7 +68,7 @@ impl RedNode {
 
     pub(crate) fn nth_child(&self, idx: usize) -> ptr::NonNull<RedNode> {
         match &self.children.read().unwrap()[idx] {
-            Some(child) => return ptr::NonNull::from(&**child),
+            Some(child) => return child.into(),
             None => (),
         }
         let mut children = self.children.write().unwrap();
@@ -77,10 +77,10 @@ impl RedNode {
             let start_offset = self.start_offset()
                 + green_children[..idx].iter().map(|x| x.text_len()).sum::<TextUnit>();
             let child = RedNode::new_child(green_children[idx].clone(), self.into(), start_offset, idx);
-            children[idx] = Some(Box::new(child))
+            children[idx] = Some(child)
         }
-        let child = children[idx].as_ref().unwrap();
-        ptr::NonNull::from(&**child)
+        children[idx].as_ref().unwrap().into()
+
     }
 
     pub(crate) fn parent(&self) -> Option<ptr::NonNull<RedNode>> {
