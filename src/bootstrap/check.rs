@@ -217,6 +217,11 @@ impl Step for Rustdoc {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
 
+        let stage_out = builder.stage_out(compiler, Mode::ToolRustc);
+        builder.clear_if_dirty(&stage_out, &libstd_stamp(builder, compiler, target));
+        builder.clear_if_dirty(&stage_out, &libtest_stamp(builder, compiler, target));
+        builder.clear_if_dirty(&stage_out, &librustc_stamp(builder, compiler, target));
+
         let mut cargo = prepare_tool_cargo(builder,
                                            compiler,
                                            Mode::ToolRustc,
