@@ -108,7 +108,7 @@ fn tests_from_dir(dir: &Path) -> Result<HashSet<Test>> {
         }
         let text = fs::read_to_string(entry.path())?;
 
-        for test in collect_tests(&text) {
+        for (_, test) in collect_tests(&text) {
             if let Some(old_test) = res.replace(test) {
                 bail!("Duplicate test: {}", old_test.name)
             }

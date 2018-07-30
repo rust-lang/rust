@@ -55,12 +55,12 @@ fn read_stdin() -> Result<String> {
 fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
     let text = fs::read_to_string(file)?;
     let tests = collect_tests(&text);
-    let test = tests.into_iter().find(|t| {
-        t.start_line <= line && line <= t.start_line + t.text.lines().count()
+    let test = tests.into_iter().find(|(start_line, t)| {
+        *start_line <= line && line <= *start_line + t.text.lines().count()
     });
     let test = match test {
         None => bail!("No test found at line {} at {}", line, file.display()),
-        Some(test) => test,
+        Some((_start_line, test)) => test,
     };
     let file = libsyntax2::parse(test.text.clone());
     let tree = libsyntax2::utils::dump_tree(&file);

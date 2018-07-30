@@ -5,7 +5,6 @@ use itertools::Itertools;
 
 #[derive(Debug, Eq)]
 pub struct Test {
-    pub start_line: usize,
     pub name: String,
     pub text: String,
 }
@@ -22,7 +21,7 @@ impl hash::Hash for Test {
     }
 }
 
-pub fn collect_tests(s: &str) -> Vec<Test> {
+pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
     let mut res = vec![];
     let prefix = "// ";
     let comment_blocks = s
@@ -52,7 +51,7 @@ pub fn collect_tests(s: &str) -> Vec<Test> {
             "\n"
         );
         assert!(!text.trim().is_empty() && text.ends_with("\n"));
-        res.push(Test { start_line, name, text })
+        res.push((start_line, Test {name, text }))
     }
     res
 }
