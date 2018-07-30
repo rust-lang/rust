@@ -40,6 +40,8 @@ pub(super) fn list(p: &mut Parser) {
         let m = p.start();
         p.bump();
         if p.eat(COLON) {
+            // test type_param_bounds
+            // struct S<T: 'a + ?Sized + (Copy)>;
             loop {
                 let has_paren = p.eat(L_PAREN);
                 p.eat(QUESTION);
@@ -61,7 +63,10 @@ pub(super) fn list(p: &mut Parser) {
                 }
             }
         }
+        // test type_param_default
+        // struct S<T = i32>;
         if p.at(EQ) {
+            p.bump();
             types::type_(p)
         }
         m.complete(p, TYPE_PARAM);
