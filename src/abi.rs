@@ -104,32 +104,46 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
         module.declare_func_in_func(func_id, &mut self.bcx.func)
     }
 
-    pub fn lib_call(
+    fn lib_call(
         &mut self,
         name: &str,
         input_tys: Vec<types::Type>,
-        output_ty: types::Type,
+        output_ty: Option<types::Type>,
         args: &[Value],
-    ) -> Value {
+    ) -> Option<Value> {
         let sig = Signature {
             params: input_tys.iter().cloned().map(AbiParam::new).collect(),
-            returns: vec![AbiParam::new(output_ty)],
+            returns: vec![AbiParam::new(output_ty.unwrap_or(types::VOID))],
             call_conv: CallConv::SystemV,
             argument_bytes: None,
         };
         let func_id = self.module.declare_function(&name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
+        if output_ty.is_none() {
+            return None;
+        }
         let results = self.bcx.inst_results(call_inst);
         assert_eq!(results.len(), 1);
-        results[0]
+        Some(results[0])
     }
 
     pub fn easy_call(&mut self, name: &str, args: &[CValue<'tcx>], return_ty: Ty<'tcx>) -> CValue<'tcx> {
         let (input_tys, args): (Vec<_>, Vec<_>) = args.into_iter().map(|arg| (self.cton_type(arg.layout().ty).unwrap(), arg.load_value(self))).unzip();
         let return_layout = self.layout_of(return_ty);
-        let return_ty = self.cton_type(return_ty).unwrap();
-        CValue::ByVal(self.lib_call(name, input_tys, return_ty, &args), return_layout)
+        let return_ty = if let TypeVariants::TyTuple(tup) = return_ty.sty {
+            if !tup.is_empty() {
+                bug!("easy_call( (...) -> <non empty tuple> ) is not allowed");
+            }
+            None
+        } else {
+            Some(self.cton_type(return_ty).unwrap())
+        };
+        if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
+            CValue::ByVal(val, return_layout)
+        } else {
+            CValue::ByRef(self.bcx.ins().iconst(types::I64, 0), return_layout)
+        }
     }
 
     fn self_sig(&self) -> FnSig<'tcx> {
@@ -277,6 +291,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             let intrinsic = fx.tcx.item_name(def_id).as_str();
             let intrinsic = &intrinsic[..];
 
+            let nil_ty = fx.tcx.mk_nil();
             let usize_layout = fx.layout_of(fx.tcx.types.usize);
             let ret = return_place.unwrap();
             match intrinsic {
@@ -284,11 +299,15 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     fx.bcx.ins().trap(TrapCode::User(!0 - 1));
                 }
                 "copy" | "copy_nonoverlapping" => {
-                    /*let elem_ty = substs.type_at(0);
+                    let elem_ty = substs.type_at(0);
+                    let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
+                    let elem_size = fx.bcx.ins().iconst(types::I64, elem_size as i64);
                     assert_eq!(args.len(), 3);
                     let src = args[0];
                     let dst = args[1];
-                    let count = args[2];*/
+                    let count = args[2].load_value(fx);
+                    let byte_amount = fx.bcx.ins().imul(count, elem_size);
+                    fx.easy_call("memmove", &[dst, src, CValue::ByVal(byte_amount, usize_layout)], nil_ty);
                     unimplemented!("copy");
                 }
                 "discriminant_value" => {
