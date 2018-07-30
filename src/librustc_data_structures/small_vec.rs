@@ -197,7 +197,7 @@ impl<A> Encodable for SmallVec<A>
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                try!(s.emit_seq_elt(i, |s| e.encode(s)));
+                s.emit_seq_elt(i, |s| e.encode(s))?;
             }
             Ok(())
         })
@@ -209,11 +209,7 @@ impl<A> Decodable for SmallVec<A>
           A::Element: Decodable {
     fn decode<D: Decoder>(d: &mut D) -> Result<SmallVec<A>, D::Error> {
         d.read_seq(|d, len| {
-            let mut vec = SmallVec::with_capacity(len);
-            for i in 0..len {
-                vec.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
-            }
-            Ok(vec)
+            (0..len).map(|i| d.read_seq_elt(i, |d| Decodable::decode(d))).collect()
         })
     }
 }

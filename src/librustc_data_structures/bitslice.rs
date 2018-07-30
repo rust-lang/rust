@@ -95,8 +95,7 @@ pub fn bits_to_string(words: &[Word], bits: usize) -> String {
             assert!(mask <= 0xFF);
             let byte = v & mask;
 
-            result.push(sep);
-            result.push_str(&format!("{:02x}", byte));
+            result.push_str(&format!("{}{:02x}", sep, byte));
 
             if remain <= 8 { break; }
             v >>= 8;
