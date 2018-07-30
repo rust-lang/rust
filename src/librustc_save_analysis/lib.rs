@@ -810,7 +810,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::SelfTy(..) |
             HirDef::Label(..) |
             HirDef::Macro(..) |
-            HirDef::GlobalAsm(..) |
             HirDef::ToolMod |
             HirDef::NonMacroAttr |
             HirDef::Err => None,

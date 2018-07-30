@@ -70,8 +70,6 @@ pub enum Def {
     Macro(DefId, MacroKind),
     NonMacroAttr, // e.g. `#[inline]` or `#[rustfmt::skip]`
 
-    GlobalAsm(DefId),
-
     // Both namespaces
     Err,
 }
@@ -251,8 +249,7 @@ impl Def {
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::Existential(id) | Def::AssociatedExistential(id) |
-            Def::GlobalAsm(id) | Def::TyForeign(id) => {
+            Def::Existential(id) | Def::AssociatedExistential(id) | Def::TyForeign(id) => {
                 id
             }
 
@@ -302,7 +299,6 @@ impl Def {
             Def::Label(..) => "label",
             Def::SelfTy(..) => "self type",
             Def::Macro(.., macro_kind) => macro_kind.descr(),
-            Def::GlobalAsm(..) => "global asm",
             Def::ToolMod => "tool module",
             Def::NonMacroAttr => "non-macro attribute",
             Def::Err => "unresolved item",
