@@ -18,7 +18,8 @@ impl<'a> TreeRoot for &'a SyntaxRoot {}
 #[derive(Clone, Copy)]
 pub struct SyntaxNode<ROOT: TreeRoot = Arc<SyntaxRoot>> {
     pub(crate) root: ROOT,
-    // guaranteed to be alive bc SyntaxRoot holds a strong ref
+    // Guaranteed to not dangle, because `root` holds a
+    // strong reference to red's ancestor
     red: ptr::NonNull<RedNode>,
 }
 
