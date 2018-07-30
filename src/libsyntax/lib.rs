@@ -87,8 +87,8 @@ impl Globals {
         Globals {
             // We have no idea how many attributes their will be, so just
             // initiate the vectors with 0 bits. We'll grow them as necessary.
-            used_attrs: Lock::new(BitVector::new(0)),
-            known_attrs: Lock::new(BitVector::new(0)),
+            used_attrs: Lock::new(BitVector::new()),
+            known_attrs: Lock::new(BitVector::new()),
             syntax_pos_globals: syntax_pos::Globals::new(),
         }
     }

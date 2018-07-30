@@ -19,7 +19,7 @@ use build::Builder;
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::bitvec::BitArray;
 use rustc::ty::{self, Ty};
 use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
@@ -38,7 +38,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     span: match_pair.pattern.span,
                     kind: TestKind::Switch {
                         adt_def: adt_def.clone(),
-                        variants: BitVector::new(adt_def.variants.len()),
+                        variants: BitArray::new(adt_def.variants.len()),
                     },
                 }
             }
@@ -149,7 +149,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn add_variants_to_switch<'pat>(&mut self,
                                         test_place: &Place<'tcx>,
                                         candidate: &Candidate<'pat, 'tcx>,
-                                        variants: &mut BitVector<usize>)
+                                        variants: &mut BitArray<usize>)
                                         -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {

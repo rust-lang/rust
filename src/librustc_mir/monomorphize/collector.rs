@@ -240,7 +240,7 @@ impl<'tcx> InliningMap<'tcx> {
         InliningMap {
             index: FxHashMap(),
             targets: Vec::new(),
-            inlines: BitVector::new(1024),
+            inlines: BitVector::with_capacity(1024),
         }
     }
 
