@@ -79,7 +79,7 @@ impl Layout {
     #[inline]
     pub fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutErr> {
         if !align.is_power_of_two() {
-            return Err(LayoutErr { private: () });
+            return Err(LayoutErr);
         }
 
         // (power-of-two implies align != 0.)
@@ -97,7 +97,7 @@ impl Layout {
         // Above implies that checking for summation overflow is both
         // necessary and sufficient.
         if size > usize::MAX - (align - 1) {
-            return Err(LayoutErr { private: () });
+            return Err(LayoutErr);
         }
 
         unsafe {
@@ -236,9 +236,9 @@ impl Layout {
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
         let padded_size = self.size().checked_add(self.padding_needed_for(self.align()))
-            .ok_or(LayoutErr { private: () })?;
+            .ok_or(LayoutErr)?;
         let alloc_size = padded_size.checked_mul(n)
-            .ok_or(LayoutErr { private: () })?;
+            .ok_or(LayoutErr)?;
 
         unsafe {
             // self.align is already known to be valid and alloc_size has been
@@ -265,9 +265,9 @@ impl Layout {
         let pad = self.padding_needed_for(next.align());
 
         let offset = self.size().checked_add(pad)
-            .ok_or(LayoutErr { private: () })?;
+            .ok_or(LayoutErr)?;
         let new_size = offset.checked_add(next.size())
-            .ok_or(LayoutErr { private: () })?;
+            .ok_or(LayoutErr)?;
 
         let layout = Layout::from_size_align(new_size, new_align)?;
         Ok((layout, offset))
@@ -288,7 +288,7 @@ impl Layout {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutErr> {
-        let size = self.size().checked_mul(n).ok_or(LayoutErr { private: () })?;
+        let size = self.size().checked_mul(n).ok_or(LayoutErr)?;
         Layout::from_size_align(size, self.align())
     }
 
@@ -311,7 +311,7 @@ impl Layout {
     #[inline]
     pub fn extend_packed(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_size = self.size().checked_add(next.size())
-            .ok_or(LayoutErr { private: () })?;
+            .ok_or(LayoutErr)?;
         let layout = Layout::from_size_align(new_size, self.align())?;
         Ok((layout, self.size()))
     }
@@ -336,9 +336,7 @@ impl Layout {
 /// do not satisfy its documented constraints.
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct LayoutErr {
-    private: ()
-}
+pub struct LayoutErr;
 
 // (we need this for downstream impl of trait Error)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
