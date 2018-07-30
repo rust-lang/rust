@@ -11,23 +11,23 @@
 //! This module contains files for saving intermediate work-products.
 
 use persist::fs::*;
-use rustc::dep_graph::{WorkProduct, WorkProductId, DepGraph, WorkProductFileKind};
+use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
 use rustc::session::Session;
 use rustc::util::fs::link_or_copy;
 use std::path::PathBuf;
 use std::fs as std_fs;
 
-pub fn save_trans_partition(sess: &Session,
-                            dep_graph: &DepGraph,
-                            cgu_name: &str,
-                            files: &[(WorkProductFileKind, PathBuf)]) {
-    debug!("save_trans_partition({:?},{:?})",
+pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
+    sess: &Session,
+    cgu_name: &str,
+    files: &[(WorkProductFileKind, PathBuf)]
+) -> Option<(WorkProductId, WorkProduct)> {
+    debug!("copy_cgu_workproducts_to_incr_comp_cache_dir({:?},{:?})",
            cgu_name,
            files);
     if sess.opts.incremental.is_none() {
-        return
+        return None
     }
-    let work_product_id = WorkProductId::from_cgu_name(cgu_name);
 
     let saved_files: Option<Vec<_>> =
         files.iter()
@@ -53,8 +53,8 @@ pub fn save_trans_partition(sess: &Session,
              })
              .collect();
     let saved_files = match saved_files {
+        None => return None,
         Some(v) => v,
-        None => return,
     };
 
     let work_product = WorkProduct {
@@ -62,7 +62,8 @@ pub fn save_trans_partition(sess: &Session,
         saved_files,
     };
 
-    dep_graph.insert_work_product(&work_product_id, work_product);
+    let work_product_id = WorkProductId::from_cgu_name(cgu_name);
+    Some((work_product_id, work_product))
 }
 
 pub fn delete_workproduct_files(sess: &Session, work_product: &WorkProduct) {

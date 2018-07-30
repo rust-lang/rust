@@ -11,7 +11,6 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use std::i16;
-use std::mem;
 use std::str;
 
 use core::num::flt2dec::MAX_SIG_DIGITS;
@@ -75,8 +74,7 @@ pub fn f32_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
     let mut rng: XorShiftRng = Rand::rand(&mut rand::thread_rng());
     let f32_range = Range::new(0x0000_0001u32, 0x7f80_0000);
     iterate("f32_random_equivalence_test", k, n, f, g, |_| {
-        let i: u32 = f32_range.ind_sample(&mut rng);
-        let x: f32 = unsafe {mem::transmute(i)};
+        let x = f32::from_bits(f32_range.ind_sample(&mut rng));
         decode_finite(x)
     });
 }
@@ -87,8 +85,7 @@ pub fn f64_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
     let mut rng: XorShiftRng = Rand::rand(&mut rand::thread_rng());
     let f64_range = Range::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000);
     iterate("f64_random_equivalence_test", k, n, f, g, |_| {
-        let i: u64 = f64_range.ind_sample(&mut rng);
-        let x: f64 = unsafe {mem::transmute(i)};
+        let x = f64::from_bits(f64_range.ind_sample(&mut rng));
         decode_finite(x)
     });
 }
@@ -105,7 +102,8 @@ pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
     // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e. all finite ranges
     let (npassed, nignored) = iterate("f32_exhaustive_equivalence_test",
                                       k, 0x7f7f_ffff, f, g, |i: usize| {
-        let x: f32 = unsafe {mem::transmute(i as u32 + 1)};
+
+        let x = f32::from_bits(i as u32 + 1);
         decode_finite(x)
     });
     assert_eq!((npassed, nignored), (2121451881, 17643158));

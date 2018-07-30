@@ -67,6 +67,12 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
+    pub fn insert_noop(&mut self) {
+        if !self.undo_log.is_empty() {
+            self.undo_log.push(UndoLog::Noop);
+        }
+    }
+
     pub fn remove(&mut self, key: K) -> bool {
         match self.map.remove(&key) {
             Some(old_value) => {

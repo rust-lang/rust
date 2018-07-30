@@ -13,6 +13,7 @@
 
 fn test() {
     let v: isize;
+    //[mir]~^ NOTE consider changing this to `mut v`
     v = 2;  //[ast]~ NOTE first assignment
             //[mir]~^ NOTE first assignment
     v += 1; //[ast]~ ERROR cannot assign twice to immutable variable

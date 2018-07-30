@@ -1,0 +1,36 @@
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/union-ice.rs:23:1
+   |
+LL | const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR this constant likely exhibits undefined
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered undefined bytes
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/union-ice.rs:25:1
+   |
+LL | / const FIELD_PATH: Struct = Struct { //~ ERROR this constant likely exhibits undefined behavior
+LL | |     a: 42,
+LL | |     b: unsafe { UNION.field3 },
+LL | | };
+   | |__^ type validation failed: encountered undefined bytes at .b
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: this constant likely exhibits undefined behavior
+  --> $DIR/union-ice.rs:35:1
+   |
+LL | / const FIELD_PATH2: Struct2 = Struct2 { //~ ERROR this constant likely exhibits undefined behavior
+LL | |     b: [
+LL | |         21,
+LL | |         unsafe { UNION.field3 },
+...  |
+LL | |     a: 42,
+LL | | };
+   | |__^ type validation failed: encountered undefined bytes at .b[1]
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -12,6 +12,7 @@
 //
 // Regression test for #47075.
 
+// edition:2018
 // compile-flags: --test
 
 #![feature(extern_absolute_paths)]

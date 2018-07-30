@@ -19,7 +19,7 @@ use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::universal_regions::DefiningTy;
 use rustc_errors::DiagnosticBuilder;
 
-impl<'gcx, 'tcx> RegionInferenceContext<'tcx> {
+impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out our state into the `.mir` files.
     pub(crate) fn annotate(&self, err: &mut DiagnosticBuilder<'_>) {
         match self.universal_regions.defining_ty {
@@ -30,12 +30,11 @@ impl<'gcx, 'tcx> RegionInferenceContext<'tcx> {
                     &substs.substs[..]
                 ));
             }
-            DefiningTy::Generator(def_id, substs, interior) => {
+            DefiningTy::Generator(def_id, substs, _) => {
                 err.note(&format!(
-                    "defining type: {:?} with closure substs {:#?} and interior {:?}",
+                    "defining type: {:?} with generator substs {:#?}",
                     def_id,
-                    &substs.substs[..],
-                    interior
+                    &substs.substs[..]
                 ));
             }
             DefiningTy::FnDef(def_id, substs) => {

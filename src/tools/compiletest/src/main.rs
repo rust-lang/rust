@@ -31,31 +31,31 @@ extern crate serde_json;
 extern crate test;
 extern crate rustfix;
 
+use common::CompareMode;
+use common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
+use common::{Config, TestPaths};
+use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use filetime::FileTime;
+use getopts::Options;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use filetime::FileTime;
-use getopts::Options;
-use common::{Config, TestPaths};
-use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
-use common::{expected_output_path, UI_EXTENSIONS};
-use common::CompareMode;
 use test::ColorConfig;
 use util::logv;
 
 use self::header::EarlyProps;
 
-pub mod util;
-mod json;
-pub mod header;
-pub mod runtest;
 pub mod common;
 pub mod errors;
+pub mod header;
+mod json;
 mod raise_fd_limit;
 mod read2;
+pub mod runtest;
+pub mod util;
 
 fn main() {
     env_logger::init();
@@ -168,6 +168,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
+            "bless",
+            "overwrite stderr/stdout files instead of complaining about a mismatch",
+        )
+        .optflag(
+            "",
             "quiet",
             "print one character per test instead of one line",
         )
@@ -236,7 +241,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "compare-mode",
             "mode describing what file the actual ui output will be compared to",
-            "COMPARE MODE"
+            "COMPARE MODE",
         )
         .optflag("h", "help", "show this message");
 
@@ -290,6 +295,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
     Config {
+        bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
@@ -501,7 +507,11 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
         run_ignored: config.run_ignored,
-        format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
+        format: if config.quiet {
+            test::OutputFormat::Terse
+        } else {
+            test::OutputFormat::Pretty
+        },
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
@@ -548,10 +558,9 @@ fn collect_tests_from_dir(
         if name == *"Makefile" && config.mode == Mode::RunMake {
             let paths = TestPaths {
                 file: dir.to_path_buf(),
-                base: base.to_path_buf(),
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
-            tests.push(make_test(config, &paths));
+            tests.extend(make_test(config, &paths));
             return Ok(());
         }
     }
@@ -562,7 +571,7 @@ fn collect_tests_from_dir(
     // sequential loop because otherwise, if we do it in the
     // tests themselves, they race for the privilege of
     // creating the directories and sometimes fail randomly.
-    let build_dir = config.build_base.join(&relative_dir_path);
+    let build_dir = output_relative_path(config, relative_dir_path);
     fs::create_dir_all(&build_dir).unwrap();
 
     // Add each `.rs` file as a test, and recurse further on any
@@ -576,21 +585,12 @@ fn collect_tests_from_dir(
             debug!("found test file: {:?}", file_path.display());
             let paths = TestPaths {
                 file: file_path,
-                base: base.to_path_buf(),
                 relative_dir: relative_dir_path.to_path_buf(),
             };
-            tests.push(make_test(config, &paths))
+            tests.extend(make_test(config, &paths))
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
-            if &file_name == "auxiliary" {
-                // `aux` directories contain other crates used for
-                // cross-crate tests. Don't search them for tests, but
-                // do create a directory in the build dir for them,
-                // since we will dump intermediate output in there
-                // sometimes.
-                let build_dir = config.build_base.join(&relative_file_path);
-                fs::create_dir_all(&build_dir).unwrap();
-            } else {
+            if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
                 collect_tests_from_dir(config, base, &file_path, &relative_file_path, tests)?;
             }
@@ -613,8 +613,13 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
-pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
-    let early_props = EarlyProps::from_file(config, &testpaths.file);
+pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAndFn> {
+    let early_props = if config.mode == Mode::RunMake {
+        // Allow `ignore` directives to be in the Makefile.
+        EarlyProps::from_file(config, &testpaths.file.join("Makefile"))
+    } else {
+        EarlyProps::from_file(config, &testpaths.file)
+    };
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
@@ -628,47 +633,68 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
         },
     };
 
-    // Debugging emscripten code doesn't make sense today
-    let ignore = early_props.ignore
-        || !up_to_date(config, testpaths, &early_props)
-        || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
-            && config.target.contains("emscripten");
-
-    test::TestDescAndFn {
-        desc: test::TestDesc {
-            name: make_test_name(config, testpaths),
-            ignore,
-            should_panic,
-            allow_fail: false,
-        },
-        testfn: make_test_closure(config, testpaths),
-    }
-}
-
-fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
-    let mode_suffix = match config.compare_mode {
-        Some(ref mode) => format!("-{}", mode.to_str()),
-        None => format!(""),
+    // Incremental tests are special, they inherently cannot be run in parallel.
+    // `runtest::run` will be responsible for iterating over revisions.
+    let revisions = if early_props.revisions.is_empty() || config.mode == Mode::Incremental {
+        vec![None]
+    } else {
+        early_props.revisions.iter().map(|r| Some(r)).collect()
     };
-    let stamp_name = format!(
-        "{}-{}{}.stamp",
-        testpaths.file.file_name().unwrap().to_str().unwrap(),
-        config.stage_id,
-        mode_suffix
-    );
-    config
-        .build_base
-        .canonicalize()
-        .unwrap_or_else(|_| config.build_base.clone())
-        .join(&testpaths.relative_dir)
-        .join(stamp_name)
+    revisions
+        .into_iter()
+        .map(|revision| {
+            // Debugging emscripten code doesn't make sense today
+            let ignore = early_props.ignore
+                || !up_to_date(
+                    config,
+                    testpaths,
+                    &early_props,
+                    revision.map(|s| s.as_str()),
+                )
+                || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
+                    && config.target.contains("emscripten");
+            test::TestDescAndFn {
+                desc: test::TestDesc {
+                    name: make_test_name(config, testpaths, revision),
+                    ignore,
+                    should_panic,
+                    allow_fail: false,
+                },
+                testfn: make_test_closure(config, testpaths, revision),
+            }
+        })
+        .collect()
 }
 
-fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> bool {
+fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+    output_base_dir(config, testpaths, revision).join("stamp")
+}
+
+fn up_to_date(
+    config: &Config,
+    testpaths: &TestPaths,
+    props: &EarlyProps,
+    revision: Option<&str>,
+) -> bool {
+    let stamp_name = stamp(config, testpaths, revision);
+    // Check hash.
+    let mut f = match fs::File::open(&stamp_name) {
+        Ok(f) => f,
+        Err(_) => return true,
+    };
+    let mut contents = String::new();
+    f.read_to_string(&mut contents)
+        .expect("Can't read stamp contents");
+    let expected_hash = runtest::compute_stamp_hash(config);
+    if contents != expected_hash {
+        return true;
+    }
+
+    // Check timestamps.
     let rust_src_dir = config
         .find_rust_src_root()
         .expect("Could not find Rust source root");
-    let stamp = mtime(&stamp(config, testpaths));
+    let stamp = mtime(&stamp_name);
     let mut inputs = vec![mtime(&testpaths.file), mtime(&config.rustc_path)];
     for aux in props.aux.iter() {
         inputs.push(mtime(&testpaths
@@ -689,8 +715,7 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
     for pretty_printer_file in &pretty_printer_files {
         inputs.push(mtime(&rust_src_dir.join(pretty_printer_file)));
     }
-    let mut entries = config.run_lib_path.read_dir().unwrap()
-        .collect::<Vec<_>>();
+    let mut entries = config.run_lib_path.read_dir().unwrap().collect::<Vec<_>>();
     while let Some(entry) = entries.pop() {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -707,18 +732,8 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
 
     // UI test files.
     for extension in UI_EXTENSIONS {
-        for revision in &props.revisions {
-            let path = &expected_output_path(testpaths,
-                                             Some(revision),
-                                             &config.compare_mode,
-                                             extension);
-            inputs.push(mtime(path));
-        }
-
-        if props.revisions.is_empty() {
-            let path = &expected_output_path(testpaths, None, &config.compare_mode, extension);
-            inputs.push(mtime(path));
-        }
+        let path = &expected_output_path(testpaths, revision, &config.compare_mode, extension);
+        inputs.push(mtime(path));
     }
 
     inputs.iter().any(|input| *input > stamp)
@@ -730,7 +745,11 @@ fn mtime(path: &Path) -> FileTime {
         .unwrap_or_else(|_| FileTime::zero())
 }
 
-pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
+fn make_test_name(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&String>,
+) -> test::TestName {
     // Convert a complete path to something like
     //
     //    run-pass/foo/bar/baz.rs
@@ -741,13 +760,26 @@ pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName 
         Some(ref mode) => format!(" ({})", mode.to_str()),
         None => format!(""),
     };
-    test::DynTestName(format!("[{}{}] {}", config.mode, mode_suffix, path.display()))
+    test::DynTestName(format!(
+        "[{}{}] {}{}",
+        config.mode,
+        mode_suffix,
+        path.display(),
+        revision.map_or("".to_string(), |rev| format!("#{}", rev))
+    ))
 }
 
-pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
+fn make_test_closure(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&String>,
+) -> test::TestFn {
     let config = config.clone();
     let testpaths = testpaths.clone();
-    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths)))
+    let revision = revision.cloned();
+    test::DynTestFn(Box::new(move || {
+        runtest::run(config, &testpaths, revision.as_ref().map(|s| s.as_str()))
+    }))
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)

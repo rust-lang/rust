@@ -1,0 +1,49 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_codegen_llvm"
+version = "0.0.0"
+
+[lib]
+name = "rustc_codegen_llvm"
+path = "lib.rs"
+crate-type = ["dylib"]
+test = false
+
+[dependencies]
+bitflags = "1.0.1"
+cc = "1.0.1"
+flate2 = "1.0"
+jobserver = "0.1.5"
+libc = "0.2"
+log = "0.4"
+num_cpus = "1.0"
+rustc = { path = "../librustc" }
+rustc-demangle = "0.1.4"
+rustc_allocator = { path = "../librustc_allocator" }
+rustc_apfloat = { path = "../librustc_apfloat" }
+rustc_target = { path = "../librustc_target" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_errors = { path = "../librustc_errors" }
+rustc_incremental = { path = "../librustc_incremental" }
+rustc_llvm = { path = "../librustc_llvm" }
+rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
+rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_mir = { path = "../librustc_mir" }
+serialize = { path = "../libserialize" }
+syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }
+tempfile = "3.0"
+
+# not actually used but needed to make sure we enable the same feature set as
+# winapi used in librustc
+env_logger = { version = "0.5", default-features = false }
+
+[features]
+# Used to communicate the feature to `rustc_target` in the same manner that the
+# `rustc` driver script communicate this.
+jemalloc = ["rustc_target/jemalloc"]
+
+# This is used to convince Cargo to separately cache builds of `rustc_codegen_llvm`
+# when this option is enabled or not. That way we can build two, cache two
+# artifacts, and have nice speedy rebuilds.
+emscripten = ["rustc_llvm/emscripten"]

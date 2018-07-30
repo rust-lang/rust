@@ -24,7 +24,7 @@ struct RegistrarFinder {
 
 impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
     fn visit_item(&mut self, item: &hir::Item) {
-        if let hir::ItemFn(..) = item.node {
+        if let hir::ItemKind::Fn(..) = item.node {
             if attr::contains_name(&item.attrs,
                                    "plugin_registrar") {
                 self.registrars.push((item.id, item.span));

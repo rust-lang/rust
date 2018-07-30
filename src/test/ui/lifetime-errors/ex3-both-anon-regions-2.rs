@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo((v, w): (&u8, &u8), x: &u8) {
-    v = x; //~ ERROR lifetime mismatch
+fn foo(&mut (ref mut v, w): &mut (&u8, &u8), x: &u8) {
+    *v = x; //~ ERROR lifetime mismatch
 }
 
 fn main() { }

@@ -6,31 +6,31 @@ LL |     let y = &mut x;
 LL |     //~^ mutable borrow occurs here
 LL |     let z = &x; //~ ERROR cannot borrow
    |              ^ immutable borrow occurs here
-LL |     //~^ immutable borrow occurs here
+...
 LL | }
    | - mutable borrow ends here
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-report-with-custom-diagnostic.rs:28:26
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:30:26
    |
 LL |             let y = &x;
    |                      - immutable borrow occurs here
 LL |             //~^ immutable borrow occurs here
 LL |             let z = &mut x; //~ ERROR cannot borrow
    |                          ^ mutable borrow occurs here
-LL |             //~^ mutable borrow occurs here
+...
 LL |         }
    |         - immutable borrow ends here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/borrowck-report-with-custom-diagnostic.rs:41:22
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:45:22
    |
 LL |         let y = &mut x;
    |                      - first mutable borrow occurs here
 LL |         //~^ first mutable borrow occurs here
 LL |         let z = &mut x; //~ ERROR cannot borrow
    |                      ^ second mutable borrow occurs here
-LL |         //~^ second mutable borrow occurs here
+...
 LL |     };
    |     - first borrow ends here
 

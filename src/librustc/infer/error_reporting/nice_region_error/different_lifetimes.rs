@@ -96,14 +96,14 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let sub_is_ret_type =
             self.is_return_type_anon(scope_def_id_sub, bregion_sub, ty_fndecl_sub);
 
-        let span_label_var1 = if let Some(simple_name) = anon_arg_sup.pat.simple_name() {
-            format!(" from `{}`", simple_name)
+        let span_label_var1 = if let Some(simple_ident) = anon_arg_sup.pat.simple_ident() {
+            format!(" from `{}`", simple_ident)
         } else {
             format!("")
         };
 
-        let span_label_var2 = if let Some(simple_name) = anon_arg_sub.pat.simple_name() {
-            format!(" into `{}`", simple_name)
+        let span_label_var2 = if let Some(simple_ident) = anon_arg_sub.pat.simple_ident() {
+            format!(" into `{}`", simple_ident)
         } else {
             format!("")
         };
@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 
         let (span_1, span_2, main_label, span_label) = match (sup_is_ret_type, sub_is_ret_type) {
             (None, None) => {
-                let (main_label_1, span_label_1) = if ty_sup == ty_sub {
+                let (main_label_1, span_label_1) = if ty_sup.id == ty_sub.id {
                     (
                         format!("this type is declared with multiple lifetimes..."),
                         format!(

@@ -86,7 +86,7 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
         if let ast::ItemKind::Use(..) = item.node {
-            if item.vis.node == ast::VisibilityKind::Public || item.span.source_equal(&DUMMY_SP) {
+            if item.vis.node.is_pub() || item.span.is_dummy() {
                 return;
             }
         }
@@ -129,7 +129,22 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
         match directive.subclass {
             _ if directive.used.get() ||
                  directive.vis.get() == ty::Visibility::Public ||
-                 directive.span.source_equal(&DUMMY_SP) => {}
+                 directive.span.is_dummy() => {
+                if let ImportDirectiveSubclass::MacroUse = directive.subclass {
+                    if resolver.session.features_untracked().use_extern_macros &&
+                        !directive.span.is_dummy() {
+                        resolver.session.buffer_lint(
+                            lint::builtin::MACRO_USE_EXTERN_CRATE,
+                            directive.id,
+                            directive.span,
+                            "deprecated `#[macro_use]` directive used to \
+                             import macros should be replaced at use sites \
+                             with a `use` statement to import the macro \
+                             instead",
+                        );
+                    }
+                }
+            }
             ImportDirectiveSubclass::ExternCrate(_) => {
                 resolver.maybe_unused_extern_crates.push((directive.id, directive.span));
             }
@@ -140,6 +155,10 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
             }
             _ => {}
         }
+    }
+
+    for (id, span) in resolver.unused_labels.iter() {
+        resolver.session.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
     }
 
     let mut visitor = UnusedImportCheckVisitor {

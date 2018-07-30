@@ -20,6 +20,7 @@ use namespace::Namespace;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
+use rustc::ty::GenericParamDefKind;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
 use rustc::infer::{self, InferOk};
@@ -46,7 +47,7 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
     mode: Mode,
-    method_name: Option<ast::Name>,
+    method_name: Option<ast::Ident>,
     return_type: Option<Ty<'tcx>>,
     steps: Rc<Vec<CandidateStep<'tcx>>>,
     inherent_candidates: Vec<Candidate<'tcx>>,
@@ -118,7 +119,7 @@ enum ProbeResult {
     Match,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Pick<'tcx> {
     pub item: ty::AssociatedItem,
     pub kind: PickKind<'tcx>,
@@ -212,7 +213,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn probe_for_name(&self,
                           span: Span,
                           mode: Mode,
-                          item_name: ast::Name,
+                          item_name: ast::Ident,
                           is_suggestion: IsSuggestion,
                           self_ty: Ty<'tcx>,
                           scope_expr_id: ast::NodeId,
@@ -236,7 +237,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn probe_op<OP,R>(&'a self,
                       span: Span,
                       mode: Mode,
-                      method_name: Option<ast::Name>,
+                      method_name: Option<ast::Ident>,
                       return_type: Option<Ty<'tcx>>,
                       is_suggestion: IsSuggestion,
                       self_ty: Ty<'tcx>,
@@ -334,7 +335,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // so we do a future-compat lint here for the 2015 edition
                         // (see https://github.com/rust-lang/rust/issues/46906)
                         if self.tcx.sess.rust_2018() {
-                          span_err!(self.tcx.sess, span, E0908,
+                          span_err!(self.tcx.sess, span, E0699,
                                     "the type of this value must be known \
                                      to call a method on a raw pointer on it");
                         } else {
@@ -381,7 +382,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
            span: Span,
            mode: Mode,
-           method_name: Option<ast::Name>,
+           method_name: Option<ast::Ident>,
            return_type: Option<Ty<'tcx>>,
            steps: Rc<Vec<CandidateStep<'tcx>>>,
            is_suggestion: IsSuggestion)
@@ -421,7 +422,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let def_scope = self.tcx.adjust(name, item.container.id(), self.body_id).1;
+            let def_scope = self.tcx.adjust_ident(name, item.container.id(), self.body_id).1;
             item.vis.is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -797,7 +798,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn candidate_method_names(&self) -> Vec<ast::Name> {
+    fn candidate_method_names(&self) -> Vec<ast::Ident> {
         let mut set = FxHashSet();
         let mut names: Vec<_> = self.inherent_candidates
             .iter()
@@ -809,7 +810,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     true
                 }
             })
-            .map(|candidate| candidate.item.name)
+            .map(|candidate| candidate.item.ident)
             .filter(|&name| set.insert(name))
             .collect();
 
@@ -917,9 +918,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 pick.autoderefs = step.autoderefs;
 
                 // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::TyRef(_, mt) = step.self_ty.sty {
+                if let ty::TyRef(_, _, mutbl) = step.self_ty.sty {
                     pick.autoderefs += 1;
-                    pick.autoref = Some(mt.mutbl);
+                    pick.autoref = Some(mutbl);
                 }
 
                 pick
@@ -1056,7 +1057,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
     ) {
         let mut diag = self.tcx.struct_span_lint_node(
-            lint::builtin::UNSTABLE_NAME_COLLISION,
+            lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.fcx.body_id,
             self.span,
             "a method with this name may be added to the standard library in the future",
@@ -1308,14 +1309,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 Ok(None)
             } else {
                 let best_name = {
-                    let names = applicable_close_candidates.iter().map(|cand| &cand.name);
+                    let names = applicable_close_candidates.iter().map(|cand| &cand.ident.name);
                     find_best_match_for_name(names,
                                              &self.method_name.unwrap().as_str(),
                                              None)
                 }.unwrap();
                 Ok(applicable_close_candidates
                    .into_iter()
-                   .find(|method| method.name == best_name))
+                   .find(|method| method.ident.name == best_name))
             }
         })
     }
@@ -1331,6 +1332,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.method_has_self_argument,
             Mode::Path => match item.kind {
+                ty::AssociatedKind::Existential |
                 ty::AssociatedKind::Type => false,
                 ty::AssociatedKind::Method | ty::AssociatedKind::Const => true
             },
@@ -1378,31 +1380,28 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         // method yet. So create fresh variables here for those too,
         // if there are any.
         let generics = self.tcx.generics_of(method);
-        assert_eq!(substs.types().count(), generics.parent_types as usize);
-        assert_eq!(substs.regions().count(), generics.parent_regions as usize);
+        assert_eq!(substs.len(), generics.parent_count as usize);
 
         // Erase any late-bound regions from the method and substitute
         // in the values from the substitution.
         let xform_fn_sig = self.erase_late_bound_regions(&fn_sig);
 
-        if generics.types.is_empty() && generics.regions.is_empty() {
+        if generics.params.is_empty() {
             xform_fn_sig.subst(self.tcx, substs)
         } else {
-            let substs = Substs::for_item(self.tcx, method, |def, _| {
-                let i = def.index as usize;
+            let substs = Substs::for_item(self.tcx, method, |param, _| {
+                let i = param.index as usize;
                 if i < substs.len() {
-                    substs.region_at(i)
+                    substs[i]
                 } else {
-                    // In general, during probe we erase regions. See
-                    // `impl_self_ty()` for an explanation.
-                    self.tcx.types.re_erased
-                }
-            }, |def, _cur_substs| {
-                let i = def.index as usize;
-                if i < substs.len() {
-                    substs.type_at(i)
-                } else {
-                    self.type_var_for_def(self.span, def)
+                    match param.kind {
+                        GenericParamDefKind::Lifetime => {
+                            // In general, during probe we erase regions. See
+                            // `impl_self_ty()` for an explanation.
+                            self.tcx.types.re_erased.into()
+                        }
+                        GenericParamDefKind::Type {..} => self.var_for_def(self.span, param),
+                    }
                 }
             });
             xform_fn_sig.subst(self.tcx, substs)
@@ -1415,12 +1414,15 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn fresh_item_substs(&self, def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx,
-                         def_id,
-                         |_, _| self.tcx.types.re_erased,
-                         |_, _| self.next_ty_var(
-                             TypeVariableOrigin::SubstitutionPlaceholder(
-                                 self.tcx.def_span(def_id))))
+        Substs::for_item(self.tcx, def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => self.tcx.types.re_erased.into(),
+                GenericParamDefKind::Type {..} => {
+                    self.next_ty_var(TypeVariableOrigin::SubstitutionPlaceholder(
+                        self.tcx.def_span(def_id))).into()
+                }
+            }
+        })
     }
 
     /// Replace late-bound-regions bound by `value` with `'static` using
@@ -1455,7 +1457,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx.associated_items(def_id)
                     .filter(|x| {
-                        let dist = lev_distance(&*name.as_str(), &x.name.as_str());
+                        let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         Namespace::from(x.kind) == Namespace::Value && dist > 0
                         && dist <= max_dist
                     })

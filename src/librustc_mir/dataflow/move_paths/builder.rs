@@ -108,9 +108,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         debug!("lookup({:?})", place);
         match *place {
             Place::Local(local) => Ok(self.builder.data.rev_lookup.locals[local]),
+            Place::Promoted(..) |
             Place::Static(..) => {
-                let span = self.builder.mir.source_info(self.loc).span;
-                Err(MoveError::cannot_move_out_of(span, Static))
+                Err(MoveError::cannot_move_out_of(self.loc, Static))
             }
             Place::Projection(ref proj) => {
                 self.move_path_for_projection(place, proj)
@@ -119,8 +119,8 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
-        // This is an assignment, not a move, so this not being a valid
-        // move path is OK.
+        // This is an non-moving access (such as an overwrite or
+        // drop), so this not being a valid move path is OK.
         let _ = self.move_path_for(place);
     }
 
@@ -135,10 +135,11 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let place_ty = proj.base.ty(mir, tcx).to_ty(tcx);
         match place_ty.sty {
             ty::TyRef(..) | ty::TyRawPtr(..) =>
-                return Err(MoveError::cannot_move_out_of(mir.source_info(self.loc).span,
-                                                         BorrowedContent)),
+                return Err(MoveError::cannot_move_out_of(
+                    self.loc,
+                    BorrowedContent { target_place: place.clone() })),
             ty::TyAdt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
-                return Err(MoveError::cannot_move_out_of(mir.source_info(self.loc).span,
+                return Err(MoveError::cannot_move_out_of(self.loc,
                                                          InteriorOfTypeWithDestructor {
                     container_ty: place_ty
                 })),
@@ -147,7 +148,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 return Err(MoveError::UnionMove { path: base }),
             ty::TySlice(_) =>
                 return Err(MoveError::cannot_move_out_of(
-                    mir.source_info(self.loc).span,
+                    self.loc,
                     InteriorOfSliceOrArray {
                         ty: place_ty, is_index: match proj.elem {
                             ProjectionElem::Index(..) => true,
@@ -157,7 +158,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             ty::TyArray(..) => match proj.elem {
                 ProjectionElem::Index(..) =>
                     return Err(MoveError::cannot_move_out_of(
-                        mir.source_info(self.loc).span,
+                        self.loc,
                         InteriorOfSliceOrArray {
                             ty: place_ty, is_index: true
                         })),
@@ -277,6 +278,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                     self.gather_init(place, InitKind::Deep);
                 }
                 self.gather_rvalue(rval);
+            }
+            StatementKind::ReadForMatch(ref place) => {
+                self.create_move_path(place);
             }
             StatementKind::InlineAsm { ref outputs, ref inputs, ref asm } => {
                 for (output, kind) in outputs.iter().zip(&asm.outputs) {

@@ -31,7 +31,8 @@ impl_stable_hash_for!(struct middle::cstore::NativeLibrary {
     kind,
     name,
     cfg,
-    foreign_module
+    foreign_module,
+    wasm_import_module
 });
 
 impl_stable_hash_for!(struct middle::cstore::ForeignModule {

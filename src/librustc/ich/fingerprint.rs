@@ -45,6 +45,18 @@ impl Fingerprint {
         )
     }
 
+    // Combines two hashes in an order independent way. Make sure this is what
+    // you want.
+    #[inline]
+    pub fn combine_commutative(self, other: Fingerprint) -> Fingerprint {
+        let a = (self.1 as u128) << 64 | self.0 as u128;
+        let b = (other.1 as u128) << 64 | other.0 as u128;
+
+        let c = a.wrapping_add(b);
+
+        Fingerprint((c >> 64) as u64, c as u64)
+    }
+
     pub fn to_hex(&self) -> String {
         format!("{:x}{:x}", self.0, self.1)
     }
@@ -52,7 +64,8 @@ impl Fingerprint {
     pub fn encode_opaque(&self, encoder: &mut Encoder) -> EncodeResult {
         let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
 
-        encoder.emit_raw_bytes(&bytes)
+        encoder.emit_raw_bytes(&bytes);
+        Ok(())
     }
 
     pub fn decode_opaque<'a>(decoder: &mut Decoder<'a>) -> Result<Fingerprint, String> {
@@ -67,7 +80,7 @@ impl Fingerprint {
 }
 
 impl ::std::fmt::Display for Fingerprint {
-    fn fmt(&self, formatter: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(formatter, "{:x}-{:x}", self.0, self.1)
     }
 }
@@ -92,7 +105,7 @@ impl serialize::UseSpecializedEncodable for Fingerprint { }
 
 impl serialize::UseSpecializedDecodable for Fingerprint { }
 
-impl<'a> serialize::SpecializedEncoder<Fingerprint> for serialize::opaque::Encoder<'a> {
+impl serialize::SpecializedEncoder<Fingerprint> for serialize::opaque::Encoder {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(self)
     }

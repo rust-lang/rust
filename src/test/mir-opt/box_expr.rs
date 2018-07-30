@@ -33,9 +33,10 @@ impl Drop for S {
 // START rustc.main.ElaborateDrops.before.mir
 //     let mut _0: ();
 //     scope 1 {
+//     }
+//     scope 2 {
 //         let _1: std::boxed::Box<S>;
 //     }
-//     ...
 //     let mut _2: std::boxed::Box<S>;
 //     let mut _3: ();
 //     let mut _4: std::boxed::Box<S>;

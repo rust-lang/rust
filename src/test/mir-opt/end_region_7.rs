@@ -34,38 +34,31 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     ...
 //     let mut _2: ();
 //     let mut _3: [closure@NodeId(22) d:D];
-//     let mut _4: D;
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = D::{{constructor}}(const 0i32,);
 //         StorageLive(_3);
-//         StorageLive(_4);
-//         _4 = move _1;
-//         _3 = [closure@NodeId(22)] { d: move _4 };
-//         drop(_4) -> [return: bb4, unwind: bb3];
+//         _3 = [closure@NodeId(22)] { d: move _1 };
+//         _2 = const foo(move _3) -> [return: bb2, unwind: bb4];
 //     }
 //     bb1: {
 //         resume;
 //     }
 //     bb2: {
-//         drop(_1) -> bb1;
+//         drop(_3) -> [return: bb5, unwind: bb3];
 //     }
 //     bb3: {
-//         drop(_3) -> bb2;
+//         drop(_1) -> bb1;
 //     }
 //     bb4: {
-//         StorageDead(_4);
-//         _2 = const foo(move _3) -> [return: bb5, unwind: bb3];
+//         drop(_3) -> bb3;
 //     }
 //     bb5: {
-//         drop(_3) -> [return: bb6, unwind: bb2];
-//     }
-//     bb6: {
 //         StorageDead(_3);
 //         _0 = ();
-//         drop(_1) -> [return: bb7, unwind: bb1];
+//         drop(_1) -> [return: bb6, unwind: bb1];
 //     }
-//     bb7: {
+//     bb6: {
 //         StorageDead(_1);
 //         return;
 //     }
@@ -76,17 +69,13 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // fn main::{{closure}}(_1: [closure@NodeId(22) d:D]) -> i32 {
 //     let mut _0: i32;
 //     ...
-//     let _2: &'15_0rs D;
+//     let _2: &'16_0rs D;
 //     ...
-//     let mut _3: i32;
 //     bb0: {
 //         StorageLive(_2);
-//         _2 = &'15_0rs (_1.0: D);
-//         StorageLive(_3);
-//         _3 = ((*_2).0: i32);
-//         _0 = move _3;
-//         StorageDead(_3);
-//         EndRegion('15_0rs);
+//         _2 = &'16_0rs (_1.0: D);
+//         _0 = ((*_2).0: i32);
+//         EndRegion('16_0rs);
 //         StorageDead(_2);
 //         drop(_1) -> [return: bb2, unwind: bb1];
 //     }

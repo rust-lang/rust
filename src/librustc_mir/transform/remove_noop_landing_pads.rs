@@ -11,7 +11,6 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc_data_structures::bitvec::BitVector;
-use rustc_data_structures::indexed_vec::Idx;
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
 
@@ -42,11 +41,15 @@ impl MirPass for RemoveNoopLandingPads {
 }
 
 impl RemoveNoopLandingPads {
-    fn is_nop_landing_pad(&self, bb: BasicBlock, mir: &Mir, nop_landing_pads: &BitVector)
-                          -> bool
-    {
+    fn is_nop_landing_pad(
+        &self,
+        bb: BasicBlock,
+        mir: &Mir,
+        nop_landing_pads: &BitVector<BasicBlock>,
+    ) -> bool {
         for stmt in &mir[bb].statements {
             match stmt.kind {
+                StatementKind::ReadForMatch(_) |
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
                 StatementKind::EndRegion(_) |
@@ -78,8 +81,8 @@ impl RemoveNoopLandingPads {
             TerminatorKind::SwitchInt { .. } |
             TerminatorKind::FalseEdges { .. } |
             TerminatorKind::FalseUnwind { .. } => {
-                terminator.successors().all(|succ| {
-                    nop_landing_pads.contains(succ.index())
+                terminator.successors().all(|&succ| {
+                    nop_landing_pads.contains(succ)
                 })
             },
             TerminatorKind::GeneratorDrop |
@@ -116,7 +119,7 @@ impl RemoveNoopLandingPads {
         for bb in postorder {
             debug!("  processing {:?}", bb);
             for target in mir[bb].terminator_mut().successors_mut() {
-                if *target != resume_block && nop_landing_pads.contains(target.index()) {
+                if *target != resume_block && nop_landing_pads.contains(*target) {
                     debug!("    folding noop jump to {:?} to resume block", target);
                     *target = resume_block;
                     jumps_folded += 1;
@@ -137,7 +140,7 @@ impl RemoveNoopLandingPads {
 
             let is_nop_landing_pad = self.is_nop_landing_pad(bb, mir, &nop_landing_pads);
             if is_nop_landing_pad {
-                nop_landing_pads.insert(bb.index());
+                nop_landing_pads.insert(bb);
             }
             debug!("    is_nop_landing_pad({:?}) = {}", bb, is_nop_landing_pad);
         }

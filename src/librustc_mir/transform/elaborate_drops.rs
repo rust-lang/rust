@@ -17,8 +17,6 @@ use dataflow::MoveDataParamEnv;
 use dataflow::{self, do_dataflow, DebugFormatted};
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
-use rustc::middle::const_val::ConstVal;
-use rustc::mir::interpret::{Value, PrimVal};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
@@ -43,7 +41,20 @@ impl MirPass for ElaborateDrops {
 
         let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
         let param_env = tcx.param_env(src.def_id).with_reveal_all();
-        let move_data = MoveData::gather_moves(mir, tcx).unwrap();
+        let move_data = match MoveData::gather_moves(mir, tcx) {
+            Ok(move_data) => move_data,
+            Err((move_data, _move_errors)) => {
+                // The only way we should be allowing any move_errors
+                // in here is if we are in the migration path for the
+                // NLL-based MIR-borrowck.
+                //
+                // If we are in the migration path, we have already
+                // reported these errors as warnings to the user. So
+                // we will just ignore them here.
+                assert!(tcx.migrate_borrowck());
+                move_data
+            }
+        };
         let elaborate_patch = {
             let mir = &*mir;
             let env = MoveDataParamEnv {
@@ -174,7 +185,7 @@ struct Elaborator<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> fmt::Debug for Elaborator<'a, 'b, 'tcx> {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
     }
 }
@@ -444,7 +455,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     }
 
     /// Elaborate a MIR `replace` terminator. This instruction
-    /// is not directly handled by translation, and therefore
+    /// is not directly handled by codegen, and therefore
     /// must be desugared.
     ///
     /// The desugaring drops the location if needed, and then writes
@@ -532,12 +543,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         Rvalue::Use(Operand::Constant(Box::new(Constant {
             span,
             ty: self.tcx.types.bool,
-            literal: Literal::Value {
-                value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val as u128))),
-                    ty: self.tcx.types.bool
-                })
-            }
+            literal: ty::Const::from_bool(self.tcx, val),
         })))
     }
 

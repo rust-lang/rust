@@ -610,6 +610,15 @@ fn test_join() {
 }
 
 #[test]
+fn test_join_nocopy() {
+    let v: [String; 0] = [];
+    assert_eq!(v.join(","), "");
+    assert_eq!(["a".to_string(), "ab".into()].join(","), "a,ab");
+    assert_eq!(["a".to_string(), "ab".into(), "abc".into()].join(","), "a,ab,abc");
+    assert_eq!(["a".to_string(), "ab".into(), "".into()].join(","), "a,ab,");
+}
+
+#[test]
 fn test_insert() {
     let mut a = vec![1, 2, 4];
     a.insert(2, 3);
@@ -1519,4 +1528,15 @@ fn panic_safe() {
             }
         }
     }
+}
+
+#[test]
+fn repeat_generic_slice() {
+    assert_eq!([1, 2].repeat(2), vec![1, 2, 1, 2]);
+    assert_eq!([1, 2, 3, 4].repeat(0), vec![]);
+    assert_eq!([1, 2, 3, 4].repeat(1), vec![1, 2, 3, 4]);
+    assert_eq!(
+        [1, 2, 3, 4].repeat(3),
+        vec![1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]
+    );
 }

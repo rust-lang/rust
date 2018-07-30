@@ -28,7 +28,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 3
+   = note: number of external vids: 5
    = note: where T: '_#2r
    = note: where '_#1r: '_#2r
 
@@ -40,11 +40,11 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |
    = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`...
 
-error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`
-  --> $DIR/projection-one-region-closure.rs:55:20
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-closure.rs:55:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                    ^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-one-region-closure.rs:51:1
@@ -54,7 +54,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | | {
 ...  |
-LL | |     //~| ERROR does not outlive free region
+LL | |     //~| ERROR
 LL | | }
    | |_^
    |
@@ -76,7 +76,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where T: '_#3r
    = note: where '_#2r: '_#3r
 
@@ -88,11 +88,11 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |
    = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
-error: free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
-  --> $DIR/projection-one-region-closure.rs:67:20
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-closure.rs:67:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                    ^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-one-region-closure.rs:62:1
@@ -102,7 +102,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     'a: 'a,
 ...  |
-LL | |     //~| ERROR does not outlive free region
+LL | |     //~| ERROR
 LL | | }
    | |_^
    |
@@ -125,7 +125,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where T: '_#3r
    = note: where '_#2r: '_#3r
 
@@ -137,11 +137,11 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |
    = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
-error: free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
-  --> $DIR/projection-one-region-closure.rs:89:20
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-closure.rs:89:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                    ^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-one-region-closure.rs:74:1
@@ -151,7 +151,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     T::AssocType: 'a,
 ...  |
-LL | |     //~| ERROR free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+LL | |     //~| ERROR
 LL | | }
    | |_^
    |
@@ -174,7 +174,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where T: '_#3r
    = note: where '_#2r: '_#3r
 

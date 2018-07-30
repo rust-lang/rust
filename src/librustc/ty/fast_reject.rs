@@ -80,11 +80,11 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyDynamic(ref trait_info, ..) => {
             trait_info.principal().map(|p| TraitSimplifiedType(p.def_id()))
         }
-        ty::TyRef(_, mt) => {
+        ty::TyRef(_, ty, _) => {
             // since we introduce auto-refs during method lookup, we
             // just treat &T and T as equivalent from the point of
             // view of possibly unifying
-            simplify_type(tcx, mt.ty, can_simplify_params)
+            simplify_type(tcx, ty, can_simplify_params)
         }
         ty::TyFnDef(def_id, _) |
         ty::TyClosure(def_id, _) => {

@@ -52,7 +52,7 @@ fn deref_coercion(x: &mut u32) {
 // - [x] coerce_unsized e.g. `&[T; n]`, `&mut [T; n] -> &[T]`,
 //                      `&mut [T; n] -> &mut [T]`, `&Concrete -> &Trait`
 // - [x] Method Call Receivers (the case we want to support!)
-// - [x] ExprIndex and ExprUnary Deref; only need to handle coerce_index_op
+// - [x] ExprKind::Index and ExprKind::Unary Deref; only need to handle coerce_index_op
 // - [x] overloaded_binops
 
 fn overloaded_call_traits() {

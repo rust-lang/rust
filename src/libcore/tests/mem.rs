@@ -109,11 +109,11 @@ fn test_transmute() {
     trait Foo { fn dummy(&self) { } }
     impl Foo for isize {}
 
-    let a = box 100isize as Box<Foo>;
+    let a = box 100isize as Box<dyn Foo>;
     unsafe {
         let x: ::core::raw::TraitObject = transmute(a);
         assert!(*(x.data as *const isize) == 100);
-        let _x: Box<Foo> = transmute(x);
+        let _x: Box<dyn Foo> = transmute(x);
     }
 
     unsafe {

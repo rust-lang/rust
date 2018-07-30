@@ -11,13 +11,12 @@
 use attr;
 use ast;
 use codemap::respan;
-use parse::common::SeqSep;
-use parse::PResult;
+use parse::{SeqSep, PResult};
 use parse::token::{self, Nonterminal};
 use parse::parser::{Parser, TokenType, PathStyle};
 use tokenstream::TokenStream;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
     Permitted,
     NotPermitted { reason: &'a str },
@@ -28,7 +27,7 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &'static str = "an inner attribute 
 
 impl<'a> Parser<'a> {
     /// Parse attributes that appear before an item
-    pub fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    crate fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
         loop {
@@ -95,7 +94,7 @@ impl<'a> Parser<'a> {
                 let lo = self.span;
                 self.bump();
 
-                if inner_parse_policy == InnerAttributeParsePolicy::Permitted {
+                if let InnerAttributeParsePolicy::Permitted = inner_parse_policy {
                     self.expected_tokens.push(TokenType::Token(token::Not));
                 }
                 let style = if self.token == token::Not {
@@ -139,7 +138,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn parse_path_and_tokens(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
+    crate fn parse_path_and_tokens(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
         let meta = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
@@ -160,7 +159,7 @@ impl<'a> Parser<'a> {
     /// terminated by a semicolon.
 
     /// matches inner_attrs*
-    pub fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    crate fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
             match self.token {
@@ -231,7 +230,7 @@ impl<'a> Parser<'a> {
         Ok(ast::MetaItem { ident, node, span })
     }
 
-    pub fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
+    crate fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
         } else if self.eat(&token::OpenDelim(token::Paren)) {

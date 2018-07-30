@@ -63,7 +63,7 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
         NodeExpr(ref e) => {
             // the enclosing expression must be a `match` or something else
             assert!(match e.node {
-                        ExprMatch(..) => true,
+                        ExprKind::Match(..) => true,
                         _ => return PatternSource::Other,
                     });
             PatternSource::MatchExpr(e)
@@ -109,10 +109,10 @@ pub fn gather_move_from_pat<'a, 'c, 'tcx: 'c>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                               cmt: &'c mc::cmt_<'tcx>) {
     let source = get_pattern_source(bccx.tcx,move_pat);
     let pat_span_path_opt = match move_pat.node {
-        PatKind::Binding(_, _, ref path1, _) => {
+        PatKind::Binding(_, _, ident, _) => {
             Some(MovePlace {
                      span: move_pat.span,
-                     name: path1.node,
+                     name: ident.name,
                      pat_source: source,
                  })
         }
@@ -180,7 +180,6 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                -> Option<mc::cmt_<'tcx>> {
     match cmt.cat {
         Categorization::Deref(_, mc::BorrowedPtr(..)) |
-        Categorization::Deref(_, mc::Implicit(..)) |
         Categorization::Deref(_, mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             Some(cmt.clone())

@@ -13,7 +13,7 @@
 //! will dump graphs in graphviz form to disk, and it searches for
 //! `#[rustc_if_this_changed]` and `#[rustc_then_this_would_need]`
 //! annotations. These annotations can be used to test whether paths
-//! exist in the graph. These checks run after trans, so they view the
+//! exist in the graph. These checks run after codegen, so they view the
 //! the final state of the dependency graph. Note that there are
 //! similar assertions found in `persist::dirty_clean` which check the
 //! **initial** state of the dependency graph, just after it has been
@@ -36,10 +36,10 @@
 //! #[rustc_if_this_changed(Hir)]
 //! fn foo() { }
 //!
-//! #[rustc_then_this_would_need(trans)] //~ ERROR no path from `foo`
+//! #[rustc_then_this_would_need(codegen)] //~ ERROR no path from `foo`
 //! fn bar() { }
 //!
-//! #[rustc_then_this_would_need(trans)] //~ ERROR OK
+//! #[rustc_then_this_would_need(codegen)] //~ ERROR OK
 //! fn baz() { foo(); }
 //! ```
 
@@ -49,7 +49,9 @@ use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::{Direction, INCOMING, OUTGOING, NodeIndex};
+use rustc_data_structures::graph::implementation::{
+    Direction, INCOMING, OUTGOING, NodeIndex
+};
 use rustc::hir;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::ich::{ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};

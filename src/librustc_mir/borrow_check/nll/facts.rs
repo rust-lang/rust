@@ -10,38 +10,38 @@
 
 use borrow_check::location::{LocationIndex, LocationTable};
 use dataflow::indexes::BorrowIndex;
-use rustc::ty::RegionVid;
+use polonius_engine::AllFacts as PoloniusAllFacts;
+use polonius_engine::Atom;
+use rustc::ty::{RegionVid, TyCtxt};
+use rustc_data_structures::indexed_vec::Idx;
 use std::error::Error;
 use std::fmt::Debug;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-/// The "facts" which are the basis of the NLL borrow analysis.
-#[derive(Default)]
-crate struct AllFacts {
-    // `borrow_region(R, B, P)` -- the region R may refer to data from borrow B
-    // starting at the point P (this is usually the point *after* a borrow rvalue)
-    crate borrow_region: Vec<(RegionVid, BorrowIndex, LocationIndex)>,
+crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex>;
 
-    // universal_region(R) -- this is a "free region" within fn body
-    crate universal_region: Vec<RegionVid>,
+crate trait AllFactsExt {
+    /// Returns true if there is a need to gather `AllFacts` given the
+    /// current `-Z` flags.
+    fn enabled(tcx: TyCtxt<'_, '_, '_>) -> bool;
 
-    // `cfg_edge(P,Q)` for each edge P -> Q in the control flow
-    crate cfg_edge: Vec<(LocationIndex, LocationIndex)>,
-
-    // `killed(B,P)` when some prefix of the path borrowed at B is assigned at point P
-    crate killed: Vec<(BorrowIndex, LocationIndex)>,
-
-    // `outlives(R1, R2, P)` when we require `R1@P: R2@P`
-    crate outlives: Vec<(RegionVid, RegionVid, LocationIndex)>,
-
-    // `region_live_at(R, P)` when the region R appears in a live variable at P
-    crate region_live_at: Vec<(RegionVid, LocationIndex)>,
+    fn write_to_dir(
+        &self,
+        dir: impl AsRef<Path>,
+        location_table: &LocationTable,
+    ) -> Result<(), Box<dyn Error>>;
 }
 
-impl AllFacts {
-    crate fn write_to_dir(
+impl AllFactsExt for AllFacts {
+    /// Return
+    fn enabled(tcx: TyCtxt<'_, '_, '_>) -> bool {
+        tcx.sess.opts.debugging_opts.nll_facts
+            || tcx.sess.opts.debugging_opts.polonius
+    }
+
+    fn write_to_dir(
         &self,
         dir: impl AsRef<Path>,
         location_table: &LocationTable,
@@ -69,9 +69,46 @@ impl AllFacts {
                 killed,
                 outlives,
                 region_live_at,
+                invalidates,
             ])
         }
         Ok(())
+    }
+}
+
+impl Atom for BorrowIndex {
+    fn index(self) -> usize {
+        Idx::index(self)
+    }
+}
+
+impl From<usize> for BorrowIndex {
+    fn from(i: usize) -> BorrowIndex {
+        BorrowIndex::new(i)
+    }
+}
+
+impl From<BorrowIndex> for usize {
+    fn from(vid: BorrowIndex) -> usize {
+        Idx::index(vid)
+    }
+}
+
+impl Atom for LocationIndex {
+    fn index(self) -> usize {
+        Idx::index(self)
+    }
+}
+
+impl From<usize> for LocationIndex {
+    fn from(i: usize) -> LocationIndex {
+        LocationIndex::new(i)
+    }
+}
+
+impl From<LocationIndex> for usize {
+    fn from(vid: LocationIndex) -> usize {
+        Idx::index(vid)
     }
 }
 
@@ -83,7 +120,7 @@ struct FactWriter<'w> {
 impl<'w> FactWriter<'w> {
     fn write_facts_to_path<T>(
         &self,
-        rows: &Vec<T>,
+        rows: &[T],
         file_name: &str,
     ) -> Result<(), Box<dyn Error>>
     where

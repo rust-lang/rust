@@ -49,7 +49,7 @@ unsafe fn pthread_attr_setstacksize(_attr: *mut libc::pthread_attr_t,
 }
 
 impl Thread {
-    pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
+    pub unsafe fn new<'a>(stack: usize, p: Box<dyn FnBox() + 'a>)
                           -> io::Result<Thread> {
         let p = box p;
         let mut native: libc::pthread_t = mem::zeroed();
@@ -326,11 +326,20 @@ pub mod guard {
             // Reallocate the last page of the stack.
             // This ensures SIGBUS will be raised on
             // stack overflow.
-            let result = mmap(stackaddr, PAGE_SIZE, PROT_NONE,
+            // Systems which enforce strict PAX MPROTECT do not allow
+            // to mprotect() a mapping with less restrictive permissions
+            // than the initial mmap() used, so we mmap() here with
+            // read/write permissions and only then mprotect() it to
+            // no permissions at all. See issue #50313.
+            let result = mmap(stackaddr, PAGE_SIZE, PROT_READ | PROT_WRITE,
                               MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
-
             if result != stackaddr || result == MAP_FAILED {
                 panic!("failed to allocate a guard page");
+            }
+
+            let result = mprotect(stackaddr, PAGE_SIZE, PROT_NONE);
+            if result != 0 {
+                panic!("failed to protect the guard page");
             }
 
             let guardaddr = stackaddr as usize;

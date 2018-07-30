@@ -146,7 +146,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use {mem, ops::{self, Deref}};
+use {hint, mem, ops::{self, Deref}};
+use mem::PinMut;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -266,6 +267,15 @@ impl<T> Option<T> {
         match *self {
             Some(ref mut x) => Some(x),
             None => None,
+        }
+    }
+
+    /// Converts from `Option<T>` to `Option<PinMut<'_, T>>`
+    #[inline]
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn as_pin_mut<'a>(self: PinMut<'a, Self>) -> Option<PinMut<'a, T>> {
+        unsafe {
+            PinMut::get_mut_unchecked(self).as_mut().map(|x| PinMut::new_unchecked(x))
         }
     }
 
@@ -705,6 +715,42 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns [`Some`] if exactly one of `self`, `optb` is [`Some`], otherwise returns `None`.
+    ///
+    /// [`Some`]: #variant.Some
+    /// [`None`]: #variant.None
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_xor)]
+    ///
+    /// let x = Some(2);
+    /// let y: Option<u32> = None;
+    /// assert_eq!(x.xor(y), Some(2));
+    ///
+    /// let x: Option<u32> = None;
+    /// let y = Some(2);
+    /// assert_eq!(x.xor(y), Some(2));
+    ///
+    /// let x = Some(2);
+    /// let y = Some(2);
+    /// assert_eq!(x.xor(y), None);
+    ///
+    /// let x: Option<u32> = None;
+    /// let y: Option<u32> = None;
+    /// assert_eq!(x.xor(y), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_xor", issue = "50512")]
+    pub fn xor(self, optb: Option<T>) -> Option<T> {
+        match (self, optb) {
+            (Some(a), None) => Some(a),
+            (None, Some(b)) => Some(b),
+            _ => None,
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Entry-like operations to insert if None and return a reference
     /////////////////////////////////////////////////////////////////////////
@@ -738,7 +784,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            _ => unreachable!(),
+            None => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -771,7 +817,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            _ => unreachable!(),
+            None => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -787,17 +833,46 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let mut x = Some(2);
-    /// x.take();
+    /// let y = x.take();
     /// assert_eq!(x, None);
+    /// assert_eq!(y, Some(2));
     ///
     /// let mut x: Option<u32> = None;
-    /// x.take();
+    /// let y = x.take();
     /// assert_eq!(x, None);
+    /// assert_eq!(y, None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn take(&mut self) -> Option<T> {
         mem::replace(self, None)
+    }
+
+    /// Replaces the actual value in the option by the value given in parameter,
+    /// returning the old value if present,
+    /// leaving a [`Some`] in its place without deinitializing either one.
+    ///
+    /// [`Some`]: #variant.Some
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_replace)]
+    ///
+    /// let mut x = Some(2);
+    /// let old = x.replace(5);
+    /// assert_eq!(x, Some(5));
+    /// assert_eq!(old, Some(2));
+    ///
+    /// let mut x = None;
+    /// let old = x.replace(3);
+    /// assert_eq!(x, Some(3));
+    /// assert_eq!(old, None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_replace", issue = "51998")]
+    pub fn replace(&mut self, value: T) -> Option<T> {
+        mem::replace(self, Some(value))
     }
 }
 

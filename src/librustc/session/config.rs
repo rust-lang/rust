@@ -95,6 +95,23 @@ pub enum Lto {
     Fat,
 }
 
+#[derive(Clone, PartialEq, Hash)]
+pub enum CrossLangLto {
+    LinkerPlugin(PathBuf),
+    LinkerPluginAuto,
+    Disabled
+}
+
+impl CrossLangLto {
+    pub fn enabled(&self) -> bool {
+        match *self {
+            CrossLangLto::LinkerPlugin(_) |
+            CrossLangLto::LinkerPluginAuto => true,
+            CrossLangLto::Disabled => false,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Hash)]
 pub enum DebugInfoLevel {
     NoDebugInfo,
@@ -253,7 +270,7 @@ impl OutputTypes {
     }
 
     // True if any of the output types require codegen or linking.
-    pub fn should_trans(&self) -> bool {
+    pub fn should_codegen(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
             | OutputType::Assembly
@@ -412,6 +429,7 @@ top_level_options!(
 
         // Remap source path prefixes in all output (messages, object files, debug, etc)
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
+
         edition: Edition [TRACKED],
     }
 );
@@ -437,15 +455,28 @@ pub enum BorrowckMode {
     Ast,
     Mir,
     Compare,
+    Migrate,
 }
 
 impl BorrowckMode {
+    /// Should we run the MIR-based borrow check, but also fall back
+    /// on the AST borrow check if the MIR-based one errors.
+    pub fn migrate(self) -> bool {
+        match self {
+            BorrowckMode::Ast => false,
+            BorrowckMode::Compare => false,
+            BorrowckMode::Mir => false,
+            BorrowckMode::Migrate => true,
+        }
+    }
+
     /// Should we emit the AST-based borrow checker errors?
     pub fn use_ast(self) -> bool {
         match self {
             BorrowckMode::Ast => true,
             BorrowckMode::Compare => true,
             BorrowckMode::Mir => false,
+            BorrowckMode::Migrate => false,
         }
     }
     /// Should we emit the MIR-based borrow checker errors?
@@ -454,6 +485,7 @@ impl BorrowckMode {
             BorrowckMode::Ast => false,
             BorrowckMode::Compare => true,
             BorrowckMode::Mir => true,
+            BorrowckMode::Migrate => true,
         }
     }
 }
@@ -474,6 +506,13 @@ impl Input {
         match *self {
             Input::File(ref ifile) => ifile.file_stem().unwrap().to_str().unwrap().to_string(),
             Input::Str { .. } => "rust_out".to_string(),
+        }
+    }
+
+    pub fn get_input(&mut self) -> Option<&mut String> {
+        match *self {
+            Input::File(_) => None,
+            Input::Str { ref mut input, .. } => Some(input),
         }
     }
 }
@@ -777,11 +816,15 @@ macro_rules! options {
             Some("`string` or `string=string`");
         pub const parse_lto: Option<&'static str> =
             Some("one of `thin`, `fat`, or omitted");
+        pub const parse_cross_lang_lto: Option<&'static str> =
+            Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `no-link`, \
+                  or the path to the linker plugin");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto,
+                    CrossLangLto};
         use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
 
@@ -856,9 +899,7 @@ macro_rules! options {
                       -> bool {
             match v {
                 Some(s) => {
-                    for s in s.split_whitespace() {
-                        slot.push(s.to_string());
-                    }
+                    slot.extend(s.split_whitespace().map(|s| s.to_string()));
                     true
                 },
                 None => false,
@@ -986,6 +1027,25 @@ macro_rules! options {
             true
         }
 
+        fn parse_cross_lang_lto(slot: &mut CrossLangLto, v: Option<&str>) -> bool {
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        CrossLangLto::LinkerPluginAuto
+                    } else {
+                        CrossLangLto::Disabled
+                    };
+                    return true
+                }
+            }
+
+            *slot = match v {
+                None => CrossLangLto::LinkerPluginAuto,
+                Some(path) => CrossLangLto::LinkerPlugin(PathBuf::from(path)),
+            };
+            true
+        }
     }
 ) }
 
@@ -1079,7 +1139,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     emit_end_regions: bool = (false, parse_bool, [UNTRACKED],
         "emit EndRegion as part of MIR; enable transforms that solely process EndRegion"),
     borrowck: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "select which borrowck is used (`ast`, `mir`, or `compare`)"),
+        "select which borrowck is used (`ast`, `mir`, `migrate`, or `compare`)"),
     two_phase_borrows: bool = (false, parse_bool, [UNTRACKED],
         "use two-phase reserved/active distinction for `&mut` borrows in MIR borrowck"),
     two_phase_beyond_autoref: bool = (false, parse_bool, [UNTRACKED],
@@ -1093,18 +1153,18 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "count where LLVM instrs originate"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED_WITH_WARNING(true,
         "The output of `-Z time-llvm-passes` will only reflect timings of \
-         re-translated modules when used with incremental compilation" )],
+         re-codegened modules when used with incremental compilation" )],
         "measure time of each LLVM pass"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input"),
-    trans_stats: bool = (false, parse_bool, [UNTRACKED_WITH_WARNING(true,
-        "The output of `-Z trans-stats` might not be accurate when incremental \
+    codegen_stats: bool = (false, parse_bool, [UNTRACKED_WITH_WARNING(true,
+        "The output of `-Z codegen-stats` might not be accurate when incremental \
          compilation is enabled")],
-        "gather trans statistics"),
+        "gather codegen statistics"),
     asm_comments: bool = (false, parse_bool, [TRACKED],
         "generate comments into the assembly (may change behavior)"),
-    no_verify: bool = (false, parse_bool, [TRACKED],
-        "skip LLVM verification"),
+    verify_llvm_ir: bool = (false, parse_bool, [TRACKED],
+        "verify LLVM IR"),
     borrowck_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather borrowck statistics"),
     no_landing_pads: bool = (false, parse_bool, [TRACKED],
@@ -1141,10 +1201,12 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           Use with RUST_REGION_GRAPH=help for more info"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
           "parse only; do not compile, assemble, or link"),
-    no_trans: bool = (false, parse_bool, [TRACKED],
-          "run all passes except translation; no output"),
+    no_codegen: bool = (false, parse_bool, [TRACKED],
+          "run all passes except codegen; no output"),
     treat_err_as_bug: bool = (false, parse_bool, [TRACKED],
           "treat all errors that occur as bugs"),
+    report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
+          "immediately print bugs registered with `delay_span_bug`"),
     external_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
           "show macro backtraces even for non-local macros"),
     teach: bool = (false, parse_bool, [TRACKED],
@@ -1183,8 +1245,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "for every macro invocation, print its name and arguments"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
           "emit line numbers debug info inside macros"),
-    enable_nonzeroing_move_hints: bool = (false, parse_bool, [TRACKED],
-          "force nonzeroing move optimization on"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
           "don't clear the hygiene data after analysis"),
     keep_ast: bool = (false, parse_bool, [UNTRACKED],
@@ -1193,16 +1253,16 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "show spans for compiler debugging (expr|pat|ty)"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
           "print layout information for each type encountered"),
-    print_trans_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
-          "print the result of the translation item collection pass"),
+    print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
+          "print the result of the monomorphization collection pass"),
     mir_opt_level: usize = (1, parse_uint, [TRACKED],
           "set the MIR optimization level (0-3, default: 1)"),
-    mutable_noalias: bool = (false, parse_bool, [UNTRACKED],
-          "emit noalias metadata for mutable references"),
-    arg_align_attributes: bool = (false, parse_bool, [UNTRACKED],
+    mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
+          "emit noalias metadata for mutable references (default: yes on LLVM >= 6)"),
+    arg_align_attributes: bool = (false, parse_bool, [TRACKED],
           "emit align metadata for reference arguments"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
-          "dump MIR state at various points in translation"),
+          "dump MIR state at various points in transforms"),
     dump_mir_dir: String = (String::from("mir_dump"), parse_string, [UNTRACKED],
           "the directory the MIR is dumped into"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],
@@ -1248,14 +1308,20 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         useful for profiling / PGO."),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
         "choose which RELRO level to use"),
+    disable_ast_check_for_mutation_in_guard: bool = (false, parse_bool, [UNTRACKED],
+        "skip AST-based mutation-in-guard check (mir-borrowck provides more precise check)"),
     nll_subminimal_causes: bool = (false, parse_bool, [UNTRACKED],
         "when tracking region error causes, accept subminimal results for faster execution."),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
                        "dump facts from NLL analysis into side files"),
     disable_nll_user_type_assert: bool = (false, parse_bool, [UNTRACKED],
         "disable user provided type assertion in NLL"),
-    trans_time_graph: bool = (false, parse_bool, [UNTRACKED],
-        "generate a graphical HTML report of time spent in trans and LLVM"),
+    nll_dont_emit_read_for_match: bool = (false, parse_bool, [UNTRACKED],
+        "in match codegen, do not include ReadForMatch statements (used by mir-borrowck)"),
+    polonius: bool = (false, parse_bool, [UNTRACKED],
+        "enable polonius-based borrow-checker"),
+    codegen_time_graph: bool = (false, parse_bool, [UNTRACKED],
+        "generate a graphical HTML report of time spent in codegen and LLVM"),
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1267,15 +1333,13 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          the max/min integer respectively, and NaN is mapped to 0"),
     lower_128bit_ops: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "rewrite operators on i128 and u128 into lang item calls (typically provided \
-         by compiler-builtins) so translation doesn't need to support them,
+         by compiler-builtins) so codegen doesn't need to support them,
          overriding the default for the current target"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
         "generate human-readable, predictable names for codegen units"),
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
          themselves"),
-    suggestion_applicability: bool = (false, parse_bool, [UNTRACKED],
-        "include machine-applicability of suggestions in JSON output"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "Present the input source, unstable (and less-pretty) variants;
         valid types are any of the types for `--pretty`, as well as:
@@ -1295,6 +1359,14 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "make the current crate share its generic instantiations"),
     chalk: bool = (false, parse_bool, [TRACKED],
           "enable the experimental Chalk-based trait solving engine"),
+    cross_lang_lto: CrossLangLto = (CrossLangLto::Disabled, parse_cross_lang_lto, [TRACKED],
+          "generate build artifacts that are compatible with linker-based LTO."),
+    no_parallel_llvm: bool = (false, parse_bool, [UNTRACKED],
+          "don't run LLVM in parallel (while keeping codegen-units and ThinLTO)"),
+    no_leak_check: bool = (false, parse_bool, [UNTRACKED],
+        "disables the 'leak check' for subtyping; unsound, but useful for tests"),
+    crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
+        "inject the given attribute in the crate"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1310,6 +1382,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let vendor = &sess.target.target.target_vendor;
     let min_atomic_width = sess.target.target.min_atomic_width();
     let max_atomic_width = sess.target.target.max_atomic_width();
+    let atomic_cas = sess.target.target.options.atomic_cas;
 
     let mut ret = HashSet::new();
     // Target bindings.
@@ -1348,6 +1421,9 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
                 ));
             }
         }
+    }
+    if atomic_cas {
+        ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern("cas"))));
     }
     if sess.opts.debug_assertions {
         ret.insert((Symbol::intern("debug_assertions"), None));
@@ -1690,6 +1766,29 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
         .collect::<ast::CrateConfig>()
 }
 
+pub fn get_cmd_lint_options(matches: &getopts::Matches,
+                            error_format: ErrorOutputType)
+                            -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
+    let mut lint_opts = vec![];
+    let mut describe_lints = false;
+
+    for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
+        for lint_name in matches.opt_strs(level.as_str()) {
+            if lint_name == "help" {
+                describe_lints = true;
+            } else {
+                lint_opts.push((lint_name.replace("-", "_"), level));
+            }
+        }
+    }
+
+    let lint_cap = matches.opt_str("cap-lints").map(|cap| {
+        lint::Level::from_str(&cap)
+            .unwrap_or_else(|| early_error(error_format, &format!("unknown lint level: `{}`", cap)))
+    });
+    (lint_opts, describe_lints, lint_cap)
+}
+
 pub fn build_session_options_and_crate_config(
     matches: &getopts::Matches,
 ) -> (Options, ast::CrateConfig) {
@@ -1730,7 +1829,7 @@ pub fn build_session_options_and_crate_config(
         early_error(
                 ErrorOutputType::default(),
                 &format!(
-                    "Edition {} is unstable an only\
+                    "Edition {} is unstable and only \
                     available for nightly builds of rustc.",
                     edition,
                 )
@@ -1747,19 +1846,7 @@ pub fn build_session_options_and_crate_config(
             Some("human") => ErrorOutputType::HumanReadable(color),
             Some("json") => ErrorOutputType::Json(false),
             Some("pretty-json") => ErrorOutputType::Json(true),
-            Some("short") => {
-                if nightly_options::is_unstable_enabled(matches) {
-                    ErrorOutputType::Short(color)
-                } else {
-                    early_error(
-                        ErrorOutputType::default(),
-                        &format!(
-                            "the `-Z unstable-options` flag must also be passed to \
-                             enable the short error message option"
-                        ),
-                    );
-                }
-            }
+            Some("short") => ErrorOutputType::Short(color),
             None => ErrorOutputType::HumanReadable(color),
 
             Some(arg) => early_error(
@@ -1779,23 +1866,7 @@ pub fn build_session_options_and_crate_config(
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
-    let mut lint_opts = vec![];
-    let mut describe_lints = false;
-
-    for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
-        for lint_name in matches.opt_strs(level.as_str()) {
-            if lint_name == "help" {
-                describe_lints = true;
-            } else {
-                lint_opts.push((lint_name.replace("-", "_"), level));
-            }
-        }
-    }
-
-    let lint_cap = matches.opt_str("cap-lints").map(|cap| {
-        lint::Level::from_str(&cap)
-            .unwrap_or_else(|| early_error(error_format, &format!("unknown lint level: `{}`", cap)))
-    });
+    let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
     let mut debugging_opts = build_debugging_options(matches, error_format);
 
@@ -1925,6 +1996,13 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
+    if debugging_opts.profile && incremental.is_some() {
+        early_error(
+            error_format,
+            "can't instrument with gcov profiling when compiling incrementally",
+        );
+    }
+
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_ref().map_or(false, |s| s == "help") {
         prints.push(PrintRequest::TargetCPUs);
@@ -1976,27 +2054,15 @@ pub fn build_session_options_and_crate_config(
             }
             OptLevel::Default
         } else {
-            match (
-                cg.opt_level.as_ref().map(String::as_ref),
-                nightly_options::is_nightly_build(),
-            ) {
-                (None, _) => OptLevel::No,
-                (Some("0"), _) => OptLevel::No,
-                (Some("1"), _) => OptLevel::Less,
-                (Some("2"), _) => OptLevel::Default,
-                (Some("3"), _) => OptLevel::Aggressive,
-                (Some("s"), true) => OptLevel::Size,
-                (Some("z"), true) => OptLevel::SizeMin,
-                (Some("s"), false) | (Some("z"), false) => {
-                    early_error(
-                        error_format,
-                        &format!(
-                            "the optimizations s or z are only \
-                             accepted on the nightly compiler"
-                        ),
-                    );
-                }
-                (Some(arg), _) => {
+            match cg.opt_level.as_ref().map(String::as_ref) {
+                None => OptLevel::No,
+                Some("0") => OptLevel::No,
+                Some("1") => OptLevel::Less,
+                Some("2") => OptLevel::Default,
+                Some("3") => OptLevel::Aggressive,
+                Some("s") => OptLevel::Size,
+                Some("z") => OptLevel::SizeMin,
+                Some(arg) => {
                     early_error(
                         error_format,
                         &format!(
@@ -2114,6 +2180,7 @@ pub fn build_session_options_and_crate_config(
         None | Some("ast") => BorrowckMode::Ast,
         Some("mir") => BorrowckMode::Mir,
         Some("compare") => BorrowckMode::Compare,
+        Some("migrate") => BorrowckMode::Migrate,
         Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     };
 
@@ -2325,7 +2392,7 @@ mod dep_tracking {
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{CrateType, DebugInfoLevel, ErrorOutputType, Lto, OptLevel, OutputTypes,
-                Passes, Sanitizer};
+                Passes, Sanitizer, CrossLangLto};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_target::spec::{PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
@@ -2389,6 +2456,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
+    impl_dep_tracking_hash_via_hash!(CrossLangLto);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
@@ -2453,7 +2521,7 @@ mod tests {
     use lint;
     use middle::cstore;
     use session::config::{build_configuration, build_session_options_and_crate_config};
-    use session::config::Lto;
+    use session::config::{Lto, CrossLangLto};
     use session::build_session;
     use std::collections::{BTreeMap, BTreeSet};
     use std::iter::FromIterator;
@@ -3002,7 +3070,7 @@ mod tests {
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.input_stats = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.trans_stats = true;
+        opts.debugging_opts.codegen_stats = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.borrowck_stats = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
@@ -3048,7 +3116,7 @@ mod tests {
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.keep_ast = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.print_trans_items = Some(String::from("abc"));
+        opts.debugging_opts.print_mono_items = Some(String::from("abc"));
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.dump_mir = Some(String::from("abc"));
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
@@ -3063,7 +3131,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.no_verify = true;
+        opts.debugging_opts.verify_llvm_ir = true;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
@@ -3075,11 +3143,15 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.no_trans = true;
+        opts.debugging_opts.no_codegen = true;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
         opts.debugging_opts.treat_err_as_bug = true;
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.report_delayed_bugs = true;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
@@ -3095,10 +3167,6 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.enable_nonzeroing_move_hints = true;
-        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-        opts = reference.clone();
         opts.debugging_opts.show_span = Some(String::from("abc"));
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
@@ -3108,6 +3176,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.relro_level = Some(RelroLevel::Full);
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.cross_lang_lto = CrossLangLto::LinkerPluginAuto;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 

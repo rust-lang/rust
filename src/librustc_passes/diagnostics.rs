@@ -259,6 +259,44 @@ let result = loop { // ok!
     i += 1;
 };
 ```
+"##,
+
+E0695: r##"
+A `break` statement without a label appeared inside a labeled block.
+
+Example of erroneous code:
+
+```compile_fail,E0695
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break;
+    }
+}
+```
+
+Make sure to always label the `break`:
+
+```
+# #![feature(label_break_value)]
+'l: loop {
+    'a: {
+        break 'l;
+    }
+}
+```
+
+Or if you want to `break` the labeled block:
+
+```
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break 'a;
+    }
+    break;
+}
+```
 "##
 }
 
@@ -271,4 +309,6 @@ register_diagnostics! {
     E0642, // patterns aren't allowed in methods without bodies
     E0666, // nested `impl Trait` is illegal
     E0667, // `impl Trait` in projections
+    E0696, // `continue` pointing to a labeled block
+    E0706, // `async fn` in trait
 }

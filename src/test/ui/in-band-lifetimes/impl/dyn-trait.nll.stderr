@@ -4,11 +4,13 @@ warning: not reporting region error due to nll
 LL |     static_val(x); //~ ERROR cannot infer
    |                ^
 
-error: free region `'a` does not outlive free region `'static`
+error: borrowed data escapes outside of function
   --> $DIR/dyn-trait.rs:32:5
    |
+LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
+   |                              - `x` is a reference that is only valid in the function body
 LL |     static_val(x); //~ ERROR cannot infer
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^ `x` escapes the function body here
 
 error: aborting due to previous error
 

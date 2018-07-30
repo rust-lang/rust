@@ -116,6 +116,8 @@ mod prim_bool { }
 ///
 /// # `!` and generics
 ///
+/// ## Infallible errors
+///
 /// The main place you'll see `!` used explicitly is in generic code. Consider the [`FromStr`]
 /// trait:
 ///
@@ -144,9 +146,60 @@ mod prim_bool { }
 /// [`Ok`] variant. This illustrates another behaviour of `!` - it can be used to "delete" certain
 /// enum variants from generic types like `Result`.
 ///
+/// ## Infinite loops
+///
+/// While [`Result<T, !>`] is very useful for removing errors, `!` can also be used to remove
+/// successes as well. If we think of [`Result<T, !>`] as "if this function returns, it has not
+/// errored," we get a very intuitive idea of [`Result<!, E>`] as well: if the function returns, it
+/// *has* errored.
+///
+/// For example, consider the case of a simple web server, which can be simplified to:
+///
+/// ```ignore (hypothetical-example)
+/// loop {
+///     let (client, request) = get_request().expect("disconnected");
+///     let response = request.process();
+///     response.send(client);
+/// }
+/// ```
+///
+/// Currently, this isn't ideal, because we simply panic whenever we fail to get a new connection.
+/// Instead, we'd like to keep track of this error, like this:
+///
+/// ```ignore (hypothetical-example)
+/// loop {
+///     match get_request() {
+///         Err(err) => break err,
+///         Ok((client, request)) => {
+///             let response = request.process();
+///             response.send(client);
+///         },
+///     }
+/// }
+/// ```
+///
+/// Now, when the server disconnects, we exit the loop with an error instead of panicking. While it
+/// might be intuitive to simply return the error, we might want to wrap it in a [`Result<!, E>`]
+/// instead:
+///
+/// ```ignore (hypothetical-example)
+/// fn server_loop() -> Result<!, ConnectionError> {
+///     loop {
+///         let (client, request) = get_request()?;
+///         let response = request.process();
+///         response.send(client);
+///     }
+/// }
+/// ```
+///
+/// Now, we can use `?` instead of `match`, and the return type makes a lot more sense: if the loop
+/// ever stops, it means that an error occurred. We don't even have to wrap the loop in an `Ok`
+/// because `!` coerces to `Result<!, ConnectionError>` automatically.
+///
 /// [`String::from_str`]: str/trait.FromStr.html#tymethod.from_str
 /// [`Result<String, !>`]: result/enum.Result.html
 /// [`Result<T, !>`]: result/enum.Result.html
+/// [`Result<!, E>`]: result/enum.Result.html
 /// [`Ok`]: result/enum.Result.html#variant.Ok
 /// [`String`]: string/struct.String.html
 /// [`Err`]: result/enum.Result.html#variant.Err
@@ -317,6 +370,8 @@ mod prim_unit { }
 //
 /// Raw, unsafe pointers, `*const T`, and `*mut T`.
 ///
+/// *[See also the `std::ptr` module](ptr/index.html).*
+///
 /// Working with raw pointers in Rust is uncommon,
 /// typically limited to a few patterns.
 ///
@@ -390,8 +445,6 @@ mod prim_unit { }
 /// Usually you wouldn't literally use `malloc` and `free` from Rust,
 /// but C APIs hand out a lot of pointers generally, so are a common source
 /// of raw pointers in Rust.
-///
-/// *[See also the `std::ptr` module](ptr/index.html).*
 ///
 /// [`null`]: ../std/ptr/fn.null.html
 /// [`null_mut`]: ../std/ptr/fn.null_mut.html
@@ -510,6 +563,8 @@ mod prim_array { }
 //
 /// A dynamically-sized view into a contiguous sequence, `[T]`.
 ///
+/// *[See also the `std::slice` module](slice/index.html).*
+///
 /// Slices are a view into a block of memory represented as a pointer and a
 /// length.
 ///
@@ -532,8 +587,6 @@ mod prim_array { }
 /// assert_eq!(x, &[1, 7, 3]);
 /// ```
 ///
-/// *[See also the `std::slice` module](slice/index.html).*
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice { }
 
@@ -541,15 +594,13 @@ mod prim_slice { }
 //
 /// String slices.
 ///
+/// *[See also the `std::str` module](str/index.html).*
+///
 /// The `str` type, also called a 'string slice', is the most primitive string
 /// type. It is usually seen in its borrowed form, `&str`. It is also the type
 /// of string literals, `&'static str`.
 ///
-/// Strings slices are always valid UTF-8.
-///
-/// This documentation describes a number of methods and trait implementations
-/// on the `str` type. For technical reasons, there is additional, separate
-/// documentation in the [`std::str`](str/index.html) module as well.
+/// String slices are always valid UTF-8.
 ///
 /// # Examples
 ///
@@ -809,11 +860,11 @@ mod prim_u128 { }
 //
 /// The pointer-sized signed integer type.
 ///
+/// *[See also the `std::isize` module](isize/index.html).*
+///
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
-///
-/// *[See also the `std::isize` module](isize/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_isize { }
 
@@ -821,11 +872,11 @@ mod prim_isize { }
 //
 /// The pointer-sized unsigned integer type.
 ///
+/// *[See also the `std::usize` module](usize/index.html).*
+///
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
-///
-/// *[See also the `std::usize` module](usize/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize { }
 

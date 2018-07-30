@@ -33,7 +33,7 @@ use ops::{Add, Mul, Div, Neg};
 use fmt::{Debug, LowerExp};
 use num::diy_float::Fp;
 use num::FpCategory::{Infinite, Zero, Subnormal, Normal, Nan};
-use num::Float;
+use num::FpCategory;
 use num::dec2flt::num::{self, Big};
 use num::dec2flt::table;
 
@@ -54,24 +54,29 @@ impl Unpacked {
 /// See the parent module's doc comment for why this is necessary.
 ///
 /// Should **never ever** be implemented for other types or be used outside the dec2flt module.
-/// Inherits from `Float` because there is some overlap, but all the reused methods are trivial.
 pub trait RawFloat
-    : Float
-    + Copy
+    : Copy
     + Debug
     + LowerExp
     + Mul<Output=Self>
     + Div<Output=Self>
     + Neg<Output=Self>
-where
-    Self: Float<Bits = <Self as RawFloat>::RawBits>
 {
     const INFINITY: Self;
     const NAN: Self;
     const ZERO: Self;
 
-    /// Same as `Float::Bits` with extra traits.
-    type RawBits: Add<Output = Self::RawBits> + From<u8> + TryFrom<u64>;
+    /// Type used by `to_bits` and `from_bits`.
+    type Bits: Add<Output = Self::Bits> + From<u8> + TryFrom<u64>;
+
+    /// Raw transmutation to integer.
+    fn to_bits(self) -> Self::Bits;
+
+    /// Raw transmutation from integer.
+    fn from_bits(v: Self::Bits) -> Self;
+
+    /// Returns the category that this number falls into.
+    fn classify(self) -> FpCategory;
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8);
@@ -153,7 +158,7 @@ macro_rules! other_constants {
 }
 
 impl RawFloat for f32 {
-    type RawBits = u32;
+    type Bits = u32;
 
     const SIG_BITS: u8 = 24;
     const EXP_BITS: u8 = 8;
@@ -192,11 +197,15 @@ impl RawFloat for f32 {
     fn short_fast_pow10(e: usize) -> Self {
         table::F32_SHORT_POWERS[e]
     }
+
+    fn classify(self) -> FpCategory { self.classify() }
+    fn to_bits(self) -> Self::Bits { self.to_bits() }
+    fn from_bits(v: Self::Bits) -> Self { Self::from_bits(v) }
 }
 
 
 impl RawFloat for f64 {
-    type RawBits = u64;
+    type Bits = u64;
 
     const SIG_BITS: u8 = 53;
     const EXP_BITS: u8 = 11;
@@ -235,6 +244,10 @@ impl RawFloat for f64 {
     fn short_fast_pow10(e: usize) -> Self {
         table::F64_SHORT_POWERS[e]
     }
+
+    fn classify(self) -> FpCategory { self.classify() }
+    fn to_bits(self) -> Self::Bits { self.to_bits() }
+    fn from_bits(v: Self::Bits) -> Self { Self::from_bits(v) }
 }
 
 /// Convert an Fp to the closest machine float type.

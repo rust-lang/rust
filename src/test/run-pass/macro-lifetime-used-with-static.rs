@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_lifetime_matcher)]
-
 macro_rules! foo {
     ($l:lifetime) => {
         fn f(arg: &$l str) -> &$l str {

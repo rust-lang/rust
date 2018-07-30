@@ -47,7 +47,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<Ty>, offset: &mut Size)
 pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<Ty>)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
-    let mut offset = Size::from_bytes(0);
+    let mut offset = Size::ZERO;
     if !fty.ret.is_ignore() {
         classify_ret_ty(cx, &mut fty.ret, &mut offset);
     }

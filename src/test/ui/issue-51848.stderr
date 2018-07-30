@@ -1,0 +1,21 @@
+error: invalid format string: expected `'}'` but string was terminated
+  --> $DIR/issue-51848.rs:16:20
+   |
+LL |         println!("{"); //~ ERROR invalid
+   |                    ^ expected `'}'` in format string
+...
+LL |     macro_with_error!();
+   |     -------------------- in this macro invocation
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+
+error: invalid format string: unmatched `}` found
+  --> $DIR/issue-51848.rs:28:15
+   |
+LL |     println!("}"); //~ ERROR invalid
+   |               ^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: aborting due to 2 previous errors
+

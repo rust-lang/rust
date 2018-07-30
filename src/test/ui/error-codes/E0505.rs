@@ -7,15 +7,19 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
+
 struct Value {}
 
 fn eat(val: Value) {}
 
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     let x = Value{};
     {
         let _ref_to_val: &Value = &x;
         eat(x); //~ ERROR E0505
+        _ref_to_val.use_ref();
     }
 }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

@@ -86,7 +86,7 @@ pub fn check(path: &path::Path, bad: &mut bool) {
 
     // Library features
 
-    let lang_features = collect_lang_features(path);
+    let lang_features = collect_lang_features(path, bad);
     let lib_features = collect_lib_features(path).into_iter().filter(|&(ref name, _)| {
         !lang_features.contains_key(name)
     }).collect();

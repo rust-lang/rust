@@ -1,17 +1,12 @@
-error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/reference.rs:15:5
+error: rustc_outlives
+  --> $DIR/reference.rs:15:1
    |
-LL | struct Foo<'a, T> {
-   |                - help: consider adding an explicit lifetime bound `T: 'a`...
-LL |     bar: &'a [T] //~ ERROR the parameter type `T` may not live long enough [E0309]
-   |     ^^^^^^^^^^^^
+LL | / struct Foo<'a, T> { //~ ERROR rustc_outlives
+LL | |     bar: &'a T,
+LL | | }
+   | |_^
    |
-note: ...so that the reference type `&'a [T]` does not outlive the data it points at
-  --> $DIR/reference.rs:15:5
-   |
-LL |     bar: &'a [T] //~ ERROR the parameter type `T` may not live long enough [E0309]
-   |     ^^^^^^^^^^^^
+   = note: T : 'a
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0309`.

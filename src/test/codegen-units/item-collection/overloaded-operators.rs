@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=eager
+// compile-flags:-Zprint-mono-items=eager
 
 #![deny(dead_code)]
 #![crate_type="lib"]
@@ -23,7 +23,7 @@ pub struct Indexable {
 impl Index<usize> for Indexable {
     type Output = u8;
 
-    //~ TRANS_ITEM fn overloaded_operators::{{impl}}[0]::index[0]
+    //~ MONO_ITEM fn overloaded_operators::{{impl}}[0]::index[0]
     fn index(&self, index: usize) -> &Self::Output {
         if index >= 3 {
             &self.data[0]
@@ -34,7 +34,7 @@ impl Index<usize> for Indexable {
 }
 
 impl IndexMut<usize> for Indexable {
-    //~ TRANS_ITEM fn overloaded_operators::{{impl}}[1]::index_mut[0]
+    //~ MONO_ITEM fn overloaded_operators::{{impl}}[1]::index_mut[0]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         if index >= 3 {
             &mut self.data[0]
@@ -45,8 +45,8 @@ impl IndexMut<usize> for Indexable {
 }
 
 
-//~ TRANS_ITEM fn overloaded_operators::{{impl}}[4]::eq[0]
-//~ TRANS_ITEM fn overloaded_operators::{{impl}}[4]::ne[0]
+//~ MONO_ITEM fn overloaded_operators::{{impl}}[4]::eq[0]
+//~ MONO_ITEM fn overloaded_operators::{{impl}}[4]::ne[0]
 #[derive(PartialEq)]
 pub struct Equatable(u32);
 
@@ -54,7 +54,7 @@ pub struct Equatable(u32);
 impl Add<u32> for Equatable {
     type Output = u32;
 
-    //~ TRANS_ITEM fn overloaded_operators::{{impl}}[2]::add[0]
+    //~ MONO_ITEM fn overloaded_operators::{{impl}}[2]::add[0]
     fn add(self, rhs: u32) -> u32 {
         self.0 + rhs
     }
@@ -63,7 +63,7 @@ impl Add<u32> for Equatable {
 impl Deref for Equatable {
     type Target = u32;
 
-    //~ TRANS_ITEM fn overloaded_operators::{{impl}}[3]::deref[0]
+    //~ MONO_ITEM fn overloaded_operators::{{impl}}[3]::deref[0]
     fn deref(&self) -> &Self::Target {
         &self.0
     }

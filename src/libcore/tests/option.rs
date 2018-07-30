@@ -240,7 +240,7 @@ fn test_collect() {
     assert!(v == None);
 
     // test that it does not take more elements than it needs
-    let mut functions: [Box<Fn() -> Option<()>>; 3] =
+    let mut functions: [Box<dyn Fn() -> Option<()>>; 3] =
         [box || Some(()), box || None, box || panic!()];
 
     let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();
@@ -313,6 +313,19 @@ fn test_option_deref() {
     // None: &Option<T: Deref>>::None -> None
     let ref_option: &Option<&i32> = &None;
     assert_eq!(ref_option.deref(), None);
+}
 
+#[test]
+fn test_replace() {
+    let mut x = Some(2);
+    let old = x.replace(5);
 
+    assert_eq!(x, Some(5));
+    assert_eq!(old, Some(2));
+
+    let mut x = None;
+    let old = x.replace(3);
+
+    assert_eq!(x, Some(3));
+    assert_eq!(old, None);
 }

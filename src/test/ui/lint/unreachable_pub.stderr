@@ -14,7 +14,17 @@ LL | #![warn(unreachable_pub)]
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:23:5
+  --> $DIR/unreachable_pub.rs:22:24
+   |
+LL |     pub use std::env::{Args}; // braced-use has different item spans than unbraced
+   |     ---                ^^^^
+   |     |
+   |     help: consider restricting its visibility: `crate`
+   |
+   = help: or consider exporting it for use by other crates
+
+warning: unreachable `pub` item
+  --> $DIR/unreachable_pub.rs:24:5
    |
 LL |     pub struct Hydrogen {
    |     ---^^^^^^^^^^^^^^^^
@@ -24,7 +34,7 @@ LL |     pub struct Hydrogen {
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` field
-  --> $DIR/unreachable_pub.rs:25:9
+  --> $DIR/unreachable_pub.rs:26:9
    |
 LL |         pub neutrons: usize,
    |         ---^^^^^^^^^^^^^^^^
@@ -32,7 +42,7 @@ LL |         pub neutrons: usize,
    |         help: consider restricting its visibility: `crate`
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:31:9
+  --> $DIR/unreachable_pub.rs:32:9
    |
 LL |         pub fn count_neutrons(&self) -> usize { self.neutrons }
    |         ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +50,7 @@ LL |         pub fn count_neutrons(&self) -> usize { self.neutrons }
    |         help: consider restricting its visibility: `crate`
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:35:5
+  --> $DIR/unreachable_pub.rs:36:5
    |
 LL |     pub enum Helium {}
    |     ---^^^^^^^^^^^^
@@ -50,7 +60,7 @@ LL |     pub enum Helium {}
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:36:5
+  --> $DIR/unreachable_pub.rs:37:5
    |
 LL |     pub union Lithium { c1: usize, c2: u8 }
    |     ---^^^^^^^^^^^^^^
@@ -60,7 +70,7 @@ LL |     pub union Lithium { c1: usize, c2: u8 }
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:37:5
+  --> $DIR/unreachable_pub.rs:38:5
    |
 LL |     pub fn beryllium() {}
    |     ---^^^^^^^^^^^^^^^
@@ -70,7 +80,7 @@ LL |     pub fn beryllium() {}
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:38:5
+  --> $DIR/unreachable_pub.rs:39:5
    |
 LL |     pub trait Boron {}
    |     ---^^^^^^^^^^^^
@@ -80,7 +90,7 @@ LL |     pub trait Boron {}
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:39:5
+  --> $DIR/unreachable_pub.rs:40:5
    |
 LL |     pub const CARBON: usize = 1;
    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +100,7 @@ LL |     pub const CARBON: usize = 1;
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:40:5
+  --> $DIR/unreachable_pub.rs:41:5
    |
 LL |     pub static NITROGEN: usize = 2;
    |     ---^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -100,7 +110,7 @@ LL |     pub static NITROGEN: usize = 2;
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:41:5
+  --> $DIR/unreachable_pub.rs:42:5
    |
 LL |     pub type Oxygen = bool;
    |     ---^^^^^^^^^^^^^^^^^^^^
@@ -110,20 +120,21 @@ LL |     pub type Oxygen = bool;
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:44:47
+  --> $DIR/unreachable_pub.rs:45:47
    |
 LL |         ($visibility: vis, $name: ident) => { $visibility struct $name {} }
-   |                                               -----------^^^^^^^^^^^^^
-   |                                               |
-   |                                               help: consider restricting its visibility: `crate`
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     }
 LL |     define_empty_struct_with_visibility!(pub, Fluorine);
-   |     ---------------------------------------------------- in this macro invocation
+   |     ----------------------------------------------------
+   |     |                                    |
+   |     |                                    help: consider restricting its visibility: `crate`
+   |     in this macro invocation
    |
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:49:9
+  --> $DIR/unreachable_pub.rs:50:9
    |
 LL |         pub fn catalyze() -> bool;
    |         ---^^^^^^^^^^^^^^^^^^^^^^^

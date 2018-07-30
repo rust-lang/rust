@@ -22,7 +22,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: &MetaItem,
                             item: &Annotatable,
-                            push: &mut FnMut(Annotatable)) {
+                            push: &mut dyn FnMut(Annotatable)) {
 
     let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
 
@@ -95,9 +95,8 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         _ => cx.span_bug(trait_span, "impossible substructure in `derive(Hash)`"),
     };
 
-    for &FieldInfo { ref self_, span, .. } in fields {
-        stmts.push(call_hash(span, self_.clone()));
-    }
+    stmts.extend(fields.iter().map(|FieldInfo { ref self_, span, .. }|
+        call_hash(*span, self_.clone())));
 
     cx.expr_block(cx.block(trait_span, stmts))
 }

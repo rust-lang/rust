@@ -12,6 +12,7 @@
 
 const C: &'static [u8; 5] = b"hello";
 
+#[allow(const_err)]
 fn mir() -> u8 {
     C[10]
 }

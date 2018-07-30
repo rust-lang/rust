@@ -11,7 +11,7 @@
 //! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
-use middle::const_val::ConstVal;
+use mir::interpret::ConstValue;
 use ty::{self, Ty};
 use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
@@ -92,8 +92,11 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TySlice(ty) => {
             stack.push(ty);
         }
-        ty::TyRawPtr(ref mt) | ty::TyRef(_, ref mt) => {
+        ty::TyRawPtr(ref mt) => {
             stack.push(mt.ty);
+        }
+        ty::TyRef(_, ty, _) => {
+            stack.push(ty);
         }
         ty::TyProjection(ref data) => {
             stack.extend(data.substs.types().rev());
@@ -118,8 +121,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TyClosure(_, ref substs) => {
             stack.extend(substs.substs.types().rev());
         }
-        ty::TyGenerator(_, ref substs, ref interior) => {
-            stack.push(interior.witness);
+        ty::TyGenerator(_, ref substs, _) => {
             stack.extend(substs.substs.types().rev());
         }
         ty::TyGeneratorWitness(ts) => {
@@ -139,11 +141,8 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
 }
 
 fn push_const<'tcx>(stack: &mut TypeWalkerStack<'tcx>, constant: &'tcx ty::Const<'tcx>) {
-    match constant.val {
-        ConstVal::Value(_) => {}
-        ConstVal::Unevaluated(_, substs) => {
-            stack.extend(substs.types().rev());
-        }
+    if let ConstValue::Unevaluated(_, substs) = constant.val {
+        stack.extend(substs.types().rev());
     }
     stack.push(constant.ty);
 }

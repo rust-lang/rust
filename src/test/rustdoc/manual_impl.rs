@@ -56,7 +56,6 @@ impl T for S1 {
 // @!has - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'
 // @!has - '//*[@class="docblock"]' 'Docs associated with the trait c_method definition.'
 // @has - '//*[@class="docblock"]' 'Docs associated with the trait b_method definition.'
-// @!has - '//*[@class="docblock"]' 'Read more'
 pub struct S2(usize);
 
 /// Docs associated with the S2 trait implementation.

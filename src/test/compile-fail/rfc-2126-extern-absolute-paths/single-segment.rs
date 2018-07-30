@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:xcrate.rs
+// edition:2018
 
 #![feature(crate_in_paths)]
 #![feature(extern_absolute_paths)]

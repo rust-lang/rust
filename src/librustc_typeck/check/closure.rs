@@ -18,9 +18,9 @@ use rustc::infer::{InferOk, InferResult};
 use rustc::infer::LateBoundRegionConversionTime;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::error_reporting::ArgKind;
-use rustc::ty::{self, ToPolyTraitRef, Ty};
+use rustc::ty::{self, ToPolyTraitRef, Ty, GenericParamDefKind};
+use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
-use rustc::ty::TypeFoldable;
 use std::cmp;
 use std::iter;
 use rustc_target::spec::abi::Abi;
@@ -104,31 +104,39 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // inference phase (`upvar.rs`).
         let base_substs =
             Substs::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
-        let substs = base_substs.extend_to(
-            self.tcx,
-            expr_def_id,
-            |_, _| span_bug!(expr.span, "closure has region param"),
-            |_, _| {
-                self.infcx
-                    .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span))
-            },
-        );
-        let substs = ty::ClosureSubsts { substs };
-        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
-
-        if let Some(GeneratorTypes { yield_ty, interior }) = generator_types {
+        let substs = base_substs.extend_to(self.tcx,expr_def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    span_bug!(expr.span, "closure has region param")
+                }
+                GenericParamDefKind::Type {..} => {
+                    self.infcx
+                        .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)).into()
+                }
+            }
+        });
+        if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
+            let substs = ty::GeneratorSubsts { substs };
             self.demand_eqtype(
                 expr.span,
                 yield_ty,
-                substs.generator_yield_ty(expr_def_id, self.tcx),
+                substs.yield_ty(expr_def_id, self.tcx),
             );
             self.demand_eqtype(
                 expr.span,
                 liberated_sig.output(),
-                substs.generator_return_ty(expr_def_id, self.tcx),
+                substs.return_ty(expr_def_id, self.tcx),
             );
-            return self.tcx.mk_generator(expr_def_id, substs, interior);
+            self.demand_eqtype(
+                expr.span,
+                interior,
+                substs.witness(expr_def_id, self.tcx),
+            );
+            return self.tcx.mk_generator(expr_def_id, substs, movability);
         }
+
+        let substs = ty::ClosureSubsts { substs };
+        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         debug!(
             "check_closure: expr.id={:?} closure_type={:?}",
@@ -217,7 +225,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expected_sig = fulfillment_cx
             .pending_obligations()
             .iter()
-            .map(|obligation| &obligation.obligation)
             .filter_map(|obligation| {
                 debug!(
                     "deduce_expectations_from_obligations: obligation.predicate={:?}",
@@ -249,7 +256,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expected_kind = fulfillment_cx
             .pending_obligations()
             .iter()
-            .map(|obligation| &obligation.obligation)
             .filter_map(|obligation| {
                 let opt_trait_ref = match obligation.predicate {
                     ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref(self.tcx)),
@@ -457,7 +463,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Create a `PolyFnSig`. Note the oddity that late bound
         // regions appearing free in `expected_sig` are now bound up
         // in this binder we are creating.
-        assert!(!expected_sig.sig.has_regions_escaping_depth(1));
+        assert!(!expected_sig.sig.has_regions_bound_above(ty::INNERMOST));
         let bound_sig = ty::Binder::bind(self.tcx.mk_fn_sig(
             expected_sig.sig.inputs().iter().cloned(),
             expected_sig.sig.output(),
@@ -598,7 +604,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// If there is no expected signature, then we will convert the
     /// types that the user gave into a signature.
     fn supplied_sig_of_closure(&self, decl: &hir::FnDecl) -> ty::PolyFnSig<'tcx> {
-        let astconv: &AstConv = self;
+        let astconv: &dyn AstConv = self;
 
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
@@ -624,7 +630,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// so should yield an error, but returns back a signature where
     /// all parameters are of type `TyErr`.
     fn error_sig_of_closure(&self, decl: &hir::FnDecl) -> ty::PolyFnSig<'tcx> {
-        let astconv: &AstConv = self;
+        let astconv: &dyn AstConv = self;
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.

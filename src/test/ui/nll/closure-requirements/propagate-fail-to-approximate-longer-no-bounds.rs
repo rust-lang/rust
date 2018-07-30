@@ -46,7 +46,7 @@ fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
         // Only works if 'x: 'y:
         demand_y(x, y, x.get())
         //~^ WARN not reporting region error due to nll
-        //~| ERROR does not outlive free region
+        //~| ERROR
     });
 }
 

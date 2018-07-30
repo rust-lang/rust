@@ -98,7 +98,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(stage0))]
     fn test_reverse_bits() {
         assert_eq!(A.reverse_bits().reverse_bits(), A);
         assert_eq!(B.reverse_bits().reverse_bits(), B);

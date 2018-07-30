@@ -79,8 +79,9 @@ from your example, but are important to make the tests work. Consider
 an example block that looks like this:
 
 ```text
-/// Some documentation.
-# fn foo() {}
+/// /// Some documentation.
+/// # fn foo() {} // this function will be hidden
+/// println!("Hello, World!");
 ```
 
 It will render like this:
@@ -88,6 +89,7 @@ It will render like this:
 ```rust
 /// Some documentation.
 # fn foo() {}
+println!("Hello, World!");
 ```
 
 Yes, that's right: you can add lines that start with `# `, and they will
@@ -168,37 +170,73 @@ By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
 explanation.
 
-Another case where the use of `#` is handy is when you want to ignore
-error handling. Lets say you want the following,
+The `#`-hiding of lines can be prevented by using two consecutive hashes
+`##`. This only needs to be done with with the first `#` which would've
+otherwise caused hiding. If we have a string literal like the following,
+which has a line that starts with a `#`:
+
+```rust
+let s = "foo
+## bar # baz";
+```
+
+We can document it by escaping the initial `#`:
+
+```text
+/// let s = "foo
+/// ## bar # baz";
+```
+
+
+## Using `?` in doc tests
+
+When writing an example, it is rarely useful to include a complete error
+handling, as it would add significant amounts of boilerplate code. Instead, you
+may want the following:
 
 ```ignore
+/// ```
 /// use std::io;
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
+/// ```
 ```
 
-The problem is that `?` returns a `Result<T, E>` and test functions
-don't return anything so this will give a mismatched types error.
+The problem is that `?` returns a `Result<T, E>` and test functions don't
+return anything, so this will give a mismatched types error.
+
+You can get around this limitation by manually adding a `main` that returns
+`Result<T, E>`, because `Result<T, E>` implements the `Termination` trait:
 
 ```ignore
 /// A doc test using ?
 ///
 /// ```
 /// use std::io;
-/// # fn foo() -> io::Result<()> {
+///
+/// fn main() -> io::Result<()> {
+///     let mut input = String::new();
+///     io::stdin().read_line(&mut input)?;
+///     Ok(())
+/// }
+/// ```
+```
+
+Together with the `# ` from the section above, you arrive at a solution that
+appears to the reader as the initial idea but works with doc tests:
+
+```ignore
+/// ```
+/// use std::io;
+/// # fn main() -> io::Result<()> {
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
 /// # Ok(())
 /// # }
 /// ```
-# fn foo() {}
 ```
 
-You can get around this by wrapping the code in a function. This catches
-and swallows the `Result<T, E>` when running tests on the docs. This
-pattern appears regularly in the standard library.
-
-### Documenting macros
+## Documenting macros
 
 Here’s an example of documenting a macro:
 
@@ -268,10 +306,10 @@ not actually pass as a test.
 # fn foo() {}
 ```
 
-`compile_fail` tells `rustdoc` that the compilation should fail. If it
-compiles, then the test will fail. However please note that code failing
-with the current Rust release may work in a future release, as new features
-are added.
+The `no_run` attribute will compile your code, but not run it. This is
+important for examples such as "Here's how to retrieve a web page,"
+which you would want to ensure compiles, but might be run in a test
+environment that has no network access.
 
 ```text
 /// ```compile_fail
@@ -280,7 +318,31 @@ are added.
 /// ```
 ```
 
-The `no_run` attribute will compile your code, but not run it. This is
-important for examples such as "Here's how to retrieve a web page,"
-which you would want to ensure compiles, but might be run in a test
-environment that has no network access.
+`compile_fail` tells `rustdoc` that the compilation should fail. If it
+compiles, then the test will fail. However please note that code failing
+with the current Rust release may work in a future release, as new features
+are added.
+
+## Syntax reference
+
+The *exact* syntax for code blocks, including the edge cases, can be found
+in the [Fenced Code Blocks](https://spec.commonmark.org/0.28/#fenced-code-blocks)
+section of the CommonMark specification.
+
+Rustdoc also accepts *indented* code blocks as an alternative to fenced
+code blocks: instead of surrounding your code with three backticks, you
+can indent each line by four or more spaces.
+
+``````markdown
+    let foo = "foo";
+    assert_eq!(foo, "foo");
+``````
+
+These, too, are documented in the CommonMark specification, in the
+[Indented Code Blocks](https://spec.commonmark.org/0.28/#indented-code-blocks)
+section.
+
+However, it's preferable to use fenced code blocks over indented code blocks.
+Not only are fenced code blocks considered more idiomatic for Rust code,
+but there is no way to use directives such as `ignore` or `should_panic` with
+indented code blocks.

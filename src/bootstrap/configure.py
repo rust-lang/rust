@@ -47,7 +47,7 @@ o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
 o("experimental-parallel-queries", "rust.experimental-parallel-queries", "build rustc with experimental parallelization")
 o("test-miri", "rust.test-miri", "run miri's test suite")
 o("debuginfo-tests", "rust.debuginfo-tests", "build tests with debugger metadata")
-o("quiet-tests", "rust.quiet-tests", "enable quieter output when running tests")
+o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tests")
 o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds")
 o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
 o("local-rust", None, "use an installed rustc rather than downloading a snapshot")
@@ -335,6 +335,7 @@ for key in known_args:
     elif option.name == 'full-tools':
         set('rust.codegen-backends', ['llvm', 'emscripten'])
         set('rust.lld', True)
+        set('rust.llvm-tools', True)
         set('build.extended', True)
     elif option.name == 'option-checking':
         # this was handled above
@@ -431,7 +432,7 @@ for section_key in config:
 # order that we read it in.
 p("")
 p("writing `config.toml` in current directory")
-with open('config.toml', 'w') as f:
+with bootstrap.output('config.toml') as f:
     for section in section_order:
         if section == 'target':
             for target in targets:
@@ -441,7 +442,7 @@ with open('config.toml', 'w') as f:
             for line in sections[section]:
                 f.write(line + "\n")
 
-with open('Makefile', 'w') as f:
+with bootstrap.output('Makefile') as f:
     contents = os.path.join(rust_dir, 'src', 'bootstrap', 'mk', 'Makefile.in')
     contents = open(contents).read()
     contents = contents.replace("$(CFG_SRC_DIR)", rust_dir + '/')

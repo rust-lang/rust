@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
-use middle::const_val::ConstVal;
+use mir::interpret::ConstValue;
 use middle::region::{self, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
@@ -19,9 +19,8 @@ use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
-use mir::interpret::{Value, PrimVal};
 
 use std::cell::Cell;
 use std::fmt;
@@ -32,6 +31,12 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};
 use hir;
+
+thread_local! {
+    /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
+    /// Contains region to highlight and counter for number to use when highlighting.
+    static HIGHLIGHT_REGION: Cell<Option<(RegionVid, usize)>> = Cell::new(None)
+}
 
 macro_rules! gen_display_debug_body {
     ( $with:path ) => {
@@ -257,8 +262,10 @@ impl PrintContext {
         let verbose = self.is_verbose;
         let mut num_supplied_defaults = 0;
         let mut has_self = false;
-        let mut num_regions = 0;
-        let mut num_types = 0;
+        let mut own_counts = GenericParamCount {
+            lifetimes: 0,
+            types: 0,
+        };
         let mut is_value_path = false;
         let fn_trait_kind = ty::tls::with(|tcx| {
             // Unfortunately, some kinds of items (e.g., closures) don't have
@@ -270,6 +277,7 @@ impl PrintContext {
                 match key.disambiguated_data.data {
                     DefPathData::AssocTypeInTrait(_) |
                     DefPathData::AssocTypeInImpl(_) |
+                    DefPathData::AssocExistentialInImpl(_) |
                     DefPathData::Trait(_) |
                     DefPathData::TypeNs(_) => {
                         break;
@@ -286,12 +294,11 @@ impl PrintContext {
                     DefPathData::MacroDef(_) |
                     DefPathData::ClosureExpr |
                     DefPathData::TypeParam(_) |
-                    DefPathData::LifetimeDef(_) |
+                    DefPathData::LifetimeParam(_) |
                     DefPathData::Field(_) |
                     DefPathData::StructCtor |
-                    DefPathData::Initializer |
+                    DefPathData::AnonConst |
                     DefPathData::ImplTrait |
-                    DefPathData::Typeof |
                     DefPathData::GlobalMetaData(_) => {
                         // if we're making a symbol for something, there ought
                         // to be a value or type-def or something in there
@@ -304,6 +311,7 @@ impl PrintContext {
                 }
             }
             let mut generics = tcx.generics_of(item_def_id);
+            let child_own_counts = generics.own_counts();
             let mut path_def_id = did;
             has_self = generics.has_self;
 
@@ -311,10 +319,9 @@ impl PrintContext {
             if let Some(def_id) = generics.parent {
                 // Methods.
                 assert!(is_value_path);
-                child_types = generics.types.len();
+                child_types = child_own_counts.types;
                 generics = tcx.generics_of(def_id);
-                num_regions = generics.regions.len();
-                num_types = generics.types.len();
+                own_counts = generics.own_counts();
 
                 if has_self {
                     print!(f, self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
@@ -329,20 +336,30 @@ impl PrintContext {
                     assert_eq!(has_self, false);
                 } else {
                     // Types and traits.
-                    num_regions = generics.regions.len();
-                    num_types = generics.types.len();
+                    own_counts = child_own_counts;
                 }
             }
 
             if !verbose {
-                if generics.types.last().map_or(false, |def| def.has_default) {
+                let mut type_params =
+                    generics.params.iter().rev().filter_map(|param| match param.kind {
+                        GenericParamDefKind::Lifetime => None,
+                        GenericParamDefKind::Type { has_default, .. } => {
+                            Some((param.def_id, has_default))
+                        }
+                    }).peekable();
+                let has_default = {
+                    let has_default = type_params.peek().map(|(_, has_default)| has_default);
+                    *has_default.unwrap_or(&false)
+                };
+                if has_default {
                     if let Some(substs) = tcx.lift(&substs) {
-                        let tps = substs.types().rev().skip(child_types);
-                        for (def, actual) in generics.types.iter().rev().zip(tps) {
-                            if !def.has_default {
+                        let mut types = substs.types().rev().skip(child_types);
+                        for ((def_id, has_default), actual) in type_params.zip(types) {
+                            if !has_default {
                                 break;
                             }
-                            if tcx.type_of(def.def_id).subst(tcx, substs) != actual {
+                            if tcx.type_of(def_id).subst(tcx, substs) != actual {
                                 break;
                             }
                             num_supplied_defaults += 1;
@@ -402,10 +419,11 @@ impl PrintContext {
             Ok(())
         };
 
-        print_regions(f, "<", 0, num_regions)?;
+        print_regions(f, "<", 0, own_counts.lifetimes)?;
 
-        let tps = substs.types().take(num_types - num_supplied_defaults)
-                                .skip(has_self as usize);
+        let tps = substs.types()
+                        .take(own_counts.types - num_supplied_defaults)
+                        .skip(has_self as usize);
 
         for ty in tps {
             start_or_continue(f, "<", ", ")?;
@@ -417,7 +435,7 @@ impl PrintContext {
             ty::tls::with(|tcx|
                 print!(f, self,
                        write("{}=",
-                             tcx.associated_item(projection.projection_ty.item_def_id).name),
+                             tcx.associated_item(projection.projection_ty.item_def_id).ident),
                        print_display(projection.ty))
             )?;
         }
@@ -436,10 +454,10 @@ impl PrintContext {
                 write!(f, "::{}", item_name)?;
             }
 
-            print_regions(f, "::<", num_regions, usize::MAX)?;
+            print_regions(f, "::<", own_counts.lifetimes, usize::MAX)?;
 
             // FIXME: consider being smart with defaults here too
-            for ty in substs.types().skip(num_types) {
+            for ty in substs.types().skip(own_counts.types) {
                 start_or_continue(f, "::<", ", ")?;
                 ty.print_display(f, self)?;
             }
@@ -513,7 +531,7 @@ impl PrintContext {
                     ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID), name)
                 }
             };
-            tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), br))
+            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
         }).0;
         start_or_continue(f, "", "> ")?;
 
@@ -550,6 +568,19 @@ pub fn parameterized<F: fmt::Write>(f: &mut F,
     PrintContext::new().parameterized(f, substs, did, projections)
 }
 
+fn get_highlight_region() -> Option<(RegionVid, usize)> {
+    HIGHLIGHT_REGION.with(|hr| hr.get())
+}
+
+pub fn with_highlight_region<R>(r: RegionVid, counter: usize, op: impl FnOnce() -> R) -> R {
+    HIGHLIGHT_REGION.with(|hr| {
+        assert_eq!(hr.get(), None);
+        hr.set(Some((r, counter)));
+        let r = op();
+        hr.set(None);
+        r
+    })
+}
 
 impl<'a, T: Print> Print for &'a T {
     fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result {
@@ -589,18 +620,14 @@ define_print! {
     }
 }
 
-impl fmt::Debug for ty::TypeParameterDef {
+impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeParameterDef({}, {:?}, {})",
-               self.name,
-               self.def_id,
-               self.index)
-    }
-}
-
-impl fmt::Debug for ty::RegionParameterDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionParameterDef({}, {:?}, {})",
+        let type_name = match self.kind {
+            ty::GenericParamDefKind::Lifetime => "Lifetime",
+            ty::GenericParamDefKind::Type {..} => "Type",
+        };
+        write!(f, "{}({}, {:?}, {})",
+               type_name,
                self.name,
                self.def_id,
                self.index)
@@ -725,7 +752,7 @@ define_print! {
 define_print! {
     () ty::RegionKind, (self, f, cx) {
         display {
-            if cx.is_verbose {
+            if cx.is_verbose || get_highlight_region().is_some() {
                 return self.print_debug(f, cx);
             }
 
@@ -897,6 +924,15 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some((region, counter)) = get_highlight_region() {
+            debug!("RegionVid.fmt: region={:?} self={:?} counter={:?}", region, self, counter);
+            return if *self == region {
+                write!(f, "'{:?}", counter)
+            } else {
+                write!(f, "'_")
+            }
+        }
+
         write!(f, "'_#{}r", self.index())
     }
 }
@@ -996,14 +1032,6 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::GeneratorInterior<'tcx>, (self, f, cx) {
-        display {
-            self.witness.print(f, cx)
-        }
-    }
-}
-
-define_print! {
     ('tcx) ty::TypeVariants<'tcx>, (self, f, cx) {
         display {
             match *self {
@@ -1019,14 +1047,16 @@ define_print! {
                     })?;
                     tm.ty.print(f, cx)
                 }
-                TyRef(r, ref tm) => {
+                TyRef(r, ty, mutbl) => {
                     write!(f, "&")?;
                     let s = r.print_to_string(cx);
-                    write!(f, "{}", s)?;
-                    if !s.is_empty() {
-                        write!(f, " ")?;
+                    if s != "'_" {
+                        write!(f, "{}", s)?;
+                        if !s.is_empty() {
+                            write!(f, " ")?;
+                        }
                     }
-                    tm.print(f, cx)
+                    ty::TypeAndMut { ty, mutbl }.print(f, cx)
                 }
                 TyNever => write!(f, "!"),
                 TyTuple(ref tys) => {
@@ -1062,10 +1092,14 @@ define_print! {
                 TyParam(ref param_ty) => write!(f, "{}", param_ty),
                 TyAdt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
                 TyDynamic(data, r) => {
-                    data.print(f, cx)?;
                     let r = r.print_to_string(cx);
                     if !r.is_empty() {
-                        write!(f, " + {}", r)
+                        write!(f, "(")?;
+                    }
+                    write!(f, "dyn ")?;
+                    data.print(f, cx)?;
+                    if !r.is_empty() {
+                        write!(f, " + {})", r)
                     } else {
                         Ok(())
                     }
@@ -1078,6 +1112,20 @@ define_print! {
                     }
 
                     ty::tls::with(|tcx| {
+                        let def_key = tcx.def_key(def_id);
+                        if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
+                            write!(f, "{}", name)?;
+                            let mut substs = substs.iter();
+                            if let Some(first) = substs.next() {
+                                write!(f, "::<")?;
+                                write!(f, "{}", first)?;
+                                for subst in substs {
+                                    write!(f, ", {}", subst)?;
+                                }
+                                write!(f, ">")?;
+                            }
+                            return Ok(());
+                        }
                         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                         // by looking up the projections associated with the def_id.
                         let predicates_of = tcx.predicates_of(def_id);
@@ -1110,9 +1158,10 @@ define_print! {
                     })
                 }
                 TyStr => write!(f, "str"),
-                TyGenerator(did, substs, interior) => ty::tls::with(|tcx| {
+                TyGenerator(did, substs, movability) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
-                    if interior.movable {
+                    let witness = substs.witness(did, tcx);
+                    if movability == hir::GeneratorMovability::Movable {
                         write!(f, "[generator")?;
                     } else {
                         write!(f, "[static generator")?;
@@ -1134,7 +1183,7 @@ define_print! {
                         })?
                     } else {
                         // cross-crate closure types should only be
-                        // visible in trans bug reports, I imagine.
+                        // visible in codegen bug reports, I imagine.
                         write!(f, "@{:?}", did)?;
                         let mut sep = " ";
                         for (index, upvar_ty) in upvar_tys.enumerate() {
@@ -1145,7 +1194,7 @@ define_print! {
                         }
                     }
 
-                    print!(f, cx, write(" "), print(interior), write("]"))
+                    print!(f, cx, write(" "), print(witness), write("]"))
                 }),
                 TyGeneratorWitness(types) => {
                     ty::tls::with(|tcx| cx.in_binder(f, tcx, &types, tcx.lift(&types)))
@@ -1174,7 +1223,7 @@ define_print! {
                         })?
                     } else {
                         // cross-crate closure types should only be
-                        // visible in trans bug reports, I imagine.
+                        // visible in codegen bug reports, I imagine.
                         write!(f, "@{:?}", did)?;
                         let mut sep = " ";
                         for (index, upvar_ty) in upvar_tys.enumerate() {
@@ -1190,15 +1239,12 @@ define_print! {
                 TyArray(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
                     match sz.val {
-                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(sz))) => {
-                            write!(f, "{}", sz)?;
-                        }
-                        ConstVal::Unevaluated(_def_id, _substs) => {
+                        ConstValue::Unevaluated(_def_id, _substs) => {
                             write!(f, "_")?;
                         }
-                        _ => {
-                            write!(f, "{:?}", sz)?;
-                        }
+                        _ => ty::tls::with(|tcx| {
+                            write!(f, "{}", sz.unwrap_usize(tcx))
+                        })?,
                     }
                     write!(f, "]")
                 }
@@ -1284,7 +1330,7 @@ define_print! {
             //   parameterized(f, self.substs, self.item_def_id, &[])
             // (which currently ICEs).
             let (trait_ref, item_name) = ty::tls::with(|tcx|
-                (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).name)
+                (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).ident)
             );
             print!(f, cx, print_debug(trait_ref), write("::{}", item_name))
         }

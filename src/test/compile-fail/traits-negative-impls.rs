@@ -31,8 +31,8 @@ fn dummy() {
     impl !Send for TestType {}
 
     Outer(TestType);
-    //~^ ERROR `dummy::TestType: std::marker::Send` is not satisfied
-    //~| ERROR `dummy::TestType: std::marker::Send` is not satisfied
+    //~^ ERROR `dummy::TestType` cannot be sent between threads safely
+    //~| ERROR `dummy::TestType` cannot be sent between threads safely
 }
 
 fn dummy1b() {
@@ -40,7 +40,7 @@ fn dummy1b() {
     impl !Send for TestType {}
 
     is_send(TestType);
-    //~^ ERROR `dummy1b::TestType: std::marker::Send` is not satisfied
+    //~^ ERROR `dummy1b::TestType` cannot be sent between threads safely
 }
 
 fn dummy1c() {
@@ -48,7 +48,7 @@ fn dummy1c() {
     impl !Send for TestType {}
 
     is_send((8, TestType));
-    //~^ ERROR `dummy1c::TestType: std::marker::Send` is not satisfied
+    //~^ ERROR `dummy1c::TestType` cannot be sent between threads safely
 }
 
 fn dummy2() {
@@ -56,7 +56,7 @@ fn dummy2() {
     impl !Send for TestType {}
 
     is_send(Box::new(TestType));
-    //~^ ERROR `dummy2::TestType: std::marker::Send` is not satisfied
+    //~^ ERROR `dummy2::TestType` cannot be sent between threads safely
 }
 
 fn dummy3() {
@@ -64,7 +64,7 @@ fn dummy3() {
     impl !Send for TestType {}
 
     is_send(Box::new(Outer2(TestType)));
-    //~^ ERROR `dummy3::TestType: std::marker::Send` is not satisfied
+    //~^ ERROR `dummy3::TestType` cannot be sent between threads safely
 }
 
 fn main() {
@@ -74,5 +74,5 @@ fn main() {
     // This will complain about a missing Send impl because `Sync` is implement *just*
     // for T that are `Send`. Look at #20366 and #19950
     is_sync(Outer2(TestType));
-    //~^ ERROR `main::TestType: std::marker::Send` is not satisfied
+    //~^ ERROR `main::TestType` cannot be sent between threads safely
 }

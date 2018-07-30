@@ -14,7 +14,6 @@
 #![feature(iter_empty)]
 #![feature(iter_once)]
 #![feature(iter_unfold)]
-#![feature(iterator_step_by)]
 #![feature(str_escape)]
 
 use std::iter::{empty, once, repeat};

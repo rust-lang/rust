@@ -39,6 +39,9 @@ pub fn install_cargo(builder: &Builder, stage: u32, host: Interned<String>) {
 pub fn install_rls(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "rls", "rls", stage, Some(host));
 }
+pub fn install_clippy(builder: &Builder, stage: u32, host: Interned<String>) {
+    install_sh(builder, "clippy", "clippy", stage, Some(host));
+}
 
 pub fn install_rustfmt(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "rustfmt", "rustfmt", stage, Some(host));
@@ -72,7 +75,7 @@ fn install_sh(
     let libdir_default = PathBuf::from("lib");
     let mandir_default = datadir_default.join("man");
     let prefix = builder.config.prefix.as_ref().map_or(prefix_default, |p| {
-        fs::canonicalize(p).expect(&format!("could not canonicalize {}", p.display()))
+        fs::canonicalize(p).unwrap_or_else(|_| panic!("could not canonicalize {}", p.display()))
     });
     let sysconfdir = builder.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
     let datadir = builder.config.datadir.as_ref().unwrap_or(&datadir_default);
@@ -214,6 +217,14 @@ install!((self, builder, _config),
             install_rls(builder, self.stage, self.target);
         } else {
             builder.info(&format!("skipping Install RLS stage{} ({})", self.stage, self.target));
+        }
+    };
+    Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
+        if builder.ensure(dist::Clippy { stage: self.stage, target: self.target }).is_some() ||
+            Self::should_install(builder) {
+            install_clippy(builder, self.stage, self.target);
+        } else {
+            builder.info(&format!("skipping Install clippy stage{} ({})", self.stage, self.target));
         }
     };
     Rustfmt, "rustfmt", Self::should_build(_config), only_hosts: true, {

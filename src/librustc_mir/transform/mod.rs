@@ -13,7 +13,7 @@ use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Mir, Promoted};
 use rustc::ty::TyCtxt;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -225,7 +225,10 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
     let _ = tcx.mir_borrowck(def_id);
-    let _ = tcx.borrowck(def_id);
+
+    if tcx.use_ast_borrowck() {
+        let _ = tcx.borrowck(def_id);
+    }
 
     let mut mir = tcx.mir_validated(def_id).steal();
     run_passes![tcx, mir, def_id, 2;
@@ -277,7 +280,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         simplify::SimplifyLocals,
 
         add_call_guards::CriticalCallEdges,
-        dump_mir::Marker("PreTrans"),
+        dump_mir::Marker("PreCodegen"),
     ];
     tcx.alloc_mir(mir)
 }

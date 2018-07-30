@@ -10,11 +10,11 @@ note: unclosed delimiter
 LL |     option.map(|some| 42;
    |               ^
 
-error: expected one of `,`, `.`, `?`, or an operator, found `;`
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/issue-10636-2.rs:15:25
    |
 LL |     option.map(|some| 42;
-   |                         ^ expected one of `,`, `.`, `?`, or an operator here
+   |                         ^ expected one of `)`, `,`, `.`, `?`, or an operator here
 
 error: expected expression, found `)`
   --> $DIR/issue-10636-2.rs:18:1

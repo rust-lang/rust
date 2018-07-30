@@ -1,0 +1,140 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-errors.rs:19:13
+   |
+LL |     let b = *a;
+   |             ^^
+   |             |
+   |             cannot move out of borrowed content
+   |             help: consider removing this dereference operator: `a`
+
+error[E0508]: cannot move out of type `[A; 1]`, a non-copy array
+  --> $DIR/move-errors.rs:25:13
+   |
+LL |     let b = a[0];
+   |             ^^^^
+   |             |
+   |             cannot move out of here
+   |             help: consider using a reference instead: `&a[0]`
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-errors.rs:32:13
+   |
+LL |     let s = **r;
+   |             ^^^
+   |             |
+   |             cannot move out of borrowed content
+   |             help: consider using a reference instead: `&**r`
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-errors.rs:40:13
+   |
+LL |     let s = *r;
+   |             ^^
+   |             |
+   |             cannot move out of borrowed content
+   |             help: consider using a reference instead: `&*r`
+
+error[E0508]: cannot move out of type `[A; 1]`, a non-copy array
+  --> $DIR/move-errors.rs:45:13
+   |
+LL |     let a = [A("".to_string())][0];
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             cannot move out of here
+   |             help: consider using a reference instead: `&[A("".to_string())][0]`
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-errors.rs:51:16
+   |
+LL |     let A(s) = *a;
+   |           -    ^^
+   |           |    |
+   |           |    cannot move out of borrowed content
+   |           |    help: consider removing this dereference operator: `a`
+   |           move occurs because s has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
+  --> $DIR/move-errors.rs:57:19
+   |
+LL |     let C(D(s)) = c;
+   |             -     ^ cannot move out of here
+   |             |
+   |             help: to prevent move, use ref or ref mut: `ref s`
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-errors.rs:64:9
+   |
+LL |     b = *a;
+   |         ^^ cannot move out of borrowed content
+
+error[E0508]: cannot move out of type `[B; 1]`, a non-copy array
+  --> $DIR/move-errors.rs:87:11
+   |
+LL |     match x[0] {
+   |           ^^^^
+   |           |
+   |           cannot move out of here
+   |           help: consider using a reference instead: `&x[0]`
+LL |     //~^ ERROR
+LL |         B::U(d) => (),
+   |              - move occurs because d has type `D`, which does not implement the `Copy` trait
+LL |         B::V(s) => (),
+   |              - move occurs because s has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
+  --> $DIR/move-errors.rs:96:11
+   |
+LL |     match x {
+   |           ^ cannot move out of here
+...
+LL |         B::U(D(s)) => (),
+   |                - help: to prevent move, use ref or ref mut: `ref s`
+
+error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
+  --> $DIR/move-errors.rs:105:11
+   |
+LL |     match x {
+   |           ^ cannot move out of here
+...
+LL |         (D(s), &t) => (),
+   |            - help: to prevent move, use ref or ref mut: `ref s`
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-errors.rs:105:11
+   |
+LL |     match x {
+   |           ^ cannot move out of borrowed content
+...
+LL |         (D(s), &t) => (),
+   |                 - help: to prevent move, use ref or ref mut: `ref t`
+
+error[E0509]: cannot move out of type `F`, which implements the `Drop` trait
+  --> $DIR/move-errors.rs:115:11
+   |
+LL |     match x {
+   |           ^ cannot move out of here
+help: to prevent move, use ref or ref mut
+   |
+LL |         F(ref s, mut t) => (),
+   |           ^^^^^
+help: to prevent move, use ref or ref mut
+   |
+LL |         F(s, ref mut t) => (),
+   |              ^^^^^^^^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/move-errors.rs:123:11
+   |
+LL |     match *x {
+   |           ^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider removing this dereference operator: `x`
+LL |     //~^ ERROR
+LL |         Ok(s) | Err(s) => (),
+   |            - move occurs because s has type `std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to 14 previous errors
+
+Some errors occurred: E0507, E0508, E0509.
+For more information about an error, try `rustc --explain E0507`.

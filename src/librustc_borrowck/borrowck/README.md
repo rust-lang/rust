@@ -3,7 +3,7 @@
 > WARNING: This README is more or less obsolete, and will be removed
 > soon! The new system is described in the [rustc guide].
 
-[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir-borrowck.html
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir/borrowck.html
 
 This pass has the job of enforcing memory safety. This is a subtle
 topic. This docs aim to explain both the practice and the theory
@@ -1126,7 +1126,7 @@ fn foo(a: [D; 10], b: [D; 10], i: i32, t: bool) -> D {
 }
 ```
 
-There are a number of ways that the trans backend could choose to
+There are a number of ways that the codegen backend could choose to
 compile this (e.g. a `[bool; 10]` array for each such moved array;
 or an `Option<usize>` for each moved array).  From the viewpoint of the
 borrow-checker, the important thing is to record what kind of fragment

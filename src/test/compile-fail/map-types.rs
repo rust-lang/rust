@@ -25,5 +25,5 @@ fn main() {
     let x: Box<HashMap<isize, isize>> = box HashMap::new();
     let x: Box<Map<isize, isize>> = x;
     let y: Box<Map<usize, isize>> = Box::new(x);
-    //~^ ERROR `std::boxed::Box<Map<isize, isize>>: Map<usize, isize>` is not satisfied
+    //~^ ERROR `std::boxed::Box<dyn Map<isize, isize>>: Map<usize, isize>` is not satisfied
 }

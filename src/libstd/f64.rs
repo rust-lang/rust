@@ -11,21 +11,15 @@
 //! This module provides constants which are specific to the implementation
 //! of the `f64` floating point data type.
 //!
-//! Mathematically significant numbers are provided in the `consts` sub-module.
-//!
 //! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
 #[cfg(not(test))]
-#[cfg(stage0)]
-use core::num::Float;
-#[cfg(not(test))]
 use intrinsics;
-#[cfg(not(test))]
-#[cfg(stage0)]
-use num::FpCategory;
 #[cfg(not(test))]
 use sys::cmath;
 
@@ -41,13 +35,11 @@ pub use core::f64::{MIN, MIN_POSITIVE, MAX};
 pub use core::f64::consts;
 
 #[cfg(not(test))]
-#[cfg_attr(stage0, lang = "f64")]
-#[cfg_attr(not(stage0), lang = "f64_runtime")]
+#[lang = "f64_runtime"]
 impl f64 {
-    #[cfg(stage0)]
-    f64_core_methods!();
-
     /// Returns the largest integer less than or equal to a number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let f = 3.99_f64;
@@ -63,6 +55,8 @@ impl f64 {
     }
 
     /// Returns the smallest integer greater than or equal to a number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let f = 3.01_f64;
@@ -80,6 +74,8 @@ impl f64 {
     /// Returns the nearest integer to a number. Round half-way cases away from
     /// `0.0`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let f = 3.3_f64;
     /// let g = -3.3_f64;
@@ -94,6 +90,8 @@ impl f64 {
     }
 
     /// Returns the integer part of a number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let f = 3.3_f64;
@@ -110,6 +108,8 @@ impl f64 {
 
     /// Returns the fractional part of a number.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let x = 3.5_f64;
     /// let y = -3.5_f64;
@@ -125,6 +125,8 @@ impl f64 {
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f64;
@@ -152,6 +154,8 @@ impl f64 {
     /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
     /// - `NAN` if the number is `NAN`
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f64;
     ///
@@ -173,8 +177,12 @@ impl f64 {
     }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
-    /// error. This produces a more accurate result with better performance than
-    /// a separate multiplication operation followed by an add.
+    /// error, yielding a more accurate result than an unfused multiply-add.
+    ///
+    /// Using `mul_add` can be more performant than an unfused multiply-add if
+    /// the target architecture has a dedicated `fma` CPU instruction.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let m = 10.0_f64;
@@ -199,6 +207,8 @@ impl f64 {
     /// In other words, the result is `self / rhs` rounded to the integer `n`
     /// such that `self >= n * rhs`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// #![feature(euclidean_division)]
     /// let a: f64 = 7.0;
@@ -220,7 +230,16 @@ impl f64 {
 
     /// Calculates the Euclidean modulo (self mod rhs), which is never negative.
     ///
-    /// In particular, the result `n` satisfies `0 <= n < rhs.abs()`.
+    /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
+    /// most cases.  However, due to a floating point round-off error it can
+    /// result in `r == rhs.abs()`, violating the mathematical definition, if
+    /// `self` is much smaller than `rhs.abs()` in magnitude and `self < 0.0`.
+    /// This result is not an element of the function's codomain, but it is the
+    /// closest floating point number in the real numbers and thus fulfills the
+    /// property `self == self.div_euc(rhs) * rhs + self.mod_euc(rhs)`
+    /// approximatively.
+    ///
+    /// # Examples
     ///
     /// ```
     /// #![feature(euclidean_division)]
@@ -230,6 +249,8 @@ impl f64 {
     /// assert_eq!((-a).mod_euc(b), 1.0);
     /// assert_eq!(a.mod_euc(-b), 3.0);
     /// assert_eq!((-a).mod_euc(-b), 1.0);
+    /// // limitation due to round-off error
+    /// assert!((-std::f64::EPSILON).mod_euc(3.0) != 0.0);
     /// ```
     #[inline]
     #[unstable(feature = "euclidean_division", issue = "49048")]
@@ -246,6 +267,8 @@ impl f64 {
     ///
     /// Using this function is generally faster than using `powf`
     ///
+    /// # Examples
+    ///
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powi(2) - x*x).abs();
@@ -259,6 +282,8 @@ impl f64 {
     }
 
     /// Raises a number to a floating point power.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let x = 2.0_f64;
@@ -275,6 +300,8 @@ impl f64 {
     /// Takes the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let positive = 4.0_f64;
@@ -297,6 +324,8 @@ impl f64 {
 
     /// Returns `e^(self)`, (the exponential function).
     ///
+    /// # Examples
+    ///
     /// ```
     /// let one = 1.0_f64;
     /// // e^1
@@ -315,6 +344,8 @@ impl f64 {
 
     /// Returns `2^(self)`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let f = 2.0_f64;
     ///
@@ -330,6 +361,8 @@ impl f64 {
     }
 
     /// Returns the natural logarithm of the number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let one = 1.0_f64;
@@ -353,6 +386,8 @@ impl f64 {
     /// `self.log2()` can produce more accurate results for base 2, and
     /// `self.log10()` can produce more accurate results for base 10.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let five = 5.0_f64;
     ///
@@ -366,6 +401,8 @@ impl f64 {
     pub fn log(self, base: f64) -> f64 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let two = 2.0_f64;
@@ -388,6 +425,8 @@ impl f64 {
 
     /// Returns the base 10 logarithm of the number.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let ten = 10.0_f64;
     ///
@@ -406,6 +445,8 @@ impl f64 {
     ///
     /// * If `self <= other`: `0:0`
     /// * Else: `self - other`
+    ///
+    /// # Examples
     ///
     /// ```
     /// let x = 3.0_f64;
@@ -432,6 +473,8 @@ impl f64 {
 
     /// Takes the cubic root of a number.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let x = 8.0_f64;
     ///
@@ -448,6 +491,8 @@ impl f64 {
 
     /// Calculates the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let x = 2.0_f64;
@@ -466,6 +511,8 @@ impl f64 {
 
     /// Computes the sine of a number (in radians).
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f64;
     ///
@@ -482,6 +529,8 @@ impl f64 {
     }
 
     /// Computes the cosine of a number (in radians).
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f64;
@@ -500,6 +549,8 @@ impl f64 {
 
     /// Computes the tangent of a number (in radians).
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f64;
     ///
@@ -517,6 +568,8 @@ impl f64 {
     /// Computes the arcsine of a number. Return value is in radians in
     /// the range [-pi/2, pi/2] or NaN if the number is outside the range
     /// [-1, 1].
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f64;
@@ -538,6 +591,8 @@ impl f64 {
     /// the range [0, pi] or NaN if the number is outside the range
     /// [-1, 1].
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f64;
     ///
@@ -556,6 +611,8 @@ impl f64 {
 
     /// Computes the arctangent of a number. Return value is in radians in the
     /// range [-pi/2, pi/2];
+    ///
+    /// # Examples
     ///
     /// ```
     /// let f = 1.0_f64;
@@ -577,6 +634,8 @@ impl f64 {
     /// * `x >= 0`: `arctan(y/x)` -> `[-pi/2, pi/2]`
     /// * `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
     /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f64;
@@ -607,6 +666,8 @@ impl f64 {
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
     /// `(sin(x), cos(x))`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f64;
     ///
@@ -628,6 +689,8 @@ impl f64 {
     /// Returns `e^(self) - 1` in a way that is accurate even if the
     /// number is close to zero.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let x = 7.0_f64;
     ///
@@ -644,6 +707,8 @@ impl f64 {
 
     /// Returns `ln(1+n)` (natural logarithm) more accurately than if
     /// the operations were performed separately.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f64;
@@ -662,6 +727,8 @@ impl f64 {
     }
 
     /// Hyperbolic sine function.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f64;
@@ -684,6 +751,8 @@ impl f64 {
 
     /// Hyperbolic cosine function.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f64;
     ///
@@ -704,6 +773,8 @@ impl f64 {
     }
 
     /// Hyperbolic tangent function.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f64;
@@ -726,6 +797,8 @@ impl f64 {
 
     /// Inverse hyperbolic sine function.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let x = 1.0_f64;
     /// let f = x.sinh().asinh();
@@ -746,6 +819,8 @@ impl f64 {
 
     /// Inverse hyperbolic cosine function.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let x = 1.0_f64;
     /// let f = x.cosh().acosh();
@@ -764,6 +839,8 @@ impl f64 {
     }
 
     /// Inverse hyperbolic tangent function.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f64;

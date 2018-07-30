@@ -20,7 +20,7 @@
 #![allow(dead_code)]
 #![crate_type = "rlib"]
 
-#![rustc_partition_translated(module="struct_point-point", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-point", cfg="cfail2")]
 
 #![rustc_partition_reused(module="struct_point-fn_calls_methods_in_same_impl", cfg="cfail2")]
 #![rustc_partition_reused(module="struct_point-fn_calls_methods_in_another_impl", cfg="cfail2")]

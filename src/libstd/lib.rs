@@ -233,12 +233,14 @@
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 #![feature(alloc)]
-#![feature(allocator_api)]
+#![feature(alloc_error_handler)]
 #![feature(alloc_system)]
+#![feature(allocator_api)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(align_offset)]
+#![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(ascii_ctype)]
 #![feature(asm)]
@@ -252,7 +254,6 @@
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
-#![cfg_attr(stage0, feature(core_float))]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
@@ -260,12 +261,11 @@
 #![feature(fs_read_write)]
 #![feature(fixed_size_array)]
 #![feature(float_from_str_radix)]
-#![cfg_attr(stage0, feature(float_internals))]
 #![feature(fn_traits)]
 #![feature(fnbox)]
-#![cfg_attr(stage0, feature(generic_param_attrs))]
+#![feature(futures_api)]
+#![feature(generator_trait)]
 #![feature(hashmap_internals)]
-#![feature(heap_api)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
@@ -277,7 +277,6 @@
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
-#![feature(nonzero)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]
@@ -286,6 +285,7 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(peek)]
+#![feature(pin)]
 #![feature(placement_new_protocol)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
@@ -320,6 +320,10 @@
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
 #![feature(doc_alias)]
+#![feature(doc_keyword)]
+#![feature(float_internals)]
+#![feature(panic_info_message)]
+#![feature(panic_implementation)]
 
 #![default_lib_allocator]
 
@@ -329,9 +333,6 @@
 // `force_alloc_system` is *only* intended as a workaround for local rebuilds
 // with a rustc without jemalloc.
 // FIXME(#44236) shouldn't need MSVC logic
-#![cfg_attr(all(not(target_env = "msvc"),
-                any(all(stage0, not(test)), feature = "force_alloc_system")),
-            feature(global_allocator))]
 #[cfg(all(not(target_env = "msvc"),
           any(all(stage0, not(test)), feature = "force_alloc_system")))]
 #[global_allocator]
@@ -364,11 +365,6 @@ extern crate libc;
 #[doc(masked)]
 #[allow(unused_extern_crates)]
 extern crate unwind;
-
-// compiler-rt intrinsics
-#[doc(masked)]
-#[cfg(stage0)]
-extern crate compiler_builtins;
 
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source
@@ -486,12 +482,21 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
-/// Use the `alloc` module instead.
-pub mod heap {
-    pub use alloc::*;
+#[unstable(feature = "futures_api",
+           reason = "futures in libcore are unstable",
+           issue = "50547")]
+pub mod task {
+    //! Types and Traits for working with asynchronous tasks.
+    #[doc(inline)]
+    pub use core::task::*;
+    #[doc(inline)]
+    pub use alloc_crate::task::*;
 }
+
+#[unstable(feature = "futures_api",
+           reason = "futures in libcore are unstable",
+           issue = "50547")]
+pub mod future;
 
 // Platform-abstraction modules
 #[macro_use]
@@ -527,12 +532,8 @@ mod stdsimd;
 #[cfg(not(stage0))]
 mod coresimd {
     pub use core::arch;
-    pub use core::simd;
 }
 
-#[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(all(not(stage0), not(test)))]
-pub use stdsimd::simd;
 #[stable(feature = "simd_arch", since = "1.27.0")]
 #[cfg(all(not(stage0), not(test)))]
 pub use stdsimd::arch;
@@ -541,3 +542,8 @@ pub use stdsimd::arch;
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
+
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for the existing keywords. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
+include!("keyword_docs.rs");

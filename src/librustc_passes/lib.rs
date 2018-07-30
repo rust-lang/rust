@@ -32,7 +32,7 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 
 mod diagnostics;
 

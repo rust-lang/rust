@@ -1,13 +1,17 @@
-error: compilation successful
-  --> $DIR/E0597.rs:15:1
+error[E0597]: `y` does not live long enough
+  --> $DIR/E0597.rs:18:16
    |
-LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
-LL | |     let mut x = Foo { x: None };
-LL | |     let y = 0;
-LL | |     x.x = Some(&y);
-LL | |     //~^ `y` does not live long enough [E0597]
-LL | | }
-   | |_^
+LL |     x.x = Some(&y);
+   |                ^^ borrowed value does not live long enough
+LL |     //~^ `y` does not live long enough [E0597]
+LL | }
+   | -
+   | |
+   | `y` dropped here while still borrowed
+   | borrow later used here, when `x` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

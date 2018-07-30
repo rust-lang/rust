@@ -20,13 +20,40 @@ trait Iterable {
     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
     //~^ ERROR lifetime parameters are not allowed on this type [E0110]
 
-    // This weird type tests that we can use universal function call syntax to access the Item on
-    // Self::Iter which we have declared to be an Iterator
-    type Iter2<'a>: Deref<Target = <Self::Iter<'a> as Iterator>::Item>;
-    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
-
     fn iter<'a>(&'a self) -> Self::Iter<'a>;
     //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+}
+
+// Impl for struct type
+impl<T> Iterable for Vec<T> {
+    type Item<'a> = &'a T;
+    type Iter<'a> = std::slice::Iter<'a, T>;
+
+    fn iter<'a>(&'a self) -> Self::Iter<'a> {
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+        self.iter()
+    }
+}
+
+// Impl for a primitive type
+impl<T> Iterable for [T] {
+    type Item<'a> = &'a T;
+    type Iter<'a> = std::slice::Iter<'a, T>;
+
+    fn iter<'a>(&'a self) -> Self::Iter<'a> {
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+        self.iter()
+    }
+}
+
+fn make_iter<'a, I: Iterable>(it: &'a I) -> I::Iter<'a> {
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+    it.iter()
+}
+
+fn get_first<'a, I: Iterable>(it: &'a I) -> Option<I::Item<'a>> {
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+    it.iter().next()
 }
 
 fn main() {}

@@ -11,17 +11,15 @@
 use std::fmt;
 use rustc::hir;
 use rustc::mir::*;
-use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
 use util::patch::MirPatch;
-use rustc::mir::interpret::{Value, PrimVal};
 
-use std::{iter, u32};
+use std::u32;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DropFlagState {
@@ -371,7 +369,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             });
         }
 
-        let contents_drop = if adt.is_union() {
+        let skip_contents =
+            adt.is_union() || Some(adt.did) == self.tcx().lang_items().manually_drop();
+        let contents_drop = if skip_contents {
             (self.succ, self.unwind)
         } else {
             self.open_drop_for_adt_contents(adt, substs)
@@ -522,7 +522,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let drop_trait = tcx.lang_items().drop_trait().unwrap();
         let drop_fn = tcx.associated_items(drop_trait).next().unwrap();
         let ty = self.place_ty(self.place);
-        let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
+        let substs = tcx.mk_substs_trait(ty, &[]);
 
         let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
             ty,
@@ -780,7 +780,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn open_drop<'a>(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
         match ty.sty {
-            ty::TyClosure(def_id, substs) |
+            ty::TyClosure(def_id, substs) => {
+                let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
+                self.open_drop_for_tuple(&tys)
+            }
             // Note that `elaborate_drops` only drops the upvars of a generator,
             // and this is ok because `open_drop` here can only be reached
             // within that own generator's resume function.
@@ -806,8 +809,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 let succ = self.succ;
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
-            ty::TyArray(ety, size) => self.open_drop_for_array(
-                ety, size.val.to_raw_bits().map(|i| i as u64)),
+            ty::TyArray(ety, size) => {
+                let size = size.assert_usize(self.tcx());
+                self.open_drop_for_array(ety, size)
+            },
             ty::TySlice(ety) => self.open_drop_for_array(ety, None),
 
             _ => bug!("open drop from non-ADT `{:?}`", ty)
@@ -957,12 +962,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         Operand::Constant(box Constant {
             span: self.source_info.span,
             ty: self.tcx().types.usize,
-            literal: Literal::Value {
-                value: self.tcx().mk_const(ty::Const {
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.into()))),
-                    ty: self.tcx().types.usize
-                })
-            }
+            literal: ty::Const::from_usize(self.tcx(), val.into()),
         })
     }
 

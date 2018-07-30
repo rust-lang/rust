@@ -74,7 +74,7 @@ impl<'a, 'tcx> BitDenotation for HaveBeenBorrowedLocals<'a, 'tcx> {
 
 impl<'a, 'tcx> BitwiseOperator for HaveBeenBorrowedLocals<'a, 'tcx> {
     #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
+    fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
@@ -93,6 +93,7 @@ struct BorrowedLocalsVisitor<'b, 'c: 'b> {
 fn find_local<'tcx>(place: &Place<'tcx>) -> Option<Local> {
     match *place {
         Place::Local(l) => Some(l),
+        Place::Promoted(_) |
         Place::Static(..) => None,
         Place::Projection(ref proj) => {
             match proj.elem {

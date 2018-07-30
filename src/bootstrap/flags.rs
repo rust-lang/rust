@@ -19,10 +19,10 @@ use std::process;
 
 use getopts::Options;
 
-use {Build, DocTests};
+use builder::Builder;
 use config::Config;
 use metadata;
-use builder::Builder;
+use {Build, DocTests};
 
 use cache::{Interned, INTERNER};
 
@@ -31,7 +31,7 @@ pub struct Flags {
     pub verbose: usize, // number of -v args; each extra -v after the first is passed to Cargo
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
-    pub keep_stage: Option<u32>,
+    pub keep_stage: Vec<u32>,
 
     pub host: Vec<Interned<String>>,
     pub target: Vec<Interned<String>>,
@@ -59,6 +59,9 @@ pub enum Subcommand {
     },
     Test {
         paths: Vec<PathBuf>,
+        /// Whether to automatically update stderr/stdout files
+        bless: bool,
+        compare_mode: Option<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -90,7 +93,8 @@ impl Default for Subcommand {
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
         let mut extra_help = String::new();
-        let mut subcommand_help = format!("\
+        let mut subcommand_help = format!(
+            "\
 Usage: x.py <subcommand> [options] [<paths>...]
 
 Subcommands:
@@ -103,7 +107,8 @@ Subcommands:
     dist        Build distribution artifacts
     install     Install distribution artifacts
 
-To learn more about a subcommand, run `./x.py <subcommand> -h`");
+To learn more about a subcommand, run `./x.py <subcommand> -h`"
+        );
 
         let mut opts = Options::new();
         // Options common to all subcommands
@@ -117,37 +122,43 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
         opts.optflag("", "dry-run", "dry run; don't build anything");
         opts.optopt("", "stage", "stage to build", "N");
-        opts.optopt("", "keep-stage", "stage to keep without recompiling", "N");
+        opts.optmulti("", "keep-stage", "stage(s) to keep without recompiling", "N");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
-        opts.optopt("", "warnings", "if value is deny, will deny warnings, otherwise use default",
-            "VALUE");
+        opts.optopt(
+            "",
+            "warnings",
+            "if value is deny, will deny warnings, otherwise use default",
+            "VALUE",
+        );
         opts.optopt("", "error-format", "rustc error format", "FORMAT");
 
         // fn usage()
-        let usage = |exit_code: i32, opts: &Options, subcommand_help: &str, extra_help: &str| -> ! {
-            println!("{}", opts.usage(subcommand_help));
-            if !extra_help.is_empty() {
-                println!("{}", extra_help);
-            }
-            process::exit(exit_code);
-        };
+        let usage =
+            |exit_code: i32, opts: &Options, subcommand_help: &str, extra_help: &str| -> ! {
+                println!("{}", opts.usage(subcommand_help));
+                if !extra_help.is_empty() {
+                    println!("{}", extra_help);
+                }
+                process::exit(exit_code);
+            };
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
         // the subcommand. Therefore we must manually identify the subcommand first, so that we can
         // complete the definition of the options.  Then we can use the getopt::Matches object from
         // there on out.
-        let subcommand = args.iter().find(|&s|
+        let subcommand = args.iter().find(|&s| {
             (s == "build")
-            || (s == "check")
-            || (s == "test")
-            || (s == "bench")
-            || (s == "doc")
-            || (s == "clean")
-            || (s == "dist")
-            || (s == "install"));
+                || (s == "check")
+                || (s == "test")
+                || (s == "bench")
+                || (s == "doc")
+                || (s == "clean")
+                || (s == "dist")
+                || (s == "install")
+        });
         let subcommand = match subcommand {
             Some(s) => s,
             None => {
@@ -162,7 +173,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
 
         // Some subcommands get extra options
         match subcommand.as_str() {
-            "test"  => {
+            "test" => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
                 opts.optmulti(
@@ -173,10 +184,25 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                 );
                 opts.optflag("", "no-doc", "do not run doc tests");
                 opts.optflag("", "doc", "only run doc tests");
-            },
-            "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
-            "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
-            _ => { },
+                opts.optflag(
+                    "",
+                    "bless",
+                    "update all stderr/stdout files of failing ui tests",
+                );
+                opts.optopt(
+                    "",
+                    "compare-mode",
+                    "mode describing what file the actual ui output will be compared to",
+                    "COMPARE MODE",
+                );
+            }
+            "bench" => {
+                opts.optmulti("", "test-args", "extra arguments", "ARGS");
+            }
+            "clean" => {
+                opts.optflag("", "all", "clean all build artifacts");
+            }
+            _ => {}
         };
 
         // Done specifying what options are possible, so do the getopts parsing
@@ -196,21 +222,24 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                 if check_subcommand != subcommand {
                     pass_sanity_check = false;
                 }
-            },
+            }
             None => {
                 pass_sanity_check = false;
             }
         }
         if !pass_sanity_check {
             println!("{}\n", subcommand_help);
-            println!("Sorry, I couldn't figure out which subcommand you were trying to specify.\n\
-                      You may need to move some options to after the subcommand.\n");
+            println!(
+                "Sorry, I couldn't figure out which subcommand you were trying to specify.\n\
+                 You may need to move some options to after the subcommand.\n"
+            );
             process::exit(1);
         }
         // Extra help text for some commands
         match subcommand.as_str() {
             "build" => {
-                subcommand_help.push_str("\n
+                subcommand_help.push_str(
+                    "\n
 Arguments:
     This subcommand accepts a number of paths to directories to the crates
     and/or artifacts to compile. For example:
@@ -232,10 +261,12 @@ Arguments:
     This will first build everything once (like --stage 0 without further
     arguments would), and then use the compiler built in stage 0 to build
     src/libtest and its dependencies.
-    Once this is done, build/$ARCH/stage1 contains a usable compiler.");
+    Once this is done, build/$ARCH/stage1 contains a usable compiler.",
+                );
             }
             "check" => {
-                subcommand_help.push_str("\n
+                subcommand_help.push_str(
+                    "\n
 Arguments:
     This subcommand accepts a number of paths to directories to the crates
     and/or artifacts to compile. For example:
@@ -247,10 +278,12 @@ Arguments:
     also that since we use `cargo check`, by default this will automatically enable incremental
     compilation, so there's no need to pass it separately, though it won't hurt. We also completely
     ignore the stage passed, as there's no way to compile in non-stage 0 without actually building
-    the compiler.");
+    the compiler.",
+                );
             }
             "test" => {
-                subcommand_help.push_str("\n
+                subcommand_help.push_str(
+                    "\n
 Arguments:
     This subcommand accepts a number of paths to directories to tests that
     should be compiled and run. For example:
@@ -258,15 +291,19 @@ Arguments:
         ./x.py test src/test/run-pass
         ./x.py test src/libstd --test-args hash_map
         ./x.py test src/libstd --stage 0
+        ./x.py test src/test/ui --bless
+        ./x.py test src/test/ui --compare-mode nll
 
     If no arguments are passed then the complete artifacts for that stage are
     compiled and tested.
 
         ./x.py test
-        ./x.py test --stage 1");
+        ./x.py test --stage 1",
+                );
             }
             "doc" => {
-                subcommand_help.push_str("\n
+                subcommand_help.push_str(
+                    "\n
 Arguments:
     This subcommand accepts a number of paths to directories of documentation
     to build. For example:
@@ -278,12 +315,16 @@ Arguments:
     If no arguments are passed then everything is documented:
 
         ./x.py doc
-        ./x.py doc --stage 1");
+        ./x.py doc --stage 1",
+                );
             }
-            _ => { }
+            _ => {}
         };
         // Get any optional paths which occur after the subcommand
-        let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
+        let paths = matches.free[1..]
+            .iter()
+            .map(|p| p.into())
+            .collect::<Vec<PathBuf>>();
 
         let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
             if fs::metadata("config.toml").is_ok() {
@@ -302,9 +343,12 @@ Arguments:
             let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
             extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
         } else if subcommand.as_str() != "clean" {
-            extra_help.push_str(format!(
-                "Run `./x.py {} -h -v` to see a list of available paths.",
-                subcommand).as_str());
+            extra_help.push_str(
+                format!(
+                    "Run `./x.py {} -h -v` to see a list of available paths.",
+                    subcommand
+                ).as_str(),
+            );
         }
 
         // User passed in -h/--help?
@@ -313,36 +357,28 @@ Arguments:
         }
 
         let cmd = match subcommand.as_str() {
-            "build" => {
-                Subcommand::Build { paths: paths }
-            }
-            "check" => {
-                Subcommand::Check { paths: paths }
-            }
-            "test" => {
-                Subcommand::Test {
-                    paths,
-                    test_args: matches.opt_strs("test-args"),
-                    rustc_args: matches.opt_strs("rustc-args"),
-                    fail_fast: !matches.opt_present("no-fail-fast"),
-                    doc_tests: if matches.opt_present("doc") {
-                        DocTests::Only
-                    } else if matches.opt_present("no-doc") {
-                        DocTests::No
-                    } else {
-                        DocTests::Yes
-                    }
-                }
-            }
-            "bench" => {
-                Subcommand::Bench {
-                    paths,
-                    test_args: matches.opt_strs("test-args"),
-                }
-            }
-            "doc" => {
-                Subcommand::Doc { paths: paths }
-            }
+            "build" => Subcommand::Build { paths: paths },
+            "check" => Subcommand::Check { paths: paths },
+            "test" => Subcommand::Test {
+                paths,
+                bless: matches.opt_present("bless"),
+                compare_mode: matches.opt_str("compare-mode"),
+                test_args: matches.opt_strs("test-args"),
+                rustc_args: matches.opt_strs("rustc-args"),
+                fail_fast: !matches.opt_present("no-fail-fast"),
+                doc_tests: if matches.opt_present("doc") {
+                    DocTests::Only
+                } else if matches.opt_present("no-doc") {
+                    DocTests::No
+                } else {
+                    DocTests::Yes
+                },
+            },
+            "bench" => Subcommand::Bench {
+                paths,
+                test_args: matches.opt_strs("test-args"),
+            },
+            "doc" => Subcommand::Doc { paths: paths },
             "clean" => {
                 if paths.len() > 0 {
                     println!("\nclean does not take a path argument\n");
@@ -353,21 +389,12 @@ Arguments:
                     all: matches.opt_present("all"),
                 }
             }
-            "dist" => {
-                Subcommand::Dist {
-                    paths,
-                }
-            }
-            "install" => {
-                Subcommand::Install {
-                    paths,
-                }
-            }
+            "dist" => Subcommand::Dist { paths },
+            "install" => Subcommand::Install { paths },
             _ => {
                 usage(1, &opts, &subcommand_help, &extra_help);
             }
         };
-
 
         Flags {
             verbose: matches.opt_count("verbose"),
@@ -375,17 +402,25 @@ Arguments:
             dry_run: matches.opt_present("dry-run"),
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
-            keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
+            keep_stage: matches.opt_strs("keep-stage")
+                .into_iter().map(|j| j.parse().unwrap())
+                .collect(),
             host: split(matches.opt_strs("host"))
-                .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
+                .into_iter()
+                .map(|x| INTERNER.intern_string(x))
+                .collect::<Vec<_>>(),
             target: split(matches.opt_strs("target"))
-                .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
+                .into_iter()
+                .map(|x| INTERNER.intern_string(x))
+                .collect::<Vec<_>>(),
             config: cfg_file,
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd,
             incremental: matches.opt_present("incremental"),
             exclude: split(matches.opt_strs("exclude"))
-                .into_iter().map(|p| p.into()).collect::<Vec<_>>(),
+                .into_iter()
+                .map(|p| p.into())
+                .collect::<Vec<_>>(),
             warnings: matches.opt_str("warnings").map(|v| v == "deny"),
         }
     }
@@ -394,9 +429,11 @@ Arguments:
 impl Subcommand {
     pub fn test_args(&self) -> Vec<&str> {
         match *self {
-            Subcommand::Test { ref test_args, .. } |
-            Subcommand::Bench { ref test_args, .. } => {
-                test_args.iter().flat_map(|s| s.split_whitespace()).collect()
+            Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
+                test_args
+                    .iter()
+                    .flat_map(|s| s.split_whitespace())
+                    .collect()
             }
             _ => Vec::new(),
         }
@@ -404,9 +441,10 @@ impl Subcommand {
 
     pub fn rustc_args(&self) -> Vec<&str> {
         match *self {
-            Subcommand::Test { ref rustc_args, .. } => {
-                rustc_args.iter().flat_map(|s| s.split_whitespace()).collect()
-            }
+            Subcommand::Test { ref rustc_args, .. } => rustc_args
+                .iter()
+                .flat_map(|s| s.split_whitespace())
+                .collect(),
             _ => Vec::new(),
         }
     }
@@ -424,8 +462,27 @@ impl Subcommand {
             _ => DocTests::Yes,
         }
     }
+
+    pub fn bless(&self) -> bool {
+        match *self {
+            Subcommand::Test { bless, .. } => bless,
+            _ => false,
+        }
+    }
+
+    pub fn compare_mode(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test {
+                ref compare_mode, ..
+            } => compare_mode.as_ref().map(|s| &s[..]),
+            _ => None,
+        }
+    }
 }
 
 fn split(s: Vec<String>) -> Vec<String> {
-    s.iter().flat_map(|s| s.split(',')).map(|s| s.to_string()).collect()
+    s.iter()
+        .flat_map(|s| s.split(','))
+        .map(|s| s.to_string())
+        .collect()
 }

@@ -20,7 +20,7 @@ use rustc::middle::region;
 use rustc::ty::subst::Subst;
 use rustc::traits::ObligationCause;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::maps::OnDiskCache;
+use rustc::ty::query::OnDiskCache;
 use rustc::infer::{self, InferOk, InferResult};
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -88,36 +88,41 @@ impl Emitter for ExpectErrorEmitter {
     }
 }
 
-fn errors(msgs: &[&str]) -> (Box<Emitter + sync::Send>, usize) {
+fn errors(msgs: &[&str]) -> (Box<dyn Emitter + sync::Send>, usize) {
     let v = msgs.iter().map(|m| m.to_string()).collect();
-    (box ExpectErrorEmitter { messages: v } as Box<Emitter + sync::Send>, msgs.len())
+    (box ExpectErrorEmitter { messages: v } as Box<dyn Emitter + sync::Send>, msgs.len())
 }
 
 fn test_env<F>(source_string: &str,
-               args: (Box<Emitter + sync::Send>, usize),
+               args: (Box<dyn Emitter + sync::Send>, usize),
                body: F)
     where F: FnOnce(Env)
 {
     syntax::with_globals(|| {
-        test_env_impl(source_string, args, body)
+        let mut options = config::basic_options();
+        options.debugging_opts.verbose = true;
+        options.unstable_features = UnstableFeatures::Allow;
+
+        driver::spawn_thread_pool(options, |options| {
+            test_env_with_pool(options, source_string, args, body)
+        })
     });
 }
 
-fn test_env_impl<F>(source_string: &str,
-                    (emitter, expected_err_count): (Box<Emitter + sync::Send>, usize),
-                    body: F)
+fn test_env_with_pool<F>(
+    options: config::Options,
+    source_string: &str,
+    (emitter, expected_err_count): (Box<dyn Emitter + sync::Send>, usize),
+    body: F
+)
     where F: FnOnce(Env)
 {
-    let mut options = config::basic_options();
-    options.debugging_opts.verbose = true;
-    options.unstable_features = UnstableFeatures::Allow;
     let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
-
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,
                                        Lrc::new(CodeMap::new(FilePathMapping::empty())));
-    let cstore = CStore::new(::get_trans(&sess).metadata_loader());
+    let cstore = CStore::new(::get_codegen_backend(&sess).metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: FileName::Anon,
@@ -152,8 +157,8 @@ fn test_env_impl<F>(source_string: &str,
     };
     TyCtxt::create_and_enter(&sess,
                              &cstore,
-                             ty::maps::Providers::default(),
-                             ty::maps::Providers::default(),
+                             ty::query::Providers::default(),
+                             ty::query::Providers::default(),
                              &arenas,
                              resolutions,
                              hir_map,
@@ -178,16 +183,20 @@ fn test_env_impl<F>(source_string: &str,
     });
 }
 
+const D1: ty::DebruijnIndex = ty::INNERMOST;
+const D2: ty::DebruijnIndex = D1.shifted_in(1);
+
 impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: region::Scope) {
+    pub fn create_region_hierarchy(&mut self, rh: &RH,
+                                   parent: (region::Scope, region::ScopeDepth)) {
         let me = region::Scope::Node(rh.id);
         self.region_scope_tree.record_scope_parent(me, Some(parent));
         for child_rh in rh.sub {
-            self.create_region_hierarchy(child_rh, me);
+            self.create_region_hierarchy(child_rh, (me, parent.1 + 1));
         }
     }
 
@@ -207,7 +216,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                 id: hir::ItemLocalId(11),
                 sub: &[],
             }],
-        }, dscope);
+        }, (dscope, 1));
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
@@ -240,23 +249,24 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             }
 
             return match it.node {
-                hir::ItemUse(..) |
-                hir::ItemExternCrate(..) |
-                hir::ItemConst(..) |
-                hir::ItemStatic(..) |
-                hir::ItemFn(..) |
-                hir::ItemForeignMod(..) |
-                hir::ItemGlobalAsm(..) |
-                hir::ItemTy(..) => None,
+                hir::ItemKind::Use(..) |
+                hir::ItemKind::ExternCrate(..) |
+                hir::ItemKind::Const(..) |
+                hir::ItemKind::Static(..) |
+                hir::ItemKind::Fn(..) |
+                hir::ItemKind::ForeignMod(..) |
+                hir::ItemKind::GlobalAsm(..) |
+                hir::ItemKind::Existential(..) |
+                hir::ItemKind::Ty(..) => None,
 
-                hir::ItemEnum(..) |
-                hir::ItemStruct(..) |
-                hir::ItemUnion(..) |
-                hir::ItemTrait(..) |
-                hir::ItemTraitAlias(..) |
-                hir::ItemImpl(..) => None,
+                hir::ItemKind::Enum(..) |
+                hir::ItemKind::Struct(..) |
+                hir::ItemKind::Union(..) |
+                hir::ItemKind::Trait(..) |
+                hir::ItemKind::TraitAlias(..) |
+                hir::ItemKind::Impl(..) => None,
 
-                hir::ItemMod(ref m) => search_mod(this, m, idx, names),
+                hir::ItemKind::Mod(ref m) => search_mod(this, m, idx, names),
             };
         }
     }
@@ -303,7 +313,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        self.infcx.tcx.mk_param(index, Symbol::intern(&name).as_interned_str())
+        self.infcx.tcx.mk_ty_param(index, Symbol::intern(&name).as_interned_str())
     }
 
     pub fn re_early_bound(&self, index: u32, name: &'static str) -> ty::Region<'tcx> {
@@ -327,7 +337,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
-        let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1));
+        let r = self.re_late_bound_with_debruijn(id, D1);
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
@@ -484,7 +494,7 @@ fn subst_ty_renumber_bound() {
 
         // t_expected = fn(&'a isize)
         let t_expected = {
-            let t_ptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
+            let t_ptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, D2);
             env.t_fn(&[t_ptr_bound2], env.t_nil())
         };
 
@@ -521,7 +531,7 @@ fn subst_ty_renumber_some_bounds() {
         //
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
-            let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
+            let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, D2);
             env.t_pair(t_rptr_bound1, env.t_fn(&[t_rptr_bound2], env.t_nil()))
         };
 
@@ -549,10 +559,10 @@ fn escaping() {
         let t_rptr_free1 = env.t_rptr_free(1);
         assert!(!t_rptr_free1.has_escaping_regions());
 
-        let t_rptr_bound1 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
+        let t_rptr_bound1 = env.t_rptr_late_bound_with_debruijn(1, D1);
         assert!(t_rptr_bound1.has_escaping_regions());
 
-        let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
+        let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, D2);
         assert!(t_rptr_bound2.has_escaping_regions());
 
         // t_fn = fn(A)
@@ -568,7 +578,7 @@ fn escaping() {
 #[test]
 fn subst_region_renumber_region() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let re_bound1 = env.re_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
+        let re_bound1 = env.re_late_bound_with_debruijn(1, D1);
 
         // type t_source<'a> = fn(&'a isize)
         let t_source = {
@@ -583,7 +593,7 @@ fn subst_region_renumber_region() {
         //
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
-            let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
+            let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, D2);
             env.t_fn(&[t_rptr_bound2], env.t_nil())
         };
 

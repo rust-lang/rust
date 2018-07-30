@@ -153,7 +153,6 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T
 ///
 /// Implementations that cannot be described in Rust
 /// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
-#[cfg(not(stage0))]
 mod impls {
 
     use super::Clone;

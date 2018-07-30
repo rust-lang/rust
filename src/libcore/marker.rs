@@ -39,7 +39,10 @@ use hash::Hasher;
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[rustc_on_unimplemented(
+    message="`{Self}` cannot be sent between threads safely",
+    label="`{Self}` cannot be sent between threads safely"
+)]
 pub unsafe auto trait Send {
     // empty.
 }
@@ -88,7 +91,12 @@ impl<T: ?Sized> !Send for *mut T { }
 /// [trait object]: ../../book/first-edition/trait-objects.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
-#[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
+#[rustc_on_unimplemented(
+    message="the size for values of type `{Self}` cannot be known at compilation time",
+    label="doesn't have a size known at compile-time",
+    note="to learn more, visit <https://doc.rust-lang.org/book/second-edition/\
+          ch19-04-advanced-types.html#dynamically-sized-types-and-sized>",
+)]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 pub trait Sized {
     // Empty.
@@ -294,7 +302,7 @@ pub trait Copy : Clone {
 /// This trait is automatically implemented when the compiler determines
 /// it's appropriate.
 ///
-/// The precise definition is: a type `T` is `Sync` if `&T` is
+/// The precise definition is: a type `T` is `Sync` if and only if `&T` is
 /// [`Send`][send]. In other words, if there is no possibility of
 /// [undefined behavior][ub] (including data races) when passing
 /// `&T` references between threads.
@@ -595,23 +603,38 @@ unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 
-/// Types which can be moved out of a `Pin`.
+/// Types which can be moved out of a `PinMut`.
 ///
-/// The `Unpin` trait is used to control the behavior of the [`Pin`] type. If a
+/// The `Unpin` trait is used to control the behavior of the [`PinMut`] type. If a
 /// type implements `Unpin`, it is safe to move a value of that type out of the
-/// `Pin` pointer.
+/// `PinMut` pointer.
 ///
 /// This trait is automatically implemented for almost every type.
 ///
-/// [`Pin`]: ../mem/struct.Pin.html
+/// [`PinMut`]: ../mem/struct.PinMut.html
 #[unstable(feature = "pin", issue = "49150")]
-pub unsafe auto trait Unpin {}
+pub auto trait Unpin {}
+
+/// A type which does not implement `Unpin`.
+///
+/// If a type contains a `Pinned`, it will not implement `Unpin` by default.
+#[unstable(feature = "pin", issue = "49150")]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Pinned;
+
+#[unstable(feature = "pin", issue = "49150")]
+impl !Unpin for Pinned {}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
 
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust
 /// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
-#[cfg(not(stage0))]
 mod copy_impls {
 
     use super::Copy;

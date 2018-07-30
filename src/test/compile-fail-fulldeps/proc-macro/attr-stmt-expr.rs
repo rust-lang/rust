@@ -11,7 +11,7 @@
 // aux-build:attr-stmt-expr.rs
 // ignore-stage1
 
-#![feature(proc_macro, proc_macro_expr)]
+#![feature(use_extern_macros, proc_macro_expr)]
 
 extern crate attr_stmt_expr;
 use attr_stmt_expr::{expect_let, expect_print_stmt, expect_expr, expect_print_expr};

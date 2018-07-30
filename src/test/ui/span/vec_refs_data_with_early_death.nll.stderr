@@ -1,14 +1,31 @@
-error: compilation successful
-  --> $DIR/vec_refs_data_with_early_death.rs:21:1
+error[E0597]: `y` does not live long enough
+  --> $DIR/vec_refs_data_with_early_death.rs:29:12
    |
-LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
-LL | |     let mut v = Vec::new();
-LL | |
-LL | |     let x: i8 = 3;
-...  |
-LL | |     assert_eq!(v, [&3, &4]);
-LL | | }
-   | |_^
+LL |     v.push(&y);
+   |            ^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `y` dropped here while still borrowed
+   | borrow later used here, when `v` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
-error: aborting due to previous error
+error[E0597]: `x` does not live long enough
+  --> $DIR/vec_refs_data_with_early_death.rs:27:12
+   |
+LL |     v.push(&x);
+   |            ^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `x` dropped here while still borrowed
+   | borrow later used here, when `v` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

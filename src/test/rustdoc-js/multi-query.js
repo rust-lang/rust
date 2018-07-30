@@ -15,6 +15,5 @@ const EXPECTED = {
         { 'path': 'std', 'name': 'str' },
         { 'path': 'std', 'name': 'u8' },
         { 'path': 'std::ffi', 'name': 'CStr' },
-        { 'path': 'std::simd', 'name': 'u8x2' },
     ],
 };

@@ -10,7 +10,7 @@
 
 // no-prefer-dynamic
 
-#![feature(proc_macro, proc_macro_non_items)]
+#![feature(proc_macro_non_items, proc_macro_quote, use_extern_macros)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
@@ -28,7 +28,7 @@ fn count_compound_ops_helper(input: TokenStream) -> u32 {
     let mut count = 0;
     for token in input {
         match &token {
-            TokenTree::Op(tt) if tt.spacing() == Spacing::Alone => {
+            TokenTree::Punct(tt) if tt.spacing() == Spacing::Alone => {
                 count += 1;
             }
             TokenTree::Group(tt) => {

@@ -16,7 +16,7 @@ use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{ObligationCause, TraitEngine};
+use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use util::common::ErrorReported;
 
 use syntax::ast;

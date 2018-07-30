@@ -11,7 +11,7 @@
 // ignore-bitrig
 // compile-flags: -C codegen-units=3
 
-// Test references to items that haven't been translated yet.
+// Test references to items that haven't been codegened yet.
 
 // Generate some code in the first compilation unit before declaring any
 // modules.  This ensures that the first module doesn't go into the same

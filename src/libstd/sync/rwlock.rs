@@ -94,7 +94,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 /// [`read`]: struct.RwLock.html#method.read
 /// [`try_read`]: struct.RwLock.html#method.try_read
 /// [`RwLock`]: struct.RwLock.html
-#[must_use]
+#[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
     __lock: &'a RwLock<T>,
@@ -115,7 +115,7 @@ unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockReadGuard<'a, T> {}
 /// [`write`]: struct.RwLock.html#method.write
 /// [`try_write`]: struct.RwLock.html#method.try_write
 /// [`RwLock`]: struct.RwLock.html
-#[must_use]
+#[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     __lock: &'a RwLock<T>,

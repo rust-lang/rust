@@ -101,7 +101,7 @@ impl<T: Write> PrettyFormatter<T> {
         for &(ref f, ref stdout) in &state.not_failures {
             successes.push(f.name.to_string());
             if !stdout.is_empty() {
-                stdouts.push_str(&format!("---- {} stdout ----\n\t", f.name));
+                stdouts.push_str(&format!("---- {} stdout ----\n", f.name));
                 let output = String::from_utf8_lossy(stdout);
                 stdouts.push_str(&output);
                 stdouts.push_str("\n");
@@ -127,7 +127,7 @@ impl<T: Write> PrettyFormatter<T> {
         for &(ref f, ref stdout) in &state.failures {
             failures.push(f.name.to_string());
             if !stdout.is_empty() {
-                fail_out.push_str(&format!("---- {} stdout ----\n\t", f.name));
+                fail_out.push_str(&format!("---- {} stdout ----\n", f.name));
                 let output = String::from_utf8_lossy(stdout);
                 fail_out.push_str(&output);
                 fail_out.push_str("\n");

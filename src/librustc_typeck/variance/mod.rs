@@ -17,7 +17,7 @@ use arena;
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc_data_structures::sync::Lrc;
 
 /// Defines the `TermsContext` basically houses an arena where we can
@@ -62,10 +62,10 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
     };
     match tcx.hir.get(id) {
         hir::map::NodeItem(item) => match item.node {
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemUnion(..) |
-            hir::ItemFn(..) => {}
+            hir::ItemKind::Enum(..) |
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::Union(..) |
+            hir::ItemKind::Fn(..) => {}
 
             _ => unsupported()
         },
@@ -83,7 +83,7 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
         },
 
         hir::map::NodeForeignItem(item) => match item.node {
-            hir::ForeignItemFn(..) => {}
+            hir::ForeignItemKind::Fn(..) => {}
 
             _ => unsupported()
         },

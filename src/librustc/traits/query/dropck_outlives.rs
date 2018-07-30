@@ -9,13 +9,12 @@
 // except according to those terms.
 
 use infer::at::At;
-use infer::canonical::{Canonical, Canonicalize, QueryResult};
 use infer::InferOk;
+use rustc_data_structures::small_vec::SmallVec;
 use std::iter::FromIterator;
-use traits::query::CanonicalTyGoal;
-use ty::{self, Ty, TyCtxt};
+use syntax::codemap::Span;
 use ty::subst::Kind;
-use rustc_data_structures::sync::Lrc;
+use ty::{self, Ty, TyCtxt};
 
 impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     /// Given a type `ty` of some value being dropped, computes a set
@@ -45,37 +44,28 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         // any destructor.
         let tcx = self.infcx.tcx;
         if trivial_dropck_outlives(tcx, ty) {
-            return InferOk { value: vec![], obligations: vec![] };
+            return InferOk {
+                value: vec![],
+                obligations: vec![],
+            };
         }
 
         let gcx = tcx.global_tcx();
-        let (c_ty, orig_values) = self.infcx.canonicalize_query(&self.param_env.and(ty));
+        let mut orig_values = SmallVec::new();
+        let c_ty = self.infcx.canonicalize_query(&self.param_env.and(ty), &mut orig_values);
         let span = self.cause.span;
         debug!("c_ty = {:?}", c_ty);
         match &gcx.dropck_outlives(c_ty) {
             Ok(result) if result.is_proven() => {
-                match self.infcx.instantiate_query_result(
+                match self.infcx.instantiate_query_result_and_region_obligations(
                     self.cause,
                     self.param_env,
                     &orig_values,
                     result,
                 ) {
-                    Ok(InferOk {
-                        value: DropckOutlivesResult { kinds, overflows },
-                        obligations,
-                    }) => {
-                        for overflow_ty in overflows.into_iter().take(1) {
-                            let mut err = struct_span_err!(
-                                tcx.sess,
-                                span,
-                                E0320,
-                                "overflow while adding drop-check rules for {}",
-                                self.infcx.resolve_type_vars_if_possible(&ty),
-                            );
-                            err.note(&format!("overflowed on {}", overflow_ty));
-                            err.emit();
-                        }
-
+                    Ok(InferOk { value, obligations }) => {
+                        let ty = self.infcx.resolve_type_vars_if_possible(&ty);
+                        let kinds = value.into_kinds_reporting_overflows(tcx, span, ty);
                         return InferOk {
                             value: kinds,
                             obligations,
@@ -102,10 +92,42 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<Kind<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
+}
+
+impl<'tcx> DropckOutlivesResult<'tcx> {
+    pub fn report_overflows(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) {
+        for overflow_ty in self.overflows.iter().take(1) {
+            let mut err = struct_span_err!(
+                tcx.sess,
+                span,
+                E0320,
+                "overflow while adding drop-check rules for {}",
+                ty,
+            );
+            err.note(&format!("overflowed on {}", overflow_ty));
+            err.emit();
+        }
+    }
+
+    pub fn into_kinds_reporting_overflows(
+        self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) -> Vec<Kind<'tcx>> {
+        self.report_overflows(tcx, span, ty);
+        let DropckOutlivesResult { kinds, overflows: _ } = self;
+        kinds
+    }
 }
 
 /// A set of constraints that need to be satisfied in order for
@@ -153,17 +175,6 @@ impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx> {
         result
     }
 }
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ty::ParamEnvAnd<'tcx, Ty<'tcx>> {
-    type Canonicalized = CanonicalTyGoal<'gcx>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
-    }
-}
-
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for DropckOutlivesResult<'tcx> {
         kinds, overflows
@@ -180,18 +191,6 @@ BraceStructLiftImpl! {
 impl_stable_hash_for!(struct DropckOutlivesResult<'tcx> {
     kinds, overflows
 });
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for QueryResult<'tcx, DropckOutlivesResult<'tcx>> {
-    // we ought to intern this, but I'm too lazy just now
-    type Canonicalized = Lrc<Canonical<'gcx, QueryResult<'gcx, DropckOutlivesResult<'gcx>>>>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        Lrc::new(value)
-    }
-}
 
 impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
     outlives,
@@ -210,7 +209,7 @@ impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
 ///
 /// Note also that `needs_drop` requires a "global" type (i.e., one
 /// with erased regions), but this funtcion does not.
-fn trivial_dropck_outlives<'cx, 'tcx>(tcx: TyCtxt<'cx, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         // None of these types have a destructor and hence they do not
         // require anything in particular to outlive the dtor's
@@ -244,7 +243,10 @@ fn trivial_dropck_outlives<'cx, 'tcx>(tcx: TyCtxt<'cx, '_, 'tcx>, ty: Ty<'tcx>) 
 
         ty::TyAdt(def, _) => {
             if def.is_union() {
-                // Unions never run have a dtor.
+                // Unions never have a dtor.
+                true
+            } else if Some(def.did) == tcx.lang_items().manually_drop() {
+                // `ManuallyDrop` never has a dtor.
                 true
             } else {
                 // Other types might. Moreover, PhantomData doesn't

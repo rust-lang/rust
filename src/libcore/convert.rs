@@ -63,9 +63,9 @@
 ///
 /// The key difference between the two traits is the intention:
 ///
-/// - Use `AsRef` when goal is to simply convert into a reference
-/// - Use `Borrow` when goal is related to writing code that is agnostic to the
-///   type of borrow and if is reference or value
+/// - Use `AsRef` when the goal is to simply convert into a reference
+/// - Use `Borrow` when the goal is related to writing code that is agnostic to
+///   the type of borrow and whether it is a reference or value
 ///
 /// See [the book][book] for a more detailed comparison.
 ///

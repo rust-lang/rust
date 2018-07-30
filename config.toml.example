@@ -76,6 +76,10 @@
 # passed to prefer linking to shared libraries.
 #link-shared = false
 
+# On MSVC you can compile LLVM with clang-cl, but the test suite doesn't pass
+# with clang-cl, so this is special in that it only compiles LLVM with clang-cl
+#clang-cl = '/path/to/clang-cl.exe'
+
 # =============================================================================
 # General build configuration options
 # =============================================================================
@@ -275,6 +279,9 @@
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
+# Whether to always use incremental compilation when building rustc
+#incremental = false
+
 # Build rustc with experimental parallelization
 #experimental-parallel-queries = false
 
@@ -294,9 +301,9 @@
 # desired in distributions, for example.
 #rpath = true
 
-# Suppresses extraneous output from tests to ensure the output of the test
-# harness is relatively clean.
-#quiet-tests = false
+# Emits extraneous output from tests to ensure that failures of the test
+# harness are debuggable just from logfiles.
+#verbose-tests = false
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag) or
 # with debuginfo (the -g flag)
@@ -343,11 +350,18 @@
 # rustc to execute.
 #lld = false
 
+# Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
+# sysroot.
+#llvm-tools = false
+
 # Whether to deny warnings in crates
 #deny-warnings = true
 
 # Print backtrace on internal compiler errors during bootstrap
 #backtrace-on-ice = false
+
+# Whether to verify generated LLVM IR
+#verify-llvm-ir = false
 
 # =============================================================================
 # Options for specific targets

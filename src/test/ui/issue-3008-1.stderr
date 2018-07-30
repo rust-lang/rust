@@ -5,7 +5,7 @@ LL | enum Bar {
    | ^^^^^^^^ recursive type has infinite size
 ...
 LL |     BarSome(Bar)
-   |             ---- recursive without indirection
+   |             --- recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable
 

@@ -55,6 +55,7 @@ pub enum CallConv {
     X86_64_Win64 = 79,
     X86_VectorCall = 80,
     X86_Intr = 83,
+    AmdGpuKernel = 91,
 }
 
 /// LLVMRustLinkage
@@ -515,7 +516,7 @@ pub enum ModuleBuffer {}
 // dllimport/dllexport are applied and need to be correct for everything to
 // link successfully. The #[link] annotation here says "these symbols are
 // included statically" which means that they're all exported with dllexport
-// and from the rustc_llvm dynamic library. Otherwise the rustc_trans dynamic
+// and from the rustc_llvm dynamic library. Otherwise the rustc_codegen_llvm dynamic
 // library would not be able to access these symbols.
 #[link(name = "rustllvm", kind = "static")]
 extern "C" {
@@ -1651,6 +1652,7 @@ extern "C" {
                                                MergeFunctions: bool,
                                                SLPVectorize: bool,
                                                LoopVectorize: bool,
+                                               PrepareForThinLTO: bool,
                                                PGOGenPath: *const c_char,
                                                PGOUsePath: *const c_char);
     pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef,
@@ -1789,7 +1791,6 @@ extern "C" {
                                            CU1: *mut *mut c_void,
                                            CU2: *mut *mut c_void);
     pub fn LLVMRustThinLTOPatchDICompileUnit(M: ModuleRef, CU: *mut c_void);
-    pub fn LLVMRustThinLTORemoveAvailableExternally(M: ModuleRef);
 
     pub fn LLVMRustLinkerNew(M: ModuleRef) -> LinkerRef;
     pub fn LLVMRustLinkerAdd(linker: LinkerRef,

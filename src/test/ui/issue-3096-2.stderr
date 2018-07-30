@@ -1,0 +1,15 @@
+error[E0004]: non-exhaustive patterns: type *const bottom is non-empty
+  --> $DIR/issue-3096-2.rs:15:11
+   |
+LL |     match x { } //~ ERROR non-exhaustive patterns
+   |           ^
+   |
+help: Please ensure that all possible cases are being handled; possibly adding wildcards or more match arms.
+  --> $DIR/issue-3096-2.rs:15:11
+   |
+LL |     match x { } //~ ERROR non-exhaustive patterns
+   |           ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

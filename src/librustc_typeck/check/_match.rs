@@ -84,9 +84,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             expected = loop {
                 debug!("inspecting {:?} with type {:?}", exp_ty, exp_ty.sty);
                 match exp_ty.sty {
-                    ty::TypeVariants::TyRef(_, ty::TypeAndMut{
-                        ty: inner_ty, mutbl: inner_mutability,
-                    }) => {
+                    ty::TypeVariants::TyRef(_, inner_ty, inner_mutability) => {
                         debug!("current discriminant is TyRef, inserting implicit deref");
                         // Preserve the reference type. We'll need it later during HAIR lowering.
                         pat_adjustments.push(exp_ty);
@@ -149,11 +147,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Byte string patterns behave the same way as array patterns
                 // They can denote both statically and dynamically sized byte arrays
                 let mut pat_ty = ty;
-                if let hir::ExprLit(ref lt) = lt.node {
+                if let hir::ExprKind::Lit(ref lt) = lt.node {
                     if let ast::LitKind::ByteStr(_) = lt.node {
                         let expected_ty = self.structurally_resolved_type(pat.span, expected);
-                        if let ty::TyRef(_, mt) = expected_ty.sty {
-                            if let ty::TySlice(_) = mt.ty.sty {
+                        if let ty::TyRef(_, r_ty, _) = expected_ty.sty {
+                            if let ty::TySlice(_) = r_ty.sty {
                                 pat_ty = tcx.mk_imm_ref(tcx.types.re_static,
                                                          tcx.mk_slice(tcx.types.u8))
                             }
@@ -236,6 +234,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .borrow_mut()
                     .pat_binding_modes_mut()
                     .insert(pat.hir_id, bm);
+                debug!("check_pat_walk: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
                     ty::BindByReference(mutbl) => {
@@ -334,8 +333,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // hack detailed in (*) below.
                     debug!("check_pat_walk: expected={:?}", expected);
                     let (rptr_ty, inner_ty) = match expected.sty {
-                        ty::TyRef(_, mt) if mt.mutbl == mutbl => {
-                            (expected, mt.ty)
+                        ty::TyRef(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
+                            (expected, r_ty)
                         }
                         _ => {
                             let inner_ty = self.next_ty_var(
@@ -377,7 +376,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 let (inner_ty, slice_ty) = match expected_ty.sty {
                     ty::TyArray(inner_ty, size) => {
-                        let size = size.val.unwrap_u64();
+                        let size = size.unwrap_usize(tcx);
                         let min_len = before.len() as u64 + after.len() as u64;
                         if slice.is_none() {
                             if min_len != size {
@@ -408,7 +407,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 tcx.sess, pat.span, E0529,
                                 "expected an array or slice, found `{}`",
                                 expected_ty);
-                            if let ty::TyRef(_, ty::TypeAndMut { mutbl: _, ty }) = expected_ty.sty {
+                            if let ty::TyRef(_, ty, _) = expected_ty.sty {
                                 match ty.sty {
                                     ty::TyArray(..) | ty::TySlice(..) => {
                                         err.help("the semantics of slice patterns changed \
@@ -690,7 +689,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                     arm_span: arm.body.span,
                     source: match_src
                 });
-                coercion.coerce(self, &cause, &arm.body, arm_ty, self.diverges.get());
+                coercion.coerce(self, &cause, &arm.body, arm_ty);
             }
         }
 
@@ -722,8 +721,11 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
-        self.check_struct_pat_fields(pat_ty, pat.id, pat.span, variant, fields, etc, def_bm);
-        pat_ty
+        if self.check_struct_pat_fields(pat_ty, pat.id, pat.span, variant, fields, etc, def_bm) {
+            pat_ty
+        } else {
+            self.tcx.types.err
+        }
     }
 
     fn check_pat_path(&self,
@@ -848,7 +850,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                variant: &'tcx ty::VariantDef,
                                fields: &'gcx [Spanned<hir::FieldPat>],
                                etc: bool,
-                               def_bm: ty::BindingMode) {
+                               def_bm: ty::BindingMode) -> bool {
         let tcx = self.tcx;
 
         let (substs, adt) = match adt_ty.sty {
@@ -861,26 +863,28 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let field_map = variant.fields
             .iter()
             .enumerate()
-            .map(|(i, field)| (field.name.to_ident(), (i, field)))
+            .map(|(i, field)| (field.ident.modern(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 
         // Keep track of which fields have already appeared in the pattern.
         let mut used_fields = FxHashMap();
+        let mut no_field_errors = true;
 
         let mut inexistent_fields = vec![];
         // Typecheck each field.
         for &Spanned { node: ref field, span } in fields {
-            let ident = tcx.adjust(field.name, variant.did, self.body_id).0;
+            let ident = tcx.adjust_ident(field.ident, variant.did, self.body_id).0;
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
                     struct_span_err!(tcx.sess, span, E0025,
                                      "field `{}` bound multiple times \
                                       in the pattern",
-                                     field.name)
+                                     field.ident)
                         .span_label(span,
-                                    format!("multiple uses of `{}` in pattern", field.name))
-                        .span_label(*occupied.get(), format!("first use of `{}`", field.name))
+                                    format!("multiple uses of `{}` in pattern", field.ident))
+                        .span_label(*occupied.get(), format!("first use of `{}`", field.ident))
                         .emit();
+                    no_field_errors = false;
                     tcx.types.err
                 }
                 Vacant(vacant) => {
@@ -892,7 +896,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
-                            inexistent_fields.push((span, field.name));
+                            inexistent_fields.push((span, field.ident));
+                            no_field_errors = false;
                             tcx.types.err
                         })
                 }
@@ -960,7 +965,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         } else if !etc {
             let unmentioned_fields = variant.fields
                 .iter()
-                .map(|field| field.name.to_ident())
+                .map(|field| field.ident.modern())
                 .filter(|ident| !used_fields.contains_key(&ident))
                 .collect::<Vec<_>>();
             if unmentioned_fields.len() > 0 {
@@ -991,5 +996,6 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 diag.emit();
             }
         }
+        no_field_errors
     }
 }

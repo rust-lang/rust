@@ -1,14 +1,14 @@
-error: compilation successful
-  --> $DIR/regionck-unboxed-closure-lifetimes.rs:13:1
+error[E0597]: `c` does not live long enough
+  --> $DIR/regionck-unboxed-closure-lifetimes.rs:17:21
    |
-LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
-LL | |     let mut f;
-LL | |     {
-LL | |         let c = 1;
-...  |
-LL | |     }
-LL | | }
-   | |_^
+LL |         let c_ref = &c;
+   |                     ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `c` dropped here while still borrowed
+LL |     f.use_mut();
+   |     - borrow later used here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

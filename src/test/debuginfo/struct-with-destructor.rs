@@ -91,7 +91,7 @@ struct NestedOuter {
 
 
 // The compiler adds a 'destructed' boolean field to structs implementing Drop. This field is used
-// at runtime to prevent drop() to be executed more than once (see middle::trans::adt).
+// at runtime to prevent drop() to be executed more than once.
 // This field must be incorporated by the debug info generation. Otherwise the debugger assumes a
 // wrong size/layout for the struct.
 fn main() {

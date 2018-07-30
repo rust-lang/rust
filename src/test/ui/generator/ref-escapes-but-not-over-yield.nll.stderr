@@ -1,19 +1,11 @@
 error[E0597]: `b` does not live long enough
   --> $DIR/ref-escapes-but-not-over-yield.rs:24:13
    |
-LL |       let mut b = move || {
-   |  _________________-
-LL | |         yield();
-LL | |         let b = 5;
-LL | |         a = &b;
-   | |             ^^ borrowed value does not live long enough
-LL | |         //~^ ERROR `b` does not live long enough
-LL | |     };
-   | |     -
-   | |     |
-   | |     borrowed value only lives until here
-   | |_____temporary later dropped here, potentially using the reference
-   |       borrow may end up in a temporary, created here
+LL |         a = &b;
+   |             ^^ borrowed value does not live long enough
+LL |         //~^ ERROR `b` does not live long enough
+LL |     };
+   |     - `b` dropped here while still borrowed
 
 error: aborting due to previous error
 

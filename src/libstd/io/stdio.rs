@@ -21,7 +21,7 @@ use thread::LocalKey;
 
 /// Stdout used by print! and println! macros
 thread_local! {
-    static LOCAL_STDOUT: RefCell<Option<Box<Write + Send>>> = {
+    static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
@@ -624,7 +624,7 @@ impl<'a> fmt::Debug for StderrLock<'a> {
                      with a more general mechanism",
            issue = "0")]
 #[doc(hidden)]
-pub fn set_panic(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
+pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use panicking::LOCAL_STDERR;
     use mem;
     LOCAL_STDERR.with(move |slot| {
@@ -648,7 +648,7 @@ pub fn set_panic(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
                      with a more general mechanism",
            issue = "0")]
 #[doc(hidden)]
-pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
+pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use mem;
     LOCAL_STDOUT.with(move |slot| {
         mem::replace(&mut *slot.borrow_mut(), sink)
@@ -670,7 +670,7 @@ pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
 /// However, if the actual I/O causes an error, this function does panic.
 fn print_to<T>(
     args: fmt::Arguments,
-    local_s: &'static LocalKey<RefCell<Option<Box<Write+Send>>>>,
+    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
     global_s: fn() -> T,
     label: &str,
 )
@@ -712,8 +712,30 @@ pub fn _eprint(args: fmt::Arguments) {
 
 #[cfg(test)]
 mod tests {
+    use panic::{UnwindSafe, RefUnwindSafe};
     use thread;
     use super::*;
+
+    #[test]
+    fn stdout_unwind_safe() {
+        assert_unwind_safe::<Stdout>();
+    }
+    #[test]
+    fn stdoutlock_unwind_safe() {
+        assert_unwind_safe::<StdoutLock>();
+        assert_unwind_safe::<StdoutLock<'static>>();
+    }
+    #[test]
+    fn stderr_unwind_safe() {
+        assert_unwind_safe::<Stderr>();
+    }
+    #[test]
+    fn stderrlock_unwind_safe() {
+        assert_unwind_safe::<StderrLock>();
+        assert_unwind_safe::<StderrLock<'static>>();
+    }
+
+    fn assert_unwind_safe<T: UnwindSafe + RefUnwindSafe>() {}
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]

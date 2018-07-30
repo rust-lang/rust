@@ -25,7 +25,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::ext::base::MacroKind;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use hir::*;
 use hir::print::Nested;
@@ -33,6 +33,7 @@ use hir::svh::Svh;
 use util::nodemap::FxHashMap;
 
 use std::io;
+use std::result::Result::Err;
 use ty::TyCtxt;
 
 pub mod blocks;
@@ -53,6 +54,7 @@ pub enum Node<'hir> {
     NodeImplItem(&'hir ImplItem),
     NodeVariant(&'hir Variant),
     NodeField(&'hir StructField),
+    NodeAnonConst(&'hir AnonConst),
     NodeExpr(&'hir Expr),
     NodeStmt(&'hir Stmt),
     NodeTy(&'hir Ty),
@@ -67,7 +69,7 @@ pub enum Node<'hir> {
     NodeStructCtor(&'hir VariantData),
 
     NodeLifetime(&'hir Lifetime),
-    NodeTyParam(&'hir TyParam),
+    NodeGenericParam(&'hir GenericParam),
     NodeVisibility(&'hir Visibility),
 }
 
@@ -85,6 +87,7 @@ enum MapEntry<'hir> {
     EntryImplItem(NodeId, DepNodeIndex, &'hir ImplItem),
     EntryVariant(NodeId, DepNodeIndex, &'hir Variant),
     EntryField(NodeId, DepNodeIndex, &'hir StructField),
+    EntryAnonConst(NodeId, DepNodeIndex, &'hir AnonConst),
     EntryExpr(NodeId, DepNodeIndex, &'hir Expr),
     EntryStmt(NodeId, DepNodeIndex, &'hir Stmt),
     EntryTy(NodeId, DepNodeIndex, &'hir Ty),
@@ -94,7 +97,7 @@ enum MapEntry<'hir> {
     EntryBlock(NodeId, DepNodeIndex, &'hir Block),
     EntryStructCtor(NodeId, DepNodeIndex, &'hir VariantData),
     EntryLifetime(NodeId, DepNodeIndex, &'hir Lifetime),
-    EntryTyParam(NodeId, DepNodeIndex, &'hir TyParam),
+    EntryGenericParam(NodeId, DepNodeIndex, &'hir GenericParam),
     EntryVisibility(NodeId, DepNodeIndex, &'hir Visibility),
     EntryLocal(NodeId, DepNodeIndex, &'hir Local),
 
@@ -120,6 +123,7 @@ impl<'hir> MapEntry<'hir> {
             EntryImplItem(id, _, _) => id,
             EntryVariant(id, _, _) => id,
             EntryField(id, _, _) => id,
+            EntryAnonConst(id, _, _) => id,
             EntryExpr(id, _, _) => id,
             EntryStmt(id, _, _) => id,
             EntryTy(id, _, _) => id,
@@ -129,7 +133,7 @@ impl<'hir> MapEntry<'hir> {
             EntryBlock(id, _, _) => id,
             EntryStructCtor(id, _, _) => id,
             EntryLifetime(id, _, _) => id,
-            EntryTyParam(id, _, _) => id,
+            EntryGenericParam(id, _, _) => id,
             EntryVisibility(id, _, _) => id,
             EntryLocal(id, _, _) => id,
 
@@ -147,6 +151,7 @@ impl<'hir> MapEntry<'hir> {
             EntryImplItem(_, _, n) => NodeImplItem(n),
             EntryVariant(_, _, n) => NodeVariant(n),
             EntryField(_, _, n) => NodeField(n),
+            EntryAnonConst(_, _, n) => NodeAnonConst(n),
             EntryExpr(_, _, n) => NodeExpr(n),
             EntryStmt(_, _, n) => NodeStmt(n),
             EntryTy(_, _, n) => NodeTy(n),
@@ -156,7 +161,7 @@ impl<'hir> MapEntry<'hir> {
             EntryBlock(_, _, n) => NodeBlock(n),
             EntryStructCtor(_, _, n) => NodeStructCtor(n),
             EntryLifetime(_, _, n) => NodeLifetime(n),
-            EntryTyParam(_, _, n) => NodeTyParam(n),
+            EntryGenericParam(_, _, n) => NodeGenericParam(n),
             EntryVisibility(_, _, n) => NodeVisibility(n),
             EntryLocal(_, _, n) => NodeLocal(n),
             EntryMacroDef(_, n) => NodeMacroDef(n),
@@ -166,13 +171,47 @@ impl<'hir> MapEntry<'hir> {
         })
     }
 
+    fn fn_decl(&self) -> Option<&FnDecl> {
+        match self {
+            EntryItem(_, _, ref item) => {
+                match item.node {
+                    ItemKind::Fn(ref fn_decl, _, _, _) => Some(&fn_decl),
+                    _ => None,
+                }
+            }
+
+            EntryTraitItem(_, _, ref item) => {
+                match item.node {
+                    TraitItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    _ => None
+                }
+            }
+
+            EntryImplItem(_, _, ref item) => {
+                match item.node {
+                    ImplItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    _ => None,
+                }
+            }
+
+            EntryExpr(_, _, ref expr) => {
+                match expr.node {
+                    ExprKind::Closure(_, ref fn_decl, ..) => Some(&fn_decl),
+                    _ => None,
+                }
+            }
+
+            _ => None
+        }
+    }
+
     fn associated_body(self) -> Option<BodyId> {
         match self {
             EntryItem(_, _, item) => {
                 match item.node {
-                    ItemConst(_, body) |
-                    ItemStatic(.., body) |
-                    ItemFn(_, _, _, _, _, body) => Some(body),
+                    ItemKind::Const(_, body) |
+                    ItemKind::Static(.., body) |
+                    ItemKind::Fn(_, _, _, body) => Some(body),
                     _ => None,
                 }
             }
@@ -193,9 +232,11 @@ impl<'hir> MapEntry<'hir> {
                 }
             }
 
+            EntryAnonConst(_, _, constant) => Some(constant.body),
+
             EntryExpr(_, _, expr) => {
                 match expr.node {
-                    ExprClosure(.., body, _, _) => Some(body),
+                    ExprKind::Closure(.., body, _, _) => Some(body),
                     _ => None,
                 }
             }
@@ -288,8 +329,9 @@ impl<'hir> Map<'hir> {
             EntryBlock(_, dep_node_index, _) |
             EntryStructCtor(_, dep_node_index, _) |
             EntryLifetime(_, dep_node_index, _) |
-            EntryTyParam(_, dep_node_index, _) |
+            EntryGenericParam(_, dep_node_index, _) |
             EntryVisibility(_, dep_node_index, _) |
+            EntryAnonConst(_, dep_node_index, _) |
             EntryExpr(_, dep_node_index, _) |
             EntryLocal(_, dep_node_index, _) |
             EntryMacroDef(dep_node_index, _) |
@@ -385,32 +427,33 @@ impl<'hir> Map<'hir> {
                 };
 
                 match item.node {
-                    ItemStatic(_, m, _) => Some(Def::Static(def_id(),
+                    ItemKind::Static(_, m, _) => Some(Def::Static(def_id(),
                                                             m == MutMutable)),
-                    ItemConst(..) => Some(Def::Const(def_id())),
-                    ItemFn(..) => Some(Def::Fn(def_id())),
-                    ItemMod(..) => Some(Def::Mod(def_id())),
-                    ItemGlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
-                    ItemTy(..) => Some(Def::TyAlias(def_id())),
-                    ItemEnum(..) => Some(Def::Enum(def_id())),
-                    ItemStruct(..) => Some(Def::Struct(def_id())),
-                    ItemUnion(..) => Some(Def::Union(def_id())),
-                    ItemTrait(..) => Some(Def::Trait(def_id())),
-                    ItemTraitAlias(..) => {
+                    ItemKind::Const(..) => Some(Def::Const(def_id())),
+                    ItemKind::Fn(..) => Some(Def::Fn(def_id())),
+                    ItemKind::Mod(..) => Some(Def::Mod(def_id())),
+                    ItemKind::GlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
+                    ItemKind::Existential(..) => Some(Def::Existential(def_id())),
+                    ItemKind::Ty(..) => Some(Def::TyAlias(def_id())),
+                    ItemKind::Enum(..) => Some(Def::Enum(def_id())),
+                    ItemKind::Struct(..) => Some(Def::Struct(def_id())),
+                    ItemKind::Union(..) => Some(Def::Union(def_id())),
+                    ItemKind::Trait(..) => Some(Def::Trait(def_id())),
+                    ItemKind::TraitAlias(..) => {
                         bug!("trait aliases are not yet implemented (see issue #41517)")
                     },
-                    ItemExternCrate(_) |
-                    ItemUse(..) |
-                    ItemForeignMod(..) |
-                    ItemImpl(..) => None,
+                    ItemKind::ExternCrate(_) |
+                    ItemKind::Use(..) |
+                    ItemKind::ForeignMod(..) |
+                    ItemKind::Impl(..) => None,
                 }
             }
             NodeForeignItem(item) => {
                 let def_id = self.local_def_id(item.id);
                 match item.node {
-                    ForeignItemFn(..) => Some(Def::Fn(def_id)),
-                    ForeignItemStatic(_, m) => Some(Def::Static(def_id, m)),
-                    ForeignItemType => Some(Def::TyForeign(def_id)),
+                    ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
+                    ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
+                    ForeignItemKind::Type => Some(Def::TyForeign(def_id)),
                 }
             }
             NodeTraitItem(item) => {
@@ -427,6 +470,7 @@ impl<'hir> Map<'hir> {
                     ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     ImplItemKind::Method(..) => Some(Def::Method(def_id)),
                     ImplItemKind::Type(..) => Some(Def::AssociatedTy(def_id)),
+                    ImplItemKind::Existential(..) => Some(Def::AssociatedExistential(def_id)),
                 }
             }
             NodeVariant(variant) => {
@@ -434,6 +478,7 @@ impl<'hir> Map<'hir> {
                 Some(Def::Variant(def_id))
             }
             NodeField(_) |
+            NodeAnonConst(_) |
             NodeExpr(_) |
             NodeStmt(_) |
             NodeTy(_) |
@@ -451,8 +496,11 @@ impl<'hir> Map<'hir> {
                 Some(Def::Macro(self.local_def_id(macro_def.id),
                                 MacroKind::Bang))
             }
-            NodeTyParam(param) => {
-                Some(Def::TyParam(self.local_def_id(param.id)))
+            NodeGenericParam(param) => {
+                Some(match param.kind {
+                    GenericParamKind::Lifetime { .. } => Def::Local(param.id),
+                    GenericParamKind::Type { .. } => Def::TyParam(self.local_def_id(param.id)),
+                })
             }
         }
     }
@@ -493,17 +541,21 @@ impl<'hir> Map<'hir> {
         self.forest.krate.body(id)
     }
 
+    pub fn fn_decl(&self, node_id: ast::NodeId) -> Option<FnDecl> {
+        if let Some(entry) = self.find_entry(node_id) {
+            entry.fn_decl().map(|fd| fd.clone())
+        } else {
+            bug!("no entry for node_id `{}`", node_id)
+        }
+    }
+
     /// Returns the `NodeId` that corresponds to the definition of
     /// which this is the body of, i.e. a `fn`, `const` or `static`
-    /// item (possibly associated), or a closure, or the body itself
-    /// for embedded constant expressions (e.g. `N` in `[T; N]`).
+    /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
         let parent = self.get_parent_node(node_id);
-        if self.map[parent.as_usize()].is_body_owner(node_id) {
-            parent
-        } else {
-            node_id
-        }
+        assert!(self.map[parent.as_usize()].is_body_owner(node_id));
+        parent
     }
 
     pub fn body_owner_def_id(&self, id: BodyId) -> DefId {
@@ -520,19 +572,7 @@ impl<'hir> Map<'hir> {
                 self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
             }
 
-            if let Some(body_id) = entry.associated_body() {
-                // For item-like things and closures, the associated
-                // body has its own distinct id, and that is returned
-                // by `associated_body`.
-                Some(body_id)
-            } else {
-                // For some expressions, the expression is its own body.
-                if let EntryExpr(_, _, expr) = entry {
-                    Some(BodyId { node_id: expr.id })
-                } else {
-                    None
-                }
-            }
+            entry.associated_body()
         } else {
             bug!("no entry for id `{}`", id)
         }
@@ -547,20 +587,14 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body_owner_kind(&self, id: NodeId) -> BodyOwnerKind {
-        // Handle constants in enum discriminants, types, and repeat expressions.
-        let def_id = self.local_def_id(id);
-        let def_key = self.def_key(def_id);
-        if def_key.disambiguated_data.data == DefPathData::Initializer {
-            return BodyOwnerKind::Const;
-        }
-
         match self.get(id) {
-            NodeItem(&Item { node: ItemConst(..), .. }) |
+            NodeItem(&Item { node: ItemKind::Const(..), .. }) |
             NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
-            NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) => {
+            NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) |
+            NodeAnonConst(_) => {
                 BodyOwnerKind::Const
             }
-            NodeItem(&Item { node: ItemStatic(_, m, _), .. }) => {
+            NodeItem(&Item { node: ItemKind::Static(_, m, _), .. }) => {
                 BodyOwnerKind::Static(m)
             }
             // Default to function if it's not a constant or static.
@@ -570,8 +604,8 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
         match self.get(id) {
-            NodeItem(&Item { node: ItemTrait(..), .. }) => id,
-            NodeTyParam(_) => self.get_parent_node(id),
+            NodeItem(&Item { node: ItemKind::Trait(..), .. }) => id,
+            NodeGenericParam(_) => self.get_parent_node(id),
             _ => {
                 bug!("ty_param_owner: {} not a type parameter",
                     self.node_to_string(id))
@@ -581,14 +615,11 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_name(&self, id: NodeId) -> Name {
         match self.get(id) {
-            NodeItem(&Item { node: ItemTrait(..), .. }) => {
+            NodeItem(&Item { node: ItemKind::Trait(..), .. }) => {
                 keywords::SelfType.name()
             }
-            NodeTyParam(tp) => tp.name,
-            _ => {
-                bug!("ty_param_name: {} not a type parameter",
-                    self.node_to_string(id))
-            }
+            NodeGenericParam(param) => param.name.ident().name,
+            _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }
     }
 
@@ -635,6 +666,33 @@ impl<'hir> Map<'hir> {
         self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
     }
 
+    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
+        self.get_if_local(id).and_then(|node| {
+            match node {
+                NodeImplItem(ref impl_item) => Some(&impl_item.generics),
+                NodeTraitItem(ref trait_item) => Some(&trait_item.generics),
+                NodeItem(ref item) => {
+                    match item.node {
+                        ItemKind::Fn(_, _, ref generics, _) |
+                        ItemKind::Ty(_, ref generics) |
+                        ItemKind::Enum(_, ref generics) |
+                        ItemKind::Struct(_, ref generics) |
+                        ItemKind::Union(_, ref generics) |
+                        ItemKind::Trait(_, _, ref generics, ..) |
+                        ItemKind::TraitAlias(ref generics, _) |
+                        ItemKind::Impl(_, _, _, ref generics, ..) => Some(generics),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        })
+    }
+
+    pub fn get_generics_span(&self, id: DefId) -> Option<Span> {
+        self.get_generics(id).map(|generics| generics.span).filter(|sp| *sp != DUMMY_SP)
+    }
+
     /// Retrieve the Node corresponding to `id`, returning None if
     /// cannot be found.
     pub fn find(&self, id: NodeId) -> Option<Node<'hir>> {
@@ -678,7 +736,7 @@ impl<'hir> Map<'hir> {
             Some(NodeImplItem(_)) => true,
             Some(NodeExpr(e)) => {
                 match e.node {
-                    ExprClosure(..) => true,
+                    ExprKind::Closure(..) => true,
                     _ => false,
                 }
             }
@@ -765,7 +823,7 @@ impl<'hir> Map<'hir> {
             match *node {
                 NodeExpr(ref expr) => {
                     match expr.node {
-                        ExprWhile(..) | ExprLoop(..) => true,
+                        ExprKind::While(..) | ExprKind::Loop(..) => true,
                         _ => false,
                     }
                 }
@@ -781,7 +839,7 @@ impl<'hir> Map<'hir> {
 
     /// Retrieve the NodeId for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
-    /// in the AST which is recorded by the map and is an item, either an item
+    /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent(&self, id: NodeId) -> NodeId {
         match self.walk_parent_nodes(id, |node| match *node {
@@ -800,7 +858,7 @@ impl<'hir> Map<'hir> {
     /// module parent is in this map.
     pub fn get_module_parent(&self, id: NodeId) -> DefId {
         let id = match self.walk_parent_nodes(id, |node| match *node {
-            NodeItem(&Item { node: Item_::ItemMod(_), .. }) => true,
+            NodeItem(&Item { node: ItemKind::Mod(_), .. }) => true,
             _ => false,
         }, |_| false) {
             Ok(id) => id,
@@ -836,7 +894,7 @@ impl<'hir> Map<'hir> {
         let abi = match self.find_entry(parent) {
             Some(EntryItem(_, _, i)) => {
                 match i.node {
-                    ItemForeignMod(ref nm) => Some(nm.abi),
+                    ItemKind::ForeignMod(ref nm) => Some(nm.abi),
                     _ => None
                 }
             }
@@ -877,8 +935,8 @@ impl<'hir> Map<'hir> {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
-                    ItemStruct(ref struct_def, _) |
-                    ItemUnion(ref struct_def, _) => struct_def,
+                    ItemKind::Struct(ref struct_def, _) |
+                    ItemKind::Union(ref struct_def, _) => struct_def,
                     _ => {
                         bug!("struct ID bound to non-struct {}",
                              self.node_to_string(id));
@@ -920,13 +978,13 @@ impl<'hir> Map<'hir> {
         match self.get(id) {
             NodeItem(i) => i.name,
             NodeForeignItem(i) => i.name,
-            NodeImplItem(ii) => ii.name,
-            NodeTraitItem(ti) => ti.name,
+            NodeImplItem(ii) => ii.ident.name,
+            NodeTraitItem(ti) => ti.ident.name,
             NodeVariant(v) => v.node.name,
-            NodeField(f) => f.name,
-            NodeLifetime(lt) => lt.name.name(),
-            NodeTyParam(tp) => tp.name,
-            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
+            NodeField(f) => f.ident.name,
+            NodeLifetime(lt) => lt.name.ident().name,
+            NodeGenericParam(param) => param.name.ident().name,
+            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.name,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
@@ -945,7 +1003,7 @@ impl<'hir> Map<'hir> {
             Some(NodeField(ref f)) => Some(&f.attrs[..]),
             Some(NodeExpr(ref e)) => Some(&*e.attrs),
             Some(NodeStmt(ref s)) => Some(s.node.attrs()),
-            Some(NodeTyParam(tp)) => Some(&tp.attrs[..]),
+            Some(NodeGenericParam(param)) => Some(&param.attrs[..]),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
             Some(NodeStructCtor(_)) => {
@@ -982,6 +1040,7 @@ impl<'hir> Map<'hir> {
             Some(EntryImplItem(_, _, impl_item)) => impl_item.span,
             Some(EntryVariant(_, _, variant)) => variant.span,
             Some(EntryField(_, _, field)) => field.span,
+            Some(EntryAnonConst(_, _, constant)) => self.body(constant.body).value.span,
             Some(EntryExpr(_, _, expr)) => expr.span,
             Some(EntryStmt(_, _, stmt)) => stmt.span,
             Some(EntryTy(_, _, ty)) => ty.span,
@@ -991,8 +1050,10 @@ impl<'hir> Map<'hir> {
             Some(EntryBlock(_, _, block)) => block.span,
             Some(EntryStructCtor(_, _, _)) => self.expect_item(self.get_parent(id)).span,
             Some(EntryLifetime(_, _, lifetime)) => lifetime.span,
-            Some(EntryTyParam(_, _, ty_param)) => ty_param.span,
-            Some(EntryVisibility(_, _, &Visibility::Restricted { ref path, .. })) => path.span,
+            Some(EntryGenericParam(_, _, param)) => param.span,
+            Some(EntryVisibility(_, _, &Spanned {
+                node: VisibilityKind::Restricted { ref path, .. }, ..
+            })) => path.span,
             Some(EntryVisibility(_, _, v)) => bug!("unexpected Visibility {:?}", v),
             Some(EntryLocal(_, _, local)) => local.span,
             Some(EntryMacroDef(_, macro_def)) => macro_def.span,
@@ -1069,7 +1130,7 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
 
             fn item_is_mod(item: &Item) -> bool {
                 match item.node {
-                    ItemMod(_) => true,
+                    ItemKind::Mod(_) => true,
                     _ => false,
                 }
             }
@@ -1117,10 +1178,10 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 
 impl Named for Item { fn name(&self) -> Name { self.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
-impl Named for Variant_ { fn name(&self) -> Name { self.name } }
-impl Named for StructField { fn name(&self) -> Name { self.name } }
-impl Named for TraitItem { fn name(&self) -> Name { self.name } }
-impl Named for ImplItem { fn name(&self) -> Name { self.name } }
+impl Named for VariantKind { fn name(&self) -> Name { self.name } }
+impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
+impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
 
 pub fn map_crate<'hir>(sess: &::session::Session,
@@ -1196,18 +1257,19 @@ impl<'hir> print::PpAnn for Map<'hir> {
 impl<'a> print::State<'a> {
     pub fn print_node(&mut self, node: Node) -> io::Result<()> {
         match node {
-            NodeItem(a)        => self.print_item(&a),
-            NodeForeignItem(a) => self.print_foreign_item(&a),
-            NodeTraitItem(a)   => self.print_trait_item(a),
-            NodeImplItem(a)    => self.print_impl_item(a),
-            NodeVariant(a)     => self.print_variant(&a),
-            NodeExpr(a)        => self.print_expr(&a),
-            NodeStmt(a)        => self.print_stmt(&a),
-            NodeTy(a)          => self.print_type(&a),
-            NodeTraitRef(a)    => self.print_trait_ref(&a),
+            NodeItem(a)         => self.print_item(&a),
+            NodeForeignItem(a)  => self.print_foreign_item(&a),
+            NodeTraitItem(a)    => self.print_trait_item(a),
+            NodeImplItem(a)     => self.print_impl_item(a),
+            NodeVariant(a)      => self.print_variant(&a),
+            NodeAnonConst(a)    => self.print_anon_const(&a),
+            NodeExpr(a)         => self.print_expr(&a),
+            NodeStmt(a)         => self.print_stmt(&a),
+            NodeTy(a)           => self.print_type(&a),
+            NodeTraitRef(a)     => self.print_trait_ref(&a),
             NodeBinding(a)       |
-            NodePat(a)         => self.print_pat(&a),
-            NodeBlock(a)       => {
+            NodePat(a)          => self.print_pat(&a),
+            NodeBlock(a)        => {
                 use syntax::print::pprust::PrintState;
 
                 // containing cbox, will be closed by print-block at }
@@ -1216,16 +1278,16 @@ impl<'a> print::State<'a> {
                 self.ibox(0)?;
                 self.print_block(&a)
             }
-            NodeLifetime(a)    => self.print_lifetime(&a),
-            NodeVisibility(a)  => self.print_visibility(&a),
-            NodeTyParam(_)     => bug!("cannot print TyParam"),
-            NodeField(_)       => bug!("cannot print StructField"),
+            NodeLifetime(a)     => self.print_lifetime(&a),
+            NodeVisibility(a)   => self.print_visibility(&a),
+            NodeGenericParam(_) => bug!("cannot print NodeGenericParam"),
+            NodeField(_)        => bug!("cannot print StructField"),
             // these cases do not carry enough information in the
             // hir_map to reconstruct their full structure for pretty
             // printing.
-            NodeStructCtor(_)  => bug!("cannot print isolated StructCtor"),
-            NodeLocal(a)       => self.print_local_decl(&a),
-            NodeMacroDef(_)    => bug!("cannot print MacroDef"),
+            NodeStructCtor(_)   => bug!("cannot print isolated StructCtor"),
+            NodeLocal(a)        => self.print_local_decl(&a),
+            NodeMacroDef(_)     => bug!("cannot print MacroDef"),
         }
     }
 }
@@ -1253,21 +1315,22 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
     match map.find(id) {
         Some(NodeItem(item)) => {
             let item_str = match item.node {
-                ItemExternCrate(..) => "extern crate",
-                ItemUse(..) => "use",
-                ItemStatic(..) => "static",
-                ItemConst(..) => "const",
-                ItemFn(..) => "fn",
-                ItemMod(..) => "mod",
-                ItemForeignMod(..) => "foreign mod",
-                ItemGlobalAsm(..) => "global asm",
-                ItemTy(..) => "ty",
-                ItemEnum(..) => "enum",
-                ItemStruct(..) => "struct",
-                ItemUnion(..) => "union",
-                ItemTrait(..) => "trait",
-                ItemTraitAlias(..) => "trait alias",
-                ItemImpl(..) => "impl",
+                ItemKind::ExternCrate(..) => "extern crate",
+                ItemKind::Use(..) => "use",
+                ItemKind::Static(..) => "static",
+                ItemKind::Const(..) => "const",
+                ItemKind::Fn(..) => "fn",
+                ItemKind::Mod(..) => "mod",
+                ItemKind::ForeignMod(..) => "foreign mod",
+                ItemKind::GlobalAsm(..) => "global asm",
+                ItemKind::Ty(..) => "ty",
+                ItemKind::Existential(..) => "existential type",
+                ItemKind::Enum(..) => "enum",
+                ItemKind::Struct(..) => "struct",
+                ItemKind::Union(..) => "union",
+                ItemKind::Trait(..) => "trait",
+                ItemKind::TraitAlias(..) => "trait alias",
+                ItemKind::Impl(..) => "impl",
             };
             format!("{} {}{}", item_str, path_str(), id_str)
         }
@@ -1277,13 +1340,16 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeImplItem(ii)) => {
             match ii.node {
                 ImplItemKind::Const(..) => {
-                    format!("assoc const {} in {}{}", ii.name, path_str(), id_str)
+                    format!("assoc const {} in {}{}", ii.ident, path_str(), id_str)
                 }
                 ImplItemKind::Method(..) => {
-                    format!("method {} in {}{}", ii.name, path_str(), id_str)
+                    format!("method {} in {}{}", ii.ident, path_str(), id_str)
                 }
                 ImplItemKind::Type(_) => {
-                    format!("assoc type {} in {}{}", ii.name, path_str(), id_str)
+                    format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
+                }
+                ImplItemKind::Existential(_) => {
+                    format!("assoc existential type {} in {}{}", ii.ident, path_str(), id_str)
                 }
             }
         }
@@ -1294,7 +1360,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 TraitItemKind::Type(..) => "assoc type",
             };
 
-            format!("{} {} in {}{}", kind, ti.name, path_str(), id_str)
+            format!("{} {} in {}{}", kind, ti.ident, path_str(), id_str)
         }
         Some(NodeVariant(ref variant)) => {
             format!("variant {} in {}{}",
@@ -1303,8 +1369,11 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeField(ref field)) => {
             format!("field {} in {}{}",
-                    field.name,
+                    field.ident,
                     path_str(), id_str)
+        }
+        Some(NodeAnonConst(_)) => {
+            format!("const {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodeExpr(_)) => {
             format!("expr {}{}", map.node_to_pretty_string(id), id_str)
@@ -1336,8 +1405,8 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeLifetime(_)) => {
             format!("lifetime {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodeTyParam(ref ty_param)) => {
-            format!("typaram {:?}{}", ty_param, id_str)
+        Some(NodeGenericParam(ref param)) => {
+            format!("generic_param {:?}{}", param, id_str)
         }
         Some(NodeVisibility(ref vis)) => {
             format!("visibility {:?}{}", vis, id_str)

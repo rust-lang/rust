@@ -162,13 +162,13 @@ error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
 LL |     let _ = v as *const [u8]; //~ ERROR cannot cast
    |             ^^^^^^^^^^^^^^^^
 
-error[E0606]: casting `&Foo` as `*const str` is invalid
+error[E0606]: casting `&dyn Foo` as `*const str` is invalid
   --> $DIR/cast-rfc0401.rs:64:13
    |
 LL |     let _ = foo as *const str; //~ ERROR is invalid
    |             ^^^^^^^^^^^^^^^^^
 
-error[E0606]: casting `&Foo` as `*mut str` is invalid
+error[E0606]: casting `&dyn Foo` as `*mut str` is invalid
   --> $DIR/cast-rfc0401.rs:65:13
    |
 LL |     let _ = foo as *mut str; //~ ERROR is invalid
@@ -200,7 +200,7 @@ LL |     let _ = fat_sv as usize; //~ ERROR is invalid
    |
    = help: cast through a thin pointer first
 
-error[E0606]: casting `*const Foo` as `*const [u16]` is invalid
+error[E0606]: casting `*const dyn Foo` as `*const [u16]` is invalid
   --> $DIR/cast-rfc0401.rs:78:13
    |
 LL |     let _ = cf as *const [u16]; //~ ERROR is invalid
@@ -208,7 +208,7 @@ LL |     let _ = cf as *const [u16]; //~ ERROR is invalid
    |
    = note: vtable kinds may not match
 
-error[E0606]: casting `*const Foo` as `*const Bar` is invalid
+error[E0606]: casting `*const dyn Foo` as `*const dyn Bar` is invalid
   --> $DIR/cast-rfc0401.rs:79:13
    |
 LL |     let _ = cf as *const Bar; //~ ERROR is invalid
@@ -216,23 +216,25 @@ LL |     let _ = cf as *const Bar; //~ ERROR is invalid
    |
    = note: vtable kinds may not match
 
-error[E0277]: the trait bound `[u8]: std::marker::Sized` is not satisfied
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:63:13
    |
-LL |     let _ = fat_v as *const Foo; //~ ERROR is not satisfied
-   |             ^^^^^ `[u8]` does not have a constant size known at compile-time
+LL |     let _ = fat_v as *const Foo; //~ ERROR the size for values of type
+   |             ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
-   = note: required for the cast to the object type `Foo`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-sized>
+   = note: required for the cast to the object type `dyn Foo`
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:72:13
    |
-LL |     let _ = a as *const Foo; //~ ERROR is not satisfied
-   |             ^ `str` does not have a constant size known at compile-time
+LL |     let _ = a as *const Foo; //~ ERROR the size for values of type
+   |             ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: required for the cast to the object type `Foo`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-sized>
+   = note: required for the cast to the object type `dyn Foo`
 
 error[E0606]: casting `&{float}` as `f32` is invalid
   --> $DIR/cast-rfc0401.rs:81:30

@@ -9,8 +9,9 @@
 // except according to those terms.
 
 // no-prefer-dynamic
-#![feature(proc_macro)]
+
 #![crate_type = "proc-macro"]
+#![feature(proc_macro_diagnostic, proc_macro_span)]
 
 extern crate proc_macro;
 
@@ -27,8 +28,8 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
                            .help("input must be: `===`"))
         }
 
-        if let TokenTree::Op(tt) = tree {
-            if tt.op() == '=' {
+        if let TokenTree::Punct(ref tt) = tree {
+            if tt.as_char() == '=' {
                 count += 1;
                 last_span = span;
                 continue
@@ -50,7 +51,7 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
 pub fn three_equals(input: TokenStream) -> TokenStream {
     if let Err(diag) = parse(input) {
         diag.emit();
-        return TokenStream::empty();
+        return TokenStream::new();
     }
 
     "3".parse().unwrap()

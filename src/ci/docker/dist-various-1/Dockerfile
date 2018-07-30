@@ -80,6 +80,11 @@ RUN \
   echo "# a" >> /usr/local/mips-linux-musl/bin/mips-openwrt-linux-musl-wrapper.sh && \
   echo "# b" >> /usr/local/mipsel-linux-musl/bin/mipsel-openwrt-linux-musl-wrapper.sh
 
+ENV RUN_MAKE_TARGETS=thumbv6m-none-eabi
+ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7m-none-eabi
+ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabi
+ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabihf
+
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
 ENV TARGETS=$TARGETS,x86_64-rumprun-netbsd
@@ -98,16 +103,10 @@ ENV TARGETS=$TARGETS,thumbv7m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
 
-# FIXME: remove armv5te vars after https://github.com/alexcrichton/cc-rs/issues/271
-#        get fixed and cc update
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
-    CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
-    CC_armv5te_unknown_linux_gnueabi=arm-linux-gnueabi-gcc \
-    CFLAGS_armv5te_unknown_linux_gnueabi="-march=armv5te -marm -mfloat-abi=soft" \
-    CC_armv5te_unknown_linux_musleabi=arm-linux-gnueabi-gcc \
-    CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft"
+    CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc
 
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \
@@ -120,7 +119,9 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-emscripten \
       --disable-docs
 
-ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
+ENV SCRIPT \ 
+      python2.7 ../x.py test --target $RUN_MAKE_TARGETS src/test/run-make && \
+      python2.7 ../x.py dist --target $TARGETS
 
 # sccache
 COPY scripts/sccache.sh /scripts/

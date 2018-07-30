@@ -104,7 +104,7 @@ pub fn assoc_const_signature(
 pub fn assoc_type_signature(
     id: NodeId,
     ident: ast::Ident,
-    bounds: Option<&ast::TyParamBounds>,
+    bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext,
 ) -> Option<Signature> {
@@ -223,9 +223,9 @@ impl Sig for ast::Ty {
                     text.push_str("for<");
                     text.push_str(&f.generic_params
                         .iter()
-                        .filter_map(|p| match *p {
-                            ast::GenericParam::Lifetime(ref l) => {
-                                Some(l.lifetime.ident.to_string())
+                        .filter_map(|param| match param.kind {
+                            ast::GenericParamKind::Lifetime { .. } => {
+                                Some(param.ident.to_string())
                             }
                             _ => None,
                         })
@@ -306,14 +306,14 @@ impl Sig for ast::Ty {
                 let nested = pprust::bounds_to_string(bounds);
                 Ok(text_sig(nested))
             }
-            ast::TyKind::ImplTrait(ref bounds) => {
+            ast::TyKind::ImplTrait(_, ref bounds) => {
                 // FIXME recurse into bounds
                 let nested = pprust::bounds_to_string(bounds);
                 Ok(text_sig(format!("impl {}", nested)))
             }
             ast::TyKind::Array(ref ty, ref v) => {
                 let nested_ty = ty.make(offset + 1, id, scx)?;
-                let expr = pprust::expr_to_string(v).replace('\n', " ");
+                let expr = pprust::expr_to_string(&v.value).replace('\n', " ");
                 let text = format!("[{}; {}]", nested_ty.text, expr);
                 Ok(replace_text(nested_ty, text))
             }
@@ -380,17 +380,20 @@ impl Sig for ast::Item {
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, _) => {
+            ast::ItemKind::Fn(ref decl, header, ref generics, _) => {
                 let mut text = String::new();
-                if constness.node == ast::Constness::Const {
+                if header.constness.node == ast::Constness::Const {
                     text.push_str("const ");
                 }
-                if unsafety == ast::Unsafety::Unsafe {
+                if header.asyncness.is_async() {
+                    text.push_str("async ");
+                }
+                if header.unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
-                if abi != ::rustc_target::spec::abi::Abi::Rust {
+                if header.abi != ::rustc_target::spec::abi::Abi::Rust {
                     text.push_str("extern");
-                    text.push_str(&abi.to_string());
+                    text.push_str(&header.abi.to_string());
                     text.push(' ');
                 }
                 text.push_str("fn ");
@@ -440,6 +443,18 @@ impl Sig for ast::Item {
                     defs,
                     refs: vec![],
                 })
+            }
+            ast::ItemKind::Existential(ref bounds, ref generics) => {
+                let text = "existential type ".to_owned();
+                let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
+
+                if !bounds.is_empty() {
+                    sig.text.push_str(": ");
+                    sig.text.push_str(&pprust::bounds_to_string(bounds));
+                }
+                sig.text.push(';');
+
+                Ok(sig)
             }
             ast::ItemKind::Ty(ref ty, ref generics) => {
                 let text = "type ".to_owned();
@@ -617,45 +632,34 @@ impl Sig for ast::Generics {
 
         let mut defs = vec![];
         for param in &self.params {
-            match *param {
-                ast::GenericParam::Lifetime(ref l) => {
-                    let mut l_text = l.lifetime.ident.to_string();
-                    defs.push(SigElement {
-                        id: id_from_node_id(l.lifetime.id, scx),
-                        start: offset + text.len(),
-                        end: offset + text.len() + l_text.len(),
-                    });
-
-                    if !l.bounds.is_empty() {
-                        l_text.push_str(": ");
-                        let bounds = l.bounds
-                            .iter()
-                            .map(|l| l.ident.to_string())
+            let mut param_text = param.ident.to_string();
+            defs.push(SigElement {
+                id: id_from_node_id(param.id, scx),
+                start: offset + text.len(),
+                end: offset + text.len() + param_text.len(),
+            });
+            if !param.bounds.is_empty() {
+                param_text.push_str(": ");
+                match param.kind {
+                    ast::GenericParamKind::Lifetime { .. } => {
+                        let bounds = param.bounds.iter()
+                            .map(|bound| match bound {
+                                ast::GenericBound::Outlives(lt) => lt.ident.to_string(),
+                                _ => panic!(),
+                            })
                             .collect::<Vec<_>>()
                             .join(" + ");
-                        l_text.push_str(&bounds);
+                        param_text.push_str(&bounds);
                         // FIXME add lifetime bounds refs.
                     }
-                    text.push_str(&l_text);
-                    text.push(',');
-                }
-                ast::GenericParam::Type(ref t) => {
-                    let mut t_text = t.ident.to_string();
-                    defs.push(SigElement {
-                        id: id_from_node_id(t.id, scx),
-                        start: offset + text.len(),
-                        end: offset + text.len() + t_text.len(),
-                    });
-
-                    if !t.bounds.is_empty() {
-                        t_text.push_str(": ");
-                        t_text.push_str(&pprust::bounds_to_string(&t.bounds));
+                    ast::GenericParamKind::Type { .. } => {
+                        param_text.push_str(&pprust::bounds_to_string(&param.bounds));
                         // FIXME descend properly into bounds.
                     }
-                    text.push_str(&t_text);
-                    text.push(',');
                 }
             }
+            text.push_str(&param_text);
+            text.push(',');
         }
 
         text.push('>');
@@ -852,7 +856,7 @@ fn name_and_generics(
 fn make_assoc_type_signature(
     id: NodeId,
     ident: ast::Ident,
-    bounds: Option<&ast::TyParamBounds>,
+    bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext,
 ) -> Result {
@@ -925,15 +929,18 @@ fn make_method_signature(
 ) -> Result {
     // FIXME code dup with function signature
     let mut text = String::new();
-    if m.constness.node == ast::Constness::Const {
+    if m.header.constness.node == ast::Constness::Const {
         text.push_str("const ");
     }
-    if m.unsafety == ast::Unsafety::Unsafe {
+    if m.header.asyncness.is_async() {
+        text.push_str("async ");
+    }
+    if m.header.unsafety == ast::Unsafety::Unsafe {
         text.push_str("unsafe ");
     }
-    if m.abi != ::rustc_target::spec::abi::Abi::Rust {
+    if m.header.abi != ::rustc_target::spec::abi::Abi::Rust {
         text.push_str("extern");
-        text.push_str(&m.abi.to_string());
+        text.push_str(&m.header.abi.to_string());
         text.push(' ');
     }
     text.push_str("fn ");

@@ -13,12 +13,12 @@ LL | #![warn(unreachable_patterns)]
 warning: unreachable pattern
   --> $DIR/issue-43253.rs:45:9
    |
-LL |         8...9 => {},
+LL |         8..=9 => {},
    |         ^^^^^
 
 warning: unreachable pattern
   --> $DIR/issue-43253.rs:51:9
    |
-LL |         9...9 => {},
+LL |         9..=9 => {},
    |         ^^^^^
 

@@ -14,6 +14,7 @@ use std::slice;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut, Range, RangeBounds};
 use std::fmt;
+use std::hash::Hash;
 use std::vec;
 use std::u32;
 
@@ -22,9 +23,15 @@ use rustc_serialize as serialize;
 /// Represents some newtyped `usize` wrapper.
 ///
 /// (purpose: avoid mixing indexes for different bitvector domains.)
-pub trait Idx: Copy + 'static + Eq + Debug {
+pub trait Idx: Copy + 'static + Ord + Debug + Hash {
     fn new(idx: usize) -> Self;
+
     fn index(self) -> usize;
+
+    fn increment_by(&mut self, amount: usize) {
+        let v = self.index() + amount;
+        *self = Self::new(v);
+    }
 }
 
 impl Idx for usize {
@@ -85,6 +92,35 @@ macro_rules! newtype_index {
             #[inline]
             fn index(self) -> usize {
                 self.0 as usize
+            }
+        }
+
+        impl ::std::iter::Step for $type {
+            fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                <usize as ::std::iter::Step>::steps_between(
+                    &Idx::index(*start),
+                    &Idx::index(*end),
+                )
+            }
+
+            fn replace_one(&mut self) -> Self {
+                ::std::mem::replace(self, Self::new(1))
+            }
+
+            fn replace_zero(&mut self) -> Self {
+                ::std::mem::replace(self, Self::new(0))
+            }
+
+            fn add_one(&self) -> Self {
+                Self::new(Idx::index(*self) + 1)
+            }
+
+            fn sub_one(&self) -> Self {
+                Self::new(Idx::index(*self) - 1)
+            }
+
+            fn add_usize(&self, u: usize) -> Option<Self> {
+                Idx::index(*self).checked_add(u).map(Self::new)
             }
         }
 
@@ -368,6 +404,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn from_raw(raw: Vec<T>) -> Self {
+        IndexVec { raw, _marker: PhantomData }
+    }
+
+    #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         IndexVec { raw: Vec::with_capacity(capacity), _marker: PhantomData }
     }
@@ -469,8 +510,8 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn swap(&mut self, a: usize, b: usize) {
-        self.raw.swap(a, b)
+    pub fn swap(&mut self, a: I, b: I) {
+        self.raw.swap(a.index(), b.index())
     }
 
     #[inline]
@@ -512,9 +553,27 @@ impl<I: Idx, T> IndexVec<I, T> {
 }
 
 impl<I: Idx, T: Clone> IndexVec<I, T> {
+    /// Grows the index vector so that it contains an entry for
+    /// `elem`; if that is already true, then has no
+    /// effect. Otherwise, inserts new values as needed by invoking
+    /// `fill_value`.
+    #[inline]
+    pub fn ensure_contains_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
+        let min_new_len = elem.index() + 1;
+        if self.len() < min_new_len {
+            self.raw.resize_with(min_new_len, fill_value);
+        }
+    }
+
     #[inline]
     pub fn resize(&mut self, new_len: usize, value: T) {
         self.raw.resize(new_len, value)
+    }
+
+    #[inline]
+    pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
+        let min_new_len = elem.index() + 1;
+        self.raw.resize_with(min_new_len, fill_value);
     }
 }
 

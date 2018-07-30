@@ -19,10 +19,10 @@ use super::{CombinedSnapshot,
 use super::combine::CombineFields;
 use super::region_constraints::{TaintDirections};
 
-use rustc_data_structures::lazy_btree_map::LazyBTreeMap;
 use ty::{self, TyCtxt, Binder, TypeFoldable};
 use ty::error::TypeError;
 use ty::relate::{Relate, RelateResult, TypeRelation};
+use std::collections::BTreeMap;
 use syntax_pos::Span;
 use util::nodemap::{FxHashMap, FxHashSet};
 
@@ -247,8 +247,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              snapshot: &CombinedSnapshot<'a, 'tcx>,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
-                                             a_map: &LazyBTreeMap<ty::BoundRegion,
-                                                                  ty::Region<'tcx>>,
+                                             a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
                                              r0: ty::Region<'tcx>)
                                              -> ty::Region<'tcx> {
             // Regions that pre-dated the LUB computation stay as they are.
@@ -344,8 +343,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              snapshot: &CombinedSnapshot<'a, 'tcx>,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
-                                             a_map: &LazyBTreeMap<ty::BoundRegion,
-                                                                  ty::Region<'tcx>>,
+                                             a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
                                              a_vars: &[ty::RegionVid],
                                              b_vars: &[ty::RegionVid],
                                              r0: ty::Region<'tcx>)
@@ -414,12 +412,12 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn rev_lookup<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                       span: Span,
-                                      a_map: &LazyBTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                      a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
                                       r: ty::Region<'tcx>) -> ty::Region<'tcx>
         {
             for (a_br, a_r) in a_map {
                 if *a_r == r {
-                    return infcx.tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), *a_br));
+                    return infcx.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, *a_br));
                 }
             }
             span_bug!(
@@ -437,7 +435,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 }
 
 fn var_ids<'a, 'gcx, 'tcx>(fields: &CombineFields<'a, 'gcx, 'tcx>,
-                           map: &LazyBTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+                           map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
                            -> Vec<ty::RegionVid> {
     map.iter()
        .map(|(_, &r)| match *r {
@@ -475,7 +473,7 @@ fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             _ => true
         });
 
-        fldr(region, ty::DebruijnIndex::new(current_depth))
+        fldr(region, current_depth)
     })
 }
 
@@ -585,7 +583,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// For more information about how skolemization for HRTBs works, see
     /// the [rustc guide].
     ///
-    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-hrtb.html
+    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
     pub fn skolemize_late_bound_regions<T>(&self,
                                            binder: &ty::Binder<T>)
                                            -> (T, SkolemizationMap<'tcx>)
@@ -618,6 +616,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("leak_check: skol_map={:?}",
                skol_map);
+
+        // If the user gave `-Zno-leak-check`, then skip the leak
+        // check completely. This is wildly unsound and also not
+        // unlikely to cause an ICE or two. It is intended for use
+        // only during a transition period, in which the MIR typeck
+        // uses the "universe-style" check, and the rest of typeck
+        // uses the more conservative leak check.  Since the leak
+        // check is more conservative, we can't test the
+        // universe-style check without disabling it.
+        if self.tcx.sess.opts.debugging_opts.no_leak_check {
+            return Ok(());
+        }
 
         let new_vars = self.region_vars_confined_to_snapshot(snapshot);
         for (&skol_br, &skol) in skol_map {
@@ -736,7 +746,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // trait checking, and all of the skolemized regions
                     // appear inside predicates, which always have
                     // binders, so this assert is satisfied.
-                    assert!(current_depth > 1);
+                    assert!(current_depth > ty::INNERMOST);
 
                     // since leak-check passed, this skolemized region
                     // should only have incoming edges from variables
@@ -752,7 +762,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         r, br);
 
                     self.tcx.mk_region(ty::ReLateBound(
-                        ty::DebruijnIndex::new(current_depth - 1), br.clone()))
+                        current_depth.shifted_out(1),
+                        br.clone(),
+                    ))
                 }
             }
         });

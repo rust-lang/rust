@@ -5,6 +5,7 @@ LL |     let ref y = a;
    |         ----- immutable borrow occurs here
 LL |     bar(a); //~ ERROR E0502
    |         ^ mutable borrow occurs here
+LL |     y.use_ref();
 LL | }
    | - immutable borrow ends here
 

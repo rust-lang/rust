@@ -35,7 +35,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let def_id = tcx.hir.local_def_id(it.id);
 
     match it.node {
-        hir::ForeignItemFn(..) => {}
+        hir::ForeignItemKind::Fn(..) => {}
         _ => {
             struct_span_err!(tcx.sess, it.span, E0622,
                              "intrinsic must be a function")
@@ -45,10 +45,10 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let i_n_tps = tcx.generics_of(def_id).types.len();
+    let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     if i_n_tps != n_tps {
         let span = match it.node {
-            hir::ForeignItemFn(_, _, ref generics) => generics.span,
+            hir::ForeignItemKind::Fn(_, _, ref generics) => generics.span,
             _ => bug!()
         };
 
@@ -72,11 +72,11 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
 }
 
-/// Remember to add all intrinsics here, in librustc_trans/trans/intrinsic.rs,
+/// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
 /// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       it: &hir::ForeignItem) {
-    let param = |n| tcx.mk_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
+    let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
     let name = it.name.as_str();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
@@ -119,7 +119,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "pref_align_of" | "min_align_of" => (1, Vec::new(), tcx.types.usize),
             "size_of_val" |  "min_align_of_val" => {
                 (1, vec![
-                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
+                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
                                                                   ty::BrAnon(0))),
                                     param(0))
                  ], tcx.types.usize)
@@ -270,9 +270,9 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "roundf32"     => (0, vec![ tcx.types.f32 ], tcx.types.f32),
             "roundf64"     => (0, vec![ tcx.types.f64 ], tcx.types.f64),
 
-            "volatile_load" =>
+            "volatile_load" | "unaligned_volatile_load" =>
                 (1, vec![ tcx.mk_imm_ptr(param(0)) ], param(0)),
-            "volatile_store" =>
+            "volatile_store" | "unaligned_volatile_store" =>
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil()),
 
             "ctpop" | "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" |
@@ -298,7 +298,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
             "discriminant_value" => (1, vec![
-                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
+                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
                                                                   ty::BrAnon(0))),
                                    param(0))], tcx.types.u64),
 
@@ -313,11 +313,6 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ));
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
-
-            "align_offset" => {
-                let ptr_ty = tcx.mk_imm_ptr(tcx.mk_nil());
-                (0, vec![ptr_ty, tcx.types.usize], tcx.types.usize)
-            },
 
             "nontemporal_store" => {
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil())
@@ -342,11 +337,11 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                it: &hir::ForeignItem) {
     let param = |n| {
         let name = Symbol::intern(&format!("P{}", n)).as_interned_str();
-        tcx.mk_param(n, name)
+        tcx.mk_ty_param(n, name)
     };
 
     let def_id = tcx.hir.local_def_id(it.id);
-    let i_n_tps = tcx.generics_of(def_id).types.len();
+    let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {
@@ -356,8 +351,25 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         "simd_add" | "simd_sub" | "simd_mul" | "simd_rem" |
         "simd_div" | "simd_shl" | "simd_shr" |
         "simd_and" | "simd_or" | "simd_xor" |
-        "simd_fmin" | "simd_fmax" => {
+        "simd_fmin" | "simd_fmax" | "simd_fpow" => {
             (1, vec![param(0), param(0)], param(0))
+        }
+        "simd_fsqrt" | "simd_fsin" | "simd_fcos" | "simd_fexp" | "simd_fexp2" |
+        "simd_flog2" | "simd_flog10" | "simd_flog" |
+        "simd_fabs" | "simd_floor" | "simd_ceil" => {
+            (1, vec![param(0)], param(0))
+        }
+        "simd_fpowi" => {
+            (1, vec![param(0), tcx.types.i32], param(0))
+        }
+        "simd_fma" => {
+            (1, vec![param(0), param(0), param(0)], param(0))
+        }
+        "simd_gather" => {
+            (3, vec![param(0), param(1), param(2)], param(0))
+        }
+        "simd_scatter" => {
+            (3, vec![param(0), param(1), param(2)], tcx.mk_nil())
         }
         "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),

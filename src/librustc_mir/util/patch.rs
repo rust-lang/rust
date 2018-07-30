@@ -62,7 +62,7 @@ impl<'tcx> MirPatch<'tcx> {
                 terminator: Some(Terminator {
                     source_info: SourceInfo {
                         span: mir.span,
-                        scope: ARGUMENT_VISIBILITY_SCOPE
+                        scope: OUTERMOST_SOURCE_SCOPE
                     },
                     kind: TerminatorKind::Resume
                 }),
@@ -156,7 +156,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let mut new_statements = self.new_statements;
-        new_statements.sort_by(|u,v| u.0.cmp(&v.0));
+        new_statements.sort_by_key(|s| s.0);
 
         let mut delta = 0;
         let mut last_bb = START_BLOCK;

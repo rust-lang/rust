@@ -14,44 +14,60 @@
 //! but is not as ugly as it is right now.
 
 use rustc::mir::{BasicBlock, Location};
+use rustc::ty::RegionVid;
 use rustc_data_structures::indexed_set::Iter;
 
-use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::{EverInitializedPlaces, MovingOutStatements};
-use dataflow::{Borrows};
-use dataflow::{FlowAtLocation, FlowsAtLocation};
-use dataflow::move_paths::HasMoveData;
+use borrow_check::location::LocationIndex;
+
+use polonius_engine::Output;
+
 use dataflow::move_paths::indexes::BorrowIndex;
+use dataflow::move_paths::HasMoveData;
+use dataflow::Borrows;
+use dataflow::{EverInitializedPlaces, MovingOutStatements};
+use dataflow::{FlowAtLocation, FlowsAtLocation};
+use dataflow::MaybeUninitializedPlaces;
+use either::Either;
 use std::fmt;
+use std::rc::Rc;
 
 // (forced to be `pub` due to its use as an associated type below.)
 crate struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
     borrows: FlowAtLocation<Borrows<'b, 'gcx, 'tcx>>,
-    pub inits: FlowAtLocation<MaybeInitializedPlaces<'b, 'gcx, 'tcx>>,
     pub uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
     pub move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
     pub ever_inits: FlowAtLocation<EverInitializedPlaces<'b, 'gcx, 'tcx>>,
+
+    /// Polonius Output
+    pub polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
 }
 
 impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
     crate fn new(
         borrows: FlowAtLocation<Borrows<'b, 'gcx, 'tcx>>,
-        inits: FlowAtLocation<MaybeInitializedPlaces<'b, 'gcx, 'tcx>>,
         uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
         move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
         ever_inits: FlowAtLocation<EverInitializedPlaces<'b, 'gcx, 'tcx>>,
+        polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
     ) -> Self {
         Flows {
             borrows,
-            inits,
             uninits,
             move_outs,
             ever_inits,
+            polonius_output,
         }
     }
 
-    crate fn borrows_in_scope(&self) -> impl Iterator<Item = BorrowIndex> + '_ {
-        self.borrows.iter_incoming()
+    crate fn borrows_in_scope(
+        &self,
+        location: LocationIndex,
+    ) -> impl Iterator<Item = BorrowIndex> + '_ {
+        if let Some(ref polonius) = self.polonius_output {
+            Either::Left(polonius.errors_at(location).iter().cloned())
+        } else {
+            Either::Right(self.borrows.iter_incoming())
+        }
     }
 
     crate fn with_outgoing_borrows(&self, op: impl FnOnce(Iter<BorrowIndex>)) {
@@ -62,11 +78,10 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
 macro_rules! each_flow {
     ($this:ident, $meth:ident($arg:ident)) => {
         FlowAtLocation::$meth(&mut $this.borrows, $arg);
-        FlowAtLocation::$meth(&mut $this.inits, $arg);
         FlowAtLocation::$meth(&mut $this.uninits, $arg);
         FlowAtLocation::$meth(&mut $this.move_outs, $arg);
         FlowAtLocation::$meth(&mut $this.ever_inits, $arg);
-    }
+    };
 }
 
 impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
@@ -99,7 +114,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
             };
             saw_one = true;
             let borrow_data = &self.borrows.operator().borrows()[borrow];
-            s.push_str(&format!("{}", borrow_data));
+            s.push_str(&borrow_data.to_string());
         });
         s.push_str("] ");
 
@@ -111,19 +126,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
             };
             saw_one = true;
             let borrow_data = &self.borrows.operator().borrows()[borrow];
-            s.push_str(&format!("{}", borrow_data));
-        });
-        s.push_str("] ");
-
-        s.push_str("inits: [");
-        let mut saw_one = false;
-        self.inits.each_state_bit(|mpi_init| {
-            if saw_one {
-                s.push_str(", ");
-            };
-            saw_one = true;
-            let move_path = &self.inits.operator().move_data().move_paths[mpi_init];
-            s.push_str(&format!("{}", move_path));
+            s.push_str(&borrow_data.to_string());
         });
         s.push_str("] ");
 
@@ -134,9 +137,8 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let move_path =
-                &self.uninits.operator().move_data().move_paths[mpi_uninit];
-            s.push_str(&format!("{}", move_path));
+            let move_path = &self.uninits.operator().move_data().move_paths[mpi_uninit];
+            s.push_str(&move_path.to_string());
         });
         s.push_str("] ");
 
@@ -159,8 +161,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let ever_init =
-                &self.ever_inits.operator().move_data().inits[mpi_ever_init];
+            let ever_init = &self.ever_inits.operator().move_data().inits[mpi_ever_init];
             s.push_str(&format!("{:?}", ever_init));
         });
         s.push_str("]");

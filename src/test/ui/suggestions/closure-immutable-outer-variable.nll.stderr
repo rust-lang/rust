@@ -1,9 +1,0 @@
-error[E0594]: cannot assign to immutable item `y`
-  --> $DIR/closure-immutable-outer-variable.rs:21:26
-   |
-LL |     foo(Box::new(move || y = false) as Box<_>); //~ ERROR cannot assign to captured outer variable
-   |                          ^^^^^^^^^ cannot mutate
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0594`.

@@ -30,8 +30,9 @@ fn ok(map: &mut Map) -> &String {
                 return v;
             }
             None => {
-                map.set(String::new()); // Just AST errors here
+                map.set(String::new()); // Ideally, this would not error.
                 //~^ ERROR borrowed as immutable (Ast)
+                //~| ERROR borrowed as immutable (Mir)
             }
         }
     }
@@ -47,8 +48,9 @@ fn err(map: &mut Map) -> &String {
                 return v;
             }
             None => {
-                map.set(String::new()); // Just AST errors here
+                map.set(String::new()); // Ideally, just AST would error here
                 //~^ ERROR borrowed as immutable (Ast)
+                //~| ERROR borrowed as immutable (Mir)
             }
         }
     }

@@ -13,6 +13,7 @@
 // compile-pass
 
 #![allow(warnings)]
+#![warn(const_err)]
 
 fn main() {
     255u8 + 1; //~ WARNING this expression will panic at run-time

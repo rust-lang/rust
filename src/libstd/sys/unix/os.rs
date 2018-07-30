@@ -409,10 +409,9 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 /// environment variables of the current process.
 pub fn env() -> Env {
     unsafe {
-        ENV_LOCK.lock();
+        let _guard = ENV_LOCK.lock();
         let mut environ = *environ();
         if environ == ptr::null() {
-            ENV_LOCK.unlock();
             panic!("os::env() failure getting env string from OS: {}",
                    io::Error::last_os_error());
         }
@@ -423,12 +422,10 @@ pub fn env() -> Env {
             }
             environ = environ.offset(1);
         }
-        let ret = Env {
+        return Env {
             iter: result.into_iter(),
             _dont_send_or_sync_me: PhantomData,
-        };
-        ENV_LOCK.unlock();
-        return ret
+        }
     }
 
     fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
@@ -452,15 +449,14 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     // always None as well
     let k = CString::new(k.as_bytes())?;
     unsafe {
-        ENV_LOCK.lock();
+        let _guard = ENV_LOCK.lock();
         let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
         let ret = if s.is_null() {
             None
         } else {
             Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
         };
-        ENV_LOCK.unlock();
-        return Ok(ret)
+        Ok(ret)
     }
 }
 
@@ -469,10 +465,8 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let v = CString::new(v.as_bytes())?;
 
     unsafe {
-        ENV_LOCK.lock();
-        let ret = cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ());
-        ENV_LOCK.unlock();
-        return ret
+        let _guard = ENV_LOCK.lock();
+        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ())
     }
 }
 
@@ -480,10 +474,8 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
     unsafe {
-        ENV_LOCK.lock();
-        let ret = cvt(libc::unsetenv(nbuf.as_ptr())).map(|_| ());
-        ENV_LOCK.unlock();
-        return ret
+        let _guard = ENV_LOCK.lock();
+        cvt(libc::unsetenv(nbuf.as_ptr())).map(|_| ())
     }
 }
 
@@ -572,7 +564,7 @@ fn glibc_version_cstr() -> Option<&'static CStr> {
 // ignoring any extra dot-separated parts. Otherwise return None.
 #[cfg(target_env = "gnu")]
 fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
-    let mut parsed_ints = version.split(".").map(str::parse::<usize>).fuse();
+    let mut parsed_ints = version.split('.').map(str::parse::<usize>).fuse();
     match (parsed_ints.next(), parsed_ints.next()) {
         (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
         _ => None

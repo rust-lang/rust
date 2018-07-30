@@ -42,10 +42,10 @@ use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::default::Default;
 use std::error;
 use std::fmt::{self, Display, Formatter, Write as FmtWrite};
+use std::ffi::OsStr;
 use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
-use std::iter::repeat;
 use std::mem;
 use std::path::{PathBuf, Path, Component};
 use std::str;
@@ -62,19 +62,20 @@ use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
-use rustc_target::spec::abi;
 
 use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
-use html::format::{ConstnessSpace};
-use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
+use html::format::{AsyncSpace, ConstnessSpace};
+use html::format::{GenericBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
 use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use html::{highlight, layout};
+
+use minifier;
 
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
@@ -175,7 +176,7 @@ pub enum ExternalLocation {
 }
 
 /// Metadata about implementations for a type or trait.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Impl {
     pub impl_item: clean::Item,
 }
@@ -412,13 +413,13 @@ impl ToJson for Type {
     fn to_json(&self) -> Json {
         match self.name {
             Some(ref name) => {
-                let mut data = BTreeMap::new();
-                data.insert("name".to_owned(), name.to_json());
+                let mut data = Vec::with_capacity(2);
+                data.push(name.to_json());
                 if let Some(ref generics) = self.generics {
-                    data.insert("generics".to_owned(), generics.to_json());
+                    data.push(generics.to_json());
                 }
-                Json::Object(data)
-            },
+                Json::Array(data)
+            }
             None => Json::Null
         }
     }
@@ -437,10 +438,12 @@ impl ToJson for IndexItemFunctionType {
         if self.inputs.iter().chain(self.output.iter()).any(|ref i| i.name.is_none()) {
             Json::Null
         } else {
-            let mut data = BTreeMap::new();
-            data.insert("inputs".to_owned(), self.inputs.to_json());
-            data.insert("output".to_owned(), self.output.to_json());
-            Json::Object(data)
+            let mut data = Vec::with_capacity(2);
+            data.push(self.inputs.to_json());
+            if let Some(ref output) = self.output {
+                data.push(output.to_json());
+            }
+            Json::Array(data)
         }
     }
 }
@@ -509,7 +512,8 @@ pub fn run(mut krate: clean::Crate,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
            sort_modules_alphabetically: bool,
-           themes: Vec<PathBuf>) -> Result<(), Error> {
+           themes: Vec<PathBuf>,
+           enable_minification: bool) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -661,7 +665,7 @@ pub fn run(mut krate: clean::Crate,
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
     CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
-    write_shared(&cx, &krate, &*cache, index)?;
+    write_shared(&cx, &krate, &*cache, index, enable_minification)?;
 
     // And finally render the whole crate's documentation
     cx.krate(krate)
@@ -740,7 +744,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 fn write_shared(cx: &Context,
                 krate: &clean::Crate,
                 cache: &Cache,
-                search_index: String) -> Result<(), Error> {
+                search_index: String,
+                enable_minification: bool) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
@@ -749,10 +754,12 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/rustdoc.css"))?;
-    write(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/settings.css"))?;
+    write_minify(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/rustdoc.css"),
+                 enable_minification)?;
+    write_minify(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/settings.css"),
+                 enable_minification)?;
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
@@ -774,11 +781,13 @@ fn write_shared(cx: &Context,
           include_bytes!("static/brush.svg"))?;
     write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
           include_bytes!("static/wheel.svg"))?;
-    write(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/themes/light.css"))?;
+    write_minify(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/themes/light.css"),
+                 enable_minification)?;
     themes.insert("light".to_owned());
-    write(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/themes/dark.css"))?;
+    write_minify(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/themes/dark.css"),
+                 enable_minification)?;
     themes.insert("dark".to_owned());
 
     let mut themes: Vec<&String> = themes.iter().collect();
@@ -789,7 +798,8 @@ fn write_shared(cx: &Context,
           format!(
 r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
-themePicker.onclick = function() {{
+
+function switchThemeButtonState() {{
     if (themes.style.display === "block") {{
         themes.style.display = "none";
         themePicker.style.borderBottomRightRadius = "3px";
@@ -800,12 +810,29 @@ themePicker.onclick = function() {{
         themePicker.style.borderBottomLeftRadius = "0";
     }}
 }};
+
+function handleThemeButtonsBlur(e) {{
+    var active = document.activeElement;
+    var related = e.relatedTarget;
+
+    if (active.id !== "themePicker" &&
+        (!active.parentNode || active.parentNode.id !== "theme-choices") &&
+        (!related ||
+         (related.id !== "themePicker" &&
+          (!related.parentNode || related.parentNode.id !== "theme-choices")))) {{
+        switchThemeButtonState();
+    }}
+}}
+
+themePicker.onclick = switchThemeButtonState;
+themePicker.onblur = handleThemeButtonsBlur;
 [{}].forEach(function(item) {{
     var but = document.createElement('button');
     but.innerHTML = item;
     but.onclick = function(el) {{
         switchTheme(currentTheme, mainTheme, item);
     }};
+    but.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
 }});"#,
                  themes.iter()
@@ -814,24 +841,37 @@ themePicker.onclick = function() {{
                        .join(",")).as_bytes(),
     )?;
 
-    write(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
-                      include_bytes!("static/main.js"))?;
-    write(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
-                      include_bytes!("static/settings.js"))?;
+    write_minify(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
+                 include_str!("static/main.js"),
+                 enable_minification)?;
+    write_minify(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
+                 include_str!("static/settings.js"),
+                 enable_minification)?;
 
     {
         let mut data = format!("var resourcesSuffix = \"{}\";\n",
-                               cx.shared.resource_suffix).into_bytes();
-        data.extend_from_slice(include_bytes!("static/storage.js"));
-        write(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)), &data)?;
+                               cx.shared.resource_suffix);
+        data.push_str(include_str!("static/storage.js"));
+        write_minify(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)),
+                     &data,
+                     enable_minification)?;
     }
 
     if let Some(ref css) = cx.shared.css_file_extension {
         let out = cx.dst.join(&format!("theme{}.css", cx.shared.resource_suffix));
-        try_err!(fs::copy(css, out), css);
+        if !enable_minification {
+            try_err!(fs::copy(css, out), css);
+        } else {
+            let mut f = try_err!(File::open(css), css);
+            let mut buffer = String::with_capacity(1000);
+
+            try_err!(f.read_to_string(&mut buffer), css);
+            write_minify(out, &buffer, enable_minification)?;
+        }
     }
-    write(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/normalize.css"))?;
+    write_minify(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/normalize.css"),
+                 enable_minification)?;
     write(cx.dst.join("FiraSans-Regular.woff"),
           include_bytes!("static/FiraSans-Regular.woff"))?;
     write(cx.dst.join("FiraSans-Medium.woff"),
@@ -879,8 +919,8 @@ themePicker.onclick = function() {{
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!("{{'crate':'{}','ty':{},'name':'{}','path':'{}'{}}}",
-                krate, item.ty as usize, item.name, item.path,
+        format!("{{'crate':'{}','ty':{},'name':'{}','desc':'{}','p':'{}'{}}}",
+                krate, item.ty as usize, item.name, item.desc.replace("'", "\\'"), item.path,
                 if let Some(p) = item.parent_idx {
                     format!(",'parent':{}", p)
                 } else {
@@ -920,9 +960,11 @@ themePicker.onclick = function() {{
     // with rustdoc running in parallel.
     all_indexes.sort();
     let mut w = try_err!(File::create(&dst), &dst);
-    try_err!(writeln!(&mut w, "var searchIndex = {{}};"), &dst);
+    try_err!(writeln!(&mut w, "var N = null;var searchIndex = {{}};"), &dst);
     for index in &all_indexes {
-        try_err!(writeln!(&mut w, "{}", *index), &dst);
+        try_err!(write_minify_replacer(&mut w, &*index, enable_minification,
+                                       &[(minifier::js::Keyword::Null, "N")]),
+                 &dst);
     }
     try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
 
@@ -1018,6 +1060,32 @@ fn render_sources(dst: &Path, scx: &mut SharedContext,
 /// catch any errors.
 fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
     Ok(try_err!(fs::write(&dst, contents), &dst))
+}
+
+fn write_minify(dst: PathBuf, contents: &str, enable_minification: bool) -> Result<(), Error> {
+    if enable_minification {
+        if dst.extension() == Some(&OsStr::new("css")) {
+            let res = try_none!(minifier::css::minify(contents).ok(), &dst);
+            write(dst, res.as_bytes())
+        } else {
+            write(dst, minifier::js::minify(contents).as_bytes())
+        }
+    } else {
+        write(dst, contents.as_bytes())
+    }
+}
+
+fn write_minify_replacer<W: Write>(dst: &mut W,
+                                   contents: &str,
+                                   enable_minification: bool,
+                                   keywords_to_replace: &[(minifier::js::Keyword, &str)])
+                                   -> io::Result<()> {
+    if enable_minification {
+        writeln!(dst, "{}",
+                 minifier::js::minify_and_replace_keywords(contents, keywords_to_replace))
+    } else {
+        writeln!(dst, "{}", contents)
+    }
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
@@ -1415,8 +1483,11 @@ impl DocFolder for Cache {
 impl<'a> Cache {
     fn generics(&mut self, generics: &clean::Generics) {
         for param in &generics.params {
-            if let clean::GenericParam::Type(ref typ) = *param {
-                self.typarams.insert(typ.did, typ.name.clone());
+            match param.kind {
+                clean::GenericParamDefKind::Lifetime => {}
+                clean::GenericParamDefKind::Type { did, .. } => {
+                    self.typarams.insert(did, param.name.clone());
+                }
             }
         }
     }
@@ -1442,7 +1513,7 @@ impl<'a> Cache {
                                 ty: item.type_(),
                                 name: item_name.to_string(),
                                 path: path.clone(),
-                                desc: String::new(),
+                                desc: plain_summary_line(item.doc_value()),
                                 parent: None,
                                 parent_idx: None,
                                 search_type: get_index_search_type(&item),
@@ -1498,8 +1569,10 @@ struct AllTypes {
     macros: HashSet<ItemEntry>,
     functions: HashSet<ItemEntry>,
     typedefs: HashSet<ItemEntry>,
+    existentials: HashSet<ItemEntry>,
     statics: HashSet<ItemEntry>,
     constants: HashSet<ItemEntry>,
+    keywords: HashSet<ItemEntry>,
 }
 
 impl AllTypes {
@@ -1513,8 +1586,10 @@ impl AllTypes {
             macros: HashSet::with_capacity(100),
             functions: HashSet::with_capacity(100),
             typedefs: HashSet::with_capacity(100),
+            existentials: HashSet::with_capacity(100),
             statics: HashSet::with_capacity(100),
             constants: HashSet::with_capacity(100),
+            keywords: HashSet::with_capacity(100),
         }
     }
 
@@ -1533,6 +1608,7 @@ impl AllTypes {
                 ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
                 ItemType::Typedef => self.typedefs.insert(ItemEntry::new(new_url, name)),
+                ItemType::Existential => self.existentials.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
                 _ => true,
@@ -1576,6 +1652,7 @@ impl fmt::Display for AllTypes {
         print_entries(f, &self.macros, "Macros", "macros")?;
         print_entries(f, &self.functions, "Functions", "functions")?;
         print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
+        print_entries(f, &self.existentials, "Existentials", "existentials")?;
         print_entries(f, &self.statics, "Statics", "statics")?;
         print_entries(f, &self.constants, "Constants", "constants")
     }
@@ -1595,6 +1672,8 @@ impl<'a> Settings<'a> {
             settings: vec![
                 ("item-declarations", "Auto-hide item declarations.", true),
                 ("item-attributes", "Auto-hide item attributes.", true),
+                ("trait-implementations", "Auto-hide trait implementations documentation",
+                 true),
                 ("go-to-only-result", "Directly go to item in search if there is only one result",
                  false),
             ],
@@ -1632,7 +1711,7 @@ impl Context {
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     fn root_path(&self) -> String {
-        repeat("../").take(self.current.len()).collect::<String>()
+        "../".repeat(self.current.len())
     }
 
     /// Recurse in the directory structure and change the "root path" to make
@@ -1742,7 +1821,7 @@ impl Context {
     }
 
     fn render_item(&self,
-                   writer: &mut io::Write,
+                   writer: &mut dyn io::Write,
                    it: &clean::Item,
                    pushname: bool)
                    -> io::Result<()> {
@@ -1892,7 +1971,6 @@ impl Context {
 
                 // If the item is a macro, redirect from the old macro URL (with !)
                 // to the new one (without).
-                // FIXME(#35705) remove this redirect.
                 if item_type == ItemType::Macro {
                     let redir_name = format!("{}.{}!.html", item_type, name);
                     let redir_dst = self.dst.join(redir_name);
@@ -1980,7 +2058,7 @@ impl<'a> Item<'a> {
         };
 
         let lines = if self.item.source.loline == self.item.source.hiline {
-            format!("{}", self.item.source.loline)
+            self.item.source.loline.to_string()
         } else {
             format!("{}-{}", self.item.source.loline, self.item.source.hiline)
         };
@@ -2022,18 +2100,19 @@ impl<'a> fmt::Display for Item<'a> {
             clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
             clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
+            clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
+            clean::ExistentialItem(..) => write!(fmt, "Existential Type ")?,
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
             }
         }
-        if !self.item.is_primitive() {
+        if !self.item.is_primitive() && !self.item.is_keyword() {
             let cur = &self.cx.current;
             let amt = if self.item.is_mod() { cur.len() - 1 } else { cur.len() };
             for (i, component) in cur.iter().enumerate().take(amt) {
                 write!(fmt, "<a href='{}index.html'>{}</a>::<wbr>",
-                       repeat("../").take(cur.len() - i - 1)
-                                    .collect::<String>(),
+                       "../".repeat(cur.len() - i - 1),
                        component)?;
             }
         }
@@ -2085,6 +2164,8 @@ impl<'a> fmt::Display for Item<'a> {
                 item_static(fmt, self.cx, self.item, i),
             clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
             clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
+            clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
+            clean::ExistentialItem(ref e, _) => item_existential(fmt, self.cx, self.item, e),
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -2152,7 +2233,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
             format!("{} [Read more]({})",
                     &plain_summary_line(Some(s)), naive_assoc_href(item, link))
         } else {
-            format!("{}", &plain_summary_line(Some(s)))
+            plain_summary_line(Some(s)).to_string()
         };
         render_markdown(w, &markdown, item.links(), prefix)?;
     } else if !prefix.is_empty() {
@@ -2196,6 +2277,37 @@ fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) 
         }
         write!(w, "</div>")?;
     }
+    Ok(())
+}
+
+fn document_non_exhaustive_header(item: &clean::Item) -> &str {
+    if item.is_non_exhaustive() { " (Non-exhaustive)" } else { "" }
+}
+
+fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
+    if item.is_non_exhaustive() {
+        write!(w, "<div class='docblock non-exhaustive non-exhaustive-{}'>", {
+            if item.is_struct() { "struct" } else if item.is_enum() { "enum" } else { "type" }
+        })?;
+
+        if item.is_struct() {
+            write!(w, "Non-exhaustive structs could have additional fields added in future. \
+                       Therefore, non-exhaustive structs cannot be constructed in external crates \
+                       using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
+                       matched against without a wildcard <code>..</code>; and \
+                       struct update syntax will not work.")?;
+        } else if item.is_enum() {
+            write!(w, "Non-exhaustive enums could have additional variants added in future. \
+                       Therefore, when matching against variants of non-exhaustive enums, an \
+                       extra wildcard arm must be added to account for any future variants.")?;
+        } else {
+            write!(w, "This type will require a wildcard arm in any match statements or \
+                       constructors.")?;
+        }
+
+        write!(w, "</div>")?;
+    }
+
     Ok(())
 }
 
@@ -2312,29 +2424,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 write!(w, "</table>")?;
             }
             curty = myty;
-            let (short, name) = match myty.unwrap() {
-                ItemType::ExternCrate |
-                ItemType::Import          => ("reexports", "Re-exports"),
-                ItemType::Module          => ("modules", "Modules"),
-                ItemType::Struct          => ("structs", "Structs"),
-                ItemType::Union           => ("unions", "Unions"),
-                ItemType::Enum            => ("enums", "Enums"),
-                ItemType::Function        => ("functions", "Functions"),
-                ItemType::Typedef         => ("types", "Type Definitions"),
-                ItemType::Static          => ("statics", "Statics"),
-                ItemType::Constant        => ("constants", "Constants"),
-                ItemType::Trait           => ("traits", "Traits"),
-                ItemType::Impl            => ("impls", "Implementations"),
-                ItemType::TyMethod        => ("tymethods", "Type Methods"),
-                ItemType::Method          => ("methods", "Methods"),
-                ItemType::StructField     => ("fields", "Struct Fields"),
-                ItemType::Variant         => ("variants", "Variants"),
-                ItemType::Macro           => ("macros", "Macros"),
-                ItemType::Primitive       => ("primitives", "Primitive Types"),
-                ItemType::AssociatedType  => ("associated-types", "Associated Types"),
-                ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
-                ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
-            };
+            let (short, name) = item_ty_to_strs(&myty.unwrap());
             write!(w, "<h2 id='{id}' class='section-header'>\
                        <a href=\"#{id}\">{name}</a></h2>\n<table>",
                    id = derive_id(short.to_owned()), name = name)?;
@@ -2382,7 +2472,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
                 let unsafety_flag = match myitem.inner {
                     clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
-                    if func.unsafety == hir::Unsafety::Unsafe => {
+                    if func.header.unsafety == hir::Unsafety::Unsafe => {
                         "<a title='unsafe function' href='#'><sup>⚠</sup></a>"
                     }
                     _ => "",
@@ -2552,21 +2642,24 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    let name_len = format!("{}{}{}{:#}fn {}{:#}",
+    let name_len = format!("{}{}{}{}{:#}fn {}{:#}",
                            VisSpace(&it.visibility),
-                           ConstnessSpace(f.constness),
-                           UnsafetySpace(f.unsafety),
-                           AbiSpace(f.abi),
+                           ConstnessSpace(f.header.constness),
+                           UnsafetySpace(f.header.unsafety),
+                           AsyncSpace(f.header.asyncness),
+                           AbiSpace(f.header.abi),
                            it.name.as_ref().unwrap(),
                            f.generics).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
     render_attributes(w, it)?;
     write!(w,
-           "{vis}{constness}{unsafety}{abi}fn {name}{generics}{decl}{where_clause}</pre>",
+           "{vis}{constness}{unsafety}{asyncness}{abi}fn \
+           {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
-           constness = ConstnessSpace(f.constness),
-           unsafety = UnsafetySpace(f.unsafety),
-           abi = AbiSpace(f.abi),
+           constness = ConstnessSpace(f.header.constness),
+           unsafety = UnsafetySpace(f.header.unsafety),
+           asyncness = AsyncSpace(f.header.asyncness),
+           abi = AbiSpace(f.header.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
@@ -2579,7 +2672,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
-                      implementor_dups: &FxHashMap<&str, (DefId, bool)>) -> Result<(), fmt::Error> {
+                      implementor_dups: &FxHashMap<&str, (DefId, bool)>) -> fmt::Result {
     write!(w, "<li><table class='table-display'><tbody><tr><td><code>")?;
     // If there's already another implementor that has the same abbridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
@@ -2595,7 +2688,7 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
     for it in &implementor.inner_impl().items {
         if let clean::TypedefItem(ref tydef, _) = it.inner {
             write!(w, "<span class=\"where fmt-newline\">  ")?;
-            assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
+            assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
             write!(w, ";</span>")?;
         }
     }
@@ -2612,7 +2705,7 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
 
 fn render_impls(cx: &Context, w: &mut fmt::Formatter,
                 traits: &[&&Impl],
-                containing_item: &clean::Item) -> Result<(), fmt::Error> {
+                containing_item: &clean::Item) -> fmt::Result {
     for i in traits {
         let did = i.trait_did().unwrap();
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
@@ -2622,27 +2715,35 @@ fn render_impls(cx: &Context, w: &mut fmt::Formatter,
     Ok(())
 }
 
-fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
-              t: &clean::Trait) -> fmt::Result {
+fn bounds(t_bounds: &[clean::GenericBound]) -> String {
     let mut bounds = String::new();
     let mut bounds_plain = String::new();
-    if !t.bounds.is_empty() {
+    if !t_bounds.is_empty() {
         if !bounds.is_empty() {
             bounds.push(' ');
             bounds_plain.push(' ');
         }
         bounds.push_str(": ");
         bounds_plain.push_str(": ");
-        for (i, p) in t.bounds.iter().enumerate() {
+        for (i, p) in t_bounds.iter().enumerate() {
             if i > 0 {
                 bounds.push_str(" + ");
                 bounds_plain.push_str(" + ");
             }
-            bounds.push_str(&format!("{}", *p));
+            bounds.push_str(&(*p).to_string());
             bounds_plain.push_str(&format!("{:#}", *p));
         }
     }
+    bounds
+}
 
+fn item_trait(
+    w: &mut fmt::Formatter,
+    cx: &Context,
+    it: &clean::Item,
+    t: &clean::Trait,
+) -> fmt::Result {
+    let bounds = bounds(&t.bounds);
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
     let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
@@ -2797,18 +2898,18 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)?;
 
     let cache = cache();
-    let impl_header = "
-        <h2 id='implementors' class='small-section-header'>
-          Implementors<a href='#implementors' class='anchor'></a>
-        </h2>
-        <ul class='item-list' id='implementors-list'>
+    let impl_header = "\
+        <h2 id='implementors' class='small-section-header'>\
+          Implementors<a href='#implementors' class='anchor'></a>\
+        </h2>\
+        <ul class='item-list' id='implementors-list'>\
     ";
 
-    let synthetic_impl_header = "
-        <h2 id='synthetic-implementors' class='small-section-header'>
-          Auto implementors<a href='#synthetic-implementors' class='anchor'></a>
-        </h2>
-        <ul class='item-list' id='synthetic-implementors-list'>
+    let synthetic_impl_header = "\
+        <h2 id='synthetic-implementors' class='small-section-header'>\
+          Auto implementors<a href='#synthetic-implementors' class='anchor'></a>\
+        </h2>\
+        <ul class='item-list' id='synthetic-implementors-list'>\
     ";
 
     let mut synthetic_types = Vec::new();
@@ -2839,9 +2940,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                                          .map_or(true, |d| cache.paths.contains_key(&d)));
 
 
-        let (synthetic, concrete) = local.iter()
-            .partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
-
+        let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) = local.iter()
+            .filter(|i| i.inner_impl().blanket_impl.is_none())
+            .partition(|i| i.inner_impl().synthetic);
 
         if !foreign.is_empty() {
             write!(w, "
@@ -2937,14 +3038,14 @@ fn assoc_const(w: &mut fmt::Formatter,
 }
 
 fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
-                             bounds: &Vec<clean::TyParamBound>,
+                             bounds: &[clean::GenericBound],
                              default: Option<&clean::Type>,
                              link: AssocItemLink) -> fmt::Result {
     write!(w, "type <a href='{}' class=\"type\">{}</a>",
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
     if !bounds.is_empty() {
-        write!(w, ": {}", TyParamBounds(bounds))?
+        write!(w, ": {}", GenericBounds(bounds))?
     }
     if let Some(default) = default {
         write!(w, " = {}", default)?;
@@ -2976,9 +3077,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                      parent: ItemType) -> fmt::Result {
     fn method(w: &mut fmt::Formatter,
               meth: &clean::Item,
-              unsafety: hir::Unsafety,
-              constness: hir::Constness,
-              abi: abi::Abi,
+              header: hir::FnHeader,
               g: &clean::Generics,
               d: &clean::FnDecl,
               link: AssocItemLink,
@@ -3001,11 +3100,12 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                 href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
-        let mut head_len = format!("{}{}{}{:#}fn {}{:#}",
+        let mut head_len = format!("{}{}{}{}{:#}fn {}{:#}",
                                    VisSpace(&meth.visibility),
-                                   ConstnessSpace(constness),
-                                   UnsafetySpace(unsafety),
-                                   AbiSpace(abi),
+                                   ConstnessSpace(header.constness),
+                                   UnsafetySpace(header.unsafety),
+                                   AsyncSpace(header.asyncness),
+                                   AbiSpace(header.abi),
                                    name,
                                    *g).len();
         let (indent, end_newline) = if parent == ItemType::Trait {
@@ -3014,12 +3114,14 @@ fn render_assoc_item(w: &mut fmt::Formatter,
         } else {
             (0, true)
         };
-        write!(w, "{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
+        render_attributes(w, meth)?;
+        write!(w, "{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                VisSpace(&meth.visibility),
-               ConstnessSpace(constness),
-               UnsafetySpace(unsafety),
-               AbiSpace(abi),
+               ConstnessSpace(header.constness),
+               UnsafetySpace(header.unsafety),
+               AsyncSpace(header.asyncness),
+               AbiSpace(header.abi),
                href = href,
                name = name,
                generics = *g,
@@ -3037,12 +3139,10 @@ fn render_assoc_item(w: &mut fmt::Formatter,
     match item.inner {
         clean::StrippedItem(..) => Ok(()),
         clean::TyMethodItem(ref m) => {
-            method(w, item, m.unsafety, hir::Constness::NotConst,
-                   m.abi, &m.generics, &m.decl, link, parent)
+            method(w, item, m.header, &m.generics, &m.decl, link, parent)
         }
         clean::MethodItem(ref m) => {
-            method(w, item, m.unsafety, m.constness,
-                   m.abi, &m.generics, &m.decl, link, parent)
+            method(w, item, m.header, &m.generics, &m.decl, link, parent)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
             assoc_const(w, item, ty, default.as_ref(), link)
@@ -3079,7 +3179,9 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     if let doctree::Plain = s.struct_type {
         if fields.peek().is_some() {
             write!(w, "<h2 id='fields' class='fields small-section-header'>
-                       Fields<a href='#fields' class='anchor'></a></h2>")?;
+                       Fields{}<a href='#fields' class='anchor'></a></h2>",
+                       document_non_exhaustive_header(it))?;
+            document_non_exhaustive(w, it)?;
             for (field, ty) in fields {
                 let id = derive_id(format!("{}.{}",
                                            ItemType::StructField,
@@ -3211,7 +3313,9 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     document(w, cx, it)?;
     if !e.variants.is_empty() {
         write!(w, "<h2 id='variants' class='variants small-section-header'>
-                   Variants<a href='#variants' class='anchor'></a></h2>\n")?;
+                   Variants{}<a href='#variants' class='anchor'></a></h2>\n",
+                   document_non_exhaustive_header(it))?;
+        document_non_exhaustive(w, it)?;
         for variant in &e.variants {
             let id = derive_id(format!("{}.{}",
                                        ItemType::Variant,
@@ -3287,7 +3391,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     let name = attr.name();
 
     if attr.is_word() {
-        Some(format!("{}", name))
+        Some(name.to_string())
     } else if let Some(v) = attr.value_str() {
         Some(format!("{} = {:?}", name, v.as_str()))
     } else if let Some(values) = attr.meta_item_list() {
@@ -3312,7 +3416,8 @@ const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
     "must_use",
     "no_mangle",
     "repr",
-    "unsafe_destructor_blind_to_params"
+    "unsafe_destructor_blind_to_params",
+    "non_exhaustive"
 ];
 
 fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
@@ -3483,18 +3588,19 @@ fn render_assoc_items(w: &mut fmt::Formatter,
     if !non_trait.is_empty() {
         let render_mode = match what {
             AssocItemRender::All => {
-                write!(w, "
-                    <h2 id='methods' class='small-section-header'>
-                      Methods<a href='#methods' class='anchor'></a>
-                    </h2>
+                write!(w, "\
+                    <h2 id='methods' class='small-section-header'>\
+                      Methods<a href='#methods' class='anchor'></a>\
+                    </h2>\
                 ")?;
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
-                write!(w, "
-                    <h2 id='deref-methods' class='small-section-header'>
-                      Methods from {}&lt;Target = {}&gt;<a href='#deref-methods' class='anchor'></a>
-                    </h2>
+                write!(w, "\
+                    <h2 id='deref-methods' class='small-section-header'>\
+                      Methods from {}&lt;Target = {}&gt;\
+                      <a href='#deref-methods' class='anchor'></a>\
+                    </h2>\
                 ", trait_, type_)?;
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
@@ -3518,9 +3624,12 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut)?;
         }
 
-        let (synthetic, concrete) = traits
+        let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) = traits
             .iter()
-            .partition::<Vec<_>, _>(|t| t.inner_impl().synthetic);
+            .partition(|t| t.inner_impl().synthetic);
+        let (blanket_impl, concrete) = concrete
+            .into_iter()
+            .partition(|t| t.inner_impl().blanket_impl.is_some());
 
         struct RendererStruct<'a, 'b, 'c>(&'a Context, Vec<&'b &'b Impl>, &'c clean::Item);
 
@@ -3530,23 +3639,36 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             }
         }
 
-        let impls = format!("{}", RendererStruct(cx, concrete, containing_item));
+        let impls = RendererStruct(cx, concrete, containing_item).to_string();
         if !impls.is_empty() {
-            write!(w, "
-                <h2 id='implementations' class='small-section-header'>
-                  Trait Implementations<a href='#implementations' class='anchor'></a>
-                </h2>
+            write!(w, "\
+                <h2 id='implementations' class='small-section-header'>\
+                  Trait Implementations<a href='#implementations' class='anchor'></a>\
+                </h2>\
                 <div id='implementations-list'>{}</div>", impls)?;
         }
 
         if !synthetic.is_empty() {
-            write!(w, "
-                <h2 id='synthetic-implementations' class='small-section-header'>
-                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
-                </h2>
-                <div id='synthetic-implementations-list'>
+            write!(w, "\
+                <h2 id='synthetic-implementations' class='small-section-header'>\
+                  Auto Trait Implementations\
+                  <a href='#synthetic-implementations' class='anchor'></a>\
+                </h2>\
+                <div id='synthetic-implementations-list'>\
             ")?;
             render_impls(cx, w, &synthetic, containing_item)?;
+            write!(w, "</div>")?;
+        }
+
+        if !blanket_impl.is_empty() {
+            write!(w, "\
+                <h2 id='blanket-implementations' class='small-section-header'>\
+                  Blanket Implementations\
+                  <a href='#blanket-implementations' class='anchor'></a>\
+                </h2>\
+                <div id='blanket-implementations-list'>\
+            ")?;
+            render_impls(cx, w, &blanket_impl, containing_item)?;
             write!(w, "</div>")?;
         }
     }
@@ -3633,7 +3755,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                             &format!("<h3 class=\"important\">Important traits for {}</h3>\
                                       <code class=\"content\">",
                                      impl_.for_));
-                        trait_.push_str(&format!("{}", impl_.for_));
+                        trait_.push_str(&impl_.for_.to_string());
                     }
 
                     //use the "where" class here to make it small
@@ -3642,7 +3764,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                     for it in &impl_.items {
                         if let clean::TypedefItem(ref tydef, _) = it.inner {
                             out.push_str("<span class=\"where fmt-newline\">    ");
-                            assoc_type(&mut out, it, &vec![],
+                            assoc_type(&mut out, it, &[],
                                        Some(&tydef.type_),
                                        AssocItemLink::GotoSource(t_did, &FxHashSet()))?;
                             out.push_str(";</span>");
@@ -3841,6 +3963,29 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     Ok(())
+}
+
+fn item_existential(
+    w: &mut fmt::Formatter,
+    cx: &Context,
+    it: &clean::Item,
+    t: &clean::Existential,
+) -> fmt::Result {
+    write!(w, "<pre class='rust existential'>")?;
+    render_attributes(w, it)?;
+    write!(w, "existential type {}{}{where_clause}: {bounds};</pre>",
+           it.name.as_ref().unwrap(),
+           t.generics,
+           where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
+           bounds = bounds(&t.bounds))?;
+
+    document(w, cx, it)?;
+
+    // Render any items associated directly to this alias, as otherwise they
+    // won't be visible anywhere in the docs. It would be nice to also show
+    // associated items from the aliased type (see discussion in #32077), but
+    // we need #14072 to make sense of the generics.
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
@@ -4071,12 +4216,16 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                            .collect::<String>()
             };
 
-            let (synthetic, concrete) = v
+            let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) = v
                 .iter()
                 .partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
+            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) = concrete
+                .into_iter()
+                .partition::<Vec<_>, _>(|i| i.inner_impl().blanket_impl.is_some());
 
             let concrete_format = format_impls(concrete);
             let synthetic_format = format_impls(synthetic);
+            let blanket_format = format_impls(blanket_impl);
 
             if !concrete_format.is_empty() {
                 out.push_str("<a class=\"sidebar-title\" href=\"#implementations\">\
@@ -4088,6 +4237,12 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 out.push_str("<a class=\"sidebar-title\" href=\"#synthetic-implementations\">\
                               Auto Trait Implementations</a>");
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", synthetic_format));
+            }
+
+            if !blanket_format.is_empty() {
+                out.push_str("<a class=\"sidebar-title\" href=\"#blanket-implementations\">\
+                              Blanket Implementations</a>");
+                out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", blanket_format));
             }
         }
     }
@@ -4318,6 +4473,34 @@ fn sidebar_enum(fmt: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
+fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
+    match *ty {
+        ItemType::ExternCrate |
+        ItemType::Import          => ("reexports", "Re-exports"),
+        ItemType::Module          => ("modules", "Modules"),
+        ItemType::Struct          => ("structs", "Structs"),
+        ItemType::Union           => ("unions", "Unions"),
+        ItemType::Enum            => ("enums", "Enums"),
+        ItemType::Function        => ("functions", "Functions"),
+        ItemType::Typedef         => ("types", "Type Definitions"),
+        ItemType::Static          => ("statics", "Statics"),
+        ItemType::Constant        => ("constants", "Constants"),
+        ItemType::Trait           => ("traits", "Traits"),
+        ItemType::Impl            => ("impls", "Implementations"),
+        ItemType::TyMethod        => ("tymethods", "Type Methods"),
+        ItemType::Method          => ("methods", "Methods"),
+        ItemType::StructField     => ("fields", "Struct Fields"),
+        ItemType::Variant         => ("variants", "Variants"),
+        ItemType::Macro           => ("macros", "Macros"),
+        ItemType::Primitive       => ("primitives", "Primitive Types"),
+        ItemType::AssociatedType  => ("associated-types", "Associated Types"),
+        ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
+        ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
+        ItemType::Keyword         => ("keywords", "Keywords"),
+        ItemType::Existential     => ("existentials", "Existentials"),
+    }
+}
+
 fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                   items: &[clean::Item]) -> fmt::Result {
     let mut sidebar = String::new();
@@ -4337,29 +4520,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                    ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
                    ItemType::AssociatedType, ItemType::AssociatedConst, ItemType::ForeignType] {
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty) {
-            let (short, name) = match myty {
-                ItemType::ExternCrate |
-                ItemType::Import          => ("reexports", "Re-exports"),
-                ItemType::Module          => ("modules", "Modules"),
-                ItemType::Struct          => ("structs", "Structs"),
-                ItemType::Union           => ("unions", "Unions"),
-                ItemType::Enum            => ("enums", "Enums"),
-                ItemType::Function        => ("functions", "Functions"),
-                ItemType::Typedef         => ("types", "Type Definitions"),
-                ItemType::Static          => ("statics", "Statics"),
-                ItemType::Constant        => ("constants", "Constants"),
-                ItemType::Trait           => ("traits", "Traits"),
-                ItemType::Impl            => ("impls", "Implementations"),
-                ItemType::TyMethod        => ("tymethods", "Type Methods"),
-                ItemType::Method          => ("methods", "Methods"),
-                ItemType::StructField     => ("fields", "Struct Fields"),
-                ItemType::Variant         => ("variants", "Variants"),
-                ItemType::Macro           => ("macros", "Macros"),
-                ItemType::Primitive       => ("primitives", "Primitive Types"),
-                ItemType::AssociatedType  => ("associated-types", "Associated Types"),
-                ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
-                ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
-            };
+            let (short, name) = item_ty_to_strs(&myty);
             sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
                                       id = short,
                                       name = name));
@@ -4418,6 +4579,12 @@ fn item_primitive(w: &mut fmt::Formatter, cx: &Context,
                   _p: &clean::PrimitiveType) -> fmt::Result {
     document(w, cx, it)?;
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+}
+
+fn item_keyword(w: &mut fmt::Formatter, cx: &Context,
+                it: &clean::Item,
+                _p: &str) -> fmt::Result {
+    document(w, cx, it)
 }
 
 const BASIC_KEYWORDS: &'static str = "rust, rustlang, rust-lang";

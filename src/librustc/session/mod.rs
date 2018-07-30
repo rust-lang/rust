@@ -22,7 +22,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::{OutputType};
 use ty::tls;
-use util::nodemap::{FxHashSet};
+use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
@@ -98,7 +98,7 @@ pub struct Session {
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
-    /// trans::back::symbol_names module for more information.
+    /// rustc_codegen_llvm::back::symbol_names module for more information.
     pub crate_disambiguator: Once<CrateDisambiguator>,
 
     features: Once<feature_gate::Features>,
@@ -160,6 +160,9 @@ pub struct Session {
 
     /// Metadata about the allocators for the current crate being compiled
     pub has_global_allocator: Once<bool>,
+
+    /// Cap lint level specified by a driver specifically.
+    pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 }
 
 pub struct PerfStats {
@@ -504,8 +507,8 @@ impl Session {
     pub fn time_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.time_llvm_passes
     }
-    pub fn trans_stats(&self) -> bool {
-        self.opts.debugging_opts.trans_stats
+    pub fn codegen_stats(&self) -> bool {
+        self.opts.debugging_opts.codegen_stats
     }
     pub fn meta_stats(&self) -> bool {
         self.opts.debugging_opts.meta_stats
@@ -513,8 +516,8 @@ impl Session {
     pub fn asm_comments(&self) -> bool {
         self.opts.debugging_opts.asm_comments
     }
-    pub fn no_verify(&self) -> bool {
-        self.opts.debugging_opts.no_verify
+    pub fn verify_llvm_ir(&self) -> bool {
+        self.opts.debugging_opts.verify_llvm_ir
     }
     pub fn borrowck_stats(&self) -> bool {
         self.opts.debugging_opts.borrowck_stats
@@ -621,9 +624,6 @@ impl Session {
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
     }
-    pub fn nonzeroing_move_hints(&self) -> bool {
-        self.opts.debugging_opts.enable_nonzeroing_move_hints
-    }
     pub fn overflow_checks(&self) -> bool {
         self.opts
             .cg
@@ -654,6 +654,13 @@ impl Session {
             !found_negative
         } else {
             found_positive
+        }
+    }
+
+    pub fn target_cpu(&self) -> &str {
+        match self.opts.cg.target_cpu {
+            Some(ref s) => &**s,
+            None => &*self.target.target.options.cpu
         }
     }
 
@@ -838,10 +845,10 @@ impl Session {
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
     /// This expends fuel if applicable, and records fuel if applicable.
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
-        assert!(self.query_threads() == 1);
         let mut ret = true;
         match self.optimization_fuel_crate {
             Some(ref c) if c == crate_name => {
+                assert!(self.query_threads() == 1);
                 let fuel = self.optimization_fuel_limit.get();
                 ret = fuel != 0;
                 if fuel == 0 && !self.out_of_fuel.get() {
@@ -855,6 +862,7 @@ impl Session {
         }
         match self.print_fuel_crate {
             Some(ref c) if c == crate_name => {
+                assert!(self.query_threads() == 1);
                 self.print_fuel.set(self.print_fuel.get() + 1);
             }
             _ => {}
@@ -864,8 +872,14 @@ impl Session {
 
     /// Returns the number of query threads that should be used for this
     /// compilation
+    pub fn query_threads_from_opts(opts: &config::Options) -> usize {
+        opts.debugging_opts.query_threads.unwrap_or(1)
+    }
+
+    /// Returns the number of query threads that should be used for this
+    /// compilation
     pub fn query_threads(&self) -> usize {
-        self.opts.debugging_opts.query_threads.unwrap_or(1)
+        Self::query_threads_from_opts(&self.opts)
     }
 
     /// Returns the number of codegen units that should be used for this
@@ -881,11 +895,11 @@ impl Session {
         // Why is 16 codegen units the default all the time?
         //
         // The main reason for enabling multiple codegen units by default is to
-        // leverage the ability for the trans backend to do translation and
-        // codegen in parallel. This allows us, especially for large crates, to
+        // leverage the ability for the codegen backend to do codegen and
+        // optimization in parallel. This allows us, especially for large crates, to
         // make good use of all available resources on the machine once we've
         // hit that stage of compilation. Large crates especially then often
-        // take a long time in trans/codegen and this helps us amortize that
+        // take a long time in codegen/optimization and this helps us amortize that
         // cost.
         //
         // Note that a high number here doesn't mean that we'll be spawning a
@@ -983,6 +997,7 @@ pub fn build_session_with_codemap(
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
+    let report_delayed_bugs = sopts.debugging_opts.report_delayed_bugs;
 
     let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
 
@@ -1005,7 +1020,6 @@ pub fn build_session_with_codemap(
                     Some(registry),
                     codemap.clone(),
                     pretty,
-                    sopts.debugging_opts.suggestion_applicability,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::Json(pretty), Some(dst)) => Box::new(
@@ -1014,7 +1028,6 @@ pub fn build_session_with_codemap(
                     Some(registry),
                     codemap.clone(),
                     pretty,
-                    sopts.debugging_opts.suggestion_applicability,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::Short(color_config), None) => Box::new(
@@ -1030,6 +1043,7 @@ pub fn build_session_with_codemap(
         errors::HandlerFlags {
             can_emit_warnings,
             treat_err_as_bug,
+            report_delayed_bugs,
             external_macro_backtrace,
             ..Default::default()
         },
@@ -1152,6 +1166,7 @@ pub fn build_session_(
             (*GLOBAL_JOBSERVER).clone()
         },
         has_global_allocator: Once::new(),
+        driver_lint_caps: FxHashMap(),
     };
 
     sess

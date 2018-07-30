@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ffi::OsStr;
 use std::env;
+use std::path::PathBuf;
 use common::Config;
 
 /// Conversion table from triple OS name to Rust SYSNAME
@@ -73,7 +75,7 @@ pub fn matches_os(triple: &str, name: &str) -> bool {
     // For the wasm32 bare target we ignore anything also ignored on emscripten
     // and then we also recognize `wasm32-bare` as the os for the target
     if triple == "wasm32-unknown-unknown" {
-        return name == "emscripten" || name == "wasm32-bare"
+        return name == "emscripten" || name == "wasm32-bare";
     }
     let triple: Vec<_> = triple.split('-').collect();
     for &(triple_os, os) in OS_TABLE {
@@ -126,5 +128,25 @@ pub fn logv(config: &Config, s: String) {
     debug!("{}", s);
     if config.verbose {
         println!("{}", s);
+    }
+}
+
+pub trait PathBufExt {
+    /// Append an extension to the path, even if it already has one.
+    fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf;
+}
+
+impl PathBufExt for PathBuf {
+    fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
+        if extension.as_ref().len() == 0 {
+            self.clone()
+        } else {
+            let mut fname = self.file_name().unwrap().to_os_string();
+            if !extension.as_ref().to_str().unwrap().starts_with(".") {
+                fname.push(".");
+            }
+            fname.push(extension);
+            self.with_file_name(fname)
+        }
     }
 }

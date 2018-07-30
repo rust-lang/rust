@@ -12,25 +12,27 @@ LL | |         f((Box::new(|| {})))
 LL | |     }));
    | |_______- borrow later used here
 
-error[E0596]: cannot borrow immutable item `*f` as mutable
+error[E0596]: cannot borrow `*f` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:35:5
    |
+LL | fn test2<F>(f: &F) where F: FnMut() {
+   |                -- help: consider changing this to be a mutable reference: `&mut F`
 LL |     (*f)();
-   |     ^^^^ cannot borrow as mutable
+   |     ^^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable item `*f.f` as mutable
+error[E0596]: cannot borrow `*f.f` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:44:5
    |
+LL | fn test4(f: &Test) {
+   |             ----- help: consider changing this to be a mutable reference: `&mut Test<'_>`
 LL |     f.f.call_mut(())
-   |     ^^^ cannot borrow as mutable
-   |
-   = note: the value which is causing this path not to be mutable is...: `*f`
+   |     ^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
    |
 LL |         foo(f);
-   |             ^ cannot move out of borrowed content
+   |             ^ cannot move out of captured variable in an `FnMut` closure
 
 error[E0505]: cannot move out of `f` because it is borrowed
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:65:16

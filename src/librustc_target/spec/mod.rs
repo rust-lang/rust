@@ -229,7 +229,7 @@ macro_rules! supported_targets {
             }
         }
 
-        pub fn get_targets() -> Box<Iterator<Item=String>> {
+        pub fn get_targets() -> Box<dyn Iterator<Item=String>> {
             Box::new(TARGETS.iter().filter_map(|t| -> Option<String> {
                 load_specific(t)
                     .and(Ok(t.to_string()))
@@ -274,6 +274,7 @@ supported_targets! {
     ("powerpc-unknown-linux-gnuspe", powerpc_unknown_linux_gnuspe),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
+    ("powerpc64le-unknown-linux-musl", powerpc64le_unknown_linux_musl),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
     ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
@@ -313,9 +314,12 @@ supported_targets! {
 
     ("x86_64-unknown-bitrig", x86_64_unknown_bitrig),
 
+    ("aarch64-unknown-openbsd", aarch64_unknown_openbsd),
     ("i686-unknown-openbsd", i686_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
 
+    ("armv6-unknown-netbsd-eabihf", armv6_unknown_netbsd_eabihf),
+    ("armv7-unknown-netbsd-eabihf", armv7_unknown_netbsd_eabihf),
     ("i686-unknown-netbsd", i686_unknown_netbsd),
     ("powerpc-unknown-netbsd", powerpc_unknown_netbsd),
     ("sparc64-unknown-netbsd", sparc64_unknown_netbsd),
@@ -328,8 +332,8 @@ supported_targets! {
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
-    ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
-    ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
+    ("aarch64-fuchsia", aarch64_fuchsia),
+    ("x86_64-fuchsia", x86_64_fuchsia),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
@@ -340,6 +344,8 @@ supported_targets! {
     ("aarch64-apple-ios", aarch64_apple_ios),
     ("armv7-apple-ios", armv7_apple_ios),
     ("armv7s-apple-ios", armv7s_apple_ios),
+
+    ("armebv7r-none-eabihf", armebv7r_none_eabihf),
 
     ("x86_64-sun-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
@@ -421,12 +427,13 @@ pub struct TargetOptions {
     /// Linker to invoke
     pub linker: Option<String>,
 
-    /// Linker arguments that are unconditionally passed *before* any
-    /// user-defined libraries.
-    pub pre_link_args: LinkArgs,
+    /// Linker arguments that are passed *before* any user-defined libraries.
+    pub pre_link_args: LinkArgs, // ... unconditionally
+    pub pre_link_args_crt: LinkArgs, // ... when linking with a bundled crt
     /// Objects to link before all others, always found within the
     /// sysroot folder.
-    pub pre_link_objects_exe: Vec<String>, // ... when linking an executable
+    pub pre_link_objects_exe: Vec<String>, // ... when linking an executable, unconditionally
+    pub pre_link_objects_exe_crt: Vec<String>, // ... when linking an executable with a bundled crt
     pub pre_link_objects_dll: Vec<String>, // ... when linking a dylib
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post_link_objects.  Standard platform
@@ -434,7 +441,8 @@ pub struct TargetOptions {
     pub late_link_args: LinkArgs,
     /// Objects to link after all others, always found within the
     /// sysroot folder.
-    pub post_link_objects: Vec<String>,
+    pub post_link_objects: Vec<String>, // ... unconditionally
+    pub post_link_objects_crt: Vec<String>, // ... when linking with a bundled crt
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
@@ -565,6 +573,9 @@ pub struct TargetOptions {
     /// Don't use this field; instead use the `.max_atomic_width()` method.
     pub max_atomic_width: Option<u64>,
 
+    /// Whether the target supports atomic CAS operations natively
+    pub atomic_cas: bool,
+
     /// Panic strategy: "unwind" or "abort"
     pub panic_strategy: PanicStrategy,
 
@@ -634,6 +645,7 @@ impl Default for TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             pre_link_args: LinkArgs::new(),
+            pre_link_args_crt: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
             cpu: "generic".to_string(),
@@ -667,8 +679,10 @@ impl Default for TargetOptions {
             position_independent_executables: false,
             relro_level: RelroLevel::None,
             pre_link_objects_exe: Vec::new(),
+            pre_link_objects_exe_crt: Vec::new(),
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
+            post_link_objects_crt: Vec::new(),
             late_link_args: LinkArgs::new(),
             link_env: Vec::new(),
             archive_format: "gnu".to_string(),
@@ -680,6 +694,7 @@ impl Default for TargetOptions {
             no_integrated_as: false,
             min_atomic_width: None,
             max_atomic_width: None,
+            atomic_cas: true,
             panic_strategy: PanicStrategy::Unwind,
             abi_blacklist: vec![],
             crt_static_allows_dylibs: false,
@@ -846,23 +861,27 @@ impl Target {
             } );
             ($key_name:ident, link_args) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(obj) = obj.find(&name[..]).and_then(|o| o.as_object()) {
+                if let Some(val) = obj.find(&name[..]) {
+                    let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
+                        JSON object with fields per linker-flavor.", name))?;
                     let mut args = LinkArgs::new();
                     for (k, v) in obj {
-                        let k = LinkerFlavor::from_str(&k).ok_or_else(|| {
+                        let flavor = LinkerFlavor::from_str(&k).ok_or_else(|| {
                             format!("{}: '{}' is not a valid value for linker-flavor. \
                                      Use 'em', 'gcc', 'ld' or 'msvc'", name, k)
                         })?;
 
-                        let v = v.as_array().map(|a| {
-                            a
-                                .iter()
-                                .filter_map(|o| o.as_string())
-                                .map(|s| s.to_owned())
-                                .collect::<Vec<_>>()
-                        }).unwrap_or(vec![]);
+                        let v = v.as_array().ok_or_else(||
+                            format!("{}.{}: expected a JSON array", name, k)
+                        )?.iter().enumerate()
+                            .map(|(i,s)| {
+                                let s = s.as_string().ok_or_else(||
+                                    format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
+                                Ok(s.to_owned())
+                            })
+                            .collect::<Result<Vec<_>, String>>()?;
 
-                        args.insert(k, v);
+                        args.insert(flavor, v);
                     }
                     base.options.$key_name = args;
                 }
@@ -887,10 +906,13 @@ impl Target {
         key!(is_builtin, bool);
         key!(linker, optional);
         key!(pre_link_args, link_args);
+        key!(pre_link_args_crt, link_args);
         key!(pre_link_objects_exe, list);
+        key!(pre_link_objects_exe_crt, list);
         key!(pre_link_objects_dll, list);
         key!(late_link_args, link_args);
         key!(post_link_objects, list);
+        key!(post_link_objects_crt, list);
         key!(post_link_args, link_args);
         key!(link_env, env);
         key!(asm_args, list);
@@ -933,6 +955,7 @@ impl Target {
         key!(no_integrated_as, bool);
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
+        key!(atomic_cas, bool);
         try!(key!(panic_strategy, PanicStrategy));
         key!(crt_static_allows_dylibs, bool);
         key!(crt_static_default, bool);
@@ -1092,10 +1115,13 @@ impl ToJson for Target {
         target_option_val!(is_builtin);
         target_option_val!(linker);
         target_option_val!(link_args - pre_link_args);
+        target_option_val!(link_args - pre_link_args_crt);
         target_option_val!(pre_link_objects_exe);
+        target_option_val!(pre_link_objects_exe_crt);
         target_option_val!(pre_link_objects_dll);
         target_option_val!(link_args - late_link_args);
         target_option_val!(post_link_objects);
+        target_option_val!(post_link_objects_crt);
         target_option_val!(link_args - post_link_args);
         target_option_val!(env - link_env);
         target_option_val!(asm_args);
@@ -1138,6 +1164,7 @@ impl ToJson for Target {
         target_option_val!(no_integrated_as);
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);
+        target_option_val!(atomic_cas);
         target_option_val!(panic_strategy);
         target_option_val!(crt_static_allows_dylibs);
         target_option_val!(crt_static_default);

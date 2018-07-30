@@ -49,14 +49,14 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// ```
 /// use std::collections::HashSet;
 /// // Type inference lets us omit an explicit type signature (which
-/// // would be `HashSet<&str>` in this example).
+/// // would be `HashSet<String>` in this example).
 /// let mut books = HashSet::new();
 ///
 /// // Add some books.
-/// books.insert("A Dance With Dragons");
-/// books.insert("To Kill a Mockingbird");
-/// books.insert("The Odyssey");
-/// books.insert("The Great Gatsby");
+/// books.insert("A Dance With Dragons".to_string());
+/// books.insert("To Kill a Mockingbird".to_string());
+/// books.insert("The Odyssey".to_string());
+/// books.insert("The Great Gatsby".to_string());
 ///
 /// // Check for a specific one.
 /// if !books.contains("The Winds of Winter") {
@@ -80,17 +80,17 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// ```
 /// use std::collections::HashSet;
 /// #[derive(Hash, Eq, PartialEq, Debug)]
-/// struct Viking<'a> {
-///     name: &'a str,
+/// struct Viking {
+///     name: String,
 ///     power: usize,
 /// }
 ///
 /// let mut vikings = HashSet::new();
 ///
-/// vikings.insert(Viking { name: "Einar", power: 9 });
-/// vikings.insert(Viking { name: "Einar", power: 9 });
-/// vikings.insert(Viking { name: "Olaf", power: 4 });
-/// vikings.insert(Viking { name: "Harald", power: 8 });
+/// vikings.insert(Viking { name: "Einar".to_string(), power: 9 });
+/// vikings.insert(Viking { name: "Einar".to_string(), power: 9 });
+/// vikings.insert(Viking { name: "Olaf".to_string(), power: 4 });
+/// vikings.insert(Viking { name: "Harald".to_string(), power: 8 });
 ///
 /// // Use derived implementation to print the vikings.
 /// for x in &vikings {
@@ -104,7 +104,7 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// use std::collections::HashSet;
 ///
 /// fn main() {
-///     let viking_names: HashSet<&str> =
+///     let viking_names: HashSet<&'static str> =
 ///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
 ///     // use the values stored in the set
 /// }

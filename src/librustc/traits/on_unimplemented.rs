@@ -11,7 +11,7 @@
 use fmt_macros::{Parser, Piece, Position};
 
 use hir::def_id::DefId;
-use ty::{self, TyCtxt};
+use ty::{self, TyCtxt, GenericParamDefKind};
 use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
 
@@ -190,11 +190,10 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    options.contains(&(c.name().as_str().to_string(),
-                                      match c.value_str().map(|s| s.as_str().to_string()) {
-                                          Some(s) => Some(s),
-                                          None => None
-                                      }))
+                    options.contains(&(
+                        c.name().as_str().to_string(),
+                        c.value_str().map(|s| s.as_str().to_string())
+                    ))
                 }) {
                     debug!("evaluate: skipping {:?} due to condition", command);
                     continue
@@ -242,8 +241,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
     {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
-        let parser = Parser::new(&self.0);
-        let types = &generics.types;
+        let parser = Parser::new(&self.0, None);
         let mut result = Ok(());
         for token in parser {
             match token {
@@ -254,13 +252,13 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     // `{ThisTraitsName}` is allowed
                     Position::ArgumentNamed(s) if s == name => (),
                     // So is `{A}` if A is a type parameter
-                    Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                        t.name == s
+                    Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
+                        param.name == s
                     }) {
                         Some(_) => (),
                         None => {
                             span_err!(tcx.sess, span, E0230,
-                                      "there is no type parameter \
+                                      "there is no parameter \
                                        {} on trait {}",
                                       s, name);
                             result = Err(ErrorReported);
@@ -288,12 +286,18 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.item_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
-        let generic_map = generics.types.iter().map(|param| {
-            (param.name.to_string(),
-             trait_ref.substs.type_for_def(param).to_string())
+        let generic_map = generics.params.iter().filter_map(|param| {
+            let value = match param.kind {
+                GenericParamDefKind::Type {..} => {
+                    trait_ref.substs[param.index as usize].to_string()
+                },
+                GenericParamDefKind::Lifetime => return None
+            };
+            let name = param.name.to_string();
+            Some((name, value))
         }).collect::<FxHashMap<String, String>>();
 
-        let parser = Parser::new(&self.0);
+        let parser = Parser::new(&self.0, None);
         parser.map(|p| {
             match p {
                 Piece::String(s) => s,

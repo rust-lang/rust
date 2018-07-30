@@ -233,18 +233,26 @@ impl<T: Idx> IdxSet<T> {
         &mut self.bits
     }
 
-    pub fn clone_from(&mut self, other: &IdxSet<T>) {
+    /// Efficiently overwrite `self` with `other`. Panics if `self` and `other`
+    /// don't have the same length.
+    pub fn overwrite(&mut self, other: &IdxSet<T>) {
         self.words_mut().clone_from_slice(other.words());
     }
 
+    /// Set `self = self | other` and return true if `self` changed
+    /// (i.e., if new bits were added).
     pub fn union(&mut self, other: &IdxSet<T>) -> bool {
         bitwise(self.words_mut(), other.words(), &Union)
     }
 
+    /// Set `self = self - other` and return true if `self` changed.
+    /// (i.e., if any bits were removed).
     pub fn subtract(&mut self, other: &IdxSet<T>) -> bool {
         bitwise(self.words_mut(), other.words(), &Subtract)
     }
 
+    /// Set `self = self & other` and return true if `self` changed.
+    /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &IdxSet<T>) -> bool {
         bitwise(self.words_mut(), other.words(), &Intersect)
     }

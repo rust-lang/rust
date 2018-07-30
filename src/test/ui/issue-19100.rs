@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+// run-rustfix
 
 #![allow(non_snake_case)]
 #![allow(dead_code)]

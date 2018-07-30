@@ -10,9 +10,8 @@
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use hir::{self, PatKind};
+use hir::{self, HirId, PatKind};
 use syntax::ast;
-use syntax::codemap::Spanned;
 use syntax_pos::Span;
 
 use std::iter::{Enumerate, ExactSizeIterator};
@@ -48,7 +47,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
         let actual_len = self.len();
         EnumerateAndAdjust {
             enumerate: self.enumerate(),
-            gap_pos: if let Some(gap_pos) = gap_pos { gap_pos } else { expected_len },
+            gap_pos: gap_pos.unwrap_or(expected_len),
             gap_len: expected_len - actual_len,
         }
     }
@@ -91,11 +90,11 @@ impl hir::Pat {
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
     pub fn each_binding<F>(&self, mut f: F)
-        where F: FnMut(hir::BindingAnnotation, ast::NodeId, Span, &Spanned<ast::Name>),
+        where F: FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
     {
         self.walk(|p| {
-            if let PatKind::Binding(binding_mode, _, ref pth, _) = p.node {
-                f(binding_mode, p.id, p.span, pth);
+            if let PatKind::Binding(binding_mode, _, ident, _) = p.node {
+                f(binding_mode, p.hir_id, p.span, ident);
             }
             true
         });
@@ -132,11 +131,10 @@ impl hir::Pat {
         contains_bindings
     }
 
-    pub fn simple_name(&self) -> Option<ast::Name> {
+    pub fn simple_ident(&self) -> Option<ast::Ident> {
         match self.node {
-            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ref path1, None) |
-            PatKind::Binding(hir::BindingAnnotation::Mutable, _, ref path1, None) =>
-                Some(path1.node),
+            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None) |
+            PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, None) => Some(ident),
             _ => None,
         }
     }

@@ -13,6 +13,7 @@ use ffi::OsStr;
 use os::unix::ffi::OsStrExt;
 use fmt;
 use io::{self, Error, ErrorKind};
+use iter;
 use libc::{EXIT_SUCCESS, EXIT_FAILURE};
 use path::{Path, PathBuf};
 use sys::fd::FileDesc;
@@ -51,7 +52,7 @@ pub struct Command {
     uid: Option<u32>,
     gid: Option<u32>,
     saw_nul: bool,
-    closures: Vec<Box<FnMut() -> io::Result<()> + Send + Sync>>,
+    closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
@@ -122,7 +123,7 @@ impl Command {
     }
 
     pub fn before_exec(&mut self,
-                       f: Box<FnMut() -> io::Result<()> + Send + Sync>) {
+                       f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
         self.closures.push(f);
     }
 
@@ -296,11 +297,11 @@ impl Command {
             t!(callback());
         }
 
-        let mut args: Vec<[usize; 2]> = Vec::new();
-        args.push([self.program.as_ptr() as usize, self.program.len()]);
-        for arg in self.args.iter() {
-            args.push([arg.as_ptr() as usize, arg.len()]);
-        }
+        let args: Vec<[usize; 2]> = iter::once(
+            [self.program.as_ptr() as usize, self.program.len()]
+        ).chain(
+            self.args.iter().map(|arg| [arg.as_ptr() as usize, arg.len()])
+        ).collect();
 
         self.env.apply();
 

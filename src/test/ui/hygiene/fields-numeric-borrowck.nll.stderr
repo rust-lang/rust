@@ -1,13 +1,14 @@
-error: compilation successful
-  --> $DIR/fields-numeric-borrowck.rs:13:1
+error[E0499]: cannot borrow `s.0` as mutable more than once at a time
+  --> $DIR/fields-numeric-borrowck.rs:16:16
    |
-LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
-LL | |     let mut s = S(0);
-LL | |     let borrow1 = &mut s.0;
-LL | |     let S { 0: ref mut borrow2 } = s;
-LL | |     //~^ ERROR cannot borrow `s.0` as mutable more than once at a time
-LL | | }
-   | |_^
+LL |     let borrow1 = &mut s.0;
+   |                   -------- first mutable borrow occurs here
+LL |     let S { 0: ref mut borrow2 } = s;
+   |                ^^^^^^^^^^^^^^^ second mutable borrow occurs here
+...
+LL |     borrow1.use_mut();
+   |     ------- borrow later used here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0499`.

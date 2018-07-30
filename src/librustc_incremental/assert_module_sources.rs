@@ -16,7 +16,7 @@
 //!
 //! ```
 //! #![rustc_partition_reused(module="spike", cfg="rpass2")]
-//! #![rustc_partition_translated(module="spike-x", cfg="rpass2")]
+//! #![rustc_partition_codegened(module="spike-x", cfg="rpass2")]
 //! ```
 //!
 //! The first indicates (in the cfg `rpass2`) that `spike.o` will be
@@ -32,13 +32,13 @@ use rustc::mir::mono::CodegenUnit;
 use rustc::ty::TyCtxt;
 use syntax::ast;
 use syntax_pos::symbol::Symbol;
-use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_TRANSLATED};
+use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED};
 
 const MODULE: &'static str = "module";
 const CFG: &'static str = "cfg";
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-enum Disposition { Reused, Translated }
+enum Disposition { Reused, Codegened }
 
 pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
@@ -61,8 +61,8 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
         let disposition = if attr.check_name(ATTR_PARTITION_REUSED) {
             Disposition::Reused
-        } else if attr.check_name(ATTR_PARTITION_TRANSLATED) {
-            Disposition::Translated
+        } else if attr.check_name(ATTR_PARTITION_CODEGENED) {
+            Disposition::Codegened
         } else {
             return;
         };
@@ -84,17 +84,17 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
                 (Disposition::Reused, false) => {
                     self.tcx.sess.span_err(
                         attr.span,
-                        &format!("expected module named `{}` to be Reused but is Translated",
+                        &format!("expected module named `{}` to be Reused but is Codegened",
                                  mname));
                 }
-                (Disposition::Translated, true) => {
+                (Disposition::Codegened, true) => {
                     self.tcx.sess.span_err(
                         attr.span,
-                        &format!("expected module named `{}` to be Translated but is Reused",
+                        &format!("expected module named `{}` to be Codegened but is Reused",
                                  mname));
                 }
                 (Disposition::Reused, true) |
-                (Disposition::Translated, false) => {
+                (Disposition::Codegened, false) => {
                     // These are what we would expect.
                 }
             }

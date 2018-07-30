@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/mir_check_cast_unsafe_fn.rs:18:32
+   |
+LL |     let g: unsafe fn(_) -> _ = f;
+   |                                ^
+
+error: borrowed data escapes outside of function
+  --> $DIR/mir_check_cast_unsafe_fn.rs:20:14
+   |
+LL | fn bar<'a>(input: &'a u32, f: fn(&'a u32) -> &'a u32) -> &'static u32 {
+   |            ----- `input` is a reference that is only valid in the function body
+...
+LL |     unsafe { g(input) }
+   |              ^^^^^^^^ `input` escapes the function body here
+
+error: aborting due to previous error
+

@@ -15,15 +15,16 @@
 // saying that the type of `b` must be known, which was not very
 // helpful.
 
+// run-rustfix
+
 use std::collections::HashMap;
+
 fn main() {
+    let mut m = HashMap::new();
+    m.insert("foo", "bar");
 
-    let m = HashMap::new();
-    m.insert( "foo", "bar" );
-
-    m.iter().map( |_, b| {
+    let _n = m.iter().map(|_, b| {
         //~^ ERROR closure is expected to take a single 2-tuple
-
         b.to_string()
     });
 }

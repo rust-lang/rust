@@ -51,10 +51,13 @@ pub fn target() -> Result<Target, String> {
         // no dynamic linking, no need for default visibility!
         default_hidden_visibility: true,
 
+        // we use the LLD shipped with the Rust toolchain by default
+        linker: Some("rust-lld".to_owned()),
+
         .. Default::default()
     };
     Ok(Target {
-        llvm_target: "wasm32-unknown-unknown-wasm".to_string(),
+        llvm_target: "wasm32-unknown-unknown".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
         target_c_int_width: "32".to_string(),

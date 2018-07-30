@@ -15,7 +15,7 @@ use std::sync::atomic::Ordering::*;
 static ATOMIC: AtomicIsize = ATOMIC_ISIZE_INIT;
 
 fn main() {
-    // Make sure trans can emit all the intrinsics correctly
+    // Make sure codegen can emit all the intrinsics correctly
     ATOMIC.compare_exchange(0, 1, Relaxed, Relaxed).ok();
     ATOMIC.compare_exchange(0, 1, Acquire, Relaxed).ok();
     ATOMIC.compare_exchange(0, 1, Release, Relaxed).ok();

@@ -16,8 +16,8 @@ use std::process::{self, Command};
 fn main() {
     let target = env::var("SCCACHE_TARGET").unwrap();
     // Locate the actual compiler that we're invoking
-    env::remove_var("CC");
-    env::remove_var("CXX");
+    env::set_var("CC", env::var_os("SCCACHE_CC").unwrap());
+    env::set_var("CXX", env::var_os("SCCACHE_CXX").unwrap());
     let mut cfg = cc::Build::new();
     cfg.cargo_metadata(false)
        .out_dir("/")
@@ -37,6 +37,12 @@ fn main() {
     }
     for arg in env::args().skip(1) {
         cmd.arg(arg);
+    }
+
+    if let Ok(s) = env::var("SCCACHE_EXTRA_ARGS") {
+        for s in s.split_whitespace() {
+            cmd.arg(s);
+        }
     }
 
     let status = cmd.status().expect("failed to spawn");

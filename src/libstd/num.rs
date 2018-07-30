@@ -21,12 +21,8 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
 
-#[unstable(feature = "nonzero", issue = "49137")]
-#[allow(deprecated)]
-pub use core::num::{
-    NonZeroU8, NonZeroI8, NonZeroU16, NonZeroI16, NonZeroU32, NonZeroI32,
-    NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize,
-};
+#[stable(feature = "nonzero", since = "1.28.0")]
+pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
 
 #[cfg(test)] use fmt;
 #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};

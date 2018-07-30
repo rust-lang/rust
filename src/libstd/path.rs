@@ -1042,8 +1042,6 @@ impl<'a> cmp::Ord for Components<'a> {
 /// # Examples
 ///
 /// ```
-/// #![feature(path_ancestors)]
-///
 /// use std::path::Path;
 ///
 /// let path = Path::new("/foo/bar");
@@ -1056,26 +1054,23 @@ impl<'a> cmp::Ord for Components<'a> {
 /// [`ancestors`]: struct.Path.html#method.ancestors
 /// [`Path`]: struct.Path.html
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "path_ancestors", issue = "48581")]
+#[stable(feature = "path_ancestors", since = "1.28.0")]
 pub struct Ancestors<'a> {
     next: Option<&'a Path>,
 }
 
-#[unstable(feature = "path_ancestors", issue = "48581")]
+#[stable(feature = "path_ancestors", since = "1.28.0")]
 impl<'a> Iterator for Ancestors<'a> {
     type Item = &'a Path;
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.next;
-        self.next = match next {
-            Some(path) => path.parent(),
-            None => None,
-        };
+        self.next = next.and_then(Path::parent);
         next
     }
 }
 
-#[unstable(feature = "path_ancestors", issue = "48581")]
+#[stable(feature = "path_ancestors", since = "1.28.0")]
 impl<'a> FusedIterator for Ancestors<'a> {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1412,6 +1407,14 @@ impl From<PathBuf> for Box<Path> {
     }
 }
 
+#[stable(feature = "more_box_slice_clone", since = "1.29.0")]
+impl Clone for Box<Path> {
+    #[inline]
+    fn clone(&self) -> Self {
+        self.to_path_buf().into_boxed_path()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for PathBuf {
     fn from(s: &'a T) -> PathBuf {
@@ -1460,7 +1463,7 @@ impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for PathBuf {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, formatter)
     }
 }
@@ -1501,6 +1504,22 @@ impl<'a> From<PathBuf> for Cow<'a, Path> {
     #[inline]
     fn from(s: PathBuf) -> Cow<'a, Path> {
         Cow::Owned(s)
+    }
+}
+
+#[stable(feature = "cow_from_pathbuf_ref", since = "1.28.0")]
+impl<'a> From<&'a PathBuf> for Cow<'a, Path> {
+    #[inline]
+    fn from(p: &'a PathBuf) -> Cow<'a, Path> {
+        Cow::Borrowed(p.as_path())
+    }
+}
+
+#[stable(feature = "pathbuf_from_cow_path", since = "1.28.0")]
+impl<'a> From<Cow<'a, Path>> for PathBuf {
+    #[inline]
+    fn from(p: Cow<'a, Path>) -> Self {
+        p.into_owned()
     }
 }
 
@@ -1814,7 +1833,7 @@ impl Path {
     /// * On Unix, a path has a root if it begins with `/`.
     ///
     /// * On Windows, a path has a root if it:
-    ///     * has no prefix and begins with a separator, e.g. `\\windows`
+    ///     * has no prefix and begins with a separator, e.g. `\windows`
     ///     * has a prefix followed by a separator, e.g. `c:\windows` but not `c:windows`
     ///     * has any non-disk prefix, e.g. `\\server\share`
     ///
@@ -1874,8 +1893,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_ancestors)]
-    ///
     /// use std::path::Path;
     ///
     /// let mut ancestors = Path::new("/foo/bar").ancestors();
@@ -1887,7 +1904,7 @@ impl Path {
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [`parent`]: struct.Path.html#method.parent
-    #[unstable(feature = "path_ancestors", issue = "48581")]
+    #[stable(feature = "path_ancestors", since = "1.28.0")]
     pub fn ancestors(&self) -> Ancestors {
         Ancestors {
             next: Some(&self),
@@ -2284,8 +2301,8 @@ impl Path {
         fs::symlink_metadata(self)
     }
 
-    /// Returns the canonical form of the path with all intermediate components
-    /// normalized and symbolic links resolved.
+    /// Returns the canonical, absolute form of the path with all intermediate
+    /// components normalized and symbolic links resolved.
     ///
     /// This is an alias to [`fs::canonicalize`].
     ///

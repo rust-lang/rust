@@ -11,7 +11,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type="lib"]
-#![feature(repr_transparent, repr_simd)]
+#![feature(repr_simd)]
 
 use std::marker::PhantomData;
 

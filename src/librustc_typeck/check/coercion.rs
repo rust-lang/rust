@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{Diverges, FnCtxt, Needs};
+use check::{FnCtxt, Needs};
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -214,7 +214,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
             }
 
-            ty::TyRef(r_b, mt_b) => {
+            ty::TyRef(r_b, ty, mutbl) => {
+                let mt_b = ty::TypeAndMut { ty, mutbl };
                 return self.coerce_borrowed_pointer(a, b, r_b, mt_b);
             }
 
@@ -266,7 +267,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // yield.
 
         let (r_a, mt_a) = match a.sty {
-            ty::TyRef(r_a, mt_a) => {
+            ty::TyRef(r_a, ty, mutbl) => {
+                let mt_a = ty::TypeAndMut { ty, mutbl };
                 coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
                 (r_a, mt_a)
             }
@@ -427,7 +429,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // Now apply the autoref. We have to extract the region out of
         // the final ref type we got.
         let r_borrow = match ty.sty {
-            ty::TyRef(r_borrow, _) => r_borrow,
+            ty::TyRef(r_borrow, _, _) => r_borrow,
             _ => span_bug!(span, "expected a ref type, got {:?}", ty),
         };
         let mutbl = match mt_b.mutbl {
@@ -471,12 +473,12 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
         let reborrow = match (&source.sty, &target.sty) {
-            (&ty::TyRef(_, mt_a), &ty::TyRef(_, mt_b)) => {
-                coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
+            (&ty::TyRef(_, ty_a, mutbl_a), &ty::TyRef(_, _, mutbl_b)) => {
+                coerce_mutbls(mutbl_a, mutbl_b)?;
 
                 let coercion = Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
-                let mutbl = match mt_b.mutbl {
+                let mutbl = match mutbl_b {
                     hir::MutImmutable => AutoBorrowMutability::Immutable,
                     hir::MutMutable => AutoBorrowMutability::Mutable {
                         // We don't allow two-phase borrows here, at least for initial
@@ -487,26 +489,26 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 };
                 Some((Adjustment {
                     kind: Adjust::Deref(None),
-                    target: mt_a.ty
+                    target: ty_a
                 }, Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mutbl)),
                     target:  self.tcx.mk_ref(r_borrow, ty::TypeAndMut {
-                        mutbl: mt_b.mutbl,
-                        ty: mt_a.ty
+                        mutbl: mutbl_b,
+                        ty: ty_a
                     })
                 }))
             }
-            (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) => {
-                coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
+            (&ty::TyRef(_, ty_a, mt_a), &ty::TyRawPtr(ty::TypeAndMut { mutbl: mt_b, .. })) => {
+                coerce_mutbls(mt_a, mt_b)?;
 
                 Some((Adjustment {
                     kind: Adjust::Deref(None),
-                    target: mt_a.ty
+                    target: ty_a
                 }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b.mutbl)),
+                    kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
                     target:  self.tcx.mk_ptr(ty::TypeAndMut {
-                        mutbl: mt_b.mutbl,
-                        ty: mt_a.ty
+                        mutbl: mt_b,
+                        ty: ty_a
                     })
                 }))
             }
@@ -535,8 +537,9 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         let mut selcx = traits::SelectionContext::new(self);
 
-        // Use a FIFO queue for this custom fulfillment procedure.
-        let mut queue = VecDeque::new();
+        // Use a FIFO queue for this custom fulfillment procedure. (The maximum
+        // length is almost always 1.)
+        let mut queue = VecDeque::with_capacity(1);
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::misc(self.cause.span, self.body_id);
@@ -545,7 +548,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                                          coerce_unsized_did,
                                                          0,
                                                          coerce_source,
-                                                         &[coerce_target]));
+                                                         &[coerce_target.into()]));
 
         let mut has_unsized_tuple_coercion = false;
 
@@ -719,7 +722,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
 
         let (is_ref, mt_a) = match a.sty {
-            ty::TyRef(_, mt) => (true, mt),
+            ty::TyRef(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::TyRawPtr(mt) => (false, mt),
             _ => {
                 return self.unify_and(a, b, identity);
@@ -798,21 +801,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 exprs: &[E],
                                 prev_ty: Ty<'tcx>,
                                 new: &hir::Expr,
-                                new_ty: Ty<'tcx>,
-                                new_diverges: Diverges)
+                                new_ty: Ty<'tcx>)
                                 -> RelateResult<'tcx, Ty<'tcx>>
         where E: AsCoercionSite
     {
         let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
         let new_ty = self.resolve_type_vars_with_obligations(new_ty);
         debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
-
-        // Special-ish case: we can coerce any type `T` into the `!`
-        // type, but only if the source expression diverges.
-        if prev_ty.is_never() && new_diverges.always() {
-            debug!("permit coercion to `!` because expr diverges");
-            return Ok(prev_ty);
-        }
 
         // Special-case that coercion alone cannot handle:
         // Two function item types of differing IDs or Substs.
@@ -886,12 +881,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. }
                 ] => {
                     match self.node_ty(expr.hir_id).sty {
-                        ty::TyRef(_, mt_orig) => {
+                        ty::TyRef(_, _, mt_orig) => {
                             let mutbl_adj: hir::Mutability = mutbl_adj.into();
                             // Reborrow that we can safely ignore, because
                             // the next adjustment can only be a Deref
                             // which will be merged into it.
-                            mutbl_adj == mt_orig.mutbl
+                            mutbl_adj == mt_orig
                         }
                         _ => false,
                     }
@@ -1052,14 +1047,12 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                       fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                       cause: &ObligationCause<'tcx>,
                       expression: &'gcx hir::Expr,
-                      expression_ty: Ty<'tcx>,
-                      expression_diverges: Diverges)
+                      expression_ty: Ty<'tcx>)
     {
         self.coerce_inner(fcx,
                           cause,
                           Some(expression),
                           expression_ty,
-                          expression_diverges,
                           None, false)
     }
 
@@ -1078,14 +1071,13 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     pub fn coerce_forced_unit<'a>(&mut self,
                                   fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                                   cause: &ObligationCause<'tcx>,
-                                  augment_error: &mut FnMut(&mut DiagnosticBuilder),
+                                  augment_error: &mut dyn FnMut(&mut DiagnosticBuilder),
                                   label_unit_as_expected: bool)
     {
         self.coerce_inner(fcx,
                           cause,
                           None,
                           fcx.tcx.mk_nil(),
-                          Diverges::Maybe,
                           Some(augment_error),
                           label_unit_as_expected)
     }
@@ -1098,8 +1090,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         cause: &ObligationCause<'tcx>,
                         expression: Option<&'gcx hir::Expr>,
                         mut expression_ty: Ty<'tcx>,
-                        expression_diverges: Diverges,
-                        augment_error: Option<&mut FnMut(&mut DiagnosticBuilder)>,
+                        augment_error: Option<&mut dyn FnMut(&mut DiagnosticBuilder)>,
                         label_expression_as_expected: bool)
     {
         // Incorporate whatever type inference information we have
@@ -1132,15 +1123,13 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                                                   exprs,
                                                   self.merged_ty(),
                                                   expression,
-                                                  expression_ty,
-                                                  expression_diverges),
+                                                  expression_ty),
                     Expressions::UpFront(ref coercion_sites) =>
                         fcx.try_find_coercion_lub(cause,
                                                   &coercion_sites[0..self.pushed],
                                                   self.merged_ty(),
                                                   expression,
-                                                  expression_ty,
-                                                  expression_diverges),
+                                                  expression_ty),
                 }
             }
         } else {
@@ -1214,9 +1203,14 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                                       "supposed to be part of a block tail expression, but the \
                                        expression is empty");
                         });
-                        fcx.suggest_mismatched_types_on_tail(&mut db, expr,
-                                                             expected, found,
-                                                             cause.span, blk_id);
+                        fcx.suggest_mismatched_types_on_tail(
+                            &mut db,
+                            expr,
+                            expected,
+                            found,
+                            cause.span,
+                            blk_id,
+                        );
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);

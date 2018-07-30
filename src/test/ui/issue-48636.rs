@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
+#![allow(dead_code)]
+
 struct S {
     x: u8
     /// The id of the parent core

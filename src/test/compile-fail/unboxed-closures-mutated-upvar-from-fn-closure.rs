@@ -23,6 +23,6 @@ fn main() {
     call(|| {
         counter += 1;
         //[ast]~^ ERROR cannot assign to data in a captured outer variable in an `Fn` closure
-        //[mir]~^^ ERROR cannot assign to immutable item `counter`
+        //[mir]~^^ ERROR cannot assign to `counter`
     });
 }

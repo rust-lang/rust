@@ -7,13 +7,18 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
+
 // Test slicing expressions doesn't defeat the borrow checker.
 
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     let y;
     {
         let x: &[isize] = &vec![1, 2, 3, 4, 5];
+        //~^ ERROR borrowed value does not live long enough
         y = &x[1..];
     }
+    y.use_ref();
 }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

@@ -109,7 +109,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let sess = &tcx.sess;
 
-    if !sess.opts.output_types.should_trans() {
+    if !sess.opts.output_types.should_codegen() {
         return Vec::new();
     }
 

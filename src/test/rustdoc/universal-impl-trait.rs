@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(universal_impl_trait)]
 #![crate_name = "foo"]
 
 use std::io::Read;
+use std::borrow::Borrow;
 
 // @has foo/fn.foo.html
 // @has - //pre 'foo('
@@ -51,3 +51,15 @@ impl<T> S<T> {
 // @has - 'method</a>('
 // @matches - '_x: impl <a class="trait" href="[^"]+/trait\.Debug\.html"'
 impl<T> Trait for S<T> {}
+
+// @has foo/fn.much_universe.html
+// @matches - 'T:.+Borrow.+impl .+trait\.Trait\.html'
+// @matches - 'U:.+IntoIterator.+= impl.+Iterator\.html.+= impl.+Clone\.html'
+// @matches - '_: impl .+trait\.Read\.html.+ \+ .+trait\.Clone\.html'
+pub fn much_universe<
+    T: Borrow<impl Trait>,
+    U: IntoIterator<Item = impl Iterator<Item = impl Clone>>,
+>(
+    _: impl Read + Clone,
+) {
+}

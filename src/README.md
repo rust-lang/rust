@@ -6,7 +6,7 @@ This directory contains the source code of the rust project, including:
 For more information on how various parts of the compiler work, see the [rustc guide].
 
 Their is also useful content in the following READMEs, which are gradually being moved over to the guide:
-- https://github.com/rust-lang/rust/tree/master/src/librustc/ty/maps
+- https://github.com/rust-lang/rust/tree/master/src/librustc/ty/query
 - https://github.com/rust-lang/rust/tree/master/src/librustc/dep_graph
 - https://github.com/rust-lang/rust/blob/master/src/librustc/infer/region_constraints
 - https://github.com/rust-lang/rust/tree/master/src/librustc/infer/higher_ranked

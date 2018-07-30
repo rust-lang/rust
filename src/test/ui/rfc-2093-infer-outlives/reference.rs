@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Needs an explicit where clause stating outlives condition. (RFC 2093)
+#![feature(rustc_attrs)]
+#![feature(infer_outlives_requirements)]
 
-// Type T needs to outlive lifetime 'a.
-struct Foo<'a, T> {
-    bar: &'a [T] //~ ERROR the parameter type `T` may not live long enough [E0309]
+#[rustc_outlives]
+struct Foo<'a, T> { //~ ERROR rustc_outlives
+    bar: &'a T,
 }
 
-fn main() { }
+fn main() {}

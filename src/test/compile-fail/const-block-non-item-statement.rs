@@ -10,8 +10,10 @@
 
 enum Foo {
     Bar = { let x = 1; 3 }
-    //~^ ERROR: blocks in constants are limited to items and tail expressions
-    //~^^ ERROR: blocks in constants are limited to items and tail expressions
+    //~^ ERROR let bindings in constants are unstable
+    //~| ERROR statements in constants are unstable
+    //~| ERROR let bindings in constants are unstable
+    //~| ERROR statements in constants are unstable
 }
 
 pub fn main() {}

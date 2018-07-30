@@ -69,7 +69,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 PlaceTy::Ty {
                     ty: match ty.sty {
                         ty::TyArray(inner, size) => {
-                            let size = size.val.unwrap_u64();
+                            let size = size.unwrap_usize(tcx);
                             let len = size - (from as u64) - (to as u64);
                             tcx.mk_array(inner, len)
                         }
@@ -113,10 +113,44 @@ impl<'tcx> Place<'tcx> {
         match *self {
             Place::Local(index) =>
                 PlaceTy::Ty { ty: local_decls.local_decls()[index].ty },
+            Place::Promoted(ref data) => PlaceTy::Ty { ty: data.1 },
             Place::Static(ref data) =>
                 PlaceTy::Ty { ty: data.ty },
             Place::Projection(ref proj) =>
                 proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),
+        }
+    }
+
+    /// If this is a field projection, and the field is being projected from a closure type,
+    /// then returns the index of the field being projected. Note that this closure will always
+    /// be `self` in the current MIR, because that is the only time we directly access the fields
+    /// of a closure type.
+    pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
+                                                tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
+        let place = if let Place::Projection(ref proj) = self {
+            if let ProjectionElem::Deref = proj.elem {
+                &proj.base
+            } else {
+                self
+            }
+        } else {
+            self
+        };
+
+        match place {
+            Place::Projection(ref proj) => match proj.elem {
+                ProjectionElem::Field(field, _ty) => {
+                    let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
+
+                    if  base_ty.is_closure() || base_ty.is_generator() {
+                        Some(field)
+                    } else {
+                        None
+                    }
+                },
+                _ => None,
+            },
+            _ => None,
         }
     }
 }
@@ -184,10 +218,10 @@ impl<'tcx> Rvalue<'tcx> {
                         tcx.type_of(def.did).subst(tcx, substs)
                     }
                     AggregateKind::Closure(did, substs) => {
-                        tcx.mk_closure_from_closure_substs(did, substs)
+                        tcx.mk_closure(did, substs)
                     }
-                    AggregateKind::Generator(did, substs, interior) => {
-                        tcx.mk_generator(did, substs, interior)
+                    AggregateKind::Generator(did, substs, movability) => {
+                        tcx.mk_generator(did, substs, movability)
                     }
                 }
             }
@@ -256,24 +290,24 @@ impl BorrowKind {
 }
 
 impl BinOp {
-    pub fn to_hir_binop(self) -> hir::BinOp_ {
+    pub fn to_hir_binop(self) -> hir::BinOpKind {
         match self {
-            BinOp::Add => hir::BinOp_::BiAdd,
-            BinOp::Sub => hir::BinOp_::BiSub,
-            BinOp::Mul => hir::BinOp_::BiMul,
-            BinOp::Div => hir::BinOp_::BiDiv,
-            BinOp::Rem => hir::BinOp_::BiRem,
-            BinOp::BitXor => hir::BinOp_::BiBitXor,
-            BinOp::BitAnd => hir::BinOp_::BiBitAnd,
-            BinOp::BitOr => hir::BinOp_::BiBitOr,
-            BinOp::Shl => hir::BinOp_::BiShl,
-            BinOp::Shr => hir::BinOp_::BiShr,
-            BinOp::Eq => hir::BinOp_::BiEq,
-            BinOp::Ne => hir::BinOp_::BiNe,
-            BinOp::Lt => hir::BinOp_::BiLt,
-            BinOp::Gt => hir::BinOp_::BiGt,
-            BinOp::Le => hir::BinOp_::BiLe,
-            BinOp::Ge => hir::BinOp_::BiGe,
+            BinOp::Add => hir::BinOpKind::Add,
+            BinOp::Sub => hir::BinOpKind::Sub,
+            BinOp::Mul => hir::BinOpKind::Mul,
+            BinOp::Div => hir::BinOpKind::Div,
+            BinOp::Rem => hir::BinOpKind::Rem,
+            BinOp::BitXor => hir::BinOpKind::BitXor,
+            BinOp::BitAnd => hir::BinOpKind::BitAnd,
+            BinOp::BitOr => hir::BinOpKind::BitOr,
+            BinOp::Shl => hir::BinOpKind::Shl,
+            BinOp::Shr => hir::BinOpKind::Shr,
+            BinOp::Eq => hir::BinOpKind::Eq,
+            BinOp::Ne => hir::BinOpKind::Ne,
+            BinOp::Lt => hir::BinOpKind::Lt,
+            BinOp::Gt => hir::BinOpKind::Gt,
+            BinOp::Le => hir::BinOpKind::Le,
+            BinOp::Ge => hir::BinOpKind::Ge,
             BinOp::Offset => unreachable!()
         }
     }

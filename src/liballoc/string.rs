@@ -66,7 +66,7 @@ use core::ptr;
 use core::str::pattern::Pattern;
 use core::str::lossy;
 
-use alloc::CollectionAllocErr;
+use collections::CollectionAllocErr;
 use borrow::{Cow, ToOwned};
 use boxed::Box;
 use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
@@ -380,7 +380,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> String {
+    #[rustc_const_unstable(feature = "const_string_new")]
+    pub const fn new() -> String {
         String { vec: Vec::new() }
     }
 
@@ -1221,7 +1222,7 @@ impl String {
 
         while idx < len {
             let ch = unsafe {
-                self.slice_unchecked(idx, len).chars().next().unwrap()
+                self.get_unchecked(idx..len).chars().next().unwrap()
             };
             let ch_len = ch.len_utf8();
 
@@ -1492,12 +1493,12 @@ impl String {
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
         let len = self.len();
-        let start = match range.start() {
+        let start = match range.start_bound() {
             Included(&n) => n,
             Excluded(&n) => n + 1,
             Unbounded => 0,
         };
-        let end = match range.end() {
+        let end = match range.end_bound() {
             Included(&n) => n + 1,
             Excluded(&n) => n,
             Unbounded => len,
@@ -1550,12 +1551,12 @@ impl String {
         // Replace_range does not have the memory safety issues of a vector Splice.
         // of the vector version. The data is just plain bytes.
 
-        match range.start() {
+        match range.start_bound() {
              Included(&n) => assert!(self.is_char_boundary(n)),
              Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
              Unbounded => {},
         };
-        match range.end() {
+        match range.end_bound() {
              Included(&n) => assert!(self.is_char_boundary(n + 1)),
              Excluded(&n) => assert!(self.is_char_boundary(n)),
              Unbounded => {},
@@ -2236,6 +2237,14 @@ impl<'a> From<String> for Cow<'a, str> {
     #[inline]
     fn from(s: String) -> Cow<'a, str> {
         Cow::Owned(s)
+    }
+}
+
+#[stable(feature = "cow_from_string_ref", since = "1.28.0")]
+impl<'a> From<&'a String> for Cow<'a, str> {
+    #[inline]
+    fn from(s: &'a String) -> Cow<'a, str> {
+        Cow::Borrowed(s.as_str())
     }
 }
 

@@ -56,7 +56,7 @@ pub struct CodePoint {
 /// Example: `U+1F4A9`
 impl fmt::Debug for CodePoint {
     #[inline]
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "U+{:04X}", self.value)
     }
 }
@@ -76,7 +76,7 @@ impl CodePoint {
     #[inline]
     pub fn from_u32(value: u32) -> Option<CodePoint> {
         match value {
-            0 ... 0x10FFFF => Some(CodePoint { value: value }),
+            0 ..= 0x10FFFF => Some(CodePoint { value: value }),
             _ => None
         }
     }
@@ -101,7 +101,7 @@ impl CodePoint {
     #[inline]
     pub fn to_char(&self) -> Option<char> {
         match self.value {
-            0xD800 ... 0xDFFF => None,
+            0xD800 ..= 0xDFFF => None,
             _ => Some(unsafe { char::from_u32_unchecked(self.value) })
         }
     }
@@ -144,7 +144,7 @@ impl ops::DerefMut for Wtf8Buf {
 /// Example: `"a\u{D800}"` for a string with code points [U+0061, U+D800]
 impl fmt::Debug for Wtf8Buf {
     #[inline]
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, formatter)
     }
 }
@@ -305,7 +305,7 @@ impl Wtf8Buf {
     /// like concatenating ill-formed UTF-16 strings effectively would.
     #[inline]
     pub fn push(&mut self, code_point: CodePoint) {
-        if let trail @ 0xDC00...0xDFFF = code_point.to_u32() {
+        if let trail @ 0xDC00..=0xDFFF = code_point.to_u32() {
             if let Some(lead) = (&*self).final_lead_surrogate() {
                 let len_without_lead_surrogate = self.len() - 3;
                 self.bytes.truncate(len_without_lead_surrogate);
@@ -525,7 +525,7 @@ impl Wtf8 {
     #[inline]
     pub fn ascii_byte_at(&self, position: usize) -> u8 {
         match self.bytes[position] {
-            ascii_byte @ 0x00 ... 0x7F => ascii_byte,
+            ascii_byte @ 0x00 ..= 0x7F => ascii_byte,
             _ => 0xFF
         }
     }
@@ -630,7 +630,7 @@ impl Wtf8 {
             return None
         }
         match &self.bytes[(len - 3)..] {
-            &[0xED, b2 @ 0xA0...0xAF, b3] => Some(decode_surrogate(b2, b3)),
+            &[0xED, b2 @ 0xA0..=0xAF, b3] => Some(decode_surrogate(b2, b3)),
             _ => None
         }
     }
@@ -642,7 +642,7 @@ impl Wtf8 {
             return None
         }
         match &self.bytes[..3] {
-            &[0xED, b2 @ 0xB0...0xBF, b3] => Some(decode_surrogate(b2, b3)),
+            &[0xED, b2 @ 0xB0..=0xBF, b3] => Some(decode_surrogate(b2, b3)),
             _ => None
         }
     }
@@ -1245,7 +1245,7 @@ mod tests {
     #[test]
     fn wtf8_display() {
         fn d(b: &[u8]) -> String {
-            format!("{}", &unsafe { Wtf8::from_bytes_unchecked(b) })
+            (&unsafe { Wtf8::from_bytes_unchecked(b) }).to_string()
         }
 
         assert_eq!("", d("".as_bytes()));

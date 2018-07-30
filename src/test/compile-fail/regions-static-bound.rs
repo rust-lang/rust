@@ -18,7 +18,7 @@ fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
 fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
     t //[ll]~ ERROR E0312
         //[nll]~^ WARNING not reporting region error due to nll
-        //[nll]~| ERROR free region `'a` does not outlive free region `'static`
+        //[nll]~| ERROR unsatisfied lifetime constraints
 }
 
 fn error(u: &(), v: &()) {

@@ -167,6 +167,23 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         }
         None
     }
+
+    pub(super) fn is_return_type_impl_trait(
+        &self,
+        scope_def_id: DefId,
+    ) -> bool {
+        let ret_ty = self.tcx.type_of(scope_def_id);
+        match ret_ty.sty {
+            ty::TyFnDef(_, _) => {
+                let sig = ret_ty.fn_sig(self.tcx);
+                let output = self.tcx.erase_late_bound_regions(&sig.output());
+                return output.is_impl_trait();
+            }
+            _ => {}
+        }
+        false
+    }
+
     // Here we check for the case where anonymous region
     // corresponds to self and if yes, we display E0312.
     // FIXME(#42700) - Need to format self properly to

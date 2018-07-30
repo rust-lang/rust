@@ -20,7 +20,7 @@ use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::middle::cstore::CrateStore;
+use rustc::middle::cstore::CrateStoreDyn;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
@@ -32,7 +32,7 @@ use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_traits;
-use rustc_trans_utils::trans_crate::TransCrate;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
@@ -49,9 +49,10 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc, Lock};
 use std::sync::mpsc;
 use syntax::{self, ast, attr, diagnostics, visit};
+use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
@@ -64,8 +65,61 @@ use pretty::ReplaceBodyWithLoop;
 
 use profile;
 
+#[cfg(not(parallel_queries))]
+pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
+    opts: config::Options,
+    f: F
+) -> R {
+    ty::tls::GCX_PTR.set(&Lock::new(0), || {
+        f(opts)
+    })
+}
+
+#[cfg(parallel_queries)]
+pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
+    opts: config::Options,
+    f: F
+) -> R {
+    use syntax;
+    use syntax_pos;
+    use rayon::{ThreadPoolBuilder, ThreadPool};
+
+    let gcx_ptr = &Lock::new(0);
+
+    let config = ThreadPoolBuilder::new()
+        .num_threads(Session::query_threads_from_opts(&opts))
+        .deadlock_handler(|| unsafe { ty::query::handle_deadlock() })
+        .stack_size(16 * 1024 * 1024);
+
+    let with_pool = move |pool: &ThreadPool| {
+        pool.install(move || f(opts))
+    };
+
+    syntax::GLOBALS.with(|syntax_globals| {
+        syntax_pos::GLOBALS.with(|syntax_pos_globals| {
+            // The main handler run for each Rayon worker thread and sets up
+            // the thread local rustc uses. syntax_globals and syntax_pos_globals are
+            // captured and set on the new threads. ty::tls::with_thread_locals sets up
+            // thread local callbacks from libsyntax
+            let main_handler = move |worker: &mut dyn FnMut()| {
+                syntax::GLOBALS.set(syntax_globals, || {
+                    syntax_pos::GLOBALS.set(syntax_pos_globals, || {
+                        ty::tls::with_thread_locals(|| {
+                            ty::tls::GCX_PTR.set(gcx_ptr, || {
+                                worker()
+                            })
+                        })
+                    })
+                })
+            };
+
+            ThreadPool::scoped_pool(config, main_handler, with_pool).unwrap()
+        })
+    })
+}
+
 pub fn compile_input(
-    trans: Box<TransCrate>,
+    codegen_backend: Box<dyn CodegenBackend>,
     sess: &Session,
     cstore: &CStore,
     input_path: &Option<PathBuf>,
@@ -98,7 +152,7 @@ pub fn compile_input(
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, ongoing_trans, dep_graph) = {
+    let (outputs, ongoing_codegen, dep_graph) = {
         let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -117,7 +171,7 @@ pub fn compile_input(
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let crate_name =
-            ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
+            ::rustc_codegen_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
         install_panic_hook();
 
         let ExpansionResult {
@@ -229,7 +283,7 @@ pub fn compile_input(
         };
 
         phase_3_run_analysis_passes(
-            &*trans,
+            &*codegen_backend,
             control,
             sess,
             cstore,
@@ -265,14 +319,14 @@ pub fn compile_input(
                 result?;
 
                 if log_enabled!(::log::Level::Info) {
-                    println!("Pre-trans");
+                    println!("Pre-codegen");
                     tcx.print_debug_stats();
                 }
 
-                let ongoing_trans = phase_4_translate_to_llvm(&*trans, tcx, rx);
+                let ongoing_codegen = phase_4_codegen(&*codegen_backend, tcx, rx);
 
                 if log_enabled!(::log::Level::Info) {
-                    println!("Post-trans");
+                    println!("Post-codegen");
                     tcx.print_debug_stats();
                 }
 
@@ -283,7 +337,7 @@ pub fn compile_input(
                     }
                 }
 
-                Ok((outputs.clone(), ongoing_trans, tcx.dep_graph.clone()))
+                Ok((outputs.clone(), ongoing_codegen, tcx.dep_graph.clone()))
             },
         )??
     };
@@ -292,7 +346,7 @@ pub fn compile_input(
         sess.code_stats.borrow().print_type_sizes();
     }
 
-    trans.join_trans_and_link(ongoing_trans, sess, &dep_graph, &outputs)?;
+    codegen_backend.join_codegen_and_link(ongoing_codegen, sess, &dep_graph, &outputs)?;
 
     if sess.opts.debugging_opts.perf_stats {
         sess.print_perf_stats();
@@ -346,10 +400,10 @@ pub struct CompileController<'a> {
 
     /// Allows overriding default rustc query providers,
     /// after `default_provide` has installed them.
-    pub provide: Box<Fn(&mut ty::maps::Providers) + 'a>,
+    pub provide: Box<dyn Fn(&mut ty::query::Providers) + 'a>,
     /// Same as `provide`, but only for non-local crates,
     /// applied after `default_provide_extern`.
-    pub provide_extern: Box<Fn(&mut ty::maps::Providers) + 'a>,
+    pub provide_extern: Box<dyn Fn(&mut ty::query::Providers) + 'a>,
 }
 
 impl<'a> CompileController<'a> {
@@ -369,12 +423,81 @@ impl<'a> CompileController<'a> {
     }
 }
 
+/// This implementation makes it easier to create a custom driver when you only want to hook
+/// into callbacks from `CompileController`.
+///
+/// # Example
+///
+/// ```no_run
+/// # extern crate rustc_driver;
+/// # use rustc_driver::driver::CompileController;
+/// let mut controller = CompileController::basic();
+/// controller.after_analysis.callback = Box::new(move |_state| {});
+/// rustc_driver::run_compiler(&[], Box::new(controller), None, None);
+/// ```
+impl<'a> ::CompilerCalls<'a> for CompileController<'a> {
+    fn early_callback(
+        &mut self,
+        matches: &::getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        descriptions: &::errors::registry::Registry,
+        output: ::ErrorOutputType,
+    ) -> Compilation {
+        ::RustcDefaultCalls.early_callback(
+            matches,
+            sopts,
+            cfg,
+            descriptions,
+            output,
+        )
+    }
+    fn no_input(
+        &mut self,
+        matches: &::getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+        descriptions: &::errors::registry::Registry,
+    ) -> Option<(Input, Option<PathBuf>)> {
+        ::RustcDefaultCalls.no_input(
+            matches,
+            sopts,
+            cfg,
+            odir,
+            ofile,
+            descriptions,
+        )
+    }
+    fn late_callback(
+        &mut self,
+        codegen_backend: &dyn (::CodegenBackend),
+        matches: &::getopts::Matches,
+        sess: &Session,
+        cstore: &dyn (::CrateStore),
+        input: &Input,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+    ) -> Compilation {
+        ::RustcDefaultCalls
+            .late_callback(codegen_backend, matches, sess, cstore, input, odir, ofile)
+    }
+    fn build_controller(
+        self: Box<Self>,
+        _: &Session,
+        _: &::getopts::Matches
+    ) -> CompileController<'a> {
+        *self
+    }
+}
+
 pub struct PhaseController<'a> {
     pub stop: Compilation,
     // If true then the compiler will try to run the callback even if the phase
     // ends with an error. Note that this is not always possible.
     pub run_callback_on_error: bool,
-    pub callback: Box<Fn(&mut CompileState) + 'a>,
+    pub callback: Box<dyn Fn(&mut CompileState) + 'a>,
 }
 
 impl<'a> PhaseController<'a> {
@@ -675,7 +798,7 @@ where
 pub fn phase_2_configure_and_expand_inner<'a, F>(
     sess: &'a Session,
     cstore: &'a CStore,
-    krate: ast::Crate,
+    mut krate: ast::Crate,
     registry: Option<Registry>,
     crate_name: &str,
     addl_plugins: Option<Vec<String>>,
@@ -687,6 +810,10 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(
 where
     F: FnOnce(&ast::Crate) -> CompileResult,
 {
+    krate = time(sess, "attributes injection", || {
+        syntax::attr::inject(krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr)
+    });
+
     let (mut krate, features) = syntax::config::features(
         krate,
         &sess.parse_sess,
@@ -799,6 +926,10 @@ where
         super::describe_lints(&sess, &sess.lint_store.borrow(), true);
         return Err(CompileIncomplete::Stopped);
     }
+
+    time(sess, "pre ast expansion lint checks", || {
+        lint::check_ast_crate(sess, &krate, true)
+    });
 
     let mut resolver = Resolver::new(
         sess,
@@ -929,9 +1060,27 @@ where
         });
     }
 
+    // Expand global allocators, which are treated as an in-tree proc macro
     krate = time(sess, "creating allocators", || {
-        allocator::expand::modify(&sess.parse_sess, &mut resolver, krate, sess.diagnostic())
+        allocator::expand::modify(
+            &sess.parse_sess,
+            &mut resolver,
+            krate,
+            crate_name.to_string(),
+            sess.diagnostic(),
+        )
     });
+
+    // Add all buffered lints from the `ParseSess` to the `Session`.
+    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+        info!("{} parse sess buffered_lints", buffered_lints.len());
+        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
+            let lint = lint::Lint::from_parser_lint_id(lint_id);
+            sess.buffer_lint(lint, id, span, &msg);
+        }
+    });
+
+    // Done with macro expansion!
 
     after_expand(&krate)?;
 
@@ -980,15 +1129,16 @@ where
     let dep_graph = match future_dep_graph {
         None => DepGraph::new_disabled(),
         Some(future) => {
-            let prev_graph = time(sess, "blocked while dep-graph loading finishes", || {
-                future
-                    .open()
-                    .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
-                        message: format!("could not decode incremental cache: {:?}", e),
-                    })
-                    .open(sess)
-            });
-            DepGraph::new(prev_graph)
+            let (prev_graph, prev_work_products) =
+                time(sess, "blocked while dep-graph loading finishes", || {
+                    future
+                        .open()
+                        .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
+                            message: format!("could not decode incremental cache: {:?}", e),
+                        })
+                        .open(sess)
+                });
+            DepGraph::new(prev_graph, prev_work_products)
         }
     };
     let hir_forest = time(sess, "lowering ast -> hir", || {
@@ -1002,7 +1152,7 @@ where
     });
 
     time(sess, "early lint checks", || {
-        lint::check_ast_crate(sess, &krate)
+        lint::check_ast_crate(sess, &krate, false)
     });
 
     // Discard hygiene data, which isn't required after lowering to HIR.
@@ -1017,7 +1167,7 @@ where
     })
 }
 
-pub fn default_provide(providers: &mut ty::maps::Providers) {
+pub fn default_provide(providers: &mut ty::query::Providers) {
     hir::provide(providers);
     borrowck::provide(providers);
     mir::provide(providers);
@@ -1035,7 +1185,7 @@ pub fn default_provide(providers: &mut ty::maps::Providers) {
     lint::provide(providers);
 }
 
-pub fn default_provide_extern(providers: &mut ty::maps::Providers) {
+pub fn default_provide_extern(providers: &mut ty::query::Providers) {
     cstore::provide_extern(providers);
 }
 
@@ -1043,10 +1193,10 @@ pub fn default_provide_extern(providers: &mut ty::maps::Providers) {
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(
-    trans: &TransCrate,
+    codegen_backend: &dyn CodegenBackend,
     control: &CompileController,
     sess: &'tcx Session,
-    cstore: &'tcx CrateStore,
+    cstore: &'tcx CrateStoreDyn,
     hir_map: hir_map::Map<'tcx>,
     mut analysis: ty::CrateAnalysis,
     resolutions: Resolutions,
@@ -1059,7 +1209,7 @@ where
     F: for<'a> FnOnce(
         TyCtxt<'a, 'tcx, 'tcx>,
         ty::CrateAnalysis,
-        mpsc::Receiver<Box<Any + Send>>,
+        mpsc::Receiver<Box<dyn Any + Send>>,
         CompileResult,
     ) -> R,
 {
@@ -1080,14 +1230,14 @@ where
 
     time(sess, "loop checking", || loops::check_crate(sess, &hir_map));
 
-    let mut local_providers = ty::maps::Providers::default();
+    let mut local_providers = ty::query::Providers::default();
     default_provide(&mut local_providers);
-    trans.provide(&mut local_providers);
+    codegen_backend.provide(&mut local_providers);
     (control.provide)(&mut local_providers);
 
     let mut extern_providers = local_providers;
     default_provide_extern(&mut extern_providers);
-    trans.provide_extern(&mut extern_providers);
+    codegen_backend.provide_extern(&mut extern_providers);
     (control.provide_extern)(&mut extern_providers);
 
     let (tx, rx) = mpsc::channel();
@@ -1147,13 +1297,15 @@ where
                 middle::liveness::check_crate(tcx)
             });
 
-            time(sess, "borrow checking", || borrowck::check_crate(tcx));
-
-            time(sess, "MIR borrow checking", || {
-                for def_id in tcx.body_owners() {
-                    tcx.mir_borrowck(def_id);
+            time(sess, "borrow checking", || {
+                if tcx.use_ast_borrowck() {
+                    borrowck::check_crate(tcx);
                 }
             });
+
+            time(sess,
+                 "MIR borrow checking",
+                 || tcx.par_body_owners(|def_id| { tcx.mir_borrowck(def_id); }));
 
             time(sess, "dumping chalk-like clauses", || {
                 rustc_traits::lowering::dump_program_clauses(tcx);
@@ -1187,23 +1339,23 @@ where
     )
 }
 
-/// Run the translation phase to LLVM, after which the AST and analysis can
+/// Run the codegen backend, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'a, 'tcx>(
-    trans: &TransCrate,
+pub fn phase_4_codegen<'a, 'tcx>(
+    codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    rx: mpsc::Receiver<Box<Any + Send>>,
-) -> Box<Any> {
+    rx: mpsc::Receiver<Box<dyn Any + Send>>,
+) -> Box<dyn Any> {
     time(tcx.sess, "resolving dependency formats", || {
         ::rustc::middle::dependency_format::calculate(tcx)
     });
 
-    let translation = time(tcx.sess, "translation", move || trans.trans_crate(tcx, rx));
+    let codegen = time(tcx.sess, "codegen", move || codegen_backend.codegen_crate(tcx, rx));
     if tcx.sess.profile_queries() {
         profile::dump(&tcx.sess, "profile_queries".to_string())
     }
 
-    translation
+    codegen
 }
 
 fn escape_dep_filename(filename: &FileName) -> String {
@@ -1226,7 +1378,7 @@ fn generated_output_paths(
             // If the filename has been overridden using `-o`, it will not be modified
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => for crate_type in sess.crate_types.borrow().iter() {
-                let p = ::rustc_trans_utils::link::filename_for_input(
+                let p = ::rustc_codegen_utils::link::filename_for_input(
                     sess,
                     *crate_type,
                     crate_name,
@@ -1247,7 +1399,7 @@ fn generated_output_paths(
 
 // Runs `f` on every output file path and returns the first non-None result, or None if `f`
 // returns None for every file path.
-fn check_output<F, T>(output_paths: &Vec<PathBuf>, f: F) -> Option<T>
+fn check_output<F, T>(output_paths: &[PathBuf], f: F) -> Option<T>
 where
     F: Fn(&PathBuf) -> Option<T>,
 {
@@ -1259,7 +1411,7 @@ where
     None
 }
 
-pub fn output_contains_path(output_paths: &Vec<PathBuf>, input_path: &PathBuf) -> bool {
+pub fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool {
     let input_path = input_path.canonicalize().ok();
     if input_path.is_none() {
         return false;
@@ -1274,7 +1426,7 @@ pub fn output_contains_path(output_paths: &Vec<PathBuf>, input_path: &PathBuf) -
     check_output(output_paths, check).is_some()
 }
 
-pub fn output_conflicts_with_dir(output_paths: &Vec<PathBuf>) -> Option<PathBuf> {
+pub fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
     let check = |output_path: &PathBuf| {
         if output_path.is_dir() {
             Some(output_path.clone())
@@ -1285,7 +1437,7 @@ pub fn output_conflicts_with_dir(output_paths: &Vec<PathBuf>) -> Option<PathBuf>
     check_output(output_paths, check)
 }
 
-fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &Vec<PathBuf>) {
+fn write_out_deps(sess: &Session, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
     // Write out dependency rules to the dep-info file if requested
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
@@ -1378,7 +1530,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     if base.is_empty() {
         base.extend(attr_types);
         if base.is_empty() {
-            base.push(::rustc_trans_utils::link::default_output_for_target(
+            base.push(::rustc_codegen_utils::link::default_output_for_target(
                 session,
             ));
         }
@@ -1388,7 +1540,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
 
     base.into_iter()
         .filter(|crate_type| {
-            let res = !::rustc_trans_utils::link::invalid_output_for_target(session, *crate_type);
+            let res = !::rustc_codegen_utils::link::invalid_output_for_target(session, *crate_type);
 
             if !res {
                 session.warn(&format!(

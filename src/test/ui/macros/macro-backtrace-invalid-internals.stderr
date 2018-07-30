@@ -25,17 +25,17 @@ LL |           (1).0 //~ ERROR doesn't have fields
 LL |     fake_anon_field_stmt!();
    |     ------------------------ in this macro invocation
 
-error[E0689]: can't call method `recip` on ambiguous numeric type `{float}`
+error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
   --> $DIR/macro-backtrace-invalid-internals.rs:51:15
    |
-LL |           2.0.recip() //~ ERROR can't call method `recip` on ambiguous numeric type `{float}`
-   |               ^^^^^
+LL |           2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
+   |               ^^^
 ...
 LL |     real_method_stmt!();
    |     -------------------- in this macro invocation
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL |           2.0_f32.recip() //~ ERROR can't call method `recip` on ambiguous numeric type `{float}`
+LL |           2.0_f32.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
    |           ^^^^^^^
 
 error[E0599]: no method named `fake` found for type `{integer}` in the current scope
@@ -65,17 +65,17 @@ LL |           (1).0 //~ ERROR doesn't have fields
 LL |     let _ = fake_anon_field_expr!();
    |             ----------------------- in this macro invocation
 
-error[E0689]: can't call method `recip` on ambiguous numeric type `{float}`
+error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
   --> $DIR/macro-backtrace-invalid-internals.rs:57:15
    |
-LL |           2.0.recip() //~ ERROR can't call method `recip` on ambiguous numeric type `{float}`
-   |               ^^^^^
+LL |           2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
+   |               ^^^
 ...
 LL |     let _ = real_method_expr!();
    |             ------------------- in this macro invocation
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL |           2.0_f32.recip() //~ ERROR can't call method `recip` on ambiguous numeric type `{float}`
+LL |           2.0_f32.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
    |           ^^^^^^^
 
 error: aborting due to 8 previous errors

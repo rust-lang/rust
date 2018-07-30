@@ -23,6 +23,7 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
+use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax_pos::{self, Span};
 
@@ -189,6 +190,7 @@ pub struct CrateRoot {
     pub hash: hir::svh::Svh,
     pub disambiguator: CrateDisambiguator,
     pub panic_strategy: PanicStrategy,
+    pub edition: Edition,
     pub has_global_allocator: bool,
     pub has_default_lib_allocator: bool,
     pub plugin_registrar_fn: Option<DefIndex>,
@@ -204,10 +206,17 @@ pub struct CrateRoot {
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: EncodedExportedSymbols,
-    pub wasm_custom_sections: LazySeq<DefIndex>,
     pub interpret_alloc_index: LazySeq<u32>,
 
     pub index: LazySeq<index::Index>,
+
+    pub compiler_builtins: bool,
+    pub needs_allocator: bool,
+    pub needs_panic_runtime: bool,
+    pub no_builtins: bool,
+    pub panic_runtime: bool,
+    pub profiler_runtime: bool,
+    pub sanitizer_runtime: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -263,6 +272,7 @@ pub struct Entry<'tcx> {
     pub variances: LazySeq<ty::Variance>,
     pub generics: Option<Lazy<ty::Generics>>,
     pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
+    pub predicates_defined_on: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
     pub mir: Option<Lazy<mir::Mir<'tcx>>>,
 }
@@ -280,6 +290,7 @@ impl_stable_hash_for!(struct Entry<'tcx> {
     variances,
     generics,
     predicates,
+    predicates_defined_on,
     mir
 });
 
@@ -294,6 +305,7 @@ pub enum EntryKind<'tcx> {
     ForeignType,
     GlobalAsm,
     Type,
+    Existential,
     Enum(ReprOptions),
     Field,
     Variant(Lazy<VariantData<'tcx>>),
@@ -309,6 +321,7 @@ pub enum EntryKind<'tcx> {
     Impl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
+    AssociatedExistential(AssociatedContainer),
     AssociatedConst(AssociatedContainer, ConstQualif, Lazy<RenderedConst>),
 }
 
@@ -326,6 +339,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::GlobalAsm        |
             EntryKind::ForeignType      |
             EntryKind::Field |
+            EntryKind::Existential |
             EntryKind::Type => {
                 // Nothing else to hash here.
             }
@@ -369,6 +383,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::Method(ref method_data) => {
                 method_data.hash_stable(hcx, hasher);
             }
+            EntryKind::AssociatedExistential(associated_container) |
             EntryKind::AssociatedType(associated_container) => {
                 associated_container.hash_stable(hcx, hasher);
             }

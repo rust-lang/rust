@@ -1,8 +1,11 @@
-error[E0596]: cannot borrow immutable item `x` as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/issue-37139.rs:22:18
    |
 LL |             test(&mut x); //~ ERROR cannot borrow immutable
-   |                  ^^^^^^ cannot borrow as mutable
+   |                  ^^^^^^
+   |                  |
+   |                  cannot borrow as mutable
+   |                  try removing `&mut` here
 
 error: aborting due to previous error
 

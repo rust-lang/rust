@@ -15,7 +15,7 @@ use native_libs;
 use foreign_modules;
 use schema;
 
-use rustc::ty::maps::QueryConfig;
+use rustc::ty::query::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
                             MetadataLoader, LinkMeta,
                             LoadedMacro, EncodedMetadata, NativeLibraryKind};
@@ -24,7 +24,7 @@ use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
 use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
@@ -38,7 +38,7 @@ use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
-use syntax::ext::base::SyntaxExtension;
+use syntax::edition::Edition;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION, FileName};
@@ -106,6 +106,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         tcx.alloc_generics(cdata.get_generics(def_id.index, tcx.sess))
     }
     predicates_of => { cdata.get_predicates(def_id.index, tcx) }
+    predicates_defined_on => { cdata.get_predicates_defined_on(def_id.index, tcx) }
     super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
     trait_def => {
         tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx.sess))
@@ -169,17 +170,17 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { Lrc::new(cdata.get_dylib_dependency_formats()) }
-    is_panic_runtime => { cdata.is_panic_runtime(tcx.sess) }
-    is_compiler_builtins => { cdata.is_compiler_builtins(tcx.sess) }
-    has_global_allocator => { cdata.has_global_allocator() }
-    is_sanitizer_runtime => { cdata.is_sanitizer_runtime(tcx.sess) }
-    is_profiler_runtime => { cdata.is_profiler_runtime(tcx.sess) }
-    panic_strategy => { cdata.panic_strategy() }
+    is_panic_runtime => { cdata.root.panic_runtime }
+    is_compiler_builtins => { cdata.root.compiler_builtins }
+    has_global_allocator => { cdata.root.has_global_allocator }
+    is_sanitizer_runtime => { cdata.root.sanitizer_runtime }
+    is_profiler_runtime => { cdata.root.profiler_runtime }
+    panic_strategy => { cdata.root.panic_strategy }
     extern_crate => {
         let r = Lrc::new(*cdata.extern_crate.lock());
         r
     }
-    is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
+    is_no_builtins => { cdata.root.no_builtins }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     reachable_non_generics => {
         let reachable_non_generics = tcx
@@ -208,9 +209,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             DefId { krate: def_id.krate, index }
         })
     }
-    crate_disambiguator => { cdata.disambiguator() }
-    crate_hash => { cdata.hash() }
-    original_crate_name => { cdata.name() }
+    crate_disambiguator => { cdata.root.disambiguator }
+    crate_hash => { cdata.root.hash }
+    original_crate_name => { cdata.root.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
@@ -264,8 +265,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         Arc::new(cdata.exported_symbols(tcx))
     }
-
-    wasm_custom_sections => { Lrc::new(cdata.wasm_custom_sections()) }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
@@ -413,11 +412,11 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
 }
 
 impl CrateStore for cstore::CStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<Any> {
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any> {
         self.get_crate_data(krate)
     }
 
-    fn metadata_loader(&self) -> &MetadataLoader {
+    fn metadata_loader(&self) -> &dyn MetadataLoader {
         &*self.metadata_loader
     }
 
@@ -456,12 +455,17 @@ impl CrateStore for cstore::CStore {
 
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
     {
-        self.get_crate_data(cnum).disambiguator()
+        self.get_crate_data(cnum).root.disambiguator
     }
 
     fn crate_hash_untracked(&self, cnum: CrateNum) -> hir::svh::Svh
     {
-        self.get_crate_data(cnum).hash()
+        self.get_crate_data(cnum).root.hash
+    }
+
+    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition
+    {
+        self.get_crate_data(cnum).root.edition
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
@@ -512,7 +516,14 @@ impl CrateStore for cstore::CStore {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
-            let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter));
+            use syntax::ext::base::SyntaxExtension;
+            use syntax_ext::proc_macro_impl::BangProcMacro;
+
+            let ext = SyntaxExtension::ProcMacro {
+                expander: Box::new(BangProcMacro { inner: ::proc_macro::quote }),
+                allow_internal_unstable: true,
+                edition: data.root.edition,
+            };
             return LoadedMacro::ProcMacro(Lrc::new(ext));
         }
 

@@ -6,8 +6,10 @@ LL |     _w = Wrap::<&[&str]>(NoisyDrop(&bomb));
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `bomb` dropped here while still borrowed
    | borrow later used here, when `_w` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `v` does not live long enough
   --> $DIR/dropck_misc_variants.rs:41:27
@@ -18,8 +20,10 @@ LL |         let u = NoisyDrop(&v);
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `v` dropped here while still borrowed
    | borrow later used here, when `_w` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to 2 previous errors
 

@@ -7,8 +7,10 @@ LL |     _d = D_Child(&d1);
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `d1` dropped here while still borrowed
    | borrow later used here, when `_d` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to previous error
 

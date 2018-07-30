@@ -306,9 +306,9 @@ For example:
 ```compile_fail
 match 5u32 {
     // This range is ok, albeit pointless.
-    1 ... 1 => {}
+    1 ..= 1 => {}
     // This range is empty, and the compiler can tell.
-    1000 ... 5 => {}
+    1000 ..= 5 => {}
 }
 ```
 "##,
@@ -595,21 +595,6 @@ const BAR: Bar = Bar {x: 1}; // struct constructor
 See [RFC 911] for more details on the design of `const fn`s.
 
 [RFC 911]: https://github.com/rust-lang/rfcs/blob/master/text/0911-const-fn.md
-"##,
-
-E0016: r##"
-Blocks in constants may only contain items (such as constant, function
-definition, etc...) and a tail expression. Erroneous code example:
-
-```compile_fail,E0016
-const FOO: i32 = { let x = 0; x }; // 'x' isn't an item!
-```
-
-To avoid it, you have to replace the non-item object:
-
-```
-const FOO: i32 = { const X : i32 = 0; X };
-```
 "##,
 
 E0017: r##"
@@ -1160,33 +1145,6 @@ fn main() {
 ```
 "##,
 
-E0394: r##"
-A static was referred to by value by another static.
-
-Erroneous code examples:
-
-```compile_fail,E0394
-static A: u32 = 0;
-static B: u32 = A; // error: cannot refer to other statics by value, use the
-                   //        address-of operator or a constant instead
-```
-
-A static cannot be referred by value. To fix this issue, either use a
-constant:
-
-```
-const A: u32 = 0; // `A` is now a constant
-static B: u32 = A; // ok!
-```
-
-Or refer to `A` by reference:
-
-```
-static A: u32 = 0;
-static B: &'static u32 = &A; // ok!
-```
-"##,
-
 E0395: r##"
 The value assigned to a constant scalar must be known at compile time,
 which is not the case when comparing raw pointers.
@@ -1346,34 +1304,6 @@ static B: &'static NotThreadSafe<usize> = &A; // ok!
 
 Remember this solution is unsafe! You will have to ensure that accesses to the
 cell are synchronized.
-"##,
-
-E0494: r##"
-A reference of an interior static was assigned to another const/static.
-Erroneous code example:
-
-```compile_fail,E0494
-struct Foo {
-    a: u32
-}
-
-static S : Foo = Foo { a : 0 };
-static A : &'static u32 = &S.a;
-// error: cannot refer to the interior of another static, use a
-//        constant instead
-```
-
-The "base" variable has to be a const if you want another static/const variable
-to refer to one of its fields. Example:
-
-```
-struct Foo {
-    a: u32
-}
-
-const S : Foo = Foo { a : 0 };
-static A : &'static u32 = &S.a; // ok!
-```
 "##,
 
 E0499: r##"

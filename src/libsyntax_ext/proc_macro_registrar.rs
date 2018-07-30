@@ -12,9 +12,9 @@ use std::mem;
 
 use errors;
 
-use syntax::ast::{self, Ident, NodeId};
+use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute, respan};
+use syntax::codemap::{ExpnInfo, MacroAttribute, hygiene, respan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
@@ -23,6 +23,7 @@ use syntax::fold::Folder;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -55,7 +56,7 @@ struct CollectProcMacros<'a> {
 }
 
 pub fn modify(sess: &ParseSess,
-              resolver: &mut ::syntax::ext::base::Resolver,
+              resolver: &mut dyn (::syntax::ext::base::Resolver),
               mut krate: ast::Crate,
               is_proc_macro_crate: bool,
               is_test_crate: bool,
@@ -101,9 +102,7 @@ fn is_proc_macro_attr(attr: &ast::Attribute) -> bool {
 
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
-        if self.is_proc_macro_crate &&
-           self.in_root &&
-           vis.node == ast::VisibilityKind::Public {
+        if self.is_proc_macro_crate && self.in_root && vis.node.is_pub() {
             self.handler.span_err(sp,
                                   "`proc-macro` crate types cannot \
                                    export any items other than functions \
@@ -147,11 +146,6 @@ impl<'a> CollectProcMacros<'a> {
                                   "cannot override a built-in #[derive] mode");
         }
 
-        if self.derives.iter().any(|d| d.trait_name == trait_name) {
-            self.handler.span_err(trait_attr.span(),
-                                  "derive mode defined twice in this crate");
-        }
-
         let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
             if !attr.check_name("attributes") {
                 self.handler.span_err(attr.span(), "second argument must be `attributes`")
@@ -181,7 +175,7 @@ impl<'a> CollectProcMacros<'a> {
             Vec::new()
         };
 
-        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
+        if self.in_root && item.vis.node.is_pub() {
             self.derives.push(ProcMacroDerive {
                 span: item.span,
                 trait_name,
@@ -200,13 +194,13 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_attr_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        if let Some(_) = attr.meta_item_list() {
-            self.handler.span_err(attr.span, "`#[proc_macro_attribute]` attribute
+        if !attr.is_word() {
+            self.handler.span_err(attr.span, "`#[proc_macro_attribute]` attribute \
                 does not take any arguments");
             return;
         }
 
-        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
+        if self.in_root && item.vis.node.is_pub() {
             self.attr_macros.push(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
@@ -223,13 +217,13 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_bang_proc_macro(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        if let Some(_) = attr.meta_item_list() {
-            self.handler.span_err(attr.span, "`#[proc_macro]` attribute
+        if !attr.is_word() {
+            self.handler.span_err(attr.span, "`#[proc_macro]` attribute \
                 does not take any arguments");
             return;
         }
 
-        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
+        if self.in_root && item.vis.node.is_pub() {
             self.bang_macros.push(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
@@ -271,7 +265,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
-                    let msg = if attr.path == prev_attr.path {
+                    let msg = if attr.path.segments[0].ident.name ==
+                                 prev_attr.path.segments[0].ident.name {
                         format!("Only one `#[{}]` attribute is allowed on any given function",
                                 attr.path)
                     } else {
@@ -293,7 +288,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         let attr = match found_attr {
             None => {
                 self.check_not_pub_in_root(&item.vis, item.span);
-                return visit::walk_item(self, item);
+                let prev_in_root = mem::replace(&mut self.in_root, false);
+                visit::walk_item(self, item);
+                self.in_root = prev_in_root;
+                return;
             },
             Some(attr) => attr,
         };
@@ -326,15 +324,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             self.collect_bang_proc_macro(item, attr);
         };
 
+        let prev_in_root = mem::replace(&mut self.in_root, false);
         visit::walk_item(self, item);
-    }
-
-    fn visit_mod(&mut self, m: &'a ast::Mod, _s: Span, _a: &[ast::Attribute], id: NodeId) {
-        let mut prev_in_root = self.in_root;
-        if id != ast::CRATE_NODE_ID {
-            prev_in_root = mem::replace(&mut self.in_root, false);
-        }
-        visit::walk_mod(self, m);
         self.in_root = prev_in_root;
     }
 
@@ -364,12 +355,12 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
-        callee: NameAndSpan {
-            format: MacroAttribute(Symbol::intern("proc_macro")),
-            span: None,
-            allow_internal_unstable: true,
-            allow_internal_unsafe: false,
-        }
+        def_site: None,
+        format: MacroAttribute(Symbol::intern("proc_macro")),
+        allow_internal_unstable: true,
+        allow_internal_unsafe: false,
+        local_inner_macros: false,
+        edition: hygiene::default_edition(),
     });
     let span = DUMMY_SP.apply_mark(mark);
 
@@ -385,9 +376,13 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let register_custom_derive = Ident::from_str("register_custom_derive");
     let register_attr_proc_macro = Ident::from_str("register_attr_proc_macro");
     let register_bang_proc_macro = Ident::from_str("register_bang_proc_macro");
+    let crate_kw = Ident::with_empty_ctxt(keywords::Crate.name());
+    let local_path = |cx: &mut ExtCtxt, sp: Span, name: Ident| {
+        cx.path(sp.with_ctxt(span.ctxt()), vec![crate_kw, name])
+    };
 
     let mut stmts = custom_derives.iter().map(|cd| {
-        let path = cx.path_global(cd.span, vec![cd.function_name]);
+        let path = local_path(cx, cd.span, cd.function_name);
         let trait_name = cx.expr_str(cd.span, cd.trait_name);
         let attrs = cx.expr_vec_slice(
             span,
@@ -404,7 +399,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
 
     stmts.extend(custom_attrs.iter().map(|ca| {
         let name = cx.expr_str(ca.span, ca.function_name.name);
-        let path = cx.path_global(ca.span, vec![ca.function_name]);
+        let path = local_path(cx, ca.span, ca.function_name);
         let registrar = cx.expr_ident(ca.span, registrar);
 
         let ufcs_path = cx.path(span,
@@ -416,7 +411,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
 
     stmts.extend(custom_macros.iter().map(|cm| {
         let name = cx.expr_str(cm.span, cm.function_name.name);
-        let path = cx.path_global(cm.span, vec![cm.function_name]);
+        let path = local_path(cx, cm.span, cm.function_name);
         let registrar = cx.expr_ident(cm.span, registrar);
 
         let ufcs_path = cx.path(span,

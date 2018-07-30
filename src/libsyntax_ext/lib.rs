@@ -18,7 +18,7 @@
 #![feature(decl_macro)]
 #![feature(str_escape)]
 
-#![cfg_attr(not(stage0), feature(rustc_diagnostic_macros))]
+#![feature(rustc_diagnostic_macros)]
 
 extern crate fmt_macros;
 #[macro_use]
@@ -29,11 +29,14 @@ extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_target;
 
-#[cfg(not(stage0))]
 mod diagnostics;
 
-mod assert;
+#[macro_use]
+// for custom_derive
+pub mod deriving;
+
 mod asm;
+mod assert;
 mod cfg;
 mod compile_error;
 mod concat;
@@ -47,17 +50,16 @@ mod trace_macros;
 
 pub mod proc_macro_registrar;
 
-// for custom_derive
-pub mod deriving;
 
 pub mod proc_macro_impl;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
+use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
 
-pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
+pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                          user_exts: Vec<NamedSyntaxExtension>,
                          enable_quotes: bool) {
     deriving::register_builtin_derives(resolver);
@@ -74,7 +76,9 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                         def_info: None,
                         allow_internal_unstable: false,
                         allow_internal_unsafe: false,
+                        local_inner_macros: false,
                         unstable_feature: None,
+                        edition: hygiene::default_edition(),
                     });
         )* }
     }
@@ -129,8 +133,20 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                 def_info: None,
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
-                unstable_feature: None
+                local_inner_macros: false,
+                unstable_feature: None,
+                edition: hygiene::default_edition(),
             });
+    register(Symbol::intern("format_args_nl"),
+             NormalTT {
+                 expander: Box::new(format::expand_format_args_nl),
+                 def_info: None,
+                 allow_internal_unstable: true,
+                 allow_internal_unsafe: false,
+                 local_inner_macros: false,
+                 unstable_feature: None,
+                 edition: hygiene::default_edition(),
+             });
 
     for (name, ext) in user_exts {
         register(name, ext);

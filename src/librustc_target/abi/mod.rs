@@ -13,7 +13,7 @@ pub use self::Primitive::*;
 
 use spec::Target;
 
-use std::cmp;
+use std::{cmp, fmt};
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 pub mod call;
@@ -92,8 +92,8 @@ impl TargetDataLayout {
 
         let mut dl = TargetDataLayout::default();
         let mut i128_align_src = 64;
-        for spec in target.data_layout.split("-") {
-            match &spec.split(":").collect::<Vec<_>>()[..] {
+        for spec in target.data_layout.split('-') {
+            match &spec.split(':').collect::<Vec<_>>()[..] {
                 &["e"] => dl.endian = Endian::Little,
                 &["E"] => dl.endian = Endian::Big,
                 &["a", ref a..] => dl.aggregate_align = align(a, "a")?,
@@ -221,50 +221,56 @@ pub enum Endian {
 }
 
 /// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Size {
     raw: u64
 }
 
 impl Size {
+    pub const ZERO: Size = Self::from_bytes(0);
+
+    #[inline]
     pub fn from_bits(bits: u64) -> Size {
         // Avoid potential overflow from `bits + 7`.
         Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
     }
 
-    pub fn from_bytes(bytes: u64) -> Size {
-        if bytes >= (1 << 61) {
-            panic!("Size::from_bytes: {} bytes in bits doesn't fit in u64", bytes)
-        }
+    #[inline]
+    pub const fn from_bytes(bytes: u64) -> Size {
         Size {
             raw: bytes
         }
     }
 
+    #[inline]
     pub fn bytes(self) -> u64 {
         self.raw
     }
 
+    #[inline]
     pub fn bits(self) -> u64 {
-        self.bytes() * 8
+        self.bytes().checked_mul(8).unwrap_or_else(|| {
+            panic!("Size::bits: {} bytes in bits doesn't fit in u64", self.bytes())
+        })
     }
 
+    #[inline]
     pub fn abi_align(self, align: Align) -> Size {
         let mask = align.abi() - 1;
         Size::from_bytes((self.bytes() + mask) & !mask)
     }
 
+    #[inline]
     pub fn is_abi_aligned(self, align: Align) -> bool {
         let mask = align.abi() - 1;
         self.bytes() & mask == 0
     }
 
+    #[inline]
     pub fn checked_add<C: HasDataLayout>(self, offset: Size, cx: C) -> Option<Size> {
         let dl = cx.data_layout();
 
-        // Each Size is less than dl.obj_size_bound(), so the sum is
-        // also less than 1 << 62 (and therefore can't overflow).
-        let bytes = self.bytes() + offset.bytes();
+        let bytes = self.bytes().checked_add(offset.bytes())?;
 
         if bytes < dl.obj_size_bound() {
             Some(Size::from_bytes(bytes))
@@ -273,14 +279,15 @@ impl Size {
         }
     }
 
+    #[inline]
     pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: C) -> Option<Size> {
         let dl = cx.data_layout();
 
-        match self.bytes().checked_mul(count) {
-            Some(bytes) if bytes < dl.obj_size_bound() => {
-                Some(Size::from_bytes(bytes))
-            }
-            _ => None
+        let bytes = self.bytes().checked_mul(count)?;
+        if bytes < dl.obj_size_bound() {
+            Some(Size::from_bytes(bytes))
+        } else {
+            None
         }
     }
 }
@@ -290,25 +297,35 @@ impl Size {
 
 impl Add for Size {
     type Output = Size;
+    #[inline]
     fn add(self, other: Size) -> Size {
-        // Each Size is less than 1 << 61, so the sum is
-        // less than 1 << 62 (and therefore can't overflow).
-        Size::from_bytes(self.bytes() + other.bytes())
+        Size::from_bytes(self.bytes().checked_add(other.bytes()).unwrap_or_else(|| {
+            panic!("Size::add: {} + {} doesn't fit in u64", self.bytes(), other.bytes())
+        }))
     }
 }
 
 impl Sub for Size {
     type Output = Size;
+    #[inline]
     fn sub(self, other: Size) -> Size {
-        // Each Size is less than 1 << 61, so an underflow
-        // would result in a value larger than 1 << 61,
-        // which Size::from_bytes will catch for us.
-        Size::from_bytes(self.bytes() - other.bytes())
+        Size::from_bytes(self.bytes().checked_sub(other.bytes()).unwrap_or_else(|| {
+            panic!("Size::sub: {} - {} would result in negative size", self.bytes(), other.bytes())
+        }))
+    }
+}
+
+impl Mul<Size> for u64 {
+    type Output = Size;
+    #[inline]
+    fn mul(self, size: Size) -> Size {
+        size * self
     }
 }
 
 impl Mul<u64> for Size {
     type Output = Size;
+    #[inline]
     fn mul(self, count: u64) -> Size {
         match self.bytes().checked_mul(count) {
             Some(bytes) => Size::from_bytes(bytes),
@@ -320,6 +337,7 @@ impl Mul<u64> for Size {
 }
 
 impl AddAssign for Size {
+    #[inline]
     fn add_assign(&mut self, other: Size) {
         *self = *self + other;
     }
@@ -329,7 +347,7 @@ impl AddAssign for Size {
 /// Each field is a power of two, giving the alignment a maximum value
 /// of 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a
 /// maximum capacity of 2<sup>29</sup> or 536870912.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Align {
     abi_pow2: u8,
     pref_pow2: u8,
@@ -436,10 +454,10 @@ impl Integer {
     /// Find the smallest Integer type which can represent the signed value.
     pub fn fit_signed(x: i128) -> Integer {
         match x {
-            -0x0000_0000_0000_0080...0x0000_0000_0000_007f => I8,
-            -0x0000_0000_0000_8000...0x0000_0000_0000_7fff => I16,
-            -0x0000_0000_8000_0000...0x0000_0000_7fff_ffff => I32,
-            -0x8000_0000_0000_0000...0x7fff_ffff_ffff_ffff => I64,
+            -0x0000_0000_0000_0080..=0x0000_0000_0000_007f => I8,
+            -0x0000_0000_0000_8000..=0x0000_0000_0000_7fff => I16,
+            -0x0000_0000_8000_0000..=0x0000_0000_7fff_ffff => I32,
+            -0x8000_0000_0000_0000..=0x7fff_ffff_ffff_ffff => I64,
             _ => I128
         }
     }
@@ -447,10 +465,10 @@ impl Integer {
     /// Find the smallest Integer type which can represent the unsigned value.
     pub fn fit_unsigned(x: u128) -> Integer {
         match x {
-            0...0x0000_0000_0000_00ff => I8,
-            0...0x0000_0000_0000_ffff => I16,
-            0...0x0000_0000_ffff_ffff => I32,
-            0...0xffff_ffff_ffff_ffff => I64,
+            0..=0x0000_0000_0000_00ff => I8,
+            0..=0x0000_0000_0000_ffff => I16,
+            0..=0x0000_0000_ffff_ffff => I32,
+            0..=0xffff_ffff_ffff_ffff => I64,
             _ => I128,
         }
     }
@@ -483,6 +501,42 @@ impl Integer {
     }
 }
 
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
+         PartialOrd, Ord)]
+pub enum FloatTy {
+    F32,
+    F64,
+}
+
+impl fmt::Debug for FloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl fmt::Display for FloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.ty_to_string())
+    }
+}
+
+impl FloatTy {
+    pub fn ty_to_string(&self) -> &'static str {
+        match *self {
+            FloatTy::F32 => "f32",
+            FloatTy::F64 => "f64",
+        }
+    }
+
+    pub fn bit_width(&self) -> usize {
+        match *self {
+            FloatTy::F32 => 32,
+            FloatTy::F64 => 64,
+        }
+    }
+}
+
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Primitive {
@@ -494,8 +548,7 @@ pub enum Primitive {
     /// a negative integer passed by zero-extension will appear positive in
     /// the callee, and most operations on it will produce the wrong values.
     Int(Integer, bool),
-    F32,
-    F64,
+    Float(FloatTy),
     Pointer
 }
 
@@ -505,8 +558,8 @@ impl<'a, 'tcx> Primitive {
 
         match self {
             Int(i, _) => i.size(),
-            F32 => Size::from_bits(32),
-            F64 => Size::from_bits(64),
+            Float(FloatTy::F32) => Size::from_bits(32),
+            Float(FloatTy::F64) => Size::from_bits(64),
             Pointer => dl.pointer_size
         }
     }
@@ -516,9 +569,23 @@ impl<'a, 'tcx> Primitive {
 
         match self {
             Int(i, _) => i.align(dl),
-            F32 => dl.f32_align,
-            F64 => dl.f64_align,
+            Float(FloatTy::F32) => dl.f32_align,
+            Float(FloatTy::F64) => dl.f64_align,
             Pointer => dl.pointer_align
+        }
+    }
+
+    pub fn is_float(self) -> bool {
+        match self {
+            Float(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_int(self) -> bool {
+        match self {
+            Int(..) => true,
+            _ => false,
         }
     }
 }
@@ -567,6 +634,8 @@ impl Scalar {
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum FieldPlacement {
     /// All fields start at no offset. The `usize` is the field count.
+    ///
+    /// In the case of primitives the number of fields is `0`.
     Union(usize),
 
     /// Array/vector-like placement, with all fields of identical types.
@@ -611,7 +680,7 @@ impl FieldPlacement {
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Union(_) => Size::from_bytes(0),
+            FieldPlacement::Union(_) => Size::ZERO,
             FieldPlacement::Array { stride, count } => {
                 let i = i as u64;
                 assert!(i < count);
@@ -716,10 +785,10 @@ pub enum Variants {
     },
 
     /// General-case enums: for each case there is a struct, and they all have
-    /// all space reserved for the discriminant, and their first field starts
-    /// at a non-0 offset, after where the discriminant would go.
+    /// all space reserved for the tag, and their first field starts
+    /// at a non-0 offset, after where the tag would go.
     Tagged {
-        discr: Scalar,
+        tag: Scalar,
         variants: Vec<LayoutDetails>,
     },
 
@@ -759,17 +828,6 @@ impl LayoutDetails {
             abi: Abi::Scalar(scalar),
             size,
             align,
-        }
-    }
-
-    pub fn uninhabited(field_count: usize) -> Self {
-        let align = Align::from_bytes(1, 1).unwrap();
-        LayoutDetails {
-            variants: Variants::Single { index: 0 },
-            fields: FieldPlacement::Union(field_count),
-            abi: Abi::Uninhabited,
-            align,
-            size: Size::from_bytes(0)
         }
     }
 }
@@ -826,10 +884,10 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// Returns true if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
-            Abi::Uninhabited => true,
             Abi::Scalar(_) |
             Abi::ScalarPair(..) |
             Abi::Vector { .. } => false,
+            Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0
         }
     }

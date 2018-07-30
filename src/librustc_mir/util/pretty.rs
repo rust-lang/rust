@@ -44,6 +44,9 @@ pub enum PassWhere {
 
     /// We just dumped the given statement or terminator.
     AfterLocation(Location),
+
+    /// We just dumped the terminator for a block but not the closing `}`.
+    AfterTerminator(BasicBlock),
 }
 
 /// If the session is properly configured, dumps a human-readable
@@ -114,8 +117,8 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
         // see notes on #41697 below
         tcx.item_path_str(source.def_id)
     });
-    filters.split("|").any(|or_filter| {
-        or_filter.split("&").all(|and_filter| {
+    filters.split('|').any(|or_filter| {
+        or_filter.split('&').all(|and_filter| {
             and_filter == "all" || pass_name.contains(and_filter) || node_path.contains(and_filter)
         })
     })
@@ -137,7 +140,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
-    let _: io::Result<()> = do_catch! {{
+    let _: io::Result<()> = do catch {
         let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, source)?;
         writeln!(file, "// MIR for `{}`", node_path)?;
         writeln!(file, "// source = {:?}", source)?;
@@ -150,14 +153,14 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
         extra_data(PassWhere::BeforeCFG, &mut file)?;
         write_mir_fn(tcx, source, mir, &mut extra_data, &mut file)?;
         extra_data(PassWhere::AfterCFG, &mut file)?;
-    }};
+    };
 
     if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
-        let _: io::Result<()> = do_catch! {{
+        let _: io::Result<()> = do catch {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
             write_mir_fn_graphviz(tcx, source.def_id, mir, &mut file)?;
-        }};
+        };
     }
 }
 
@@ -351,6 +354,7 @@ where
     })?;
 
     extra_data(PassWhere::AfterLocation(current_location), w)?;
+    extra_data(PassWhere::AfterTerminator(block), w)?;
 
     writeln!(w, "{}}}", INDENT)
 }
@@ -384,7 +388,7 @@ struct ExtraComments<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 
 impl<'cx, 'gcx, 'tcx> ExtraComments<'cx, 'gcx, 'tcx> {
     fn push(&mut self, lines: &str) {
-        for line in lines.split("\n") {
+        for line in lines.split('\n') {
             self.comments.push(line.to_string());
         }
     }
@@ -402,7 +406,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
 
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
-        let ty::Const { ty, val } = constant;
+        let ty::Const { ty, val, .. } = constant;
         self.push(&format!("ty::Const"));
         self.push(&format!("+ ty: {:?}", ty));
         self.push(&format!("+ val: {:?}", val));
@@ -418,11 +422,11 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
                     self.push(&format!("+ substs: {:#?}", substs));
                 }
 
-                AggregateKind::Generator(def_id, substs, interior) => {
+                AggregateKind::Generator(def_id, substs, movability) => {
                     self.push(&format!("generator"));
                     self.push(&format!("+ def_id: {:?}", def_id));
                     self.push(&format!("+ substs: {:#?}", substs));
-                    self.push(&format!("+ interior: {:?}", interior));
+                    self.push(&format!("+ movability: {:?}", movability));
                 }
 
                 _ => {}
@@ -447,9 +451,9 @@ fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
 fn write_scope_tree(
     tcx: TyCtxt,
     mir: &Mir,
-    scope_tree: &FxHashMap<VisibilityScope, Vec<VisibilityScope>>,
+    scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
     w: &mut dyn Write,
-    parent: VisibilityScope,
+    parent: SourceScope,
     depth: usize,
 ) -> io::Result<()> {
     let indent = depth * INDENT.len();
@@ -460,7 +464,7 @@ fn write_scope_tree(
     };
 
     for &child in children {
-        let data = &mir.visibility_scopes[child];
+        let data = &mir.source_scopes[child];
         assert_eq!(data.parent_scope, Some(parent));
         writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
 
@@ -519,16 +523,16 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     writeln!(w, "{{")?;
 
     // construct a scope tree and write it out
-    let mut scope_tree: FxHashMap<VisibilityScope, Vec<VisibilityScope>> = FxHashMap();
-    for (index, scope_data) in mir.visibility_scopes.iter().enumerate() {
+    let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = FxHashMap();
+    for (index, scope_data) in mir.source_scopes.iter().enumerate() {
         if let Some(parent) = scope_data.parent_scope {
             scope_tree
                 .entry(parent)
                 .or_insert(vec![])
-                .push(VisibilityScope::new(index));
+                .push(SourceScope::new(index));
         } else {
             // Only the argument scope has no parent, because it's the root.
-            assert_eq!(index, ARGUMENT_VISIBILITY_SCOPE.index());
+            assert_eq!(index, OUTERMOST_SOURCE_SCOPE.index());
         }
     }
 
@@ -541,7 +545,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
              indented_retptr,
              ALIGN)?;
 
-    write_scope_tree(tcx, mir, &scope_tree, w, ARGUMENT_VISIBILITY_SCOPE, 1)?;
+    write_scope_tree(tcx, mir, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
 
     write_temp_decls(mir, w)?;
 

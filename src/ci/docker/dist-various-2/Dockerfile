@@ -34,12 +34,12 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV \
-    AR_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-ar \
-    CC_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang \
-    CXX_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang++ \
-    AR_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-ar \
-    CC_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang \
-    CXX_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang++ \
+    AR_x86_64_fuchsia=x86_64-fuchsia-ar \
+    CC_x86_64_fuchsia=x86_64-fuchsia-clang \
+    CXX_x86_64_fuchsia=x86_64-fuchsia-clang++ \
+    AR_aarch64_fuchsia=aarch64-fuchsia-ar \
+    CC_aarch64_fuchsia=aarch64-fuchsia-clang \
+    CXX_aarch64_fuchsia=aarch64-fuchsia-clang++ \
     AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
     CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
     CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
@@ -47,8 +47,8 @@ ENV \
     CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
     CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++
 
-ENV TARGETS=x86_64-unknown-fuchsia
-ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
+ENV TARGETS=x86_64-fuchsia
+ENV TARGETS=$TARGETS,aarch64-fuchsia
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,x86_64-sun-solaris

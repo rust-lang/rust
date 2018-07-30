@@ -105,7 +105,10 @@ use rustc::hir::{self, PatKind};
 
 // a variation on try that just returns unit
 macro_rules! ignore_err {
-    ($e:expr) => (match $e { Ok(e) => e, Err(_) => return () })
+    ($e:expr) => (match $e { Ok(e) => e, Err(_) => {
+        debug!("ignoring mem-categorization error!");
+        return ()
+    }})
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -380,7 +383,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
         debug!("regionck::visit_pat(pat={:?})", pat);
-        pat.each_binding(|_, id, span, _| {
+        pat.each_binding(|_, hir_id, span, _| {
             // If we have a variable that contains region'd data, that
             // data will be accessible from anywhere that the variable is
             // accessed. We must be wary of loops like this:
@@ -403,8 +406,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // iteration. The easiest way to guarantee this is to require
             // that the lifetime of any regions that appear in a
             // variable's type enclose at least the variable's scope.
-
-            let hir_id = self.tcx.hir.node_to_hir_id(id);
             let var_scope = self.region_scope_tree.var_scope(hir_id.local_id);
             let var_region = self.tcx.mk_region(ty::ReScope(var_scope));
 
@@ -494,9 +495,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         // provided as arguments outlive the call.
         if is_method_call {
             let origin = match expr.node {
-                hir::ExprMethodCall(..) =>
+                hir::ExprKind::MethodCall(..) =>
                     infer::ParameterOrigin::MethodCall,
-                hir::ExprUnary(op, _) if op == hir::UnDeref =>
+                hir::ExprKind::Unary(op, _) if op == hir::UnDeref =>
                     infer::ParameterOrigin::OverloadedDeref,
                 _ =>
                     infer::ParameterOrigin::OverloadedOperator
@@ -524,13 +525,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("regionck::visit_expr(e={:?}, repeating_scope={}) - visiting subexprs",
                expr, self.repeating_scope);
         match expr.node {
-            hir::ExprPath(_) => {
+            hir::ExprKind::Path(_) => {
                 let substs = self.tables.borrow().node_substs(expr.hir_id);
                 let origin = infer::ParameterOrigin::Path;
                 self.substs_wf_in_scope(origin, substs, expr.span, expr_region);
             }
 
-            hir::ExprCall(ref callee, ref args) => {
+            hir::ExprKind::Call(ref callee, ref args) => {
                 if is_method_call {
                     self.constrain_call(expr, Some(&callee), args.iter().map(|e| &*e));
                 } else {
@@ -541,13 +542,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprMethodCall(.., ref args) => {
+            hir::ExprKind::MethodCall(.., ref args) => {
                 self.constrain_call(expr, Some(&args[0]), args[1..].iter().map(|e| &*e));
 
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprAssignOp(_, ref lhs, ref rhs) => {
+            hir::ExprKind::AssignOp(_, ref lhs, ref rhs) => {
                 if is_method_call {
                     self.constrain_call(expr, Some(&lhs), Some(&**rhs).into_iter());
                 }
@@ -555,20 +556,20 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprIndex(ref lhs, ref rhs) if is_method_call => {
+            hir::ExprKind::Index(ref lhs, ref rhs) if is_method_call => {
                 self.constrain_call(expr, Some(&lhs), Some(&**rhs).into_iter());
 
                 intravisit::walk_expr(self, expr);
             },
 
-            hir::ExprBinary(_, ref lhs, ref rhs) if is_method_call => {
-                // As `ExprMethodCall`, but the call is via an overloaded op.
+            hir::ExprKind::Binary(_, ref lhs, ref rhs) if is_method_call => {
+                // As `ExprKind::MethodCall`, but the call is via an overloaded op.
                 self.constrain_call(expr, Some(&lhs), Some(&**rhs).into_iter());
 
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprBinary(_, ref lhs, ref rhs) => {
+            hir::ExprKind::Binary(_, ref lhs, ref rhs) => {
                 // If you do `x OP y`, then the types of `x` and `y` must
                 // outlive the operation you are performing.
                 let lhs_ty = self.resolve_expr_type_adjusted(&lhs);
@@ -580,7 +581,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprUnary(hir::UnDeref, ref base) => {
+            hir::ExprKind::Unary(hir::UnDeref, ref base) => {
                 // For *a, the lifetime of a must enclose the deref
                 if is_method_call {
                     self.constrain_call(expr, Some(base), None::<hir::Expr>.iter());
@@ -588,21 +589,21 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 // For overloaded derefs, base_ty is the input to `Deref::deref`,
                 // but it's a reference type uing the same region as the output.
                 let base_ty = self.resolve_expr_type_adjusted(base);
-                if let ty::TyRef(r_ptr, _) = base_ty.sty {
+                if let ty::TyRef(r_ptr, _, _) = base_ty.sty {
                     self.mk_subregion_due_to_dereference(expr.span, expr_region, r_ptr);
                 }
 
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprUnary(_, ref lhs) if is_method_call => {
+            hir::ExprKind::Unary(_, ref lhs) if is_method_call => {
                 // As above.
                 self.constrain_call(expr, Some(&lhs), None::<hir::Expr>.iter());
 
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprIndex(ref vec_expr, _) => {
+            hir::ExprKind::Index(ref vec_expr, _) => {
                 // For a[b], the lifetime of a must enclose the deref
                 let vec_type = self.resolve_expr_type_adjusted(&vec_expr);
                 self.constrain_index(expr, vec_type);
@@ -610,7 +611,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprCast(ref source, _) => {
+            hir::ExprKind::Cast(ref source, _) => {
                 // Determine if we are casting `source` to a trait
                 // instance.  If so, we have to be sure that the type of
                 // the source obeys the trait's region bound.
@@ -618,7 +619,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprAddrOf(m, ref base) => {
+            hir::ExprKind::AddrOf(m, ref base) => {
                 self.link_addr_of(expr, m, &base);
 
                 // Require that when you write a `&expr` expression, the
@@ -634,23 +635,23 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprMatch(ref discr, ref arms, _) => {
+            hir::ExprKind::Match(ref discr, ref arms, _) => {
                 self.link_match(&discr, &arms[..]);
 
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprClosure(.., body_id, _, _) => {
+            hir::ExprKind::Closure(.., body_id, _, _) => {
                 self.check_expr_fn_block(expr, body_id);
             }
 
-            hir::ExprLoop(ref body, _, _) => {
+            hir::ExprKind::Loop(ref body, _, _) => {
                 let repeating_scope = self.set_repeating_scope(body.id);
                 intravisit::walk_expr(self, expr);
                 self.set_repeating_scope(repeating_scope);
             }
 
-            hir::ExprWhile(ref cond, ref body, _) => {
+            hir::ExprKind::While(ref cond, ref body, _) => {
                 let repeating_scope = self.set_repeating_scope(cond.id);
                 self.visit_expr(&cond);
 
@@ -660,9 +661,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 self.set_repeating_scope(repeating_scope);
             }
 
-            hir::ExprRet(Some(ref ret_expr)) => {
+            hir::ExprKind::Ret(Some(ref ret_expr)) => {
                 let call_site_scope = self.call_site_scope;
-                debug!("visit_expr ExprRet ret_expr.id {} call_site_scope: {:?}",
+                debug!("visit_expr ExprKind::Ret ret_expr.id {} call_site_scope: {:?}",
                        ret_expr.id, call_site_scope);
                 let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope.unwrap()));
                 self.type_of_node_must_outlive(infer::CallReturn(ret_expr.span),
@@ -701,11 +702,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                from_ty,
                to_ty);
         match (&from_ty.sty, &to_ty.sty) {
-            /*From:*/ (&ty::TyRef(from_r, ref from_mt),
-            /*To:  */  &ty::TyRef(to_r, ref to_mt)) => {
+            /*From:*/ (&ty::TyRef(from_r, from_ty, _),
+            /*To:  */  &ty::TyRef(to_r, to_ty, _)) => {
                 // Target cannot outlive source, naturally.
                 self.sub_regions(infer::Reborrow(cast_expr.span), to_r, from_r);
-                self.walk_cast(cast_expr, from_mt.ty, to_mt.ty);
+                self.walk_cast(cast_expr, from_ty, to_ty);
             }
 
             /*From:*/ (_,
@@ -913,8 +914,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                self.ty_to_string(indexed_ty));
 
         let r_index_expr = ty::ReScope(region::Scope::Node(index_expr.hir_id.local_id));
-        if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
-            match mt.ty.sty {
+        if let ty::TyRef(r_ptr, r_ty, _) = indexed_ty.sty {
+            match r_ty.sty {
                 ty::TySlice(_) | ty::TyStr => {
                     self.sub_regions(infer::IndexSlice(index_expr.span),
                                      self.tcx.mk_region(r_index_expr), r_ptr);
@@ -1020,7 +1021,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             let arg_ty = self.node_ty(arg.hir_id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
             let arg_cmt = self.with_mc(|mc| {
-                Rc::new(mc.cat_rvalue(arg.id, arg.pat.span, re_scope, arg_ty))
+                Rc::new(mc.cat_rvalue(arg.hir_id, arg.pat.span, re_scope, arg_ty))
             });
             debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
                    arg_ty,
@@ -1036,22 +1037,24 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",
                discr_cmt,
                root_pat);
-        let _ = self.with_mc(|mc| {
+        ignore_err!(self.with_mc(|mc| {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
                 match sub_pat.node {
                     // `ref x` pattern
                     PatKind::Binding(..) => {
-                        let bm = *mc.tables.pat_binding_modes().get(sub_pat.hir_id)
-                                                               .expect("missing binding mode");
-                        if let ty::BindByReference(mutbl) = bm {
-                            self.link_region_from_node_type(sub_pat.span, sub_pat.hir_id,
-                                                            mutbl, &sub_cmt);
+                        if let Some(&bm) = mc.tables.pat_binding_modes().get(sub_pat.hir_id) {
+                            if let ty::BindByReference(mutbl) = bm {
+                                self.link_region_from_node_type(sub_pat.span, sub_pat.hir_id,
+                                                                mutbl, &sub_cmt);
+                            }
+                        } else {
+                            self.tcx.sess.delay_span_bug(sub_pat.span, "missing binding mode");
                         }
                     }
                     _ => {}
                 }
             })
-        });
+        }));
     }
 
     /// Link lifetime of borrowed pointer resulting from autoref to lifetimes in the value being
@@ -1086,7 +1089,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                id, mutbl, cmt_borrowed);
 
         let rptr_ty = self.resolve_node_type(id);
-        if let ty::TyRef(r, _) = rptr_ty.sty {
+        if let ty::TyRef(r, _, _) = rptr_ty.sty {
             debug!("rptr_ty={}",  rptr_ty);
             self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
         }
@@ -1113,7 +1116,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                    borrow_kind,
                    borrow_cmt);
             match borrow_cmt_cat {
-                Categorization::Deref(ref_cmt, mc::Implicit(ref_kind, ref_region)) |
                 Categorization::Deref(ref_cmt, mc::BorrowedPtr(ref_kind, ref_region)) => {
                     match self.link_reborrowed_region(span,
                                                       borrow_region, borrow_kind,

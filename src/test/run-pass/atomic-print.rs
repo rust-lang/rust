@@ -15,7 +15,7 @@ use std::{env, fmt, process, sync, thread};
 
 struct SlowFmt(u32);
 impl fmt::Debug for SlowFmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         thread::sleep_ms(3);
         self.0.fmt(f)
     }

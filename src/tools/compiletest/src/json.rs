@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use errors::{Error, ErrorKind};
-use serde_json;
-use std::str::FromStr;
-use std::path::Path;
 use runtest::ProcRes;
+use serde_json;
+use std::path::Path;
+use std::str::FromStr;
 
 // These structs are a subset of the ones found in
 // `syntax::json`.
@@ -40,6 +40,21 @@ struct DiagnosticSpan {
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
+impl DiagnosticSpan {
+    /// Returns the deepest source span in the macro call stack with a given file name.
+    /// This is either the supplied span, or the span for some macro callsite that expanded to it.
+    fn first_callsite_in_file(&self, file_name: &str) -> &DiagnosticSpan {
+        if self.file_name == file_name {
+            self
+        } else {
+            self.expansion
+                .as_ref()
+                .map(|origin| origin.span.first_callsite_in_file(file_name))
+                .unwrap_or(self)
+        }
+    }
+}
+
 #[derive(Deserialize, Clone)]
 struct DiagnosticSpanMacroExpansion {
     /// span where macro was applied to generate this code
@@ -58,26 +73,30 @@ struct DiagnosticCode {
 }
 
 pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
-    output.lines()
-        .filter_map(|line| if line.starts_with('{') {
-            match serde_json::from_str::<Diagnostic>(line) {
-                Ok(diagnostic) => diagnostic.rendered,
-                Err(error) => {
-                    proc_res.fatal(Some(&format!("failed to decode compiler output as json: \
-                                                  `{}`\noutput: {}\nline: {}",
-                                                 error,
-                                                 line,
-                                                 output)));
+    output
+        .lines()
+        .filter_map(|line| {
+            if line.starts_with('{') {
+                match serde_json::from_str::<Diagnostic>(line) {
+                    Ok(diagnostic) => diagnostic.rendered,
+                    Err(error) => {
+                        proc_res.fatal(Some(&format!(
+                            "failed to decode compiler output as json: \
+                             `{}`\noutput: {}\nline: {}",
+                            error, line, output
+                        )));
+                    }
                 }
+            } else {
+                None
             }
-        } else {
-            None
         })
         .collect()
 }
 
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
-    output.lines()
+    output
+        .lines()
         .flat_map(|line| parse_line(file_name, line, output, proc_res))
         .collect()
 }
@@ -93,11 +112,11 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
                 expected_errors
             }
             Err(error) => {
-                proc_res.fatal(Some(&format!("failed to decode compiler output as json: \
-                                              `{}`\noutput: {}\nline: {}",
-                                             error,
-                                             line,
-                                             output)));
+                proc_res.fatal(Some(&format!(
+                    "failed to decode compiler output as json: \
+                     `{}`\noutput: {}\nline: {}",
+                    error, line, output
+                )));
             }
         }
     } else {
@@ -105,19 +124,29 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
     }
 }
 
-fn push_expected_errors(expected_errors: &mut Vec<Error>,
-                        diagnostic: &Diagnostic,
-                        default_spans: &[&DiagnosticSpan],
-                        file_name: &str) {
-    let spans_in_this_file: Vec<_> = diagnostic.spans
+fn push_expected_errors(
+    expected_errors: &mut Vec<Error>,
+    diagnostic: &Diagnostic,
+    default_spans: &[&DiagnosticSpan],
+    file_name: &str,
+) {
+    // In case of macro expansions, we need to get the span of the callsite
+    let spans_info_in_this_file: Vec<_> = diagnostic
+        .spans
         .iter()
-        .filter(|span| Path::new(&span.file_name) == Path::new(&file_name))
+        .map(|span| (span.is_primary, span.first_callsite_in_file(file_name)))
+        .filter(|(_, span)| Path::new(&span.file_name) == Path::new(&file_name))
         .collect();
 
-    let primary_spans: Vec<_> = spans_in_this_file.iter()
-        .cloned()
-        .filter(|span| span.is_primary)
+    let spans_in_this_file: Vec<_> = spans_info_in_this_file.iter()
+        .map(|(_, span)| span)
+        .collect();
+
+    let primary_spans: Vec<_> = spans_info_in_this_file.iter()
+        .filter(|(is_primary, _)| *is_primary)
+        .map(|(_, span)| span)
         .take(1) // sometimes we have more than one showing up in the json; pick first
+        .cloned()
         .collect();
     let primary_spans = if primary_spans.is_empty() {
         // subdiagnostics often don't have a span of their own;
@@ -204,8 +233,10 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     }
 
     // Add notes for any labels that appear in the message.
-    for span in spans_in_this_file.iter()
-        .filter(|span| span.label.is_some()) {
+    for span in spans_in_this_file
+        .iter()
+        .filter(|span| span.label.is_some())
+    {
         expected_errors.push(Error {
             line_num: span.line_start,
             kind: Some(ErrorKind::Note),
@@ -219,9 +250,11 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     }
 }
 
-fn push_backtrace(expected_errors: &mut Vec<Error>,
-                  expansion: &DiagnosticSpanMacroExpansion,
-                  file_name: &str) {
+fn push_backtrace(
+    expected_errors: &mut Vec<Error>,
+    expansion: &DiagnosticSpanMacroExpansion,
+    file_name: &str,
+) {
     if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
         expected_errors.push(Error {
             line_num: expansion.span.line_start,

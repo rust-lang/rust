@@ -796,7 +796,10 @@ pub fn park() {
     let mut m = thread.inner.lock.lock().unwrap();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
-        Err(NOTIFIED) => return, // notified after we locked
+        Err(NOTIFIED) => {
+            thread.inner.state.store(EMPTY, SeqCst);
+            return;
+        } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park state"),
     }
     loop {
@@ -882,7 +885,10 @@ pub fn park_timeout(dur: Duration) {
     let m = thread.inner.lock.lock().unwrap();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
-        Err(NOTIFIED) => return, // notified after we locked
+        Err(NOTIFIED) => {
+            thread.inner.state.store(EMPTY, SeqCst);
+            return;
+        } // should consume this notification, so prohibit spurious wakeups in next park.
         Err(_) => panic!("inconsistent park_timeout state"),
     }
 
@@ -935,19 +941,16 @@ impl ThreadId {
         static mut COUNTER: u64 = 0;
 
         unsafe {
-            GUARD.lock();
+            let _guard = GUARD.lock();
 
             // If we somehow use up all our bits, panic so that we're not
             // covering up subtle bugs of IDs being reused.
             if COUNTER == ::u64::MAX {
-                GUARD.unlock();
                 panic!("failed to generate unique thread ID: bitspace exhausted");
             }
 
             let id = COUNTER;
             COUNTER += 1;
-
-            GUARD.unlock();
 
             ThreadId(id)
         }
@@ -1172,7 +1175,7 @@ impl fmt::Debug for Thread {
 ///
 /// [`Result`]: ../../std/result/enum.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
+pub type Result<T> = ::result::Result<T, Box<dyn Any + Send + 'static>>;
 
 // This packet is used to communicate the return value between the child thread
 // and the parent thread. Memory is shared through the `Arc` within and there's
@@ -1272,6 +1275,11 @@ impl<T> JoinInner<T> {
 /// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
+
+#[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
+unsafe impl<T> Send for JoinHandle<T> {}
+#[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
+unsafe impl<T> Sync for JoinHandle<T> {}
 
 impl<T> JoinHandle<T> {
     /// Extracts a handle to the underlying thread.
@@ -1435,7 +1443,7 @@ mod tests {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<Fn() + Send>) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<dyn Fn() + Send>) {
         let (tx, rx) = channel();
 
         let x: Box<_> = box 1;
@@ -1482,7 +1490,7 @@ mod tests {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         const GENERATIONS: u32 = 16;
-        fn child_no(x: u32) -> Box<Fn() + Send> {
+        fn child_no(x: u32) -> Box<dyn Fn() + Send> {
             return Box::new(move|| {
                 if x < GENERATIONS {
                     thread::spawn(move|| child_no(x+1)());
@@ -1528,10 +1536,10 @@ mod tests {
     #[test]
     fn test_try_panic_message_any() {
         match thread::spawn(move|| {
-            panic!(box 413u16 as Box<Any + Send>);
+            panic!(box 413u16 as Box<dyn Any + Send>);
         }).join() {
             Err(e) => {
-                type T = Box<Any + Send>;
+                type T = Box<dyn Any + Send>;
                 assert!(e.is::<T>());
                 let any = e.downcast::<T>().unwrap();
                 assert!(any.is::<u16>());

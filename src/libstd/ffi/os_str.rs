@@ -417,6 +417,20 @@ impl PartialEq<OsString> for str {
     }
 }
 
+#[stable(feature = "os_str_str_ref_eq", since = "1.28.0")]
+impl<'a> PartialEq<&'a str> for OsString {
+    fn eq(&self, other: &&'a str) -> bool {
+        **self == **other
+    }
+}
+
+#[stable(feature = "os_str_str_ref_eq", since = "1.28.0")]
+impl<'a> PartialEq<OsString> for &'a str {
+    fn eq(&self, other: &OsString) -> bool {
+        **other == **self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for OsString {}
 
@@ -628,6 +642,14 @@ impl From<OsString> for Box<OsStr> {
     }
 }
 
+#[stable(feature = "more_box_slice_clone", since = "1.29.0")]
+impl Clone for Box<OsStr> {
+    #[inline]
+    fn clone(&self) -> Self {
+        self.to_os_string().into_boxed_os_str()
+    }
+}
+
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
     #[inline]
@@ -661,6 +683,38 @@ impl<'a> From<&'a OsStr> for Rc<OsStr> {
     fn from(s: &OsStr) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const OsStr) }
+    }
+}
+
+#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+impl<'a> From<OsString> for Cow<'a, OsStr> {
+    #[inline]
+    fn from(s: OsString) -> Cow<'a, OsStr> {
+        Cow::Owned(s)
+    }
+}
+
+#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+impl<'a> From<&'a OsStr> for Cow<'a, OsStr> {
+    #[inline]
+    fn from(s: &'a OsStr) -> Cow<'a, OsStr> {
+        Cow::Borrowed(s)
+    }
+}
+
+#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
+    #[inline]
+    fn from(s: &'a OsString) -> Cow<'a, OsStr> {
+        Cow::Borrowed(s.as_os_str())
+    }
+}
+
+#[stable(feature = "osstring_from_cow_osstr", since = "1.28.0")]
+impl<'a> From<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn from(s: Cow<'a, OsStr>) -> Self {
+        s.into_owned()
     }
 }
 

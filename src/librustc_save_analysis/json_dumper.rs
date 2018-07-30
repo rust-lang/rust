@@ -46,7 +46,7 @@ impl<'b, W: Write> DumpOutput for WriteOutput<'b, W> {
 }
 
 pub struct CallbackOutput<'b> {
-    callback: &'b mut FnMut(&Analysis),
+    callback: &'b mut dyn FnMut(&Analysis),
 }
 
 impl<'b> DumpOutput for CallbackOutput<'b> {
@@ -67,7 +67,7 @@ impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
 
 impl<'b> JsonDumper<CallbackOutput<'b>> {
     pub fn with_callback(
-        callback: &'b mut FnMut(&Analysis),
+        callback: &'b mut dyn FnMut(&Analysis),
         config: Config,
     ) -> JsonDumper<CallbackOutput<'b>> {
         JsonDumper {

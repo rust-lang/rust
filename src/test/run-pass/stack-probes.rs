@@ -14,11 +14,12 @@
 // ignore-mips64
 // ignore-powerpc
 // ignore-s390x
+// ignore-sparc
+// ignore-sparc64
 // ignore-wasm
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-musl FIXME #31506
-// min-system-llvm-version 5.0
 
 use std::mem;
 use std::process::Command;

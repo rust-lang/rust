@@ -20,7 +20,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     type Output = Block<'tcx>;
 
     fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
-        // We have to eagerly translate the "spine" of the statements
+        // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = mirror_stmts(cx, self.hir_id.local_id, &*self.stmts);
         let opt_destruction_scope =
@@ -55,8 +55,8 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         let hir_id = cx.tcx.hir.node_to_hir_id(stmt.node.id());
         let opt_dxn_ext = cx.region_scope_tree.opt_destruction_scope(hir_id.local_id);
         match stmt.node {
-            hir::StmtExpr(ref expr, _) |
-            hir::StmtSemi(ref expr, _) => {
+            hir::StmtKind::Expr(ref expr, _) |
+            hir::StmtKind::Semi(ref expr, _) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
                     kind: StmtKind::Expr {
                         scope: region::Scope::Node(hir_id.local_id),
@@ -65,12 +65,12 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     opt_destruction_scope: opt_dxn_ext,
                 })))
             }
-            hir::StmtDecl(ref decl, _) => {
+            hir::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
-                    hir::DeclItem(..) => {
+                    hir::DeclKind::Item(..) => {
                         // ignore for purposes of the MIR
                     }
-                    hir::DeclLocal(ref local) => {
+                    hir::DeclKind::Local(ref local) => {
                         let remainder_scope = region::Scope::Remainder(BlockRemainder {
                             block: block_id,
                             first_statement_index: region::FirstStatementIndex::new(index),

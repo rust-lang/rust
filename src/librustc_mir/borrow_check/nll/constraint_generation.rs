@@ -10,24 +10,21 @@
 
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
+use borrow_check::nll::ToRegionVid;
 use borrow_check::nll::facts::AllFacts;
-use rustc::hir;
+use borrow_check::nll::region_infer::values::LivenessValues;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
-use rustc::mir::Place::Projection;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
-use rustc::mir::{Local, PlaceProjection, ProjectionElem, Statement, Terminator};
+use rustc::mir::{Local, Statement, Terminator};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts};
-
-use super::region_infer::{Cause, RegionInferenceContext};
-use super::ToRegionVid;
+use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, RegionVid};
 
 pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
-    regioncx: &mut RegionInferenceContext<'tcx>,
+    liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     mir: &Mir<'tcx>,
@@ -36,10 +33,9 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     let mut cg = ConstraintGeneration {
         borrow_set,
         infcx,
-        regioncx,
+        liveness_constraints,
         location_table,
         all_facts,
-        mir,
     };
 
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
@@ -52,8 +48,7 @@ struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
-    regioncx: &'cg mut RegionInferenceContext<'tcx>,
-    mir: &'cg Mir<'tcx>,
+    liveness_constraints: &'cg mut LivenessValues<RegionVid>,
     borrow_set: &'cg BorrowSet<'tcx>,
 }
 
@@ -65,14 +60,14 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
     /// We sometimes have `substs` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_substs(&mut self, substs: &&'tcx Substs<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*substs, location, Cause::LiveOther(location));
+        self.add_regular_live_constraint(*substs, location);
         self.super_substs(substs);
     }
 
     /// We sometimes have `region` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_region(&mut self, region: &ty::Region<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*region, location, Cause::LiveOther(location));
+        self.add_regular_live_constraint(*region, location);
         self.super_region(region);
     }
 
@@ -90,17 +85,24 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
                 );
             }
             TyContext::Location(location) => {
-                self.add_regular_live_constraint(*ty, location, Cause::LiveOther(location));
+                self.add_regular_live_constraint(*ty, location);
             }
         }
 
         self.super_ty(ty);
     }
 
+    /// We sometimes have `generator_substs` within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_generator_substs(&mut self, substs: &GeneratorSubsts<'tcx>, location: Location) {
+        self.add_regular_live_constraint(*substs, location);
+        self.super_generator_substs(substs);
+    }
+
     /// We sometimes have `closure_substs` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
     fn visit_closure_substs(&mut self, substs: &ClosureSubsts<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*substs, location, Cause::LiveOther(location));
+        self.add_regular_live_constraint(*substs, location);
         self.super_closure_substs(substs);
     }
 
@@ -173,41 +175,6 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         self.super_terminator(block, terminator, location);
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        debug!("visit_rvalue(rvalue={:?}, location={:?})", rvalue, location);
-
-        match rvalue {
-            Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                // In some cases, e.g. when borrowing from an unsafe
-                // place, we don't bother to create a loan, since
-                // there are no conditions to validate.
-                if let Some(all_facts) = self.all_facts {
-                    if let Some(borrow_index) = self.borrow_set.location_map.get(&location) {
-                        let region_vid = region.to_region_vid();
-                        all_facts.borrow_region.push((
-                            region_vid,
-                            *borrow_index,
-                            self.location_table.mid_index(location),
-                        ));
-                    }
-                }
-
-                // Look for an rvalue like:
-                //
-                //     & L
-                //
-                // where L is the path that is borrowed. In that case, we have
-                // to add the reborrow constraints (which don't fall out
-                // naturally from the type-checker).
-                self.add_reborrow_constraint(location, region, borrowed_place);
-            }
-
-            _ => { }
-        }
-
-        self.super_rvalue(rvalue, location);
-    }
-
     fn visit_user_assert_ty(
         &mut self,
         _c_ty: &CanonicalTy<'tcx>,
@@ -222,7 +189,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at
     /// `location`.
-    fn add_regular_live_constraint<T>(&mut self, live_ty: T, location: Location, cause: Cause)
+    fn add_regular_live_constraint<T>(&mut self, live_ty: T, location: Location)
     where
         T: TypeFoldable<'tcx>,
     {
@@ -235,105 +202,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
             .tcx
             .for_each_free_region(&live_ty, |live_region| {
                 let vid = live_region.to_region_vid();
-                self.regioncx.add_live_point(vid, location, &cause);
+                self.liveness_constraints.add_element(vid, location);
             });
-    }
-
-    // Add the reborrow constraint at `location` so that `borrowed_place`
-    // is valid for `borrow_region`.
-    fn add_reborrow_constraint(
-        &mut self,
-        location: Location,
-        borrow_region: ty::Region<'tcx>,
-        borrowed_place: &Place<'tcx>,
-    ) {
-        let mut borrowed_place = borrowed_place;
-
-        debug!(
-            "add_reborrow_constraint({:?}, {:?}, {:?})",
-            location, borrow_region, borrowed_place
-        );
-        while let Projection(box PlaceProjection { base, elem }) = borrowed_place {
-            debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
-
-            match *elem {
-                ProjectionElem::Deref => {
-                    let tcx = self.infcx.tcx;
-                    let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
-
-                    debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
-                    match base_ty.sty {
-                        ty::TyRef(ref_region, ty::TypeAndMut { ty: _, mutbl }) => {
-                            let span = self.mir.source_info(location).span;
-                            self.regioncx.add_outlives(
-                                span,
-                                ref_region.to_region_vid(),
-                                borrow_region.to_region_vid(),
-                                location.successor_within_block(),
-                            );
-
-                            if let Some(all_facts) = self.all_facts {
-                                all_facts.outlives.push((
-                                    ref_region.to_region_vid(),
-                                    borrow_region.to_region_vid(),
-                                    self.location_table.mid_index(location),
-                                ));
-                            }
-
-                            match mutbl {
-                                hir::Mutability::MutImmutable => {
-                                    // Immutable reference. We don't need the base
-                                    // to be valid for the entire lifetime of
-                                    // the borrow.
-                                    break;
-                                }
-                                hir::Mutability::MutMutable => {
-                                    // Mutable reference. We *do* need the base
-                                    // to be valid, because after the base becomes
-                                    // invalid, someone else can use our mutable deref.
-
-                                    // This is in order to make the following function
-                                    // illegal:
-                                    // ```
-                                    // fn unsafe_deref<'a, 'b>(x: &'a &'b mut T) -> &'b mut T {
-                                    //     &mut *x
-                                    // }
-                                    // ```
-                                    //
-                                    // As otherwise you could clone `&mut T` using the
-                                    // following function:
-                                    // ```
-                                    // fn bad(x: &mut T) -> (&mut T, &mut T) {
-                                    //     let my_clone = unsafe_deref(&'a x);
-                                    //     ENDREGION 'a;
-                                    //     (my_clone, x)
-                                    // }
-                                    // ```
-                                }
-                            }
-                        }
-                        ty::TyRawPtr(..) => {
-                            // deref of raw pointer, guaranteed to be valid
-                            break;
-                        }
-                        ty::TyAdt(def, _) if def.is_box() => {
-                            // deref of `Box`, need the base to be valid - propagate
-                        }
-                        _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place),
-                    }
-                }
-                ProjectionElem::Field(..)
-                | ProjectionElem::Downcast(..)
-                | ProjectionElem::Index(..)
-                | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {
-                    // other field access
-                }
-            }
-
-            // The "propagate" case. We need to check that our base is valid
-            // for the borrow's lifetime.
-            borrowed_place = base;
-        }
     }
 }

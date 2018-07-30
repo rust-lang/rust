@@ -127,6 +127,14 @@ pub enum Count<'a> {
     CountImplied,
 }
 
+pub struct ParseError {
+    pub description: string::String,
+    pub note: Option<string::String>,
+    pub label: string::String,
+    pub start: usize,
+    pub end: usize,
+}
+
 /// The parser structure for interpreting the input format string. This is
 /// modeled as an iterator over `Piece` structures to form a stream of tokens
 /// being output.
@@ -137,15 +145,22 @@ pub struct Parser<'a> {
     input: &'a str,
     cur: iter::Peekable<str::CharIndices<'a>>,
     /// Error messages accumulated during parsing
-    pub errors: Vec<(string::String, Option<string::String>)>,
+    pub errors: Vec<ParseError>,
     /// Current position of implicit positional argument pointer
     curarg: usize,
+    /// `Some(raw count)` when the string is "raw", used to position spans correctly
+    style: Option<usize>,
+    /// How many newlines have been seen in the string so far, to adjust the error spans
+    seen_newlines: usize,
+    /// Start and end byte offset of every successfuly parsed argument
+    pub arg_places: Vec<(usize, usize)>,
 }
 
 impl<'a> Iterator for Parser<'a> {
     type Item = Piece<'a>;
 
     fn next(&mut self) -> Option<Piece<'a>> {
+        let raw = self.style.map(|raw| raw + self.seen_newlines).unwrap_or(0);
         if let Some(&(pos, c)) = self.cur.peek() {
             match c {
                 '{' => {
@@ -153,9 +168,13 @@ impl<'a> Iterator for Parser<'a> {
                     if self.consume('{') {
                         Some(String(self.string(pos + 1)))
                     } else {
-                        let ret = Some(NextArgument(self.argument()));
-                        self.must_consume('}');
-                        ret
+                        let mut arg = self.argument();
+                        if let Some(arg_pos) = self.must_consume('}').map(|end| {
+                            (pos + raw + 1, end + raw + 2)
+                        }) {
+                            self.arg_places.push(arg_pos);
+                        }
+                        Some(NextArgument(arg))
                     }
                 }
                 '}' => {
@@ -163,11 +182,20 @@ impl<'a> Iterator for Parser<'a> {
                     if self.consume('}') {
                         Some(String(self.string(pos + 1)))
                     } else {
-                        self.err_with_note("unmatched `}` found",
-                                           "if you intended to print `}`, \
-                                           you can escape it using `}}`");
+                        let err_pos = pos + raw + 1;
+                        self.err_with_note(
+                            "unmatched `}` found",
+                            "unmatched `}`",
+                            "if you intended to print `}`, you can escape it using `}}`",
+                            err_pos,
+                            err_pos,
+                        );
                         None
                     }
+                }
+                '\n' => {
+                    self.seen_newlines += 1;
+                    Some(String(self.string(pos)))
                 }
                 _ => Some(String(self.string(pos))),
             }
@@ -179,27 +207,55 @@ impl<'a> Iterator for Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Creates a new parser for the given format string
-    pub fn new(s: &'a str) -> Parser<'a> {
+    pub fn new(s: &'a str, style: Option<usize>) -> Parser<'a> {
         Parser {
             input: s,
             cur: s.char_indices().peekable(),
             errors: vec![],
             curarg: 0,
+            style,
+            seen_newlines: 0,
+            arg_places: vec![],
         }
     }
 
     /// Notifies of an error. The message doesn't actually need to be of type
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
-    fn err(&mut self, msg: &str) {
-        self.errors.push((msg.to_owned(), None));
+    fn err<S1: Into<string::String>, S2: Into<string::String>>(
+        &mut self,
+        description: S1,
+        label: S2,
+        start: usize,
+        end: usize,
+    ) {
+        self.errors.push(ParseError {
+            description: description.into(),
+            note: None,
+            label: label.into(),
+            start,
+            end,
+        });
     }
 
     /// Notifies of an error. The message doesn't actually need to be of type
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
-    fn err_with_note(&mut self, msg: &str, note: &str) {
-        self.errors.push((msg.to_owned(), Some(note.to_owned())));
+    fn err_with_note<S1: Into<string::String>, S2: Into<string::String>, S3: Into<string::String>>(
+        &mut self,
+        description: S1,
+        label: S2,
+        note: S3,
+        start: usize,
+        end: usize,
+    ) {
+        self.errors.push(ParseError {
+            description: description.into(),
+            note: Some(note.into()),
+            label: label.into(),
+            start,
+            end,
+        });
     }
 
     /// Optionally consumes the specified character. If the character is not at
@@ -220,22 +276,40 @@ impl<'a> Parser<'a> {
 
     /// Forces consumption of the specified character. If the character is not
     /// found, an error is emitted.
-    fn must_consume(&mut self, c: char) {
+    fn must_consume(&mut self, c: char) -> Option<usize> {
         self.ws();
-        if let Some(&(_, maybe)) = self.cur.peek() {
+        let raw = self.style.unwrap_or(0);
+
+        let padding = raw + self.seen_newlines;
+        if let Some(&(pos, maybe)) = self.cur.peek() {
             if c == maybe {
                 self.cur.next();
+                Some(pos)
             } else {
-                self.err(&format!("expected `{:?}`, found `{:?}`", c, maybe));
+                let pos = pos + padding + 1;
+                self.err(format!("expected `{:?}`, found `{:?}`", c, maybe),
+                         format!("expected `{}`", c),
+                         pos,
+                         pos);
+                None
             }
         } else {
-            let msg = &format!("expected `{:?}` but string was terminated", c);
+            let msg = format!("expected `{:?}` but string was terminated", c);
+            // point at closing `"`, unless the last char is `\n` to account for `println`
+            let pos = match self.input.chars().last() {
+                Some('\n') => self.input.len(),
+                _ => self.input.len() + 1,
+            };
             if c == '}' {
                 self.err_with_note(msg,
-                                   "if you intended to print `{`, you can escape it using `{{`");
+                                   format!("expected `{:?}`", c),
+                                   "if you intended to print `{`, you can escape it using `{{`",
+                                   pos + padding,
+                                   pos + padding);
             } else {
-                self.err(msg);
+                self.err(msg, format!("expected `{:?}`", c), pos, pos);
             }
+            None
         }
     }
 
@@ -300,6 +374,15 @@ impl<'a> Parser<'a> {
         } else {
             match self.cur.peek() {
                 Some(&(_, c)) if c.is_alphabetic() => Some(ArgumentNamed(self.word())),
+                Some(&(pos, c)) if c == '_' => {
+                    let invalid_name = self.string(pos);
+                    self.err_with_note(format!("invalid argument name `{}`", invalid_name),
+                                       "invalid argument name",
+                                       "argument names cannot start with an underscore",
+                                       pos + 1, // add 1 to account for leading `{`
+                                       pos + 1 + invalid_name.len());
+                    Some(ArgumentNamed(invalid_name))
+                },
 
                 // This is an `ArgumentNext`.
                 // Record the fact and do the resolution after parsing the
@@ -480,7 +563,7 @@ mod tests {
     use super::*;
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
-        let parser = Parser::new(fmt);
+        let parser = Parser::new(fmt, None);
         assert!(parser.collect::<Vec<Piece<'static>>>() == p);
     }
 
@@ -496,7 +579,7 @@ mod tests {
     }
 
     fn musterr(s: &str) {
-        let mut p = Parser::new(s);
+        let mut p = Parser::new(s, None);
         p.next();
         assert!(!p.errors.is_empty());
     }

@@ -1,0 +1,22 @@
+warning: type alias is never used: `Z`
+  --> $DIR/issue-37515.rs:14:1
+   |
+LL | type Z = for<'x> Send;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-37515.rs:12:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: #[warn(dead_code)] implied by #[warn(unused)]
+
+error: compilation successful
+  --> $DIR/issue-37515.rs:18:1
+   |
+LL | / fn main() { //~ ERROR compilation successful
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

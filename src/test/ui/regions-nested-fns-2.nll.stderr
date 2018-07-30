@@ -7,7 +7,7 @@ LL | |             if false { &y } else { z }
 LL | |         });
    | |_________^ borrowed value does not live long enough
 LL |   }
-   |   - borrowed value only lives until here
+   |   - `y` dropped here while still borrowed
    |
    = note: borrowed value must be valid for the static lifetime...
 

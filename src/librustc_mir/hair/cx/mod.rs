@@ -16,22 +16,19 @@
 
 use hair::*;
 
-use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
-use rustc::ty::layout::IntegerExt;
 use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt, layout};
-use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::{Kind, Substs};
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use rustc::mir::interpret::{Value, PrimVal};
 use hair::pattern::parse_float;
 
 #[derive(Clone)]
@@ -79,7 +76,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
-        // the settings for the crate they are translated in.
+        // the settings for the crate they are codegened in.
         let mut check_overflow = attr::contains_name(attrs, "rustc_inherit_overflow_checks");
 
         // Respect -C overflow-checks.
@@ -115,13 +112,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx.types.usize
     }
 
-    pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
-        Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(value as u128))),
-                ty: self.tcx.types.usize
-            })
-        }
+    pub fn usize_literal(&mut self, value: u64) -> &'tcx ty::Const<'tcx> {
+        ty::Const::from_usize(self.tcx, value)
     }
 
     pub fn bool_ty(&mut self) -> Ty<'tcx> {
@@ -132,85 +124,66 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         self.tcx.mk_nil()
     }
 
-    pub fn true_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(1))),
-                ty: self.tcx.types.bool
-            })
-        }
+    pub fn true_literal(&mut self) -> &'tcx ty::Const<'tcx> {
+        ty::Const::from_bool(self.tcx, true)
     }
 
-    pub fn false_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
-                ty: self.tcx.types.bool
-            })
-        }
+    pub fn false_literal(&mut self) -> &'tcx ty::Const<'tcx> {
+        ty::Const::from_bool(self.tcx, false)
     }
 
-    pub fn integer_bit_width(
-        &self,
-        ty: Ty,
-    ) -> u64 {
-        let ty = match ty.sty {
-            ty::TyInt(ity) => attr::IntType::SignedInt(ity),
-            ty::TyUint(uty) => attr::IntType::UnsignedInt(uty),
-            _ => bug!("{} is not an integer", ty),
-        };
-        layout::Integer::from_attr(self.tcx, ty).size().bits()
-    }
-
+    // FIXME: Combine with rustc_mir::hair::pattern::lit_to_const
     pub fn const_eval_literal(
         &mut self,
         lit: &'tcx ast::LitKind,
         ty: Ty<'tcx>,
         sp: Span,
         neg: bool,
-    ) -> Literal<'tcx> {
+    ) -> &'tcx ty::Const<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
-        let parse_float = |num, fty| -> Value {
+        let parse_float = |num, fty| -> ConstValue<'tcx> {
             parse_float(num, fty, neg).unwrap_or_else(|_| {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
                 self.tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
             })
         };
 
-        let clamp = |n| {
-            let size = self.integer_bit_width(ty);
-            trace!("clamp {} with size {} and amt {}", n, size, 128 - size);
-            let amt = 128 - size;
-            let result = (n << amt) >> amt;
-            trace!("clamp result: {}", result);
-            result
+        let trunc = |n| {
+            let param_ty = self.param_env.and(self.tcx.lift_to_global(&ty).unwrap());
+            let bit_width = self.tcx.layout_of(param_ty).unwrap().size.bits();
+            trace!("trunc {} with size {} and shift {}", n, bit_width, 128 - bit_width);
+            let shift = 128 - bit_width;
+            let result = (n << shift) >> shift;
+            trace!("trunc result: {}", result);
+            ConstValue::Scalar(Scalar::Bits {
+                bits: result,
+                defined: bit_width as u8,
+            })
         };
 
         use rustc::mir::interpret::*;
         let lit = match *lit {
             LitKind::Str(ref s, _) => {
                 let s = s.as_str();
-                let id = self.tcx.allocate_cached(s.as_bytes());
-                let ptr = MemoryPointer::new(id, 0);
-                Value::ByValPair(
-                    PrimVal::Ptr(ptr),
-                    PrimVal::from_u128(s.len() as u128),
-                )
+                let id = self.tcx.allocate_bytes(s.as_bytes());
+                let value = Scalar::Ptr(id.into()).to_value_with_len(s.len() as u64, self.tcx);
+                ConstValue::from_byval_value(value)
             },
             LitKind::ByteStr(ref data) => {
-                let id = self.tcx.allocate_cached(data);
-                let ptr = MemoryPointer::new(id, 0);
-                Value::ByVal(PrimVal::Ptr(ptr))
+                let id = self.tcx.allocate_bytes(data);
+                ConstValue::Scalar(Scalar::Ptr(id.into()))
             },
-            LitKind::Byte(n) => Value::ByVal(PrimVal::Bytes(n as u128)),
+            LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
+                bits: n as u128,
+                defined: 8,
+            }),
             LitKind::Int(n, _) if neg => {
                 let n = n as i128;
                 let n = n.overflowing_neg().0;
-                let n = clamp(n as u128);
-                Value::ByVal(PrimVal::Bytes(n))
+                trunc(n as u128)
             },
-            LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(clamp(n))),
+            LitKind::Int(n, _) => trunc(n),
             LitKind::Float(n, fty) => {
                 parse_float(n, fty)
             }
@@ -221,15 +194,16 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 };
                 parse_float(n, fty)
             }
-            LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
-            LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
-        };
-        Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(lit),
-                ty,
+            LitKind::Bool(b) => ConstValue::Scalar(Scalar::Bits {
+                bits: b as u128,
+                defined: 8,
             }),
-        }
+            LitKind::Char(c) => ConstValue::Scalar(Scalar::Bits {
+                bits: c as u128,
+                defined: 32,
+            }),
+        };
+        ty::Const::from_const_value(self.tcx, lit, ty)
     }
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
@@ -248,22 +222,15 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                         trait_def_id: DefId,
                         method_name: &str,
                         self_ty: Ty<'tcx>,
-                        params: &[Ty<'tcx>])
-                        -> (Ty<'tcx>, Literal<'tcx>) {
+                        params: &[Kind<'tcx>])
+                        -> (Ty<'tcx>, &'tcx ty::Const<'tcx>) {
         let method_name = Symbol::intern(method_name);
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
-            if item.kind == ty::AssociatedKind::Method && item.name == method_name {
+            if item.kind == ty::AssociatedKind::Method && item.ident.name == method_name {
                 let method_ty = self.tcx.type_of(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
-                return (method_ty,
-                        Literal::Value {
-                            value: self.tcx.mk_const(ty::Const {
-                                // ZST function type
-                                val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
-                                ty: method_ty
-                            }),
-                        });
+                return (method_ty, ty::Const::zero_sized(self.tcx, method_ty));
             }
         }
 

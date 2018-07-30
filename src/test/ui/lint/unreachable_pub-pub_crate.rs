@@ -24,6 +24,7 @@
 mod private_mod {
     // non-leaked `pub` items in private module should be linted
     pub use std::fmt;
+    pub use std::env::{Args}; // braced-use has different item spans than unbraced
 
     pub struct Hydrogen {
         // `pub` struct fields, too

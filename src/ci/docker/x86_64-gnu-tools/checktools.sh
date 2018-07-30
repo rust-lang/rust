@@ -23,21 +23,25 @@ SIX_WEEK_CYCLE="$(( ($(date +%s) / 604800 - 3) % 6 ))"
 
 touch "$TOOLSTATE_FILE"
 
+# Try to test all the tools and store the build/test success in the TOOLSTATE_FILE
+
 set +e
 python2.7 "$X_PY" test --no-fail-fast \
     src/doc/book \
     src/doc/nomicon \
     src/doc/reference \
     src/doc/rust-by-example \
+    src/tools/clippy \
     src/tools/rls \
     src/tools/rustfmt \
     src/tools/miri \
-    src/tools/clippy
+
 set -e
 
 cat "$TOOLSTATE_FILE"
 echo
 
+# This function checks that if a tool's submodule changed, the tool's state must improve
 verify_status() {
     echo "Verifying status of $1..."
     if echo "$CHANGED_FILES" | grep -q "^M[[:blank:]]$2$"; then
@@ -57,35 +61,63 @@ verify_status() {
     fi
 }
 
+# deduplicates the submodule check and the assertion that on beta some tools MUST be passing
+check_dispatch() {
+    if [ "$1" = submodule_changed ]; then
+        # ignore $2 (branch id)
+        verify_status $3 $4
+    elif [ "$2" = beta ]; then
+        echo "Requiring test passing for $3..."
+        if grep -q '"'"$3"'":"\(test\|build\)-fail"' "$TOOLSTATE_FILE"; then
+            exit 4
+        fi
+    fi
+}
+
+# list all tools here
+status_check() {
+    check_dispatch $1 beta book src/doc/book
+    check_dispatch $1 beta nomicon src/doc/nomicon
+    check_dispatch $1 beta reference src/doc/reference
+    check_dispatch $1 beta rust-by-example src/doc/rust-by-example
+    check_dispatch $1 beta rls src/tools/rls
+    check_dispatch $1 beta rustfmt src/tools/rustfmt
+    check_dispatch $1 beta clippy-driver src/tools/clippy
+    # these tools are not required for beta to successfully branch
+    check_dispatch $1 nightly miri src/tools/miri
+}
+
 # If this PR is intended to update one of these tools, do not let the build pass
 # when they do not test-pass.
 
-verify_status book src/doc/book
-verify_status nomicon src/doc/nomicon
-verify_status reference src/doc/reference
-verify_status rust-by-example src/doc/rust-by-example
-verify_status rls src/tool/rls
-verify_status rustfmt src/tool/rustfmt
-verify_status clippy-driver src/tool/clippy
-verify_status miri src/tool/miri
+status_check "submodule_changed"
 
-if [ "$RUST_RELEASE_CHANNEL" = nightly -a -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_set}" ]; then
-    . "$(dirname $0)/repo.sh"
-    MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
-    echo "($OS CI update)" > "$MESSAGE_FILE"
-    commit_toolstate_change "$MESSAGE_FILE" \
+CHECK_NOT="$(readlink -f "$(dirname $0)/checkregression.py")"
+change_toolstate() {
+    # only update the history
+    if python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" changed; then
+        echo 'Toolstate is not changed. Not updating.'
+    else
+        if [ $SIX_WEEK_CYCLE -eq 5 ]; then
+            python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" regressed
+        fi
         sed -i "1 a\\
 $COMMIT\t$(cat "$TOOLSTATE_FILE")
 " "history/$OS.tsv"
-    # if we are at the last week in the 6-week release cycle, reject any kind of regression.
-    if [ $SIX_WEEK_CYCLE -eq 5 ]; then
-        python2.7 "$(dirname $0)/checkregression.py" \
-            "$OS" "$TOOLSTATE_FILE" "rust-toolstate/_data/latest.json"
     fi
-    rm -f "$MESSAGE_FILE"
+}
+
+if [ "$RUST_RELEASE_CHANNEL" = nightly ]; then
+    if [ -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_set}" ]; then
+        . "$(dirname $0)/repo.sh"
+        MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
+        echo "($OS CI update)" > "$MESSAGE_FILE"
+        commit_toolstate_change "$MESSAGE_FILE" change_toolstate
+        rm -f "$MESSAGE_FILE"
+    fi
     exit 0
 fi
 
-if grep -q fail "$TOOLSTATE_FILE"; then
-    exit 4
-fi
+# abort compilation if an important tool doesn't build
+# (this code is reachable if not on the nightly channel)
+status_check "beta_required"

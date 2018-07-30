@@ -86,17 +86,3 @@ macro_rules! forward_ref_op_assign {
         }
     }
 }
-
-#[cfg(stage0)]
-macro_rules! public_in_stage0 {
-    ( { $(#[$attr:meta])* } $($Item: tt)*) => {
-        $(#[$attr])* pub $($Item)*
-    }
-}
-
-#[cfg(not(stage0))]
-macro_rules! public_in_stage0 {
-    ( { $(#[$attr:meta])* } $($Item: tt)*) => {
-        $(#[$attr])* pub(crate) $($Item)*
-    }
-}

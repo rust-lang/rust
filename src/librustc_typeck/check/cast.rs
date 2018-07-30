@@ -46,7 +46,7 @@ use lint;
 use rustc::hir;
 use rustc::session::Session;
 use rustc::traits;
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable, TypeAndMut};
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::subst::Substs;
@@ -319,7 +319,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                          fcx.resolve_type_vars_if_possible(&self.expr_ty),
                                          tstr);
         match self.expr_ty.sty {
-            ty::TyRef(_, ty::TypeAndMut { mutbl: mt, .. }) => {
+            ty::TyRef(_, _, mt) => {
                 let mtstr = match mt {
                     hir::MutMutable => "mut ",
                     hir::MutImmutable => "",
@@ -365,28 +365,27 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
-        if t_cast.is_numeric() && t_expr.is_numeric() {
-            fcx.tcx.lint_node(
-                lint::builtin::TRIVIAL_NUMERIC_CASTS,
-                self.expr.id,
-                self.span,
-                &format!("trivial numeric cast: `{}` as `{}`. Cast can be \
-                          replaced by coercion, this might require type \
-                          ascription or a temporary variable",
-                         fcx.ty_to_string(t_expr),
-                         fcx.ty_to_string(t_cast)));
+        let type_asc_or = if fcx.tcx.features().type_ascription {
+            "type ascription or "
         } else {
-            fcx.tcx.lint_node(
-                lint::builtin::TRIVIAL_CASTS,
-                self.expr.id,
-                self.span,
-                &format!("trivial cast: `{}` as `{}`. Cast can be \
-                          replaced by coercion, this might require type \
-                          ascription or a temporary variable",
-                         fcx.ty_to_string(t_expr),
-                         fcx.ty_to_string(t_cast)));
-        }
-
+            ""
+        };
+        let (adjective, lint) = if t_cast.is_numeric() && t_expr.is_numeric() {
+            ("numeric ", lint::builtin::TRIVIAL_NUMERIC_CASTS)
+        } else {
+            ("", lint::builtin::TRIVIAL_CASTS)
+        };
+        let mut err = fcx.tcx.struct_span_lint_node(
+            lint,
+            self.expr.id,
+            self.span,
+            &format!("trivial {}cast: `{}` as `{}`",
+                     adjective,
+                     fcx.ty_to_string(t_expr),
+                     fcx.ty_to_string(t_cast)));
+        err.help(&format!("cast can be replaced by coercion; this might \
+                           require {}a temporary variable", type_asc_or));
+        err.emit();
     }
 
     pub fn check(mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
@@ -511,8 +510,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
     fn check_ptr_ptr_cast(&self,
                           fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                          m_expr: &'tcx ty::TypeAndMut<'tcx>,
-                          m_cast: &'tcx ty::TypeAndMut<'tcx>)
+                          m_expr: ty::TypeAndMut<'tcx>,
+                          m_cast: ty::TypeAndMut<'tcx>)
                           -> Result<CastKind, CastError> {
         debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_expr, m_cast);
         // ptr-ptr cast. vtables must match.
@@ -552,7 +551,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
     fn check_fptr_ptr_cast(&self,
                            fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                           m_cast: &'tcx ty::TypeAndMut<'tcx>)
+                           m_cast: ty::TypeAndMut<'tcx>)
                            -> Result<CastKind, CastError> {
         // fptr-ptr cast. must be to thin ptr
 
@@ -565,7 +564,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
     fn check_ptr_addr_cast(&self,
                            fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                           m_expr: &'tcx ty::TypeAndMut<'tcx>)
+                           m_expr: ty::TypeAndMut<'tcx>)
                            -> Result<CastKind, CastError> {
         // ptr-addr cast. must be from thin ptr
 
@@ -578,8 +577,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
     fn check_ref_cast(&self,
                       fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                      m_expr: &'tcx ty::TypeAndMut<'tcx>,
-                      m_cast: &'tcx ty::TypeAndMut<'tcx>)
+                      m_expr: ty::TypeAndMut<'tcx>,
+                      m_cast: ty::TypeAndMut<'tcx>)
                       -> Result<CastKind, CastError> {
         // array-ptr-cast.
 
@@ -603,7 +602,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
     fn check_addr_ptr_cast(&self,
                            fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                           m_cast: &'tcx ty::TypeAndMut<'tcx>)
+                           m_cast: TypeAndMut<'tcx>)
                            -> Result<CastKind, CastError> {
         // ptr-addr cast. pointer must be thin.
         match fcx.pointer_kind(m_cast.ty, self.span)? {

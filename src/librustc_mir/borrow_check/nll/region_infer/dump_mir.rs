@@ -13,8 +13,9 @@
 //! state of region inference. This code handles emitting the region
 //! context internal state.
 
+use rustc::infer::NLLRegionVariableOrigin;
 use std::io::{self, Write};
-use super::{Constraint, RegionInferenceContext};
+use super::{OutlivesConstraint, RegionInferenceContext};
 
 // Room for "'_#NNNNr" before things get misaligned.
 // Easy enough to fix if this ever doesn't seem like
@@ -27,8 +28,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         writeln!(out, "| Free Region Mapping")?;
 
         for region in self.regions() {
-            if self.definitions[region].is_universal {
-                let classification = self.universal_regions.region_classification(region).unwrap();
+            if let NLLRegionVariableOrigin::FreeRegion = self.definitions[region].origin {
+                let classification = self
+                    .universal_regions
+                    .region_classification(region)
+                    .unwrap();
                 let outlived_by = self.universal_regions.regions_outlived_by(region);
                 writeln!(
                     out,
@@ -47,9 +51,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for region in self.regions() {
             writeln!(
                 out,
-                "| {r:rw$} | {v}",
+                "| {r:rw$} | {ui:4?} | {v}",
                 r = format!("{:?}", region),
                 rw = REGION_WIDTH,
+                ui = self.region_universe(region),
                 v = self.region_value_str(region),
             )?;
         }
@@ -79,19 +84,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut constraints: Vec<_> = self.constraints.iter().collect();
         constraints.sort();
         for constraint in &constraints {
-            let Constraint {
+            let OutlivesConstraint {
                 sup,
                 sub,
-                point,
-                span,
-                next: _,
+                locations,
             } = constraint;
             with_msg(&format!(
-                "{:?}: {:?} @ {:?} due to {:?}",
+                "{:?}: {:?} due to {:?}",
                 sup,
                 sub,
-                point,
-                span
+                locations,
             ))?;
         }
 

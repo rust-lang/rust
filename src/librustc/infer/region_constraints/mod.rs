@@ -69,6 +69,10 @@ pub struct RegionConstraintCollector<'tcx> {
     /// would wind up with a fresh stream of region variables that
     /// have been equated but appear distinct.
     unification_table: ut::UnificationTable<ut::InPlace<ty::RegionVid>>,
+
+    /// a flag set to true when we perform any unifications; this is used
+    /// to micro-optimize `take_and_reset_data`
+    any_unifications: bool,
 }
 
 pub type VarInfos = IndexVec<RegionVid, RegionVariableInfo>;
@@ -234,6 +238,7 @@ pub struct RegionVariableInfo {
 pub struct RegionSnapshot {
     length: usize,
     region_snapshot: ut::Snapshot<ut::InPlace<ty::RegionVid>>,
+    any_unifications: bool,
 }
 
 /// When working with skolemized regions, we often wish to find all of
@@ -280,6 +285,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             bound_count: 0,
             undo_log: Vec::new(),
             unification_table: ut::UnificationTable::new(),
+            any_unifications: false,
         }
     }
 
@@ -318,13 +324,14 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // should think carefully about whether it needs to be cleared
         // or updated in some way.
         let RegionConstraintCollector {
-            var_infos,
+            var_infos: _,
             data,
             lubs,
             glbs,
             bound_count: _,
             undo_log: _,
             unification_table,
+            any_unifications,
         } = self;
 
         // Clear the tables of (lubs, glbs), so that we will create
@@ -338,9 +345,9 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         // un-unified" state. Note that when we unify `a` and `b`, we
         // also insert `a <= b` and a `b <= a` edges, so the
         // `RegionConstraintData` contains the relationship here.
-        *unification_table = ut::UnificationTable::new();
-        for vid in var_infos.indices() {
-            unification_table.new_key(unify_key::RegionVidKey { min_vid: vid });
+        if *any_unifications {
+            unification_table.reset_unifications(|vid| unify_key::RegionVidKey { min_vid: vid });
+            *any_unifications = false;
         }
 
         mem::replace(data, RegionConstraintData::default())
@@ -361,6 +368,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         RegionSnapshot {
             length,
             region_snapshot: self.unification_table.snapshot(),
+            any_unifications: self.any_unifications,
         }
     }
 
@@ -388,6 +396,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         let c = self.undo_log.pop().unwrap();
         assert!(c == OpenSnapshot);
         self.unification_table.rollback_to(snapshot.region_snapshot);
+        self.any_unifications = snapshot.any_unifications;
     }
 
     fn rollback_undo_entry(&mut self, undo_entry: UndoLogEntry<'tcx>) {
@@ -626,6 +635,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
             if let (ty::ReVar(sub), ty::ReVar(sup)) = (*sub, *sup) {
                 self.unification_table.union(sub, sup);
+                self.any_unifications = true;
             }
         }
     }

@@ -73,17 +73,15 @@ mod imp {
             CStr::from_ptr(*argv.offset(i) as *const libc::c_char).to_bytes().to_vec()
         }).collect();
 
-        LOCK.lock();
+        let _guard = LOCK.lock();
         let ptr = get_global_ptr();
         assert!((*ptr).is_none());
         (*ptr) = Some(box args);
-        LOCK.unlock();
     }
 
     pub unsafe fn cleanup() {
-        LOCK.lock();
+        let _guard = LOCK.lock();
         *get_global_ptr() = None;
-        LOCK.unlock();
     }
 
     pub fn args() -> Args {
@@ -96,16 +94,14 @@ mod imp {
 
     fn clone() -> Option<Vec<Vec<u8>>> {
         unsafe {
-            LOCK.lock();
+            let _guard = LOCK.lock();
             let ptr = get_global_ptr();
-            let ret = (*ptr).as_ref().map(|s| (**s).clone());
-            LOCK.unlock();
-            return ret
+            (*ptr).as_ref().map(|s| (**s).clone())
         }
     }
 
-    fn get_global_ptr() -> *mut Option<Box<Vec<Vec<u8>>>> {
-        unsafe { mem::transmute(&GLOBAL_ARGS_PTR) }
+    unsafe fn get_global_ptr() -> *mut Option<Box<Vec<Vec<u8>>>> {
+        mem::transmute(&GLOBAL_ARGS_PTR)
     }
 
 }

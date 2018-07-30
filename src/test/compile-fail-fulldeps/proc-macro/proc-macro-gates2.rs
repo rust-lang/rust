@@ -10,7 +10,7 @@
 
 // aux-build:proc-macro-gates.rs
 
-#![feature(proc_macro, stmt_expr_attributes)]
+#![feature(use_extern_macros, stmt_expr_attributes)]
 
 extern crate proc_macro_gates as foo;
 

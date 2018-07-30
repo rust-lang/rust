@@ -13,12 +13,11 @@
 //! hand, though we've recently added some macros (e.g.,
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
-use middle::const_val::{self, ConstVal, ConstEvalErr};
+use mir::interpret::{ConstValue, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::sync::Lrc;
 use mir::interpret;
 
 use std::rc::Rc;
@@ -57,6 +56,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::ty::BoundRegion,
     ::ty::ClosureKind,
     ::ty::IntVarValue,
+    ::ty::ParamTy,
     ::syntax_pos::Span,
 }
 
@@ -304,16 +304,16 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ClosureSubsts<'a> {
     type Lifted = ty::ClosureSubsts<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.substs).map(|substs| {
-            ty::ClosureSubsts { substs: substs }
+            ty::ClosureSubsts { substs }
         })
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::GeneratorInterior<'a> {
-    type Lifted = ty::GeneratorInterior<'tcx>;
+impl<'a, 'tcx> Lift<'tcx> for ty::GeneratorSubsts<'a> {
+    type Lifted = ty::GeneratorSubsts<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.witness).map(|witness| {
-            ty::GeneratorInterior { witness, movable: self.movable }
+        tcx.lift(&self.substs).map(|substs| {
+            ty::GeneratorSubsts { substs }
         })
     }
 }
@@ -462,10 +462,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
     type Lifted = ConstEvalErr<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&*self.kind).map(|kind| {
+        tcx.lift(&self.error).map(|error| {
             ConstEvalErr {
                 span: self.span,
-                kind: Lrc::new(kind),
+                stacktrace: self.stacktrace.clone(),
+                error,
             }
         })
     }
@@ -476,7 +477,6 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         Some(interpret::EvalError {
             kind: tcx.lift(&self.kind)?,
-            backtrace: self.backtrace.clone(),
         })
     }
 }
@@ -507,6 +507,7 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             InvalidNullPointerUsage => InvalidNullPointerUsage,
             ReadPointerAsBytes => ReadPointerAsBytes,
             ReadBytesAsPointer => ReadBytesAsPointer,
+            ReadForeignStatic => ReadForeignStatic,
             InvalidPointerMath => InvalidPointerMath,
             ReadUndefBytes => ReadUndefBytes,
             DeadLocal => DeadLocal,
@@ -578,34 +579,16 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             PathNotFound(ref v) => PathNotFound(v.clone()),
             UnimplementedTraitSelection => UnimplementedTraitSelection,
             TypeckError => TypeckError,
-            ReferencedConstant => ReferencedConstant,
+            TooGeneric => TooGeneric,
+            CheckMatchError => CheckMatchError,
+            ReferencedConstant(ref err) => ReferencedConstant(tcx.lift(&**err)?.into()),
             OverflowNeg => OverflowNeg,
             Overflow(op) => Overflow(op),
             DivisionByZero => DivisionByZero,
             RemainderByZero => RemainderByZero,
             GeneratorResumedAfterReturn => GeneratorResumedAfterReturn,
             GeneratorResumedAfterPanic => GeneratorResumedAfterPanic,
-        })
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
-    type Lifted = const_val::ErrKind<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        use middle::const_val::ErrKind::*;
-
-        Some(match *self {
-            NonConstPath => NonConstPath,
-            UnimplementedConstVal(s) => UnimplementedConstVal(s),
-            IndexOutOfBounds { len, index } => IndexOutOfBounds { len, index },
-
-            LayoutError(ref e) => {
-                return tcx.lift(e).map(LayoutError)
-            }
-
-            TypeckError => TypeckError,
-            CheckMatchError => CheckMatchError,
-            Miri(ref e, ref frames) => return tcx.lift(e).map(|e| Miri(e, frames.clone())),
+            InfiniteLoop => InfiniteLoop,
         })
     }
 }
@@ -864,11 +847,14 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
                 ty::TyFnDef(def_id, substs.fold_with(folder))
             }
             ty::TyFnPtr(f) => ty::TyFnPtr(f.fold_with(folder)),
-            ty::TyRef(ref r, tm) => {
-                ty::TyRef(r.fold_with(folder), tm.fold_with(folder))
+            ty::TyRef(ref r, ty, mutbl) => {
+                ty::TyRef(r.fold_with(folder), ty.fold_with(folder), mutbl)
             }
-            ty::TyGenerator(did, substs, interior) => {
-                ty::TyGenerator(did, substs.fold_with(folder), interior.fold_with(folder))
+            ty::TyGenerator(did, substs, movability) => {
+                ty::TyGenerator(
+                    did,
+                    substs.fold_with(folder),
+                    movability)
             }
             ty::TyGeneratorWitness(types) => ty::TyGeneratorWitness(types.fold_with(folder)),
             ty::TyClosure(did, substs) => ty::TyClosure(did, substs.fold_with(folder)),
@@ -901,9 +887,9 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyTuple(ts) => ts.visit_with(visitor),
             ty::TyFnDef(_, substs) => substs.visit_with(visitor),
             ty::TyFnPtr(ref f) => f.visit_with(visitor),
-            ty::TyRef(r, ref tm) => r.visit_with(visitor) || tm.visit_with(visitor),
-            ty::TyGenerator(_did, ref substs, ref interior) => {
-                substs.visit_with(visitor) || interior.visit_with(visitor)
+            ty::TyRef(r, ty, _) => r.visit_with(visitor) || ty.visit_with(visitor),
+            ty::TyGenerator(_did, ref substs, _) => {
+                substs.visit_with(visitor)
             }
             ty::TyGeneratorWitness(ref types) => types.visit_with(visitor),
             ty::TyClosure(_did, ref substs) => substs.visit_with(visitor),
@@ -980,8 +966,8 @@ BraceStructTypeFoldableImpl! {
 }
 
 BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ty::GeneratorInterior<'tcx> {
-        witness, movable,
+    impl<'tcx> TypeFoldable<'tcx> for ty::GeneratorSubsts<'tcx> {
+        substs,
     }
 }
 
@@ -1144,20 +1130,24 @@ EnumTypeFoldableImpl! {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ConstVal<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstVal::Value(v) => ConstVal::Value(v),
-            ConstVal::Unevaluated(def_id, substs) => {
-                ConstVal::Unevaluated(def_id, substs.fold_with(folder))
+            ConstValue::Scalar(v) => ConstValue::Scalar(v),
+            ConstValue::ScalarPair(a, b) => ConstValue::ScalarPair(a, b),
+            ConstValue::ByRef(alloc, offset) => ConstValue::ByRef(alloc, offset),
+            ConstValue::Unevaluated(def_id, substs) => {
+                ConstValue::Unevaluated(def_id, substs.fold_with(folder))
             }
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstVal::Value(_) => false,
-            ConstVal::Unevaluated(_, substs) => substs.visit_with(visitor),
+            ConstValue::Scalar(_) |
+            ConstValue::ScalarPair(_, _) |
+            ConstValue::ByRef(_, _) => false,
+            ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
     }
 }

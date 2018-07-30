@@ -22,7 +22,7 @@ trait Baz {
 }
 
 fn use_bar(t: Box<Bar>) {
-    t.bar() //~ ERROR cannot move a value of type Bar
+    t.bar() //~ ERROR cannot move a value of type (dyn Bar + 'static)
 }
 
 fn main() { }

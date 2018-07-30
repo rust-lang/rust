@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use rustc_data_structures::bitvec::BitVector;
-use rustc_data_structures::indexed_vec::Idx;
 
 use super::*;
 
@@ -33,7 +32,7 @@ use super::*;
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    visited: BitVector,
+    visited: BitVector<BasicBlock>,
     worklist: Vec<BasicBlock>,
 }
 
@@ -58,16 +57,14 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
     fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
         while let Some(idx) = self.worklist.pop() {
-            if !self.visited.insert(idx.index()) {
+            if !self.visited.insert(idx) {
                 continue;
             }
 
             let data = &self.mir[idx];
 
             if let Some(ref term) = data.terminator {
-                for &succ in term.successors() {
-                    self.worklist.push(succ);
-                }
+                self.worklist.extend(term.successors());
             }
 
             return Some((idx, data));
@@ -107,7 +104,7 @@ impl<'a, 'tcx> ExactSizeIterator for Preorder<'a, 'tcx> {}
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    visited: BitVector,
+    visited: BitVector<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>
 }
 
@@ -123,7 +120,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         let data = &po.mir[root];
 
         if let Some(ref term) = data.terminator {
-            po.visited.insert(root.index());
+            po.visited.insert(root);
             po.visit_stack.push((root, term.successors()));
             po.traverse_successor();
         }
@@ -190,8 +187,8 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
                 break;
             };
 
-            if self.visited.insert(bb.index()) {
-                if let Some(ref term) = self.mir[bb].terminator {
+            if self.visited.insert(bb) {
+                if let Some(term) = &self.mir[bb].terminator {
                     self.visit_stack.push((bb, term.successors()));
                 }
             }

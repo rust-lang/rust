@@ -1,0 +1,34 @@
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-nested-empty-paths.rs:27:5
+   |
+LL | use foo::{bar::{baz::{}}};
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::{bar::{baz::{}}}`
+   |
+note: lint level defined here
+  --> $DIR/edition-lint-nested-empty-paths.rs:14:9
+   |
+LL | #![deny(absolute_paths_not_starting_with_crate)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-nested-empty-paths.rs:31:5
+   |
+LL | use foo::{bar::{XX, baz::{}}};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::{bar::{XX, baz::{}}}`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-nested-empty-paths.rs:35:5
+   |
+LL | use foo::{bar::{baz::{}, baz1::{}}};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::{bar::{baz::{}, baz1::{}}}`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: aborting due to 3 previous errors
+

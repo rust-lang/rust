@@ -11,7 +11,7 @@
 //! Inlining pass for MIR functions
 
 use rustc::hir;
-use rustc::hir::TransFnAttrFlags;
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::DefId;
 
 use rustc_data_structures::bitvec::BitVector;
@@ -126,9 +126,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     continue;
                 }
 
-                let callee_mir = match self.tcx.try_get_query::<ty::queries::optimized_mir>(
-                                                                           callsite.location.span,
-                                                                           callsite.callee) {
+                let callee_mir = match self.tcx.try_optimized_mir(callsite.location.span,
+                                                                  callsite.callee) {
                     Ok(callee_mir) if self.should_inline(callsite, callee_mir) => {
                         self.tcx.subst_and_normalize_erasing_regions(
                             &callsite.substs,
@@ -211,16 +210,16 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             return false;
         }
 
-        // Do not inline {u,i}128 lang items, trans const eval depends
+        // Do not inline {u,i}128 lang items, codegen const eval depends
         // on detecting calls to these lang items and intercepting them
         if tcx.is_binop_lang_item(callsite.callee).is_some() {
             debug!("    not inlining 128bit integer lang item");
             return false;
         }
 
-        let trans_fn_attrs = tcx.trans_fn_attrs(callsite.callee);
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee);
 
-        let hinted = match trans_fn_attrs.inline {
+        let hinted = match codegen_fn_attrs.inline {
             // Just treat inline(always) as a hint for now,
             // there are cases that prevent inlining that we
             // need to check for first.
@@ -250,7 +249,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         };
 
         // Significantly lower the threshold for inlining cold functions
-        if trans_fn_attrs.flags.contains(TransFnAttrFlags::COLD) {
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
             threshold /= 5;
         }
 
@@ -355,7 +354,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             }
         }
 
-        if let attr::InlineAttr::Always = trans_fn_attrs.inline {
+        if let attr::InlineAttr::Always = codegen_fn_attrs.inline {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
             true
         } else {
@@ -380,10 +379,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 debug!("Inlined {:?} into {:?}", callsite.callee, self.source);
 
                 let mut local_map = IndexVec::with_capacity(callee_mir.local_decls.len());
-                let mut scope_map = IndexVec::with_capacity(callee_mir.visibility_scopes.len());
+                let mut scope_map = IndexVec::with_capacity(callee_mir.source_scopes.len());
                 let mut promoted_map = IndexVec::with_capacity(callee_mir.promoted.len());
 
-                for mut scope in callee_mir.visibility_scopes.iter().cloned() {
+                for mut scope in callee_mir.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
                         scope.parent_scope = Some(callsite.location.scope);
                         scope.span = callee_mir.span;
@@ -391,24 +390,25 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                     scope.span = callsite.location.span;
 
-                    let idx = caller_mir.visibility_scopes.push(scope);
+                    let idx = caller_mir.source_scopes.push(scope);
                     scope_map.push(idx);
                 }
 
                 for loc in callee_mir.vars_and_temps_iter() {
                     let mut local = callee_mir.local_decls[loc].clone();
 
-                    local.source_info.scope = scope_map[local.source_info.scope];
+                    local.source_info.scope =
+                        scope_map[local.source_info.scope];
                     local.source_info.span = callsite.location.span;
+                    local.visibility_scope = scope_map[local.visibility_scope];
 
                     let idx = caller_mir.local_decls.push(local);
                     local_map.push(idx);
                 }
 
-                for p in callee_mir.promoted.iter().cloned() {
-                    let idx = caller_mir.promoted.push(p);
-                    promoted_map.push(idx);
-                }
+                promoted_map.extend(
+                    callee_mir.promoted.iter().cloned().map(|p| caller_mir.promoted.push(p))
+                );
 
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
@@ -515,8 +515,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         //     Fn::call(closure_ref, tuple_tmp)
         //
         // meanwhile the closure body expects the arguments (here, `a`, `b`, and `c`)
-        // as distinct arguments. (This is the "rust-call" ABI hack.) Normally, trans has
-        // the job of unpacking this tuple. But here, we are trans. =) So we want to create
+        // as distinct arguments. (This is the "rust-call" ABI hack.) Normally, codegen has
+        // the job of unpacking this tuple. But here, we are codegen. =) So we want to create
         // a vector like
         //
         //     [closure_ref, tuple_tmp.0, tuple_tmp.1, tuple_tmp.2]
@@ -618,7 +618,7 @@ struct Integrator<'a, 'tcx: 'a> {
     block_idx: usize,
     args: &'a [Local],
     local_map: IndexVec<Local, Local>,
-    scope_map: IndexVec<VisibilityScope, VisibilityScope>,
+    scope_map: IndexVec<SourceScope, SourceScope>,
     promoted_map: IndexVec<Promoted, Promoted>,
     _callsite: CallSite<'tcx>,
     destination: Place<'tcx>,
@@ -661,11 +661,18 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     place: &mut Place<'tcx>,
                     _ctxt: PlaceContext<'tcx>,
                     _location: Location) {
-        if let Place::Local(RETURN_PLACE) = *place {
-            // Return pointer; update the place itself
-            *place = self.destination.clone();
-        } else {
-            self.super_place(place, _ctxt, _location);
+
+        match place {
+            Place::Local(RETURN_PLACE) => {
+                // Return pointer; update the place itself
+                *place = self.destination.clone();
+            },
+            Place::Promoted(ref mut promoted) => {
+                if let Some(p) = self.promoted_map.get(promoted.0).cloned() {
+                    promoted.0 = p;
+                }
+            },
+            _ => self.super_place(place, _ctxt, _location),
         }
     }
 
@@ -745,17 +752,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         }
     }
 
-    fn visit_visibility_scope(&mut self, scope: &mut VisibilityScope) {
+    fn visit_source_scope(&mut self, scope: &mut SourceScope) {
         *scope = self.scope_map[*scope];
-    }
-
-    fn visit_literal(&mut self, literal: &mut Literal<'tcx>, loc: Location) {
-        if let Literal::Promoted { ref mut index } = *literal {
-            if let Some(p) = self.promoted_map.get(*index).cloned() {
-                *index = p;
-            }
-        } else {
-            self.super_literal(literal, loc);
-        }
     }
 }

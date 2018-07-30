@@ -29,7 +29,7 @@ pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 // To reduce the generated code of the new `lang_start`, this function is doing
 // the real work.
 #[cfg(not(test))]
-fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
+fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
                        argc: isize, argv: *const *const u8) -> isize {
     use panic;
     use sys;

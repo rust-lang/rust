@@ -68,20 +68,20 @@ impl LintPass for TypeLimits {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
         match e.node {
-            hir::ExprUnary(hir::UnNeg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.id {
                     self.negated_expr_id = expr.id;
                 }
             }
-            hir::ExprBinary(binop, ref l, ref r) => {
+            hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
                     cx.span_lint(UNUSED_COMPARISONS,
                                  e.span,
                                  "comparison is useless due to type limits");
                 }
             }
-            hir::ExprLit(ref lit) => {
+            hir::ExprKind::Lit(ref lit) => {
                 match cx.tables.node_id_to_type(e.hir_id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         if lit_val < min || lit_val > max {
                             let parent_id = cx.tcx.hir.get_parent_node(e.id);
                             if let hir_map::NodeExpr(parent_expr) = cx.tcx.hir.get(parent_id) {
-                                if let hir::ExprCast(..) = parent_expr.node {
+                                if let hir::ExprKind::Cast(..) = parent_expr.node {
                                     if let ty::TyChar = cx.tables.expr_ty(parent_expr).sty {
                                         let mut err = cx.struct_span_lint(
                                                              OVERFLOWING_LITERALS,
@@ -194,11 +194,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn is_valid<T: cmp::PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
             match binop.node {
-                hir::BiLt => v > min && v <= max,
-                hir::BiLe => v >= min && v < max,
-                hir::BiGt => v >= min && v < max,
-                hir::BiGe => v > min && v <= max,
-                hir::BiEq | hir::BiNe => v >= min && v <= max,
+                hir::BinOpKind::Lt => v > min && v <= max,
+                hir::BinOpKind::Le => v >= min && v < max,
+                hir::BinOpKind::Gt => v >= min && v < max,
+                hir::BinOpKind::Ge => v > min && v <= max,
+                hir::BinOpKind::Eq | hir::BinOpKind::Ne => v >= min && v <= max,
                 _ => bug!(),
             }
         }
@@ -206,10 +206,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
             codemap::respan(binop.span,
                             match binop.node {
-                                hir::BiLt => hir::BiGt,
-                                hir::BiLe => hir::BiGe,
-                                hir::BiGt => hir::BiLt,
-                                hir::BiGe => hir::BiLe,
+                                hir::BinOpKind::Lt => hir::BinOpKind::Gt,
+                                hir::BinOpKind::Le => hir::BinOpKind::Ge,
+                                hir::BinOpKind::Gt => hir::BinOpKind::Lt,
+                                hir::BinOpKind::Ge => hir::BinOpKind::Le,
                                 _ => return binop,
                             })
         }
@@ -244,8 +244,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         r: &hir::Expr)
                         -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
-                (&hir::ExprLit(_), _) => (l, r, true),
-                (_, &hir::ExprLit(_)) => (r, l, false),
+                (&hir::ExprKind::Lit(_), _) => (l, r, true),
+                (_, &hir::ExprKind::Lit(_)) => (r, l, false),
                 _ => return true,
             };
             // Normalize the binop so that the literal is always on the RHS in
@@ -255,7 +255,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {
-                        hir::ExprLit(ref li) => {
+                        hir::ExprKind::Lit(ref li) => {
                             match li.node {
                                 ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
                                 ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i128,
@@ -269,7 +269,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ty::TyUint(uint_ty) => {
                     let (min, max) :(u128, u128) = uint_ty_range(uint_ty);
                     let lit_val: u128 = match lit.node {
-                        hir::ExprLit(ref li) => {
+                        hir::ExprKind::Lit(ref li) => {
                             match li.node {
                                 ast::LitKind::Int(v, _) => v,
                                 _ => return true
@@ -285,7 +285,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
         fn is_comparison(binop: hir::BinOp) -> bool {
             match binop.node {
-                hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => true,
+                hir::BinOpKind::Eq |
+                hir::BinOpKind::Lt |
+                hir::BinOpKind::Le |
+                hir::BinOpKind::Ne |
+                hir::BinOpKind::Ge |
+                hir::BinOpKind::Gt => true,
                 _ => false,
             }
         }
@@ -432,7 +437,7 @@ enum FfiResult<'tcx> {
 /// "nullable pointer optimization". Currently restricted
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
-/// FIXME: This duplicates code in trans.
+/// FIXME: This duplicates code in codegen.
 fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def: &'tcx ty::AdtDef,
                                   substs: &Substs<'tcx>)
@@ -662,8 +667,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some("consider using a struct instead"),
             },
 
-            ty::TyRawPtr(ref m) |
-            ty::TyRef(_, ref m) => self.check_type_for_ffi(cache, m.ty),
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::TyRef(_, ty, _) => self.check_type_for_ffi(cache, ty),
 
             ty::TyArray(ty, _) => self.check_type_for_ffi(cache, ty),
 
@@ -673,7 +678,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         return FfiUnsafe {
                             ty: ty,
                             reason: "this function pointer has Rust-specific calling convention",
-                            help: Some("consider using an `fn \"extern\"(...) -> ...` \
+                            help: Some("consider using an `extern fn(...) -> ...` \
                                         function pointer instead"),
                         }
                     }
@@ -782,17 +787,17 @@ impl LintPass for ImproperCTypes {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let mut vis = ImproperCTypesVisitor { cx: cx };
-        if let hir::ItemForeignMod(ref nmod) = it.node {
+        if let hir::ItemKind::ForeignMod(ref nmod) = it.node {
             if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
                 for ni in &nmod.items {
                     match ni.node {
-                        hir::ForeignItemFn(ref decl, _, _) => {
+                        hir::ForeignItemKind::Fn(ref decl, _, _) => {
                             vis.check_foreign_fn(ni.id, decl);
                         }
-                        hir::ForeignItemStatic(ref ty, _) => {
+                        hir::ForeignItemKind::Static(ref ty, _) => {
                             vis.check_foreign_static(ni.id, ty.span);
                         }
-                        hir::ForeignItemType => ()
+                        hir::ForeignItemKind::Type => ()
                     }
                 }
             }
@@ -810,51 +815,62 @@ impl LintPass for VariantSizeDifferences {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
-            if gens.params.iter().all(|param| param.is_lifetime_param()) {
-                // sizes only make sense for non-generic types
-                let item_def_id = cx.tcx.hir.local_def_id(it.id);
-                let t = cx.tcx.type_of(item_def_id);
-                let ty = cx.tcx.erase_regions(&t);
-                let layout = cx.layout_of(ty).unwrap_or_else(|e| {
-                    bug!("failed to get layout for `{}`: {}", t, e)
-                });
+        if let hir::ItemKind::Enum(ref enum_definition, _) = it.node {
+            let item_def_id = cx.tcx.hir.local_def_id(it.id);
+            let generics = cx.tcx.generics_of(item_def_id);
+            for param in &generics.params {
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime { .. } => {},
+                    ty::GenericParamDefKind::Type { .. } => return,
+                }
+            }
+            // Sizes only make sense for non-generic types.
+            let t = cx.tcx.type_of(item_def_id);
+            let ty = cx.tcx.erase_regions(&t);
+            match cx.layout_of(ty) {
+                Ok(layout) => {
+                    let variants = &layout.variants;
+                    if let layout::Variants::Tagged { ref variants, ref tag, .. } = variants {
+                        let discr_size = tag.value.size(cx.tcx).bytes();
 
-                if let layout::Variants::Tagged { ref variants, ref discr, .. } = layout.variants {
-                    let discr_size = discr.value.size(cx.tcx).bytes();
+                        debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
+                               t, layout.size.bytes(), layout);
 
-                    debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
-                      t, layout.size.bytes(), layout);
+                        let (largest, slargest, largest_index) = enum_definition.variants
+                            .iter()
+                            .zip(variants)
+                            .map(|(variant, variant_layout)| {
+                                // Subtract the size of the enum discriminant.
+                                let bytes = variant_layout.size.bytes().saturating_sub(discr_size);
 
-                    let (largest, slargest, largest_index) = enum_definition.variants
-                        .iter()
-                        .zip(variants)
-                        .map(|(variant, variant_layout)| {
-                            // Subtract the size of the enum discriminant
-                            let bytes = variant_layout.size.bytes()
-                                .saturating_sub(discr_size);
+                                debug!("- variant `{}` is {} bytes large",
+                                       variant.node.name,
+                                       bytes);
+                                bytes
+                            })
+                            .enumerate()
+                            .fold((0, 0, 0), |(l, s, li), (idx, size)| if size > l {
+                                (size, l, idx)
+                            } else if size > s {
+                                (l, size, li)
+                            } else {
+                                (l, s, li)
+                            });
 
-                            debug!("- variant `{}` is {} bytes large", variant.node.name, bytes);
-                            bytes
-                        })
-                        .enumerate()
-                        .fold((0, 0, 0), |(l, s, li), (idx, size)| if size > l {
-                            (size, l, idx)
-                        } else if size > s {
-                            (l, size, li)
-                        } else {
-                            (l, s, li)
-                        });
-
-                    // we only warn if the largest variant is at least thrice as large as
-                    // the second-largest.
-                    if largest > slargest * 3 && slargest > 0 {
-                        cx.span_lint(VARIANT_SIZE_DIFFERENCES,
-                                     enum_definition.variants[largest_index].span,
-                                     &format!("enum variant is more than three times larger \
-                                               ({} bytes) than the next largest",
-                                              largest));
+                        // We only warn if the largest variant is at least thrice as large as
+                        // the second-largest.
+                        if largest > slargest * 3 && slargest > 0 {
+                            cx.span_lint(VARIANT_SIZE_DIFFERENCES,
+                                            enum_definition.variants[largest_index].span,
+                                            &format!("enum variant is more than three times \
+                                                      larger ({} bytes) than the next largest",
+                                                     largest));
+                        }
                     }
+                }
+                Err(ty::layout::LayoutError::Unknown(_)) => return,
+                Err(err @ ty::layout::LayoutError::SizeOverflow(_)) => {
+                    bug!("failed to get layout for `{}`: {}", t, err);
                 }
             }
         }

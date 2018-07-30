@@ -24,7 +24,6 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
-use std::cmp::min;
 
 use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
@@ -68,6 +67,16 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info("Warning: Using a potentially old libstd. This may not behave well.");
+            builder.ensure(StdLink {
+                compiler: compiler,
+                target_compiler: compiler,
+                target,
+            });
+            return;
+        }
+
         builder.ensure(StartupObjects { compiler, target });
 
         if builder.force_use_stage1(compiler, target) {
@@ -98,9 +107,9 @@ impl Step for Std {
             copy_musl_third_party_objects(builder, target, &libdir);
         }
 
-        let out_dir = builder.cargo_out(compiler, Mode::Libstd, target);
+        let out_dir = builder.cargo_out(compiler, Mode::Std, target);
         builder.clear_if_dirty(&out_dir, &builder.rustc(compiler));
-        let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
@@ -240,7 +249,7 @@ impl Step for StdLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Libstd,
+            cause: Mode::Std,
         });
     }
 }
@@ -353,6 +362,16 @@ impl Step for Test {
 
         builder.ensure(Std { compiler, target });
 
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info("Warning: Using a potentially old libtest. This may not behave well.");
+            builder.ensure(TestLink {
+                compiler: compiler,
+                target_compiler: compiler,
+                target,
+            });
+            return;
+        }
+
         if builder.force_use_stage1(compiler, target) {
             builder.ensure(Test {
                 compiler: builder.compiler(1, builder.config.build),
@@ -368,9 +387,9 @@ impl Step for Test {
             return;
         }
 
-        let out_dir = builder.cargo_out(compiler, Mode::Libtest, target);
+        let out_dir = builder.cargo_out(compiler, Mode::Test, target);
         builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
-        let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
@@ -431,7 +450,7 @@ impl Step for TestLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Libtest,
+            cause: Mode::Test,
         });
     }
 }
@@ -469,6 +488,16 @@ impl Step for Rustc {
 
         builder.ensure(Test { compiler, target });
 
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info("Warning: Using a potentially old librustc. This may not behave well.");
+            builder.ensure(RustcLink {
+                compiler: compiler,
+                target_compiler: compiler,
+                target,
+            });
+            return;
+        }
+
         if builder.force_use_stage1(compiler, target) {
             builder.ensure(Rustc {
                 compiler: builder.compiler(1, builder.config.build),
@@ -489,11 +518,11 @@ impl Step for Rustc {
             compiler: builder.compiler(self.compiler.stage, builder.config.build),
             target: builder.config.build,
         });
-        let cargo_out = builder.cargo_out(compiler, Mode::Librustc, target);
+        let cargo_out = builder.cargo_out(compiler, Mode::Rustc, target);
         builder.clear_if_dirty(&cargo_out, &libstd_stamp(builder, compiler, target));
         builder.clear_if_dirty(&cargo_out, &libtest_stamp(builder, compiler, target));
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "build");
         rustc_cargo(builder, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-rustc", compiler.stage));
@@ -585,7 +614,7 @@ impl Step for RustcLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Librustc,
+            cause: Mode::Rustc,
         });
     }
 }
@@ -603,7 +632,7 @@ impl Step for CodegenBackend {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.all_krates("rustc_trans")
+        run.all_krates("rustc_codegen_llvm")
     }
 
     fn make_run(run: RunConfig) {
@@ -625,6 +654,14 @@ impl Step for CodegenBackend {
 
         builder.ensure(Rustc { compiler, target });
 
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info("Warning: Using a potentially old codegen backend. \
+                This may not behave well.");
+            // Codegen backends are linked separately from this step today, so we don't do
+            // anything here.
+            return;
+        }
+
         if builder.force_use_stage1(compiler, target) {
             builder.ensure(CodegenBackend {
                 compiler: builder.compiler(1, builder.config.build),
@@ -634,18 +671,18 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "build");
         let mut features = builder.rustc_features().to_string();
         cargo.arg("--manifest-path")
-            .arg(builder.src.join("src/librustc_trans/Cargo.toml"));
+            .arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
         features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
 
-        let tmp_stamp = builder.cargo_out(compiler, Mode::Librustc, target)
+        let tmp_stamp = builder.cargo_out(compiler, Mode::Codegen, target)
             .join(".tmp.stamp");
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
+        let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         let files = run_cargo(builder,
                               cargo.arg("--features").arg(features),
                               &tmp_stamp,
@@ -656,7 +693,7 @@ impl Step for CodegenBackend {
         let mut files = files.into_iter()
             .filter(|f| {
                 let filename = f.file_name().unwrap().to_str().unwrap();
-                is_dylib(filename) && filename.contains("rustc_trans-")
+                is_dylib(filename) && filename.contains("rustc_codegen_llvm-")
             });
         let codegen_backend = match files.next() {
             Some(f) => f,
@@ -697,7 +734,7 @@ pub fn build_codegen_backend(builder: &Builder,
                      compiler.stage, &compiler.host, target, backend));
 
             // Pass down configuration from the LLVM build into the build of
-            // librustc_llvm and librustc_trans.
+            // librustc_llvm and librustc_codegen_llvm.
             if builder.is_rust_llvm(target) {
                 cargo.env("LLVM_RUSTLLVM", "1");
             }
@@ -762,7 +799,7 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
         t!(t!(File::open(&stamp)).read_to_string(&mut dylib));
         let file = Path::new(&dylib);
         let filename = file.file_name().unwrap().to_str().unwrap();
-        // change `librustc_trans-xxxxxx.so` to `librustc_trans-llvm.so`
+        // change `librustc_codegen_llvm-xxxxxx.so` to `librustc_codegen_llvm-llvm.so`
         let target_filename = {
             let dash = filename.find("-").unwrap();
             let dot = filename.find(".").unwrap();
@@ -786,36 +823,39 @@ fn copy_lld_to_sysroot(builder: &Builder,
         .join("bin");
     t!(fs::create_dir_all(&dst));
 
-    let exe = exe("lld", &target);
-    builder.copy(&lld_install_root.join("bin").join(&exe), &dst.join(&exe));
+    let src_exe = exe("lld", &target);
+    let dst_exe = exe("rust-lld", &target);
+    // we prepend this bin directory to the user PATH when linking Rust binaries. To
+    // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
+    builder.copy(&lld_install_root.join("bin").join(&src_exe), &dst.join(&dst_exe));
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 pub fn libstd_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Libstd, target).join(".libstd.stamp")
+    builder.cargo_out(compiler, Mode::Std, target).join(".libstd.stamp")
 }
 
 /// Cargo's output path for libtest in a given stage, compiled by a particular
 /// compiler for the specified target.
 pub fn libtest_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Libtest, target).join(".libtest.stamp")
+    builder.cargo_out(compiler, Mode::Test, target).join(".libtest.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
 /// compiler for the specified target.
 pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc.stamp")
+    builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc.stamp")
 }
 
-/// Cargo's output path for librustc_trans in a given stage, compiled by a particular
+/// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
 /// compiler for the specified target and backend.
 fn codegen_backend_stamp(builder: &Builder,
                          compiler: Compiler,
                          target: Interned<String>,
                          backend: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Librustc, target)
-        .join(format!(".librustc_trans-{}.stamp", backend))
+    builder.cargo_out(compiler, Mode::Codegen, target)
+        .join(format!(".librustc_codegen_llvm-{}.stamp", backend))
 }
 
 pub fn compiler_file(builder: &Builder,
@@ -873,7 +913,7 @@ impl Step for Assemble {
     type Output = Compiler;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.all_krates("rustc-main")
+        run.never()
     }
 
     /// Prepare a new compiler from the artifacts in `stage`
@@ -915,28 +955,16 @@ impl Step for Assemble {
         // link to these. (FIXME: Is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
-        if builder.config.keep_stage.map_or(false, |s| target_compiler.stage <= s) {
-            builder.verbose("skipping compilation of compiler due to --keep-stage");
-            let compiler = build_compiler;
-            for stage in 0..min(target_compiler.stage, builder.config.keep_stage.unwrap()) {
-                let target_compiler = builder.compiler(stage, target_compiler.host);
-                let target = target_compiler.host;
-                builder.ensure(StdLink { compiler, target_compiler, target });
-                builder.ensure(TestLink { compiler, target_compiler, target });
-                builder.ensure(RustcLink { compiler, target_compiler, target });
-            }
-        } else {
-            builder.ensure(Rustc {
+        builder.ensure(Rustc {
+            compiler: build_compiler,
+            target: target_compiler.host,
+        });
+        for &backend in builder.config.rust_codegen_backends.iter() {
+            builder.ensure(CodegenBackend {
                 compiler: build_compiler,
                 target: target_compiler.host,
+                backend,
             });
-            for &backend in builder.config.rust_codegen_backends.iter() {
-                builder.ensure(CodegenBackend {
-                    compiler: build_compiler,
-                    target: target_compiler.host,
-                    backend,
-                });
-            }
         }
 
         let lld_install = if builder.config.lld_enabled {
@@ -971,8 +999,8 @@ impl Step for Assemble {
         }
 
         // Link the compiler binary itself into place
-        let out_dir = builder.cargo_out(build_compiler, Mode::Librustc, host);
-        let rustc = out_dir.join(exe("rustc", &*host));
+        let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
+        let rustc = out_dir.join(exe("rustc_binary", &*host));
         let bindir = sysroot.join("bin");
         t!(fs::create_dir_all(&bindir));
         let compiler = builder.rustc(target_compiler);
@@ -1049,7 +1077,7 @@ pub fn run_cargo(builder: &Builder, cargo: &mut Command, stamp: &Path, is_check:
                !filename.ends_with(".lib") &&
                !is_dylib(&filename) &&
                !(is_check && filename.ends_with(".rmeta")) {
-                return;
+                continue;
             }
 
             let filename = Path::new(&*filename);
@@ -1057,14 +1085,14 @@ pub fn run_cargo(builder: &Builder, cargo: &mut Command, stamp: &Path, is_check:
             // If this was an output file in the "host dir" we don't actually
             // worry about it, it's not relevant for us.
             if filename.starts_with(&host_root_dir) {
-                return;
+                continue;
             }
 
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
             if filename.starts_with(&target_deps_dir) {
                 deps.push(filename.to_path_buf());
-                return;
+                continue;
             }
 
             // Otherwise this was a "top level artifact" which right now doesn't
@@ -1163,7 +1191,7 @@ pub fn run_cargo(builder: &Builder, cargo: &mut Command, stamp: &Path, is_check:
 pub fn stream_cargo(
     builder: &Builder,
     cargo: &mut Command,
-    cb: &mut FnMut(CargoMessage),
+    cb: &mut dyn FnMut(CargoMessage),
 ) -> bool {
     if builder.config.dry_run {
         return true;

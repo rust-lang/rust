@@ -2,28 +2,17 @@ error[E0597]: `y` does not live long enough
   --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:20:5
    |
 LL |     y.borrow().clone()
-   |     ^---------
-   |     |
-   |     borrowed value does not live long enough
-   |     borrow may end up in a temporary, created here
+   |     ^ borrowed value does not live long enough
 LL | }
-   | -
-   | |
-   | borrowed value only lives until here
-   | temporary later dropped here, potentially using the reference
+   | - `y` dropped here while still borrowed
 
 error[E0597]: `y` does not live long enough
   --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:27:9
    |
 LL |         y.borrow().clone()
-   |         ^---------
-   |         |
-   |         borrowed value does not live long enough
-   |         borrow may end up in a temporary, created here
+   |         ^ borrowed value does not live long enough
 LL |     };
-   |     -- temporary later dropped here, potentially using the reference
-   |     |
-   |     borrowed value only lives until here
+   |     - `y` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 

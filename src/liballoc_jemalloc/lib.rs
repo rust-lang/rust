@@ -11,9 +11,8 @@
 #![no_std]
 #![allow(unused_attributes)]
 #![unstable(feature = "alloc_jemalloc",
-            reason = "this library is unlikely to be stabilized in its current \
-                      form or name",
-            issue = "27783")]
+            reason = "implementation detail of std, does not provide any public API",
+            issue = "0")]
 #![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(linkage)]
@@ -95,13 +94,6 @@ mod contents {
         let flags = align_to_flags(align, size);
         let ptr = mallocx(size as size_t, flags) as *mut u8;
         ptr
-    }
-
-    #[cfg(stage0)]
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_oom() -> ! {
-        ::core::intrinsics::abort();
     }
 
     #[no_mangle]

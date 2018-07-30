@@ -15,17 +15,17 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_errors;
-extern crate rustc_trans_utils;
+extern crate rustc_codegen_utils;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
-use rustc::session::config::{basic_options, Input,
+use rustc::session::config::{basic_options, Input, Options,
                              OutputType, OutputTypes};
-use rustc_driver::driver::{compile_input, CompileController};
+use rustc_driver::driver::{self, compile_input, CompileController};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
 use syntax::codemap::FileName;
-use rustc_trans_utils::trans_crate::TransCrate;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -52,37 +52,38 @@ fn main() {
     compile(src.to_string(), tmpdir.join("out"), sysroot.clone());
 }
 
-fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>, Box<TransCrate>) {
-    let mut opts = basic_options();
-    opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
-    opts.maybe_sysroot = Some(sysroot);
-    if let Ok(linker) = std::env::var("RUSTC_LINKER") {
-        opts.cg.linker = Some(linker.into());
-    }
-
+fn basic_sess(opts: Options) -> (Session, Rc<CStore>, Box<CodegenBackend>) {
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
     let sess = build_session(opts, None, descriptions);
-    let trans = rustc_driver::get_trans(&sess);
-    let cstore = Rc::new(CStore::new(trans.metadata_loader()));
+    let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+    let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    (sess, cstore, trans)
+    (sess, cstore, codegen_backend)
 }
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     syntax::with_globals(|| {
-        let (sess, cstore, trans) = basic_sess(sysroot);
-        let control = CompileController::basic();
-        let input = Input::Str { name: FileName::Anon, input: code };
-        let _ = compile_input(
-            trans,
-            &sess,
-            &cstore,
-            &None,
-            &input,
-            &None,
-            &Some(output),
-            None,
-            &control
-        );
+        let mut opts = basic_options();
+        opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
+        opts.maybe_sysroot = Some(sysroot);
+        if let Ok(linker) = std::env::var("RUSTC_LINKER") {
+            opts.cg.linker = Some(linker.into());
+        }
+        driver::spawn_thread_pool(opts, |opts| {
+            let (sess, cstore, codegen_backend) = basic_sess(opts);
+            let control = CompileController::basic();
+            let input = Input::Str { name: FileName::Anon, input: code };
+            let _ = compile_input(
+                codegen_backend,
+                &sess,
+                &cstore,
+                &None,
+                &input,
+                &None,
+                &Some(output),
+                None,
+                &control
+            );
+        });
     });
 }

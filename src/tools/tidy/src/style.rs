@@ -131,7 +131,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let skip_length = contents.contains("ignore-tidy-linelength");
         let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
         let mut trailing_new_lines = 0;
-        for (i, line) in contents.split("\n").enumerate() {
+        for (i, line) in contents.split('\n').enumerate() {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };

@@ -283,7 +283,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                                                     .local_id,
                                                 assignment_span,
                                                 lp,
-                                                self.bccx.tcx.hir.node_to_hir_id(cmt.id).local_id,
+                                                cmt.hir_id.local_id,
                                                 mode);
             }
             None => {

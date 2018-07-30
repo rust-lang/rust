@@ -3,6 +3,10 @@ sudo: required
 dist: trusty
 services:
   - docker
+addons:
+  apt:
+    packages:
+      - gdb
 
 git:
   depth: 2
@@ -12,7 +16,7 @@ matrix:
   fast_finish: true
   include:
     # Images used in testing PR and try-build should be run first.
-    - env: IMAGE=x86_64-gnu-llvm-3.9 RUST_BACKTRACE=1
+    - env: IMAGE=x86_64-gnu-llvm-5.0 RUST_BACKTRACE=1
       if: type = pull_request OR branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
@@ -169,7 +173,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-aux
       if: branch = auto
     - env: IMAGE=x86_64-gnu-tools
-      if: branch = auto
+      if: branch = auto OR (type = pull_request AND commit_message =~ /(?i:^update.*\b(rls|rustfmt|clippy|miri)\b)/)
     - env: IMAGE=x86_64-gnu-debug
       if: branch = auto
     - env: IMAGE=x86_64-gnu-nopt
@@ -197,7 +201,7 @@ env:
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
     # TOOLSTATE_REPO_ACCESS_TOKEN=...
-    - secure: "cFh8thThqEJLC98XKI5pfqflUzOlxsYPRW20AWRaYOOgYHPTiGWypTXiPbGSKaeAXTZoOA+DpQtEmefc0U6lt9dHc7a/MIaK6isFurjlnKYiLOeTruzyu1z7PWCeZ/jKXsU2RK/88DBtlNwfMdaMIeuKj14IVfpepPPL71ETbuk="
+    - secure: "ESfcXqv4N2VMhqi2iIyw6da9VrsA78I4iR1asouCaq4hzTTrkB4WNRrfURy6xg72gQ4nMhtRJbB0/2jmc9Cu1+g2CzXtyiL223aJ5CKrXdcvbitopQSDfp07dMWm+UED+hNFEanpErKAeU/6FM3A+J+60PMk8MCF1h9tqNRISJw="
 
 before_install:
   # We'll use the AWS cli to download/upload cached docker layers, so install
@@ -230,7 +234,11 @@ install:
           travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/sccache &&
           travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
-            chmod +x /usr/local/bin/stamp
+            chmod +x /usr/local/bin/stamp &&
+          travis_retry curl -f http://releases.llvm.org/6.0.0/clang+llvm-6.0.0-x86_64-apple-darwin.tar.xz | tar xJf - &&
+            export CC=`pwd`/clang+llvm-6.0.0-x86_64-apple-darwin/bin/clang &&
+            export CXX=`pwd`/clang+llvm-6.0.0-x86_64-apple-darwin/bin/clang++ &&
+            export AR=ar
           ;;
     esac
 
@@ -245,6 +253,8 @@ before_script:
           export RUN_SCRIPT="$RUN_SCRIPT && src/ci/run.sh";
       else
           export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
+          # Enable core dump on Linux.
+          sudo sh -c 'echo "/checkout/obj/cores/core.%p.%E" > /proc/sys/kernel/core_pattern';
       fi
 
 # Log time information from this machine and an external machine for insight into possible
@@ -270,6 +280,8 @@ after_failure:
 
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
+
+  # Dump backtrace for macOS
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
   - find $HOME/Library/Logs/DiagnosticReports
       -type f
@@ -279,6 +291,25 @@ after_failure:
       -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
       -exec head -750 {} \;
       -exec echo travis_fold":"end:crashlog \; || true
+
+  # Dump backtrace for Linux
+  - ln -s . checkout &&
+    for CORE in obj/cores/core.*; do
+      EXE=$(echo $CORE | sed 's|obj/cores/core\.[0-9]*\.!checkout!\(.*\)|\1|;y|!|/|');
+      if [ -f "$EXE" ]; then
+        printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" "$CORE";
+        gdb -q -c "$CORE" "$EXE"
+          -iex 'set auto-load off'
+          -iex 'dir src/'
+          -iex 'set sysroot .'
+          -ex bt
+          -ex q;
+        echo travis_fold":"end:crashlog;
+      fi;
+    done || true
+
+  # see #50887
+  - cat ./obj/build/x86_64-unknown-linux-gnu/native/asan/build/lib/asan/clang_rt.asan-dynamic-i386.vers || true
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
@@ -297,7 +328,6 @@ before_deploy:
           rm -rf obj/build/dist/doc &&
           cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
       fi
-  - travis_retry gem update --system
   - ls -la deploy/$TRAVIS_COMMIT
 
 deploy:

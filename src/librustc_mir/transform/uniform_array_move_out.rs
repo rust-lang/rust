@@ -81,9 +81,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                 } else {
                     let place_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if let ty::TyArray(item_ty, const_size) = place_ty.sty {
-                        if let Some(size) = const_size.val.to_raw_bits() {
-                            assert!(size <= (u32::max_value() as u128),
-                                    "unform array move out doesn't supported
+                        if let Some(size) = const_size.assert_usize(self.tcx) {
+                            assert!(size <= u32::max_value() as u64,
+                                    "uniform array move out doesn't supported
                                      for array bigger then u32");
                             self.uniform(location, dst_place, proj, item_ty, size as u32);
                         }
@@ -203,7 +203,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
                         let opt_size = opt_src_place.and_then(|src_place| {
                             let src_ty = src_place.ty(mir, tcx).to_ty(tcx);
                             if let ty::TyArray(_, ref size_o) = src_ty.sty {
-                                size_o.val.to_raw_bits().map(|n| n as u64)
+                                size_o.assert_usize(tcx)
                             } else {
                                 None
                             }
@@ -222,7 +222,7 @@ impl RestoreSubsliceArrayMoveOut {
     // indices is an integer interval. If all checks pass do the replacent.
     // items are Vec<Option<LocalUse, index in source array, source place for init local>>
     fn check_and_patch<'tcx>(candidate: Location,
-                             items: &Vec<Option<(&LocalUse, u32, &Place<'tcx>)>>,
+                             items: &[Option<(&LocalUse, u32, &Place<'tcx>)>],
                              opt_size: Option<u64>,
                              patch: &mut MirPatch<'tcx>,
                              dst_place: &Place<'tcx>) {

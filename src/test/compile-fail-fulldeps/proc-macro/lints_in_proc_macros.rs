@@ -11,7 +11,7 @@
 // aux-build:bang_proc_macro2.rs
 // ignore-stage1
 
-#![feature(proc_macro, proc_macro_non_items)]
+#![feature(use_extern_macros, proc_macro_non_items)]
 #![allow(unused_macros)]
 
 extern crate bang_proc_macro2;
@@ -23,5 +23,5 @@ fn main() {
     bang_proc_macro2!();
     //~^ ERROR cannot find value `foobar2` in this scope
     //~^^ did you mean `foobar`?
-    println!("{}", x); //~ ERROR cannot find value `x` in this scope
+    println!("{}", x);
 }

@@ -30,13 +30,23 @@ LL | use bar::g;
    |
 LL | use foo::test2::test::g;
    |
-LL | use foo::test::g;
+LL | use foo::test2::test::g;
    |
 LL | use foo::test::g;
    |
+and 2 other candidates
 
 error[E0425]: cannot find function `f` in this scope
-  --> $DIR/globs.rs:64:17
+  --> $DIR/globs.rs:71:12
+   |
+LL | n!(f);
+   | ------ in this macro invocation
+...
+LL |         n!(f); //~ ERROR cannot find function `f` in this scope
+   |            ^ not found in this scope
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/globs.rs:75:17
    |
 LL | n!(f);
    | ------ in this macro invocation
@@ -44,6 +54,6 @@ LL | n!(f);
 LL |                 f //~ ERROR cannot find function `f` in this scope
    |                 ^ not found in this scope
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

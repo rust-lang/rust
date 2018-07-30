@@ -38,7 +38,8 @@
                      "constant",
                      "associatedconstant",
                      "union",
-                     "foreigntype"];
+                     "foreigntype",
+                     "keyword"];
 
     var search_input = document.getElementsByClassName('search-input')[0];
 
@@ -55,6 +56,12 @@
         String.prototype.startsWith = function(searchString, position) {
             position = position || 0;
             return this.indexOf(searchString, position) === position;
+        };
+    }
+    if (!String.prototype.endsWith) {
+        String.prototype.endsWith = function(suffix, length) {
+            var l = length || this.length;
+            return this.indexOf(suffix, l - suffix.length) !== -1;
         };
     }
 
@@ -152,6 +159,7 @@
 
     // used for special search precedence
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
+    var TY_KEYWORD = itemTypes.indexOf("keyword");
 
     onEach(document.getElementsByClassName('js-only'), function(e) {
         removeClass(e, 'js-only');
@@ -196,7 +204,7 @@
                 onEach(e.getElementsByTagName('span'), function(i_e) {
                     removeClass(i_e, 'line-highlighted');
                 });
-            })
+            });
             for (i = from; i <= to; ++i) {
                 addClass(document.getElementById(i), 'line-highlighted');
             }
@@ -407,6 +415,10 @@
         var currentResults, index, searchIndex;
         var MAX_LEV_DISTANCE = 3;
         var MAX_RESULTS = 200;
+        var GENERICS_DATA = 1;
+        var NAME = 0;
+        var INPUTS_DATA = 0;
+        var OUTPUT_DATA = 1;
         var params = getQueryStringParams();
 
         // Populate search bar with query string search term when provided,
@@ -454,11 +466,17 @@
                         var obj = searchIndex[results[i].id];
                         obj.lev = results[i].lev;
                         if (isType !== true || obj.type) {
+                            var res = buildHrefAndPath(obj);
+                            obj.displayPath = pathSplitter(res[0]);
+                            obj.fullPath = obj.displayPath + obj.name;
+                            // To be sure than it some items aren't considered as duplicate.
+                            obj.fullPath += '|' + obj.ty;
+                            obj.href = res[1];
                             out.push(obj);
+                            if (out.length >= MAX_RESULTS) {
+                                break;
+                            }
                         }
-                    }
-                    if (out.length >= MAX_RESULTS) {
-                        break;
                     }
                 }
                 return out;
@@ -520,11 +538,13 @@
                     b = bbb.index;
                     if (a !== b) { return a - b; }
 
-                    // special precedence for primitive pages
-                    if ((aaa.item.ty === TY_PRIMITIVE) && (bbb.item.ty !== TY_PRIMITIVE)) {
+                    // special precedence for primitive and keyword pages
+                    if ((aaa.item.ty === TY_PRIMITIVE && bbb.item.ty !== TY_KEYWORD) ||
+                        (aaa.item.ty === TY_KEYWORD && bbb.item.ty !== TY_PRIMITIVE)) {
                         return -1;
                     }
-                    if ((bbb.item.ty === TY_PRIMITIVE) && (aaa.item.ty !== TY_PRIMITIVE)) {
+                    if ((bbb.item.ty === TY_PRIMITIVE && aaa.item.ty !== TY_PRIMITIVE) ||
+                        (bbb.item.ty === TY_KEYWORD && aaa.item.ty !== TY_KEYWORD)) {
                         return 1;
                     }
 
@@ -587,8 +607,9 @@
                 // match as well.
                 var lev_distance = MAX_LEV_DISTANCE + 1;
                 if (val.generics.length > 0) {
-                    if (obj.generics && obj.generics.length >= val.generics.length) {
-                        var elems = obj.generics.slice(0);
+                    if (obj.length > GENERICS_DATA &&
+                          obj[GENERICS_DATA].length >= val.generics.length) {
+                        var elems = obj[GENERICS_DATA].slice(0);
                         var total = 0;
                         var done = 0;
                         // We need to find the type that matches the most to remove it in order
@@ -620,11 +641,12 @@
             // Check for type name and type generics (if any).
             function checkType(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
-                if (obj.name === val.name) {
+                if (obj[NAME] === val.name) {
                     if (literalSearch === true) {
                         if (val.generics && val.generics.length !== 0) {
-                            if (obj.generics && obj.length >= val.generics.length) {
-                                var elems = obj.generics.slice(0);
+                            if (obj.length > GENERICS_DATA &&
+                                  obj[GENERICS_DATA].length >= val.generics.length) {
+                                var elems = obj[GENERICS_DATA].slice(0);
                                 var allFound = true;
                                 var x;
 
@@ -648,7 +670,7 @@
                     }
                     // If the type has generics but don't match, then it won't return at this point.
                     // Otherwise, `checkGenerics` will return 0 and it'll return.
-                    if (obj.generics && obj.generics.length !== 0) {
+                    if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length !== 0) {
                         var tmp_lev = checkGenerics(obj, val);
                         if (tmp_lev <= MAX_LEV_DISTANCE) {
                             return tmp_lev;
@@ -659,22 +681,23 @@
                 }
                 // Names didn't match so let's check if one of the generic types could.
                 if (literalSearch === true) {
-                     if (obj.generics && obj.generics.length > 0) {
-                        for (var x = 0; x < obj.generics.length; ++x) {
-                            if (obj.generics[x] === val.name) {
+                     if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
+                        for (var x = 0; x < obj[GENERICS_DATA].length; ++x) {
+                            if (obj[GENERICS_DATA][x] === val.name) {
                                 return true;
                             }
                         }
                     }
                     return false;
                 }
-                var lev_distance = Math.min(levenshtein(obj.name, val.name), lev_distance);
+                var lev_distance = Math.min(levenshtein(obj[NAME], val.name),
+                                            lev_distance);
                 if (lev_distance <= MAX_LEV_DISTANCE) {
                     lev_distance = Math.min(checkGenerics(obj, val), lev_distance);
-                } else if (obj.generics && obj.generics.length > 0) {
+                } else if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                     // We can check if the type we're looking for is inside the generics!
-                    for (var x = 0; x < obj.generics.length; ++x) {
-                        lev_distance = Math.min(levenshtein(obj.generics[x], val.name),
+                    for (var x = 0; x < obj[GENERICS_DATA].length; ++x) {
+                        lev_distance = Math.min(levenshtein(obj[GENERICS_DATA][x], val.name),
                                                 lev_distance);
                     }
                 }
@@ -686,9 +709,10 @@
             function findArg(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
-                if (obj && obj.type && obj.type.inputs.length > 0) {
-                    for (var i = 0; i < obj.type.inputs.length; i++) {
-                        var tmp = checkType(obj.type.inputs[i], val, literalSearch);
+                if (obj && obj.type && obj.type[INPUTS_DATA] &&
+                      obj.type[INPUTS_DATA].length > 0) {
+                    for (var i = 0; i < obj.type[INPUTS_DATA].length; i++) {
+                        var tmp = checkType(obj.type[INPUTS_DATA][i], val, literalSearch);
                         if (literalSearch === true && tmp === true) {
                             return true;
                         }
@@ -704,8 +728,8 @@
             function checkReturned(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
-                if (obj && obj.type && obj.type.output) {
-                    var tmp = checkType(obj.type.output, val, literalSearch);
+                if (obj && obj.type && obj.type.length > OUTPUT_DATA) {
+                    var tmp = checkType(obj.type[OUTPUT_DATA], val, literalSearch);
                     if (literalSearch === true && tmp === true) {
                         return true;
                     }
@@ -767,7 +791,7 @@
                     case "fn":
                         return (name == "method" || name == "tymethod");
                     case "type":
-                        return (name == "primitive");
+                        return (name == "primitive" || name == "keyword");
                 }
 
                 // No match
@@ -850,7 +874,7 @@
                     var fullId = generateId(ty);
 
                     // allow searching for void (no output) functions as well
-                    var typeOutput = type.output ? type.output.name : "";
+                    var typeOutput = type.length > OUTPUT_DATA ? type[OUTPUT_DATA].name : "";
                     var returned = checkReturned(ty, output, true);
                     if (output.name === "*" || returned === true) {
                         var in_args = false;
@@ -993,7 +1017,7 @@
                             Math.min(results_returned[fullId].lev, returned);
                     }
                     if (index !== -1 || lev <= MAX_LEV_DISTANCE) {
-                        if (index !== -1) {
+                        if (index !== -1 && paths.length < 2) {
                             lev = 0;
                         }
                         if (results[fullId] === undefined) {
@@ -1017,6 +1041,13 @@
                     ALIASES[window.currentCrate][query.raw]) {
                 var aliases = ALIASES[window.currentCrate][query.raw];
                 for (var i = 0; i < aliases.length; ++i) {
+                    aliases[i].is_alias = true;
+                    aliases[i].alias = query.raw;
+                    aliases[i].path = aliases[i].p;
+                    var res = buildHrefAndPath(aliases[i]);
+                    aliases[i].displayPath = pathSplitter(res[0]);
+                    aliases[i].fullPath = aliases[i].displayPath + aliases[i].name;
+                    aliases[i].href = res[1];
                     ret['others'].unshift(aliases[i]);
                     if (ret['others'].length > MAX_RESULTS) {
                         ret['others'].pop();
@@ -1179,16 +1210,6 @@
             };
         }
 
-        function escape(content) {
-            var h1 = document.createElement('h1');
-            h1.textContent = content;
-            return h1.innerHTML;
-        }
-
-        function pathSplitter(path) {
-            return '<span>' + path.replace(/::/g, '::</span><span>');
-        }
-
         function buildHrefAndPath(item) {
             var displayPath;
             var href;
@@ -1199,7 +1220,7 @@
                 displayPath = item.path + '::';
                 href = rootPath + item.path.replace(/::/g, '/') + '/' +
                        name + '/index.html';
-            } else if (type === "primitive") {
+            } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
                 href = rootPath + item.path.replace(/::/g, '/') +
                        '/' + type + '.' + name + '.html';
@@ -1227,6 +1248,20 @@
             return [displayPath, href];
         }
 
+        function escape(content) {
+            var h1 = document.createElement('h1');
+            h1.textContent = content;
+            return h1.innerHTML;
+        }
+
+        function pathSplitter(path) {
+            var tmp = '<span>' + path.replace(/::/g, '::</span><span>');
+            if (tmp.endsWith("<span>")) {
+                return tmp.slice(0, tmp.length - 6);
+            }
+            return tmp;
+        }
+
         function addTab(array, query, display) {
             var extraStyle = '';
             if (display === false) {
@@ -1234,31 +1269,33 @@
             }
 
             var output = '';
+            var duplicates = {};
+            var length = 0;
             if (array.length > 0) {
                 output = '<table class="search-results"' + extraStyle + '>';
-                var shown = [];
 
                 array.forEach(function(item) {
-                    var name, type, href, displayPath;
+                    var name, type;
 
-                    var id_ty = item.ty + item.path + item.name;
-                    if (shown.indexOf(id_ty) !== -1) {
-                        return;
-                    }
-
-                    shown.push(id_ty);
                     name = item.name;
                     type = itemTypes[item.ty];
 
-                    var res = buildHrefAndPath(item);
-                    var href = res[1];
-                    var displayPath = res[0];
+                    if (item.is_alias !== true) {
+                        if (duplicates[item.fullPath]) {
+                            return;
+                        }
+                        duplicates[item.fullPath] = true;
+                    }
+                    length += 1;
 
                     output += '<tr class="' + type + ' result"><td>' +
-                              '<a href="' + href + '">' +
-                              pathSplitter(displayPath) + '<span class="' + type + '">' +
+                              '<a href="' + item.href + '">' +
+                              (item.is_alias === true ?
+                               ('<span class="alias"><b>' + item.alias + ' </b></span><span ' +
+                                  'class="grey"><i>&nbsp;- see&nbsp;</i></span>') : '') +
+                              item.displayPath + '<span class="' + type + '">' +
                               name + '</span></a></td><td>' +
-                              '<a href="' + href + '">' +
+                              '<a href="' + item.href + '">' +
                               '<span class="desc">' + escape(item.desc) +
                               '&nbsp;</span></a></td></tr>';
                 });
@@ -1269,7 +1306,7 @@
                     encodeURIComponent('rust ' + query.query) +
                     '">DuckDuckGo</a>?</div>';
             }
-            return output;
+            return [output, length];
         }
 
         function makeTabHeader(tabNb, text, nbElems) {
@@ -1284,28 +1321,28 @@
             if (results['others'].length === 1 &&
                 getCurrentValue('rustdoc-go-to-only-result') === "true") {
                 var elem = document.createElement('a');
-                var res = buildHrefAndPath(results['others'][0]);
-                elem.href = res[1];
+                elem.href = results['others'][0].href;
                 elem.style.display = 'none';
                 // For firefox, we need the element to be in the DOM so it can be clicked.
                 document.body.appendChild(elem);
                 elem.click();
             }
-            var output, query = getQuery(search_input.value);
+            var query = getQuery(search_input.value);
 
             currentResults = query.id;
-            output = '<h1>Results for ' + escape(query.query) +
+
+            var ret_others = addTab(results['others'], query);
+            var ret_in_args = addTab(results['in_args'], query, false);
+            var ret_returned = addTab(results['returned'], query, false);
+
+            var output = '<h1>Results for ' + escape(query.query) +
                 (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>' +
                 '<div id="titles">' +
-                makeTabHeader(0, "In Names", results['others'].length) +
-                makeTabHeader(1, "In Parameters", results['in_args'].length) +
-                makeTabHeader(2, "In Return Types", results['returned'].length) +
-                '</div><div id="results">';
-
-            output += addTab(results['others'], query);
-            output += addTab(results['in_args'], query, false);
-            output += addTab(results['returned'], query, false);
-            output += '</div>';
+                makeTabHeader(0, "In Names", ret_others[1]) +
+                makeTabHeader(1, "In Parameters", ret_in_args[1]) +
+                makeTabHeader(2, "In Return Types", ret_returned[1]) +
+                '</div><div id="results">' +
+                ret_others[0] + ret_in_args[0] + ret_returned[0] + '</div>';
 
             addClass(document.getElementById('main'), 'hidden');
             var search = document.getElementById('search');
@@ -1347,12 +1384,13 @@
                 }
             }
             if (queries.length > 1) {
-                function getSmallest(arrays, positions) {
+                function getSmallest(arrays, positions, notDuplicates) {
                     var start = null;
 
                     for (var it = 0; it < positions.length; ++it) {
                         if (arrays[it].length > positions[it] &&
-                            (start === null || start > arrays[it][positions[it]].lev)) {
+                            (start === null || start > arrays[it][positions[it]].lev) &&
+                            !notDuplicates[arrays[it][positions[it]].fullPath]) {
                             start = arrays[it][positions[it]].lev;
                         }
                     }
@@ -1362,19 +1400,23 @@
                 function mergeArrays(arrays) {
                     var ret = [];
                     var positions = [];
+                    var notDuplicates = {};
 
                     for (var x = 0; x < arrays.length; ++x) {
                         positions.push(0);
                     }
                     while (ret.length < MAX_RESULTS) {
-                        var smallest = getSmallest(arrays, positions);
+                        var smallest = getSmallest(arrays, positions, notDuplicates);
+
                         if (smallest === null) {
                             break;
                         }
                         for (x = 0; x < arrays.length && ret.length < MAX_RESULTS; ++x) {
                             if (arrays[x].length > positions[x] &&
-                                    arrays[x][positions[x]].lev === smallest) {
+                                    arrays[x][positions[x]].lev === smallest &&
+                                    !notDuplicates[arrays[x][positions[x]].fullPath]) {
                                 ret.push(arrays[x][positions[x]]);
+                                notDuplicates[arrays[x][positions[x]].fullPath] = true;
                                 positions[x] += 1;
                             }
                         }
@@ -1672,6 +1714,7 @@
         block("fn", "Functions");
         block("type", "Type Definitions");
         block("foreigntype", "Foreign Types");
+        block("keyword", "Keywords");
     }
 
     window.initSidebarItems = initSidebarItems;
@@ -1742,7 +1785,7 @@
         }
     }
 
-    function toggleAllDocs(pageId) {
+    function toggleAllDocs(pageId, fromAutoCollapse) {
         var toggle = document.getElementById("toggle-all-docs");
         if (!toggle) {
             return;
@@ -1754,9 +1797,11 @@
                 e.innerHTML = labelForToggleButton(false);
             });
             toggle.title = "collapse all docs";
-            onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
-                collapseDocs(e, "show");
-            });
+            if (fromAutoCollapse !== true) {
+                onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
+                    collapseDocs(e, "show");
+                });
+            }
         } else {
             updateLocalStorage("rustdoc-collapse", "true");
             addClass(toggle, "will-expand");
@@ -1764,10 +1809,11 @@
                 e.innerHTML = labelForToggleButton(true);
             });
             toggle.title = "expand all docs";
-
-            onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
-                collapseDocs(e, "hide", pageId);
-            });
+            if (fromAutoCollapse !== true) {
+                onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
+                    collapseDocs(e, "hide", pageId);
+                });
+            }
         }
     }
 
@@ -1888,19 +1934,23 @@
         }
     }
 
-    function autoCollapseAllImpls(pageId) {
-        // Automatically minimize all non-inherent impls
-        onEach(document.getElementsByClassName('impl'), function(n) {
-            // inherent impl ids are like 'impl' or impl-<number>'
-            var inherent = (n.id.match(/^impl(?:-\d+)?$/) !== null);
-            if (!inherent) {
-                onEach(n.childNodes, function(m) {
-                    if (hasClass(m, "collapse-toggle")) {
-                        collapseDocs(m, "hide", pageId);
+    function autoCollapse(pageId, collapse) {
+        if (collapse) {
+            toggleAllDocs(pageId, true);
+        }
+        if (getCurrentValue('rustdoc-trait-implementations') !== "false") {
+            onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
+                // inherent impl ids are like 'impl' or impl-<number>'.
+                // they will never be hidden by default.
+                var n = e.parentNode;
+                if (n.id.match(/^impl(?:-\d+)?$/) === null) {
+                    // Automatically minimize all non-inherent impls
+                    if (collapse || hasClass(n, 'impl')) {
+                        collapseDocs(e, "hide", pageId);
                     }
-                });
-            }
-        });
+                }
+            });
+        }
     }
 
     var x = document.getElementById('toggle-all-docs');
@@ -1944,14 +1994,14 @@
               hasClass(next.nextElementSibling, 'docblock')))) {
             insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
         }
-    }
+    };
     onEach(document.getElementsByClassName('method'), func);
     onEach(document.getElementsByClassName('impl'), func);
     onEach(document.getElementsByClassName('impl-items'), function(e) {
         onEach(e.getElementsByClassName('associatedconstant'), func);
     });
 
-    function createToggle(otherMessage) {
+    function createToggle(otherMessage, fontSize, extraClass) {
         var span = document.createElement('span');
         span.className = 'toggle-label';
         span.style.display = 'none';
@@ -1959,7 +2009,10 @@
             span.innerHTML = '&nbsp;Expand&nbsp;description';
         } else {
             span.innerHTML = otherMessage;
-            span.style.fontSize = '20px';
+        }
+
+        if (fontSize) {
+            span.style.fontSize = fontSize;
         }
 
         var mainToggle = toggle.cloneNode(true);
@@ -1967,6 +2020,9 @@
 
         var wrapper = document.createElement('div');
         wrapper.className = 'toggle-wrapper';
+        if (extraClass) {
+            wrapper.className += ' ' + extraClass;
+        }
         wrapper.appendChild(mainToggle);
         return wrapper;
     }
@@ -1995,28 +2051,43 @@
         }
         if (e.parentNode.id === "main") {
             var otherMessage;
+            var fontSize;
+            var extraClass;
+
             if (hasClass(e, "type-decl")) {
+                fontSize = "20px";
                 otherMessage = '&nbsp;Show&nbsp;declaration';
+            } else if (hasClass(e, "non-exhaustive")) {
+                otherMessage = '&nbsp;This&nbsp;';
+                if (hasClass(e, "non-exhaustive-struct")) {
+                    otherMessage += 'struct';
+                } else if (hasClass(e, "non-exhaustive-enum")) {
+                    otherMessage += 'enum';
+                } else if (hasClass(e, "non-exhaustive-type")) {
+                    otherMessage += 'type';
+                }
+                otherMessage += '&nbsp;is&nbsp;marked&nbsp;as&nbsp;non-exhaustive';
+            } else if (hasClass(e.childNodes[0], "impl-items")) {
+                extraClass = "marg-left";
             }
-            e.parentNode.insertBefore(createToggle(otherMessage), e);
+
+            e.parentNode.insertBefore(createToggle(otherMessage, fontSize, extraClass), e);
             if (otherMessage && getCurrentValue('rustdoc-item-declarations') !== "false") {
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }
     });
 
-    autoCollapseAllImpls(getPageId());
-
-    function createToggleWrapper() {
+    function createToggleWrapper(tog) {
         var span = document.createElement('span');
         span.className = 'toggle-label';
         span.style.display = 'none';
         span.innerHTML = '&nbsp;Expand&nbsp;attributes';
-        toggle.appendChild(span);
+        tog.appendChild(span);
 
         var wrapper = document.createElement('div');
         wrapper.className = 'toggle-wrapper toggle-attributes';
-        wrapper.appendChild(toggle);
+        wrapper.appendChild(tog);
         return wrapper;
     }
 
@@ -2044,13 +2115,11 @@
         });
     }
 
-    onEach(document.getElementById('main').getElementsByTagName('pre'), function(e) {
-        onEach(e.getElementsByClassName('attributes'), function(i_e) {
-            i_e.parentNode.insertBefore(createToggleWrapper(), i_e);
-            if (getCurrentValue("rustdoc-item-attributes") !== "false") {
-                collapseDocs(i_e.previousSibling.childNodes[0], "toggle");
-            }
-        });
+    onEach(document.getElementById('main').getElementsByClassName('attributes'), function(i_e) {
+        i_e.parentNode.insertBefore(createToggleWrapper(toggle.cloneNode(true)), i_e);
+        if (getCurrentValue("rustdoc-item-attributes") !== "false") {
+            collapseDocs(i_e.previousSibling.childNodes[0], "toggle");
+        }
     });
 
     onEach(document.getElementsByClassName('rust-example-rendered'), function(e) {
@@ -2138,9 +2207,7 @@
         hideSidebar();
     };
 
-    if (getCurrentValue("rustdoc-collapse") === "true") {
-        toggleAllDocs(getPageId());
-    }
+    autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
 }());
 
 // Sets the focus on the search bar at the top of the page

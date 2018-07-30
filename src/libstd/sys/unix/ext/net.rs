@@ -524,6 +524,9 @@ impl UnixStream {
     ///     println!("Got error: {:?}", err);
     /// }
     /// ```
+    ///
+    /// # Platform specific
+    /// On Redox this always returns None.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
@@ -846,6 +849,9 @@ impl UnixListener {
     ///     println!("Got error: {:?}", err);
     /// }
     /// ```
+    ///
+    /// # Platform specific
+    /// On Redox this always returns None.
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()

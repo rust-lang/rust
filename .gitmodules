@@ -53,3 +53,6 @@
 [submodule "src/tools/lld"]
 	path = src/tools/lld
 	url = https://github.com/rust-lang/lld.git
+[submodule "src/libbacktrace"]
+	path = src/libbacktrace
+	url = https://github.com/rust-lang-nursery/libbacktrace

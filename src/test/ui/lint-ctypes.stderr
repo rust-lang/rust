@@ -73,10 +73,10 @@ error: `extern` block uses type `u128` which is not FFI-safe: 128-bit integers d
 LL |     pub fn u128_type(p: u128); //~ ERROR uses type `u128`
    |                         ^^^^
 
-error: `extern` block uses type `std::clone::Clone` which is not FFI-safe: trait objects have no C equivalent
+error: `extern` block uses type `dyn std::clone::Clone` which is not FFI-safe: trait objects have no C equivalent
   --> $DIR/lint-ctypes.rs:62:26
    |
-LL |     pub fn trait_type(p: &Clone); //~ ERROR uses type `std::clone::Clone`
+LL |     pub fn trait_type(p: &Clone); //~ ERROR uses type `dyn std::clone::Clone`
    |                          ^^^^^^
 
 error: `extern` block uses type `(i32, i32)` which is not FFI-safe: tuples have unspecified layout
@@ -126,7 +126,7 @@ error: `extern` block uses type `fn()` which is not FFI-safe: this function poin
 LL |     pub fn fn_type(p: RustFn); //~ ERROR function pointer has Rust-specific
    |                       ^^^^^^
    |
-   = help: consider using an `fn "extern"(...) -> ...` function pointer instead
+   = help: consider using an `extern fn(...) -> ...` function pointer instead
 
 error: `extern` block uses type `fn()` which is not FFI-safe: this function pointer has Rust-specific calling convention
   --> $DIR/lint-ctypes.rs:70:24
@@ -134,7 +134,7 @@ error: `extern` block uses type `fn()` which is not FFI-safe: this function poin
 LL |     pub fn fn_type2(p: fn()); //~ ERROR function pointer has Rust-specific
    |                        ^^^^
    |
-   = help: consider using an `fn "extern"(...) -> ...` function pointer instead
+   = help: consider using an `extern fn(...) -> ...` function pointer instead
 
 error: `extern` block uses type `std::boxed::Box<u32>` which is not FFI-safe: this struct has unspecified layout
   --> $DIR/lint-ctypes.rs:71:28

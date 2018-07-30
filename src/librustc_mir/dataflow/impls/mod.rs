@@ -14,7 +14,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Mir, Location};
-use rustc_data_structures::bitslice::{BitwiseOperator};
+use rustc_data_structures::bitslice::{BitwiseOperator, Word};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -663,35 +663,35 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
+    fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
+    fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // "maybe" means we union effects of both preds
     }
 }
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
+    fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 & pred2 // "definitely" means we intersect effects of both preds
     }
 }
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for MovingOutStatements<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
+    fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // moves from both preds are in scope
     }
 }
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
+    fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // inits from both preds are in scope
     }
 }

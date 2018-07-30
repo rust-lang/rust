@@ -13,6 +13,8 @@ arena = { path = "../libarena" }
 graphviz = { path = "../libgraphviz" }
 log = "0.4"
 env_logger = { version = "0.5", default-features = false }
+rustc-rayon = "0.1.1"
+scoped-tls = { version = "0.1.1", features = ["nightly"] }
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_target = { path = "../librustc_target" }
@@ -29,11 +31,9 @@ rustc_privacy = { path = "../librustc_privacy" }
 rustc_resolve = { path = "../librustc_resolve" }
 rustc_save_analysis = { path = "../librustc_save_analysis" }
 rustc_traits = { path = "../librustc_traits" }
-rustc_trans_utils = { path = "../librustc_trans_utils" }
+rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_typeck = { path = "../librustc_typeck" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }
-
-ar = "0.3.0"

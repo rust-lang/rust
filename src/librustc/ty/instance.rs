@@ -10,7 +10,6 @@
 
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
-use ty::subst::Kind;
 use traits;
 use rustc_target::spec::abi::Abi;
 use util::ppaux;
@@ -104,13 +103,13 @@ impl<'tcx> InstanceDef<'tcx> {
             return true
         }
         if let ty::InstanceDef::DropGlue(..) = *self {
-            // Drop glue wants to be instantiated at every translation
+            // Drop glue wants to be instantiated at every codegen
             // unit, but without an #[inline] hint. We should make this
             // available to normal end-users.
             return true
         }
-        let trans_fn_attrs = tcx.trans_fn_attrs(self.def_id());
-        trans_fn_attrs.requests_inline() || tcx.is_const_fn(self.def_id())
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(self.def_id());
+        codegen_fn_attrs.requests_inline() || tcx.is_const_fn(self.def_id())
     }
 }
 
@@ -145,7 +144,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>)
                -> Instance<'tcx> {
         assert!(!substs.has_escaping_regions(),
-                "substs of instance {:?} not normalized for trans: {:?}",
+                "substs of instance {:?} not normalized for codegen: {:?}",
                 def_id, substs);
         Instance { def: InstanceDef::Item(def_id), substs: substs }
     }
@@ -175,7 +174,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     /// `RevealMode` in the parameter environment.)
     ///
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
-    /// in a monomorphic context (i.e., like during trans), then it is guaranteed to return
+    /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
     /// `Some`.
     pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: ty::ParamEnv<'tcx>,
@@ -259,7 +258,7 @@ fn resolve_associated_item<'a, 'tcx>(
            def_id, trait_id, rcvr_substs);
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.trans_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)));
+    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)));
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -270,10 +269,10 @@ fn resolve_associated_item<'a, 'tcx>(
             let substs = tcx.erase_regions(&substs);
             Some(ty::Instance::new(def_id, substs))
         }
-        traits::VtableGenerator(closure_data) => {
+        traits::VtableGenerator(generator_data) => {
             Some(Instance {
-                def: ty::InstanceDef::Item(closure_data.closure_def_id),
-                substs: closure_data.substs.substs
+                def: ty::InstanceDef::Item(generator_data.generator_def_id),
+                substs: generator_data.substs.substs
             })
         }
         traits::VtableClosure(closure_data) => {
@@ -321,7 +320,7 @@ fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
             }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
             // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
-            // `fn(&mut self, ...)`. In fact, at trans time, these are
+            // `fn(&mut self, ...)`. In fact, at codegen time, these are
             // basically the same thing, so we can just return llfn.
             Ok(false)
         }
@@ -334,7 +333,7 @@ fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
                 //     fn call_once(self, ...) { call_mut(&self, ...) }
                 //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
                 //
-                // These are both the same at trans time.
+                // These are both the same at codegen time.
                 Ok(true)
         }
         (ty::ClosureKind::FnMut, _) |
@@ -356,13 +355,12 @@ fn fn_once_adapter_instance<'a, 'tcx>(
         .unwrap().def_id;
     let def = ty::InstanceDef::ClosureOnceShim { call_once };
 
-    let self_ty = tcx.mk_closure_from_closure_substs(
-        closure_did, substs);
+    let self_ty = tcx.mk_closure(closure_did, substs);
 
     let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     assert_eq!(sig.inputs().len(), 1);
-    let substs = tcx.mk_substs([Kind::from(self_ty), sig.inputs()[0].into()].iter().cloned());
+    let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }

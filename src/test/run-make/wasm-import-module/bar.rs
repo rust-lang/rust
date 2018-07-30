@@ -9,12 +9,11 @@
 // except according to those terms.
 
 #![crate_type = "cdylib"]
-#![feature(wasm_import_module)]
 #![deny(warnings)]
 
 extern crate foo;
 
-#[wasm_import_module = "./me"]
+#[link(wasm_import_module = "./me")]
 extern {
     #[link_name = "me_in_dep"]
     fn dep();

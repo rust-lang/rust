@@ -46,6 +46,7 @@ fn main() {
         deps::check(&path, &mut bad);
     }
     deps::check_whitelist(&path, &cargo, &mut bad);
+    extdeps::check(&path, &mut bad);
     ui_tests::check(&path, &mut bad);
 
     if bad {

@@ -14,9 +14,11 @@
 
 #![feature(lang_items)]
 
-#[lang = "panic_fmt"]
-fn panic_fmt() -> ! {
-//~^ ERROR: duplicate lang item found: `panic_fmt`.
+use std::panic::PanicInfo;
+
+#[lang = "panic_impl"]
+fn panic_impl(info: &PanicInfo) -> ! {
+//~^ ERROR: duplicate lang item found: `panic_impl`.
     loop {}
 }
 

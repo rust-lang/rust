@@ -68,9 +68,15 @@ enum EnumSingle5 {
     A = 42 as u8,
 }
 
-enum NicheFilledEnumWithInhabitedVariant {
+enum EnumWithMaybeUninhabitedVariant<T> {
     A(&'static ()),
-    B(&'static (), !),
+    B(&'static (), T),
+    C,
+}
+
+enum NicheFilledEnumWithAbsentVariant {
+    A(&'static ()),
+    B((), !),
     C,
 }
 
@@ -107,5 +113,10 @@ pub fn main() {
     assert_eq!(size_of::<EnumSingle4>(), 1);
     assert_eq!(size_of::<EnumSingle5>(), 1);
 
-    assert_eq!(size_of::<NicheFilledEnumWithInhabitedVariant>(), size_of::<&'static ()>());
+    assert_eq!(size_of::<EnumWithMaybeUninhabitedVariant<!>>(),
+               size_of::<EnumWithMaybeUninhabitedVariant<()>>());
+    assert_eq!(size_of::<NicheFilledEnumWithAbsentVariant>(), size_of::<&'static ()>());
+
+    assert_eq!(size_of::<Option<Option<(bool, &())>>>(), size_of::<(bool, &())>());
+    assert_eq!(size_of::<Option<Option<(&(), bool)>>>(), size_of::<(bool, &())>());
 }

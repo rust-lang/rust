@@ -20,7 +20,7 @@
 #![rustc_partition_reused(module="main", cfg="rpass2")]
 #![rustc_partition_reused(module="main-some_mod", cfg="rpass2")]
 #![rustc_partition_reused(module="main", cfg="rpass3")]
-#![rustc_partition_translated(module="main-some_mod", cfg="rpass3")]
+#![rustc_partition_codegened(module="main-some_mod", cfg="rpass3")]
 
 extern crate extern_crate;
 

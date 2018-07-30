@@ -18,7 +18,7 @@ use syntax::tokenstream;
 pub fn expand_compile_error<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[tokenstream::TokenTree])
-                              -> Box<base::MacResult + 'cx> {
+                              -> Box<dyn base::MacResult + 'cx> {
     let var = match get_single_str_from_tts(cx, sp, tts, "compile_error!") {
         None => return DummyResult::expr(sp),
         Some(v) => v,

@@ -31,11 +31,11 @@ pub fn test() {
 // CHECK: [[S__4:%[0-9]+]] = bitcast { i32, i32 }* %_4 to i8*
 // CHECK: call void @llvm.lifetime.start{{.*}}(i{{[0-9 ]+}}, i8* [[S__4]])
 
-// CHECK: [[E_b:%[0-9]+]] = bitcast { i32, i32 }** %b to i8*
-// CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, i8* [[E_b]])
-
 // CHECK: [[E__4:%[0-9]+]] = bitcast { i32, i32 }* %_4 to i8*
 // CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, i8* [[E__4]])
+
+// CHECK: [[E_b:%[0-9]+]] = bitcast { i32, i32 }** %b to i8*
+// CHECK: call void @llvm.lifetime.end{{.*}}(i{{[0-9 ]+}}, i8* [[E_b]])
     }
 
     let c = 1;

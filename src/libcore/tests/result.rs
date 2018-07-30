@@ -81,7 +81,7 @@ fn test_collect() {
     assert!(v == Err(2));
 
     // test that it does not take more elements than it needs
-    let mut functions: [Box<Fn() -> Result<(), isize>>; 3] =
+    let mut functions: [Box<dyn Fn() -> Result<(), isize>>; 3] =
         [box || Ok(()), box || Err(1), box || panic!()];
 
     let v: Result<Vec<()>, isize> = functions.iter_mut().map(|f| (*f)()).collect();
@@ -220,13 +220,15 @@ fn test_try() {
     assert_eq!(try_result_none(), None);
 
     fn try_result_ok() -> Result<u8, u8> {
-        let val = Ok(1)?;
+        let result: Result<u8, u8> = Ok(1);
+        let val = result?;
         Ok(val)
     }
     assert_eq!(try_result_ok(), Ok(1));
 
     fn try_result_err() -> Result<u8, u8> {
-        let val = Err(1)?;
+        let result: Result<u8, u8> = Err(1);
+        let val = result?;
         Ok(val)
     }
     assert_eq!(try_result_err(), Err(1));

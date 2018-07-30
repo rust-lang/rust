@@ -30,9 +30,7 @@ use syntax_pos::Span;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
-use std::iter;
-use std::mem;
-use std::usize;
+use std::{iter, mem, usize};
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -150,6 +148,7 @@ pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> IndexVec<Local, T
 }
 
 struct Promoter<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: &'a mut Mir<'tcx>,
     promoted: Mir<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
@@ -167,7 +166,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             terminator: Some(Terminator {
                 source_info: SourceInfo {
                     span,
-                    scope: ARGUMENT_VISIBILITY_SCOPE
+                    scope: OUTERMOST_SOURCE_SCOPE
                 },
                 kind: TerminatorKind::Return
             }),
@@ -181,7 +180,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         data.statements.push(Statement {
             source_info: SourceInfo {
                 span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
             kind: StatementKind::Assign(Place::Local(dest), rvalue)
         });
@@ -288,39 +287,64 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn promote_candidate(mut self, candidate: Candidate) {
-        let span = self.promoted.span;
-        let new_operand = Operand::Constant(box Constant {
-            span,
-            ty: self.promoted.return_ty(),
-            literal: Literal::Promoted {
-                index: Promoted::new(self.source.promoted.len())
-            }
-        });
-        let mut rvalue = match candidate {
-            Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                let ref mut statement = self.source[bb].statements[stmt_idx];
-                match statement.kind {
-                    StatementKind::Assign(_, ref mut rvalue) => {
-                        mem::replace(rvalue, Rvalue::Use(new_operand))
+        let mut operand = {
+            let promoted = &mut self.promoted;
+            let promoted_id = Promoted::new(self.source.promoted.len());
+            let mut promoted_place = |ty, span| {
+                promoted.span = span;
+                promoted.local_decls[RETURN_PLACE] =
+                    LocalDecl::new_return_place(ty, span);
+                Place::Promoted(box (promoted_id, ty))
+            };
+            let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
+            match candidate {
+                Candidate::Ref(loc) => {
+                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    match statement.kind {
+                        StatementKind::Assign(_, Rvalue::Ref(_, _, ref mut place)) => {
+                            // Find the underlying local for this (necessarilly interior) borrow.
+                            // HACK(eddyb) using a recursive function because of mutable borrows.
+                            fn interior_base<'a, 'tcx>(place: &'a mut Place<'tcx>)
+                                                       -> &'a mut Place<'tcx> {
+                                if let Place::Projection(ref mut proj) = *place {
+                                    assert_ne!(proj.elem, ProjectionElem::Deref);
+                                    return interior_base(&mut proj.base);
+                                }
+                                place
+                            }
+                            let place = interior_base(place);
+
+                            let ty = place.ty(local_decls, self.tcx).to_ty(self.tcx);
+                            let span = statement.source_info.span;
+
+                            Operand::Move(mem::replace(place, promoted_place(ty, span)))
+                        }
+                        _ => bug!()
                     }
-                    _ => bug!()
                 }
-            }
-            Candidate::Argument { bb, index } => {
-                match self.source[bb].terminator_mut().kind {
-                    TerminatorKind::Call { ref mut args, .. } => {
-                        Rvalue::Use(mem::replace(&mut args[index], new_operand))
+                Candidate::Argument { bb, index } => {
+                    let terminator = blocks[bb].terminator_mut();
+                    match terminator.kind {
+                        TerminatorKind::Call { ref mut args, .. } => {
+                            let ty = args[index].ty(local_decls, self.tcx);
+                            let span = terminator.source_info.span;
+                            let operand = Operand::Copy(promoted_place(ty, span));
+                            mem::replace(&mut args[index], operand)
+                        }
+                        _ => bug!()
                     }
-                    _ => bug!()
                 }
             }
         };
-        self.visit_rvalue(&mut rvalue, Location {
+
+        assert_eq!(self.new_block(), START_BLOCK);
+        self.visit_operand(&mut operand, Location {
             block: BasicBlock::new(0),
             statement_index: usize::MAX
         });
 
-        self.assign(RETURN_PLACE, rvalue, span);
+        let span = self.promoted.span;
+        self.assign(RETURN_PLACE, Rvalue::Use(operand), span);
         self.source.promoted.push(self.promoted);
     }
 }
@@ -343,63 +367,48 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                                     candidates: Vec<Candidate>) {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
-    for candidate in candidates.into_iter().rev() {
-        let (span, ty) = match candidate {
-            Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                let statement = &mir[bb].statements[stmt_idx];
-                let dest = match statement.kind {
-                    StatementKind::Assign(ref dest, _) => dest,
-                    _ => {
-                        span_bug!(statement.source_info.span,
-                                  "expected assignment to promote");
-                    }
-                };
-                if let Place::Local(index) = *dest {
-                    if temps[index] == TempState::PromotedOut {
-                        // Already promoted.
-                        continue;
-                    }
-                }
-                (statement.source_info.span, dest.ty(mir, tcx).to_ty(tcx))
-            }
-            Candidate::Argument { bb, index } => {
-                let terminator = mir[bb].terminator();
-                let ty = match terminator.kind {
-                    TerminatorKind::Call { ref args, .. } => {
-                        args[index].ty(mir, tcx)
-                    }
-                    _ => {
-                        span_bug!(terminator.source_info.span,
-                                  "expected call argument to promote");
-                    }
-                };
-                (terminator.source_info.span, ty)
-            }
-        };
 
-        // Declare return place local
-        let initial_locals = iter::once(LocalDecl::new_return_place(ty, span))
-            .collect();
+    for candidate in candidates.into_iter().rev() {
+        match candidate {
+            Candidate::Ref(Location { block, statement_index }) => {
+                match mir[block].statements[statement_index].kind {
+                    StatementKind::Assign(Place::Local(local), _) => {
+                        if temps[local] == TempState::PromotedOut {
+                            // Already promoted.
+                            continue;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Candidate::Argument { .. } => {}
+        }
+
+
+        // Declare return place local so that `Mir::new` doesn't complain.
+        let initial_locals = iter::once(
+            LocalDecl::new_return_place(tcx.types.never, mir.span)
+        ).collect();
 
         let mut promoter = Promoter {
             promoted: Mir::new(
                 IndexVec::new(),
                 // FIXME: maybe try to filter this to avoid blowing up
                 // memory usage?
-                mir.visibility_scopes.clone(),
-                mir.visibility_scope_info.clone(),
+                mir.source_scopes.clone(),
+                mir.source_scope_local_data.clone(),
                 IndexVec::new(),
                 None,
                 initial_locals,
                 0,
                 vec![],
-                span
+                mir.span
             ),
+            tcx,
             source: mir,
             temps: &mut temps,
             keep_original: false
         };
-        assert_eq!(promoter.new_block(), START_BLOCK);
         promoter.promote_candidate(candidate);
     }
 

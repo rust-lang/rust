@@ -303,6 +303,19 @@ def default_build_triple():
     return "{}-{}".format(cputype, ostype)
 
 
+@contextlib.contextmanager
+def output(filepath):
+    tmp = filepath + '.tmp'
+    with open(tmp, 'w') as f:
+        yield f
+    try:
+        os.remove(filepath)  # PermissionError/OSError on Win32 if in use
+        os.rename(tmp, filepath)
+    except OSError:
+        shutil.copy2(tmp, filepath)
+        os.remove(tmp)
+
+
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
@@ -346,7 +359,7 @@ class RustBuild(object):
             self._download_stage0_helper(filename, "rustc")
             self.fix_executable("{}/bin/rustc".format(self.bin_root()))
             self.fix_executable("{}/bin/rustdoc".format(self.bin_root()))
-            with open(self.rustc_stamp(), 'w') as rust_stamp:
+            with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(self.date)
 
             # This is required so that we don't mix incompatible MinGW
@@ -363,7 +376,7 @@ class RustBuild(object):
             filename = "cargo-{}-{}.tar.gz".format(cargo_channel, self.build)
             self._download_stage0_helper(filename, "cargo")
             self.fix_executable("{}/bin/cargo".format(self.bin_root()))
-            with open(self.cargo_stamp(), 'w') as cargo_stamp:
+            with output(self.cargo_stamp()) as cargo_stamp:
                 cargo_stamp.write(self.date)
 
     def _download_stage0_helper(self, filename, pattern):
@@ -489,7 +502,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, self.build, "stage0")
 
-    def get_toml(self, key):
+    def get_toml(self, key, section=None):
         """Returns the value of the given key in config.toml, otherwise returns None
 
         >>> rb = RustBuild()
@@ -501,12 +514,29 @@ class RustBuild(object):
 
         >>> rb.get_toml("key3") is None
         True
+
+        Optionally also matches the section the key appears in
+
+        >>> rb.config_toml = '[a]\\nkey = "value1"\\n[b]\\nkey = "value2"'
+        >>> rb.get_toml('key', 'a')
+        'value1'
+        >>> rb.get_toml('key', 'b')
+        'value2'
+        >>> rb.get_toml('key', 'c') is None
+        True
         """
+
+        cur_section = None
         for line in self.config_toml.splitlines():
+            section_match = re.match(r'^\s*\[(.*)\]\s*$', line)
+            if section_match is not None:
+                cur_section = section_match.group(1)
+
             match = re.match(r'^{}\s*=(.*)$'.format(key), line)
             if match is not None:
                 value = match.group(1)
-                return self.get_string(value) or value.strip()
+                if section is None or section == cur_section:
+                    return self.get_string(value) or value.strip()
         return None
 
     def cargo(self):
@@ -589,7 +619,17 @@ class RustBuild(object):
         env["LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
-        env["RUSTFLAGS"] = "-Cdebuginfo=2"
+        env["RUSTFLAGS"] = "-Cdebuginfo=2 "
+
+        build_section = "target.{}".format(self.build_triple())
+        target_features = []
+        if self.get_toml("crt-static", build_section) == "true":
+            target_features += ["+crt-static"]
+        elif self.get_toml("crt-static", build_section) == "false":
+            target_features += ["-crt-static"]
+        if target_features:
+            env["RUSTFLAGS"] += "-C target-feature=" + (",".join(target_features)) + " "
+
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
@@ -749,7 +789,7 @@ def bootstrap(help_triggered):
     if build.use_vendored_sources:
         if not os.path.exists('.cargo'):
             os.makedirs('.cargo')
-        with open('.cargo/config', 'w') as cargo_config:
+        with output('.cargo/config') as cargo_config:
             cargo_config.write("""
                 [source.crates-io]
                 replace-with = 'vendored-sources'
@@ -788,6 +828,9 @@ def bootstrap(help_triggered):
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
     env["BUILD_DIR"] = build.build_dir
+    env["RUSTC_BOOTSTRAP"] = '1'
+    env["CARGO"] = build.cargo()
+    env["RUSTC"] = build.rustc()
     run(args, env=env, verbose=build.verbose)
 
 

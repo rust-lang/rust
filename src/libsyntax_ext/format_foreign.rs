@@ -12,9 +12,9 @@ pub mod printf {
     use super::strcursor::StrCursor as Cur;
 
     /// Represents a single `printf`-style substitution.
-    #[derive(Clone, Eq, PartialEq, Debug)]
+    #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {
-        /// A formatted output substitution.
+        /// A formatted output substitution with its internal byte offset.
         Format(Format<'a>),
         /// A literal `%%` escape.
         Escape,
@@ -28,6 +28,23 @@ pub mod printf {
             }
         }
 
+        pub fn position(&self) -> Option<(usize, usize)> {
+            match *self {
+                Substitution::Format(ref fmt) => Some(fmt.position),
+                _ => None,
+            }
+        }
+
+        pub fn set_position(&mut self, start: usize, end: usize) {
+            match self {
+                Substitution::Format(ref mut fmt) => {
+                    fmt.position = (start, end);
+                }
+                _ => {}
+            }
+        }
+
+
         /// Translate this substitution into an equivalent Rust formatting directive.
         ///
         /// This ignores cases where the substitution does not have an exact equivalent, or where
@@ -40,7 +57,7 @@ pub mod printf {
         }
     }
 
-    #[derive(Clone, Eq, PartialEq, Debug)]
+    #[derive(Clone, PartialEq, Debug)]
     /// A single `printf`-style formatting directive.
     pub struct Format<'a> {
         /// The entire original formatting directive.
@@ -57,6 +74,8 @@ pub mod printf {
         pub length: Option<&'a str>,
         /// Type of parameter being converted.
         pub type_: &'a str,
+        /// Byte offset for the start and end of this formatting directive.
+        pub position: (usize, usize),
     }
 
     impl<'a> Format<'a> {
@@ -213,7 +232,7 @@ pub mod printf {
     }
 
     /// A general number used in a `printf` formatting directive.
-    #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+    #[derive(Copy, Clone, PartialEq, Debug)]
     pub enum Num {
         // The range of these values is technically bounded by `NL_ARGMAX`... but, at least for GNU
         // libc, it apparently has no real fixed limit.  A `u16` is used here on the basis that it
@@ -232,11 +251,11 @@ pub mod printf {
     impl Num {
         fn from_str(s: &str, arg: Option<&str>) -> Self {
             if let Some(arg) = arg {
-                Num::Arg(arg.parse().expect(&format!("invalid format arg `{:?}`", arg)))
+                Num::Arg(arg.parse().unwrap_or_else(|_| panic!("invalid format arg `{:?}`", arg)))
             } else if s == "*" {
                 Num::Next
             } else {
-                Num::Num(s.parse().expect(&format!("invalid format num `{:?}`", s)))
+                Num::Num(s.parse().unwrap_or_else(|_| panic!("invalid format num `{:?}`", s)))
             }
         }
 
@@ -257,19 +276,28 @@ pub mod printf {
     pub fn iter_subs(s: &str) -> Substitutions {
         Substitutions {
             s,
+            pos: 0,
         }
     }
 
     /// Iterator over substitutions in a string.
     pub struct Substitutions<'a> {
         s: &'a str,
+        pos: usize,
     }
 
     impl<'a> Iterator for Substitutions<'a> {
         type Item = Substitution<'a>;
         fn next(&mut self) -> Option<Self::Item> {
-            let (sub, tail) = parse_next_substitution(self.s)?;
+            let (mut sub, tail) = parse_next_substitution(self.s)?;
             self.s = tail;
+            match sub {
+                Substitution::Format(_) => if let Some((start, end)) = sub.position() {
+                    sub.set_position(start + self.pos, end + self.pos);
+                    self.pos += end;
+                }
+                Substitution::Escape => self.pos += 2,
+            }
             Some(sub)
         }
 
@@ -301,7 +329,7 @@ pub mod printf {
                 _ => {/* fall-through */},
             }
 
-            Cur::new_at_start(&s[start..])
+            Cur::new_at(&s[..], start)
         };
 
         // This is meant to be a translation of the following regex:
@@ -355,6 +383,7 @@ pub mod printf {
                     precision: None,
                     length: None,
                     type_: at.slice_between(next).unwrap(),
+                    position: (start.at, next.at),
                 }),
                 next.slice_after()
             ));
@@ -374,7 +403,7 @@ pub mod printf {
 
         if let Start = state {
             match c {
-                '1'...'9' => {
+                '1'..='9' => {
                     let end = at_next_cp_while(next, is_digit);
                     match end.next_cp() {
                         // Yes, this *is* the parameter.
@@ -416,7 +445,7 @@ pub mod printf {
                     state = WidthArg;
                     move_to!(next);
                 },
-                '1' ... '9' => {
+                '1' ..= '9' => {
                     let end = at_next_cp_while(next, is_digit);
                     state = Prec;
                     width = Some(Num::from_str(at.slice_between(end).unwrap(), None));
@@ -477,7 +506,7 @@ pub mod printf {
                         }
                     }
                 },
-                '0' ... '9' => {
+                '0' ..= '9' => {
                     let end = at_next_cp_while(next, is_digit);
                     state = Length;
                     precision = Some(Num::from_str(at.slice_between(end).unwrap(), None));
@@ -541,6 +570,7 @@ pub mod printf {
         drop(next);
 
         end = at;
+        let position = (start.at, end.at);
 
         let f = Format {
             span: start.slice_between(end).unwrap(),
@@ -550,6 +580,7 @@ pub mod printf {
             precision,
             length,
             type_,
+            position,
         };
         Some((Substitution::Format(f), end.slice_after()))
     }
@@ -570,7 +601,7 @@ pub mod printf {
 
     fn is_digit(c: char) -> bool {
         match c {
-            '0' ... '9' => true,
+            '0' ..= '9' => true,
             _ => false
         }
     }
@@ -616,6 +647,7 @@ pub mod printf {
                 ($in_:expr, {
                     $param:expr, $flags:expr,
                     $width:expr, $prec:expr, $len:expr, $type_:expr,
+                    $pos:expr,
                 }) => {
                     assert_eq!(
                         pns(concat!($in_, "!")),
@@ -628,6 +660,7 @@ pub mod printf {
                                 precision: $prec,
                                 length: $len,
                                 type_: $type_,
+                                position: $pos,
                             }),
                             "!"
                         ))
@@ -636,53 +669,53 @@ pub mod printf {
             }
 
             assert_pns_eq_sub!("%!",
-                { None, "", None, None, None, "!", });
+                { None, "", None, None, None, "!", (0, 2), });
             assert_pns_eq_sub!("%c",
-                { None, "", None, None, None, "c", });
+                { None, "", None, None, None, "c", (0, 2), });
             assert_pns_eq_sub!("%s",
-                { None, "", None, None, None, "s", });
+                { None, "", None, None, None, "s", (0, 2), });
             assert_pns_eq_sub!("%06d",
-                { None, "0", Some(N::Num(6)), None, None, "d", });
+                { None, "0", Some(N::Num(6)), None, None, "d", (0, 4), });
             assert_pns_eq_sub!("%4.2f",
-                { None, "", Some(N::Num(4)), Some(N::Num(2)), None, "f", });
+                { None, "", Some(N::Num(4)), Some(N::Num(2)), None, "f", (0, 5), });
             assert_pns_eq_sub!("%#x",
-                { None, "#", None, None, None, "x", });
+                { None, "#", None, None, None, "x", (0, 3), });
             assert_pns_eq_sub!("%-10s",
-                { None, "-", Some(N::Num(10)), None, None, "s", });
+                { None, "-", Some(N::Num(10)), None, None, "s", (0, 5), });
             assert_pns_eq_sub!("%*s",
-                { None, "", Some(N::Next), None, None, "s", });
+                { None, "", Some(N::Next), None, None, "s", (0, 3), });
             assert_pns_eq_sub!("%-10.*s",
-                { None, "-", Some(N::Num(10)), Some(N::Next), None, "s", });
+                { None, "-", Some(N::Num(10)), Some(N::Next), None, "s", (0, 7), });
             assert_pns_eq_sub!("%-*.*s",
-                { None, "-", Some(N::Next), Some(N::Next), None, "s", });
+                { None, "-", Some(N::Next), Some(N::Next), None, "s", (0, 6), });
             assert_pns_eq_sub!("%.6i",
-                { None, "", None, Some(N::Num(6)), None, "i", });
+                { None, "", None, Some(N::Num(6)), None, "i", (0, 4), });
             assert_pns_eq_sub!("%+i",
-                { None, "+", None, None, None, "i", });
+                { None, "+", None, None, None, "i", (0, 3), });
             assert_pns_eq_sub!("%08X",
-                { None, "0", Some(N::Num(8)), None, None, "X", });
+                { None, "0", Some(N::Num(8)), None, None, "X", (0, 4), });
             assert_pns_eq_sub!("%lu",
-                { None, "", None, None, Some("l"), "u", });
+                { None, "", None, None, Some("l"), "u", (0, 3), });
             assert_pns_eq_sub!("%Iu",
-                { None, "", None, None, Some("I"), "u", });
+                { None, "", None, None, Some("I"), "u", (0, 3), });
             assert_pns_eq_sub!("%I32u",
-                { None, "", None, None, Some("I32"), "u", });
+                { None, "", None, None, Some("I32"), "u", (0, 5), });
             assert_pns_eq_sub!("%I64u",
-                { None, "", None, None, Some("I64"), "u", });
+                { None, "", None, None, Some("I64"), "u", (0, 5), });
             assert_pns_eq_sub!("%'d",
-                { None, "'", None, None, None, "d", });
+                { None, "'", None, None, None, "d", (0, 3), });
             assert_pns_eq_sub!("%10s",
-                { None, "", Some(N::Num(10)), None, None, "s", });
+                { None, "", Some(N::Num(10)), None, None, "s", (0, 4), });
             assert_pns_eq_sub!("%-10.10s",
-                { None, "-", Some(N::Num(10)), Some(N::Num(10)), None, "s", });
+                { None, "-", Some(N::Num(10)), Some(N::Num(10)), None, "s", (0, 8), });
             assert_pns_eq_sub!("%1$d",
-                { Some(1), "", None, None, None, "d", });
+                { Some(1), "", None, None, None, "d", (0, 4), });
             assert_pns_eq_sub!("%2$.*3$d",
-                { Some(2), "", None, Some(N::Arg(3)), None, "d", });
+                { Some(2), "", None, Some(N::Arg(3)), None, "d", (0, 8), });
             assert_pns_eq_sub!("%1$*2$.*3$d",
-                { Some(1), "", Some(N::Arg(2)), Some(N::Arg(3)), None, "d", });
+                { Some(1), "", Some(N::Arg(2)), Some(N::Arg(3)), None, "d", (0, 11), });
             assert_pns_eq_sub!("%-8ld",
-                { None, "-", Some(N::Num(8)), None, Some("l"), "d", });
+                { None, "-", Some(N::Num(8)), None, Some("l"), "d", (0, 5), });
         }
 
         #[test]
@@ -697,7 +730,7 @@ pub mod printf {
 
         /// Check that the translations are what we expect.
         #[test]
-        fn test_trans() {
+        fn test_translation() {
             assert_eq_pnsat!("%c", Some("{}"));
             assert_eq_pnsat!("%d", Some("{}"));
             assert_eq_pnsat!("%u", Some("{}"));
@@ -739,7 +772,7 @@ pub mod printf {
 pub mod shell {
     use super::strcursor::StrCursor as Cur;
 
-    #[derive(Clone, Eq, PartialEq, Debug)]
+    #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {
         Ordinal(u8),
         Name(&'a str),
@@ -752,6 +785,12 @@ pub mod shell {
                 Substitution::Ordinal(n) => format!("${}", n),
                 Substitution::Name(n) => format!("${}", n),
                 Substitution::Escape => "$$".into(),
+            }
+        }
+
+        pub fn position(&self) -> Option<(usize, usize)> {
+            match *self {
+                _ => None,
             }
         }
 
@@ -799,7 +838,7 @@ pub mod shell {
             let start = s.find('$')?;
             match s[start+1..].chars().next()? {
                 '$' => return Some((Substitution::Escape, &s[start+2..])),
-                c @ '0' ... '9' => {
+                c @ '0' ..= '9' => {
                     let n = (c as u8) - b'0';
                     return Some((Substitution::Ordinal(n), &s[start+2..]));
                 },
@@ -836,14 +875,14 @@ pub mod shell {
 
     fn is_ident_head(c: char) -> bool {
         match c {
-            'a' ... 'z' | 'A' ... 'Z' | '_' => true,
+            'a' ..= 'z' | 'A' ..= 'Z' | '_' => true,
             _ => false
         }
     }
 
     fn is_ident_tail(c: char) -> bool {
         match c {
-            '0' ... '9' => true,
+            '0' ..= '9' => true,
             c => is_ident_head(c)
         }
     }
@@ -900,7 +939,7 @@ pub mod shell {
         }
 
         #[test]
-        fn test_trans() {
+        fn test_translation() {
             assert_eq_pnsat!("$0", Some("{0}"));
             assert_eq_pnsat!("$9", Some("{9}"));
             assert_eq_pnsat!("$1", Some("{1}"));
@@ -918,7 +957,7 @@ mod strcursor {
 
     pub struct StrCursor<'a> {
         s: &'a str,
-        at: usize,
+        pub at: usize,
     }
 
     impl<'a> StrCursor<'a> {
@@ -926,6 +965,13 @@ mod strcursor {
             StrCursor {
                 s,
                 at: 0,
+            }
+        }
+
+        pub fn new_at(s: &'a str, at: usize) -> StrCursor<'a> {
+            StrCursor {
+                s,
+                at,
             }
         }
 
@@ -989,7 +1035,7 @@ mod strcursor {
     }
 
     impl<'a> std::fmt::Debug for StrCursor<'a> {
-        fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
             write!(fmt, "StrCursor({:?} | {:?})", self.slice_before(), self.slice_after())
         }
     }

@@ -21,7 +21,7 @@ pub fn foo(input: TokenStream) -> TokenStream {
     input
 }
 
-#[proc_macro_derive(A)] //~ ERROR: derive mode defined twice in this crate
+#[proc_macro_derive(A)] //~ ERROR the name `A` is defined multiple times
 pub fn bar(input: TokenStream) -> TokenStream {
     input
 }

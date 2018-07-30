@@ -9,103 +9,14 @@
 // except according to those terms.
 
 //! Exposes the NonZero lang item which provides optimization hints.
-#![unstable(feature = "nonzero", reason = "deprecated", issue = "49137")]
-#![rustc_deprecated(reason = "use `std::ptr::NonNull` or `std::num::NonZero*` instead",
-                    since = "1.26.0")]
-#![allow(deprecated)]
 
 use ops::CoerceUnsized;
-
-/// Unsafe trait to indicate what types are usable with the NonZero struct
-pub unsafe trait Zeroable {
-    /// Whether this value is zero
-    fn is_zero(&self) -> bool;
-}
-
-macro_rules! impl_zeroable_for_pointer_types {
-    ( $( $Ptr: ty )+ ) => {
-        $(
-            /// For fat pointers to be considered "zero", only the "data" part needs to be null.
-            unsafe impl<T: ?Sized> Zeroable for $Ptr {
-                #[inline]
-                fn is_zero(&self) -> bool {
-                    (*self).is_null()
-                }
-            }
-        )+
-    }
-}
-
-macro_rules! impl_zeroable_for_integer_types {
-    ( $( $Int: ty )+ ) => {
-        $(
-            unsafe impl Zeroable for $Int {
-                #[inline]
-                fn is_zero(&self) -> bool {
-                    *self == 0
-                }
-            }
-        )+
-    }
-}
-
-impl_zeroable_for_pointer_types! {
-    *const T
-    *mut T
-}
-
-impl_zeroable_for_integer_types! {
-    usize u8 u16 u32 u64 u128
-    isize i8 i16 i32 i64 i128
-}
 
 /// A wrapper type for raw pointers and integers that will never be
 /// NULL or 0 that might allow certain optimizations.
 #[lang = "non_zero"]
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct NonZero<T: Zeroable>(pub(crate) T);
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[repr(transparent)]
+pub(crate) struct NonZero<T>(pub(crate) T);
 
-impl<T: Zeroable> NonZero<T> {
-    /// Creates an instance of NonZero with the provided value.
-    /// You must indeed ensure that the value is actually "non-zero".
-    #[inline]
-    pub const unsafe fn new_unchecked(inner: T) -> Self {
-        NonZero(inner)
-    }
-
-    /// Creates an instance of NonZero with the provided value.
-    #[inline]
-    pub fn new(inner: T) -> Option<Self> {
-        if inner.is_zero() {
-            None
-        } else {
-            Some(NonZero(inner))
-        }
-    }
-
-    /// Gets the inner value.
-    pub fn get(self) -> T {
-        self.0
-    }
-}
-
-impl<T: Zeroable+CoerceUnsized<U>, U: Zeroable> CoerceUnsized<NonZero<U>> for NonZero<T> {}
-
-impl<'a, T: ?Sized> From<&'a mut T> for NonZero<*mut T> {
-    fn from(reference: &'a mut T) -> Self {
-        NonZero(reference)
-    }
-}
-
-impl<'a, T: ?Sized> From<&'a mut T> for NonZero<*const T> {
-    fn from(reference: &'a mut T) -> Self {
-        let ptr: *mut T = reference;
-        NonZero(ptr)
-    }
-}
-
-impl<'a, T: ?Sized> From<&'a T> for NonZero<*const T> {
-    fn from(reference: &'a T) -> Self {
-        NonZero(reference)
-    }
-}
+impl<T: CoerceUnsized<U>, U> CoerceUnsized<NonZero<U>> for NonZero<T> {}

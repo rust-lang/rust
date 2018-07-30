@@ -207,7 +207,7 @@ let string = "salutations !";
 // The ordering relation for strings can't be evaluated at compile time,
 // so this doesn't work:
 match string {
-    "hello" ... "world" => {}
+    "hello" ..= "world" => {}
     _ => {}
 }
 
@@ -1179,7 +1179,7 @@ extern "rust-intrinsic" {
 ```
 
 Please check you didn't make a mistake in the function's name. All intrinsic
-functions are defined in librustc_trans/trans/intrinsic.rs and in
+functions are defined in librustc_codegen_llvm/intrinsic.rs and in
 libcore/intrinsics.rs in the Rust source code. Example:
 
 ```
@@ -1209,7 +1209,7 @@ fn main() {
 ```
 
 Please check you didn't make a mistake in the function's name. All intrinsic
-functions are defined in librustc_trans/trans/intrinsic.rs and in
+functions are defined in librustc_codegen_llvm/intrinsic.rs and in
 libcore/intrinsics.rs in the Rust source code. Example:
 
 ```
@@ -1501,12 +1501,12 @@ struct Foo {
 "##,
 
 E0131: r##"
-It is not possible to define `main` with type parameters, or even with function
-parameters. When `main` is present, it must take no arguments and return `()`.
+It is not possible to define `main` with generic parameters.
+When `main` is present, it must take no arguments and return `()`.
 Erroneous code example:
 
 ```compile_fail,E0131
-fn main<T>() { // error: main function is not allowed to have type parameters
+fn main<T>() { // error: main function is not allowed to have generic parameters
 }
 ```
 "##,
@@ -2146,7 +2146,7 @@ fn main() -> i32 { 0 }
 
 let x = 1u8;
 match x {
-    0u8...3i8 => (),
+    0u8..=3i8 => (),
     // error: mismatched types in range: expected u8, found i8
     _ => ()
 }
@@ -2189,7 +2189,7 @@ as the type you're matching on. Example:
 let x = 1u8;
 
 match x {
-    0u8...3u8 => (), // ok!
+    0u8..=3u8 => (), // ok!
     _ => ()
 }
 ```
@@ -2338,7 +2338,7 @@ Rust does not currently support this. A simple example that causes this error:
 
 ```compile_fail,E0225
 fn main() {
-    let _: Box<std::io::Read + std::io::Write>;
+    let _: Box<dyn std::io::Read + std::io::Write>;
 }
 ```
 
@@ -2348,7 +2348,7 @@ auto traits. For example, the following compiles correctly:
 
 ```
 fn main() {
-    let _: Box<std::io::Read + Send + Sync>;
+    let _: Box<dyn std::io::Read + Send + Sync>;
 }
 ```
 "##,
@@ -3709,7 +3709,7 @@ The `export_name` attribute was malformed.
 Erroneous code example:
 
 ```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
-#[export_name] // error: export_name attribute has invalid format
+#[export_name] // error: `export_name` attribute has invalid format
 pub fn something() {}
 
 fn main() {}
@@ -4519,6 +4519,41 @@ impl Foo for () {
 ```
 "##,
 
+E0646: r##"
+It is not possible to define `main` with a where clause.
+Erroneous code example:
+
+```compile_fail,E0646
+fn main() where i32: Copy { // error: main function is not allowed to have
+                            // a where clause
+}
+```
+"##,
+
+E0647: r##"
+It is not possible to define `start` with a where clause.
+Erroneous code example:
+
+```compile_fail,E0647
+#![feature(start)]
+
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize where (): Copy {
+    //^ error: start function is not allowed to have a where clause
+    0
+}
+```
+"##,
+
+E0648: r##"
+`export_name` attributes may not contain null characters (`\0`).
+
+```compile_fail,E0648
+#[export_name="\0foo"] // error: `export_name` may not contain null characters
+pub fn bar() {}
+```
+"##,
+
 E0689: r##"
 This error indicates that the numeric value for the method being passed exists
 but the type of the numeric value or binding could not be identified.
@@ -4526,23 +4561,25 @@ but the type of the numeric value or binding could not be identified.
 The error happens on numeric literals:
 
 ```compile_fail,E0689
-2.0.recip();
+2.0.neg();
 ```
 
 and on numeric bindings without an identified concrete type:
 
 ```compile_fail,E0689
 let x = 2.0;
-x.recip();  // same error as above
+x.neg();  // same error as above
 ```
 
 Because of this, you must give the numeric literal or binding a type:
 
 ```
-let _ = 2.0_f32.recip();
+use std::ops::Neg;
+
+let _ = 2.0_f32.neg();
 let x: f32 = 2.0;
-let _ = x.recip();
-let _ = (2.0 as f32).recip();
+let _ = x.neg();
+let _ = (2.0 as f32).neg();
 ```
 "##,
 
@@ -4553,8 +4590,6 @@ on fields that were not guaranteed to be zero-sized.
 Erroneous code example:
 
 ```compile_fail,E0690
-#![feature(repr_transparent)]
-
 #[repr(transparent)]
 struct LengthWithUnit<U> { // error: transparent struct needs exactly one
     value: f32,            //        non-zero-sized field, but has 2
@@ -4574,8 +4609,6 @@ To combine `repr(transparent)` with type parameters, `PhantomData` may be
 useful:
 
 ```
-#![feature(repr_transparent)]
-
 use std::marker::PhantomData;
 
 #[repr(transparent)]
@@ -4593,7 +4626,7 @@ field that requires non-trivial alignment.
 Erroneous code example:
 
 ```compile_fail,E0691
-#![feature(repr_transparent, repr_align, attr_literals)]
+#![feature(repr_align, attr_literals)]
 
 #[repr(align(32))]
 struct ForceAlign32;
@@ -4612,8 +4645,6 @@ requirement.
 Consider removing the over-aligned zero-sized field:
 
 ```
-#![feature(repr_transparent)]
-
 #[repr(transparent)]
 struct Wrapper(f32);
 ```
@@ -4622,7 +4653,7 @@ Alternatively, `PhantomData<T>` has alignment 1 for all `T`, so you can use it
 if you need to keep the field for some reason:
 
 ```
-#![feature(repr_transparent, repr_align, attr_literals)]
+#![feature(repr_align, attr_literals)]
 
 use std::marker::PhantomData;
 
@@ -4640,7 +4671,7 @@ alignment.
 "##,
 
 
-E0908: r##"
+E0699: r##"
 A method was called on a raw pointer whose inner type wasn't completely known.
 
 For example, you may have done something like:
@@ -4769,5 +4800,5 @@ register_diagnostics! {
     E0640, // infer outlives requirements
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
-    E0907, // type inside generator must be known in this context
+    E0698, // type inside generator must be known in this context
 }

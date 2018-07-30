@@ -32,7 +32,7 @@ pub struct Page<'a> {
 }
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
-    dst: &mut io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
+    dst: &mut dyn io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
     css_file_extension: bool, themes: &[PathBuf])
     -> io::Result<()>
 {
@@ -194,7 +194,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     )
 }
 
-pub fn redirect(dst: &mut io::Write, url: &str) -> io::Result<()> {
+pub fn redirect(dst: &mut dyn io::Write, url: &str) -> io::Result<()> {
     // <script> triggers a redirect before refresh, so this is fine.
     write!(dst,
 r##"<!DOCTYPE html>

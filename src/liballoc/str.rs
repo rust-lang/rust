@@ -10,6 +10,8 @@
 
 //! Unicode string slices.
 //!
+//! *[See also the `str` primitive type](../../std/primitive.str.html).*
+//!
 //! The `&str` type is one of the two main string types, the other being `String`.
 //! Unlike its `String` counterpart, its contents are borrowed.
 //!
@@ -29,8 +31,6 @@
 //! ```
 //! let hello_world: &'static str = "Hello, world!";
 //! ```
-//!
-//! *[See also the `str` primitive type](../../std/primitive.str.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -40,19 +40,18 @@
 
 use core::fmt;
 use core::str as core_str;
-#[cfg(stage0)] use core::str::StrExt;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::ptr;
 use core::iter::FusedIterator;
+use core::unicode::conversions;
 
 use borrow::{Borrow, ToOwned};
 use boxed::Box;
 use slice::{SliceConcatExt, SliceIndex};
 use string::String;
 use vec::Vec;
-use vec_deque::VecDeque;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{FromStr, Utf8Error};
@@ -79,6 +78,8 @@ pub use core::str::SplitWhitespace;
 pub use core::str::pattern;
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
+#[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+pub use core::str::SplitAsciiWhitespace;
 
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
@@ -87,52 +88,108 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     type Output = String;
 
     fn concat(&self) -> String {
-        if self.is_empty() {
-            return String::new();
-        }
-
-        // `len` calculation may overflow but push_str will check boundaries
-        let len = self.iter().map(|s| s.borrow().len()).sum();
-        let mut result = String::with_capacity(len);
-
-        for s in self {
-            result.push_str(s.borrow())
-        }
-
-        result
+        self.join("")
     }
 
     fn join(&self, sep: &str) -> String {
-        if self.is_empty() {
-            return String::new();
+        unsafe {
+            String::from_utf8_unchecked( join_generic_copy(self, sep.as_bytes()) )
         }
-
-        // concat is faster
-        if sep.is_empty() {
-            return self.concat();
-        }
-
-        // this is wrong without the guarantee that `self` is non-empty
-        // `len` calculation may overflow but push_str but will check boundaries
-        let len = sep.len() * (self.len() - 1) +
-                  self.iter().map(|s| s.borrow().len()).sum::<usize>();
-        let mut result = String::with_capacity(len);
-        let mut first = true;
-
-        for s in self {
-            if first {
-                first = false;
-            } else {
-                result.push_str(sep);
-            }
-            result.push_str(s.borrow());
-        }
-        result
     }
 
     fn connect(&self, sep: &str) -> String {
         self.join(sep)
     }
+}
+
+macro_rules! spezialize_for_lengths {
+    ($separator:expr, $target:expr, $iter:expr; $($num:expr),*) => {
+        let mut target = $target;
+        let iter = $iter;
+        let sep_bytes = $separator;
+        match $separator.len() {
+            $(
+                // loops with hardcoded sizes run much faster
+                // specialize the cases with small separator lengths
+                $num => {
+                    for s in iter {
+                        copy_slice_and_advance!(target, sep_bytes);
+                        copy_slice_and_advance!(target, s.borrow().as_ref());
+                    }
+                },
+            )*
+            _ => {
+                // arbitrary non-zero size fallback
+                for s in iter {
+                    copy_slice_and_advance!(target, sep_bytes);
+                    copy_slice_and_advance!(target, s.borrow().as_ref());
+                }
+            }
+        }
+    };
+}
+
+macro_rules! copy_slice_and_advance {
+    ($target:expr, $bytes:expr) => {
+        let len = $bytes.len();
+        let (head, tail) = {$target}.split_at_mut(len);
+        head.copy_from_slice($bytes);
+        $target = tail;
+    }
+}
+
+// Optimized join implementation that works for both Vec<T> (T: Copy) and String's inner vec
+// Currently (2018-05-13) there is a bug with type inference and specialization (see issue #36262)
+// For this reason SliceConcatExt<T> is not specialized for T: Copy and SliceConcatExt<str> is the
+// only user of this function. It is left in place for the time when that is fixed.
+//
+// the bounds for String-join are S: Borrow<str> and for Vec-join Borrow<[T]>
+// [T] and str both impl AsRef<[T]> for some T
+// => s.borrow().as_ref() and we always have slices
+fn join_generic_copy<B, T, S>(slice: &[S], sep: &[T]) -> Vec<T>
+where
+    T: Copy,
+    B: AsRef<[T]> + ?Sized,
+    S: Borrow<B>,
+{
+    let sep_len = sep.len();
+    let mut iter = slice.iter();
+
+    // the first slice is the only one without a separator preceding it
+    let first = match iter.next() {
+        Some(first) => first,
+        None => return vec![],
+    };
+
+    // compute the exact total length of the joined Vec
+    // if the `len` calculation overflows, we'll panic
+    // we would have run out of memory anyway and the rest of the function requires
+    // the entire Vec pre-allocated for safety
+    let len =  sep_len.checked_mul(iter.len()).and_then(|n| {
+            slice.iter()
+                .map(|s| s.borrow().as_ref().len())
+                .try_fold(n, usize::checked_add)
+        }).expect("attempt to join into collection with len > usize::MAX");
+
+    // crucial for safety
+    let mut result = Vec::with_capacity(len);
+    assert!(result.capacity() >= len);
+
+    result.extend_from_slice(first.borrow().as_ref());
+
+    unsafe {
+        {
+            let pos = result.len();
+            let target = result.get_unchecked_mut(pos..len);
+
+            // copy separator and slices over without bounds checks
+            // generate loops with hardcoded offsets for small separators
+            // massive improvements possible (~ x2)
+            spezialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
+        }
+        result.set_len(len);
+    }
+    result
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -158,13 +215,9 @@ impl ToOwned for str {
 }
 
 /// Methods for string slices.
-#[cfg_attr(stage0, lang = "str")]
-#[cfg_attr(not(stage0), lang = "str_alloc")]
+#[lang = "str_alloc"]
 #[cfg(not(test))]
 impl str {
-    #[cfg(stage0)]
-    str_core_methods!();
-
     /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
     ///
     /// # Examples
@@ -207,18 +260,19 @@ impl str {
     /// let s = "this is old";
     /// assert_eq!(s, s.replace("cookie monster", "little lamb"));
     /// ```
-    #[must_use]
+    #[must_use = "this returns the replaced string as a new allocation, \
+                  without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
-            result.push_str(unsafe { self.slice_unchecked(last_end, start) });
+            result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
-        result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
+        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
 
@@ -247,18 +301,19 @@ impl str {
     /// let s = "this is old";
     /// assert_eq!(s, s.replacen("cookie monster", "little lamb", 10));
     /// ```
-    #[must_use]
+    #[must_use = "this returns the replaced string as a new allocation, \
+                  without modifying the original"]
     #[stable(feature = "str_replacen", since = "1.16.0")]
     pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {
         // Hope to reduce the times of re-allocation
         let mut result = String::with_capacity(32);
         let mut last_end = 0;
         for (start, part) in self.match_indices(pat).take(count) {
-            result.push_str(unsafe { self.slice_unchecked(last_end, start) });
+            result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
-        result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
+        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
 
@@ -315,7 +370,18 @@ impl str {
                 // See https://github.com/rust-lang/rust/issues/26035
                 map_uppercase_sigma(self, i, &mut s)
             } else {
-                s.extend(c.to_lowercase());
+                match conversions::to_lower(c) {
+                    [a, '\0', _] => s.push(a),
+                    [a, b, '\0'] => {
+                        s.push(a);
+                        s.push(b);
+                    }
+                    [a, b, c] => {
+                        s.push(a);
+                        s.push(b);
+                        s.push(c);
+                    }
+                }
             }
         }
         return s;
@@ -369,18 +435,40 @@ impl str {
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
-        s.extend(self.chars().flat_map(|c| c.to_uppercase()));
+        for c in self[..].chars() {
+            match conversions::to_upper(c) {
+                [a, '\0', _] => s.push(a),
+                [a, b, '\0'] => {
+                    s.push(a);
+                    s.push(b);
+                }
+                [a, b, c] => {
+                    s.push(a);
+                    s.push(b);
+                    s.push(c);
+                }
+            }
+        }
         return s;
     }
 
     /// Escapes each char in `s` with [`char::escape_debug`].
+    ///
+    /// Note: only extended grapheme codepoints that begin the string will be
+    /// escaped.
     ///
     /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
     pub fn escape_debug(&self) -> String {
-        self.chars().flat_map(|c| c.escape_debug()).collect()
+        let mut string = String::with_capacity(self.len());
+        let mut chars = self.chars();
+        if let Some(first) = chars.next() {
+            string.extend(first.escape_debug_ext(true))
+        }
+        string.extend(chars.flat_map(|c| c.escape_debug_ext(false)));
+        string
     }
 
     /// Escapes each char in `s` with [`char::escape_default`].

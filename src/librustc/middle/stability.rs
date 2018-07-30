@@ -20,7 +20,7 @@ use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use session::DiagnosticMessageId;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
@@ -165,7 +165,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                         &attr::Stable {since: stab_since}) = (&stab.rustc_depr, &stab.level) {
                     // Explicit version of iter::order::lt to handle parse errors properly
                     for (dep_v, stab_v) in
-                            dep_since.as_str().split(".").zip(stab_since.as_str().split(".")) {
+                            dep_since.as_str().split('.').zip(stab_since.as_str().split('.')) {
                         if let (Ok(dep_v), Ok(stab_v)) = (dep_v.parse::<u64>(), stab_v.parse()) {
                             match dep_v.cmp(&stab_v) {
                                 Ordering::Less => {
@@ -263,14 +263,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemImpl(.., None, _, _) | hir::ItemForeignMod(..) => {
+            hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {
                 self.in_trait_impl = false;
                 kind = AnnotationKind::Container;
             }
-            hir::ItemImpl(.., Some(_), _, _) => {
+            hir::ItemKind::Impl(.., Some(_), _, _) => {
                 self.in_trait_impl = true;
             }
-            hir::ItemStruct(ref sd, _) => {
+            hir::ItemKind::Struct(ref sd, _) => {
                 if !sd.is_struct() {
                     self.annotate(sd.id(), &i.attrs, i.span, AnnotationKind::Required, |_| {})
                 }
@@ -353,7 +353,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemImpl(.., None, _, _) | hir::ItemForeignMod(..) => {}
+            hir::ItemKind::Impl(.., None, _, _) | hir::ItemKind::ForeignMod(..) => {}
 
             _ => self.check_missing_stability(i.id, i.span)
         }
@@ -614,10 +614,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         debug!("stability: \
                 inspecting def_id={:?} span={:?} of stability={:?}", def_id, span, stability);
 
-        if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, .. }), ..})
+        if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, since }), ..})
                 = stability {
             if let Some(id) = id {
-                lint_deprecated(def_id, id, Some(reason));
+                if deprecation_in_effect(&since.as_str()) {
+                    lint_deprecated(def_id, id, Some(reason));
+                }
             }
         }
 
@@ -685,7 +687,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let msp: MultiSpan = span.into();
                 let cm = &self.sess.parse_sess.codemap();
                 let span_key = msp.primary_span().and_then(|sp: Span|
-                    if sp != DUMMY_SP {
+                    if !sp.is_dummy() {
                         let file = cm.lookup_char_pos(sp.lo()).file;
                         if file.name.is_macros() {
                             None
@@ -721,9 +723,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            hir::ItemExternCrate(_) => {
+            hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
-                if item.span == DUMMY_SP { return }
+                if item.span.is_dummy() { return }
 
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 let cnum = match self.tcx.extern_mod_stmt_cnum(def_id) {
@@ -737,12 +739,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemImpl(.., Some(ref t), _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., Some(ref t), _, ref impl_item_refs) => {
                 if let Def::Trait(trait_did) = t.path.def {
                     for impl_item_ref in impl_item_refs {
                         let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
                         let trait_item_def_id = self.tcx.associated_items(trait_did)
-                            .find(|item| item.name == impl_item.name).map(|item| item.def_id);
+                            .find(|item| item.ident.name == impl_item.ident.name)
+                            .map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
                             // Pass `None` to skip deprecation warnings.
                             self.tcx.check_stability(def_id, None, impl_item.span);
@@ -753,7 +756,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
             // There's no good place to insert stability check for non-Copy unions,
             // so semi-randomly perform it here in stability.rs
-            hir::ItemUnion(..) if !self.tcx.features().untagged_unions => {
+            hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 let adt_def = self.tcx.adt_def(def_id);
                 let ty = self.tcx.type_of(def_id);
@@ -764,7 +767,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                      "unions with `Drop` implementations are unstable");
                 } else {
                     let param_env = self.tcx.param_env(def_id);
-                    if !param_env.can_type_implement_copy(self.tcx, ty, item.span).is_ok() {
+                    if !param_env.can_type_implement_copy(self.tcx, ty).is_ok() {
                         emit_feature_err(&self.tcx.sess.parse_sess,
                                         "untagged_unions", item.span, GateIssue::Language,
                                         "unions with non-`Copy` fields are unstable");

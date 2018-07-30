@@ -17,7 +17,6 @@ use std::collections::HashMap;
 use std::ffi::CString;
 use std::fmt::Debug;
 use std::hash::{Hash, BuildHasher};
-use std::iter::repeat;
 use std::panic;
 use std::env;
 use std::path::Path;
@@ -219,7 +218,7 @@ fn print_time_passes_entry_internal(what: &str, dur: Duration) {
         None => "".to_owned(),
     };
     println!("{}time: {}{}\t{}",
-             repeat("  ").take(indentation).collect::<String>(),
+             "  ".repeat(indentation),
              duration_to_secs_str(dur),
              mem_string,
              what);
@@ -243,7 +242,7 @@ pub fn to_readable_str(mut val: usize) -> String {
         val /= 1000;
 
         if val == 0 {
-            groups.push(format!("{}", group));
+            groups.push(group.to_string());
             break;
         } else {
             groups.push(format!("{:03}", group));

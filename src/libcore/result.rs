@@ -251,7 +251,7 @@ use ops::{self, Deref};
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Err`]: enum.Result.html#variant.Err
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-#[must_use]
+#[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Result<T, E> {
     /// Contains the success value

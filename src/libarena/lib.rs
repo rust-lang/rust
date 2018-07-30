@@ -26,7 +26,7 @@
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![cfg_attr(stage0, feature(generic_param_attrs))]
+#![feature(raw_vec_internals)]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]
@@ -315,8 +315,7 @@ impl DroplessArena {
         false
     }
 
-    fn align_for<T>(&self) {
-        let align = mem::align_of::<T>();
+    fn align(&self, align: usize) {
         let final_address = ((self.ptr.get() as usize) + align - 1) & !(align - 1);
         self.ptr.set(final_address as *mut u8);
         assert!(self.ptr <= self.end);
@@ -324,8 +323,7 @@ impl DroplessArena {
 
     #[inline(never)]
     #[cold]
-    fn grow<T>(&self, n: usize) {
-        let needed_bytes = n * mem::size_of::<T>();
+    fn grow(&self, needed_bytes: usize) {
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
             let (chunk, mut new_capacity);
@@ -357,25 +355,38 @@ impl DroplessArena {
     }
 
     #[inline]
-    pub fn alloc<T>(&self, object: T) -> &mut T {
+    pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
         unsafe {
-            assert!(!mem::needs_drop::<T>());
-            assert!(mem::size_of::<T>() != 0);
+            assert!(bytes != 0);
 
-            self.align_for::<T>();
-            let future_end = intrinsics::arith_offset(self.ptr.get(), mem::size_of::<T>() as isize);
+            self.align(align);
+
+            let future_end = intrinsics::arith_offset(self.ptr.get(), bytes as isize);
             if (future_end as *mut u8) >= self.end.get() {
-                self.grow::<T>(1)
+                self.grow(bytes);
             }
 
             let ptr = self.ptr.get();
             // Set the pointer past ourselves
             self.ptr.set(
-                intrinsics::arith_offset(self.ptr.get(), mem::size_of::<T>() as isize) as *mut u8,
+                intrinsics::arith_offset(self.ptr.get(), bytes as isize) as *mut u8,
             );
+            slice::from_raw_parts_mut(ptr, bytes)
+        }
+    }
+
+    #[inline]
+    pub fn alloc<T>(&self, object: T) -> &mut T {
+        assert!(!mem::needs_drop::<T>());
+
+        let mem = self.alloc_raw(
+            mem::size_of::<T>(),
+            mem::align_of::<T>()) as *mut _ as *mut T;
+
+        unsafe {
             // Write into uninitialized memory.
-            ptr::write(ptr as *mut T, object);
-            &mut *(ptr as *mut T)
+            ptr::write(mem, object);
+            &mut *mem
         }
     }
 
@@ -394,21 +405,13 @@ impl DroplessArena {
         assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
         assert!(slice.len() != 0);
-        self.align_for::<T>();
 
-        let future_end = unsafe {
-            intrinsics::arith_offset(self.ptr.get(), (slice.len() * mem::size_of::<T>()) as isize)
-        };
-        if (future_end as *mut u8) >= self.end.get() {
-            self.grow::<T>(slice.len());
-        }
+        let mem = self.alloc_raw(
+            slice.len() * mem::size_of::<T>(),
+            mem::align_of::<T>()) as *mut _ as *mut T;
 
         unsafe {
-            let arena_slice = slice::from_raw_parts_mut(self.ptr.get() as *mut T, slice.len());
-            self.ptr.set(intrinsics::arith_offset(
-                self.ptr.get(),
-                (slice.len() * mem::size_of::<T>()) as isize,
-            ) as *mut u8);
+            let arena_slice = slice::from_raw_parts_mut(mem, slice.len());
             arena_slice.copy_from_slice(slice);
             arena_slice
         }
@@ -463,6 +466,12 @@ impl SyncDroplessArena {
     #[inline(always)]
     pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
         self.lock.lock().in_arena(ptr)
+    }
+
+    #[inline(always)]
+    pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
+        // Extend the lifetime of the result since it's limited to the lock guard
+        unsafe { &mut *(self.lock.lock().alloc_raw(bytes, align) as *mut [u8]) }
     }
 
     #[inline(always)]

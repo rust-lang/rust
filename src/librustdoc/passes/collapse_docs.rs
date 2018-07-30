@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use clean::{self, DocFragment, Item};
-use plugins;
 use fold;
 use fold::DocFolder;
 use std::mem::replace;
@@ -31,7 +30,7 @@ impl DocFragment {
     }
 }
 
-pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
+pub fn collapse_docs(krate: clean::Crate) -> clean::Crate {
     Collapser.fold_crate(krate)
 }
 

@@ -1,38 +1,55 @@
-warning: attempt to subtract with overflow
-  --> $DIR/issue-43197.rs:20:20
-   |
-LL |     const X: u32 = 0-1;
-   |                    ^^^
-   |
-   = note: #[warn(const_err)] on by default
-
 warning: this constant cannot be used
   --> $DIR/issue-43197.rs:20:5
    |
 LL |     const X: u32 = 0-1;
-   |     ^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
-
-warning: attempt to subtract with overflow
-  --> $DIR/issue-43197.rs:23:24
+   |     ^^^^^^^^^^^^^^^---^
+   |                    |
+   |                    attempt to subtract with overflow
    |
-LL |     const Y: u32 = foo(0-1);
-   |                        ^^^
+note: lint level defined here
+  --> $DIR/issue-43197.rs:11:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
 
 warning: this constant cannot be used
-  --> $DIR/issue-43197.rs:23:5
+  --> $DIR/issue-43197.rs:22:5
    |
 LL |     const Y: u32 = foo(0-1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
+   |     ^^^^^^^^^^^^^^^^^^^---^^
+   |                        |
+   |                        attempt to subtract with overflow
 
-warning: constant evaluation error
-  --> $DIR/issue-43197.rs:26:23
+error[E0080]: referenced constant has errors
+  --> $DIR/issue-43197.rs:24:26
    |
+LL |     const Y: u32 = foo(0-1);
+   |                        --- attempt to subtract with overflow
+LL |     //~^ WARN this constant cannot be used
 LL |     println!("{} {}", X, Y);
-   |                       ^ referenced constant has errors
+   |                          ^
 
-warning: constant evaluation error
-  --> $DIR/issue-43197.rs:26:26
+error[E0080]: erroneous constant used
+  --> $DIR/issue-43197.rs:24:26
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
+error[E0080]: referenced constant has errors
+  --> $DIR/issue-43197.rs:24:23
+   |
+LL |     const X: u32 = 0-1;
+   |                    --- attempt to subtract with overflow
+...
+LL |     println!("{} {}", X, Y);
+   |                       ^
+
+error[E0080]: erroneous constant used
+  --> $DIR/issue-43197.rs:24:23
+   |
+LL |     println!("{} {}", X, Y);
+   |                       ^ referenced constant has errors
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

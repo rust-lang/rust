@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(unknown_features)] //~ WARN lint unknown_features has been renamed to unused_features
+#[deny(unknown_features)] //~ WARN lint `unknown_features` has been renamed to `unused_features`
 #[deny(unused)]
 fn main() { let unused = (); } //~ ERROR unused

@@ -34,9 +34,10 @@ pub fn target() -> TargetResult {
             linker: Some("msp430-elf-gcc".to_string()),
             no_integrated_as: true,
 
-            // There are no atomic instructions available in the MSP430
+            // There are no atomic CAS instructions available in the MSP430
             // instruction set
-            max_atomic_width: Some(0),
+            max_atomic_width: Some(16),
+            atomic_cas: false,
 
             // Because these devices have very little resources having an
             // unwinder is too onerous so we default to "abort" because the

@@ -20,10 +20,10 @@ pub fn payload() -> *mut u8 {
     0 as *mut u8
 }
 
-pub unsafe fn cleanup(_ptr: *mut u8) -> Box<Any + Send> {
+pub unsafe fn cleanup(_ptr: *mut u8) -> Box<dyn Any + Send> {
     intrinsics::abort()
 }
 
-pub unsafe fn panic(_data: Box<Any + Send>) -> u32 {
+pub unsafe fn panic(_data: Box<dyn Any + Send>) -> u32 {
     intrinsics::abort()
 }

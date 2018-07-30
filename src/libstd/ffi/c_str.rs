@@ -682,6 +682,14 @@ impl Borrow<CStr> for CString {
     fn borrow(&self) -> &CStr { self }
 }
 
+#[stable(feature = "cstring_from_cow_cstr", since = "1.28.0")]
+impl<'a> From<Cow<'a, CStr>> for CString {
+    #[inline]
+    fn from(s: Cow<'a, CStr>) -> Self {
+        s.into_owned()
+    }
+}
+
 #[stable(feature = "box_from_c_str", since = "1.17.0")]
 impl<'a> From<&'a CStr> for Box<CStr> {
     fn from(s: &'a CStr) -> Box<CStr> {
@@ -698,11 +706,43 @@ impl From<Box<CStr>> for CString {
     }
 }
 
+#[stable(feature = "more_box_slice_clone", since = "1.29.0")]
+impl Clone for Box<CStr> {
+    #[inline]
+    fn clone(&self) -> Self {
+        (**self).into()
+    }
+}
+
 #[stable(feature = "box_from_c_string", since = "1.20.0")]
 impl From<CString> for Box<CStr> {
     #[inline]
     fn from(s: CString) -> Box<CStr> {
         s.into_boxed_c_str()
+    }
+}
+
+#[stable(feature = "cow_from_cstr", since = "1.28.0")]
+impl<'a> From<CString> for Cow<'a, CStr> {
+    #[inline]
+    fn from(s: CString) -> Cow<'a, CStr> {
+        Cow::Owned(s)
+    }
+}
+
+#[stable(feature = "cow_from_cstr", since = "1.28.0")]
+impl<'a> From<&'a CStr> for Cow<'a, CStr> {
+    #[inline]
+    fn from(s: &'a CStr) -> Cow<'a, CStr> {
+        Cow::Borrowed(s)
+    }
+}
+
+#[stable(feature = "cow_from_cstr", since = "1.28.0")]
+impl<'a> From<&'a CString> for Cow<'a, CStr> {
+    #[inline]
+    fn from(s: &'a CString) -> Cow<'a, CStr> {
+        Cow::Borrowed(s.as_c_str())
     }
 }
 
@@ -851,7 +891,7 @@ impl Error for IntoStringError {
         "C string contained non-utf8 bytes"
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         Some(&self.error)
     }
 }

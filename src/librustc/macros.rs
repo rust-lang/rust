@@ -64,15 +64,16 @@ macro_rules! span_bug {
 
 #[macro_export]
 macro_rules! __impl_stable_hash_field {
-    (DECL IGNORED) => (_);
-    (DECL $name:ident) => (ref $name);
-    (USE IGNORED $ctx:expr, $hasher:expr) => ({});
-    (USE $name:ident, $ctx:expr, $hasher:expr) => ($name.hash_stable($ctx, $hasher));
+    ($field:ident, $ctx:expr, $hasher:expr) => ($field.hash_stable($ctx, $hasher));
+    ($field:ident, $ctx:expr, $hasher:expr, _) => ({ let _ = $field; });
+    ($field:ident, $ctx:expr, $hasher:expr, $delegate:expr) => ($delegate.hash_stable($ctx, $hasher));
 }
 
 #[macro_export]
 macro_rules! impl_stable_hash_for {
-    (enum $enum_name:path { $( $variant:ident $( ( $($arg:ident),* ) )* ),* $(,)* }) => {
+    // FIXME(mark-i-m): Some of these should be `?` rather than `*`. See the git blame and change
+    // them back when `?` is supported again.
+    (enum $enum_name:path { $( $variant:ident $( ( $($field:ident $(-> $delegate:tt)*),* ) )* ),* $(,)* }) => {
         impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $enum_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
@@ -83,15 +84,16 @@ macro_rules! impl_stable_hash_for {
 
                 match *self {
                     $(
-                        $variant $( ( $( __impl_stable_hash_field!(DECL $arg) ),* ) )* => {
-                            $($( __impl_stable_hash_field!(USE $arg, __ctx, __hasher) );*)*
+                        $variant $( ( $(ref $field),* ) )* => {
+                            $($( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*)*
                         }
                     )*
                 }
             }
         }
     };
-    (struct $struct_name:path { $($field:ident),* }) => {
+    // FIXME(mark-i-m): same here.
+    (struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
         impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
@@ -101,11 +103,12 @@ macro_rules! impl_stable_hash_for {
                     $(ref $field),*
                 } = *self;
 
-                $( $field.hash_stable(__ctx, __hasher));*
+                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
             }
         }
     };
-    (tuple_struct $struct_name:path { $($field:ident),* }) => {
+    // FIXME(mark-i-m): same here.
+    (tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
         impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
@@ -115,7 +118,7 @@ macro_rules! impl_stable_hash_for {
                     $(ref $field),*
                 ) = *self;
 
-                $( $field.hash_stable(__ctx, __hasher));*
+                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
             }
         }
     };
@@ -250,10 +253,7 @@ macro_rules! BraceStructLiftImpl {
 macro_rules! EnumLiftImpl {
     (impl<$($p:tt),*> Lift<$tcx:tt> for $s:path {
         type Lifted = $lifted:ty;
-        $(
-            ($variant:path) ( $( $variant_arg:ident),* )
-        ),*
-        $(,)*
+        $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
         impl<$($p),*> $crate::ty::Lift<$tcx> for $s
             $(where $($wc)*)*
@@ -261,13 +261,43 @@ macro_rules! EnumLiftImpl {
             type Lifted = $lifted;
 
             fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<$lifted> {
-                match self {
-                    $($variant ( $($variant_arg),* ) => {
-                        Some($variant ( $(tcx.lift($variant_arg)?),* ))
-                    })*
-                }
+                EnumLiftImpl!(@Variants(self, tcx) input($($variants)*) output())
             }
         }
+    };
+
+    (@Variants($this:expr, $tcx:expr) input() output($($output:tt)*)) => {
+        match $this {
+            $($output)*
+        }
+    };
+
+    (@Variants($this:expr, $tcx:expr)
+     input( ($variant:path) ( $($variant_arg:ident),* ) , $($input:tt)*)
+     output( $($output:tt)*) ) => {
+        EnumLiftImpl!(
+            @Variants($this, $tcx)
+                input($($input)*)
+                output(
+                    $variant ( $($variant_arg),* ) => {
+                        Some($variant ( $($tcx.lift($variant_arg)?),* ))
+                    }
+                    $($output)*
+                )
+        )
+    };
+
+    (@Variants($this:expr, $tcx:expr)
+     input( ($variant:path), $($input:tt)*)
+     output( $($output:tt)*) ) => {
+        EnumLiftImpl!(
+            @Variants($this, $tcx)
+                input($($input)*)
+                output(
+                    $variant => { Some($variant) }
+                    $($output)*
+                )
+        )
     };
 }
 

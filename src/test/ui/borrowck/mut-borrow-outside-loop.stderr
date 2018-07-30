@@ -10,12 +10,13 @@ LL | }
    | - first borrow ends here
 
 error[E0499]: cannot borrow `inner_void` as mutable more than once at a time
-  --> $DIR/mut-borrow-outside-loop.rs:23:33
+  --> $DIR/mut-borrow-outside-loop.rs:25:33
    |
 LL |         let inner_first = &mut inner_void;
    |                                ---------- first mutable borrow occurs here
 LL |         let inner_second = &mut inner_void; //~ ERROR cannot borrow
    |                                 ^^^^^^^^^^ second mutable borrow occurs here
+...
 LL |     }
    |     - first borrow ends here
 

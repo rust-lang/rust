@@ -18,34 +18,12 @@
 //
 // This test focuses on non-error cases and making sure the correct number of repetitions happen.
 
+// compile-flags: --edition=2018
+
 #![feature(macro_at_most_once_rep)]
 
 macro_rules! foo {
     ($($a:ident)? ; $num:expr) => { {
-        let mut x = 0;
-
-        $(
-            x += $a;
-         )?
-
-        assert_eq!(x, $num);
-    } }
-}
-
-macro_rules! barplus {
-    ($($a:ident)?+ ; $num:expr) => { {
-        let mut x = 0;
-
-        $(
-            x += $a;
-         )?
-
-        assert_eq!(x, $num);
-    } }
-}
-
-macro_rules! barstar {
-    ($($a:ident)?* ; $num:expr) => { {
         let mut x = 0;
 
         $(
@@ -62,10 +40,4 @@ pub fn main() {
     // accept 0 or 1 repetitions
     foo!( ; 0);
     foo!(a ; 1);
-
-    // Make sure using ? as a separator works as before
-    barplus!(+ ; 0);
-    barplus!(a + ; 1);
-    barstar!(* ; 0);
-    barstar!(a * ; 1);
 }

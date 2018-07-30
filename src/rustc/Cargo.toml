@@ -4,7 +4,7 @@ name = "rustc-main"
 version = "0.0.0"
 
 [[bin]]
-name = "rustc"
+name = "rustc_binary"
 path = "rustc.rs"
 
 [dependencies]

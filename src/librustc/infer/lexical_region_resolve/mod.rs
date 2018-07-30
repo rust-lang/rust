@@ -20,7 +20,7 @@ use infer::region_constraints::VerifyBound;
 use middle::free_region::RegionRelations;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
+use rustc_data_structures::graph::implementation::{Graph, Direction, NodeIndex, INCOMING, OUTGOING};
 use std::fmt;
 use std::u32;
 use ty::{self, TyCtxt};
@@ -99,7 +99,7 @@ struct RegionAndOrigin<'tcx> {
     origin: SubregionOrigin<'tcx>,
 }
 
-type RegionGraph<'tcx> = graph::Graph<(), Constraint<'tcx>>;
+type RegionGraph<'tcx> = Graph<(), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     region_rels: &'cx RegionRelations<'cx, 'gcx, 'tcx>,
@@ -501,7 +501,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     fn construct_graph(&self) -> RegionGraph<'tcx> {
         let num_vars = self.num_vars();
 
-        let mut graph = graph::Graph::new();
+        let mut graph = Graph::new();
 
         for _ in 0..num_vars {
             graph.add_node(());
@@ -550,9 +550,9 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
         let (mut lower_bounds, lower_dup) =
-            self.collect_concrete_regions(graph, node_idx, graph::INCOMING, dup_vec);
+            self.collect_concrete_regions(graph, node_idx, INCOMING, dup_vec);
         let (mut upper_bounds, upper_dup) =
-            self.collect_concrete_regions(graph, node_idx, graph::OUTGOING, dup_vec);
+            self.collect_concrete_regions(graph, node_idx, OUTGOING, dup_vec);
 
         if lower_dup || upper_dup {
             return;

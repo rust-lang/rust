@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/ex3-both-anon-regions-2.rs:12:9
+  --> $DIR/ex3-both-anon-regions-2.rs:12:10
    |
-LL |     v = x; //~ ERROR lifetime mismatch
-   |         ^
+LL |     *v = x; //~ ERROR lifetime mismatch
+   |          ^
 
-error[E0384]: cannot assign twice to immutable variable `v`
+error[E0623]: lifetime mismatch
   --> $DIR/ex3-both-anon-regions-2.rs:12:5
    |
-LL | fn foo((v, w): (&u8, &u8), x: &u8) {
-   |         - first assignment to `v`
-LL |     v = x; //~ ERROR lifetime mismatch
-   |     ^^^^^ cannot assign twice to immutable variable
+LL | fn foo(&mut (ref mut v, w): &mut (&u8, &u8), x: &u8) {
+   |                                   ---           --- these two types are declared with different lifetimes...
+LL |     *v = x; //~ ERROR lifetime mismatch
+   |     ^^^^^^ ...but data from `x` flows here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0384`.
+For more information about this error, try `rustc --explain E0623`.

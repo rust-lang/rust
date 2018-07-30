@@ -16,7 +16,7 @@
 // whether `_1: MyCopy` or `_1 == Box<i32>`.  However (and this is the
 // point of the test), we don't have to pick between the two impls --
 // it is enough to know that `foo` comes from the `Foo` trait. We can
-// translate the call as `Foo::foo(&x)` and let the specific impl get
+// codegen the call as `Foo::foo(&x)` and let the specific impl get
 // chosen later.
 
 

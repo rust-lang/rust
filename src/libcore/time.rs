@@ -21,6 +21,7 @@
 //! assert_eq!(Duration::new(5, 0), Duration::from_secs(5));
 //! ```
 
+use fmt;
 use iter::Sum;
 use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
@@ -59,7 +60,7 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 /// let ten_millis = Duration::from_millis(10);
 /// ```
 #[stable(feature = "duration", since = "1.3.0")]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Duration {
     secs: u64,
     nanos: u32, // Always 0 <= nanos < NANOS_PER_SEC
@@ -203,10 +204,11 @@ impl Duration {
     ///
     /// [`subsec_nanos`]: #method.subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
+    #[rustc_const_unstable(feature="duration_getters")]
     #[inline]
-    pub fn as_secs(&self) -> u64 { self.secs }
+    pub const fn as_secs(&self) -> u64 { self.secs }
 
-    /// Returns the fractional part of this `Duration`, in milliseconds.
+    /// Returns the fractional part of this `Duration`, in whole milliseconds.
     ///
     /// This method does **not** return the length of the duration when
     /// represented by milliseconds. The returned number always represents a
@@ -222,10 +224,11 @@ impl Duration {
     /// assert_eq!(duration.subsec_millis(), 432);
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
+    #[rustc_const_unstable(feature="duration_getters")]
     #[inline]
-    pub fn subsec_millis(&self) -> u32 { self.nanos / NANOS_PER_MILLI }
+    pub const fn subsec_millis(&self) -> u32 { self.nanos / NANOS_PER_MILLI }
 
-    /// Returns the fractional part of this `Duration`, in microseconds.
+    /// Returns the fractional part of this `Duration`, in whole microseconds.
     ///
     /// This method does **not** return the length of the duration when
     /// represented by microseconds. The returned number always represents a
@@ -241,8 +244,9 @@ impl Duration {
     /// assert_eq!(duration.subsec_micros(), 234_567);
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
+    #[rustc_const_unstable(feature="duration_getters")]
     #[inline]
-    pub fn subsec_micros(&self) -> u32 { self.nanos / NANOS_PER_MICRO }
+    pub const fn subsec_micros(&self) -> u32 { self.nanos / NANOS_PER_MICRO }
 
     /// Returns the fractional part of this `Duration`, in nanoseconds.
     ///
@@ -260,8 +264,60 @@ impl Duration {
     /// assert_eq!(duration.subsec_nanos(), 10_000_000);
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
+    #[rustc_const_unstable(feature="duration_getters")]
     #[inline]
-    pub fn subsec_nanos(&self) -> u32 { self.nanos }
+    pub const fn subsec_nanos(&self) -> u32 { self.nanos }
+
+    /// Returns the total number of whole milliseconds contained by this `Duration`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(duration_as_u128)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_millis(), 5730);
+    /// ```
+    #[unstable(feature = "duration_as_u128", issue = "50202")]
+    #[inline]
+    pub fn as_millis(&self) -> u128 {
+        self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
+    }
+
+    /// Returns the total number of whole microseconds contained by this `Duration`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(duration_as_u128)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_micros(), 5730023);
+    /// ```
+    #[unstable(feature = "duration_as_u128", issue = "50202")]
+    #[inline]
+    pub fn as_micros(&self) -> u128 {
+        self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos / NANOS_PER_MICRO) as u128
+    }
+
+    /// Returns the total number of nanoseconds contained by this `Duration`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(duration_as_u128)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_nanos(), 5730023852);
+    /// ```
+    #[unstable(feature = "duration_as_u128", issue = "50202")]
+    #[inline]
+    pub fn as_nanos(&self) -> u128 {
+        self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos as u128
+    }
 
     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
     /// if overflow occurred.
@@ -468,16 +524,162 @@ impl DivAssign<u32> for Duration {
     }
 }
 
+macro_rules! sum_durations {
+    ($iter:expr) => {{
+        let mut total_secs: u64 = 0;
+        let mut total_nanos: u64 = 0;
+
+        for entry in $iter {
+            total_secs = total_secs
+                .checked_add(entry.secs)
+                .expect("overflow in iter::sum over durations");
+            total_nanos = match total_nanos.checked_add(entry.nanos as u64) {
+                Some(n) => n,
+                None => {
+                    total_secs = total_secs
+                        .checked_add(total_nanos / NANOS_PER_SEC as u64)
+                        .expect("overflow in iter::sum over durations");
+                    (total_nanos % NANOS_PER_SEC as u64) + entry.nanos as u64
+                }
+            };
+        }
+        total_secs = total_secs
+            .checked_add(total_nanos / NANOS_PER_SEC as u64)
+            .expect("overflow in iter::sum over durations");
+        total_nanos = total_nanos % NANOS_PER_SEC as u64;
+        Duration {
+            secs: total_secs,
+            nanos: total_nanos as u32,
+        }
+    }};
+}
+
 #[stable(feature = "duration_sum", since = "1.16.0")]
 impl Sum for Duration {
     fn sum<I: Iterator<Item=Duration>>(iter: I) -> Duration {
-        iter.fold(Duration::new(0, 0), |a, b| a + b)
+        sum_durations!(iter)
     }
 }
 
 #[stable(feature = "duration_sum", since = "1.16.0")]
 impl<'a> Sum<&'a Duration> for Duration {
     fn sum<I: Iterator<Item=&'a Duration>>(iter: I) -> Duration {
-        iter.fold(Duration::new(0, 0), |a, b| a + *b)
+        sum_durations!(iter)
+    }
+}
+
+#[stable(feature = "duration_debug_impl", since = "1.27.0")]
+impl fmt::Debug for Duration {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        /// Formats a floating point number in decimal notation.
+        ///
+        /// The number is given as the `integer_part` and a fractional part.
+        /// The value of the fractional part is `fractional_part / divisor`. So
+        /// `integer_part` = 3, `fractional_part` = 12 and `divisor` = 100
+        /// represents the number `3.012`. Trailing zeros are omitted.
+        ///
+        /// `divisor` must not be above 100_000_000. It also should be a power
+        /// of 10, everything else doesn't make sense. `fractional_part` has
+        /// to be less than `10 * divisor`!
+        fn fmt_decimal(
+            f: &mut fmt::Formatter,
+            mut integer_part: u64,
+            mut fractional_part: u32,
+            mut divisor: u32,
+        ) -> fmt::Result {
+            // Encode the fractional part into a temporary buffer. The buffer
+            // only need to hold 9 elements, because `fractional_part` has to
+            // be smaller than 10^9. The buffer is prefilled with '0' digits
+            // to simplify the code below.
+            let mut buf = [b'0'; 9];
+
+            // The next digit is written at this position
+            let mut pos = 0;
+
+            // We keep writing digits into the buffer while there are non-zero
+            // digits left and we haven't written enough digits yet.
+            while fractional_part > 0 && pos < f.precision().unwrap_or(9) {
+                // Write new digit into the buffer
+                buf[pos] = b'0' + (fractional_part / divisor) as u8;
+
+                fractional_part %= divisor;
+                divisor /= 10;
+                pos += 1;
+            }
+
+            // If a precision < 9 was specified, there may be some non-zero
+            // digits left that weren't written into the buffer. In that case we
+            // need to perform rounding to match the semantics of printing
+            // normal floating point numbers. However, we only need to do work
+            // when rounding up. This happens if the first digit of the
+            // remaining ones is >= 5.
+            if fractional_part > 0 && fractional_part >= divisor * 5 {
+                // Round up the number contained in the buffer. We go through
+                // the buffer backwards and keep track of the carry.
+                let mut rev_pos = pos;
+                let mut carry = true;
+                while carry && rev_pos > 0 {
+                    rev_pos -= 1;
+
+                    // If the digit in the buffer is not '9', we just need to
+                    // increment it and can stop then (since we don't have a
+                    // carry anymore). Otherwise, we set it to '0' (overflow)
+                    // and continue.
+                    if buf[rev_pos] < b'9' {
+                        buf[rev_pos] += 1;
+                        carry = false;
+                    } else {
+                        buf[rev_pos] = b'0';
+                    }
+                }
+
+                // If we still have the carry bit set, that means that we set
+                // the whole buffer to '0's and need to increment the integer
+                // part.
+                if carry {
+                    integer_part += 1;
+                }
+            }
+
+            // Determine the end of the buffer: if precision is set, we just
+            // use as many digits from the buffer (capped to 9). If it isn't
+            // set, we only use all digits up to the last non-zero one.
+            let end = f.precision().map(|p| ::cmp::min(p, 9)).unwrap_or(pos);
+
+            // If we haven't emitted a single fractional digit and the precision
+            // wasn't set to a non-zero value, we don't print the decimal point.
+            if end == 0 {
+                write!(f, "{}", integer_part)
+            } else {
+                // We are only writing ASCII digits into the buffer and it was
+                // initialized with '0's, so it contains valid UTF8.
+                let s = unsafe {
+                    ::str::from_utf8_unchecked(&buf[..end])
+                };
+
+                // If the user request a precision > 9, we pad '0's at the end.
+                let w = f.precision().unwrap_or(pos);
+                write!(f, "{}.{:0<width$}", integer_part, s, width = w)
+            }
+        }
+
+        // Print leading '+' sign if requested
+        if f.sign_plus() {
+            write!(f, "+")?;
+        }
+
+        if self.secs > 0 {
+            fmt_decimal(f, self.secs, self.nanos, 100_000_000)?;
+            f.write_str("s")
+        } else if self.nanos >= 1_000_000 {
+            fmt_decimal(f, self.nanos as u64 / 1_000_000, self.nanos % 1_000_000, 100_000)?;
+            f.write_str("ms")
+        } else if self.nanos >= 1_000 {
+            fmt_decimal(f, self.nanos as u64 / 1_000, self.nanos % 1_000, 100)?;
+            f.write_str("µs")
+        } else {
+            fmt_decimal(f, self.nanos as u64, 0, 1)?;
+            f.write_str("ns")
+        }
     }
 }

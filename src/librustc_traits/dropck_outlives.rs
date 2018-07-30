@@ -8,19 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::infer::canonical::{Canonical, QueryResult};
 use rustc::hir::def_id::DefId;
-use rustc::traits::{FulfillmentContext, Normalized, ObligationCause};
+use rustc::infer::canonical::{Canonical, QueryResult};
+use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
-use rustc::traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
+use rustc::traits::{FulfillmentContext, Normalized, ObligationCause, TraitEngineExt};
+use rustc::ty::query::Providers;
+use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc::ty::subst::Subst;
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax::codemap::{Span, DUMMY_SP};
-use util;
 
-crate fn dropck_outlives<'tcx>(
+crate fn provide(p: &mut Providers) {
+    *p = Providers {
+        dropck_outlives,
+        adt_dtorck_constraint,
+        ..*p
+    };
+}
+
+fn dropck_outlives<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
@@ -36,7 +44,10 @@ crate fn dropck_outlives<'tcx>(
             canonical_inference_vars,
         ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &goal);
 
-        let mut result = DropckOutlivesResult { kinds: vec![], overflows: vec![] };
+        let mut result = DropckOutlivesResult {
+            kinds: vec![],
+            overflows: vec![],
+        };
 
         // A stack of types left to process. Each round, we pop
         // something from the stack and invoke
@@ -135,7 +146,7 @@ crate fn dropck_outlives<'tcx>(
 
         debug!("dropck_outlives: result = {:#?}", result);
 
-        util::make_query_response(infcx, canonical_inference_vars, result, fulfill_cx)
+        infcx.make_canonicalized_query_result(canonical_inference_vars, result, fulfill_cx)
     })
 }
 
@@ -184,7 +195,8 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety)
         }
 
-        ty::TyTuple(tys) => tys.iter()
+        ty::TyTuple(tys) => tys
+            .iter()
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),
 
@@ -193,7 +205,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),
 
-        ty::TyGenerator(def_id, substs, _interior) => {
+        ty::TyGenerator(def_id, substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when generator yields
             // (and is subsequently dropped).
@@ -222,7 +234,10 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
                 dtorck_types: vec![],
                 overflows: vec![],
             };
-            debug!("dtorck_constraint: generator {:?} => {:?}", def_id, constraint);
+            debug!(
+                "dtorck_constraint: generator {:?} => {:?}",
+                def_id, constraint
+            );
 
             Ok(constraint)
         }
@@ -278,16 +293,21 @@ crate fn adt_dtorck_constraint<'a, 'tcx>(
     debug!("dtorck_constraint: {:?}", def);
 
     if def.is_phantom_data() {
+        // The first generic parameter here is guaranteed to be a type because it's
+        // `PhantomData`.
+        let substs = Substs::identity_for_item(tcx, def_id);
+        assert_eq!(substs.len(), 1);
         let result = DtorckConstraint {
             outlives: vec![],
-            dtorck_types: vec![tcx.mk_param_from_def(&tcx.generics_of(def_id).types[0])],
+            dtorck_types: vec![substs.type_at(0)],
             overflows: vec![],
         };
         debug!("dtorck_constraint: {:?} => {:?}", def, result);
         return Ok(result);
     }
 
-    let mut result = def.all_fields()
+    let mut result = def
+        .all_fields()
         .map(|field| tcx.type_of(field.did))
         .map(|fty| dtorck_constraint_for_ty(tcx, span, fty, 0, fty))
         .collect::<Result<DtorckConstraint, NoSolution>>()?;

@@ -8,75 +8,66 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::map as hir_map;
-use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::ty::maps::Providers;
-use rustc::ty::{self, CratePredicatesMap, TyCtxt};
-use rustc_data_structures::sync::Lrc;
+use rustc::hir::def_id::DefId;
+use rustc::ty::{self, OutlivesPredicate, TyCtxt};
 use util::nodemap::FxHashMap;
 
-pub fn explicit_predicates<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    crate_num: CrateNum,
-) -> FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>> {
-    assert_eq!(crate_num, LOCAL_CRATE);
-    let mut predicates: FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>> = FxHashMap();
+use super::utils::*;
 
-    // iterate over the entire crate
-    tcx.hir.krate().visit_all_item_likes(&mut ExplicitVisitor {
-        tcx: tcx,
-        explicit_predicates: &mut predicates,
-        crate_num: crate_num,
-    });
-
-    predicates
+#[derive(Debug)]
+pub struct ExplicitPredicatesMap<'tcx> {
+    map: FxHashMap<DefId, RequiredPredicates<'tcx>>,
 }
 
-pub struct ExplicitVisitor<'cx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
-    explicit_predicates: &'cx mut FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>>,
-    crate_num: CrateNum,
-}
-
-impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for ExplicitVisitor<'cx, 'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let def_id = DefId {
-            krate: self.crate_num,
-            index: item.hir_id.owner,
-        };
-
-        let local_explicit_predicate = self.tcx.explicit_predicates_of(def_id);
-
-        let filtered_predicates = local_explicit_predicate
-            .predicates
-            .into_iter()
-            .filter(|pred| match pred {
-                ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => true,
-
-                ty::Predicate::Trait(..)
-                | ty::Predicate::Projection(..)
-                | ty::Predicate::WellFormed(..)
-                | ty::Predicate::ObjectSafe(..)
-                | ty::Predicate::ClosureKind(..)
-                | ty::Predicate::Subtype(..)
-                | ty::Predicate::ConstEvaluatable(..) => false,
-            })
-            .collect();
-
-        match item.node {
-            hir::ItemStruct(..) | hir::ItemEnum(..) => {
-                self.tcx.adt_def(def_id);
-            }
-            _ => {}
+impl<'tcx> ExplicitPredicatesMap<'tcx> {
+    pub fn new() -> ExplicitPredicatesMap<'tcx> {
+        ExplicitPredicatesMap {
+            map: FxHashMap::default(),
         }
-
-        self.explicit_predicates
-            .insert(def_id, Lrc::new(filtered_predicates));
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {}
+    pub fn explicit_predicates_of(
+        &mut self,
+        tcx: TyCtxt<'_, 'tcx, 'tcx>,
+        def_id: DefId,
+    ) -> &RequiredPredicates<'tcx> {
+        self.map.entry(def_id).or_insert_with(|| {
+            let predicates = if def_id.is_local() {
+                tcx.explicit_predicates_of(def_id).predicates
+            } else {
+                tcx.predicates_of(def_id).predicates
+            };
+            let mut required_predicates = RequiredPredicates::default();
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {}
+            // process predicates and convert to `RequiredPredicates` entry, see below
+            for pred in predicates.into_iter() {
+                match pred {
+                    ty::Predicate::TypeOutlives(predicate) => {
+                        let OutlivesPredicate(ref ty, ref reg) = predicate.skip_binder();
+                        insert_outlives_predicate(tcx, (*ty).into(), reg, &mut required_predicates)
+                    }
+
+                    ty::Predicate::RegionOutlives(predicate) => {
+                        let OutlivesPredicate(ref reg1, ref reg2) = predicate.skip_binder();
+                        insert_outlives_predicate(
+                            tcx,
+                            (*reg1).into(),
+                            reg2,
+                            &mut required_predicates,
+                        )
+                    }
+
+                    ty::Predicate::Trait(..)
+                    | ty::Predicate::Projection(..)
+                    | ty::Predicate::WellFormed(..)
+                    | ty::Predicate::ObjectSafe(..)
+                    | ty::Predicate::ClosureKind(..)
+                    | ty::Predicate::Subtype(..)
+                    | ty::Predicate::ConstEvaluatable(..) => (),
+                }
+            }
+
+            required_predicates
+        })
+    }
 }

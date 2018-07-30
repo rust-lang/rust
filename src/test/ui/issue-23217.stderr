@@ -6,7 +6,7 @@ LL | pub enum SomeEnum {
 LL |     B = SomeEnum::A,
    |         ^^^^^^^^^^^ variant not found in `SomeEnum`
    |
-   = note: did you mean `variant::B`?
+   = note: did you mean `SomeEnum::B`?
 
 error: aborting due to previous error
 

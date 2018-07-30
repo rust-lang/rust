@@ -34,11 +34,12 @@ use session::search_paths::PathKind;
 use std::any::Any;
 use std::path::{Path, PathBuf};
 use syntax::ast;
+use syntax::edition::Edition;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_target::spec::Target;
-use rustc_data_structures::sync::{MetadataRef, Lrc};
+use rustc_data_structures::sync::{self, MetadataRef, Lrc};
 
 pub use self::NativeLibraryKind::*;
 
@@ -124,12 +125,13 @@ pub enum NativeLibraryKind {
     NativeUnknown,
 }
 
-#[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
-    pub name: Symbol,
+    pub name: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
     pub foreign_module: Option<DefId>,
+    pub wasm_import_module: Option<Symbol>,
 }
 
 #[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
@@ -235,6 +237,7 @@ pub trait CrateStore {
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
+    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition;
     fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
     fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
@@ -254,6 +257,8 @@ pub trait CrateStore {
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
+
+pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 
 // FIXME: find a better place for this?
 pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
@@ -307,6 +312,7 @@ impl CrateStore for DummyCrateStore {
         bug!("crate_disambiguator")
     }
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
+    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition { bug!("crate_edition_untracked") }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }

@@ -35,7 +35,7 @@ fn main() {
     };
 
     let mut dylib_path = bootstrap::util::dylib_path();
-    dylib_path.insert(0, PathBuf::from(libdir));
+    dylib_path.insert(0, PathBuf::from(libdir.clone()));
 
     let mut cmd = Command::new(rustdoc);
     cmd.args(&args)
@@ -69,6 +69,7 @@ fn main() {
 
     if verbose > 1 {
         eprintln!("rustdoc command: {:?}", cmd);
+        eprintln!("libdir: {:?}", libdir);
     }
 
     std::process::exit(match cmd.status() {

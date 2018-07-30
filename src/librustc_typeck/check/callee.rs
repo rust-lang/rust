@@ -18,7 +18,7 @@ use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, TypeFoldable, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_target::spec::abi;
-use syntax::symbol::Symbol;
+use syntax::ast::Ident;
 use syntax_pos::Span;
 
 use rustc::hir;
@@ -157,9 +157,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name, borrow) in
-            &[(self.tcx.lang_items().fn_trait(), Symbol::intern("call"), true),
-              (self.tcx.lang_items().fn_mut_trait(), Symbol::intern("call_mut"), true),
-              (self.tcx.lang_items().fn_once_trait(), Symbol::intern("call_once"), false)] {
+            &[(self.tcx.lang_items().fn_trait(), Ident::from_str("call"), true),
+              (self.tcx.lang_items().fn_mut_trait(), Ident::from_str("call_mut"), true),
+              (self.tcx.lang_items().fn_once_trait(), Ident::from_str("call_once"), false)] {
             let trait_def_id = match opt_trait_def_id {
                 Some(def_id) => def_id,
                 None => continue,
@@ -175,8 +175,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let method = self.register_infer_ok_obligations(ok);
                     let mut autoref = None;
                     if borrow {
-                        if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                            let mutbl = match mt.mutbl {
+                        if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                            let mutbl = match mutbl {
                                 hir::MutImmutable => AutoBorrowMutability::Immutable,
                                 hir::MutMutable => AutoBorrowMutability::Mutable {
                                     // For initial two-phase borrow
@@ -214,7 +214,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut unit_variant = None;
                 if let &ty::TyAdt(adt_def, ..) = t {
                     if adt_def.is_enum() {
-                        if let hir::ExprCall(ref expr, _) = call_expr.node {
+                        if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
                             unit_variant = Some(self.tcx.hir.node_to_pretty_string(expr.id))
                         }
                     }
@@ -240,8 +240,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         path.to_string());
                 }
 
-                if let hir::ExprCall(ref expr, _) = call_expr.node {
-                    let def = if let hir::ExprPath(ref qpath) = expr.node {
+                if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
+                    let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
                         self.tables.borrow().qpath_def(qpath, expr.hir_id)
                     } else {
                         Def::Err

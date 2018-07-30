@@ -7,14 +7,16 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
+
 struct Foo<'a> {
     x: Option<&'a u32>,
 }
 
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     let mut x = Foo { x: None };
     let y = 0;
     x.x = Some(&y);
     //~^ `y` does not live long enough [E0597]
 }
+
+impl<'a> Drop for Foo<'a> { fn drop(&mut self) { } }

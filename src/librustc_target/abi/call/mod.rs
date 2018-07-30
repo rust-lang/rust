@@ -83,7 +83,7 @@ impl ArgAttributes {
     pub fn new() -> Self {
         ArgAttributes {
             regular: ArgAttribute::default(),
-            pointee_size: Size::from_bytes(0),
+            pointee_size: Size::ZERO,
             pointee_align: None,
         }
     }
@@ -139,11 +139,11 @@ impl Reg {
             RegKind::Integer => {
                 match self.size.bits() {
                     1 => dl.i1_align,
-                    2...8 => dl.i8_align,
-                    9...16 => dl.i16_align,
-                    17...32 => dl.i32_align,
-                    33...64 => dl.i64_align,
-                    65...128 => dl.i128_align,
+                    2..=8 => dl.i8_align,
+                    9..=16 => dl.i16_align,
+                    17..=32 => dl.i32_align,
+                    33..=64 => dl.i64_align,
+                    65..=128 => dl.i128_align,
                     _ => panic!("unsupported integer: {:?}", self)
                 }
             }
@@ -206,7 +206,7 @@ impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
         CastTarget {
             prefix: [None; 8],
-            prefix_chunk: Size::from_bytes(0),
+            prefix_chunk: Size::ZERO,
             rest: uniform
         }
     }
@@ -256,8 +256,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                 let kind = match scalar.value {
                     abi::Int(..) |
                     abi::Pointer => RegKind::Integer,
-                    abi::F32 |
-                    abi::F64 => RegKind::Float
+                    abi::Float(_) => RegKind::Float,
                 };
                 Some(Reg {
                     kind,
@@ -274,7 +273,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 
             Abi::ScalarPair(..) |
             Abi::Aggregate { .. } => {
-                let mut total = Size::from_bytes(0);
+                let mut total = Size::ZERO;
                 let mut result = None;
 
                 let is_union = match self.fields {
@@ -437,6 +436,8 @@ pub enum Conv {
 
     X86_64SysV,
     X86_64Win64,
+
+    AmdGpuKernel,
 }
 
 /// Metadata describing how the arguments to a native function

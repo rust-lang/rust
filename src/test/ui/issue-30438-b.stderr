@@ -1,0 +1,21 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/issue-30438-b.rs:23:10
+   |
+LL |         &Test { s: &self.s}
+   |          ^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+LL |         //~^ ERROR: borrowed value does not live long enough
+LL |     }
+   |     - temporary value only lives until here
+   |
+note: borrowed value must be valid for the anonymous lifetime #1 defined on the method body at 22:5...
+  --> $DIR/issue-30438-b.rs:22:5
+   |
+LL | /     fn index(&self, _: usize) -> &Self::Output {
+LL | |         &Test { s: &self.s}
+LL | |         //~^ ERROR: borrowed value does not live long enough
+LL | |     }
+   | |_____^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

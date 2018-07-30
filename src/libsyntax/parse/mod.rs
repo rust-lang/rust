@@ -11,9 +11,10 @@
 //! The main parser interface
 
 use rustc_data_structures::sync::{Lrc, Lock};
-use ast::{self, CrateConfig};
+use ast::{self, CrateConfig, NodeId};
+use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use codemap::{CodeMap, FilePathMapping};
-use syntax_pos::{self, Span, FileMap, NO_EXPANSION, FileName};
+use syntax_pos::{Span, FileMap, FileName, MultiSpan};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
@@ -23,6 +24,7 @@ use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 use diagnostics::plugin::ErrorMap;
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -37,7 +39,6 @@ pub mod lexer;
 pub mod token;
 pub mod attr;
 
-pub mod common;
 pub mod classify;
 
 /// Info about a parsing session.
@@ -50,13 +51,14 @@ pub struct ParseSess {
     /// raw identifiers
     pub raw_identifier_spans: Lock<Vec<Span>>,
     /// The registered diagnostics codes
-    pub registered_diagnostics: Lock<ErrorMap>,
+    crate registered_diagnostics: Lock<ErrorMap>,
     // Spans where a `mod foo;` statement was included in a non-mod.rs file.
     // These are used to issue errors if the non_modrs_mods feature is not enabled.
     pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
     code_map: Lrc<CodeMap>,
+    pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
 }
 
 impl ParseSess {
@@ -80,17 +82,34 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             code_map,
             non_modrs_mods: Lock::new(vec![]),
+            buffered_lints: Lock::new(vec![]),
         }
     }
 
     pub fn codemap(&self) -> &CodeMap {
         &self.code_map
     }
+
+    pub fn buffer_lint<S: Into<MultiSpan>>(&self,
+        lint_id: BufferedEarlyLintId,
+        span: S,
+        id: NodeId,
+        msg: &str,
+    ) {
+        self.buffered_lints.with_lock(|buffered_lints| {
+            buffered_lints.push(BufferedEarlyLint{
+                span: span.into(),
+                id,
+                msg: msg.into(),
+                lint_id,
+            });
+        });
+    }
 }
 
 #[derive(Clone)]
-pub struct Directory {
-    pub path: PathBuf,
+pub struct Directory<'a> {
+    pub path: Cow<'a, Path>,
     pub ownership: DirectoryOwnership,
 }
 
@@ -130,7 +149,7 @@ pub fn parse_crate_attrs_from_source_str(name: FileName, source: String, sess: &
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 
-pub fn parse_expr_from_source_str(name: FileName, source: String, sess: &ParseSess)
+crate fn parse_expr_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                       -> PResult<P<ast::Expr>> {
     new_parser_from_source_str(sess, name, source).parse_expr()
 }
@@ -139,17 +158,12 @@ pub fn parse_expr_from_source_str(name: FileName, source: String, sess: &ParseSe
 ///
 /// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and `Err`
 /// when a syntax error occurred.
-pub fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
+crate fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                       -> PResult<Option<P<ast::Item>>> {
     new_parser_from_source_str(sess, name, source).parse_item()
 }
 
-pub fn parse_meta_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                      -> PResult<ast::MetaItem> {
-    new_parser_from_source_str(sess, name, source).parse_meta_item()
-}
-
-pub fn parse_stmt_from_source_str(name: FileName, source: String, sess: &ParseSess)
+crate fn parse_stmt_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                       -> PResult<Option<ast::Stmt>> {
     new_parser_from_source_str(sess, name, source).parse_stmt()
 }
@@ -177,7 +191,7 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> 
 /// Given a session, a crate config, a path, and a span, add
 /// the file at the given path to the codemap, and return a parser.
 /// On an error, use the given span as the source of the problem.
-pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
+crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
                                     path: &Path,
                                     directory_ownership: DirectoryOwnership,
                                     module_name: Option<String>,
@@ -189,12 +203,12 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 }
 
 /// Given a filemap and config, return a parser
-pub fn filemap_to_parser(sess: & ParseSess, filemap: Lrc<FileMap>) -> Parser {
+fn filemap_to_parser(sess: & ParseSess, filemap: Lrc<FileMap>) -> Parser {
     let end_pos = filemap.end_pos;
     let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap, None));
 
-    if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
-        parser.span = Span::new(end_pos, end_pos, NO_EXPANSION);
+    if parser.token == token::Eof && parser.span.is_dummy() {
+        parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
     }
 
     parser
@@ -228,8 +242,7 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 /// Given a filemap, produce a sequence of token-trees
 pub fn filemap_to_stream(sess: &ParseSess, filemap: Lrc<FileMap>, override_span: Option<Span>)
                          -> TokenStream {
-    let mut srdr = lexer::StringReader::new(sess, filemap);
-    srdr.override_span = override_span;
+    let mut srdr = lexer::StringReader::new(sess, filemap, override_span);
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())
 }
@@ -243,7 +256,7 @@ pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser {
 /// Rather than just accepting/rejecting a given literal, unescapes it as
 /// well. Can take any slice prefixed by a character escape. Returns the
 /// character and the number of characters consumed.
-pub fn char_lit(lit: &str, diag: Option<(Span, &Handler)>) -> (char, isize) {
+fn char_lit(lit: &str, diag: Option<(Span, &Handler)>) -> (char, isize) {
     use std::char;
 
     // Handle non-escaped chars first.
@@ -369,7 +382,7 @@ pub fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
 
 /// Parse a string representing a raw string literal into its final form. The
 /// only operation this does is convert embedded CRLF into a single LF.
-pub fn raw_str_lit(lit: &str) -> String {
+fn raw_str_lit(lit: &str) -> String {
     debug!("raw_str_lit: given {}", lit.escape_default());
     let mut res = String::with_capacity(lit.len());
 
@@ -406,7 +419,7 @@ macro_rules! err {
     }
 }
 
-pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Handler)>)
+crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Handler)>)
                  -> (bool /* suffix illegal? */, Option<ast::LitKind>) {
     use ast::LitKind;
 
@@ -419,13 +432,24 @@ pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Hand
         token::Integer(s) => (false, integer_lit(&s.as_str(), suf, diag)),
         token::Float(s) => (false, float_lit(&s.as_str(), suf, diag)),
 
-        token::Str_(s) => {
-            let s = Symbol::intern(&str_lit(&s.as_str(), diag));
-            (true, Some(LitKind::Str(s, ast::StrStyle::Cooked)))
+        token::Str_(mut sym) => {
+            // If there are no characters requiring special treatment we can
+            // reuse the symbol from the Token. Otherwise, we must generate a
+            // new symbol because the string in the LitKind is different to the
+            // string in the Token.
+            let s = &sym.as_str();
+            if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
+                sym = Symbol::intern(&str_lit(s, diag));
+            }
+            (true, Some(LitKind::Str(sym, ast::StrStyle::Cooked)))
         }
-        token::StrRaw(s, n) => {
-            let s = Symbol::intern(&raw_str_lit(&s.as_str()));
-            (true, Some(LitKind::Str(s, ast::StrStyle::Raw(n))))
+        token::StrRaw(mut sym, n) => {
+            // Ditto.
+            let s = &sym.as_str();
+            if s.contains('\r') {
+                sym = Symbol::intern(&raw_str_lit(s));
+            }
+            (true, Some(LitKind::Str(sym, ast::StrStyle::Raw(n))))
         }
         token::ByteStr(i) => {
             (true, Some(LitKind::ByteStr(byte_str_lit(&i.as_str()))))
@@ -465,7 +489,7 @@ fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, 
         }
     })
 }
-pub fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
+fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                  -> Option<ast::LitKind> {
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
@@ -474,7 +498,7 @@ pub fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>
 }
 
 /// Parse a string representing a byte literal into its final form. Similar to `char_lit`
-pub fn byte_lit(lit: &str) -> (u8, usize) {
+fn byte_lit(lit: &str) -> (u8, usize) {
     let err = |i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
 
     if lit.len() == 1 {
@@ -505,7 +529,7 @@ pub fn byte_lit(lit: &str) -> (u8, usize) {
     }
 }
 
-pub fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
+fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
     let mut res = Vec::with_capacity(lit.len());
 
     let error = |i| format!("lexer should have rejected {} at {}", lit, i);
@@ -564,7 +588,7 @@ pub fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
     Lrc::new(res)
 }
 
-pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
+fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                    -> Option<ast::LitKind> {
     // s can only be ascii, byte indexing is fine
 
@@ -668,63 +692,45 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler
     })
 }
 
+/// `SeqSep` : a sequence separator (token)
+/// and whether a trailing separator is allowed.
+pub struct SeqSep {
+    pub sep: Option<token::Token>,
+    pub trailing_sep_allowed: bool,
+}
+
+impl SeqSep {
+    pub fn trailing_allowed(t: token::Token) -> SeqSep {
+        SeqSep {
+            sep: Some(t),
+            trailing_sep_allowed: true,
+        }
+    }
+
+    pub fn none() -> SeqSep {
+        SeqSep {
+            sep: None,
+            trailing_sep_allowed: false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
-    use codemap::{respan, Spanned};
+    use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
     use ast::{self, Ident, PatKind};
-    use rustc_target::spec::abi::Abi;
     use attr::first_attr_value_str_by_name;
     use parse;
-    use parse::parser::Parser;
     use print::pprust::item_to_string;
-    use ptr::P;
     use tokenstream::{self, TokenTree};
-    use util::parser_testing::{string_to_stream, string_to_parser};
-    use util::parser_testing::{string_to_expr, string_to_item, string_to_stmt};
-    use util::ThinVec;
+    use util::parser_testing::string_to_stream;
+    use util::parser_testing::{string_to_expr, string_to_item};
     use with_globals;
 
     // produce a syntax_pos::span
     fn sp(a: u32, b: u32) -> Span {
         Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
-    }
-
-    fn str2seg(s: &str, lo: u32, hi: u32) -> ast::PathSegment {
-        ast::PathSegment::from_ident(Ident::new(Symbol::intern(s), sp(lo, hi)))
-    }
-
-    #[test] fn path_exprs_1() {
-        with_globals(|| {
-            assert!(string_to_expr("a".to_string()) ==
-                    P(ast::Expr{
-                        id: ast::DUMMY_NODE_ID,
-                        node: ast::ExprKind::Path(None, ast::Path {
-                            span: sp(0, 1),
-                            segments: vec![str2seg("a", 0, 1)],
-                        }),
-                        span: sp(0, 1),
-                        attrs: ThinVec::new(),
-                    }))
-        })
-    }
-
-    #[test] fn path_exprs_2 () {
-        with_globals(|| {
-            assert!(string_to_expr("::a::b".to_string()) ==
-                    P(ast::Expr {
-                        id: ast::DUMMY_NODE_ID,
-                        node: ast::ExprKind::Path(None, ast::Path {
-                            span: sp(0, 6),
-                            segments: vec![ast::PathSegment::crate_root(sp(0, 0)),
-                                        str2seg("a", 2, 3),
-                                        str2seg("b", 5, 6)]
-                        }),
-                        span: sp(0, 6),
-                        attrs: ThinVec::new(),
-                    }))
-        })
     }
 
     #[should_panic]
@@ -824,140 +830,6 @@ mod tests {
             ]);
 
             assert_eq!(tts, expected);
-        })
-    }
-
-    #[test] fn ret_expr() {
-        with_globals(|| {
-            assert!(string_to_expr("return d".to_string()) ==
-                    P(ast::Expr{
-                        id: ast::DUMMY_NODE_ID,
-                        node:ast::ExprKind::Ret(Some(P(ast::Expr{
-                            id: ast::DUMMY_NODE_ID,
-                            node:ast::ExprKind::Path(None, ast::Path{
-                                span: sp(7, 8),
-                                segments: vec![str2seg("d", 7, 8)],
-                            }),
-                            span:sp(7,8),
-                            attrs: ThinVec::new(),
-                        }))),
-                        span:sp(0,8),
-                        attrs: ThinVec::new(),
-                    }))
-        })
-    }
-
-    #[test] fn parse_stmt_1 () {
-        with_globals(|| {
-            assert!(string_to_stmt("b;".to_string()) ==
-                    Some(ast::Stmt {
-                        node: ast::StmtKind::Expr(P(ast::Expr {
-                            id: ast::DUMMY_NODE_ID,
-                            node: ast::ExprKind::Path(None, ast::Path {
-                                span:sp(0,1),
-                                segments: vec![str2seg("b", 0, 1)],
-                                }),
-                            span: sp(0,1),
-                            attrs: ThinVec::new()})),
-                        id: ast::DUMMY_NODE_ID,
-                        span: sp(0,1)}))
-        })
-    }
-
-    fn parser_done(p: Parser){
-        assert_eq!(p.token.clone(), token::Eof);
-    }
-
-    #[test] fn parse_ident_pat () {
-        with_globals(|| {
-            let sess = ParseSess::new(FilePathMapping::empty());
-            let mut parser = string_to_parser(&sess, "b".to_string());
-            assert!(panictry!(parser.parse_pat())
-                    == P(ast::Pat{
-                    id: ast::DUMMY_NODE_ID,
-                    node: PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Immutable),
-                                         Ident::new(Symbol::intern("b"), sp(0, 1)),
-                                         None),
-                    span: sp(0,1)}));
-            parser_done(parser);
-        })
-    }
-
-    // check the contents of the tt manually:
-    #[test] fn parse_fundecl () {
-        with_globals(|| {
-            // this test depends on the intern order of "fn" and "i32"
-            let item = string_to_item("fn a (b : i32) { b; }".to_string()).map(|m| {
-                m.map(|mut m| {
-                    m.tokens = None;
-                    m
-                })
-            });
-            assert_eq!(item,
-                    Some(
-                        P(ast::Item{ident:Ident::from_str("a"),
-                                attrs:Vec::new(),
-                                id: ast::DUMMY_NODE_ID,
-                                tokens: None,
-                                node: ast::ItemKind::Fn(P(ast::FnDecl {
-                                    inputs: vec![ast::Arg{
-                                        ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                    node: ast::TyKind::Path(None, ast::Path{
-                                            span:sp(10,13),
-                                            segments: vec![str2seg("i32", 10, 13)],
-                                            }),
-                                            span:sp(10,13)
-                                        }),
-                                        pat: P(ast::Pat {
-                                            id: ast::DUMMY_NODE_ID,
-                                            node: PatKind::Ident(
-                                                ast::BindingMode::ByValue(
-                                                    ast::Mutability::Immutable),
-                                                Ident::new(Symbol::intern("b"), sp(6, 7)),
-                                                None
-                                            ),
-                                            span: sp(6,7)
-                                        }),
-                                            id: ast::DUMMY_NODE_ID
-                                        }],
-                                    output: ast::FunctionRetTy::Default(sp(15, 15)),
-                                    variadic: false
-                                }),
-                                        ast::Unsafety::Normal,
-                                        Spanned {
-                                            span: sp(0,2),
-                                            node: ast::Constness::NotConst,
-                                        },
-                                        Abi::Rust,
-                                        ast::Generics{
-                                            params: Vec::new(),
-                                            where_clause: ast::WhereClause {
-                                                id: ast::DUMMY_NODE_ID,
-                                                predicates: Vec::new(),
-                                                span: syntax_pos::DUMMY_SP,
-                                            },
-                                            span: syntax_pos::DUMMY_SP,
-                                        },
-                                        P(ast::Block {
-                                            stmts: vec![ast::Stmt {
-                                                node: ast::StmtKind::Semi(P(ast::Expr{
-                                                    id: ast::DUMMY_NODE_ID,
-                                                    node: ast::ExprKind::Path(None,
-                                                        ast::Path{
-                                                            span:sp(17,18),
-                                                            segments: vec![str2seg("b", 17, 18)],
-                                                        }),
-                                                    span: sp(17,18),
-                                                    attrs: ThinVec::new()})),
-                                                id: ast::DUMMY_NODE_ID,
-                                                span: sp(17,19)}],
-                                            id: ast::DUMMY_NODE_ID,
-                                            rules: ast::BlockCheckMode::Default, // no idea
-                                            span: sp(15,21),
-                                            recovered: false,
-                                        })),
-                                vis: respan(sp(0, 0), ast::VisibilityKind::Inherited),
-                                span: sp(0,21)})));
         })
     }
 

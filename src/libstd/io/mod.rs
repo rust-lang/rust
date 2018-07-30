@@ -147,7 +147,7 @@
 //! ```
 //!
 //! Note that you cannot use the [`?` operator] in functions that do not return
-//! a [`Result<T, E>`][`Result`] (e.g. `main`). Instead, you can call [`.unwrap()`]
+//! a [`Result<T, E>`][`Result`]. Instead, you can call [`.unwrap()`]
 //! or `match` on the return value to catch any possible errors:
 //!
 //! ```no_run
@@ -1972,7 +1972,7 @@ impl<T: BufRead> BufRead for Take<T> {
     }
 }
 
-fn read_one_byte(reader: &mut Read) -> Option<Result<u8>> {
+fn read_one_byte(reader: &mut dyn Read) -> Option<Result<u8>> {
     let mut buf = [0];
     loop {
         return match reader.read(&mut buf) {
@@ -2081,7 +2081,7 @@ impl std_error::Error for CharsError {
             CharsError::Other(ref e) => std_error::Error::description(e),
         }
     }
-    fn cause(&self) -> Option<&std_error::Error> {
+    fn cause(&self) -> Option<&dyn std_error::Error> {
         match *self {
             CharsError::NotUtf8 => None,
             CharsError::Other(ref e) => e.cause(),

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(global_allocator, heap_api)]
-
 #[global_allocator]
 static A: usize = 0;
 //~^ the trait bound `usize:

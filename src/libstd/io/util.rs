@@ -223,7 +223,7 @@ mod tests {
         assert_eq!(copy(&mut r, &mut w).unwrap(), 4);
 
         let mut r = repeat(0).take(1 << 17);
-        assert_eq!(copy(&mut r as &mut Read, &mut w as &mut Write).unwrap(), 1 << 17);
+        assert_eq!(copy(&mut r as &mut dyn Read, &mut w as &mut dyn Write).unwrap(), 1 << 17);
     }
 
     #[test]

@@ -26,6 +26,7 @@ static LICENSES: &'static [&'static str] = &[
     "MIT OR Apache-2.0",
     "MIT",
     "Unlicense/MIT",
+    "Unlicense OR MIT",
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -47,26 +48,35 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "selectors",          // MPL-2.0, rustdoc
     "clippy_lints",       // MPL-2.0, rls
     "colored",            // MPL-2.0, rustfmt
+    "ordslice",           // Apache-2.0, rls
+    "cloudabi",           // BSD-2-Clause, (rls -> crossbeam-channel 0.2 -> rand 0.5)
 ];
 
 /// Which crates to check against the whitelist?
 static WHITELIST_CRATES: &'static [CrateVersion] = &[
     CrateVersion("rustc", "0.0.0"),
-    CrateVersion("rustc_trans", "0.0.0"),
+    CrateVersion("rustc_codegen_llvm", "0.0.0"),
 ];
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
 static WHITELIST: &'static [Crate] = &[
     Crate("aho-corasick"),
-    Crate("ar"),
+    Crate("arrayvec"),
     Crate("atty"),
     Crate("backtrace"),
     Crate("backtrace-sys"),
     Crate("bitflags"),
     Crate("byteorder"),
     Crate("cc"),
+    Crate("chalk-engine"),
+    Crate("chalk-macros"),
     Crate("cfg-if"),
     Crate("cmake"),
+    Crate("crossbeam-deque"),
+    Crate("crossbeam-epoch"),
+    Crate("crossbeam-utils"),
+    Crate("datafrog"),
+    Crate("either"),
     Crate("ena"),
     Crate("env_logger"),
     Crate("filetime"),
@@ -82,11 +92,15 @@ static WHITELIST: &'static [Crate] = &[
     Crate("log"),
     Crate("log_settings"),
     Crate("memchr"),
+    Crate("memoffset"),
     Crate("miniz-sys"),
+    Crate("nodrop"),
     Crate("num_cpus"),
     Crate("owning_ref"),
     Crate("parking_lot"),
     Crate("parking_lot_core"),
+    Crate("polonius-engine"),
+    Crate("pkg-config"),
     Crate("quick-error"),
     Crate("rand"),
     Crate("redox_syscall"),
@@ -95,10 +109,14 @@ static WHITELIST: &'static [Crate] = &[
     Crate("regex-syntax"),
     Crate("remove_dir_all"),
     Crate("rustc-demangle"),
+    Crate("rustc-hash"),
+    Crate("rustc-rayon"),
+    Crate("rustc-rayon-core"),
     Crate("scoped-tls"),
+    Crate("scopeguard"),
     Crate("smallvec"),
     Crate("stable_deref_trait"),
-    Crate("tempdir"),
+    Crate("tempfile"),
     Crate("termcolor"),
     Crate("terminon"),
     Crate("termion"),
@@ -149,7 +167,7 @@ impl<'a> Crate<'a> {
 impl<'a> CrateVersion<'a> {
     /// Returns the struct and whether or not the dep is in-tree
     pub fn from_str(s: &'a str) -> (Self, bool) {
-        let mut parts = s.split(" ");
+        let mut parts = s.split(' ');
         let name = parts.next().unwrap();
         let version = parts.next().unwrap();
         let path = parts.next().unwrap();

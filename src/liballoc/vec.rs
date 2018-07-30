@@ -73,9 +73,6 @@ use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::marker::PhantomData;
 use core::mem;
-#[cfg(not(test))]
-#[cfg(stage0)]
-use core::num::Float;
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, IndexMut, RangeBounds};
 use core::ops;
@@ -83,7 +80,7 @@ use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
 
-use alloc::CollectionAllocErr;
+use collections::CollectionAllocErr;
 use borrow::ToOwned;
 use borrow::Cow;
 use boxed::Box;
@@ -812,9 +809,15 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
-        let length = self.len();
-        self.swap(index, length - 1);
-        self.pop().unwrap()
+        unsafe {
+            // We replace self[index] with the last element. Note that if the
+            // bounds check on hole succeeds there must be a last element (which
+            // can be self[index] itself).
+            let hole: *mut T = &mut self[index];
+            let last = ptr::read(self.get_unchecked(self.len - 1));
+            self.len -= 1;
+            ptr::replace(hole, last)
+        }
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
@@ -840,7 +843,7 @@ impl<T> Vec<T> {
 
         // space for the new element
         if len == self.buf.cap() {
-            self.buf.double();
+            self.reserve(1);
         }
 
         unsafe {
@@ -1060,7 +1063,7 @@ impl<T> Vec<T> {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
         if self.len == self.buf.cap() {
-            self.buf.double();
+            self.reserve(1);
         }
         unsafe {
             let end = self.as_mut_ptr().offset(self.len as isize);
@@ -1169,12 +1172,12 @@ impl<T> Vec<T> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let start = match range.start() {
+        let start = match range.start_bound() {
             Included(&n) => n,
             Excluded(&n) => n + 1,
             Unbounded    => 0,
         };
-        let end = match range.end() {
+        let end = match range.end_bound() {
             Included(&n) => n + 1,
             Excluded(&n) => n,
             Unbounded    => len,
@@ -1696,7 +1699,10 @@ impl<T: Hash> Hash for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "vector indices are of type `usize` or ranges of `usize`"]
+#[rustc_on_unimplemented(
+    message="vector indices are of type `usize` or ranges of `usize`",
+    label="vector indices are of type `usize` or ranges of `usize`",
+)]
 impl<T, I> Index<I> for Vec<T>
 where
     I: ::core::slice::SliceIndex<[T]>,
@@ -1710,7 +1716,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "vector indices are of type `usize` or ranges of `usize`"]
+#[rustc_on_unimplemented(
+    message="vector indices are of type `usize` or ranges of `usize`",
+    label="vector indices are of type `usize` or ranges of `usize`",
+)]
 impl<T, I> IndexMut<I> for Vec<T>
 where
     I: ::core::slice::SliceIndex<[T]>,
@@ -2286,6 +2295,13 @@ impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
     }
 }
 
+#[stable(feature = "cow_from_vec_ref", since = "1.28.0")]
+impl<'a, T: Clone> From<&'a Vec<T>> for Cow<'a, [T]> {
+    fn from(v: &'a Vec<T>) -> Cow<'a, [T]> {
+        Cow::Borrowed(v.as_slice())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
@@ -2533,9 +2549,11 @@ impl<'a, T> Drop for Drain<'a, T> {
                 // memmove back untouched tail, update to new length
                 let start = source_vec.len();
                 let tail = self.tail_start;
-                let src = source_vec.as_ptr().offset(tail as isize);
-                let dst = source_vec.as_mut_ptr().offset(start as isize);
-                ptr::copy(src, dst, self.tail_len);
+                if tail != start {
+                    let src = source_vec.as_ptr().offset(tail as isize);
+                    let dst = source_vec.as_mut_ptr().offset(start as isize);
+                    ptr::copy(src, dst, self.tail_len);
+                }
                 source_vec.set_len(start + self.tail_len);
             }
         }

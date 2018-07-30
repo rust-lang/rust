@@ -100,24 +100,6 @@ pub fn read2(p1: AnonPipe,
         // wait for either pipe to become readable using `poll`
         cvt_r(|| unsafe { libc::poll(fds.as_mut_ptr(), 2, -1) })?;
 
-        // Read as much as we can from each pipe, ignoring EWOULDBLOCK or
-        // EAGAIN. If we hit EOF, then this will happen because the underlying
-        // reader will return Ok(0), in which case we'll see `Ok` ourselves. In
-        // this case we flip the other fd back into blocking mode and read
-        // whatever's leftover on that file descriptor.
-        let read = |fd: &FileDesc, dst: &mut Vec<u8>| {
-            match fd.read_to_end(dst) {
-                Ok(_) => Ok(true),
-                Err(e) => {
-                    if e.raw_os_error() == Some(libc::EWOULDBLOCK) ||
-                       e.raw_os_error() == Some(libc::EAGAIN) {
-                        Ok(false)
-                    } else {
-                        Err(e)
-                    }
-                }
-            }
-        };
         if fds[0].revents != 0 && read(&p1, v1)? {
             p2.set_nonblocking(false)?;
             return p2.read_to_end(v2).map(|_| ());
@@ -125,6 +107,25 @@ pub fn read2(p1: AnonPipe,
         if fds[1].revents != 0 && read(&p2, v2)? {
             p1.set_nonblocking(false)?;
             return p1.read_to_end(v1).map(|_| ());
+        }
+    }
+
+    // Read as much as we can from each pipe, ignoring EWOULDBLOCK or
+    // EAGAIN. If we hit EOF, then this will happen because the underlying
+    // reader will return Ok(0), in which case we'll see `Ok` ourselves. In
+    // this case we flip the other fd back into blocking mode and read
+    // whatever's leftover on that file descriptor.
+    fn read(fd: &FileDesc, dst: &mut Vec<u8>) -> Result<bool, io::Error> {
+        match fd.read_to_end(dst) {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if e.raw_os_error() == Some(libc::EWOULDBLOCK) ||
+                   e.raw_os_error() == Some(libc::EAGAIN) {
+                    Ok(false)
+                } else {
+                    Err(e)
+                }
+            }
         }
     }
 }

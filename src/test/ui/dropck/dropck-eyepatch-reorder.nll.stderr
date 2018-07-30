@@ -1,14 +1,17 @@
-error: compilation successful
-  --> $DIR/dropck-eyepatch-reorder.rs:44:1
+error[E0597]: `c_shortest` does not live long enough
+  --> $DIR/dropck-eyepatch-reorder.rs:64:19
    |
-LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
-LL | |     use std::cell::Cell;
-LL | |     let c_long;
-LL | |     let (c, mut dt, mut dr, mut pt, mut pr, st, sr)
-...  |
-LL | |     println!("{:?}", (dt.0, dr.0, pt.0, pr.0, st.0, sr.0));
-LL | | }
-   | |_^
+LL |     dt = Dt("dt", &c_shortest);
+   |                   ^^^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `c_shortest` dropped here while still borrowed
+   | borrow later used here, when `dt` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0597`.

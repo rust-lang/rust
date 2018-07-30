@@ -35,7 +35,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
         let name_and_namespace = |def_id| {
             let item = self.tcx.associated_item(def_id);
-            (item.name, Namespace::from(item.kind))
+            (item.ident, Namespace::from(item.kind))
         };
 
         let impl_items1 = self.tcx.associated_item_def_ids(impl1);
@@ -122,10 +122,10 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemTrait(..) |
-            hir::ItemUnion(..) => {
+            hir::ItemKind::Enum(..) |
+            hir::ItemKind::Struct(..) |
+            hir::ItemKind::Trait(..) |
+            hir::ItemKind::Union(..) => {
                 let type_def_id = self.tcx.hir.local_def_id(item.id);
                 self.check_for_overlapping_inherent_impls(type_def_id);
             }

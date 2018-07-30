@@ -163,7 +163,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_alphabetic)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_alphabetic)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_alphabetic(&self) -> bool { unimplemented!(); }
@@ -176,7 +178,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_uppercase)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_uppercase)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_uppercase(&self) -> bool { unimplemented!(); }
@@ -189,7 +193,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_lowercase)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_lowercase)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_lowercase(&self) -> bool { unimplemented!(); }
@@ -203,7 +209,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_alphanumeric)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_alphanumeric)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_alphanumeric(&self) -> bool { unimplemented!(); }
@@ -216,7 +224,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_digit)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_digit)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_digit(&self) -> bool { unimplemented!(); }
@@ -230,7 +240,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_hexdigit)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_hexdigit)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_hexdigit(&self) -> bool { unimplemented!(); }
@@ -248,7 +260,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_punctuation)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_punctuation)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_punctuation(&self) -> bool { unimplemented!(); }
@@ -261,7 +275,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_graphic)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_graphic)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_graphic(&self) -> bool { unimplemented!(); }
@@ -291,7 +307,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_whitespace)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_whitespace)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_whitespace(&self) -> bool { unimplemented!(); }
@@ -304,7 +322,9 @@ pub trait AsciiExt {
     /// # Note
     ///
     /// This method will be deprecated in favor of the identically-named
-    /// inherent methods on `u8`, `char`, `[u8]` and `str`.
+    /// inherent methods on `u8` and `char`.
+    /// For `[u8]` use `.iter().all(u8::is_ascii_control)`.
+    /// For `str` use `.bytes().all(u8::is_ascii_control)`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
     #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_control(&self) -> bool { unimplemented!(); }

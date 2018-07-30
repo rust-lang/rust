@@ -9,4 +9,5 @@ path = "lib.rs"
 
 [dependencies]
 pulldown-cmark = { version = "0.1.2", default-features = false }
-tempdir = "0.3"
+minifier = "0.0.14"
+tempfile = "3"

@@ -5,6 +5,7 @@ LL |     let y = &mut x;
    |                  - first mutable borrow occurs here
 LL |     let z = &mut x; //~ ERROR cannot borrow
    |                  ^ second mutable borrow occurs here
+...
 LL | }
    | - first borrow ends here
 

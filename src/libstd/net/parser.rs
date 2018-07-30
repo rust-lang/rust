@@ -53,15 +53,12 @@ impl<'a> Parser<'a> {
         F: FnOnce(&mut Parser) -> Option<T>,
     {
         self.read_atomically(move |p| {
-            match cb(p) {
-                Some(x) => if p.is_eof() {Some(x)} else {None},
-                None => None,
-            }
+            cb(p).filter(|_| p.is_eof())
         })
     }
 
     // Return result of first successful parser
-    fn read_or<T>(&mut self, parsers: &mut [Box<FnMut(&mut Parser) -> Option<T> + 'static>])
+    fn read_or<T>(&mut self, parsers: &mut [Box<dyn FnMut(&mut Parser) -> Option<T> + 'static>])
                -> Option<T> {
         for pf in parsers {
             if let Some(r) = self.read_atomically(|p: &mut Parser| pf(p)) {

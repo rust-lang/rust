@@ -29,6 +29,7 @@
 // ignore-r600
 // ignore-amdgcn
 // ignore-sparc
+// ignore-sparc64
 // ignore-sparcv9
 // ignore-sparcel
 // ignore-s390x

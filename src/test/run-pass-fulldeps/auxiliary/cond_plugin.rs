@@ -33,7 +33,7 @@ pub fn cond(input: TokenStream) -> TokenStream {
             panic!("Invalid macro usage in cond: {}", cond);
         }
         let is_else = match test {
-            TokenTree::Term(word) => word.as_str() == "else",
+            TokenTree::Ident(ref word) => &*word.to_string() == "else",
             _ => false,
         };
         conds.push(if is_else || input.peek().is_none() {

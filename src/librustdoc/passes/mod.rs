@@ -16,7 +16,6 @@ use std::mem;
 use clean::{self, GetDefId, Item};
 use fold;
 use fold::FoldItem::Strip;
-use plugins;
 
 mod collapse_docs;
 pub use self::collapse_docs::collapse_docs;
@@ -37,7 +36,7 @@ mod propagate_doc_cfg;
 pub use self::propagate_doc_cfg::propagate_doc_cfg;
 
 type Pass = (&'static str,                                      // name
-             fn(clean::Crate) -> plugins::PluginResult,         // fn
+             fn(clean::Crate) -> clean::Crate,                  // fn
              &'static str);                                     // description
 
 pub const PASSES: &'static [Pass] = &[
@@ -64,6 +63,33 @@ pub const DEFAULT_PASSES: &'static [&'static str] = &[
     "propagate-doc-cfg",
 ];
 
+pub const DEFAULT_PRIVATE_PASSES: &'static [&'static str] = &[
+    "strip-priv-imports",
+    "collapse-docs",
+    "unindent-comments",
+    "propagate-doc-cfg",
+];
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum DefaultPassOption {
+    Default,
+    Private,
+    None,
+}
+
+pub fn defaults(default_set: DefaultPassOption) -> &'static [&'static str] {
+    match default_set {
+        DefaultPassOption::Default => {
+            DEFAULT_PASSES
+        },
+        DefaultPassOption::Private => {
+            DEFAULT_PRIVATE_PASSES
+        },
+        DefaultPassOption::None => {
+            &[]
+        },
+    }
+}
 
 struct Stripper<'a> {
     retained: &'a mut DefIdSet,
@@ -84,6 +110,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 return ret;
             }
             // These items can all get re-exported
+            clean::ExistentialItem(..) |
             clean::TypedefItem(..) | clean::StaticItem(..) |
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TraitItem(..) | clean::FunctionItem(..) |
@@ -126,6 +153,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // Associated types are never stripped
             clean::AssociatedTypeItem(..) => {}
+
+            // Keywords are never stripped
+            clean::KeywordItem(..) => {}
         }
 
         let fastreturn = match i.inner {

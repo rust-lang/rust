@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorInterior, Ty, TypeFoldable};
+use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
 use rustc::mir::{BasicBlock, Local, Location, Mir, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
@@ -28,7 +28,6 @@ pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, '_, 'tcx>, mir: &mut Mir<'tcx>) 
 /// variables.
 pub fn renumber_regions<'tcx, T>(
     infcx: &InferCtxt<'_, '_, 'tcx>,
-    ty_context: TyContext,
     value: &T,
 ) -> T
 where
@@ -39,7 +38,7 @@ where
     infcx
         .tcx
         .fold_regions(value, &mut false, |_region, _depth| {
-            let origin = NLLRegionVariableOrigin::Inferred(ty_context);
+            let origin = NLLRegionVariableOrigin::Existential;
             infcx.next_nll_region_var(origin)
         })
 }
@@ -49,11 +48,11 @@ struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
-    fn renumber_regions<T>(&mut self, ty_context: TyContext, value: &T) -> T
+    fn renumber_regions<T>(&mut self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
-        renumber_regions(self.infcx, ty_context, value)
+        renumber_regions(self.infcx, value)
     }
 }
 
@@ -61,7 +60,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
         debug!("visit_ty(ty={:?}, ty_context={:?})", ty, ty_context);
 
-        *ty = self.renumber_regions(ty_context, ty);
+        *ty = self.renumber_regions(ty);
 
         debug!("visit_ty: ty={:?}", ty);
     }
@@ -69,8 +68,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
         debug!("visit_substs(substs={:?}, location={:?})", substs, location);
 
-        let ty_context = TyContext::Location(location);
-        *substs = self.renumber_regions(ty_context, &{ *substs });
+        *substs = self.renumber_regions(&{ *substs });
 
         debug!("visit_substs: substs={:?}", substs);
     }
@@ -79,30 +77,27 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         debug!("visit_region(region={:?}, location={:?})", region, location);
 
         let old_region = *region;
-        let ty_context = TyContext::Location(location);
-        *region = self.renumber_regions(ty_context, &old_region);
+        *region = self.renumber_regions(&old_region);
 
         debug!("visit_region: region={:?}", region);
     }
 
-    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, location: Location) {
-        let ty_context = TyContext::Location(location);
-        *constant = self.renumber_regions(ty_context, &*constant);
+    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _location: Location) {
+        *constant = self.renumber_regions(&*constant);
     }
 
-    fn visit_generator_interior(&mut self,
-                                interior: &mut GeneratorInterior<'tcx>,
-                                location: Location) {
+    fn visit_generator_substs(&mut self,
+                              substs: &mut GeneratorSubsts<'tcx>,
+                              location: Location) {
         debug!(
-            "visit_generator_interior(interior={:?}, location={:?})",
-            interior,
+            "visit_generator_substs(substs={:?}, location={:?})",
+            substs,
             location,
         );
 
-        let ty_context = TyContext::Location(location);
-        *interior = self.renumber_regions(ty_context, interior);
+        *substs = self.renumber_regions(substs);
 
-        debug!("visit_generator_interior: interior={:?}", interior);
+        debug!("visit_generator_substs: substs={:?}", substs);
     }
 
     fn visit_closure_substs(&mut self, substs: &mut ClosureSubsts<'tcx>, location: Location) {
@@ -112,8 +107,7 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
             location
         );
 
-        let ty_context = TyContext::Location(location);
-        *substs = self.renumber_regions(ty_context, substs);
+        *substs = self.renumber_regions(substs);
 
         debug!("visit_closure_substs: substs={:?}", substs);
     }

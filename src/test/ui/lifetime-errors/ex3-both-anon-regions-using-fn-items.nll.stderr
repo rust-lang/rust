@@ -10,11 +10,13 @@ error[E0623]: lifetime mismatch
 LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
    |                               ---      --- these two types are declared with different lifetimes...
 LL |   y.push(z); //~ ERROR lifetime mismatch
-   |   ^ ...but data from `z` flows into `y` here
+   |   ^^^^^^^^^ ...but data from `z` flows into `y` here
 
-error[E0596]: cannot borrow immutable item `y` as mutable
+error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
   --> $DIR/ex3-both-anon-regions-using-fn-items.rs:11:3
    |
+LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
+   |                        - help: consider changing this to be mutable: `mut y`
 LL |   y.push(z); //~ ERROR lifetime mismatch
    |   ^ cannot borrow as mutable
 

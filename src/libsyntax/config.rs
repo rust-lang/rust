@@ -278,6 +278,22 @@ impl<'a> StripUnconfigured<'a> {
             pattern
         })
     }
+
+    // deny #[cfg] on generic parameters until we decide what to do with it.
+    // see issue #51279.
+    pub fn disallow_cfg_on_generic_param(&mut self, param: &ast::GenericParam) {
+        for attr in param.attrs() {
+            let offending_attr = if attr.check_name("cfg") {
+                "cfg"
+            } else if attr.check_name("cfg_attr") {
+                "cfg_attr"
+            } else {
+                continue;
+            };
+            let msg = format!("#[{}] cannot be applied on a generic parameter", offending_attr);
+            self.sess.span_diagnostic.span_err(attr.span, &msg);
+        }
+    }
 }
 
 impl<'a> fold::Folder for StripUnconfigured<'a> {

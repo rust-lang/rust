@@ -10,7 +10,7 @@
 
 // compile-flags:-D unknown_features
 
-// error-pattern:lint unknown_features has been renamed to unused_features
+// error-pattern:lint `unknown_features` has been renamed to `unused_features`
 // error-pattern:requested on the command line with `-D unknown_features`
 // error-pattern:unused
 

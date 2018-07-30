@@ -125,9 +125,9 @@ impl char {
             panic!("to_digit: radix is too high (maximum 36)");
         }
         let val = match self {
-          '0' ... '9' => self as u32 - '0' as u32,
-          'a' ... 'z' => self as u32 - 'a' as u32 + 10,
-          'A' ... 'Z' => self as u32 - 'A' as u32 + 10,
+          '0' ..= '9' => self as u32 - '0' as u32,
+          'a' ..= 'z' => self as u32 - 'a' as u32 + 10,
+          'A' ..= 'Z' => self as u32 - 'A' as u32 + 10,
           _ => return None,
         };
         if val < radix { Some(val) }
@@ -187,6 +187,27 @@ impl char {
         }
     }
 
+    /// An extended version of `escape_debug` that optionally permits escaping
+    /// Extended Grapheme codepoints. This allows us to format characters like
+    /// nonspacing marks better when they're at the start of a string.
+    #[doc(hidden)]
+    #[unstable(feature = "str_internals", issue = "0")]
+    #[inline]
+    pub fn escape_debug_ext(self, escape_grapheme_extended: bool) -> EscapeDebug {
+        let init_state = match self {
+            '\t' => EscapeDefaultState::Backslash('t'),
+            '\r' => EscapeDefaultState::Backslash('r'),
+            '\n' => EscapeDefaultState::Backslash('n'),
+            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
+            _ if escape_grapheme_extended && self.is_grapheme_extended() => {
+                EscapeDefaultState::Unicode(self.escape_unicode())
+            }
+            _ if is_printable(self) => EscapeDefaultState::Char(self),
+            _ => EscapeDefaultState::Unicode(self.escape_unicode()),
+        };
+        EscapeDebug(EscapeDefault { state: init_state })
+    }
+
     /// Returns an iterator that yields the literal escape code of a character
     /// as `char`s.
     ///
@@ -224,15 +245,7 @@ impl char {
     #[stable(feature = "char_escape_debug", since = "1.20.0")]
     #[inline]
     pub fn escape_debug(self) -> EscapeDebug {
-        let init_state = match self {
-            '\t' => EscapeDefaultState::Backslash('t'),
-            '\r' => EscapeDefaultState::Backslash('r'),
-            '\n' => EscapeDefaultState::Backslash('n'),
-            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            c if is_printable(c) => EscapeDefaultState::Char(c),
-            c => EscapeDefaultState::Unicode(c.escape_unicode()),
-        };
-        EscapeDebug(EscapeDefault { state: init_state })
+        self.escape_debug_ext(true)
     }
 
     /// Returns an iterator that yields the literal escape code of a character
@@ -292,7 +305,7 @@ impl char {
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
             '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
+            '\x20' ..= '\x7e' => EscapeDefaultState::Char(self),
             _ => EscapeDefaultState::Unicode(self.escape_unicode())
         };
         EscapeDefault { state: init_state }
@@ -530,7 +543,7 @@ impl char {
     #[inline]
     pub fn is_alphabetic(self) -> bool {
         match self {
-            'a'...'z' | 'A'...'Z' => true,
+            'a'..='z' | 'A'..='Z' => true,
             c if c > '\x7f' => derived_property::Alphabetic(c),
             _ => false,
         }
@@ -586,7 +599,7 @@ impl char {
     #[inline]
     pub fn is_lowercase(self) -> bool {
         match self {
-            'a'...'z' => true,
+            'a'..='z' => true,
             c if c > '\x7f' => derived_property::Lowercase(c),
             _ => false,
         }
@@ -614,7 +627,7 @@ impl char {
     #[inline]
     pub fn is_uppercase(self) -> bool {
         match self {
-            'A'...'Z' => true,
+            'A'..='Z' => true,
             c if c > '\x7f' => derived_property::Uppercase(c),
             _ => false,
         }
@@ -641,7 +654,7 @@ impl char {
     #[inline]
     pub fn is_whitespace(self) -> bool {
         match self {
-            ' ' | '\x09'...'\x0d' => true,
+            ' ' | '\x09'..='\x0d' => true,
             c if c > '\x7f' => property::White_Space(c),
             _ => false,
         }
@@ -692,6 +705,15 @@ impl char {
         general_category::Cc(self)
     }
 
+    /// Returns true if this `char` is an extended grapheme character, and false otherwise.
+    ///
+    /// 'Extended grapheme character' is defined in terms of the Unicode Shaping and Rendering
+    /// Category `Grapheme_Extend`.
+    #[inline]
+    pub(crate) fn is_grapheme_extended(self) -> bool {
+        derived_property::Grapheme_Extend(self)
+    }
+
     /// Returns true if this `char` is numeric, and false otherwise.
     ///
     /// 'Numeric'-ness is defined in terms of the Unicode General Categories
@@ -715,7 +737,7 @@ impl char {
     #[inline]
     pub fn is_numeric(self) -> bool {
         match self {
-            '0'...'9' => true,
+            '0'..='9' => true,
             c if c > '\x7f' => general_category::N(c),
             _ => false,
         }

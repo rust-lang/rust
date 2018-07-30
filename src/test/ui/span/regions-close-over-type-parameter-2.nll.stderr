@@ -10,7 +10,7 @@ LL | |         repeater3(tmp1)
 LL | |     };
    | |     -
    | |     |
-   | |_____borrowed value only lives until here
+   | |_____`tmp0` dropped here while still borrowed
    |       borrow later used here
 
 error: aborting due to previous error

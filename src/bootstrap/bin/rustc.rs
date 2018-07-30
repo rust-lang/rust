@@ -268,10 +268,23 @@ fn main() {
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
             cmd.arg(format!("-Clinker={}", host_linker));
         }
+
+        if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
+            if s == "true" {
+                cmd.arg("-C").arg("target-feature=+crt-static");
+            }
+            if s == "false" {
+                cmd.arg("-C").arg("target-feature=-crt-static");
+            }
+        }
     }
 
     if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
         cmd.arg("--cfg").arg("parallel_queries");
+    }
+
+    if env::var_os("RUSTC_VERIFY_LLVM_IR").is_some() {
+        cmd.arg("-Z").arg("verify-llvm-ir");
     }
 
     let color = match env::var("RUSTC_COLOR") {
@@ -283,12 +296,19 @@ fn main() {
         cmd.arg("--color=always");
     }
 
-    if env::var_os("RUSTC_DENY_WARNINGS").is_some() {
+    if env::var_os("RUSTC_DENY_WARNINGS").is_some() && env::var_os("RUSTC_EXTERNAL_TOOL").is_none()
+    {
         cmd.arg("-Dwarnings");
+        cmd.arg("-Dbare_trait_objects");
     }
 
     if verbose > 1 {
-        eprintln!("rustc command: {:?}", cmd);
+        eprintln!(
+            "rustc command: {:?}={:?} {:?}",
+            bootstrap::util::dylib_path_var(),
+            env::join_paths(&dylib_path).unwrap(),
+            cmd,
+        );
         eprintln!("sysroot: {:?}", sysroot);
         eprintln!("libdir: {:?}", libdir);
     }
@@ -308,7 +328,7 @@ fn main() {
             let start = Instant::now();
             let status = cmd
                 .status()
-                .expect(&format!("\n\n failed to run {:?}", cmd));
+                .unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
             let dur = start.elapsed();
 
             let is_test = args.iter().any(|a| a == "--test");
@@ -328,7 +348,7 @@ fn main() {
         }
     }
 
-    let code = exec_cmd(&mut cmd).expect(&format!("\n\n failed to run {:?}", cmd));
+    let code = exec_cmd(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
     std::process::exit(code);
 }
 

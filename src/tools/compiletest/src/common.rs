@@ -10,10 +10,11 @@
 pub use self::Mode::*;
 
 use std::fmt;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::path::PathBuf;
 
 use test::ColorConfig;
+use util::PathBufExt;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -98,18 +99,21 @@ impl fmt::Display for Mode {
 #[derive(Clone, PartialEq)]
 pub enum CompareMode {
     Nll,
+    Polonius,
 }
 
 impl CompareMode {
     pub(crate) fn to_str(&self) -> &'static str {
         match *self {
-            CompareMode::Nll => "nll"
+            CompareMode::Nll => "nll",
+            CompareMode::Polonius => "polonius",
         }
     }
 
     pub fn parse(s: String) -> CompareMode {
         match s.as_str() {
             "nll" => CompareMode::Nll,
+            "polonius" => CompareMode::Polonius,
             x => panic!("unknown --compare-mode option: {}", x),
         }
     }
@@ -117,6 +121,9 @@ impl CompareMode {
 
 #[derive(Clone)]
 pub struct Config {
+    /// Whether to overwrite stderr/stdout files instead of complaining about changes in output
+    pub bless: bool,
+
     /// The library paths required for running the compiler
     pub compile_lib_path: PathBuf,
 
@@ -245,24 +252,28 @@ pub struct Config {
     pub nodejs: Option<String>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TestPaths {
     pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
-    pub base: PathBuf,         // e.g., compile-test, auxiliary
     pub relative_dir: PathBuf, // e.g., foo/bar
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
-pub fn expected_output_path(testpaths: &TestPaths,
-                            revision: Option<&str>,
-                            compare_mode: &Option<CompareMode>,
-                            kind: &str) -> PathBuf {
-
+pub fn expected_output_path(
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+    compare_mode: &Option<CompareMode>,
+    kind: &str,
+) -> PathBuf {
     assert!(UI_EXTENSIONS.contains(&kind));
     let mut parts = Vec::new();
 
-    if let Some(x) = revision { parts.push(x); }
-    if let Some(ref x) = *compare_mode { parts.push(x.to_str()); }
+    if let Some(x) = revision {
+        parts.push(x);
+    }
+    if let Some(ref x) = *compare_mode {
+        parts.push(x.to_str());
+    }
     parts.push(kind);
 
     let extension = parts.join(".");
@@ -273,3 +284,38 @@ pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
 pub const UI_FIXED: &str = "fixed";
+
+/// Absolute path to the directory where all output for all tests in the given
+/// `relative_dir` group should reside. Example:
+///   /path/to/build/host-triple/test/ui/relative/
+/// This is created early when tests are collected to avoid race conditions.
+pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
+    config.build_base.join(relative_dir)
+}
+
+/// Generates a unique name for the test, such as `testname.revision.mode`.
+pub fn output_testname_unique(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> PathBuf {
+    let mode = config.compare_mode.as_ref().map_or("", |m| m.to_str());
+    PathBuf::from(&testpaths.file.file_stem().unwrap())
+        .with_extra_extension(revision.unwrap_or(""))
+        .with_extra_extension(mode)
+}
+
+/// Absolute path to the directory where all output for the given
+/// test/revision should reside.  Example:
+///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
+pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+    output_relative_path(config, &testpaths.relative_dir)
+        .join(output_testname_unique(config, testpaths, revision))
+}
+
+/// Absolute path to the base filename used as output for the given
+/// test/revision.  Example:
+///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/testname
+pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+    output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
+}

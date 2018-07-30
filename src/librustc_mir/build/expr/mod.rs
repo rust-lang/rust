@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Translates expressions into MIR. As a caller into this module, you
+//! Builds MIR from expressions. As a caller into this module, you
 //! have many options, but the first thing you have to decide is
 //! whether you are evaluating this expression for its *value*, its
 //! *location*, or as a *constant*.
@@ -41,7 +41,7 @@
 //! ### Implementation notes
 //!
 //! For any given kind of expression, there is generally one way that
-//! can be translated most naturally. This is specified by the
+//! can be lowered most naturally. This is specified by the
 //! `Category::of` function in the `category` module. For example, a
 //! struct expression (or other expression that creates a new value)
 //! is typically easiest to write in terms of `as_rvalue` or `into`,
@@ -65,7 +65,7 @@
 //! which can fallback to `into`. So if one of the `ExprKind` variants is not, in fact,
 //! implemented in the category where it is supposed to be, there will be a problem.
 //!
-//! Of those fallbacks, the most interesting one is `as_temp`, because
+//! Of those fallbacks, the most interesting one is `into`, because
 //! it discriminates based on the category of the expression. This is
 //! basically the point where the "by value" operations are bridged
 //! over to the "by reference" mode (`as_place`).

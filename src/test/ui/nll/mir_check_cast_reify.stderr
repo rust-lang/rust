@@ -1,0 +1,17 @@
+warning: not reporting region error due to nll
+  --> $DIR/mir_check_cast_reify.rs:46:25
+   |
+LL |     let f: fn(_) -> _ = foo;
+   |                         ^^^
+
+error: borrowed data escapes outside of function
+  --> $DIR/mir_check_cast_reify.rs:48:5
+   |
+LL | fn bar<'a>(x: &'a u32) -> &'static u32 {
+   |            - `x` is a reference that is only valid in the function body
+...
+LL |     f(x)
+   |     ^^^^ `x` escapes the function body here
+
+error: aborting due to previous error
+

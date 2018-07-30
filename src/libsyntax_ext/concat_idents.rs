@@ -21,7 +21,7 @@ use syntax::tokenstream::TokenTree;
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[TokenTree])
-                              -> Box<base::MacResult + 'cx> {
+                              -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_concat_idents() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        "concat_idents",
@@ -49,7 +49,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
         } else {
             match *e {
                 TokenTree::Token(_, token::Ident(ident, _)) =>
-                    res_str.push_str(&ident.name.as_str()),
+                    res_str.push_str(&ident.as_str()),
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
                     return DummyResult::expr(sp);

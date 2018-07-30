@@ -35,7 +35,7 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	background: rgba(0, 0, 0, 0);
 }
 
-.docblock code, .docblock-short code {
+.docblock p > code, .docblock-short p > code {
 	background-color: #F5F5F5;
 }
 pre {
@@ -128,6 +128,7 @@ pre {
 .content .highlighted.constant,
 .content .highlighted.static { background-color: #c3e0ff; }
 .content .highlighted.primitive { background-color: #9aecff; }
+.content .highlighted.keyword { background-color: #f99650; }
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #508157; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #ad448e; }
@@ -145,6 +146,7 @@ pre {
 .content span.method, .content a.method, .block a.current.method,
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod,
 .content .fnname { color: #9a6e31; }
+.content span.keyword, .content a.keyword, .block a.current.keyword { color: #de5249; }
 
 pre.rust .comment { color: #8E908C; }
 pre.rust .doccomment { color: #4D4D4C; }
@@ -163,7 +165,8 @@ a {
 	color: #000;
 }
 
-.docblock a, .docblock-short a, .stability a {
+.docblock a:not(.srclink):not(.test-arrow), .docblock-short a:not(.srclink):not(.test-arrow),
+.stability a {
 	color: #3873AD;
 }
 
@@ -202,7 +205,7 @@ a.test-arrow {
 	color: grey;
 }
 
-tr.result span.primitive::after {
+tr.result span.primitive::after, tr.result span.keyword::after {
 	color: black;
 }
 
@@ -390,4 +393,11 @@ kbd {
 }
 #all-types:hover {
 	background-color: #f9f9f9;
+}
+
+.search-results td span.alias {
+	color: #000;
+}
+.search-results td span.grey {
+	color: #999;
 }

@@ -80,8 +80,8 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         match item.node {
-            hir::ItemStruct(ref struct_def, _) |
-            hir::ItemUnion(ref struct_def, _) => {
+            hir::ItemKind::Struct(ref struct_def, _) |
+            hir::ItemKind::Union(ref struct_def, _) => {
                 self.visit_node_helper(item.id);
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
@@ -89,7 +89,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            hir::ItemEnum(ref enum_def, _) => {
+            hir::ItemKind::Enum(ref enum_def, _) => {
                 self.visit_node_helper(item.id);
 
                 for variant in &enum_def.variants {
@@ -99,13 +99,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            hir::ItemFn(..) => {
+            hir::ItemKind::Fn(..) => {
                 self.visit_node_helper(item.id);
             }
 
-            hir::ItemForeignMod(ref foreign_mod) => {
+            hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
-                    if let hir::ForeignItemFn(..) = foreign_item.node {
+                    if let hir::ForeignItemKind::Fn(..) = foreign_item.node {
                         self.visit_node_helper(foreign_item.id);
                     }
                 }
@@ -272,10 +272,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 bug!("Unexpected closure type in variance computation");
             }
 
-            ty::TyRef(region, ref mt) => {
+            ty::TyRef(region, ty, mutbl) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(current, region, contra);
-                self.add_constraints_from_mt(current, mt, variance);
+                self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
             ty::TyArray(typ, _) |

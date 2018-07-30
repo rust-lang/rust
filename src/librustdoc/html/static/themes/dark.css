@@ -33,7 +33,7 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	background: rgba(0, 0, 0, 0);
 }
 
-.docblock code, .docblock-short code {
+.docblock p > code, .docblock-short p > code {
 	background-color: #2A2A2A;
 }
 pre {
@@ -108,7 +108,7 @@ pre {
 
 .content .highlighted {
 	color: #eee !important;
-	background-color: #333;
+	background-color: #616161;
 }
 .content .highlighted a, .content .highlighted span { color: #eee !important; }
 .content .highlighted.trait { background-color: #013191; }
@@ -128,6 +128,7 @@ pre {
 .content .highlighted.constant,
 .content .highlighted.static { background-color: #0063cc; }
 .content .highlighted.primitive { background-color: #00708a; }
+.content .highlighted.keyword { background-color: #884719; }
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #82b089; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #2dbfb8; }
@@ -145,6 +146,7 @@ pre {
 .content span.method, .content a.method, .block a.current.method,
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod,
 .content .fnname{ color: #2BAB63; }
+.content span.keyword, .content a.keyword, .block a.current.keyword { color: #de5249; }
 
 pre.rust .comment { color: #8d8d8b; }
 pre.rust .doccomment { color: #8ca375; }
@@ -163,7 +165,8 @@ a {
 	color: #ddd;
 }
 
-.docblock a, .docblock-short a, .stability a {
+.docblock a:not(.srclink):not(.test-arrow), .docblock-short a:not(.srclink):not(.test-arrow),
+.stability a {
 	color: #D2991D;
 }
 
@@ -208,7 +211,7 @@ a.test-arrow {
 	color: grey;
 }
 
-tr.result span.primitive::after {
+tr.result span.primitive::after, tr.result span.keyword::after {
 	color: #ddd;
 }
 
@@ -382,7 +385,7 @@ kbd {
 }
 
 #theme-choices > button:hover, #theme-choices > button:focus {
-	background-color: #444;
+	background-color: #4e4e4e;
 }
 
 @media (max-width: 700px) {
@@ -396,4 +399,11 @@ kbd {
 }
 #all-types:hover {
 	background-color: #606060;
+}
+
+.search-results td span.alias {
+	color: #fff;
+}
+.search-results td span.grey {
+	color: #ccc;
 }

@@ -9,11 +9,9 @@
 // except according to those terms.
 
 use infer::InferCtxt;
-use infer::canonical::{Canonical, Canonicalize};
+use rustc_data_structures::small_vec::SmallVec;
 use traits::{EvaluationResult, PredicateObligation, SelectionContext,
              TraitQueryMode, OverflowError};
-use traits::query::CanonicalPredicateGoal;
-use ty::{ParamEnvAnd, Predicate, TyCtxt};
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
@@ -41,8 +39,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> EvaluationResult {
-        let (c_pred, _) =
-            self.canonicalize_query(&obligation.param_env.and(obligation.predicate));
+        let mut _orig_values = SmallVec::new();
+        let c_pred = self.canonicalize_query(&obligation.param_env.and(obligation.predicate),
+                                             &mut _orig_values);
         // Run canonical query. If overflow occurs, rerun from scratch but this time
         // in standard trait query mode so that overflow is handled appropriately
         // within `SelectionContext`.
@@ -55,16 +54,5 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                      .expect("Overflow should be caught earlier in standard query mode")
             }
         }
-    }
-}
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ParamEnvAnd<'tcx, Predicate<'tcx>> {
-    type Canonicalized = CanonicalPredicateGoal<'gcx>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
     }
 }

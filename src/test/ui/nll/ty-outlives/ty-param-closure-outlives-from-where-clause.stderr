@@ -28,7 +28,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#1r ()>, T))
            ]
-   = note: number of external vids: 2
+   = note: number of external vids: 4
    = note: where T: '_#1r
 
 error[E0309]: the parameter type `T` may not live long enough
@@ -81,7 +81,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 3
+   = note: number of external vids: 4
    = note: where T: '_#2r
 
 note: No external requirements
@@ -119,7 +119,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
            ]
-   = note: number of external vids: 3
+   = note: number of external vids: 5
    = note: where T: '_#2r
 
 error[E0309]: the parameter type `T` may not live long enough
@@ -170,7 +170,7 @@ LL | |     })
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
            ]
-   = note: number of external vids: 4
+   = note: number of external vids: 5
    = note: where T: '_#3r
 
 note: No external requirements

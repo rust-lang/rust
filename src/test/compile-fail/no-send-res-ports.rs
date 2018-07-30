@@ -33,7 +33,7 @@ fn main() {
     let x = foo(Port(Rc::new(())));
 
     thread::spawn(move|| {
-        //~^ ERROR `std::rc::Rc<()>: std::marker::Send` is not satisfied
+        //~^ ERROR `std::rc::Rc<()>` cannot be sent between threads safely
         let y = x;
         println!("{:?}", y);
     });

@@ -19,7 +19,8 @@ fn test32() { assert_send::<Vec<isize> >(); }
 
 // but not if they own a bad thing
 fn test40() {
-    assert_send::<Box<*mut u8>>(); //~ ERROR : std::marker::Send` is not satisfied
+    assert_send::<Box<*mut u8>>();
+    //~^ ERROR `*mut u8` cannot be sent between threads safely
 }
 
 fn main() { }

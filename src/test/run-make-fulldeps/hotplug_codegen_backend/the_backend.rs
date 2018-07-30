@@ -12,7 +12,7 @@
 
 extern crate syntax;
 extern crate rustc;
-extern crate rustc_trans_utils;
+extern crate rustc_codegen_utils;
 
 use std::any::Any;
 use std::sync::mpsc;
@@ -20,14 +20,14 @@ use syntax::symbol::Symbol;
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::OutputFilenames;
 use rustc::ty::TyCtxt;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
-use rustc_trans_utils::trans_crate::{TransCrate, MetadataOnlyTransCrate};
+use rustc_codegen_utils::codegen_backend::{CodegenBackend, MetadataOnlyCodegenBackend};
 
-struct TheBackend(Box<TransCrate>);
+struct TheBackend(Box<CodegenBackend>);
 
-impl TransCrate for TheBackend {
+impl CodegenBackend for TheBackend {
     fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
         self.0.metadata_loader()
     }
@@ -40,7 +40,7 @@ impl TransCrate for TheBackend {
         self.0.provide_extern(providers);
     }
 
-    fn trans_crate<'a, 'tcx>(
+    fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _rx: mpsc::Receiver<Box<Any + Send>>
@@ -50,20 +50,20 @@ impl TransCrate for TheBackend {
         Box::new(tcx.crate_name(LOCAL_CRATE) as Symbol)
     }
 
-    fn join_trans_and_link(
+    fn join_codegen_and_link(
         &self,
-        trans: Box<Any>,
+        ongoing_codegen: Box<Any>,
         sess: &Session,
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete> {
         use std::io::Write;
         use rustc::session::config::CrateType;
-        use rustc_trans_utils::link::out_filename;
-        let crate_name = trans.downcast::<Symbol>()
-            .expect("in join_trans_and_link: trans is not a Symbol");
+        use rustc_codegen_utils::link::out_filename;
+        let crate_name = ongoing_codegen.downcast::<Symbol>()
+            .expect("in join_codegen_and_link: ongoing_codegen is not a Symbol");
         for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::CrateTypeExecutable {
+            if crate_type != CrateType::CrateTypeRlib {
                 sess.fatal(&format!("Crate type is {:?}", crate_type));
             }
             let output_name =
@@ -75,8 +75,8 @@ impl TransCrate for TheBackend {
     }
 }
 
-/// This is the entrypoint for a hot plugged rustc_trans
+/// This is the entrypoint for a hot plugged rustc_codegen_llvm
 #[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<TransCrate> {
-    Box::new(TheBackend(MetadataOnlyTransCrate::new()))
+pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
+    Box::new(TheBackend(MetadataOnlyCodegenBackend::new()))
 }

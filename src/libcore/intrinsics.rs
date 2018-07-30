@@ -10,7 +10,7 @@
 
 //! rustc compiler intrinsics.
 //!
-//! The corresponding definitions are in librustc_trans/intrinsic.rs.
+//! The corresponding definitions are in librustc_codegen_llvm/intrinsic.rs.
 //!
 //! # Volatiles
 //!
@@ -717,7 +717,7 @@ extern "rust-intrinsic" {
     /// Reinterprets the bits of a value of one type as another type.
     ///
     /// Both types must have the same size. Neither the original, nor the result,
-    /// may be an [invalid value](../../nomicon/meet-safe-and-unsafe.html).
+    /// may be an [invalid value](../../nomicon/what-unsafe-does.html).
     ///
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
@@ -1085,6 +1085,15 @@ extern "rust-intrinsic" {
     /// [`std::ptr::write_volatile`](../../std/ptr/fn.write_volatile.html).
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
+    /// Perform a volatile load from the `src` pointer
+    /// The pointer is not required to be aligned.
+    #[cfg(not(stage0))]
+    pub fn unaligned_volatile_load<T>(src: *const T) -> T;
+    /// Perform a volatile store to the `dst` pointer.
+    /// The pointer is not required to be aligned.
+    #[cfg(not(stage0))]
+    pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
+
     /// Returns the square root of an `f32`
     pub fn sqrtf32(x: f32) -> f32;
     /// Returns the square root of an `f64`
@@ -1363,40 +1372,6 @@ extern "rust-intrinsic" {
     /// on MSVC it's `*mut [usize; 2]`. For more information see the compiler's
     /// source as well as std's catch implementation.
     pub fn try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
-
-    /// Computes the byte offset that needs to be applied to `ptr` in order to
-    /// make it aligned to `align`.
-    /// If it is not possible to align `ptr`, the implementation returns
-    /// `usize::max_value()`.
-    ///
-    /// There are no guarantees whatsover that offsetting the pointer will not
-    /// overflow or go beyond the allocation that `ptr` points into.
-    /// It is up to the caller to ensure that the returned offset is correct
-    /// in all terms other than alignment.
-    ///
-    /// # Examples
-    ///
-    /// Accessing adjacent `u8` as `u16`
-    ///
-    /// ```
-    /// # #![feature(core_intrinsics)]
-    /// # fn foo(n: usize) {
-    /// # use std::intrinsics::align_offset;
-    /// # use std::mem::align_of;
-    /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = &x[n] as *const u8;
-    /// let offset = align_offset(ptr as *const (), align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
-    /// } else {
-    ///     // while the pointer can be aligned via `offset`, it would point
-    ///     // outside the allocation
-    /// }
-    /// # } }
-    /// ```
-    pub fn align_offset(ptr: *const (), align: usize) -> usize;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.

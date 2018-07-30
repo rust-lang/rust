@@ -14,7 +14,7 @@
 /// "file-scoped", or "module-level" assembly. These synonyms
 /// all correspond to LLVM's module-level inline assembly instruction.
 ///
-/// For example, `global_asm!("some assembly here")` translates to
+/// For example, `global_asm!("some assembly here")` codegens to
 /// LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 /// therefore apply.
 
@@ -34,7 +34,7 @@ pub const MACRO: &'static str = "global_asm";
 
 pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
-                              tts: &[tokenstream::TokenTree]) -> Box<base::MacResult + 'cx> {
+                              tts: &[tokenstream::TokenTree]) -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_global_asm() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        MACRO,

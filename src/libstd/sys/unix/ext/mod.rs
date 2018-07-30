@@ -35,6 +35,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(cfg(unix))]
+#![allow(missing_docs)]
 
 pub mod io;
 pub mod ffi;

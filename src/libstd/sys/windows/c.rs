@@ -637,6 +637,22 @@ pub struct STACKFRAME_EX {
 
 #[repr(C)]
 #[cfg(feature = "backtrace")]
+pub struct STACKFRAME64 {
+    pub AddrPC: ADDRESS64,
+    pub AddrReturn: ADDRESS64,
+    pub AddrFrame: ADDRESS64,
+    pub AddrStack: ADDRESS64,
+    pub AddrBStore: ADDRESS64,
+    pub FuncTableEntry: *mut c_void,
+    pub Params: [u64; 4],
+    pub Far: BOOL,
+    pub Virtual: BOOL,
+    pub Reserved: [u64; 3],
+    pub KdHelp: KDHELP64,
+}
+
+#[repr(C)]
+#[cfg(feature = "backtrace")]
 pub struct KDHELP64 {
     pub Thread: u64,
     pub ThCallbackStack: DWORD,

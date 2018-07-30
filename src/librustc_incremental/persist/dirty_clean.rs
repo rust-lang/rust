@@ -29,7 +29,7 @@ use std::iter::FromIterator;
 use std::vec::Vec;
 use rustc::dep_graph::{DepNode, label_strs};
 use rustc::hir;
-use rustc::hir::{Item_ as HirItem, ImplItemKind, TraitItemKind};
+use rustc::hir::{ItemKind as HirItem, ImplItemKind, TraitItemKind};
 use rustc::hir::map::Node as HirNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -239,8 +239,8 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         intravisit::walk_crate(&mut all_attrs, krate);
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
-        // here, since that is running before trans. This is also the reason why
-        // all trans-specific attributes are `Whitelisted` in syntax::feature_gate.
+        // here, since that is running before codegen. This is also the reason why
+        // all codegen-specific attributes are `Whitelisted` in syntax::feature_gate.
         all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
     })
 }
@@ -342,40 +342,40 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     // FIXME(michaelwoerister): do commented out ones
 
                     // // An `extern crate` item, with optional original crate name,
-                    // HirItem::ItemExternCrate(..),  // intentionally no assertions
+                    // HirItem::ExternCrate(..),  // intentionally no assertions
 
                     // // `use foo::bar::*;` or `use foo::bar::baz as quux;`
-                    // HirItem::ItemUse(..),  // intentionally no assertions
+                    // HirItem::Use(..),  // intentionally no assertions
 
                     // A `static` item
-                    HirItem::ItemStatic(..) => ("ItemStatic", LABELS_CONST),
+                    HirItem::Static(..) => ("ItemStatic", LABELS_CONST),
 
                     // A `const` item
-                    HirItem::ItemConst(..) => ("ItemConst", LABELS_CONST),
+                    HirItem::Const(..) => ("ItemConst", LABELS_CONST),
 
                     // A function declaration
-                    HirItem::ItemFn(..) => ("ItemFn", LABELS_FN),
+                    HirItem::Fn(..) => ("ItemFn", LABELS_FN),
 
                     // // A module
-                    HirItem::ItemMod(..) =>("ItemMod", LABELS_HIR_ONLY),
+                    HirItem::Mod(..) =>("ItemMod", LABELS_HIR_ONLY),
 
                     // // An external module
-                    HirItem::ItemForeignMod(..) => ("ItemForeignMod", LABELS_HIR_ONLY),
+                    HirItem::ForeignMod(..) => ("ItemForeignMod", LABELS_HIR_ONLY),
 
                     // Module-level inline assembly (from global_asm!)
-                    HirItem::ItemGlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
+                    HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
                     // A type alias, e.g. `type Foo = Bar<u8>`
-                    HirItem::ItemTy(..) => ("ItemTy", LABELS_HIR_ONLY),
+                    HirItem::Ty(..) => ("ItemTy", LABELS_HIR_ONLY),
 
                     // An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
-                    HirItem::ItemEnum(..) => ("ItemEnum", LABELS_ADT),
+                    HirItem::Enum(..) => ("ItemEnum", LABELS_ADT),
 
                     // A struct definition, e.g. `struct Foo<A> {x: A}`
-                    HirItem::ItemStruct(..) => ("ItemStruct", LABELS_ADT),
+                    HirItem::Struct(..) => ("ItemStruct", LABELS_ADT),
 
                     // A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
-                    HirItem::ItemUnion(..) => ("ItemUnion", LABELS_ADT),
+                    HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration
                     // FIXME(michaelwoerister): trait declaration is buggy because sometimes some of
@@ -385,16 +385,16 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     // michaelwoerister and vitiral came up with a possible solution,
                     // to just do this before every query
                     // ```
-                    // ::rustc::ty::maps::plumbing::force_from_dep_node(tcx, dep_node)
+                    // ::rustc::ty::query::plumbing::force_from_dep_node(tcx, dep_node)
                     // ```
                     //
                     // However, this did not seem to work effectively and more bugs were hit.
                     // Nebie @vitiral gave up :)
                     //
-                    //HirItem::ItemTrait(..) => ("ItemTrait", LABELS_TRAIT),
+                    //HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
-                    HirItem::ItemImpl(..) => ("ItemImpl", LABELS_IMPL),
+                    HirItem::Impl(..) => ("ItemKind::Impl", LABELS_IMPL),
 
                     _ => self.tcx.sess.span_fatal(
                         attr.span,
@@ -417,6 +417,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     ImplItemKind::Method(..) => ("NodeImplItem", LABELS_FN_IN_IMPL),
                     ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                     ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
+                    ImplItemKind::Existential(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                 }
             },
             _ => self.tcx.sess.span_fatal(
@@ -453,16 +454,20 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         out
     }
 
-    fn dep_nodes(&self, labels: &Labels, def_id: DefId) -> Vec<DepNode> {
-        let mut out = Vec::with_capacity(labels.len());
+    fn dep_nodes<'l>(
+        &self,
+        labels: &'l Labels,
+        def_id: DefId
+    ) -> impl Iterator<Item = DepNode> + 'l {
         let def_path_hash = self.tcx.def_path_hash(def_id);
-        for label in labels.iter() {
-            match DepNode::from_label_string(label, def_path_hash) {
-                Ok(dep_node) => out.push(dep_node),
-                Err(()) => unreachable!(),
-            }
-        }
-        out
+        labels
+            .iter()
+            .map(move |label| {
+                match DepNode::from_label_string(label, def_path_hash) {
+                    Ok(dep_node) => dep_node,
+                    Err(()) => unreachable!(),
+                }
+            })
     }
 
     fn dep_node_str(&self, dep_node: &DepNode) -> String {

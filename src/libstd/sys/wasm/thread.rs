@@ -19,7 +19,7 @@ pub struct Thread(Void);
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 impl Thread {
-    pub unsafe fn new<'a>(_stack: usize, _p: Box<FnBox() + 'a>)
+    pub unsafe fn new<'a>(_stack: usize, _p: Box<dyn FnBox() + 'a>)
         -> io::Result<Thread>
     {
         unsupported()

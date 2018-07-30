@@ -34,7 +34,7 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
-use syntax::ext::base::SyntaxExtension;
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
@@ -100,6 +100,8 @@ impl<'a> Resolver<'a> {
     }
 
     fn build_reduced_graph_for_use_tree(&mut self,
+                                        root_use_tree: &ast::UseTree,
+                                        root_id: NodeId,
                                         use_tree: &ast::UseTree,
                                         id: NodeId,
                                         vis: ty::Visibility,
@@ -116,7 +118,7 @@ impl<'a> Resolver<'a> {
             .collect();
 
         match use_tree.kind {
-            ast::UseTreeKind::Simple(rename) => {
+            ast::UseTreeKind::Simple(rename, ..) => {
                 let mut ident = use_tree.ident();
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
@@ -154,7 +156,7 @@ impl<'a> Resolver<'a> {
 
                     // Disallow `use $crate;`
                     if source.name == keywords::DollarCrate.name() && path.segments.len() == 1 {
-                        let crate_root = self.resolve_crate_root(source.span.ctxt(), true);
+                        let crate_root = self.resolve_crate_root(source);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),
@@ -182,7 +184,14 @@ impl<'a> Resolver<'a> {
                     type_ns_only,
                 };
                 self.add_import_directive(
-                    module_path, subclass, use_tree.span, id, vis, expansion,
+                    module_path,
+                    subclass,
+                    use_tree.span,
+                    id,
+                    root_use_tree.span,
+                    root_id,
+                    vis,
+                    expansion,
                 );
             }
             ast::UseTreeKind::Glob => {
@@ -191,7 +200,14 @@ impl<'a> Resolver<'a> {
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
                 self.add_import_directive(
-                    module_path, subclass, use_tree.span, id, vis, expansion,
+                    module_path,
+                    subclass,
+                    use_tree.span,
+                    id,
+                    root_use_tree.span,
+                    root_id,
+                    vis,
+                    expansion,
                 );
             }
             ast::UseTreeKind::Nested(ref items) => {
@@ -226,7 +242,7 @@ impl<'a> Resolver<'a> {
 
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
-                        tree, id, vis, &prefix, true, item, expansion
+                        root_use_tree, root_id, tree, id, vis, &prefix, true, item, expansion
                     );
                 }
             }
@@ -249,7 +265,7 @@ impl<'a> Resolver<'a> {
                 };
 
                 self.build_reduced_graph_for_use_tree(
-                    use_tree, item.id, vis, &prefix, false, item, expansion,
+                    use_tree, item.id, use_tree, item.id, vis, &prefix, false, item, expansion,
                 );
             }
 
@@ -266,10 +282,12 @@ impl<'a> Resolver<'a> {
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
+                    root_id: item.id,
                     id: item.id,
                     parent,
                     imported_module: Cell::new(Some(module)),
                     subclass: ImportDirectiveSubclass::ExternCrate(orig_name),
+                    root_span: item.span,
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
@@ -317,11 +335,34 @@ impl<'a> Resolver<'a> {
             ItemKind::Fn(..) => {
                 let def = Def::Fn(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, ValueNS, (def, vis, sp, expansion));
+
+                // Functions introducing procedural macros reserve a slot
+                // in the macro namespace as well (see #52225).
+                if attr::contains_name(&item.attrs, "proc_macro") ||
+                   attr::contains_name(&item.attrs, "proc_macro_attribute") {
+                    let def = Def::Macro(def.def_id(), MacroKind::ProcMacroStub);
+                    self.define(parent, ident, MacroNS, (def, vis, sp, expansion));
+                }
+                if let Some(attr) = attr::find_by_name(&item.attrs, "proc_macro_derive") {
+                    if let Some(trait_attr) =
+                            attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
+                        if let Some(ident) = trait_attr.name().map(Ident::with_empty_ctxt) {
+                            let sp = trait_attr.span;
+                            let def = Def::Macro(def.def_id(), MacroKind::ProcMacroStub);
+                            self.define(parent, ident, MacroNS, (def, vis, sp, expansion));
+                        }
+                    }
+                }
             }
 
             // These items live in the type namespace.
             ItemKind::Ty(..) => {
                 let def = Def::TyAlias(self.definitions.local_def_id(item.id));
+                self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
+            }
+
+            ItemKind::Existential(_, _) => {
+                let def = Def::Existential(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
             }
 
@@ -588,7 +629,8 @@ impl<'a> Resolver<'a> {
 
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
                                                &self.session.features_untracked(),
-                                               &macro_def));
+                                               &macro_def,
+                                               self.cstore.crate_edition_untracked(def_id.krate)));
         self.macro_map.insert(def_id, ext.clone());
         ext
     }
@@ -609,7 +651,7 @@ impl<'a> Resolver<'a> {
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
-        if self.global_macros.insert(name, binding).is_some() && !allow_shadowing {
+        if self.macro_prelude.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
@@ -639,10 +681,12 @@ impl<'a> Resolver<'a> {
 
         let (graph_root, arenas) = (self.graph_root, self.arenas);
         let macro_use_directive = |span| arenas.alloc_import_directive(ImportDirective {
+            root_id: item.id,
             id: item.id,
             parent: graph_root,
             imported_module: Cell::new(Some(module)),
             subclass: ImportDirectiveSubclass::MacroUse,
+            root_span: span,
             span,
             module_path: Vec::new(),
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
@@ -660,8 +704,7 @@ impl<'a> Resolver<'a> {
         } else {
             for (name, span) in legacy_imports.imports {
                 let ident = Ident::with_empty_ctxt(name);
-                let result = self.resolve_ident_in_module(module, ident, MacroNS,
-                                                          false, false, span);
+                let result = self.resolve_ident_in_module(module, ident, MacroNS, false, span);
                 if let Ok(binding) = result {
                     let directive = macro_use_directive(span);
                     self.potentially_unused_imports.push(directive);

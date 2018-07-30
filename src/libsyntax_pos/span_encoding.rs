@@ -31,11 +31,13 @@ pub struct Span(u32);
 
 impl Copy for Span {}
 impl Clone for Span {
+    #[inline]
     fn clone(&self) -> Span {
         *self
     }
 }
 impl PartialEq for Span {
+    #[inline]
     fn eq(&self, other: &Span) -> bool {
         let a = self.0;
         let b = other.0;
@@ -44,6 +46,7 @@ impl PartialEq for Span {
 }
 impl Eq for Span {}
 impl Hash for Span {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         let a = self.0;
         a.hash(state)
@@ -97,7 +100,7 @@ const INTERNED_INDEX_OFFSET: u32 = 1;
 
 #[inline]
 fn encode(sd: &SpanData) -> Span {
-    let (base, len, ctxt) = (sd.lo.0, sd.hi.0 - sd.lo.0, sd.ctxt.0);
+    let (base, len, ctxt) = (sd.lo.0, sd.hi.0 - sd.lo.0, sd.ctxt.as_u32());
 
     let val = if (base >> INLINE_SIZES[BASE_INDEX]) == 0 &&
                  (len >> INLINE_SIZES[LEN_INDEX]) == 0 &&
@@ -129,7 +132,7 @@ fn decode(span: Span) -> SpanData {
         let index = extract(INTERNED_INDEX_OFFSET, INTERNED_INDEX_SIZE);
         return with_span_interner(|interner| *interner.get(index));
     };
-    SpanData { lo: BytePos(base), hi: BytePos(base + len), ctxt: SyntaxContext(ctxt) }
+    SpanData { lo: BytePos(base), hi: BytePos(base + len), ctxt: SyntaxContext::from_u32(ctxt) }
 }
 
 #[derive(Default)]

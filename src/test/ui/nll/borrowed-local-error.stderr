@@ -10,7 +10,7 @@ LL | |         //~^ ERROR `v` does not live long enough [E0597]
 LL | |     });
    | |_____-- borrow later used here
    |       |
-   |       borrowed value only lives until here
+   |       `v` dropped here while still borrowed
 
 error: aborting due to previous error
 

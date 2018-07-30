@@ -1,9 +1,21 @@
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/construct_with_other_type.rs:25:37
+  --> $DIR/construct_with_other_type.rs:26:46
    |
-LL |     type Quux<'a> = <T as Foo>::Bar<'a, 'static>;
-   |                                     ^^ lifetime parameter not allowed on this type
+LL |     type Baa<'a>: Deref<Target = <Self::Quux<'a> as Foo>::Bar<'a, 'static>>;
+   |                                              ^^ lifetime parameter not allowed
 
-error: aborting due to previous error
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/construct_with_other_type.rs:26:63
+   |
+LL |     type Baa<'a>: Deref<Target = <Self::Quux<'a> as Foo>::Bar<'a, 'static>>;
+   |                                                               ^^ lifetime parameter not allowed
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/construct_with_other_type.rs:34:40
+   |
+LL |     type Baa<'a> = &'a <T as Foo>::Bar<'a, 'static>;
+   |                                        ^^ lifetime parameter not allowed
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0110`.

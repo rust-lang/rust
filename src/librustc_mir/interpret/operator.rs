@@ -1,14 +1,13 @@
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, layout};
 use syntax::ast::FloatTy;
-use std::cmp::Ordering;
 use rustc::ty::layout::LayoutOf;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 
 use super::{EvalContext, Place, Machine, ValTy};
 
-use rustc::mir::interpret::{EvalResult, PrimVal, Value};
+use rustc::mir::interpret::{EvalResult, Scalar, Value};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn binop_with_overflow(
@@ -16,9 +15,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         op: mir::BinOp,
         left: ValTy<'tcx>,
         right: ValTy<'tcx>,
-    ) -> EvalResult<'tcx, (PrimVal, bool)> {
-        let left_val = self.value_to_primval(left)?;
-        let right_val = self.value_to_primval(right)?;
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
+        let left_val = self.value_to_scalar(left)?;
+        let right_val = self.value_to_scalar(right)?;
         self.binary_op(op, left_val, left.ty, right_val, right.ty)
     }
 
@@ -33,7 +32,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        let val = Value::ByValPair(val, PrimVal::from_bool(overflowed));
+        let val = Value::ScalarPair(val, Scalar::from_bool(overflowed));
         let valty = ValTy {
             value: val,
             ty: dest_ty,
@@ -52,7 +51,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        self.write_primval(dest, val, dest_ty)?;
+        self.write_scalar(dest, val, dest_ty)?;
         Ok(overflowed)
     }
 }
@@ -62,15 +61,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn binary_op(
         &self,
         bin_op: mir::BinOp,
-        left: PrimVal,
+        left: Scalar,
         left_ty: Ty<'tcx>,
-        right: PrimVal,
+        right: Scalar,
         right_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, (PrimVal, bool)> {
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
         use rustc::mir::BinOp::*;
 
-        let left_kind = self.ty_to_primval_kind(left_ty)?;
-        let right_kind = self.ty_to_primval_kind(right_ty)?;
+        let left_layout = self.layout_of(left_ty)?;
+        let right_layout = self.layout_of(right_ty)?;
+
+        let left_kind = match left_layout.abi {
+            layout::Abi::Scalar(ref scalar) => scalar.value,
+            _ => return err!(TypeNotPrimitive(left_ty)),
+        };
+        let right_kind = match right_layout.abi {
+            layout::Abi::Scalar(ref scalar) => scalar.value,
+            _ => return err!(TypeNotPrimitive(right_ty)),
+        };
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
 
         // I: Handle operations that support pointers
@@ -81,17 +89,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
 
         // II: From now on, everything must be bytes, no pointers
-        let l = left.to_bytes()?;
-        let r = right.to_bytes()?;
-
-        let left_layout = self.layout_of(left_ty)?;
+        let l = left.to_bits(left_layout.size)?;
+        let r = right.to_bits(right_layout.size)?;
 
         // These ops can have an RHS with a different numeric type.
         if right_kind.is_int() && (bin_op == Shl || bin_op == Shr) {
             let signed = left_layout.abi.is_signed();
+            let mut oflo = (r as u32 as u128) != r;
             let mut r = r as u32;
             let size = left_layout.size.bits() as u32;
-            let oflo = r >= size;
+            oflo |= r >= size;
             if oflo {
                 r %= size;
             }
@@ -111,7 +118,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }
             };
             let truncated = self.truncate(result, left_ty)?;
-            return Ok((PrimVal::Bytes(truncated), oflo));
+            return Ok((Scalar::Bits {
+                bits: truncated,
+                defined: size as u8,
+            }, oflo));
         }
 
         if left_kind != right_kind {
@@ -137,7 +147,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             if let Some(op) = op {
                 let l = self.sign_extend(l, left_ty)? as i128;
                 let r = self.sign_extend(r, right_ty)? as i128;
-                return Ok((PrimVal::from_bool(op(&l, &r)), false));
+                return Ok((Scalar::from_bool(op(&l, &r)), false));
             }
             let op: Option<fn(i128, i128) -> (i128, bool)> = match bin_op {
                 Div if r == 0 => return err!(DivisionByZero),
@@ -157,7 +167,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     Rem | Div => {
                         // int_min / -1
                         if r == -1 && l == (1 << (size - 1)) {
-                            return Ok((PrimVal::Bytes(l), true));
+                            return Ok((Scalar::Bits { bits: l, defined: size as u8 }, true));
                         }
                     },
                     _ => {},
@@ -171,51 +181,60 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }
                 let result = result as u128;
                 let truncated = self.truncate(result, left_ty)?;
-                return Ok((PrimVal::Bytes(truncated), oflo));
+                return Ok((Scalar::Bits {
+                    bits: truncated,
+                    defined: size as u8,
+                }, oflo));
             }
         }
 
         if let ty::TyFloat(fty) = left_ty.sty {
             macro_rules! float_math {
-                ($ty:path) => {{
+                ($ty:path, $bitsize:expr) => {{
                     let l = <$ty>::from_bits(l);
                     let r = <$ty>::from_bits(r);
+                    let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>| Scalar::Bits {
+                        bits: res.value.to_bits(),
+                        defined: $bitsize,
+                    };
                     let val = match bin_op {
-                        Eq => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Equal),
-                        Ne => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Equal),
-                        Lt => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Less),
-                        Le => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Greater),
-                        Gt => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Greater),
-                        Ge => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Less),
-                        Add => PrimVal::Bytes((l + r).value.to_bits()),
-                        Sub => PrimVal::Bytes((l - r).value.to_bits()),
-                        Mul => PrimVal::Bytes((l * r).value.to_bits()),
-                        Div => PrimVal::Bytes((l / r).value.to_bits()),
-                        Rem => PrimVal::Bytes((l % r).value.to_bits()),
+                        Eq => Scalar::from_bool(l == r),
+                        Ne => Scalar::from_bool(l != r),
+                        Lt => Scalar::from_bool(l < r),
+                        Le => Scalar::from_bool(l <= r),
+                        Gt => Scalar::from_bool(l > r),
+                        Ge => Scalar::from_bool(l >= r),
+                        Add => bitify(l + r),
+                        Sub => bitify(l - r),
+                        Mul => bitify(l * r),
+                        Div => bitify(l / r),
+                        Rem => bitify(l % r),
                         _ => bug!("invalid float op: `{:?}`", bin_op),
                     };
                     return Ok((val, false));
                 }};
             }
             match fty {
-                FloatTy::F32 => float_math!(Single),
-                FloatTy::F64 => float_math!(Double),
+                FloatTy::F32 => float_math!(Single, 32),
+                FloatTy::F64 => float_math!(Double, 64),
             }
         }
 
+        let bit_width = self.layout_of(left_ty).unwrap().size.bits() as u8;
+
         // only ints left
         let val = match bin_op {
-            Eq => PrimVal::from_bool(l == r),
-            Ne => PrimVal::from_bool(l != r),
+            Eq => Scalar::from_bool(l == r),
+            Ne => Scalar::from_bool(l != r),
 
-            Lt => PrimVal::from_bool(l < r),
-            Le => PrimVal::from_bool(l <= r),
-            Gt => PrimVal::from_bool(l > r),
-            Ge => PrimVal::from_bool(l >= r),
+            Lt => Scalar::from_bool(l < r),
+            Le => Scalar::from_bool(l <= r),
+            Gt => Scalar::from_bool(l > r),
+            Ge => Scalar::from_bool(l >= r),
 
-            BitOr => PrimVal::Bytes(l | r),
-            BitAnd => PrimVal::Bytes(l & r),
-            BitXor => PrimVal::Bytes(l ^ r),
+            BitOr => Scalar::Bits { bits: l | r, defined: bit_width },
+            BitAnd => Scalar::Bits { bits: l & r, defined: bit_width },
+            BitXor => Scalar::Bits { bits: l ^ r, defined: bit_width },
 
             Add | Sub | Mul | Rem | Div => {
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
@@ -230,7 +249,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let (result, oflo) = op(l, r);
                 let truncated = self.truncate(result, left_ty)?;
-                return Ok((PrimVal::Bytes(truncated), oflo || truncated != result));
+                return Ok((Scalar::Bits {
+                    bits: truncated,
+                    defined: bit_width,
+                }, oflo || truncated != result));
             }
 
             _ => {
@@ -252,15 +274,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn unary_op(
         &self,
         un_op: mir::UnOp,
-        val: PrimVal,
+        val: Scalar,
         ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, PrimVal> {
+    ) -> EvalResult<'tcx, Scalar> {
         use rustc::mir::UnOp::*;
         use rustc_apfloat::ieee::{Single, Double};
         use rustc_apfloat::Float;
 
-        let bytes = val.to_bytes()?;
-        let size = self.layout_of(ty)?.size.bits();
+        let size = self.layout_of(ty)?.size;
+        let bytes = val.to_bits(size)?;
+        let size = size.bits();
 
         let result_bytes = match (un_op, &ty.sty) {
 
@@ -275,6 +298,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             (Neg, _) => (-(bytes as i128)) as u128,
         };
 
-        Ok(PrimVal::Bytes(self.truncate(result_bytes, ty)?))
+        Ok(Scalar::Bits {
+            bits: self.truncate(result_bytes, ty)?,
+            defined: size as u8,
+        })
     }
 }

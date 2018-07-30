@@ -88,23 +88,16 @@ impl<'a> DiagnosticBuilder<'a> {
         self.cancel();
     }
 
-    pub fn is_error(&self) -> bool {
-        match self.level {
-            Level::Bug |
-            Level::Fatal |
-            Level::PhaseFatal |
-            Level::Error |
-            Level::FailureNote => {
-                true
-            }
-
-            Level::Warning |
-            Level::Note |
-            Level::Help |
-            Level::Cancelled => {
-                false
-            }
-        }
+    /// Buffers the diagnostic for later emission.
+    pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
+        // We need to use `ptr::read` because `DiagnosticBuilder`
+        // implements `Drop`.
+        let diagnostic;
+        unsafe {
+            diagnostic = ::std::ptr::read(&self.diagnostic);
+            ::std::mem::forget(self);
+        };
+        buffered_diagnostics.push(diagnostic);
     }
 
     /// Convenience function for internal use, clients should use one of the
@@ -132,7 +125,7 @@ impl<'a> DiagnosticBuilder<'a> {
     /// locally in whichever way makes the most sense.
     pub fn delay_as_bug(&mut self) {
         self.level = Level::Bug;
-        *self.handler.delayed_span_bug.borrow_mut() = Some(self.diagnostic.clone());
+        self.handler.delay_as_bug(self.diagnostic.clone());
         self.cancel();
     }
 
@@ -148,17 +141,17 @@ impl<'a> DiagnosticBuilder<'a> {
     }
 
     forward!(pub fn note_expected_found(&mut self,
-                                        label: &fmt::Display,
+                                        label: &dyn fmt::Display,
                                         expected: DiagnosticStyledString,
                                         found: DiagnosticStyledString)
                                         -> &mut Self);
 
     forward!(pub fn note_expected_found_extra(&mut self,
-                                              label: &fmt::Display,
+                                              label: &dyn fmt::Display,
                                               expected: DiagnosticStyledString,
                                               found: DiagnosticStyledString,
-                                              expected_extra: &fmt::Display,
-                                              found_extra: &fmt::Display)
+                                              expected_extra: &dyn fmt::Display,
+                                              found_extra: &dyn fmt::Display)
                                               -> &mut Self);
 
     forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
@@ -178,6 +171,11 @@ impl<'a> DiagnosticBuilder<'a> {
                                           msg: &str,
                                           suggestion: String)
                                           -> &mut Self);
+    forward!(pub fn multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>
+    ) -> &mut Self);
     forward!(pub fn span_suggestion(&mut self,
                                     sp: Span,
                                     msg: &str,
@@ -200,6 +198,12 @@ impl<'a> DiagnosticBuilder<'a> {
                                                  suggestions: Vec<String>,
                                                  applicability: Applicability)
                                                  -> &mut Self);
+    forward!(pub fn span_suggestion_short_with_applicability(&mut self,
+                                                             sp: Span,
+                                                             msg: &str,
+                                                             suggestion: String,
+                                                             applicability: Applicability)
+                                                             -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 

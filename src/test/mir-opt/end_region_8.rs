@@ -31,23 +31,19 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // fn main() -> () {
 //    let mut _0: ();
 //    ...
-//    let _1: D;
-//    ...
 //    let _2: &'21_1rs D;
+//    ...
+//    let _1: D;
 //    ...
 //    let mut _3: ();
 //    let mut _4: [closure@NodeId(22) r:&'19s D];
-//    let mut _5: &'21_1rs D;
 //    bb0: {
 //        StorageLive(_1);
 //        _1 = D::{{constructor}}(const 0i32,);
 //        StorageLive(_2);
 //        _2 = &'21_1rs _1;
 //        StorageLive(_4);
-//        StorageLive(_5);
-//        _5 = _2;
-//        _4 = [closure@NodeId(22)] { r: move _5 };
-//        StorageDead(_5);
+//        _4 = [closure@NodeId(22)] { r: _2 };
 //        _3 = const foo(move _4) -> [return: bb2, unwind: bb3];
 //    }
 //    bb1: {
@@ -76,13 +72,9 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // START rustc.main-{{closure}}.SimplifyCfg-qualify-consts.after.mir
 // fn main::{{closure}}(_1: [closure@NodeId(22) r:&'19s D]) -> i32 {
 //     let mut _0: i32;
-//     let mut _2: i32;
 //
 //     bb0: {
-//         StorageLive(_2);
-//         _2 = ((*(_1.0: &'21_1rs D)).0: i32);
-//         _0 = move _2;
-//         StorageDead(_2);
+//         _0 = ((*(_1.0: &'21_1rs D)).0: i32);
 //         return;
 //     }
 // }

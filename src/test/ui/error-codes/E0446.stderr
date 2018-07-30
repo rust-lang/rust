@@ -1,6 +1,9 @@
 error[E0446]: private type `Foo::Bar` in public interface
   --> $DIR/E0446.rs:14:5
    |
+LL |       struct Bar(u32);
+   |       - `Foo::Bar` declared as private
+LL | 
 LL | /     pub fn bar() -> Bar { //~ ERROR E0446
 LL | |         Bar(0)
 LL | |     }

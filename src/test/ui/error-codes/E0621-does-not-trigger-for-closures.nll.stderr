@@ -4,11 +4,15 @@ warning: not reporting region error due to nll
 LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
    |     ^^^^^^
 
-error: free region `` does not outlive free region `'_#2r`
+error: unsatisfied lifetime constraints
   --> $DIR/E0621-does-not-trigger-for-closures.rs:25:26
    |
 LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
-   |                          ^^^^^
+   |                ----------^^^^^-----------------
+   |                |   |     |
+   |                |   |     requires that `'1` must outlive `'2`
+   |                |   has type `&'1 i32`
+   |                lifetime `'2` appears in return type
 
 error: aborting due to previous error
 

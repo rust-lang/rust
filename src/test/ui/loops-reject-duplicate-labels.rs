@@ -15,6 +15,7 @@
 // Issue #21633: reject duplicate loop labels in function bodies.
 // This is testing the exact cases that are in the issue description.
 
+#[allow(unused_labels)]
 fn foo() {
     'fl: for _ in 0..10 { break; }
     'fl: loop { break; }           //~ WARN label name `'fl` shadows a label name that is already in scope

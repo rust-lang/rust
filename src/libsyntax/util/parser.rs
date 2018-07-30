@@ -11,12 +11,10 @@ use parse::token::{Token, BinOpToken};
 use symbol::keywords;
 use ast::{self, BinOpKind};
 
-use std::cmp::Ordering;
-
 /// Associative operator with precedence.
 ///
 /// This is the enum which specifies operator precedence and fixity to the parser.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Debug)]
 pub enum AssocOp {
     /// `+`
     Add,
@@ -56,6 +54,8 @@ pub enum AssocOp {
     GreaterEqual,
     /// `=`
     Assign,
+    /// `<-`
+    ObsoleteInPlace,
     /// `?=` where ? is one of the BinOpToken
     AssignOp(BinOpToken),
     /// `as`
@@ -68,7 +68,7 @@ pub enum AssocOp {
     Colon,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Debug)]
 pub enum Fixity {
     /// The operator is left-associative
     Left,
@@ -84,6 +84,7 @@ impl AssocOp {
         use self::AssocOp::*;
         match *t {
             Token::BinOpEq(k) => Some(AssignOp(k)),
+            Token::LArrow => Some(ObsoleteInPlace),
             Token::Eq => Some(Assign),
             Token::BinOp(BinOpToken::Star) => Some(Multiply),
             Token::BinOp(BinOpToken::Slash) => Some(Divide),
@@ -153,6 +154,7 @@ impl AssocOp {
             LAnd => 6,
             LOr => 5,
             DotDot | DotDotEq => 4,
+            ObsoleteInPlace => 3,
             Assign | AssignOp(_) => 2,
         }
     }
@@ -162,7 +164,7 @@ impl AssocOp {
         use self::AssocOp::*;
         // NOTE: it is a bug to have an operators that has same precedence but different fixities!
         match *self {
-            Assign | AssignOp(_) => Fixity::Right,
+            ObsoleteInPlace | Assign | AssignOp(_) => Fixity::Right,
             As | Multiply | Divide | Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd |
             BitXor | BitOr | Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual |
             LAnd | LOr | Colon => Fixity::Left,
@@ -174,8 +176,8 @@ impl AssocOp {
         use self::AssocOp::*;
         match *self {
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => true,
-            Assign | AssignOp(_) | As | Multiply | Divide | Modulus | Add | Subtract |
-            ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd | LOr |
+            ObsoleteInPlace | Assign | AssignOp(_) | As | Multiply | Divide | Modulus | Add |
+            Subtract | ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd | LOr |
             DotDot | DotDotEq | Colon => false
         }
     }
@@ -183,7 +185,7 @@ impl AssocOp {
     pub fn is_assign_like(&self) -> bool {
         use self::AssocOp::*;
         match *self {
-            Assign | AssignOp(_) => true,
+            Assign | AssignOp(_) | ObsoleteInPlace => true,
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual | As | Multiply | Divide |
             Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd |
             LOr | DotDot | DotDotEq | Colon => false
@@ -211,7 +213,7 @@ impl AssocOp {
             BitOr => Some(BinOpKind::BitOr),
             LAnd => Some(BinOpKind::And),
             LOr => Some(BinOpKind::Or),
-            Assign | AssignOp(_) | As | DotDot | DotDotEq | Colon => None
+            ObsoleteInPlace | Assign | AssignOp(_) | As | DotDot | DotDotEq | Colon => None
         }
     }
 }
@@ -226,7 +228,7 @@ pub const PREC_POSTFIX: i8 = 60;
 pub const PREC_PAREN: i8 = 99;
 pub const PREC_FORCE_PAREN: i8 = 100;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub enum ExprPrecedence {
     Closure,
     Break,
@@ -238,6 +240,7 @@ pub enum ExprPrecedence {
 
     Binary(BinOpKind),
 
+    ObsoleteInPlace,
     Cast,
     Type,
 
@@ -272,18 +275,7 @@ pub enum ExprPrecedence {
     Block,
     Catch,
     Struct,
-}
-
-impl PartialOrd for ExprPrecedence {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.order().cmp(&other.order()))
-    }
-}
-
-impl Ord for ExprPrecedence {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.order().cmp(&other.order())
-    }
+    Async,
 }
 
 impl ExprPrecedence {
@@ -304,6 +296,7 @@ impl ExprPrecedence {
 
             // Binop-like expr kinds, handled by `AssocOp`.
             ExprPrecedence::Binary(op) => AssocOp::from_ast_binop(op).precedence() as i8,
+            ExprPrecedence::ObsoleteInPlace => AssocOp::ObsoleteInPlace.precedence() as i8,
             ExprPrecedence::Cast => AssocOp::As.precedence() as i8,
             ExprPrecedence::Type => AssocOp::Colon.precedence() as i8,
 
@@ -340,6 +333,7 @@ impl ExprPrecedence {
             ExprPrecedence::Match |
             ExprPrecedence::Block |
             ExprPrecedence::Catch |
+            ExprPrecedence::Async |
             ExprPrecedence::Struct => PREC_PAREN,
         }
     }

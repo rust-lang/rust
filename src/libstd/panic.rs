@@ -15,11 +15,14 @@
 use any::Any;
 use cell::UnsafeCell;
 use fmt;
+use future::Future;
+use mem::PinMut;
 use ops::{Deref, DerefMut};
 use panicking;
 use ptr::{Unique, NonNull};
 use rc::Rc;
 use sync::{Arc, Mutex, RwLock, atomic};
+use task::{self, Poll};
 use thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -107,8 +110,10 @@ pub use core::panic::{PanicInfo, Location};
 ///
 /// [`AssertUnwindSafe`]: ./struct.AssertUnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-#[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
-                            across an unwind boundary"]
+#[rustc_on_unimplemented(
+    message="the type `{Self}` may not be safely transferred across an unwind boundary",
+    label="`{Self}` may not be safely transferred across an unwind boundary",
+)]
 pub auto trait UnwindSafe {}
 
 /// A marker trait representing types where a shared reference is considered
@@ -123,9 +128,12 @@ pub auto trait UnwindSafe {}
 /// [`UnsafeCell`]: ../cell/struct.UnsafeCell.html
 /// [`UnwindSafe`]: ./trait.UnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-#[rustc_on_unimplemented = "the type {Self} may contain interior mutability \
-                            and a reference may not be safely transferrable \
-                            across a catch_unwind boundary"]
+#[rustc_on_unimplemented(
+    message="the type `{Self}` may contain interior mutability and a reference may not be safely \
+             transferrable across a catch_unwind boundary",
+    label="`{Self}` may contain interior mutability and a reference may not be safely \
+           transferrable across a catch_unwind boundary",
+)]
 pub auto trait RefUnwindSafe {}
 
 /// A simple wrapper around a type to assert that it is unwind safe.
@@ -315,6 +323,16 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
     }
 }
 
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: Future> Future for AssertUnwindSafe<F> {
+    type Output = F::Output;
+
+    fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        let pinned_field = unsafe { PinMut::map_unchecked(self, |x| &mut x.0) };
+        pinned_field.poll(cx)
+    }
+}
+
 /// Invokes a closure, capturing the cause of an unwinding panic if one occurs.
 ///
 /// This function will return `Ok` with the closure's result if the closure
@@ -403,6 +421,6 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// }
 /// ```
 #[stable(feature = "resume_unwind", since = "1.9.0")]
-pub fn resume_unwind(payload: Box<Any + Send>) -> ! {
+pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::update_count_then_panic(payload)
 }

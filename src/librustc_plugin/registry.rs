@@ -15,6 +15,7 @@ use rustc::session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
 use syntax::ext::base::MacroExpanderFn;
+use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
@@ -107,7 +108,9 @@ impl<'a> Registry<'a> {
                 def_info: _,
                 allow_internal_unstable,
                 allow_internal_unsafe,
-                unstable_feature
+                local_inner_macros,
+                unstable_feature,
+                edition,
             } => {
                 let nid = ast::CRATE_NODE_ID;
                 NormalTT {
@@ -115,7 +118,9 @@ impl<'a> Registry<'a> {
                     def_info: Some((nid, self.krate_span)),
                     allow_internal_unstable,
                     allow_internal_unsafe,
-                    unstable_feature
+                    local_inner_macros,
+                    unstable_feature,
+                    edition,
                 }
             }
             IdentTT(ext, _, allow_internal_unstable) => {
@@ -149,7 +154,9 @@ impl<'a> Registry<'a> {
             def_info: None,
             allow_internal_unstable: false,
             allow_internal_unsafe: false,
+            local_inner_macros: false,
             unstable_feature: None,
+            edition: hygiene::default_edition(),
         });
     }
 

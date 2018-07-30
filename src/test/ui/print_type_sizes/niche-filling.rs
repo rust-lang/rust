@@ -22,7 +22,6 @@
 // padding and overall computed sizes can be quite different.
 
 #![feature(start)]
-#![feature(nonzero)]
 #![allow(dead_code)]
 
 use std::num::NonZeroU32;

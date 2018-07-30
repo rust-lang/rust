@@ -247,9 +247,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ty: ptr_ty,
                         name: None,
                         source_info,
-                        syntactic_scope: source_info.scope,
+                        visibility_scope: source_info.scope,
                         internal: true,
-                        is_user_variable: false
+                        is_user_variable: None,
                     });
                     let ptr_temp = Place::Local(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));
@@ -288,6 +288,37 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.unit()
             }
 
+            // Avoid creating a temporary
+            ExprKind::VarRef { .. } |
+            ExprKind::SelfRef |
+            ExprKind::StaticRef { .. } => {
+                debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
+
+                let place = unpack!(block = this.as_place(block, expr));
+                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                this.cfg.push_assign(block, source_info, destination, rvalue);
+                block.unit()
+            }
+            ExprKind::Index { .. } |
+            ExprKind::Deref { .. } |
+            ExprKind::Field { .. } => {
+                debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
+
+                // Create a "fake" temporary variable so that we check that the
+                // value is Sized. Usually, this is caught in type checking, but
+                // in the case of box expr there is no such check.
+                if let Place::Projection(..) = destination {
+                    this.local_decls.push(LocalDecl::new_temp(expr.ty, expr.span));
+                }
+
+                debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
+
+                let place = unpack!(block = this.as_place(block, expr));
+                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                this.cfg.push_assign(block, source_info, destination, rvalue);
+                block.unit()
+            }
+
             // these are the cases that are more naturally handled by some other mode
             ExprKind::Unary { .. } |
             ExprKind::Binary { .. } |
@@ -300,18 +331,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Unsize { .. } |
             ExprKind::Repeat { .. } |
             ExprKind::Borrow { .. } |
-            ExprKind::VarRef { .. } |
-            ExprKind::SelfRef |
-            ExprKind::StaticRef { .. } |
             ExprKind::Array { .. } |
             ExprKind::Tuple { .. } |
             ExprKind::Adt { .. } |
             ExprKind::Closure { .. } |
-            ExprKind::Index { .. } |
-            ExprKind::Deref { .. } |
             ExprKind::Literal { .. } |
-            ExprKind::Yield { .. } |
-            ExprKind::Field { .. } => {
+            ExprKind::Yield { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     Category::Rvalue(RvalueFunc::Into) => false,
                     _ => true,

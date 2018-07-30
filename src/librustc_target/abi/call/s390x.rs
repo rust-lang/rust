@@ -29,12 +29,7 @@ fn is_single_fp_element<'a, Ty, C>(cx: C, layout: TyLayout<'a, Ty>) -> bool
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
     match layout.abi {
-        abi::Abi::Scalar(ref scalar) => {
-            match scalar.value {
-                abi::F32 | abi::F64 => true,
-                _ => false
-            }
-        }
+        abi::Abi::Scalar(ref scalar) => scalar.value.is_float(),
         abi::Abi::Aggregate { .. } => {
             if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
                 is_single_fp_element(cx, layout.field(cx, 0))

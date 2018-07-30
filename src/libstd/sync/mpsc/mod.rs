@@ -689,7 +689,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// only one [`Receiver`] is supported.
 ///
 /// If the [`Receiver`] is disconnected while trying to [`send`] with the
-/// [`Sender`], the [`send`] method will return a [`SendError`]. Similarly, If the
+/// [`Sender`], the [`send`] method will return a [`SendError`]. Similarly, if the
 /// [`Sender`] is disconnected while trying to [`recv`], the [`recv`] method will
 /// return a [`RecvError`].
 ///
@@ -1638,7 +1638,7 @@ impl<T: Send> error::Error for SendError<T> {
         "sending on a closed channel"
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         None
     }
 }
@@ -1681,7 +1681,7 @@ impl<T: Send> error::Error for TrySendError<T> {
         }
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         None
     }
 }
@@ -1709,7 +1709,7 @@ impl error::Error for RecvError {
         "receiving on a closed channel"
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         None
     }
 }
@@ -1742,7 +1742,7 @@ impl error::Error for TryRecvError {
         }
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         None
     }
 }
@@ -1783,7 +1783,7 @@ impl error::Error for RecvTimeoutError {
         }
     }
 
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         None
     }
 }

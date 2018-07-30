@@ -1,13 +1,14 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/issue-36537.rs:14:10
+  --> $DIR/issue-36537.rs:15:14
    |
-LL |     p = &a;
-   |          ^ borrowed value does not live long enough
-LL |     //~^ ERROR `a` does not live long enough
+LL |         p = &a;
+   |              ^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `a` dropped here while still borrowed
+...
 LL | }
-   | - `a` dropped here while still borrowed
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+   | - borrowed value needs to live until here
 
 error: aborting due to previous error
 

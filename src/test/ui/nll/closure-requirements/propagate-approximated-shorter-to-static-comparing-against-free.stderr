@@ -4,11 +4,16 @@ warning: not reporting region error due to nll
 LL |     foo(cell, |cell_a, cell_x| {
    |     ^^^
 
-error: free region `ReFree(DefId(0/1:12 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case1[0]::{{closure}}[0]), BrAnon(1))` does not outlive free region `'_#1r`
+error: borrowed data escapes outside of closure
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:9
    |
+LL |     foo(cell, |cell_a, cell_x| {
+   |                ------  ------ `cell_x` is a reference that is only valid in the closure body
+   |                |
+   |                `cell_a` is declared here, outside of the closure body
+LL |         //~^ WARNING not reporting region error due to nll
 LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-   |         ^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ `cell_x` escapes the closure body here
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:15
@@ -17,13 +22,13 @@ LL |       foo(cell, |cell_a, cell_x| {
    |  _______________^
 LL | |         //~^ WARNING not reporting region error due to nll
 LL | |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-LL | |         //~^ ERROR does not outlive free region
+LL | |         //~^ ERROR
 LL | |     })
    | |_____^
    |
    = note: defining type: DefId(0/1:12 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case1[0]::{{closure}}[0]) with closure substs [
                i32,
-               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>))
+               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) u32>))
            ]
 
 note: No external requirements
@@ -51,7 +56,7 @@ LL | |     })
    |
    = note: defining type: DefId(0/1:13 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case2[0]::{{closure}}[0]) with closure substs [
                i32,
-               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>))
+               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) u32>))
            ]
    = note: number of external vids: 2
    = note: where '_#1r: '_#0r
@@ -77,7 +82,7 @@ LL |     let cell = Cell::new(&a);
    |                          ^^ borrowed value does not live long enough
 ...
 LL | }
-   | - borrowed value only lives until here
+   | - `a` dropped here while still borrowed
    |
    = note: borrowed value must be valid for the static lifetime...
 

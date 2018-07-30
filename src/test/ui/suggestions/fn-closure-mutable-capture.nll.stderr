@@ -1,9 +1,0 @@
-error[E0594]: cannot assign to immutable item `x`
-  --> $DIR/fn-closure-mutable-capture.rs:15:17
-   |
-LL |     bar(move || x = 1);
-   |                 ^^^^^ cannot mutate
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0594`.

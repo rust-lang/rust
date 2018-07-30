@@ -15,8 +15,12 @@ fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
 lazy_static = "1.0.0"
+scoped-tls = { version = "0.1.1", features = ["nightly"] }
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
+polonius-engine = "0.5.0"
 proc_macro = { path = "../libproc_macro" }
+rustc-rayon = "0.1.1"
+rustc-rayon-core = "0.1.1"
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -25,7 +29,9 @@ serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 backtrace = "0.3.3"
+parking_lot = "0.5.5"
 byteorder = { version = "1.1", features = ["i128"]}
+chalk-engine = { version = "0.6.0", default-features=false }
 
 # Note that these dependencies are a lie, they're just here to get linkage to
 # work.
@@ -35,13 +41,13 @@ byteorder = { version = "1.1", features = ["i128"]}
 # rlib/dylib pair but all crates.io crates tend to just be rlibs. This means
 # we've got a problem for dependency graphs that look like:
 #
-#           foo - rustc_trans
+#           foo - rustc_codegen_llvm
 #         /                  \
 #   rustc                     ---- rustc_driver
 #         \                     /
 #           foo - rustc_metadata
 #
-# Here the crate `foo` is linked into the `rustc_trans` and the
+# Here the crate `foo` is linked into the `rustc_codegen_llvm` and the
 # `rustc_metadata` dylibs, meaning we've got duplicate copies! When we then
 # go to link `rustc_driver` the compiler notices this and gives us a compiler
 # error.
@@ -49,10 +55,10 @@ byteorder = { version = "1.1", features = ["i128"]}
 # To work around this problem we just add these crates.io dependencies to the
 # `rustc` crate which is a shared dependency above. That way the crate `foo`
 # shows up in the dylib for the `rustc` crate, deduplicating it and allowing
-# crates like `rustc_trans` to use `foo` *through* the `rustc` crate.
+# crates like `rustc_codegen_llvm` to use `foo` *through* the `rustc` crate.
 #
 # tl;dr; this is not needed to get `rustc` to compile, but if you remove it then
 #        later crate stop compiling. If you can remove this and everything
 #        compiles, then please feel free to do so!
 flate2 = "1.0"
-tempdir = "0.3"
+tempfile = "3.0"

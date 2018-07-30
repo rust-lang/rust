@@ -60,7 +60,7 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use mir::interpret::{GlobalId};
+use mir::interpret::GlobalId;
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
@@ -70,9 +70,12 @@ use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use std::fmt;
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
-use traits::query::{CanonicalProjectionGoal,
-                    CanonicalTyGoal, CanonicalPredicateGoal};
-use ty::{TyCtxt, Instance, InstanceDef, ParamEnv, ParamEnvAnd, PolyTraitRef, Ty};
+use traits::query::{
+    CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal,
+    CanonicalPredicateGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
+};
+use ty::{TyCtxt, FnSig, Instance, InstanceDef,
+         ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty, self};
 use ty::subst::Substs;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
@@ -331,11 +334,8 @@ macro_rules! define_dep_nodes {
             pub fn extract_def_id(&self, tcx: TyCtxt) -> Option<DefId> {
                 if self.kind.can_reconstruct_query_key() {
                     let def_path_hash = DefPathHash(self.hash);
-                    if let Some(ref def_path_map) = tcx.def_path_hash_to_def_id.as_ref() {
-                        def_path_map.get(&def_path_hash).cloned()
-                    } else {
-                       None
-                    }
+                    tcx.def_path_hash_to_def_id.as_ref()?
+                        .get(&def_path_hash).cloned()
                 } else {
                     None
                 }
@@ -500,6 +500,8 @@ define_dep_nodes!( <'tcx>
     [] TypeOfItem(DefId),
     [] GenericsOfItem(DefId),
     [] PredicatesOfItem(DefId),
+    [] ExplicitPredicatesOfItem(DefId),
+    [] PredicatesDefinedOnItem(DefId),
     [] InferredOutlivesOf(DefId),
     [] InferredOutlivesCrate(CrateNum),
     [] SuperPredicatesOfItem(DefId),
@@ -565,7 +567,7 @@ define_dep_nodes!( <'tcx>
     [] IsUnreachableLocalDefinition(DefId),
     [] IsMirAvailable(DefId),
     [] ItemAttrs(DefId),
-    [] TransFnAttrs(DefId),
+    [] CodegenFnAttrs(DefId),
     [] FnArgNames(DefId),
     [] RenderedConst(DefId),
     [] DylibDepFormats(CrateNum),
@@ -621,13 +623,14 @@ define_dep_nodes!( <'tcx>
     [input] UsedCrateSource(CrateNum),
     [input] PostorderCnums,
 
-    // This query is not expected to have inputs -- as a result, it's
-    // not a good candidate for "replay" because it's essentially a
-    // pure function of its input (and hence the expectation is that
-    // no caller would be green **apart** from just this
-    // query). Making it anonymous avoids hashing the result, which
+    // These queries are not expected to have inputs -- as a result, they
+    // are not good candidates for "replay" because they are essentially
+    // pure functions of their input (and hence the expectation is that
+    // no caller would be green **apart** from just these
+    // queries). Making them anonymous avoids hashing the result, which
     // may save a bit of time.
     [anon] EraseRegionsTy { ty: Ty<'tcx> },
+    [anon] ConstValueToAllocation { val: &'tcx ty::Const<'tcx> },
 
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),
@@ -636,23 +639,29 @@ define_dep_nodes!( <'tcx>
     [eval_always] AllTraits,
     [input] AllCrateNums,
     [] ExportedSymbols(CrateNum),
-    [eval_always] CollectAndPartitionTranslationItems,
-    [] IsTranslatedItem(DefId),
+    [eval_always] CollectAndPartitionMonoItems,
+    [] IsCodegenedItem(DefId),
     [] CodegenUnit(InternedString),
     [] CompileCodegenUnit(InternedString),
     [input] OutputFilenames,
     [] NormalizeProjectionTy(CanonicalProjectionGoal<'tcx>),
     [] NormalizeTyAfterErasingRegions(ParamEnvAnd<'tcx, Ty<'tcx>>),
+    [] ImpliedOutlivesBounds(CanonicalTyGoal<'tcx>),
     [] DropckOutlives(CanonicalTyGoal<'tcx>),
     [] EvaluateObligation(CanonicalPredicateGoal<'tcx>),
+    [] TypeOpEq(CanonicalTypeOpEqGoal<'tcx>),
+    [] TypeOpSubtype(CanonicalTypeOpSubtypeGoal<'tcx>),
+    [] TypeOpProvePredicate(CanonicalTypeOpProvePredicateGoal<'tcx>),
+    [] TypeOpNormalizeTy(CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>),
+    [] TypeOpNormalizePredicate(CanonicalTypeOpNormalizeGoal<'tcx, Predicate<'tcx>>),
+    [] TypeOpNormalizePolyFnSig(CanonicalTypeOpNormalizeGoal<'tcx, PolyFnSig<'tcx>>),
+    [] TypeOpNormalizeFnSig(CanonicalTypeOpNormalizeGoal<'tcx, FnSig<'tcx>>),
 
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 
     [input] TargetFeaturesWhitelist,
 
     [] InstanceDefSizeEstimate { instance_def: InstanceDef<'tcx> },
-
-    [] WasmCustomSections(CrateNum),
 
     [input] Features,
 

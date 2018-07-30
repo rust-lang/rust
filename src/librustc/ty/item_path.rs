@@ -169,7 +169,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             let data = cur_def_key.disambiguated_data.data;
             let symbol = data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
-                Symbol::intern("<unnamed>").as_str()
+                if let DefPathData::CrateRoot = data {  // reexported `extern crate` (#43189)
+                    self.original_crate_name(cur_def.krate).as_str()
+                } else {
+                    Symbol::intern("<unnamed>").as_str()
+                }
             });
             cur_path.push(symbol);
 
@@ -208,17 +212,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::Trait(..) |
             data @ DefPathData::AssocTypeInTrait(..) |
             data @ DefPathData::AssocTypeInImpl(..) |
+            data @ DefPathData::AssocExistentialInImpl(..) |
             data @ DefPathData::ValueNs(..) |
             data @ DefPathData::Module(..) |
             data @ DefPathData::TypeParam(..) |
-            data @ DefPathData::LifetimeDef(..) |
+            data @ DefPathData::LifetimeParam(..) |
             data @ DefPathData::EnumVariant(..) |
             data @ DefPathData::Field(..) |
-            data @ DefPathData::Initializer |
+            data @ DefPathData::AnonConst |
             data @ DefPathData::MacroDef(..) |
             data @ DefPathData::ClosureExpr |
             data @ DefPathData::ImplTrait |
-            data @ DefPathData::Typeof |
             data @ DefPathData::GlobalMetaData(..) => {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
@@ -311,7 +315,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::TyUint(_) |
             ty::TyFloat(_) |
             ty::TyStr => {
-                buffer.push(&format!("{}", self_ty));
+                buffer.push(&self_ty.to_string());
             }
 
             _ => {
@@ -360,8 +364,9 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyArray(subty, _) |
         ty::TySlice(subty) => characteristic_def_id_of_type(subty),
 
-        ty::TyRawPtr(mt) |
-        ty::TyRef(_, mt) => characteristic_def_id_of_type(mt.ty),
+        ty::TyRawPtr(mt) => characteristic_def_id_of_type(mt.ty),
+
+        ty::TyRef(_, ty, _) => characteristic_def_id_of_type(ty),
 
         ty::TyTuple(ref tys) => tys.iter()
                                    .filter_map(|ty| characteristic_def_id_of_type(ty))

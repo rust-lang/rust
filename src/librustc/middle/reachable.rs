@@ -15,13 +15,13 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use hir::TransFnAttrs;
+use hir::CodegenFnAttrs;
 use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
-use ty::{self, TyCtxt};
-use ty::maps::Providers;
+use ty::{self, TyCtxt, GenericParamDefKind};
+use ty::query::Providers;
 use middle::privacy;
 use session::config;
 use util::nodemap::{NodeSet, FxHashSet};
@@ -37,21 +37,30 @@ use hir::intravisit;
 
 // Returns true if the given set of generics implies that the item it's
 // associated with must be inlined.
-fn generics_require_inlining(generics: &hir::Generics) -> bool {
-    generics.params.iter().any(|param| param.is_type_param())
+fn generics_require_inlining(generics: &ty::Generics) -> bool {
+    for param in &generics.params {
+        match param.kind {
+            GenericParamDefKind::Lifetime { .. } => {}
+            GenericParamDefKind::Type { .. } => return true,
+        }
+    }
+    false
 }
 
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(item: &hir::Item, attrs: TransFnAttrs) -> bool {
+fn item_might_be_inlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         item: &hir::Item,
+                         attrs: CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true
     }
 
     match item.node {
-        hir::ItemImpl(_, _, _, ref generics, ..) |
-        hir::ItemFn(.., ref generics, _) => {
+        hir::ItemKind::Impl(..) |
+        hir::ItemKind::Fn(..) => {
+            let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
             generics_require_inlining(generics)
         }
         _ => false,
@@ -61,15 +70,15 @@ fn item_might_be_inlined(item: &hir::Item, attrs: TransFnAttrs) -> bool {
 fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_item: &hir::ImplItem,
                                      impl_src: DefId) -> bool {
-    let trans_fn_attrs = tcx.trans_fn_attrs(impl_item.hir_id.owner_def_id());
-    if trans_fn_attrs.requests_inline() ||
-        generics_require_inlining(&impl_item.generics) {
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
+    let generics = tcx.generics_of(tcx.hir.local_def_id(impl_item.id));
+    if codegen_fn_attrs.requests_inline() || generics_require_inlining(generics) {
         return true
     }
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
         match tcx.hir.find(impl_node_id) {
             Some(hir_map::NodeItem(item)) =>
-                item_might_be_inlined(&item, trans_fn_attrs),
+                item_might_be_inlined(tcx, &item, codegen_fn_attrs),
             Some(..) | None =>
                 span_bug!(impl_item.span, "impl did is not an item")
         }
@@ -107,11 +116,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         let def = match expr.node {
-            hir::ExprPath(ref qpath) => {
+            hir::ExprKind::Path(ref qpath) => {
                 Some(self.tables.qpath_def(qpath, expr.hir_id))
             }
-            hir::ExprMethodCall(..) => {
-                Some(self.tables.type_dependent_defs()[expr.hir_id])
+            hir::ExprKind::MethodCall(..) => {
+                self.tables.type_dependent_defs().get(expr.hir_id).cloned()
             }
             _ => None
         };
@@ -162,8 +171,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match self.tcx.hir.find(node_id) {
             Some(hir_map::NodeItem(item)) => {
                 match item.node {
-                    hir::ItemFn(..) =>
-                        item_might_be_inlined(&item, self.tcx.trans_fn_attrs(def_id)),
+                    hir::ItemKind::Fn(..) =>
+                        item_might_be_inlined(self.tcx, &item, self.tcx.codegen_fn_attrs(def_id)),
                     _ => false,
                 }
             }
@@ -179,8 +188,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match impl_item.node {
                     hir::ImplItemKind::Const(..) => true,
                     hir::ImplItemKind::Method(..) => {
-                        let attrs = self.tcx.trans_fn_attrs(def_id);
-                        if generics_require_inlining(&impl_item.generics) ||
+                        let attrs = self.tcx.codegen_fn_attrs(def_id);
+                        let generics = self.tcx.generics_of(def_id);
+                        if generics_require_inlining(&generics) ||
                                 attrs.requests_inline() {
                             true
                         } else {
@@ -192,13 +202,15 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // does too.
                             let impl_node_id = self.tcx.hir.as_local_node_id(impl_did).unwrap();
                             match self.tcx.hir.expect_item(impl_node_id).node {
-                                hir::ItemImpl(_, _, _, ref generics, ..) => {
-                                    generics_require_inlining(generics)
+                                hir::ItemKind::Impl(..) => {
+                                    let generics = self.tcx.generics_of(impl_did);
+                                    generics_require_inlining(&generics)
                                 }
                                 _ => false
                             }
                         }
                     }
+                    hir::ImplItemKind::Existential(..) |
                     hir::ImplItemKind::Type(_) => false,
                 }
             }
@@ -227,13 +239,13 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
             if let hir_map::NodeItem(item) = *node {
-                let reachable = if let hir::ItemFn(.., abi, _, _) = item.node {
-                    abi != Abi::Rust
+                let reachable = if let hir::ItemKind::Fn(_, header, ..) = item.node {
+                    header.abi != Abi::Rust
                 } else {
                     false
                 };
                 let def_id = self.tcx.hir.local_def_id(item.id);
-                let is_extern = self.tcx.trans_fn_attrs(def_id).contains_extern_indicator();
+                let is_extern = self.tcx.codegen_fn_attrs(def_id).contains_extern_indicator();
                 if reachable || is_extern {
                     self.reachable_symbols.insert(search_item);
                 }
@@ -249,9 +261,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match *node {
             hir_map::NodeItem(item) => {
                 match item.node {
-                    hir::ItemFn(.., body) => {
+                    hir::ItemKind::Fn(.., body) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
-                        if item_might_be_inlined(&item, self.tcx.trans_fn_attrs(def_id)) {
+                        if item_might_be_inlined(self.tcx,
+                                                 &item,
+                                                 self.tcx.codegen_fn_attrs(def_id)) {
                             self.visit_nested_body(body);
                         }
                     }
@@ -259,19 +273,27 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // Reachable constants will be inlined into other crates
                     // unconditionally, so we need to make sure that their
                     // contents are also reachable.
-                    hir::ItemConst(_, init) => {
+                    hir::ItemKind::Const(_, init) => {
                         self.visit_nested_body(init);
                     }
 
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    hir::ItemExternCrate(_) | hir::ItemUse(..) |
-                    hir::ItemTy(..) | hir::ItemStatic(..) |
-                    hir::ItemMod(..) | hir::ItemForeignMod(..) |
-                    hir::ItemImpl(..) | hir::ItemTrait(..) | hir::ItemTraitAlias(..) |
-                    hir::ItemStruct(..) | hir::ItemEnum(..) |
-                    hir::ItemUnion(..) |  hir::ItemGlobalAsm(..) => {}
+                    hir::ItemKind::ExternCrate(_) |
+                    hir::ItemKind::Use(..) |
+                    hir::ItemKind::Existential(..) |
+                    hir::ItemKind::Ty(..) |
+                    hir::ItemKind::Static(..) |
+                    hir::ItemKind::Mod(..) |
+                    hir::ItemKind::ForeignMod(..) |
+                    hir::ItemKind::Impl(..) |
+                    hir::ItemKind::Trait(..) |
+                    hir::ItemKind::TraitAlias(..) |
+                    hir::ItemKind::Struct(..) |
+                    hir::ItemKind::Enum(..) |
+                    hir::ItemKind::Union(..) |
+                    hir::ItemKind::GlobalAsm(..) => {}
                 }
             }
             hir_map::NodeTraitItem(trait_method) => {
@@ -298,10 +320,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             self.visit_nested_body(body)
                         }
                     }
+                    hir::ImplItemKind::Existential(..) |
                     hir::ImplItemKind::Type(_) => {}
                 }
             }
-            hir_map::NodeExpr(&hir::Expr { node: hir::ExprClosure(.., body, _, _), .. }) => {
+            hir_map::NodeExpr(&hir::Expr { node: hir::ExprKind::Closure(.., body, _, _), .. }) => {
                 self.visit_nested_body(body);
             }
             // Nothing to recurse on for these
@@ -342,11 +365,9 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
         }
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemImpl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
+        if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
             if !self.access_levels.is_reachable(item.id) {
-                for impl_item_ref in impl_item_refs {
-                    self.worklist.push(impl_item_ref.id.node_id);
-                }
+                self.worklist.extend(impl_item_refs.iter().map(|r| r.id.node_id));
 
                 let trait_def_id = match trait_ref.path.def {
                     Def::Trait(def_id) => def_id,
@@ -403,9 +424,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     //         If other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    for (id, _) in &access_levels.map {
-        reachable_context.worklist.push(*id);
-    }
+    reachable_context.worklist.extend(access_levels.map.iter().map(|(id, _)| *id));
     for item in tcx.lang_items().items().iter() {
         if let Some(did) = *item {
             if let Some(node_id) = tcx.hir.as_local_node_id(did) {

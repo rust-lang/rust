@@ -10,7 +10,7 @@
 use ops::{Mul, Add, Try};
 use num::Wrapping;
 
-use super::{AlwaysOk, LoopState};
+use super::LoopState;
 
 /// Conversion from an `Iterator`.
 ///
@@ -104,8 +104,11 @@ use super::{AlwaysOk, LoopState};
 /// assert_eq!(c.0, vec![0, 1, 2, 3, 4]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
-                          built from an iterator over elements of type `{A}`"]
+#[rustc_on_unimplemented(
+    message="a collection of type `{Self}` cannot be built from an iterator \
+             over elements of type `{A}`",
+    label="a collection of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`",
+)]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
     ///
@@ -352,6 +355,13 @@ pub trait Extend<A> {
     fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
 }
 
+#[stable(feature = "extend_for_unit", since = "1.28.0")]
+impl Extend<()> for () {
+    fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
+        iter.into_iter().for_each(drop)
+    }
+}
+
 /// An iterator able to yield elements from both ends.
 ///
 /// Something that implements `DoubleEndedIterator` has one extra capability
@@ -517,7 +527,7 @@ pub trait DoubleEndedIterator: Iterator {
     fn rfold<B, F>(mut self, accum: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
-        self.try_rfold(accum, move |acc, x| AlwaysOk(f(acc, x))).0
+        self.try_rfold(accum, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
     }
 
     /// Searches for an element of an iterator from the back that satisfies a predicate.
@@ -587,7 +597,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// that information can be useful. For example, if you want to iterate
 /// backwards, a good start is to know where the end is.
 ///
-/// When implementing an `ExactSizeIterator`, You must also implement
+/// When implementing an `ExactSizeIterator`, you must also implement
 /// [`Iterator`]. When doing so, the implementation of [`size_hint`] *must*
 /// return the exact size of the iterator.
 ///

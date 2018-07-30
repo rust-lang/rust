@@ -138,7 +138,7 @@ impl Cfg {
 
     /// Renders the configuration for human display, as a short HTML description.
     pub(crate) fn render_short_html(&self) -> String {
-        let mut msg = ShortHtml(self).to_string();
+        let mut msg = Html(self, true).to_string();
         if self.should_capitalize_first_letter() {
             if let Some(i) = msg.find(|c: char| c.is_ascii_alphanumeric()) {
                 msg[i .. i+1].make_ascii_uppercase();
@@ -155,7 +155,7 @@ impl Cfg {
             "on"
         };
 
-        let mut msg = format!("This is supported {} <strong>{}</strong>", on, Html(self));
+        let mut msg = format!("This is supported {} <strong>{}</strong>", on, Html(self, false));
         if self.should_append_only_to_description() {
             msg.push_str(" only");
         }
@@ -265,7 +265,9 @@ impl ops::BitOr for Cfg {
     }
 }
 
-struct Html<'a>(&'a Cfg);
+/// Pretty-print wrapper for a `Cfg`. Also indicates whether the "short-form" rendering should be
+/// used.
+struct Html<'a>(&'a Cfg, bool);
 
 fn write_with_opt_paren<T: fmt::Display>(
     fmt: &mut fmt::Formatter,
@@ -295,12 +297,12 @@ impl<'a> fmt::Display for Html<'a> {
                     };
                     for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
                         fmt.write_str(if i == 0 { "neither " } else { separator })?;
-                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Html(sub_cfg))?;
+                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Html(sub_cfg, self.1))?;
                     }
                     Ok(())
                 }
-                ref simple @ Cfg::Cfg(..) => write!(fmt, "non-{}", Html(simple)),
-                ref c => write!(fmt, "not ({})", Html(c)),
+                ref simple @ Cfg::Cfg(..) => write!(fmt, "non-{}", Html(simple, self.1)),
+                ref c => write!(fmt, "not ({})", Html(c, self.1)),
             },
 
             Cfg::Any(ref sub_cfgs) => {
@@ -313,7 +315,7 @@ impl<'a> fmt::Display for Html<'a> {
                     if i != 0 {
                         fmt.write_str(separator)?;
                     }
-                    write_with_opt_paren(fmt, !sub_cfg.is_all(), Html(sub_cfg))?;
+                    write_with_opt_paren(fmt, !sub_cfg.is_all(), Html(sub_cfg, self.1))?;
                 }
                 Ok(())
             },
@@ -323,7 +325,7 @@ impl<'a> fmt::Display for Html<'a> {
                     if i != 0 {
                         fmt.write_str(" and ")?;
                     }
-                    write_with_opt_paren(fmt, !sub_cfg.is_simple(), Html(sub_cfg))?;
+                    write_with_opt_paren(fmt, !sub_cfg.is_simple(), Html(sub_cfg, self.1))?;
                 }
                 Ok(())
             },
@@ -390,7 +392,11 @@ impl<'a> fmt::Display for Html<'a> {
                     ("target_endian", Some(endian)) => return write!(fmt, "{}-endian", endian),
                     ("target_pointer_width", Some(bits)) => return write!(fmt, "{}-bit", bits),
                     ("target_feature", Some(feat)) =>
-                        return write!(fmt, "target feature <code>{}</code>", feat),
+                        if self.1 {
+                            return write!(fmt, "<code>{}</code>", feat);
+                        } else {
+                            return write!(fmt, "target feature <code>{}</code>", feat);
+                        },
                     _ => "",
                 };
                 if !human_readable.is_empty() {
@@ -401,19 +407,6 @@ impl<'a> fmt::Display for Html<'a> {
                     write!(fmt, "<code>{}</code>", Escape(n))
                 }
             }
-        }
-    }
-}
-
-struct ShortHtml<'a>(&'a Cfg);
-
-impl<'a> fmt::Display for ShortHtml<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match *self.0 {
-            Cfg::Cfg(ref name, Some(ref vendor)) if name == &"target_feature" => {
-                write!(fmt, "<code>{}</code>", vendor)
-            },
-            ref cfg => write!(fmt, "{}", Html(cfg)),
         }
     }
 }
@@ -740,6 +733,13 @@ mod test {
                 name_value_cfg("target_feature", "sse2").render_short_html(),
                 "<code>sse2</code>"
             );
+            assert_eq!(
+                (
+                    name_value_cfg("target_arch", "x86_64") &
+                    name_value_cfg("target_feature", "sse2")
+                ).render_short_html(),
+                "x86-64 and <code>sse2</code>"
+            );
         })
     }
 
@@ -817,6 +817,14 @@ mod test {
             assert_eq!(
                 name_value_cfg("target_feature", "sse2").render_long_html(),
                 "This is supported with <strong>target feature <code>sse2</code></strong> only."
+            );
+            assert_eq!(
+                (
+                    name_value_cfg("target_arch", "x86_64") &
+                    name_value_cfg("target_feature", "sse2")
+                ).render_long_html(),
+                "This is supported on <strong>x86-64 and target feature \
+                <code>sse2</code></strong> only."
             );
         })
     }

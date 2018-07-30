@@ -1,8 +1,8 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/issue-4335.rs:16:20
    |
 LL |     id(Box::new(|| *v))
-   |                    ^^ cannot move out of borrowed content
+   |                    ^^ cannot move out of captured variable in an `FnMut` closure
 
 error[E0597]: `v` does not live long enough
   --> $DIR/issue-4335.rs:16:17
@@ -11,13 +11,13 @@ LL |     id(Box::new(|| *v))
    |                 ^^^^^ borrowed value does not live long enough
 ...
 LL | }
-   | - borrowed value only lives until here
+   | - `v` dropped here while still borrowed
    |
-note: borrowed value must be valid for the lifetime 'r as defined on the function body at 15:1...
-  --> $DIR/issue-4335.rs:15:1
+note: borrowed value must be valid for the lifetime 'r as defined on the function body at 15:6...
+  --> $DIR/issue-4335.rs:15:6
    |
 LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      ^^
 
 error: aborting due to 2 previous errors
 

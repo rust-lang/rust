@@ -138,7 +138,7 @@ pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
     }
 }
 
-// Externally visible symbols that might appear in multiple translation units need to appear in
+// Externally visible symbols that might appear in multiple codegen units need to appear in
 // their own comdat section so that the duplicates can be discarded at link time. This can for
 // example happen for generics when using multiple codegen units. This function simply uses the
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
@@ -275,12 +275,8 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
 fn get_params(llfn: ValueRef) -> Vec<ValueRef> {
     unsafe {
         let num_params = LLVMCountParams(llfn);
-        let mut params = Vec::with_capacity(num_params as usize);
-        for idx in 0..num_params {
-            params.push(LLVMGetParam(llfn, idx));
-        }
 
-        params
+        (0..num_params).map(|idx| LLVMGetParam(llfn, idx)).collect()
     }
 }
 
@@ -331,6 +327,12 @@ pub fn initialize_available_targets() {
                  LLVMInitializeAArch64TargetMC,
                  LLVMInitializeAArch64AsmPrinter,
                  LLVMInitializeAArch64AsmParser);
+    init_target!(llvm_component = "amdgpu",
+                 LLVMInitializeAMDGPUTargetInfo,
+                 LLVMInitializeAMDGPUTarget,
+                 LLVMInitializeAMDGPUTargetMC,
+                 LLVMInitializeAMDGPUAsmPrinter,
+                 LLVMInitializeAMDGPUAsmParser);
     init_target!(llvm_component = "mips",
                  LLVMInitializeMipsTargetInfo,
                  LLVMInitializeMipsTarget,

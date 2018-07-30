@@ -86,7 +86,7 @@ def update_latest(
                         .format(tool, os, old, new)
                 elif new < old:
                     changed = True
-                    message += '💔 {} on {}: {} → {} (cc {}).\n' \
+                    message += '💔 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
                         .format(tool, os, old, new, MAINTAINERS.get(tool))
 
             if changed:

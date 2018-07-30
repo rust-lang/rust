@@ -17,10 +17,11 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::mir::{self, Location, Place, Mir};
 use rustc::ty::TyCtxt;
-use rustc::ty::RegionKind;
+use rustc::ty::{RegionKind, RegionVid};
 use rustc::ty::RegionKind::ReScope;
 
-use rustc_data_structures::bitslice::BitwiseOperator;
+use rustc_data_structures::bitslice::{BitwiseOperator, Word};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
@@ -46,9 +47,65 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     root_scope: Option<region::Scope>,
 
     borrow_set: Rc<BorrowSet<'tcx>>,
+    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
 
     /// NLL region inference context with which NLL queries should be resolved
-    nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
+    _nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
+}
+
+fn precompute_borrows_out_of_scope<'tcx>(
+    mir: &Mir<'tcx>,
+    regioncx: &Rc<RegionInferenceContext<'tcx>>,
+    borrows_out_of_scope_at_location: &mut FxHashMap<Location, Vec<BorrowIndex>>,
+    borrow_index: BorrowIndex,
+    borrow_region: RegionVid,
+    location: Location,
+) {
+    // Keep track of places we've locations to check and locations that we have checked.
+    let mut stack = vec![ location ];
+    let mut visited = FxHashSet();
+    visited.insert(location);
+
+    debug!(
+        "borrow {:?} has region {:?} with value {:?}",
+        borrow_index,
+        borrow_region,
+        regioncx.region_value_str(borrow_region),
+    );
+    debug!("borrow {:?} starts at {:?}", borrow_index, location);
+    while let Some(location) = stack.pop() {
+        // If region does not contain a point at the location, then add to list and skip
+        // successor locations.
+        if !regioncx.region_contains(borrow_region, location) {
+            debug!("borrow {:?} gets killed at {:?}", borrow_index, location);
+            borrows_out_of_scope_at_location
+                .entry(location)
+                .or_insert(vec![])
+                .push(borrow_index);
+            continue;
+        }
+
+        let bb_data = &mir[location.block];
+        // If this is the last statement in the block, then add the
+        // terminator successors next.
+        if location.statement_index == bb_data.statements.len() {
+            // Add successors to locations to visit, if not visited before.
+            if let Some(ref terminator) = bb_data.terminator {
+                for block in terminator.successors() {
+                    let loc = block.start_location();
+                    if visited.insert(loc) {
+                        stack.push(loc);
+                    }
+                }
+            }
+        } else {
+            // Visit next statement in block.
+            let loc = location.successor_within_block();
+            if visited.insert(loc) {
+                stack.push(loc);
+            }
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
@@ -65,18 +122,28 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             region::Scope::CallSite(tcx.hir.body(body_id).value.hir_id.local_id)
         });
 
+        let mut borrows_out_of_scope_at_location = FxHashMap();
+        for (borrow_index, borrow_data) in borrow_set.borrows.iter_enumerated() {
+            let borrow_region = borrow_data.region.to_region_vid();
+            let location = borrow_set.borrows[borrow_index].reserve_location;
+
+            precompute_borrows_out_of_scope(mir, &nonlexical_regioncx,
+                                            &mut borrows_out_of_scope_at_location,
+                                            borrow_index, borrow_region, location);
+        }
+
         Borrows {
             tcx: tcx,
             mir: mir,
             borrow_set: borrow_set.clone(),
+            borrows_out_of_scope_at_location,
             scope_tree,
             root_scope,
-            nonlexical_regioncx,
+            _nonlexical_regioncx: nonlexical_regioncx,
         }
     }
 
     crate fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrow_set.borrows }
-
     pub fn scope_tree(&self) -> &Lrc<region::ScopeTree> { &self.scope_tree }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
@@ -89,12 +156,10 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     fn kill_loans_out_of_scope_at_location(&self,
                                            sets: &mut BlockSets<BorrowIndex>,
                                            location: Location) {
-        let regioncx = &self.nonlexical_regioncx;
-
         // NOTE: The state associated with a given `location`
-        // reflects the dataflow on entry to the statement. If it
-        // does not contain `borrow_region`, then then that means
-        // that the statement at `location` kills the borrow.
+        // reflects the dataflow on entry to the statement.
+        // Iterate over each of the borrows that we've precomputed
+        // to have went out of scope at this location and kill them.
         //
         // We are careful always to call this function *before* we
         // set up the gen-bits for the statement or
@@ -102,10 +167,9 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         // terminator *does* introduce a new loan of the same
         // region, then setting that gen-bit will override any
         // potential kill introduced here.
-        for (borrow_index, borrow_data) in self.borrow_set.borrows.iter_enumerated() {
-            let borrow_region = borrow_data.region.to_region_vid();
-            if !regioncx.region_contains_point(borrow_region, location) {
-                sets.kill(&borrow_index);
+        if let Some(indices) = self.borrows_out_of_scope_at_location.get(&location) {
+            for index in indices {
+                sets.kill(&index);
             }
         }
     }
@@ -149,8 +213,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         let stmt = block.statements.get(location.statement_index).unwrap_or_else(|| {
             panic!("could not find statement at location {:?}");
         });
-
-        self.kill_loans_out_of_scope_at_location(sets, location);
 
         match stmt.kind {
             mir::StatementKind::EndRegion(_) => {
@@ -197,6 +259,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                     // Issue #46746: Two-phase borrows handles
                     // stmts of form `Tmp = &mut Borrow` ...
                     match lhs {
+                        Place::Promoted(_) |
                         Place::Local(..) | Place::Static(..) => {} // okay
                         Place::Projection(..) => {
                             // ... can assign into projections,
@@ -229,6 +292,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 }
             }
 
+            mir::StatementKind::ReadForMatch(..) |
             mir::StatementKind::SetDiscriminant { .. } |
             mir::StatementKind::StorageLive(..) |
             mir::StatementKind::Validate(..) |
@@ -253,9 +317,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         });
 
         let term = block.terminator();
-        self.kill_loans_out_of_scope_at_location(sets, location);
-
-
         match term.kind {
             mir::TerminatorKind::Resume |
             mir::TerminatorKind::Return |
@@ -310,7 +371,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for Borrows<'a, 'gcx, 'tcx> {
     #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
+    fn join(&self, pred1: Word, pred2: Word) -> Word {
         pred1 | pred2 // union effects of preds when computing reservations
     }
 }

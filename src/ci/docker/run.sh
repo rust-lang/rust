@@ -36,8 +36,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
       url="https://s3-us-west-1.amazonaws.com/$SCCACHE_BUCKET/docker/$cksum"
       echo "Attempting to download $s3url"
+      rm -f /tmp/rustci_docker_cache
       set +e
-      loaded_images=$(curl $url | docker load | sed 's/.* sha/sha/')
+      retry curl -f -L -C - -o /tmp/rustci_docker_cache "$url"
+      loaded_images=$(docker load -i /tmp/rustci_docker_cache | sed 's/.* sha/sha/')
       set -e
       echo "Downloaded containers:\n$loaded_images"
     fi
@@ -97,6 +99,7 @@ objdir=$root_dir/obj
 
 mkdir -p $HOME/.cargo
 mkdir -p $objdir/tmp
+mkdir -p $objdir/cores
 
 args=
 if [ "$SCCACHE_BUCKET" != "" ]; then
@@ -115,6 +118,10 @@ fi
 # we'll need `--privileged` for at least the `x86_64-gnu` builder, so this just
 # goes ahead and sets it for all builders.
 args="$args --privileged"
+
+if [ "$CI" != "" ]; then
+    args="$args --dns 8.8.8.8 --dns 8.8.4.4 --dns 1.1.1.1 --dns 1.0.0.1"
+fi
 
 exec docker \
   run \

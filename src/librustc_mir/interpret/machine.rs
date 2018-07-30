@@ -2,19 +2,22 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use rustc::mir::interpret::{AllocId, EvalResult, PrimVal, MemoryPointer, AccessKind, GlobalId};
+use std::hash::Hash;
+
+use rustc::mir::interpret::{AllocId, EvalResult, Scalar, Pointer, AccessKind, GlobalId};
 use super::{EvalContext, Place, ValTy, Memory};
 
 use rustc::mir;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::Size;
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
-pub trait Machine<'mir, 'tcx>: Sized {
+pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
     /// Additional data that can be accessed via the Memory
-    type MemoryData;
+    type MemoryData: Clone + Eq + Hash;
 
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKinds: ::std::fmt::Debug + PartialEq + Copy + Clone;
@@ -53,11 +56,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn try_ptr_op<'a>(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: PrimVal,
+        left: Scalar,
         left_ty: Ty<'tcx>,
-        right: PrimVal,
+        right: Scalar,
         right_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Option<(PrimVal, bool)>>;
+    ) -> EvalResult<'tcx, Option<(Scalar, bool)>>;
 
     /// Called when trying to mark machine defined `MemoryKinds` as static
     fn mark_static_initialized<'a>(
@@ -91,8 +94,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     fn check_locks<'a>(
         _mem: &Memory<'a, 'mir, 'tcx, Self>,
-        _ptr: MemoryPointer,
-        _size: u64,
+        _ptr: Pointer,
+        _size: Size,
         _access: AccessKind,
     ) -> EvalResult<'tcx> {
         Ok(())

@@ -1,0 +1,18 @@
+error[E0597]: `rawLines` does not live long enough
+  --> $DIR/issue-13497-2.rs:13:5
+   |
+LL |     rawLines //~ ERROR `rawLines` does not live long enough
+   |     ^^^^^^^^ borrowed value does not live long enough
+LL |         .iter().map(|l| l.trim()).collect()
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 11:24...
+  --> $DIR/issue-13497-2.rs:11:24
+   |
+LL | fn read_lines_borrowed<'a>() -> Vec<&'a str> {
+   |                        ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

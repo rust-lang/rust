@@ -168,8 +168,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                     // have to be *FULLY* initialized, but we still
                     // must be careful lest it contains derefs of
                     // pointers.
-                    let hir_id = self.tcx().hir.node_to_hir_id(assignee_cmt.id);
-                    self.check_if_assigned_path_is_moved(hir_id.local_id,
+                    self.check_if_assigned_path_is_moved(assignee_cmt.hir_id.local_id,
                                                          assignment_span,
                                                          MovedInUse,
                                                          &lp);
@@ -178,8 +177,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                     // In a case like `path += 1`, then path must be
                     // fully initialized, since we will read it before
                     // we write it.
-                    let hir_id = self.tcx().hir.node_to_hir_id(assignee_cmt.id);
-                    self.check_if_path_is_moved(hir_id.local_id,
+                    self.check_if_path_is_moved(assignee_cmt.hir_id.local_id,
                                                 assignment_span,
                                                 MovedInUse,
                                                 &lp);
@@ -205,7 +203,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let node_id = bccx.tcx.hir.as_local_node_id(def_id).unwrap();
     let movable_generator = !match bccx.tcx.hir.get(node_id) {
         hir::map::Node::NodeExpr(&hir::Expr {
-            node: hir::ExprClosure(.., Some(hir::GeneratorMovability::Static)),
+            node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..
         }) => true,
         _ => false,
@@ -448,11 +446,13 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         if let Some(yield_span) = self.bccx
                                       .region_scope_tree
                                       .yield_in_scope_for_expr(scope,
-                                                               cmt.id,
-                                                               self.bccx.body) {
+                                                               cmt.hir_id,
+                                                               self.bccx.body)
+        {
             self.bccx.cannot_borrow_across_generator_yield(borrow_span,
                                                            yield_span,
                                                            Origin::Ast).emit();
+            self.bccx.signal_error();
         }
     }
 
@@ -509,9 +509,13 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             new_loan, old_loan, old_loan, new_loan).err();
 
         match (err_old_new, err_new_old) {
-            (Some(mut err), None) | (None, Some(mut err)) => err.emit(),
+            (Some(mut err), None) | (None, Some(mut err)) => {
+                err.emit();
+                self.bccx.signal_error();
+            }
             (Some(mut err_old), Some(mut err_new)) => {
                 err_old.emit();
+                self.bccx.signal_error();
                 err_new.cancel();
             }
             (None, None) => return true,
@@ -697,6 +701,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         loan_span, &self.bccx.loan_path_to_string(&loan_path),
                         Origin::Ast)
                     .emit();
+                self.bccx.signal_error();
             }
         }
     }
@@ -747,6 +752,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 };
 
                 err.emit();
+                self.bccx.signal_error();
             }
         }
     }
@@ -916,5 +922,6 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         self.bccx.cannot_assign_to_borrowed(
             span, loan.span, &self.bccx.loan_path_to_string(loan_path), Origin::Ast)
             .emit();
+        self.bccx.signal_error();
     }
 }

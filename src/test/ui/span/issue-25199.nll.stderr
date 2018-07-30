@@ -7,7 +7,7 @@ LL |     let test = Test{test: &container};
 LL | }
    | -
    | |
-   | borrowed value only lives until here
+   | `container` dropped here while still borrowed
    | borrow later used here, when `container` is dropped
 
 error: aborting due to previous error

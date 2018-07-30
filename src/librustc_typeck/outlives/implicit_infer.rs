@@ -8,24 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused)]
-
 use rustc::hir;
-use rustc::hir::def::{CtorKind, Def};
-use rustc::hir::def_id::{self, CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::hir::map as hir_map;
-use rustc::ty::Slice;
-use rustc::ty::maps::Providers;
-use rustc::ty::outlives::Component;
 use rustc::ty::subst::{Kind, Subst, UnpackedKind};
-use rustc::ty::{self, AdtKind, CratePredicatesMap, Region, RegionKind, ReprOptions,
-                ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::Lrc;
-use rustc_target::spec::abi;
-use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::util::nodemap::FxHashMap;
+
+use super::explicit::ExplicitPredicatesMap;
+use super::utils::*;
 
 /// Infer predicates for the items in the crate.
 ///
@@ -34,7 +25,7 @@ use syntax_pos::{Span, DUMMY_SP};
 ///     now be filled with inferred predicates.
 pub fn infer_predicates<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    explicit_map: &FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>>,
+    explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) -> FxHashMap<DefId, RequiredPredicates<'tcx>> {
     debug!("infer_predicates");
 
@@ -65,12 +56,8 @@ pub struct InferVisitor<'cx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'tcx, 'tcx>,
     global_inferred_outlives: &'cx mut FxHashMap<DefId, RequiredPredicates<'tcx>>,
     predicates_added: &'cx mut bool,
-    explicit_map: &'cx FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>>,
+    explicit_map: &'cx mut ExplicitPredicatesMap<'tcx>,
 }
-
-/// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
-/// must be added to the struct header.
-type RequiredPredicates<'tcx> = FxHashSet<ty::OutlivesPredicate<Kind<'tcx>, ty::Region<'tcx>>>;
 
 impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
@@ -78,7 +65,8 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
 
-        let node_id = self.tcx
+        let node_id = self
+            .tcx
             .hir
             .as_local_node_id(item_did)
             .expect("expected local def-id");
@@ -89,7 +77,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 
         let mut item_required_predicates = RequiredPredicates::default();
         match item.node {
-            hir::ItemUnion(..) | hir::ItemEnum(..) | hir::ItemStruct(..) => {
+            hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) => {
                 let adt_def = self.tcx.adt_def(item_did);
 
                 // Iterate over all fields in item_did
@@ -106,7 +94,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
                         field_ty,
                         self.global_inferred_outlives,
                         &mut item_required_predicates,
-                        self.explicit_map,
+                        &mut self.explicit_map,
                     );
                 }
             }
@@ -120,7 +108,8 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
         // Therefore mark `predicates_added` as true and which will ensure
         // we walk the crates again and re-calculate predicates for all
         // items.
-        let item_predicates_len: usize = self.global_inferred_outlives
+        let item_predicates_len: usize = self
+            .global_inferred_outlives
             .get(&item_did)
             .map(|p| p.len())
             .unwrap_or(0);
@@ -131,9 +120,9 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {}
+    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem) {}
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {}
+    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) {}
 }
 
 fn insert_required_predicates_to_be_wf<'tcx>(
@@ -141,7 +130,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     field_ty: Ty<'tcx>,
     global_inferred_outlives: &FxHashMap<DefId, RequiredPredicates<'tcx>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
-    explicit_map: &FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>>,
+    explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
     for ty in field_ty.walk() {
         match ty.sty {
@@ -149,15 +138,15 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             // a predicate requirement of T: 'a (T outlives 'a).
             //
             // We also want to calculate potential predicates for the T
-            ty::TyRef(region, mt) => {
-                insert_outlives_predicate(tcx, mt.ty.into(), region, required_predicates);
+            ty::TyRef(region, rty, _) => {
+                debug!("TyRef");
+                insert_outlives_predicate(tcx, rty.into(), region, required_predicates);
             }
 
             // For each TyAdt (struct/enum/union) type `Foo<'a, T>`, we
             // can load the current set of inferred and explicit
             // predicates from `global_inferred_outlives` and filter the
             // ones that are TypeOutlives.
-            //
             ty::TyAdt(def, substs) => {
                 // First check the inferred predicates
                 //
@@ -177,6 +166,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // round we will get `U: 'b`. We then apply the substitution
                 // `['b => 'a, U => T]` and thus get the requirement that `T:
                 // 'a` holds for `Foo`.
+                debug!("TyAdt");
                 if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did) {
                     for unsubstituted_predicate in unsubstituted_predicates {
                         // `unsubstituted_predicate` is `U: 'b` in the
@@ -195,33 +185,51 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // Check if the type has any explicit predicates that need
                 // to be added to `required_predicates`
                 // let _: () = substs.region_at(0);
-                check_explicit_predicates(tcx, &def.did, substs, required_predicates, explicit_map);
+                check_explicit_predicates(
+                    tcx,
+                    &def.did,
+                    substs,
+                    required_predicates,
+                    explicit_map,
+                    false,
+                );
             }
 
-            ty::TyDynamic(obj, region) => {
-                // FIXME This corresponds to `dyn Trait<..>`. In this
-                // case, we should use the explicit predicates as
-                // well.
-                if let Some(p) = obj.principal() {
+            ty::TyDynamic(obj, ..) => {
+                // This corresponds to `dyn Trait<..>`. In this case, we should
+                // use the explicit predicates as well.
+
+                // We are passing type `ty` as a placeholder value with the function
+                // `with_self_ty`, since there is no concrete type `Self` for a
+                // `dyn Trait` at this stage. Therefore when checking explicit
+                // predicates in `check_explicit_predicates` we need to ignore
+                // checking the explicit_map for Self type.
+                debug!("TyDynamic");
+                debug!("field_ty = {}", &field_ty);
+                debug!("ty in field = {}", &ty);
+                if let Some(ex_trait_ref) = obj.principal() {
                     check_explicit_predicates(
                         tcx,
-                        &p.skip_binder().def_id,
-                        &[region.into()],
+                        &ex_trait_ref.skip_binder().def_id,
+                        ex_trait_ref.with_self_ty(tcx, ty).skip_binder().substs,
                         required_predicates,
                         explicit_map,
+                        true,
                     );
                 }
             }
 
             ty::TyProjection(obj) => {
-                // FIXME This corresponds to `<T as Foo<'a>>::Bar`. In this case, we should use the
+                // This corresponds to `<T as Foo<'a>>::Bar`. In this case, we should use the
                 // explicit predicates as well.
+                debug!("TyProjection");
                 check_explicit_predicates(
                     tcx,
-                    &obj.item_def_id,
+                    &tcx.associated_item(obj.item_def_id).container.id(),
                     obj.substs,
                     required_predicates,
                     explicit_map,
+                    false,
                 );
             }
 
@@ -245,199 +253,59 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 /// will give us `U: 'static` and `U: Foo`. The latter we
 /// can ignore, but we will want to process `U: 'static`,
 /// applying the substitution as above.
-fn check_explicit_predicates<'tcx>(
+pub fn check_explicit_predicates<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     def_id: &DefId,
     substs: &[Kind<'tcx>],
     required_predicates: &mut RequiredPredicates<'tcx>,
-    explicit_map: &FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>>,
+    explicit_map: &mut ExplicitPredicatesMap<'tcx>,
+    ignore_self_ty: bool,
 ) {
-    if let Some(general_predicates) = explicit_map.get(def_id) {
-        for general_predicate in general_predicates.iter() {
-            match general_predicate {
-                // `poly` is `PolyTypeOutlivesPredicate<OutlivesPredicate<Ty>>`
-                // where OutlivesPredicate<type1, region1> is the predicate
-                // we want to add.
-                ty::Predicate::TypeOutlives(poly) => {
-                    let predicate = poly.skip_binder().subst(tcx, substs);
-                    insert_outlives_predicate(
-                        tcx,
-                        predicate.0.into(),
-                        predicate.1,
-                        required_predicates,
-                    );
-                }
+    debug!("def_id = {:?}", &def_id);
+    debug!("substs = {:?}", &substs);
+    debug!("explicit_map =  {:?}", explicit_map);
+    debug!("required_predicates = {:?}", required_predicates);
+    let explicit_predicates = explicit_map.explicit_predicates_of(tcx, *def_id);
 
-                // `poly` is `PolyRegionOutlivesPredicate<OutlivesPredicate<Ty>>`
-                // where OutlivesPredicate<region1, region2> is the predicate
-                // we want to add.
-                ty::Predicate::RegionOutlives(poly) => {
-                    let predicate = poly.skip_binder().subst(tcx, substs);
-                    insert_outlives_predicate(
-                        tcx,
-                        predicate.0.into(),
-                        predicate.1,
-                        required_predicates,
-                    );
-                }
+    for outlives_predicate in explicit_predicates.iter() {
+        debug!("outlives_predicate = {:?}", &outlives_predicate);
 
-                ty::Predicate::Trait(..)
-                | ty::Predicate::Projection(..)
-                | ty::Predicate::WellFormed(..)
-                | ty::Predicate::ObjectSafe(..)
-                | ty::Predicate::ClosureKind(..)
-                | ty::Predicate::Subtype(..)
-                | ty::Predicate::ConstEvaluatable(..) => (),
-            }
-        }
-    }
-}
-
-/// Given a requirement `T: 'a` or `'b: 'a`, deduce the
-/// outlives_component and add it to `required_predicates`
-fn insert_outlives_predicate<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    kind: Kind<'tcx>,
-    outlived_region: Region<'tcx>,
-    required_predicates: &mut RequiredPredicates<'tcx>,
-) {
-    // If the `'a` region is bound within the field type itself, we
-    // don't want to propagate this constraint to the header.
-    if !is_free_region(outlived_region) {
-        return;
-    }
-
-    match kind.unpack() {
-        UnpackedKind::Type(ty) => {
-            // `T: 'outlived_region` for some type `T`
-            // But T could be a lot of things:
-            // e.g., if `T = &'b u32`, then `'b: 'outlived_region` is
-            // what we want to add.
-            //
-            // Or if within `struct Foo<U>` you had `T = Vec<U>`, then
-            // we would want to add `U: 'outlived_region`
-            for component in tcx.outlives_components(ty) {
-                match component {
-                    Component::Region(r) => {
-                        // This would arise from something like:
-                        //
-                        // ```
-                        // struct Foo<'a, 'b> {
-                        //    x:  &'a &'b u32
-                        // }
-                        // ```
-                        //
-                        // Here `outlived_region = 'a` and `kind = &'b
-                        // u32`.  Decomposing `&'b u32` into
-                        // components would yield `'b`, and we add the
-                        // where clause that `'b: 'a`.
-                        insert_outlives_predicate(
-                            tcx,
-                            r.into(),
-                            outlived_region,
-                            required_predicates,
-                        );
-                    }
-
-                    Component::Param(param_ty) => {
-                        // param_ty: ty::ParamTy
-                        // This would arise from something like:
-                        //
-                        // ```
-                        // struct Foo<'a, U> {
-                        //    x:  &'a Vec<U>
-                        // }
-                        // ```
-                        //
-                        // Here `outlived_region = 'a` and `kind =
-                        // Vec<U>`.  Decomposing `Vec<U>` into
-                        // components would yield `U`, and we add the
-                        // where clause that `U: 'a`.
-                        let ty: Ty<'tcx> = tcx.mk_param(param_ty.idx, param_ty.name);
-                        required_predicates
-                            .insert(ty::OutlivesPredicate(ty.into(), outlived_region));
-                    }
-
-                    Component::Projection(proj_ty) => {
-                        // This would arise from something like:
-                        //
-                        // ```
-                        // struct Foo<'a, T: Iterator> {
-                        //    x:  &'a <T as Iterator>::Item
-                        // }
-                        // ```
-                        //
-                        // Here we want to add an explicit `where <T as Iterator>::Item: 'a`.
-                        let ty: Ty<'tcx> = tcx.mk_projection(proj_ty.item_def_id, proj_ty.substs);
-                        required_predicates
-                            .insert(ty::OutlivesPredicate(ty.into(), outlived_region));
-                    }
-
-                    Component::EscapingProjection(_) => {
-                        // As above, but the projection involves
-                        // late-bound regions.  Therefore, the WF
-                        // requirement is not checked in type definition
-                        // but at fn call site, so ignore it.
-                        //
-                        // ```
-                        // struct Foo<'a, T: Iterator> {
-                        //    x: for<'b> fn(<&'b T as Iterator>::Item)
-                        //              //  ^^^^^^^^^^^^^^^^^^^^^^^^^
-                        // }
-                        // ```
-                        //
-                        // Since `'b` is not in scope on `Foo`, can't
-                        // do anything here, ignore it.
-                    }
-
-                    Component::UnresolvedInferenceVariable(_) => bug!("not using infcx"),
-                }
+        // Careful: If we are inferring the effects of a `dyn Trait<..>`
+        // type, then when we look up the predicates for `Trait`,
+        // we may find some that reference `Self`. e.g., perhaps the
+        // definition of `Trait` was:
+        //
+        // ```
+        // trait Trait<'a, T> where Self: 'a  { .. }
+        // ```
+        //
+        // we want to ignore such predicates here, because
+        // there is no type parameter for them to affect. Consider
+        // a struct containing `dyn Trait`:
+        //
+        // ```
+        // struct MyStruct<'x, X> { field: Box<dyn Trait<'x, X>> }
+        // ```
+        //
+        // The `where Self: 'a` predicate refers to the *existential, hidden type*
+        // that is represented by the `dyn Trait`, not to the `X` type parameter
+        // (or any other generic parameter) declared on `MyStruct`.
+        //
+        // Note that we do this check for self **before** applying `substs`. In the
+        // case that `substs` come from a `dyn Trait` type, our caller will have
+        // included `Self = dyn Trait<'x, X>` as the value for `Self`. If we were
+        // to apply the substs, and not filter this predicate, we might then falsely
+        // conclude that e.g. `X: 'x` was a reasonable inferred requirement.
+        if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
+            if ty.is_self() && ignore_self_ty {
+                debug!("skipping self ty = {:?}", &ty);
+                continue;
             }
         }
 
-        UnpackedKind::Lifetime(r) => {
-            if !is_free_region(r) {
-                return;
-            }
-            required_predicates.insert(ty::OutlivesPredicate(kind, outlived_region));
-        }
+        let predicate = outlives_predicate.subst(tcx, substs);
+        debug!("predicate = {:?}", &predicate);
+        insert_outlives_predicate(tcx, predicate.0.into(), predicate.1, required_predicates);
     }
-}
-
-fn is_free_region(region: Region<'_>) -> bool {
-    // First, screen for regions that might appear in a type header.
-    match region {
-        // *These* correspond to `T: 'a` relationships where `'a` is
-        // either declared on the type or `'static`:
-        //
-        //     struct Foo<'a, T> {
-        //         field: &'a T, // this would generate a ReEarlyBound referencing `'a`
-        //         field2: &'static T, // this would generate a ReStatic
-        //     }
-        //
-        // We care about these, so fall through.
-        RegionKind::ReStatic | RegionKind::ReEarlyBound(_) => true,
-
-        // Late-bound regions can appear in `fn` types:
-        //
-        //     struct Foo<T> {
-        //         field: for<'b> fn(&'b T) // e.g., 'b here
-        //     }
-        //
-        // The type above might generate a `T: 'b` bound, but we can
-        // ignore it.  We can't put it on the struct header anyway.
-        RegionKind::ReLateBound(..) => false,
-
-        // These regions don't appear in types from type declarations:
-        RegionKind::ReEmpty
-        | RegionKind::ReErased
-        | RegionKind::ReClosureBound(..)
-        | RegionKind::ReCanonical(..)
-        | RegionKind::ReScope(..)
-        | RegionKind::ReVar(..)
-        | RegionKind::ReSkolemized(..)
-        | RegionKind::ReFree(..) => {
-            bug!("unexpected region in outlives inference: {:?}", region);
-        }
-    }
+    // }
 }

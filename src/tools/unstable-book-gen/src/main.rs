@@ -131,7 +131,7 @@ fn main() {
     let src_path = Path::new(&src_path_str);
     let dest_path = Path::new(&dest_path_str).join("src");
 
-    let lang_features = collect_lang_features(src_path);
+    let lang_features = collect_lang_features(src_path, &mut false);
     let lib_features = collect_lib_features(src_path).into_iter().filter(|&(ref name, _)| {
         !lang_features.contains_key(name)
     }).collect();

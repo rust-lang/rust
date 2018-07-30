@@ -542,6 +542,16 @@ impl<H> Default for BuildHasherDefault<H> {
     }
 }
 
+#[stable(since = "1.29.0", feature = "build_hasher_eq")]
+impl<H> PartialEq for BuildHasherDefault<H> {
+    fn eq(&self, _other: &BuildHasherDefault<H>) -> bool {
+        true
+    }
+}
+
+#[stable(since = "1.29.0", feature = "build_hasher_eq")]
+impl<H> Eq for BuildHasherDefault<H> {}
+
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {
@@ -600,6 +610,13 @@ mod impls {
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write(self.as_bytes());
             state.write_u8(0xff)
+        }
+    }
+
+    #[stable(feature = "never_hash", since = "1.29.0")]
+    impl Hash for ! {
+        fn hash<H: Hasher>(&self, _: &mut H) {
+            *self
         }
     }
 

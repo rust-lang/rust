@@ -20,14 +20,15 @@
 use super::elaborate_predicates;
 
 use hir::def_id::DefId;
+use lint;
 use traits;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::subst::Substs;
 use ty::util::ExplicitSelf;
 use std::borrow::Cow;
 use syntax::ast;
+use syntax_pos::Span;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
     /// Self : Sized declared on the trait
     SizedSelf,
@@ -56,6 +57,9 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf) =>
                 format!("method `{}` references the `Self` type \
                          in its arguments or return type", name).into(),
+            ObjectSafetyViolation::Method(name,
+                                            MethodViolationCode::WhereClauseReferencesSelf(_)) =>
+                format!("method `{}` references the `Self` type in where clauses", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
                 format!("method `{}` has generic type parameters", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::NonStandardSelfType) =>
@@ -75,6 +79,9 @@ pub enum MethodViolationCode {
     /// e.g., `fn foo(&self, x: Self)` or `fn foo(&self) -> Self`
     ReferencesSelf,
 
+    /// e.g. `fn foo(&self) where Self: Clone`
+    WhereClauseReferencesSelf(Span),
+
     /// e.g., `fn foo<A>()`
     Generic,
 
@@ -91,13 +98,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn astconv_object_safety_violations(self, trait_def_id: DefId)
                                             -> Vec<ObjectSafetyViolation>
     {
-        let mut violations = vec![];
-
-        for def_id in traits::supertrait_def_ids(self, trait_def_id) {
-            if self.predicates_reference_self(def_id, true) {
-                violations.push(ObjectSafetyViolation::SupertraitSelf);
-            }
-        }
+        let violations = traits::supertrait_def_ids(self, trait_def_id)
+            .filter(|&def_id| self.predicates_reference_self(def_id, true))
+            .map(|_| ObjectSafetyViolation::SupertraitSelf)
+            .collect();
 
         debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}",
                trait_def_id,
@@ -122,7 +126,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             .filter(|item| item.kind == ty::AssociatedKind::Method)
             .filter_map(|item| {
                 self.object_safety_violation_for_method(trait_def_id, &item)
-                    .map(|code| ObjectSafetyViolation::Method(item.name, code))
+                    .map(|code| ObjectSafetyViolation::Method(item.ident.name, code))
+            }).filter(|violation| {
+                if let ObjectSafetyViolation::Method(_,
+                                MethodViolationCode::WhereClauseReferencesSelf(span)) = violation {
+                    // Using`CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
+                    // It's also hard to get a use site span, so we use the method definition span.
+                    self.lint_node_note(
+                        lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY,
+                        ast::CRATE_NODE_ID,
+                        *span,
+                        &format!("the trait `{}` cannot be made into an object",
+                                self.item_path_str(trait_def_id)),
+                        &violation.error_msg());
+                    false
+                } else {
+                    true
+                }
             }).collect();
 
         // Check the trait itself.
@@ -135,7 +155,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         violations.extend(self.associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssociatedKind::Const)
-            .map(|item| ObjectSafetyViolation::AssociatedConst(item.name)));
+            .map(|item| ObjectSafetyViolation::AssociatedConst(item.ident.name)));
 
         debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
                trait_def_id,
@@ -149,10 +169,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         trait_def_id: DefId,
         supertraits_only: bool) -> bool
     {
-        let trait_ref = ty::Binder::dummy(ty::TraitRef {
-            def_id: trait_def_id,
-            substs: Substs::identity_for_item(self, trait_def_id)
-        });
+        let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(self, trait_def_id));
         let predicates = if supertraits_only {
             self.super_predicates_of(trait_def_id)
         } else {
@@ -245,7 +262,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return false;
         }
 
-        self.virtual_call_violation_for_method(trait_def_id, method).is_none()
+        match self.virtual_call_violation_for_method(trait_def_id, method) {
+            None | Some(MethodViolationCode::WhereClauseReferencesSelf(_)) => true,
+            Some(_) => false,
+        }
     }
 
     /// Returns `Some(_)` if this method cannot be called on a trait
@@ -284,8 +304,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.
-        if !self.generics_of(method.def_id).types.is_empty() {
+        if self.generics_of(method.def_id).own_counts().types != 0 {
             return Some(MethodViolationCode::Generic);
+        }
+
+        if self.predicates_of(method.def_id).predicates.into_iter()
+                // A trait object can't claim to live more than the concrete type,
+                // so outlives predicates will always hold.
+                .filter(|p| p.to_opt_type_outlives().is_none())
+                .collect::<Vec<_>>()
+                // Do a shallow visit so that `contains_illegal_self_type_reference`
+                // may apply it's custom visiting.
+                .visit_tys_shallow(|t| self.contains_illegal_self_type_reference(trait_def_id, t)) {
+            let span = self.def_span(method.def_id);
+            return Some(MethodViolationCode::WhereClauseReferencesSelf(span));
         }
 
         None
@@ -352,10 +384,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                     // Compute supertraits of current trait lazily.
                     if supertraits.is_none() {
-                        let trait_ref = ty::Binder::bind(ty::TraitRef {
-                            def_id: trait_def_id,
-                            substs: Substs::identity_for_item(self, trait_def_id)
-                        });
+                        let trait_ref = ty::Binder::bind(
+                            ty::TraitRef::identity(self, trait_def_id),
+                        );
                         supertraits = Some(traits::supertraits(self, trait_ref).collect());
                     }
 
@@ -387,7 +418,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 pub(super) fn is_object_safe_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                         trait_def_id: DefId)
-                                         -> bool {
+                                                trait_def_id: DefId) -> bool {
     tcx.object_safety_violations(trait_def_id).is_empty()
 }

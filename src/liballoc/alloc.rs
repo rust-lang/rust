@@ -8,42 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "allocator_api",
-            reason = "the precise API and guarantees it provides may be tweaked \
-                      slightly, especially to possibly take into account the \
-                      types being stored to make room for a future \
-                      tracing garbage collector",
-            issue = "32838")]
+//! Memory allocation APIs
+
+#![stable(feature = "alloc_module", since = "1.28.0")]
 
 use core::intrinsics::{min_align_of_val, size_of_val};
 use core::ptr::{NonNull, Unique};
 use core::usize;
 
+#[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use core::alloc::*;
 
-#[cfg(stage0)]
-extern "Rust" {
-    #[allocator]
-    #[rustc_allocator_nounwind]
-    fn __rust_alloc(size: usize, align: usize, err: *mut u8) -> *mut u8;
-    #[cold]
-    #[rustc_allocator_nounwind]
-    fn __rust_oom(err: *const u8) -> !;
-    #[rustc_allocator_nounwind]
-    fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
-    #[rustc_allocator_nounwind]
-    fn __rust_realloc(ptr: *mut u8,
-                      old_size: usize,
-                      old_align: usize,
-                      new_size: usize,
-                      new_align: usize,
-                      err: *mut u8) -> *mut u8;
-    #[rustc_allocator_nounwind]
-    fn __rust_alloc_zeroed(size: usize, align: usize, err: *mut u8) -> *mut u8;
-}
-
-#[cfg(not(stage0))]
 extern "Rust" {
     #[allocator]
     #[rustc_allocator_nounwind]
@@ -59,82 +35,117 @@ extern "Rust" {
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 }
 
+/// The global memory allocator.
+///
+/// This type implements the [`Alloc`] trait by forwarding calls
+/// to the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+#[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "type renamed to `Global`")]
-pub type Heap = Global;
-
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "type renamed to `Global`")]
-#[allow(non_upper_case_globals)]
-pub const Heap: Global = Global;
-
-unsafe impl GlobalAlloc for Global {
-    #[inline]
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
-        #[cfg(not(stage0))]
-        let ptr = __rust_alloc(layout.size(), layout.align());
-        #[cfg(stage0)]
-        let ptr = __rust_alloc(layout.size(), layout.align(), &mut 0);
-        ptr as *mut Opaque
-    }
-
-    #[inline]
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
-        __rust_dealloc(ptr as *mut u8, layout.size(), layout.align())
-    }
-
-    #[inline]
-    unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
-        #[cfg(not(stage0))]
-        let ptr = __rust_realloc(ptr as *mut u8, layout.size(), layout.align(), new_size);
-        #[cfg(stage0)]
-        let ptr = __rust_realloc(ptr as *mut u8, layout.size(), layout.align(),
-                                 new_size, layout.align(), &mut 0);
-        ptr as *mut Opaque
-    }
-
-    #[inline]
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
-        #[cfg(not(stage0))]
-        let ptr = __rust_alloc_zeroed(layout.size(), layout.align());
-        #[cfg(stage0)]
-        let ptr = __rust_alloc_zeroed(layout.size(), layout.align(), &mut 0);
-        ptr as *mut Opaque
-    }
+/// Allocate memory with the global allocator.
+///
+/// This function forwards calls to the [`GlobalAlloc::alloc`] method
+/// of the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+///
+/// This function is expected to be deprecated in favor of the `alloc` method
+/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::alloc`].
+#[stable(feature = "global_alloc", since = "1.28.0")]
+#[inline]
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+    __rust_alloc(layout.size(), layout.align())
 }
 
+/// Deallocate memory with the global allocator.
+///
+/// This function forwards calls to the [`GlobalAlloc::dealloc`] method
+/// of the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+///
+/// This function is expected to be deprecated in favor of the `dealloc` method
+/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::dealloc`].
+#[stable(feature = "global_alloc", since = "1.28.0")]
+#[inline]
+pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
+    __rust_dealloc(ptr, layout.size(), layout.align())
+}
+
+/// Reallocate memory with the global allocator.
+///
+/// This function forwards calls to the [`GlobalAlloc::realloc`] method
+/// of the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+///
+/// This function is expected to be deprecated in favor of the `realloc` method
+/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::realloc`].
+#[stable(feature = "global_alloc", since = "1.28.0")]
+#[inline]
+pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    __rust_realloc(ptr, layout.size(), layout.align(), new_size)
+}
+
+/// Allocate zero-initialized memory with the global allocator.
+///
+/// This function forwards calls to the [`GlobalAlloc::alloc_zeroed`] method
+/// of the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+///
+/// This function is expected to be deprecated in favor of the `alloc_zeroed` method
+/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::alloc_zeroed`].
+#[stable(feature = "global_alloc", since = "1.28.0")]
+#[inline]
+pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+    __rust_alloc_zeroed(layout.size(), layout.align())
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Alloc for Global {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
-        NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr)
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
+        NonNull::new(alloc(layout)).ok_or(AllocErr)
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout) {
-        GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+        dealloc(ptr.as_ptr(), layout)
     }
 
     #[inline]
     unsafe fn realloc(&mut self,
-                      ptr: NonNull<Opaque>,
+                      ptr: NonNull<u8>,
                       layout: Layout,
                       new_size: usize)
-                      -> Result<NonNull<Opaque>, AllocErr>
+                      -> Result<NonNull<u8>, AllocErr>
     {
-        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
+        NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
-        NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
+        NonNull::new(alloc_zeroed(layout)).ok_or(AllocErr)
     }
 }
 
 /// The allocator for unique pointers.
-// This function must not unwind. If it does, MIR trans will fail.
+// This function must not unwind. If it does, MIR codegen will fail.
 #[cfg(not(test))]
 #[lang = "exchange_malloc"]
 #[inline]
@@ -143,23 +154,16 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         align as *mut u8
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
-        let ptr = Global.alloc(layout);
+        let ptr = alloc(layout);
         if !ptr.is_null() {
-            ptr as *mut u8
+            ptr
         } else {
-            oom()
+            handle_alloc_error(layout)
         }
     }
 }
 
-#[cfg(stage0)]
-#[lang = "box_free"]
-#[inline]
-unsafe fn old_box_free<T: ?Sized>(ptr: *mut T) {
-    box_free(Unique::new_unchecked(ptr))
-}
-
-#[cfg_attr(not(any(test, stage0)), lang = "box_free")]
+#[cfg_attr(not(test), lang = "box_free")]
 #[inline]
 pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     let ptr = ptr.as_ptr();
@@ -168,22 +172,31 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Global.dealloc(ptr as *mut Opaque, layout);
+        dealloc(ptr as *mut u8, layout);
     }
 }
 
-#[cfg(stage0)]
-pub fn oom() -> ! {
-    unsafe { ::core::intrinsics::abort() }
-}
-
-#[cfg(not(stage0))]
-pub fn oom() -> ! {
-    extern {
+/// Abort on memory allocation error or failure.
+///
+/// Callers of memory allocation APIs wishing to abort computation
+/// in response to an allocation error are encouraged to call this function,
+/// rather than directly invoking `panic!` or similar.
+///
+/// The default behavior of this function is to print a message to standard error
+/// and abort the process.
+/// It can be replaced with [`set_alloc_error_hook`] and [`take_alloc_error_hook`].
+///
+/// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
+/// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
+#[stable(feature = "global_alloc", since = "1.28.0")]
+#[rustc_allocator_nounwind]
+pub fn handle_alloc_error(layout: Layout) -> ! {
+    #[allow(improper_ctypes)]
+    extern "Rust" {
         #[lang = "oom"]
-        fn oom_impl() -> !;
+        fn oom_impl(layout: Layout) -> !;
     }
-    unsafe { oom_impl() }
+    unsafe { oom_impl(layout) }
 }
 
 #[cfg(test)]
@@ -191,14 +204,14 @@ mod tests {
     extern crate test;
     use self::test::Bencher;
     use boxed::Box;
-    use alloc::{Global, Alloc, Layout, oom};
+    use alloc::{Global, Alloc, Layout, handle_alloc_error};
 
     #[test]
     fn allocate_zeroed() {
         unsafe {
             let layout = Layout::from_size_align(1024, 1).unwrap();
             let ptr = Global.alloc_zeroed(layout.clone())
-                .unwrap_or_else(|_| oom());
+                .unwrap_or_else(|_| handle_alloc_error(layout));
 
             let mut i = ptr.cast::<u8>().as_ptr();
             let end = i.offset(layout.size() as isize);

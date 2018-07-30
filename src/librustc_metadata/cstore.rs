@@ -12,18 +12,15 @@
 // crates and libraries
 
 use schema;
-
-use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex};
+use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
-use rustc::session::{Session, CrateDisambiguator};
-use rustc_target::spec::PanicStrategy;
+use rustc::mir::interpret::AllocDecodingState;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
 
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
-use syntax::{ast, attr};
+use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos;
@@ -64,10 +61,13 @@ pub struct CrateMetadata {
     pub extern_crate: Lock<Option<ExternCrate>>,
 
     pub blob: MetadataBlob,
-    pub cnum_map: Lock<CrateNumMap>,
+    pub cnum_map: CrateNumMap,
     pub cnum: CrateNum,
+    pub dependencies: Lock<Vec<CrateNum>>,
     pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
-    pub attribute_cache: Lock<[Vec<Option<Lrc<[ast::Attribute]>>>; 2]>,
+
+    /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
+    pub alloc_decoding_state: AllocDecodingState,
 
     pub root: schema::CrateRoot,
 
@@ -90,38 +90,40 @@ pub struct CStore {
     metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: Lock<NodeMap<CrateNum>>,
-    pub metadata_loader: Box<MetadataLoader + Sync>,
+    pub metadata_loader: Box<dyn MetadataLoader + Sync>,
 }
 
 impl CStore {
-    pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
+    pub fn new(metadata_loader: Box<dyn MetadataLoader + Sync>) -> CStore {
         CStore {
-            metas: RwLock::new(IndexVec::new()),
+            // We add an empty entry for LOCAL_CRATE (which maps to zero) in
+            // order to make array indices in `metas` match with the
+            // corresponding `CrateNum`. This first entry will always remain
+            // `None`.
+            metas: RwLock::new(IndexVec::from_elem_n(None, 1)),
             extern_mod_crate_map: Lock::new(FxHashMap()),
             metadata_loader,
         }
     }
 
-    /// You cannot use this function to allocate a CrateNum in a thread-safe manner.
-    /// It is currently only used in CrateLoader which is single-threaded code.
-    pub fn next_crate_num(&self) -> CrateNum {
-        CrateNum::new(self.metas.borrow().len() + 1)
+    pub(super) fn alloc_new_crate_num(&self) -> CrateNum {
+        let mut metas = self.metas.borrow_mut();
+        let cnum = CrateNum::new(metas.len());
+        metas.push(None);
+        cnum
     }
 
-    pub fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
+    pub(super) fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
         self.metas.borrow()[cnum].clone().unwrap()
     }
 
-    pub fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
-        use rustc_data_structures::indexed_vec::Idx;
-        let mut met = self.metas.borrow_mut();
-        while met.len() <= cnum.index() {
-            met.push(None);
-        }
-        met[cnum] = Some(data);
+    pub(super) fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
+        let mut metas = self.metas.borrow_mut();
+        assert!(metas[cnum].is_none(), "Overwriting crate metadata entry");
+        metas[cnum] = Some(data);
     }
 
-    pub fn iter_crate_data<I>(&self, mut i: I)
+    pub(super) fn iter_crate_data<I>(&self, mut i: I)
         where I: FnMut(CrateNum, &Lrc<CrateMetadata>)
     {
         for (k, v) in self.metas.borrow().iter_enumerated() {
@@ -131,20 +133,22 @@ impl CStore {
         }
     }
 
-    pub fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
+    pub(super) fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         self.push_dependencies_in_postorder(&mut ordering, krate);
         ordering.reverse();
         ordering
     }
 
-    pub fn push_dependencies_in_postorder(&self, ordering: &mut Vec<CrateNum>, krate: CrateNum) {
+    pub(super) fn push_dependencies_in_postorder(&self,
+                                                 ordering: &mut Vec<CrateNum>,
+                                                 krate: CrateNum) {
         if ordering.contains(&krate) {
             return;
         }
 
         let data = self.get_crate_data(krate);
-        for &dep in data.cnum_map.borrow().iter() {
+        for &dep in data.dependencies.borrow().iter() {
             if dep != krate {
                 self.push_dependencies_in_postorder(ordering, dep);
             }
@@ -153,7 +157,7 @@ impl CStore {
         ordering.push(krate);
     }
 
-    pub fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
+    pub(super) fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         for (num, v) in self.metas.borrow().iter_enumerated() {
             if let &Some(_) = v {
@@ -163,70 +167,11 @@ impl CStore {
         return ordering
     }
 
-    pub fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
+    pub(super) fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
-    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
+    pub(super) fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
-    }
-}
-
-impl CrateMetadata {
-    pub fn name(&self) -> Symbol {
-        self.root.name
-    }
-    pub fn hash(&self) -> Svh {
-        self.root.hash
-    }
-    pub fn disambiguator(&self) -> CrateDisambiguator {
-        self.root.disambiguator
-    }
-
-    pub fn needs_allocator(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "needs_allocator")
-    }
-
-    pub fn has_global_allocator(&self) -> bool {
-        self.root.has_global_allocator.clone()
-    }
-
-    pub fn has_default_lib_allocator(&self) -> bool {
-        self.root.has_default_lib_allocator.clone()
-    }
-
-    pub fn is_panic_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "panic_runtime")
-    }
-
-    pub fn needs_panic_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "needs_panic_runtime")
-    }
-
-    pub fn is_compiler_builtins(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "compiler_builtins")
-    }
-
-    pub fn is_sanitizer_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "sanitizer_runtime")
-    }
-
-    pub fn is_profiler_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "profiler_runtime")
-    }
-
-    pub fn is_no_builtins(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "no_builtins")
-    }
-
-    pub fn panic_strategy(&self) -> PanicStrategy {
-        self.root.panic_strategy.clone()
     }
 }

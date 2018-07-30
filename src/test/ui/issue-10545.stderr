@@ -1,0 +1,9 @@
+error[E0603]: struct `S` is private
+  --> $DIR/issue-10545.rs:17:11
+   |
+LL | fn foo(_: a::S) { //~ ERROR: struct `S` is private
+   |           ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

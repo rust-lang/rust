@@ -18,7 +18,7 @@
 //! `NamedMatch`es at the very end. It'd be a pain, and require more memory to keep around old
 //! items, but it would also save overhead)
 //!
-//! We don't say this parser uses the Earley algorithm, because it's unnecessarily innacurate.
+//! We don't say this parser uses the Earley algorithm, because it's unnecessarily inaccurate.
 //! The macro parser restricts itself to the features of finite state automata. Earley parsers
 //! can be described as an extension of NFAs with completion rules, prediction rules, and recursion.
 //!
@@ -82,7 +82,7 @@
 
 pub use self::NamedMatch::*;
 pub use self::ParseResult::*;
-use self::TokenTreeOrTokenTreeVec::*;
+use self::TokenTreeOrTokenTreeSlice::*;
 
 use ast::Ident;
 use syntax_pos::{self, BytePos, Span};
@@ -97,6 +97,7 @@ use tokenstream::TokenStream;
 use util::small_vector::SmallVector;
 
 use std::mem;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -106,12 +107,12 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 /// Either a sequence of token trees or a single one. This is used as the representation of the
 /// sequence of tokens that make up a matcher.
 #[derive(Clone)]
-enum TokenTreeOrTokenTreeVec {
+enum TokenTreeOrTokenTreeSlice<'a> {
     Tt(TokenTree),
-    TtSeq(Vec<TokenTree>),
+    TtSeq(&'a [TokenTree]),
 }
 
-impl TokenTreeOrTokenTreeVec {
+impl<'a> TokenTreeOrTokenTreeSlice<'a> {
     /// Returns the number of constituent top-level token trees of `self` (top-level in that it
     /// will not recursively descend into subtrees).
     fn len(&self) -> usize {
@@ -135,9 +136,9 @@ impl TokenTreeOrTokenTreeVec {
 /// This is used by `inner_parse_loop` to keep track of delimited submatchers that we have
 /// descended into.
 #[derive(Clone)]
-struct MatcherTtFrame {
+struct MatcherTtFrame<'a> {
     /// The "parent" matcher that we are descending into.
-    elts: TokenTreeOrTokenTreeVec,
+    elts: TokenTreeOrTokenTreeSlice<'a>,
     /// The position of the "dot" in `elts` at the time we descended.
     idx: usize,
 }
@@ -145,9 +146,9 @@ struct MatcherTtFrame {
 /// Represents a single "position" (aka "matcher position", aka "item"), as described in the module
 /// documentation.
 #[derive(Clone)]
-struct MatcherPos {
+struct MatcherPos<'a> {
     /// The token or sequence of tokens that make up the matcher
-    top_elts: TokenTreeOrTokenTreeVec,
+    top_elts: TokenTreeOrTokenTreeSlice<'a>,
     /// The position of the "dot" in this matcher
     idx: usize,
     /// The beginning position in the source that the beginning of this matcher corresponds to. In
@@ -186,7 +187,7 @@ struct MatcherPos {
     sep: Option<Token>,
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
     /// before we enter the sequence.
-    up: Option<Box<MatcherPos>>,
+    up: Option<MatcherPosHandle<'a>>,
 
     // Specifically used to "unzip" token trees. By "unzip", we mean to unwrap the delimiters from
     // a delimited token tree (e.g. something wrapped in `(` `)`) or to get the contents of a doc
@@ -195,14 +196,57 @@ struct MatcherPos {
     /// pat ) pat`), we need to keep track of the matchers we are descending into. This stack does
     /// that where the bottom of the stack is the outermost matcher.
     // Also, throughout the comments, this "descent" is often referred to as "unzipping"...
-    stack: Vec<MatcherTtFrame>,
+    stack: Vec<MatcherTtFrame<'a>>,
 }
 
-impl MatcherPos {
+impl<'a> MatcherPos<'a> {
     /// Add `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
         let matches = Rc::make_mut(&mut self.matches[idx]);
         matches.push(m);
+    }
+}
+
+// Lots of MatcherPos instances are created at runtime. Allocating them on the
+// heap is slow. Furthermore, using SmallVec<MatcherPos> to allocate them all
+// on the stack is also slow, because MatcherPos is quite a large type and
+// instances get moved around a lot between vectors, which requires lots of
+// slow memcpy calls.
+//
+// Therefore, the initial MatcherPos is always allocated on the stack,
+// subsequent ones (of which there aren't that many) are allocated on the heap,
+// and this type is used to encapsulate both cases.
+enum MatcherPosHandle<'a> {
+    Ref(&'a mut MatcherPos<'a>),
+    Box(Box<MatcherPos<'a>>),
+}
+
+impl<'a> Clone for MatcherPosHandle<'a> {
+    // This always produces a new Box.
+    fn clone(&self) -> Self {
+        MatcherPosHandle::Box(match *self {
+            MatcherPosHandle::Ref(ref r) => Box::new((**r).clone()),
+            MatcherPosHandle::Box(ref b) => b.clone(),
+        })
+    }
+}
+
+impl<'a> Deref for MatcherPosHandle<'a> {
+    type Target = MatcherPos<'a>;
+    fn deref(&self) -> &Self::Target {
+        match *self {
+            MatcherPosHandle::Ref(ref r) => r,
+            MatcherPosHandle::Box(ref b) => b,
+        }
+    }
+}
+
+impl<'a> DerefMut for MatcherPosHandle<'a> {
+    fn deref_mut(&mut self) -> &mut MatcherPos<'a> {
+        match *self {
+            MatcherPosHandle::Ref(ref mut r) => r,
+            MatcherPosHandle::Box(ref mut b) => b,
+        }
     }
 }
 
@@ -241,10 +285,10 @@ fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
 
 /// Generate the top-level matcher position in which the "dot" is before the first token of the
 /// matcher `ms` and we are going to start matching at position `lo` in the source.
-fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
-    let match_idx_hi = count_names(&ms[..]);
+fn initial_matcher_pos(ms: &[TokenTree], lo: BytePos) -> MatcherPos {
+    let match_idx_hi = count_names(ms);
     let matches = create_matches(match_idx_hi);
-    Box::new(MatcherPos {
+    MatcherPos {
         // Start with the top level matcher given to us
         top_elts: TtSeq(ms), // "elts" is an abbr. for "elements"
         // The "dot" is before the first token of the matcher
@@ -267,7 +311,7 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
         seq_op: None,
         sep: None,
         up: None,
-    })
+    }
 }
 
 /// `NamedMatch` is a pattern-match result for a single `token::MATCH_NONTERMINAL`:
@@ -394,12 +438,12 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 /// # Returns
 ///
 /// A `ParseResult`. Note that matches are kept track of through the items generated.
-fn inner_parse_loop(
+fn inner_parse_loop<'a>(
     sess: &ParseSess,
-    cur_items: &mut SmallVector<Box<MatcherPos>>,
-    next_items: &mut Vec<Box<MatcherPos>>,
-    eof_items: &mut SmallVector<Box<MatcherPos>>,
-    bb_items: &mut SmallVector<Box<MatcherPos>>,
+    cur_items: &mut SmallVector<MatcherPosHandle<'a>>,
+    next_items: &mut Vec<MatcherPosHandle<'a>>,
+    eof_items: &mut SmallVector<MatcherPosHandle<'a>>,
+    bb_items: &mut SmallVector<MatcherPosHandle<'a>>,
     token: &Token,
     span: syntax_pos::Span,
 ) -> ParseResult<()> {
@@ -502,7 +546,7 @@ fn inner_parse_loop(
                     }
 
                     let matches = create_matches(item.matches.len());
-                    cur_items.push(Box::new(MatcherPos {
+                    cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos {
                         stack: vec![],
                         sep: seq.separator.clone(),
                         seq_op: Some(seq.op),
@@ -514,7 +558,7 @@ fn inner_parse_loop(
                         up: Some(item),
                         sp_lo: sp.lo(),
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
-                    }));
+                    })));
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
@@ -529,7 +573,7 @@ fn inner_parse_loop(
                 TokenTree::MetaVarDecl(_, _, id) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
-                    if may_begin_with(&*id.name.as_str(), token) {
+                    if may_begin_with(&*id.as_str(), token) {
                         bb_items.push(item);
                     }
                 }
@@ -596,7 +640,11 @@ pub fn parse(
     // processes all of these possible matcher positions and produces posible next positions into
     // `next_items`. After some post-processing, the contents of `next_items` replenish `cur_items`
     // and we start over again.
-    let mut cur_items = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo()));
+    //
+    // This MatcherPos instance is allocated on the stack. All others -- and
+    // there are frequently *no* others! -- are allocated on the heap.
+    let mut initial = initial_matcher_pos(ms, parser.span.lo());
+    let mut cur_items = SmallVector::one(MatcherPosHandle::Ref(&mut initial));
     let mut next_items = Vec::new();
 
     loop {
@@ -649,9 +697,14 @@ pub fn parse(
                 return Failure(parser.span, token::Eof);
             }
         }
+        // Performance hack: eof_items may share matchers via Rc with other things that we want
+        // to modify. Dropping eof_items now may drop these refcounts to 1, preventing an
+        // unnecessary implicit clone later in Rc::make_mut.
+        drop(eof_items);
+
         // Another possibility is that we need to call out to parse some rust nonterminal
         // (black-box) parser. However, if there is not EXACTLY ONE of these, something is wrong.
-        else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+        if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
@@ -694,7 +747,7 @@ pub fn parse(
                 let match_cur = item.match_cur;
                 item.push_match(
                     match_cur,
-                    MatchedNonterminal(Rc::new(parse_nt(&mut parser, span, &ident.name.as_str()))),
+                    MatchedNonterminal(Rc::new(parse_nt(&mut parser, span, &ident.as_str()))),
                 );
                 item.idx += 1;
                 item.match_cur += 1;
@@ -735,6 +788,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         "expr" => token.can_begin_expr(),
         "ty" => token.can_begin_type(),
         "ident" => get_macro_ident(token).is_some(),
+        "literal" => token.can_begin_literal_or_bool(),
         "vis" => match *token {
             // The follow-set of :vis + "priv" keyword + interpolated
             Token::Comma | Token::Ident(..) | Token::Interpolated(_) => true,
@@ -776,6 +830,14 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             Token::Lt |                         // path (UFCS constant)
             Token::BinOp(token::Shl) => true,   // path (double UFCS)
             Token::Interpolated(ref nt) => may_be_ident(&nt.0),
+            _ => false,
+        },
+        "lifetime" => match *token {
+            Token::Lifetime(_) => true,
+            Token::Interpolated(ref nt) => match nt.0 {
+                token::NtLifetime(_) | token::NtTT(_) => true,
+                _ => false,
+            },
             _ => false,
         },
         _ => match *token {
@@ -821,6 +883,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         },
         "pat" => token::NtPat(panictry!(p.parse_pat())),
         "expr" => token::NtExpr(panictry!(p.parse_expr())),
+        "literal" => token::NtLiteral(panictry!(p.parse_literal_maybe_minus())),
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
         "ident" => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {

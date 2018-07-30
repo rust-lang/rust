@@ -10,7 +10,6 @@
 
 // compile-flags: -C codegen-units=8 -Z thinlto
 // ignore-windows
-// min-llvm-version 4.0
 
 #![feature(linkage)]
 

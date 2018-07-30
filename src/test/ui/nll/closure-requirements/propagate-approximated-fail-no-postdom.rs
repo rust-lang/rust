@@ -54,8 +54,7 @@ fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell
             // Only works if 'x: 'y:
             let p = x.get();
             //~^ WARN not reporting region error due to nll
-            //~| ERROR does not outlive free region
-            demand_y(x, y, p)
+            demand_y(x, y, p) //~ ERROR
         },
     );
 }

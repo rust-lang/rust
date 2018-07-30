@@ -48,7 +48,7 @@ always work, and sometimes it's hard to know what to search for, so consider thi
 extra credit. We won't mind if you accidentally file a duplicate report.
 
 Similarly, to help others who encountered the bug find your issue,
-consider filing an issue with with a descriptive title, which contains information that might be unique to it.
+consider filing an issue with a descriptive title, which contains information that might be unique to it.
 This can be the language or compiler feature used, the conditions that trigger the bug,
 or part of the error message if there is any.
 An example could be: **"impossible case reached" on lifetime inference for impl Trait in return position**.
@@ -142,7 +142,7 @@ file. If you still have a `config.mk` file in your directory - from
 ### Building
 [building]: #building
 
-A default configuration shall use around 3.5 GB of disk space, whereas building a debug configuration may require more than 30 GB.
+A default configuration requires around 3.5 GB of disk space, whereas building a debug configuration may require more than 30 GB.
 
 Dependencies
 - [build dependencies](README.md#building-from-source)

@@ -1,0 +1,16 @@
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/extern-crate-submod.rs:29:5
+   |
+LL | use m::edition_lint_paths::foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::m::edition_lint_paths::foo`
+   |
+note: lint level defined here
+  --> $DIR/extern-crate-submod.rs:19:9
+   |
+LL | #![deny(absolute_paths_not_starting_with_crate)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: aborting due to previous error
+

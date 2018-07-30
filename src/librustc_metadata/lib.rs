@@ -15,14 +15,16 @@
 #![feature(box_patterns)]
 #![feature(fs_read_write)]
 #![feature(libc)]
-#![feature(macro_lifetime_matcher)]
+#![feature(macro_at_most_once_rep)]
 #![feature(proc_macro_internals)]
-#![feature(macro_lifetime_matcher)]
+#![feature(proc_macro_quote)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]
 #![feature(rustc_private)]
+
+#![recursion_limit="256"]
 
 extern crate libc;
 #[macro_use]

@@ -33,6 +33,7 @@ fn c() {
     let x = {
         return;
         println!("foo");
+        //~^ ERROR unreachable statement
         22
     };
 }

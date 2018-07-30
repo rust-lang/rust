@@ -262,15 +262,15 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 }))
             },
             TyArray(ty, len) => {
-                match len.val.to_raw_bits() {
+                match len.assert_usize(tcx) {
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
                     Some(n) if n != 0 => ty.uninhabited_from(visited, tcx),
                     _ => DefIdForest::empty()
                 }
             }
-            TyRef(_, ref tm) => {
-                tm.ty.uninhabited_from(visited, tcx)
+            TyRef(_, ty, _) => {
+                ty.uninhabited_from(visited, tcx)
             }
 
             _ => DefIdForest::empty(),

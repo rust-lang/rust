@@ -17,5 +17,5 @@
 static FOO: isize = 5;
 
 fn main() {
-    FOO = 6; //~ ERROR cannot assign to immutable item `FOO` [E0594]
+    FOO = 6; //~ ERROR cannot assign to immutable static item `FOO` [E0594]
 }

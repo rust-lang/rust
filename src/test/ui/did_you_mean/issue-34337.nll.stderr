@@ -1,8 +1,11 @@
-error[E0596]: cannot borrow immutable item `key` as mutable
+error[E0596]: cannot borrow `key` as mutable, as it is not declared as mutable
   --> $DIR/issue-34337.rs:16:9
    |
 LL |     get(&mut key); //~ ERROR cannot borrow
-   |         ^^^^^^^^ cannot borrow as mutable
+   |         ^^^^^^^^
+   |         |
+   |         cannot borrow as mutable
+   |         try removing `&mut` here
 
 error: aborting due to previous error
 

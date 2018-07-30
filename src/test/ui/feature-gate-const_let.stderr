@@ -1,0 +1,19 @@
+error[E0658]: let bindings in constant functions are unstable (see issue #48821)
+  --> $DIR/feature-gate-const_let.rs:16:13
+   |
+LL |     let x = 42;
+   |             ^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in constant functions are unstable (see issue #48821)
+  --> $DIR/feature-gate-const_let.rs:16:13
+   |
+LL |     let x = 42;
+   |             ^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

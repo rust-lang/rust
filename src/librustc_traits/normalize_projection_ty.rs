@@ -9,47 +9,55 @@
 // except according to those terms.
 
 use rustc::infer::canonical::{Canonical, QueryResult};
-use rustc::traits::{self, FulfillmentContext, Normalized, ObligationCause,
-                    SelectionContext};
-use rustc::traits::query::{CanonicalProjectionGoal, NoSolution, normalize::NormalizationResult};
+use rustc::traits::query::{normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution};
+use rustc::traits::{self, ObligationCause, SelectionContext, TraitEngineExt};
+use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_data_structures::sync::Lrc;
+use std::sync::atomic::Ordering;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::DUMMY_SP;
-use util;
-use std::sync::atomic::Ordering;
 
-crate fn normalize_projection_ty<'tcx>(
+crate fn provide(p: &mut Providers) {
+    *p = Providers {
+        normalize_projection_ty,
+        ..*p
+    };
+}
+
+fn normalize_projection_ty<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalProjectionGoal<'tcx>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>, NoSolution> {
     debug!("normalize_provider(goal={:#?})", goal);
 
-    tcx.sess.perf_stats.normalize_projection_ty.fetch_add(1, Ordering::Relaxed);
-    tcx.infer_ctxt().enter(|ref infcx| {
-        let (
-            ParamEnvAnd {
+    tcx.sess
+        .perf_stats
+        .normalize_projection_ty
+        .fetch_add(1, Ordering::Relaxed);
+    tcx.infer_ctxt().enter_canonical_trait_query(
+        &goal,
+        |infcx,
+         fulfill_cx,
+         ParamEnvAnd {
+             param_env,
+             value: goal,
+         }| {
+            let selcx = &mut SelectionContext::new(infcx);
+            let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID);
+            let mut obligations = vec![];
+            let answer = traits::normalize_projection_type(
+                selcx,
                 param_env,
-                value: goal,
-            },
-            canonical_inference_vars,
-        ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &goal);
-        let fulfill_cx = &mut FulfillmentContext::new();
-        let selcx = &mut SelectionContext::new(infcx);
-        let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID);
-        let Normalized {
-            value: answer,
-            obligations,
-        } = traits::normalize_projection_type(selcx, param_env, goal, cause, 0);
-        fulfill_cx.register_predicate_obligations(infcx, obligations);
-
-        // Now that we have fulfilled as much as we can, create a solution
-        // from what we've learned.
-        util::make_query_response(
-            infcx,
-            canonical_inference_vars,
-            NormalizationResult { normalized_ty: answer },
-            fulfill_cx,
-        )
-    })
+                goal,
+                cause,
+                0,
+                &mut obligations,
+            );
+            fulfill_cx.register_predicate_obligations(infcx, obligations);
+            Ok(NormalizationResult {
+                normalized_ty: answer,
+            })
+        },
+    )
 }

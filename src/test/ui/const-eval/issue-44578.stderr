@@ -1,14 +1,18 @@
-warning: constant evaluation error
+error[E0080]: referenced constant has errors
   --> $DIR/issue-44578.rs:35:20
    |
-LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ WARN const_err
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
-   |
-   = note: #[warn(const_err)] on by default
+LL |     const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];
+   |                        ------------------------------------ index out of bounds: the len is 1 but the index is 1
+...
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: constant evaluation error
+error[E0080]: erroneous constant used
   --> $DIR/issue-44578.rs:35:20
    |
-LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ WARN const_err
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

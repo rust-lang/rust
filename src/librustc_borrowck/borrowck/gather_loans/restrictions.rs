@@ -108,8 +108,9 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                         RestrictionResult::Safe => RestrictionResult::Safe,
                         RestrictionResult::SafeIf(base_lp, mut base_vec) => {
                             for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
-                                let field =
-                                    InteriorKind::InteriorField(mc::FieldIndex(i, field.name));
+                                let field = InteriorKind::InteriorField(
+                                    mc::FieldIndex(i, field.ident.name)
+                                );
                                 let field_ty = if field == interior {
                                     cmt.ty
                                 } else {
@@ -148,7 +149,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                         let result = self.restrict(&cmt_base);
                         self.extend(result, &cmt, LpDeref(pk))
                     }
-                    mc::Implicit(bk, lt) | mc::BorrowedPtr(bk, lt) => {
+                    mc::BorrowedPtr(bk, lt) => {
                         // R-Deref-[Mut-]Borrowed
                         if !self.bccx.is_subregion_of(self.loan_region, lt) {
                             self.bccx.report(

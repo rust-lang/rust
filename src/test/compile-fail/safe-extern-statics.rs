@@ -20,12 +20,12 @@ extern {
 }
 
 fn main() {
-    let a = A; //~ ERROR use of extern static requires unsafe function or block
+    let a = A; //~ ERROR use of extern static is unsafe
                //~^ WARN this was previously accepted by the compiler
-    let ra = &A; //~ ERROR use of extern static requires unsafe function or block
+    let ra = &A; //~ ERROR use of extern static is unsafe
                  //~^ WARN this was previously accepted by the compiler
-    let xa = XA; //~ ERROR use of extern static requires unsafe function or block
+    let xa = XA; //~ ERROR use of extern static is unsafe
                  //~^ WARN this was previously accepted by the compiler
-    let xra = &XA; //~ ERROR use of extern static requires unsafe function or block
+    let xra = &XA; //~ ERROR use of extern static is unsafe
                    //~^ WARN this was previously accepted by the compiler
 }

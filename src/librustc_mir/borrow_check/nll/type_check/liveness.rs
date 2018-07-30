@@ -8,16 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dataflow::{FlowAtLocation, FlowsAtLocation};
-use borrow_check::nll::region_infer::Cause;
-use dataflow::MaybeInitializedPlaces;
-use dataflow::move_paths::{HasMoveData, MoveData};
-use rustc::mir::{BasicBlock, Location, Mir};
-use rustc::mir::Local;
-use rustc::ty::{Ty, TyCtxt, TypeFoldable};
-use rustc::infer::InferOk;
+use borrow_check::nll::{NllLivenessMap, LocalWithRegion};
 use borrow_check::nll::type_check::AtLocation;
-use util::liveness::LivenessResults;
+use dataflow::move_paths::{HasMoveData, MoveData};
+use dataflow::MaybeInitializedPlaces;
+use dataflow::{FlowAtLocation, FlowsAtLocation};
+use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::mir::{BasicBlock, Location, Mir};
+use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
+use rustc::traits::query::type_op::outlives::DropckOutlives;
+use rustc::traits::query::type_op::TypeOp;
+use rustc::ty::{Ty, TypeFoldable};
+use rustc_data_structures::fx::FxHashMap;
+use std::rc::Rc;
+use util::liveness::{LivenessResults, LiveVariableMap };
 
 use super::TypeChecker;
 
@@ -32,18 +36,18 @@ use super::TypeChecker;
 pub(super) fn generate<'gcx, 'tcx>(
     cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    liveness: &LivenessResults,
+    liveness: &LivenessResults<LocalWithRegion>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
-    let tcx = cx.tcx();
     let mut generator = TypeLivenessGenerator {
         cx,
-        tcx,
         mir,
         liveness,
         flow_inits,
         move_data,
+        drop_data: FxHashMap(),
+        map: &NllLivenessMap::compute(mir),
     };
 
     for bb in mir.basic_blocks().indices() {
@@ -59,11 +63,17 @@ where
     'gcx: 'tcx,
 {
     cx: &'gen mut TypeChecker<'typeck, 'gcx, 'tcx>,
-    tcx: TyCtxt<'typeck, 'gcx, 'tcx>,
     mir: &'gen Mir<'tcx>,
-    liveness: &'gen LivenessResults,
+    liveness: &'gen LivenessResults<LocalWithRegion>,
     flow_inits: &'gen mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
     move_data: &'gen MoveData<'tcx>,
+    drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,
+    map: &'gen NllLivenessMap,
+}
+
+struct DropData<'tcx> {
+    dropck_result: DropckOutlivesResult<'tcx>,
+    region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
 }
 
 impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx> {
@@ -76,18 +86,18 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
 
         self.liveness
             .regular
-            .simulate_block(self.mir, bb, |location, live_locals| {
+            .simulate_block(self.mir, bb, self.map, |location, live_locals| {
                 for live_local in live_locals.iter() {
-                    let live_local_ty = self.mir.local_decls[live_local].ty;
-                    let cause = Cause::LiveVar(live_local, location);
-                    self.push_type_live_constraint(live_local_ty, location, cause);
+                    let local = self.map.from_live_var(live_local);
+                    let live_local_ty = self.mir.local_decls[local].ty;
+                    Self::push_type_live_constraint(&mut self.cx, live_local_ty, location);
                 }
             });
 
-        let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
+        let mut all_live_locals: Vec<(Location, Vec<LocalWithRegion>)> = vec![];
         self.liveness
             .drop
-            .simulate_block(self.mir, bb, |location, live_locals| {
+            .simulate_block(self.mir, bb, self.map, |location, live_locals| {
                 all_live_locals.push((location, live_locals.iter().collect()));
             });
         debug!(
@@ -104,15 +114,18 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                     location, live_local
                 );
 
-                self.flow_inits.each_state_bit(|mpi_init| {
-                    debug!(
-                        "add_liveness_constraints: location={:?} initialized={:?}",
-                        location,
-                        &self.flow_inits.operator().move_data().move_paths[mpi_init]
-                    );
-                });
+                if log_enabled!(::log::Level::Debug) {
+                    self.flow_inits.each_state_bit(|mpi_init| {
+                        debug!(
+                            "add_liveness_constraints: location={:?} initialized={:?}",
+                            location,
+                            &self.flow_inits.operator().move_data().move_paths[mpi_init]
+                        );
+                    });
+                }
 
-                let mpi = self.move_data.rev_lookup.find_local(live_local);
+                let local = self.map.from_live_var(live_local);
+                let mpi = self.move_data.rev_lookup.find_local(local);
                 if let Some(initialized_child) = self.flow_inits.has_any_child_of(mpi) {
                     debug!(
                         "add_liveness_constraints: mpi={:?} has initialized child {:?}",
@@ -120,7 +133,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                         self.move_data.move_paths[initialized_child]
                     );
 
-                    let live_local_ty = self.mir.local_decls[live_local].ty;
+                    let local = self.map.from_live_var(live_local);
+                    let live_local_ty = self.mir.local_decls[local].ty;
                     self.add_drop_live_constraint(live_local, live_local_ty, location);
                 }
             }
@@ -146,8 +160,11 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at
     /// `location`.
-    fn push_type_live_constraint<T>(&mut self, value: T, location: Location, cause: Cause)
-    where
+    fn push_type_live_constraint<T>(
+        cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
+        value: T,
+        location: Location,
+    ) where
         T: TypeFoldable<'tcx>,
     {
         debug!(
@@ -155,11 +172,19 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             value, location
         );
 
-        self.tcx.for_each_free_region(&value, |live_region| {
-            self.cx
-                .constraints
-                .liveness_set
-                .push((live_region, location, cause.clone()));
+        cx.tcx().for_each_free_region(&value, |live_region| {
+            if let Some(ref mut borrowck_context) = cx.borrowck_context {
+                let region_vid = borrowck_context.universal_regions.to_region_vid(live_region);
+                borrowck_context.constraints.liveness_constraints.add_element(region_vid, location);
+
+                if let Some(all_facts) = borrowck_context.all_facts {
+                    let start_index = borrowck_context.location_table.start_index(location);
+                    all_facts.region_live_at.push((region_vid, start_index));
+
+                    let mid_index = borrowck_context.location_table.mid_index(location);
+                    all_facts.region_live_at.push((region_vid, mid_index));
+                }
+            }
         });
     }
 
@@ -170,7 +195,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     /// particular this takes `#[may_dangle]` into account.
     fn add_drop_live_constraint(
         &mut self,
-        dropped_local: Local,
+        dropped_local: LocalWithRegion,
         dropped_ty: Ty<'tcx>,
         location: Location,
     ) {
@@ -179,47 +204,43 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             dropped_local, dropped_ty, location
         );
 
-        // If we end visiting the same type twice (usually due to a cycle involving
-        // associated types), we need to ensure that its region types match up with the type
-        // we added to the 'known' map the first time around. For this reason, we need
-        // our infcx to hold onto its calculated region constraints after each call
-        // to dtorck_constraint_for_ty. Otherwise, normalizing the corresponding associated
-        // type will end up instantiating the type with a new set of inference variables
-        // Since this new type will never be in 'known', we end up looping forever.
-        //
-        // For this reason, we avoid calling TypeChecker.normalize, instead doing all normalization
-        // ourselves in one large 'fully_perform_op' callback.
-        let kind_constraints = self.cx
-            .fully_perform_op(location.at_self(), |cx| {
-                let span = cx.last_span;
+        let drop_data = self.drop_data.entry(dropped_ty).or_insert_with({
+            let cx = &mut self.cx;
+            move || Self::compute_drop_data(cx, dropped_ty)
+        });
 
-                let mut final_obligations = Vec::new();
-                let mut kind_constraints = Vec::new();
+        if let Some(data) = &drop_data.region_constraint_data {
+            self.cx.push_region_constraints(location.boring(), data);
+        }
 
-                let InferOk {
-                    value: kinds,
-                    obligations,
-                } = cx.infcx
-                    .at(&cx.misc(span), cx.param_env)
-                    .dropck_outlives(dropped_ty);
-                for kind in kinds {
-                    // All things in the `outlives` array may be touched by
-                    // the destructor and must be live at this point.
-                    let cause = Cause::DropVar(dropped_local, location);
-                    kind_constraints.push((kind, location, cause));
-                }
+        drop_data.dropck_result.report_overflows(
+            self.cx.infcx.tcx,
+            self.mir.source_info(location).span,
+            dropped_ty,
+        );
 
-                final_obligations.extend(obligations);
+        // All things in the `outlives` array may be touched by
+        // the destructor and must be live at this point.
+        for &kind in &drop_data.dropck_result.kinds {
+            Self::push_type_live_constraint(&mut self.cx, kind, location);
+        }
+    }
 
-                Ok(InferOk {
-                    value: kind_constraints,
-                    obligations: final_obligations,
-                })
-            })
+    fn compute_drop_data(
+        cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
+        dropped_ty: Ty<'tcx>,
+    ) -> DropData<'tcx> {
+        debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
+
+        let param_env = cx.param_env;
+        let (dropck_result, region_constraint_data) = param_env
+            .and(DropckOutlives::new(dropped_ty))
+            .fully_perform(cx.infcx)
             .unwrap();
 
-        for (kind, location, cause) in kind_constraints {
-            self.push_type_live_constraint(kind, location, cause);
+        DropData {
+            dropck_result,
+            region_constraint_data,
         }
     }
 }

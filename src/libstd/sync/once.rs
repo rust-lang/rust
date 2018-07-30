@@ -73,16 +73,17 @@ use thread::{self, Thread};
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
 /// functionality. This type can only be constructed with the [`ONCE_INIT`]
-/// value.
+/// value or the equivalent [`Once::new`] constructor.
 ///
 /// [`ONCE_INIT`]: constant.ONCE_INIT.html
+/// [`Once::new`]: struct.Once.html#method.new
 ///
 /// # Examples
 ///
 /// ```
-/// use std::sync::{Once, ONCE_INIT};
+/// use std::sync::Once;
 ///
-/// static START: Once = ONCE_INIT;
+/// static START: Once = Once::new();
 ///
 /// START.call_once(|| {
 ///     // run initialization here
@@ -148,9 +149,9 @@ struct Waiter {
 
 // Helper struct used to clean up after a closure call with a `Drop`
 // implementation to also run on panic.
-struct Finish {
+struct Finish<'a> {
     panicked: bool,
-    me: &'static Once,
+    me: &'a Once,
 }
 
 impl Once {
@@ -180,10 +181,10 @@ impl Once {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::sync::Once;
     ///
     /// static mut VAL: usize = 0;
-    /// static INIT: Once = ONCE_INIT;
+    /// static INIT: Once = Once::new();
     ///
     /// // Accessing a `static mut` is unsafe much of the time, but if we do so
     /// // in a synchronized fashion (e.g. write once or read all) then we're
@@ -217,9 +218,13 @@ impl Once {
     ///
     /// [poison]: struct.Mutex.html#poisoning
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn call_once<F>(&'static self, f: F) where F: FnOnce() {
+    pub fn call_once<F>(&self, f: F) where F: FnOnce() {
         // Fast path, just see if we've completed initialization.
-        if self.state.load(Ordering::SeqCst) == COMPLETE {
+        // An `Acquire` load is enough because that makes all the initialization
+        // operations visible to us. The cold path uses SeqCst consistently
+        // because the performance difference really does not matter there,
+        // and SeqCst minimizes the chances of something going wrong.
+        if self.state.load(Ordering::Acquire) == COMPLETE {
             return
         }
 
@@ -248,10 +253,10 @@ impl Once {
     /// ```
     /// #![feature(once_poison)]
     ///
-    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::sync::Once;
     /// use std::thread;
     ///
-    /// static INIT: Once = ONCE_INIT;
+    /// static INIT: Once = Once::new();
     ///
     /// // poison the once
     /// let handle = thread::spawn(|| {
@@ -274,9 +279,13 @@ impl Once {
     /// INIT.call_once(|| {});
     /// ```
     #[unstable(feature = "once_poison", issue = "33577")]
-    pub fn call_once_force<F>(&'static self, f: F) where F: FnOnce(&OnceState) {
+    pub fn call_once_force<F>(&self, f: F) where F: FnOnce(&OnceState) {
         // same as above, just with a different parameter to `call_inner`.
-        if self.state.load(Ordering::SeqCst) == COMPLETE {
+        // An `Acquire` load is enough because that makes all the initialization
+        // operations visible to us. The cold path uses SeqCst consistently
+        // because the performance difference really does not matter there,
+        // and SeqCst minimizes the chances of something going wrong.
+        if self.state.load(Ordering::Acquire) == COMPLETE {
             return
         }
 
@@ -298,9 +307,9 @@ impl Once {
     // currently no way to take an `FnOnce` and call it via virtual dispatch
     // without some allocation overhead.
     #[cold]
-    fn call_inner(&'static self,
+    fn call_inner(&self,
                   ignore_poisoning: bool,
-                  init: &mut FnMut(bool)) {
+                  init: &mut dyn FnMut(bool)) {
         let mut state = self.state.load(Ordering::SeqCst);
 
         'outer: loop {
@@ -389,7 +398,7 @@ impl fmt::Debug for Once {
     }
 }
 
-impl Drop for Finish {
+impl<'a> Drop for Finish<'a> {
     fn drop(&mut self) {
         // Swap out our state with however we finished. We should only ever see
         // an old state which was RUNNING.
@@ -431,10 +440,10 @@ impl OnceState {
     /// ```
     /// #![feature(once_poison)]
     ///
-    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::sync::Once;
     /// use std::thread;
     ///
-    /// static INIT: Once = ONCE_INIT;
+    /// static INIT: Once = Once::new();
     ///
     /// // poison the once
     /// let handle = thread::spawn(|| {
@@ -452,9 +461,9 @@ impl OnceState {
     /// ```
     /// #![feature(once_poison)]
     ///
-    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::sync::Once;
     ///
-    /// static INIT: Once = ONCE_INIT;
+    /// static INIT: Once = Once::new();
     ///
     /// INIT.call_once_force(|state| {
     ///     assert!(!state.poisoned());
