@@ -5,7 +5,7 @@ use {yellow::GreenNode, TextUnit};
 pub(crate) struct RedNode {
     green: GreenNode,
     parent: Option<ParentData>,
-    children: RwLock<Vec<Option<RedNode>>>,
+    children: RwLock<Box<[Option<RedNode>]>>,
 }
 
 #[derive(Debug)]
@@ -36,7 +36,9 @@ impl RedNode {
 
     fn new(green: GreenNode, parent: Option<ParentData>) -> RedNode {
         let n_children = green.children().len();
-        let children = (0..n_children).map(|_| None).collect();
+        let children = (0..n_children).map(|_| None)
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
         RedNode {
             green,
             parent,
