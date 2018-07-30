@@ -4,7 +4,7 @@ use std::fmt;
 
 use cranelift::codegen::write::{FuncWriter, PlainWriter};
 
-use prelude::*;
+use crate::prelude::*;
 
 pub struct CommentWriter(pub HashMap<Inst, String>);
 

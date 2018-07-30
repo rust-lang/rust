@@ -1,4 +1,4 @@
-use prelude::*;
+use crate::prelude::*;
 
 pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, context: &mut Context, mono_item: MonoItem<'tcx>) {
     let tcx = cx.tcx;
@@ -33,7 +33,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
 
                 let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
 
-                let comments = match ::base::trans_fn(cx, &mut f, inst){
+                let comments = match trans_fn(cx, &mut f, inst){
                     Ok(comments) => comments,
                     Err(err) => {
                         tcx.sess.err(&err);
@@ -41,7 +41,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                     }
                 };
 
-                let mut writer = ::pretty_clif::CommentWriter(comments);
+                let mut writer = crate::pretty_clif::CommentWriter(comments);
                 let mut cton = String::new();
                 ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &f, None).unwrap();
                 tcx.sess.warn(&cton);
@@ -99,7 +99,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
     };
     let fx = &mut fx;
 
-    ::abi::codegen_fn_prelude(fx, start_ebb);
+    crate::abi::codegen_fn_prelude(fx, start_ebb);
 
     fx.bcx.ins().jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
 
@@ -143,13 +143,13 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
                     let ebb = fx.get_ebb(targets[i]);
                     jt_data.set_entry(*value as usize, ebb);
                 }
-                let mut jump_table = fx.bcx.create_jump_table(jt_data);
+                let jump_table = fx.bcx.create_jump_table(jt_data);
                 fx.bcx.ins().br_table(discr, jump_table);
                 let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
                 fx.bcx.ins().jump(otherwise_ebb, &[]);
             }
             TerminatorKind::Call { func, args, destination, cleanup: _ } => {
-                ::abi::codegen_call(fx, func, args, destination);
+                crate::abi::codegen_call(fx, func, args, destination);
             }
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
                 fx.bcx.ins().trap(TrapCode::User(!0));
@@ -319,13 +319,13 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                         (TypeVariants::TyUint(_), TypeVariants::TyInt(_)) |
                         (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
-                            let res = ::common::cton_intcast(fx, from, from_ty, to_ty, false);
+                            let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, false);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (TypeVariants::TyInt(_), TypeVariants::TyInt(_)) |
                         (TypeVariants::TyInt(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
-                            let res = ::common::cton_intcast(fx, from, from_ty, to_ty, true);
+                            let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, true);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         _ => return Err(format!("rval misc {:?} {:?}", operand, to_ty)),
@@ -602,6 +602,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, l
 pub fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>) -> CPlace<'tcx> {
     match place {
         Place::Local(local) => fx.get_local_place(*local),
+        Place::Promoted(promoted) => crate::constant::trans_promoted(fx, promoted.0),
         Place::Static(static_) => unimplemented!("static place {:?} ty {:?}", static_.def_id, static_.ty),
         Place::Projection(projection) => {
             let base = trans_place(fx, &projection.base);
@@ -632,7 +633,7 @@ pub fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<
             cplace.to_cvalue(fx)
         },
         Operand::Constant(const_) => {
-            ::constant::trans_constant(fx, const_)
+            crate::constant::trans_constant(fx, const_)
         }
     }
 }

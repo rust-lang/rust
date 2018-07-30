@@ -76,14 +76,15 @@ mod prelude {
     pub use cranelift_module::{Module, Backend, DataContext, FuncId, DataId, Linkage, Writability};
     pub use cranelift_simplejit::{SimpleJITBuilder, SimpleJITBackend};
 
-    pub use abi::*;
-    pub use common::Variable;
-    pub use common::*;
+    pub use crate::abi::*;
+    pub use crate::common::Variable;
+    pub use crate::common::*;
+    pub use crate::base::{trans_operand, trans_place};
 
-    pub use CodegenCx;
+    pub use crate::CodegenCx;
 }
 
-use prelude::*;
+use crate::prelude::*;
 
 pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -279,7 +280,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .unwrap()
         );
 
-        Box::new(::OngoingCodegen {
+        Box::new(OngoingCodegen {
             product: translated_module.finish(),
             metadata: metadata.raw_data,
             crate_name: tcx.crate_name(LOCAL_CRATE),

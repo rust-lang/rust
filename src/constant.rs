@@ -1,21 +1,30 @@
-use prelude::*;
+use crate::prelude::*;
+use rustc::ty::Const;
 use rustc::mir::interpret::{ConstValue, GlobalId, AllocId, read_target_uint};
 use rustc_mir::interpret::{CompileTimeEvaluator, Memory, MemoryKind};
 use cranelift_module::*;
 
-pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Constant<'tcx>) -> CValue<'tcx> {
-    let const_val = match const_.literal {
-        Literal::Value { value } => fx.monomorphize(&value),
-        Literal::Promoted { index } => fx
-            .tcx
-            .const_eval(ParamEnv::reveal_all().and(GlobalId {
-                instance: fx.instance,
-                promoted: Some(index),
-            }))
-            .unwrap(),
-    };
+pub fn trans_promoted<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, promoted: Promoted) -> CPlace<'tcx> {
+    let const_ = fx
+        .tcx
+        .const_eval(ParamEnv::reveal_all().and(GlobalId {
+            instance: fx.instance,
+            promoted: Some(promoted),
+        }))
+        .unwrap();
 
-    let const_ = match const_val.val {
+    let const_ = force_eval_const(fx, const_);
+    trans_const_place(fx, const_)
+}
+
+pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, constant: &Constant<'tcx>) -> CValue<'tcx> {
+    let const_ = fx.monomorphize(&constant.literal);
+    let const_ = force_eval_const(fx, const_);
+    trans_const_value(fx, const_)
+}
+
+fn force_eval_const<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx>, const_: &'tcx Const<'tcx>) -> &'tcx Const<'tcx> {
+    match const_.val {
         ConstValue::Unevaluated(def_id, ref substs) => {
             let param_env = ParamEnv::reveal_all();
             let instance = Instance::resolve(fx.tcx, param_env, def_id, substs).unwrap();
@@ -25,11 +34,11 @@ pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Cons
             };
             fx.tcx.const_eval(param_env.and(cid)).unwrap()
         },
-        _ => const_val,
-    };
+        _ => const_,
+    }
+}
 
-    fx.tcx.sess.warn(&format!("const_val: {:?} const_: {:?}", const_val, const_));
-
+fn trans_const_value<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &'tcx Const<'tcx>) -> CValue<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
     match ty.sty {
@@ -50,22 +59,28 @@ pub fn trans_constant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &Cons
             CValue::Func(func_ref, layout)
         }
         _ => {
-            if true {
-                // TODO: cranelift-module api seems to be used wrong,
-                // thus causing panics for some consts, so this disables it
-                return CValue::ByRef(fx.bcx.ins().iconst(types::I64, 0), layout);
-            }
-            let mut memory = Memory::<CompileTimeEvaluator>::new(fx.tcx.at(DUMMY_SP), ());
-            let alloc = fx.tcx.const_value_to_allocation(const_);
-            //println!("const value: {:?} allocation: {:?}", value, alloc);
-            let alloc_id = memory.allocate_value(alloc.clone(), MemoryKind::Stack).unwrap();
-            let data_id = get_global_for_alloc_id(fx, &memory, alloc_id);
-            let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-            // TODO: does global_value return a ptr of a val?
-            let global_ptr = fx.bcx.ins().global_value(types::I64, local_data_id);
-            CValue::ByRef(global_ptr, layout)
+            trans_const_place(fx, const_).to_cvalue(fx)
         }
     }
+}
+
+fn trans_const_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, const_: &'tcx Const<'tcx>) -> CPlace<'tcx> {
+    let ty = fx.monomorphize(&const_.ty);
+    let layout = fx.layout_of(ty);
+    if true {
+        // TODO: cranelift-module api seems to be used wrong,
+        // thus causing panics for some consts, so this disables it
+        return CPlace::Addr(fx.bcx.ins().iconst(types::I64, 0), layout);
+    }
+    let mut memory = Memory::<CompileTimeEvaluator>::new(fx.tcx.at(DUMMY_SP), ());
+    let alloc = fx.tcx.const_value_to_allocation(const_);
+    //println!("const value: {:?} allocation: {:?}", value, alloc);
+    let alloc_id = memory.allocate_value(alloc.clone(), MemoryKind::Stack).unwrap();
+    let data_id = get_global_for_alloc_id(fx, &memory, alloc_id);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    // TODO: does global_value return a ptr of a val?
+    let global_ptr = fx.bcx.ins().global_value(types::I64, local_data_id);
+    CPlace::Addr(global_ptr, layout)
 }
 
 // If ret.1 is true, then the global didn't exist before

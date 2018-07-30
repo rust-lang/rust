@@ -4,7 +4,7 @@ use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::{Module, FuncId, DataId};
 
-use prelude::*;
+use crate::prelude::*;
 
 pub type CurrentBackend = ::cranelift_simplejit::SimpleJITBackend;
 
@@ -313,7 +313,7 @@ impl<'a, 'tcx: 'a> fmt::Debug for FunctionCx<'a, 'tcx> {
         writeln!(f, "{:?}", self.local_map)?;
 
         let mut clif = String::new();
-        let mut writer = ::pretty_clif::CommentWriter(self.comments.clone());
+        let mut writer = crate::pretty_clif::CommentWriter(self.comments.clone());
         ::cranelift::codegen::write::decorate_function(
             &mut writer,
             &mut clif,

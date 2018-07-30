@@ -3,7 +3,7 @@ use std::iter;
 use rustc::hir;
 use rustc_target::spec::abi::Abi;
 
-use prelude::*;
+use crate::prelude::*;
 
 pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<'tcx>) -> Signature {
     let sig = ty_fn_sig(tcx, fn_ty);
@@ -250,12 +250,12 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     args: &[Operand<'tcx>],
     destination: &Option<(Place<'tcx>, BasicBlock)>,
 ) {
-    let func = ::base::trans_operand(fx, func);
+    let func = trans_operand(fx, func);
     let fn_ty = func.layout().ty;
     let sig = ty_fn_sig(fx.tcx, fn_ty);
 
     let return_place = if let Some((place, _)) = destination {
-        Some(::base::trans_place(fx, place))
+        Some(trans_place(fx, place))
     } else {
         None
     };
@@ -263,8 +263,8 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     // Unpack arguments tuple for closures
     let args = if sig.abi == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
-        let self_arg = ::base::trans_operand(fx, &args[0]);
-        let pack_arg = ::base::trans_operand(fx, &args[1]);
+        let self_arg = trans_operand(fx, &args[0]);
+        let pack_arg = trans_operand(fx, &args[1]);
         let mut args = Vec::new();
         args.push(self_arg);
         match pack_arg.layout().ty.sty {
@@ -281,7 +281,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         args
             .into_iter()
             .map(|arg| {
-                ::base::trans_operand(fx, arg)
+                trans_operand(fx, arg)
             })
             .collect::<Vec<_>>()
     };
@@ -319,7 +319,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                 }
                 "discriminant_value" => {
                     assert_eq!(args.len(), 1);
-                    let discr = ::base::trans_get_discriminant(fx, args[0], ret.layout());
+                    let discr = crate::base::trans_get_discriminant(fx, args[0], ret.layout());
                     ret.write_cvalue(fx, discr);
                 }
                 "size_of" => {
@@ -351,10 +351,10 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     };
                     let res = match ret.layout().ty.sty {
                         TypeVariants::TyUint(_) => {
-                            ::base::trans_int_binop(fx, bin_op, args[0], args[1], ret.layout().ty, false, false)
+                            crate::base::trans_int_binop(fx, bin_op, args[0], args[1], ret.layout().ty, false, false)
                         }
                         TypeVariants::TyInt(_) => {
-                            ::base::trans_int_binop(fx, bin_op, args[0], args[1], ret.layout().ty, true, false)
+                            crate::base::trans_int_binop(fx, bin_op, args[0], args[1], ret.layout().ty, true, false)
                         }
                         _ => panic!(),
                     };
