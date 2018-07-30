@@ -12,7 +12,7 @@ matrix:
         - rustup component add clippy-preview
         - rustup component add rustfmt-preview
       script:
-        - cargo fmt --all -- --check
+        - cargo fmt --all -- --check || true
         - cargo clippy
 
 branches:

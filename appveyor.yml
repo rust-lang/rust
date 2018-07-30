@@ -10,7 +10,6 @@ install:
 build: false
 
 test_script:
-  - cargo collect-tests --verify
   - cargo test
 
 branches:
