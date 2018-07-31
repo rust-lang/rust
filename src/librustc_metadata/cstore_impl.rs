@@ -420,10 +420,6 @@ impl CrateStore for cstore::CStore {
         &*self.metadata_loader
     }
 
-    fn visibility_untracked(&self, def: DefId) -> ty::Visibility {
-        self.get_crate_data(def.krate).get_visibility(def.index)
-    }
-
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
         self.get_crate_data(def.krate).get_generics(def.index, sess)
     }

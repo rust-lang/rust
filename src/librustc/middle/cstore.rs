@@ -231,7 +231,6 @@ pub trait CrateStore {
     fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable>;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
-    fn visibility_untracked(&self, def: DefId) -> ty::Visibility;
     fn export_macros_untracked(&self, cnum: CrateNum);
     fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind;
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
