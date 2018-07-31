@@ -36,6 +36,8 @@ pub struct LocalFutureObj<'a, T> {
     _marker: PhantomData<&'a ()>,
 }
 
+impl<'a, T> Unpin for LocalFutureObj<'a, T> {}
+
 impl<'a, T> LocalFutureObj<'a, T> {
     /// Create a `LocalFutureObj` from a custom trait object representation.
     #[inline]
@@ -104,6 +106,7 @@ impl<'a, T> Drop for LocalFutureObj<'a, T> {
 ///   information #44874)
 pub struct FutureObj<'a, T>(LocalFutureObj<'a, T>);
 
+impl<'a, T> Unpin for FutureObj<'a, T> {}
 unsafe impl<'a, T> Send for FutureObj<'a, T> {}
 
 impl<'a, T> FutureObj<'a, T> {
