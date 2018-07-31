@@ -4,15 +4,6 @@ warning: not reporting region error due to nll
 LL |     expect_sig(|a, b| b); // ought to return `a`
    |                       ^
 
-error: unsatisfied lifetime constraints
-  --> $DIR/return-wrong-bound-region.rs:21:23
-   |
-LL |     expect_sig(|a, b| b); // ought to return `a`
-   |                 -  -  ^ closure was supposed to return data with lifetime `'1` but it is returning data with lifetime `'2`
-   |                 |  |
-   |                 |  has type `&'1 i32`
-   |                 has type `&'2 i32`
-
 note: No external requirements
   --> $DIR/return-wrong-bound-region.rs:21:16
    |
@@ -23,6 +14,15 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
                i16,
                for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) i32, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) i32)) -> &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) i32
            ]
+
+error: unsatisfied lifetime constraints
+  --> $DIR/return-wrong-bound-region.rs:21:23
+   |
+LL |     expect_sig(|a, b| b); // ought to return `a`
+   |                 -  -  ^ closure was supposed to return data with lifetime `'1` but it is returning data with lifetime `'2`
+   |                 |  |
+   |                 |  has type `&'1 i32`
+   |                 has type `&'2 i32`
 
 note: No external requirements
   --> $DIR/return-wrong-bound-region.rs:20:1

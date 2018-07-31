@@ -38,14 +38,6 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 6
    = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#2r)>>::AssocType: '_#3r
 
-error[E0309]: the associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: ReFree(DefId(0/0:8 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:18), 'a))`...
-
 note: No external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:44:1
    |
@@ -64,6 +56,14 @@ LL | | }
                T
            ]
 
+error[E0309]: the associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+  --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: ReFree(DefId(0/0:8 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:18), 'a))`...
+
 note: External requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:59:29
    |
@@ -80,14 +80,6 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 6
    = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
-
-error[E0309]: the associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:59:29
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: No external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:54:1
@@ -108,6 +100,14 @@ LL | | }
                T
            ]
 
+error[E0309]: the associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
+  --> $DIR/projection-two-region-trait-bound-closure.rs:59:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: ReEarlyBound(0, 'a)`...
+
 note: External requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:80:29
    |
@@ -124,14 +124,6 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 6
    = note: where <T as Anything<ReClosureBound('_#2r), ReClosureBound('_#3r)>>::AssocType: '_#4r
-
-error[E0309]: the associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:80:29
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: No external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:65:1
@@ -151,6 +143,14 @@ LL | | }
                '_#3r,
                T
            ]
+
+error[E0309]: the associated type `<T as Anything<'_#7r, '_#8r>>::AssocType` may not live long enough
+  --> $DIR/projection-two-region-trait-bound-closure.rs:80:29
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#7r, '_#8r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: External requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:91:29
@@ -239,12 +239,6 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 5
    = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#1r)>>::AssocType: '_#2r
 
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-two-region-trait-bound-closure.rs:108:5
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-
 note: No external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:104:1
    |
@@ -261,6 +255,12 @@ LL | | }
                '_#1r,
                T
            ]
+
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-two-region-trait-bound-closure.rs:108:5
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: External requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:119:29
