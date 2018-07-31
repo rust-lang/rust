@@ -1,6 +1,10 @@
 use crate::prelude::*;
 
-pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, context: &mut Context, mono_item: MonoItem<'tcx>) {
+pub fn trans_mono_item<'a, 'tcx: 'a>(
+    cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>,
+    context: &mut Context,
+    mono_item: MonoItem<'tcx>,
+) {
     let tcx = cx.tcx;
 
     match mono_item {
@@ -11,7 +15,11 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
             } => {
                 let mut mir = ::std::io::Cursor::new(Vec::new());
                 ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
-                tcx.sess.warn(&format!("{:?}:\n\n{}", inst, String::from_utf8_lossy(&mir.into_inner())));
+                tcx.sess.warn(&format!(
+                    "{:?}:\n\n{}",
+                    inst,
+                    String::from_utf8_lossy(&mir.into_inner())
+                ));
 
                 let fn_ty = inst.ty(tcx);
                 let fn_ty = tcx.subst_and_normalize_erasing_regions(
@@ -23,15 +31,23 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
 
                 let func_id = {
                     // WARNING: keep in sync with FunctionCx::get_function_ref
-                    let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(cx.tcx, false, false);
+                    let def_path_based_names =
+                        ::rustc_mir::monomorphize::item::DefPathBasedNames::new(
+                            cx.tcx, false, false,
+                        );
                     let mut name = String::new();
                     def_path_based_names.push_instance_as_string(inst, &mut name);
-                    cx.module.declare_function(&name, Linkage::Export, &sig).unwrap()
+                    cx.module
+                        .declare_function(&name, Linkage::Export, &sig)
+                        .unwrap()
                 };
 
-                let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
+                let mut f = Function::with_name_signature(
+                    ExternalName::user(0, func_id.index() as u32),
+                    sig,
+                );
 
-                let comments = match trans_fn(cx, &mut f, inst){
+                let comments = match trans_fn(cx, &mut f, inst) {
                     Ok(comments) => comments,
                     Err(err) => {
                         tcx.sess.err(&err);
@@ -41,7 +57,8 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
 
                 let mut writer = crate::pretty_clif::CommentWriter(comments);
                 let mut cton = String::new();
-                ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &f, None).unwrap();
+                ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &f, None)
+                    .unwrap();
                 tcx.sess.warn(&cton);
 
                 let flags = settings::Flags::new(settings::builder());
@@ -49,8 +66,15 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                     Ok(_) => {}
                     Err(err) => {
                         tcx.sess.err(&format!("{:?}", err));
-                        let pretty_error = ::cranelift::codegen::print_errors::pretty_verifier_error(&f, None, Some(Box::new(writer)), &err);
-                        tcx.sess.fatal(&format!("cretonne verify error:\n{}", pretty_error));
+                        let pretty_error =
+                            ::cranelift::codegen::print_errors::pretty_verifier_error(
+                                &f,
+                                None,
+                                Some(Box::new(writer)),
+                                &err,
+                            );
+                        tcx.sess
+                            .fatal(&format!("cretonne verify error:\n{}", pretty_error));
                     }
                 }
 
@@ -60,14 +84,27 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
 
                 context.clear();
             }
-            inst => cx.tcx.sess.warn(&format!("Unimplemented instance {:?}", inst)),
-        }
-        MonoItem::Static(def_id) => cx.tcx.sess.err(&format!("Unimplemented static mono item {:?}", def_id)),
-        MonoItem::GlobalAsm(node_id) => cx.tcx.sess.err(&format!("Unimplemented global asm mono item {:?}", node_id)),
+            inst => cx
+                .tcx
+                .sess
+                .warn(&format!("Unimplemented instance {:?}", inst)),
+        },
+        MonoItem::Static(def_id) => cx
+            .tcx
+            .sess
+            .err(&format!("Unimplemented static mono item {:?}", def_id)),
+        MonoItem::GlobalAsm(node_id) => cx
+            .tcx
+            .sess
+            .err(&format!("Unimplemented global asm mono item {:?}", node_id)),
     }
 }
 
-pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, instance: Instance<'tcx>) -> Result<HashMap<Inst, String>, String> {
+pub fn trans_fn<'a, 'tcx: 'a>(
+    cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>,
+    f: &mut Function,
+    instance: Instance<'tcx>,
+) -> Result<HashMap<Inst, String>, String> {
     let mir = cx.tcx.optimized_mir(instance.def_id());
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
@@ -98,7 +135,9 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
 
     crate::abi::codegen_fn_prelude(fx, start_ebb);
 
-    fx.bcx.ins().jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
+    fx.bcx
+        .ins()
+        .jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
 
     for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
         let ebb = fx.get_ebb(bb);
@@ -110,7 +149,11 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
         }
 
         let mut terminator_head = "\n".to_string();
-        bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
+        bb_data
+            .terminator()
+            .kind
+            .fmt_head(&mut terminator_head)
+            .unwrap();
         let inst = fx.bcx.func.layout.last_inst(ebb).unwrap();
         fx.add_comment(inst, terminator_head);
 
@@ -122,7 +165,13 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
             TerminatorKind::Return => {
                 fx.bcx.ins().return_(&[]);
             }
-            TerminatorKind::Assert { cond, expected, msg: _, target, cleanup: _ } => {
+            TerminatorKind::Assert {
+                cond,
+                expected,
+                msg: _,
+                target,
+                cleanup: _,
+            } => {
                 let cond = trans_operand(fx, cond).load_value(fx);
                 let target = fx.get_ebb(*target);
                 if *expected {
@@ -133,7 +182,12 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
                 fx.bcx.ins().trap(TrapCode::User(!0));
             }
 
-            TerminatorKind::SwitchInt { discr, switch_ty: _, values, targets } => {
+            TerminatorKind::SwitchInt {
+                discr,
+                switch_ty: _,
+                values,
+                targets,
+            } => {
                 let discr = trans_operand(fx, discr).load_value(fx);
                 let mut jt_data = JumpTableData::new();
                 for (i, value) in values.iter().enumerate() {
@@ -145,15 +199,20 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
                 let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
                 fx.bcx.ins().jump(otherwise_ebb, &[]);
             }
-            TerminatorKind::Call { func, args, destination, cleanup: _ } => {
+            TerminatorKind::Call {
+                func,
+                args,
+                destination,
+                cleanup: _,
+            } => {
                 crate::abi::codegen_call(fx, func, args, destination);
             }
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
                 fx.bcx.ins().trap(TrapCode::User(!0));
             }
-            TerminatorKind::Yield { .. } |
-            TerminatorKind::FalseEdges { .. } |
-            TerminatorKind::FalseUnwind { .. } => {
+            TerminatorKind::Yield { .. }
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. } => {
                 bug!("shouldn't exist at trans {:?}", bb_data.terminator());
             }
             TerminatorKind::Drop { target, .. } | TerminatorKind::DropAndReplace { target, .. } => {
@@ -174,14 +233,21 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
     Ok(fx.comments.clone())
 }
 
-fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &Statement<'tcx>) -> Result<(), String> {
+fn trans_stmt<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    cur_ebb: Ebb,
+    stmt: &Statement<'tcx>,
+) -> Result<(), String> {
     fx.tcx.sess.warn(&format!("stmt {:?}", stmt));
 
     let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
     fx.add_comment(inst, format!("{:?}", stmt));
 
     match &stmt.kind {
-        StatementKind::SetDiscriminant { place, variant_index } => {
+        StatementKind::SetDiscriminant {
+            place,
+            variant_index,
+        } => {
             let place = trans_place(fx, place);
             let layout = place.layout();
             if layout.for_variant(&*fx, *variant_index).abi == layout::Abi::Uninhabited {
@@ -193,7 +259,10 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                 }
                 layout::Variants::Tagged { .. } => {
                     let ptr = place.place_field(fx, mir::Field::new(0));
-                    let to = layout.ty.ty_adt_def().unwrap()
+                    let to = layout
+                        .ty
+                        .ty_adt_def()
+                        .unwrap()
                         .discriminant_for_variant(fx.tcx, *variant_index)
                         .val;
                     let discr = CValue::const_val(fx, ptr.layout().ty, to as u64 as i64);
@@ -288,7 +357,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                         UnOp::Neg => match ty.sty {
                             TypeVariants::TyFloat(_) => fx.bcx.ins().fneg(val),
                             _ => unimplemented!("un op Neg for {:?}", ty),
-                        }
+                        },
                     };
                     lval.write_cvalue(fx, CValue::ByVal(res, layout));
                 }
@@ -306,50 +375,66 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &
                     let operand = trans_operand(fx, operand);
                     let from_ty = operand.layout().ty;
                     match (&from_ty.sty, &to_ty.sty) {
-                        (TypeVariants::TyRef(..), TypeVariants::TyRef(..)) |
-                        (TypeVariants::TyRef(..), TypeVariants::TyRawPtr(..)) |
-                        (TypeVariants::TyRawPtr(..), TypeVariants::TyRef(..)) |
-                        (TypeVariants::TyRawPtr(..), TypeVariants::TyRawPtr(..)) => {
+                        (TypeVariants::TyRef(..), TypeVariants::TyRef(..))
+                        | (TypeVariants::TyRef(..), TypeVariants::TyRawPtr(..))
+                        | (TypeVariants::TyRawPtr(..), TypeVariants::TyRef(..))
+                        | (TypeVariants::TyRawPtr(..), TypeVariants::TyRawPtr(..)) => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        (TypeVariants::TyChar, TypeVariants::TyUint(_)) |
-                        (TypeVariants::TyUint(_), TypeVariants::TyInt(_)) |
-                        (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
+                        (TypeVariants::TyChar, TypeVariants::TyUint(_))
+                        | (TypeVariants::TyUint(_), TypeVariants::TyInt(_))
+                        | (TypeVariants::TyUint(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
                             let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, false);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
-                        (TypeVariants::TyInt(_), TypeVariants::TyInt(_)) |
-                        (TypeVariants::TyInt(_), TypeVariants::TyUint(_)) => {
+                        (TypeVariants::TyInt(_), TypeVariants::TyInt(_))
+                        | (TypeVariants::TyInt(_), TypeVariants::TyUint(_)) => {
                             let from = operand.load_value(fx);
                             let res = crate::common::cton_intcast(fx, from, from_ty, to_ty, true);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         _ => return Err(format!("rval misc {:?} {:?}", operand, to_ty)),
                     }
-                },
-                Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty),
-                Rvalue::Cast(CastKind::Unsize, operand, ty) => return Err(format!("rval unsize {:?} {:?}", operand, ty)),
+                }
+                Rvalue::Cast(CastKind::ClosureFnPointer, operand, ty) => {
+                    unimplemented!("rval closure_fn_ptr {:?} {:?}", operand, ty)
+                }
+                Rvalue::Cast(CastKind::Unsize, operand, ty) => {
+                    return Err(format!("rval unsize {:?} {:?}", operand, ty))
+                }
                 Rvalue::Discriminant(place) => {
                     let place = trans_place(fx, place).to_cvalue(fx);
                     let discr = trans_get_discriminant(fx, place, dest_layout);
                     lval.write_cvalue(fx, discr);
                 }
-                Rvalue::Repeat(operand, times) => unimplemented!("rval repeat {:?} {:?}", operand, times),
+                Rvalue::Repeat(operand, times) => {
+                    unimplemented!("rval repeat {:?} {:?}", operand, times)
+                }
                 Rvalue::Len(lval) => return Err(format!("rval len {:?}", lval)),
                 Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => unimplemented!("rval size_of {:?}", ty),
                 Rvalue::Aggregate(_, _) => bug!("shouldn't exist at trans {:?}", rval),
             }
         }
-        StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop | StatementKind::ReadForMatch(_) | StatementKind::Validate(_, _) | StatementKind::EndRegion(_) | StatementKind::UserAssertTy(_, _) => {}
+        StatementKind::StorageLive(_)
+        | StatementKind::StorageDead(_)
+        | StatementKind::Nop
+        | StatementKind::ReadForMatch(_)
+        | StatementKind::Validate(_, _)
+        | StatementKind::EndRegion(_)
+        | StatementKind::UserAssertTy(_, _) => {}
         StatementKind::InlineAsm { .. } => fx.tcx.sess.fatal("Inline assembly is not supported"),
     }
 
     Ok(())
 }
 
-pub fn trans_get_discriminant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, value: CValue<'tcx>, dest_layout: TyLayout<'tcx>) -> CValue<'tcx> {
+pub fn trans_get_discriminant<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    value: CValue<'tcx>,
+    dest_layout: TyLayout<'tcx>,
+) -> CValue<'tcx> {
     let layout = value.layout();
 
     if layout.abi == layout::Abi::Uninhabited {
@@ -357,13 +442,12 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, value
     }
     match layout.variants {
         layout::Variants::Single { index } => {
-            let discr_val = layout.ty.ty_adt_def().map_or(
-                index as u128,
-                |def| def.discriminant_for_variant(fx.tcx, index).val);
+            let discr_val = layout.ty.ty_adt_def().map_or(index as u128, |def| {
+                def.discriminant_for_variant(fx.tcx, index).val
+            });
             return CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
         }
-        layout::Variants::Tagged { .. } |
-        layout::Variants::NicheFilling { .. } => {},
+        layout::Variants::Tagged { .. } | layout::Variants::NicheFilling { .. } => {}
     }
 
     let discr = value.value_field(fx, mir::Field::new(0));
@@ -374,7 +458,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, value
         layout::Variants::Tagged { ref tag, .. } => {
             let signed = match tag.value {
                 layout::Int(_, signed) => signed,
-                _ => false
+                _ => false,
             };
             let val = cton_intcast(fx, lldiscr, discr_ty, dest_layout.ty, signed);
             return CValue::ByVal(val, dest_layout);
@@ -388,9 +472,18 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, value
             let niche_llty = fx.cton_type(discr_ty).unwrap();
             if niche_variants.start() == niche_variants.end() {
                 let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();
-                let b = fx.bcx.ins().icmp_imm(IntCC::Equal, lldiscr, niche_start as u64 as i64);
-                let if_true = fx.bcx.ins().iconst(dest_cton_ty, *niche_variants.start() as u64 as i64);
-                let if_false = fx.bcx.ins().iconst(dest_cton_ty, dataful_variant as u64 as i64);
+                let b = fx
+                    .bcx
+                    .ins()
+                    .icmp_imm(IntCC::Equal, lldiscr, niche_start as u64 as i64);
+                let if_true = fx
+                    .bcx
+                    .ins()
+                    .iconst(dest_cton_ty, *niche_variants.start() as u64 as i64);
+                let if_false = fx
+                    .bcx
+                    .ins()
+                    .iconst(dest_cton_ty, dataful_variant as u64 as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
                 return CValue::ByVal(val, dest_layout);
             } else {
@@ -398,9 +491,16 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, value
                 let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
                 let delta = fx.bcx.ins().iconst(niche_llty, delta as u64 as i64);
                 let lldiscr = fx.bcx.ins().isub(lldiscr, delta);
-                let b = fx.bcx.ins().icmp_imm(IntCC::UnsignedLessThanOrEqual, lldiscr, *niche_variants.end() as u64 as i64);
+                let b = fx.bcx.ins().icmp_imm(
+                    IntCC::UnsignedLessThanOrEqual,
+                    lldiscr,
+                    *niche_variants.end() as u64 as i64,
+                );
                 let if_true = cton_intcast(fx, lldiscr, discr_ty, dest_layout.ty, false);
-                let if_false = fx.bcx.ins().iconst(niche_llty, dataful_variant as u64 as i64);
+                let if_false = fx
+                    .bcx
+                    .ins()
+                    .iconst(niche_llty, dataful_variant as u64 as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
                 return CValue::ByVal(val, dest_layout);
             }
@@ -447,7 +547,13 @@ macro_rules! binop_match {
     }}
 }
 
-fn trans_bool_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>) -> CValue<'tcx> {
+fn trans_bool_binop<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    bin_op: BinOp,
+    lhs: CValue<'tcx>,
+    rhs: CValue<'tcx>,
+    ty: Ty<'tcx>,
+) -> CValue<'tcx> {
     let res = binop_match! {
         fx, bin_op, false, lhs, rhs, ty, "bool";
         Add (_) bug;
@@ -474,7 +580,15 @@ fn trans_bool_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, 
     res
 }
 
-pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
+pub fn trans_int_binop<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    bin_op: BinOp,
+    lhs: CValue<'tcx>,
+    rhs: CValue<'tcx>,
+    ty: Ty<'tcx>,
+    signed: bool,
+    _checked: bool,
+) -> CValue<'tcx> {
     let res = binop_match! {
         fx, bin_op, signed, lhs, rhs, ty, "int/uint";
         Add (_) iadd;
@@ -509,7 +623,13 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinO
     res
 }
 
-fn trans_float_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>) -> CValue<'tcx> {
+fn trans_float_binop<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    bin_op: BinOp,
+    lhs: CValue<'tcx>,
+    rhs: CValue<'tcx>,
+    ty: Ty<'tcx>,
+) -> CValue<'tcx> {
     let res = binop_match! {
         fx, bin_op, false, lhs, rhs, ty, "float";
         Add (_) fadd;
@@ -544,7 +664,13 @@ fn trans_float_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp,
     res
 }
 
-fn trans_char_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>) -> CValue<'tcx> {
+fn trans_char_binop<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    bin_op: BinOp,
+    lhs: CValue<'tcx>,
+    rhs: CValue<'tcx>,
+    ty: Ty<'tcx>,
+) -> CValue<'tcx> {
     let res = binop_match! {
         fx, bin_op, false, lhs, rhs, ty, "char";
         Add (_) bug;
@@ -571,7 +697,14 @@ fn trans_char_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, 
     res
 }
 
-fn trans_ptr_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: CValue<'tcx>, rhs: CValue<'tcx>, ty: Ty<'tcx>, _checked: bool) -> CValue<'tcx> {
+fn trans_ptr_binop<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    bin_op: BinOp,
+    lhs: CValue<'tcx>,
+    rhs: CValue<'tcx>,
+    ty: Ty<'tcx>,
+    _checked: bool,
+) -> CValue<'tcx> {
     binop_match! {
         fx, bin_op, false, lhs, rhs, ty, "ptr";
         Add (_) bug;
@@ -596,41 +729,66 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, l
     }
 }
 
-pub fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>) -> CPlace<'tcx> {
+pub fn trans_place<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    place: &Place<'tcx>,
+) -> CPlace<'tcx> {
     match place {
         Place::Local(local) => fx.get_local_place(*local),
         Place::Promoted(promoted) => crate::constant::trans_promoted(fx, promoted.0),
-        Place::Static(static_) => unimplemented!("static place {:?} ty {:?}", static_.def_id, static_.ty),
+        Place::Static(static_) => {
+            unimplemented!("static place {:?} ty {:?}", static_.def_id, static_.ty)
+        }
         Place::Projection(projection) => {
             let base = trans_place(fx, &projection.base);
             match projection.elem {
-                ProjectionElem::Deref => {
-                    CPlace::Addr(base.to_cvalue(fx).load_value(fx), fx.layout_of(place.ty(&*fx.mir, fx.tcx).to_ty(fx.tcx)))
+                ProjectionElem::Deref => CPlace::Addr(
+                    base.to_cvalue(fx).load_value(fx),
+                    fx.layout_of(place.ty(&*fx.mir, fx.tcx).to_ty(fx.tcx)),
+                ),
+                ProjectionElem::Field(field, _ty) => base.place_field(fx, field),
+                ProjectionElem::Index(local) => {
+                    unimplemented!("projection index {:?} {:?}", projection.base, local)
                 }
-                ProjectionElem::Field(field, _ty) => {
-                    base.place_field(fx, field)
-                }
-                ProjectionElem::Index(local) => unimplemented!("projection index {:?} {:?}", projection.base, local),
-                ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false } => unimplemented!("projection const index {:?} offset {:?} not from end", projection.base, offset),
-                ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true } => unimplemented!("projection const index {:?} offset {:?} from end", projection.base, offset),
-                ProjectionElem::Subslice { from, to } => unimplemented!("projection subslice {:?} from {} to {}", projection.base, from, to),
-                ProjectionElem::Downcast(_adt_def, variant) => {
-                    base.downcast_variant(fx, variant)
-                }
+                ProjectionElem::ConstantIndex {
+                    offset,
+                    min_length: _,
+                    from_end: false,
+                } => unimplemented!(
+                    "projection const index {:?} offset {:?} not from end",
+                    projection.base,
+                    offset
+                ),
+                ProjectionElem::ConstantIndex {
+                    offset,
+                    min_length: _,
+                    from_end: true,
+                } => unimplemented!(
+                    "projection const index {:?} offset {:?} from end",
+                    projection.base,
+                    offset
+                ),
+                ProjectionElem::Subslice { from, to } => unimplemented!(
+                    "projection subslice {:?} from {} to {}",
+                    projection.base,
+                    from,
+                    to
+                ),
+                ProjectionElem::Downcast(_adt_def, variant) => base.downcast_variant(fx, variant),
             }
         }
     }
 }
 
-pub fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<'tcx>) -> CValue<'tcx> {
+pub fn trans_operand<'a, 'tcx>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    operand: &Operand<'tcx>,
+) -> CValue<'tcx> {
     match operand {
-        Operand::Move(place) |
-        Operand::Copy(place) => {
+        Operand::Move(place) | Operand::Copy(place) => {
             let cplace = trans_place(fx, place);
             cplace.to_cvalue(fx)
-        },
-        Operand::Constant(const_) => {
-            crate::constant::trans_constant(fx, const_)
         }
+        Operand::Constant(const_) => crate::constant::trans_constant(fx, const_),
     }
 }

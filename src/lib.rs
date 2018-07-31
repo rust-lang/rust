@@ -4,82 +4,81 @@
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_mir;
 extern crate rustc_codegen_utils;
-extern crate rustc_target;
 extern crate rustc_incremental;
+extern crate rustc_mir;
+extern crate rustc_target;
 #[macro_use]
 extern crate rustc_data_structures;
 
 extern crate ar;
 extern crate faerie;
 //extern crate goblin;
-extern crate target_lexicon;
 extern crate cranelift;
+extern crate cranelift_faerie;
 extern crate cranelift_module;
 extern crate cranelift_simplejit;
-extern crate cranelift_faerie;
+extern crate target_lexicon;
 
 use std::any::Any;
-use std::sync::{mpsc, Arc};
-use std::path::Path;
 use std::fs::File;
+use std::path::Path;
+use std::sync::{mpsc, Arc};
 
-use syntax::symbol::Symbol;
-use rustc::session::{
-    CompileIncomplete,
-    config::{
-        CrateType,
-        OutputFilenames,
-    },
-};
-use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
+use rustc::middle::cstore::MetadataLoader;
+use rustc::session::{
+    config::{CrateType, OutputFilenames},
+    CompileIncomplete,
+};
 use rustc::ty::query::Providers;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_codegen_utils::link::{out_filename, build_link_meta};
+use rustc_codegen_utils::link::{build_link_meta, out_filename};
 use rustc_data_structures::owning_ref::{self, OwningRef};
+use syntax::symbol::Symbol;
 
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
 
 mod abi;
 mod base;
-mod constant;
 mod common;
+mod constant;
 mod pretty_clif;
 
 mod prelude {
     pub use std::any::Any;
     pub use std::collections::{HashMap, HashSet};
 
-    pub use syntax::codemap::DUMMY_SP;
-    pub use syntax::ast::{IntTy, UintTy, FloatTy};
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
     pub use rustc::mir;
-    pub use rustc::mir::*;
     pub use rustc::mir::interpret::AllocId;
+    pub use rustc::mir::*;
     pub use rustc::session::Session;
-    pub use rustc::ty::layout::{self, LayoutOf, TyLayout, Size};
+    pub use rustc::ty::layout::{self, LayoutOf, Size, TyLayout};
     pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
-        TypeFoldable, TypeVariants, TypeAndMut,
+        TypeAndMut, TypeFoldable, TypeVariants,
     };
     pub use rustc_data_structures::{indexed_vec::Idx, sync::Lrc};
-    pub use rustc_mir::monomorphize::{MonoItem, collector};
+    pub use rustc_mir::monomorphize::{collector, MonoItem};
+    pub use syntax::ast::{FloatTy, IntTy, UintTy};
+    pub use syntax::codemap::DUMMY_SP;
 
     pub use cranelift::codegen::ir::{
-        condcodes::IntCC, function::Function, ExternalName, FuncRef, StackSlot, Inst
+        condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,
     };
     pub use cranelift::codegen::Context;
     pub use cranelift::prelude::*;
-    pub use cranelift_module::{Module, Backend, DataContext, FuncId, DataId, Linkage, Writability};
-    pub use cranelift_simplejit::{SimpleJITBuilder, SimpleJITBackend};
+    pub use cranelift_module::{
+        Backend, DataContext, DataId, FuncId, Linkage, Module, Writability,
+    };
+    pub use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
     pub use crate::abi::*;
+    pub use crate::base::{trans_operand, trans_place};
     pub use crate::common::Variable;
     pub use crate::common::*;
-    pub use crate::base::{trans_operand, trans_place};
 
     pub use crate::CodegenCx;
 }
@@ -95,14 +94,18 @@ pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
 struct CraneliftMetadataLoader;
 
 impl MetadataLoader for CraneliftMetadataLoader {
-    fn get_rlib_metadata(&self, _target: &rustc_target::spec::Target, path: &Path) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
-        let mut archive = ar::Archive::new(File::open(path).map_err(|e|format!("{:?}", e))?);
+    fn get_rlib_metadata(
+        &self,
+        _target: &rustc_target::spec::Target,
+        path: &Path,
+    ) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
+        let mut archive = ar::Archive::new(File::open(path).map_err(|e| format!("{:?}", e))?);
         // Iterate over all entries in the archive:
         while let Some(entry_result) = archive.next_entry() {
-            let mut entry = entry_result.map_err(|e|format!("{:?}", e))?;
+            let mut entry = entry_result.map_err(|e| format!("{:?}", e))?;
             if entry.header().identifier() == b".rustc.clif_metadata" {
                 let mut buf = Vec::new();
-                ::std::io::copy(&mut entry, &mut buf).map_err(|e|format!("{:?}", e))?;
+                ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
                 return Ok(rustc_erase_owner!(buf.map_owner_box()));
             }
@@ -112,7 +115,11 @@ impl MetadataLoader for CraneliftMetadataLoader {
         //self.get_dylib_metadata(target, path)
     }
 
-    fn get_dylib_metadata(&self, _target: &rustc_target::spec::Target, _path: &Path) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
+    fn get_dylib_metadata(
+        &self,
+        _target: &rustc_target::spec::Target,
+        _path: &Path,
+    ) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
         //use goblin::Object;
 
         //let buffer = ::std::fs::read(path).map_err(|e|format!("{:?}", e))?;
@@ -149,13 +156,15 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
         for cty in sess.opts.crate_types.iter() {
             match *cty {
-                CrateType::CrateTypeRlib | CrateType::CrateTypeDylib |
-                CrateType::CrateTypeExecutable => {},
+                CrateType::CrateTypeRlib
+                | CrateType::CrateTypeDylib
+                | CrateType::CrateTypeExecutable => {}
                 _ => {
-                    sess.parse_sess.span_diagnostic.warn(
-                        &format!("LLVM unsupported, so output type {} is not supported", cty)
-                    );
-                },
+                    sess.parse_sess.span_diagnostic.warn(&format!(
+                        "LLVM unsupported, so output type {} is not supported",
+                        cty
+                    ));
+                }
             }
         }
     }
@@ -167,9 +176,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn provide(&self, providers: &mut Providers) {
         rustc_codegen_utils::symbol_names::provide(providers);
 
-        providers.target_features_whitelist = |_tcx, _cnum| {
-            Lrc::new(Default::default())
-        };
+        providers.target_features_whitelist = |_tcx, _cnum| Lrc::new(Default::default());
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
     }
@@ -180,7 +187,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        _rx: mpsc::Receiver<Box<Any + Send>>
+        _rx: mpsc::Receiver<Box<Any + Send>>,
     ) -> Box<Any> {
         use rustc_mir::monomorphize::item::MonoItem;
 
@@ -188,24 +195,22 @@ impl CodegenBackend for CraneliftCodegenBackend {
         rustc_codegen_utils::symbol_names_test::report_symbol_names(tcx);
         rustc_incremental::assert_dep_graph(tcx);
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-        rustc_mir::monomorphize::assert_symbols_are_distinct(tcx,
-            collector::collect_crate_mono_items(
-                tcx,
-                collector::MonoItemCollectionMode::Eager
-            ).0.iter()
+        rustc_mir::monomorphize::assert_symbols_are_distinct(
+            tcx,
+            collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager)
+                .0
+                .iter(),
         );
         //::rustc::middle::dependency_format::calculate(tcx);
         let _ = tcx.link_args(LOCAL_CRATE);
         let _ = tcx.native_libraries(LOCAL_CRATE);
         for mono_item in
-            collector::collect_crate_mono_items(
-                tcx,
-                collector::MonoItemCollectionMode::Eager
-            ).0 {
+            collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
+        {
             match mono_item {
                 MonoItem::Fn(inst) => {
                     let def_id = inst.def_id();
-                    if def_id.is_local()  {
+                    if def_id.is_local() {
                         let _ = inst.def.is_inline(tcx);
                         let _ = tcx.codegen_fn_attrs(def_id);
                     }
@@ -221,7 +226,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let mut flags_builder = settings::builder();
         flags_builder.enable("is_pic").unwrap();
         let flags = settings::Flags::new(flags_builder);
-        let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host()).unwrap().finish(flags);
+        let isa = cranelift::codegen::isa::lookup(target_lexicon::Triple::host())
+            .unwrap()
+            .finish(flags);
         let mut module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
         let mut context = Context::new();
 
@@ -233,10 +240,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             };
 
             for mono_item in
-                collector::collect_crate_mono_items(
-                    tcx,
-                    collector::MonoItemCollectionMode::Eager
-                ).0 {
+                collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
+            {
                 base::trans_mono_item(&mut cx, &mut context, mono_item)
             }
         }
@@ -249,11 +254,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             tcx.sess.warn("Finalized everything");
 
             for mono_item in
-                collector::collect_crate_mono_items(
-                    tcx,
-                    collector::MonoItemCollectionMode::Eager
-                ).0 {
-
+                collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Eager).0
+            {
                 let inst = match mono_item {
                     MonoItem::Fn(inst) => inst,
                     _ => continue,
@@ -266,17 +268,21 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
                 let fn_ty = inst.ty(tcx);
                 let sig = cton_sig_from_fn_ty(tcx, fn_ty);
-                let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
+                let def_path_based_names =
+                    ::rustc_mir::monomorphize::item::DefPathBasedNames::new(tcx, false, false);
                 let mut name = String::new();
                 def_path_based_names.push_instance_as_string(inst, &mut name);
-                let func_id = module.declare_function(&name, Linkage::Import, &sig).unwrap();
+                let func_id = module
+                    .declare_function(&name, Linkage::Import, &sig)
+                    .unwrap();
 
                 let finalized_function: *const u8 = module.finalize_function(func_id);
                 /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
                 let mut res = 0u32;
                 f(&mut res);
                 tcx.sess.warn(&format!("ret_42 returned {}", res));*/
-                let f: extern "C" fn(&mut bool, &u8, bool) = unsafe { ::std::mem::transmute(finalized_function) };
+                let f: extern "C" fn(&mut bool, &u8, bool) =
+                    unsafe { ::std::mem::transmute(finalized_function) };
                 let mut res = false;
                 f(&mut res, &3, false);
                 tcx.sess.warn(&format!("option_unwrap_or returned {}", res));
@@ -290,9 +296,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 isa,
                 "some_file.o".to_string(),
                 FaerieTrapCollection::Disabled,
-                FaerieBuilder::default_libcall_names()
-            )
-                .unwrap()
+                FaerieBuilder::default_libcall_names(),
+            ).unwrap(),
         );
 
         Box::new(OngoingCodegen {
@@ -309,30 +314,42 @@ impl CodegenBackend for CraneliftCodegenBackend {
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete> {
-        let ongoing_codegen = *ongoing_codegen.downcast::<OngoingCodegen>()
+        let ongoing_codegen = *ongoing_codegen
+            .downcast::<OngoingCodegen>()
             .expect("Expected CraneliftCodegenBackend's OngoingCodegen, found Box<Any>");
 
         let mut artifact = ongoing_codegen.product.artifact;
         let metadata = ongoing_codegen.metadata;
 
-        artifact.declare_with(
-            ".rustc.clif_metadata",
-            faerie::artifact::Decl::Data {
-                global: true,
-                writeable: false
-            },
-            metadata.clone(),
-        ).unwrap();
+        artifact
+            .declare_with(
+                ".rustc.clif_metadata",
+                faerie::artifact::Decl::Data {
+                    global: true,
+                    writeable: false,
+                },
+                metadata.clone(),
+            ).unwrap();
 
         for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::CrateTypeRlib /*&& crate_type != CrateType::CrateTypeDylib*/ {
+            if crate_type != CrateType::CrateTypeRlib
+            /*&& crate_type != CrateType::CrateTypeDylib*/
+            {
                 sess.fatal(&format!("Unsupported crate type: {:?}", crate_type));
             }
-            let output_name =
-                out_filename(sess, crate_type, &outputs, &ongoing_codegen.crate_name.as_str());
+            let output_name = out_filename(
+                sess,
+                crate_type,
+                &outputs,
+                &ongoing_codegen.crate_name.as_str(),
+            );
             let file = File::create(&output_name).unwrap();
             let mut builder = ar::Builder::new(file);
-            builder.append(&ar::Header::new(b".rustc.clif_metadata".to_vec(), metadata.len() as u64), ::std::io::Cursor::new(metadata.clone())).unwrap();
+            builder
+                .append(
+                    &ar::Header::new(b".rustc.clif_metadata".to_vec(), metadata.len() as u64),
+                    ::std::io::Cursor::new(metadata.clone()),
+                ).unwrap();
             //artifact.write(file).unwrap();
         }
 

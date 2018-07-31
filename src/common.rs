@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift_module::{Module, DataId};
+use cranelift_module::{DataId, Module};
 
 use crate::prelude::*;
 
@@ -21,36 +21,33 @@ impl EntityRef for Variable {
     }
 }
 
-pub fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
+pub fn cton_type_from_ty<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<types::Type> {
     Some(match ty.sty {
         TypeVariants::TyBool => types::I8,
-        TypeVariants::TyUint(size) => {
-            match size {
-                UintTy::U8 => types::I8,
-                UintTy::U16 => types::I16,
-                UintTy::U32 => types::I32,
-                UintTy::U64 => types::I64,
-                UintTy::U128 => unimplemented!("u128"),
-                UintTy::Usize => types::I64,
-            }
-        }
-        TypeVariants::TyInt(size) => {
-            match size {
-                IntTy::I8 => types::I8,
-                IntTy::I16 => types::I16,
-                IntTy::I32 => types::I32,
-                IntTy::I64 => types::I64,
-                IntTy::I128 => unimplemented!("i128"),
-                IntTy::Isize => types::I64,
-            }
-        }
+        TypeVariants::TyUint(size) => match size {
+            UintTy::U8 => types::I8,
+            UintTy::U16 => types::I16,
+            UintTy::U32 => types::I32,
+            UintTy::U64 => types::I64,
+            UintTy::U128 => unimplemented!("u128"),
+            UintTy::Usize => types::I64,
+        },
+        TypeVariants::TyInt(size) => match size {
+            IntTy::I8 => types::I8,
+            IntTy::I16 => types::I16,
+            IntTy::I32 => types::I32,
+            IntTy::I64 => types::I64,
+            IntTy::I128 => unimplemented!("i128"),
+            IntTy::Isize => types::I64,
+        },
         TypeVariants::TyChar => types::I32,
-        TypeVariants::TyFloat(size) => {
-            match size {
-                FloatTy::F32 => types::I32,
-                FloatTy::F64 => types::I64,
-            }
-        }
+        TypeVariants::TyFloat(size) => match size {
+            FloatTy::F32 => types::I32,
+            FloatTy::F64 => types::I64,
+        },
         TypeVariants::TyFnPtr(_) => types::I64,
         TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) | TypeVariants::TyRef(_, ty, _) => {
             if ty.is_sized(tcx.at(DUMMY_SP), ParamEnv::reveal_all()) {
@@ -59,7 +56,7 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>
                 return None;
             }
         }
-        TypeVariants::TyParam(_)  => bug!("{:?}: {:?}", ty, ty.sty),
+        TypeVariants::TyParam(_) => bug!("{:?}: {:?}", ty, ty.sty),
         _ => return None,
     })
 }
@@ -68,7 +65,7 @@ fn codegen_field<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx>,
     base: Value,
     layout: TyLayout<'tcx>,
-    field: mir::Field
+    field: mir::Field,
 ) -> (Value, TyLayout<'tcx>) {
     let field_offset = layout.fields.offset(field.index());
     let field_ty = layout.field(&*fx, field.index());
@@ -91,13 +88,14 @@ pub enum CValue<'tcx> {
 impl<'tcx> CValue<'tcx> {
     pub fn layout(&self) -> TyLayout<'tcx> {
         match *self {
-            CValue::ByRef(_, layout) |
-            CValue::ByVal(_, layout) |
-            CValue::Func(_, layout) => layout
+            CValue::ByRef(_, layout) | CValue::ByVal(_, layout) | CValue::Func(_, layout) => layout,
         }
     }
 
-    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> Value where 'tcx: 'a {
+    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> Value
+    where
+        'tcx: 'a,
+    {
         match self {
             CValue::ByRef(value, _layout) => value,
             CValue::ByVal(value, layout) => {
@@ -116,16 +114,19 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub fn load_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> Value where 'tcx: 'a{
+    pub fn load_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> Value
+    where
+        'tcx: 'a,
+    {
         match self {
             CValue::ByRef(addr, layout) => {
-                let cton_ty = fx.cton_type(layout.ty).expect(&format!("load_value of type {:?}", layout.ty));
+                let cton_ty = fx
+                    .cton_type(layout.ty)
+                    .expect(&format!("load_value of type {:?}", layout.ty));
                 fx.bcx.ins().load(cton_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,
-            CValue::Func(func, _layout) => {
-                fx.bcx.ins().func_addr(types::I64, func)
-            }
+            CValue::Func(func, _layout) => fx.bcx.ins().func_addr(types::I64, func),
         }
     }
 
@@ -137,7 +138,10 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub fn value_field<'a>(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field) -> CValue<'tcx> where 'tcx: 'a {
+    pub fn value_field<'a>(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field) -> CValue<'tcx>
+    where
+        'tcx: 'a,
+    {
         let (base, layout) = match self {
             CValue::ByRef(addr, layout) => (addr, layout),
             _ => bug!("place_field for {:?}", self),
@@ -147,7 +151,14 @@ impl<'tcx> CValue<'tcx> {
         CValue::ByRef(field_ptr, field_layout)
     }
 
-    pub fn const_val<'a>(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>, const_val: i64) -> CValue<'tcx> where 'tcx: 'a {
+    pub fn const_val<'a>(
+        fx: &mut FunctionCx<'a, 'tcx>,
+        ty: Ty<'tcx>,
+        const_val: i64,
+    ) -> CValue<'tcx>
+    where
+        'tcx: 'a,
+    {
         let cton_ty = fx.cton_type(ty).unwrap();
         let layout = fx.layout_of(ty);
         CValue::ByVal(fx.bcx.ins().iconst(cton_ty, const_val), layout)
@@ -172,12 +183,15 @@ pub enum CPlace<'tcx> {
 impl<'a, 'tcx: 'a> CPlace<'tcx> {
     pub fn layout(&self) -> TyLayout<'tcx> {
         match *self {
-            CPlace::Var(_, layout) |
-            CPlace::Addr(_, layout) => layout,
+            CPlace::Var(_, layout) | CPlace::Addr(_, layout) => layout,
         }
     }
 
-    pub fn from_stack_slot(fx: &mut FunctionCx<'a, 'tcx>, stack_slot: StackSlot, ty: Ty<'tcx>) -> CPlace<'tcx> {
+    pub fn from_stack_slot(
+        fx: &mut FunctionCx<'a, 'tcx>,
+        stack_slot: StackSlot,
+        ty: Ty<'tcx>,
+    ) -> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
         CPlace::Addr(fx.bcx.ins().stack_addr(types::I64, stack_slot, 0), layout)
     }
@@ -198,23 +212,25 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>, from: CValue<'tcx>) {
         match (&self.layout().ty.sty, &from.layout().ty.sty) {
-            (TypeVariants::TyRef(_, t, dest_mut), TypeVariants::TyRef(_, u, src_mut)) if (
-                if *dest_mut != ::rustc::hir::Mutability::MutImmutable && src_mut != dest_mut {
+            (TypeVariants::TyRef(_, t, dest_mut), TypeVariants::TyRef(_, u, src_mut))
+                if (if *dest_mut != ::rustc::hir::Mutability::MutImmutable && src_mut != dest_mut {
                     false
                 } else if t != u {
                     false
                 } else {
                     true
-                }
-            ) => {
+                }) =>
+            {
                 // &mut T -> &T is allowed
                 // &'a T -> &'b T is allowed
             }
             _ => {
                 assert_eq!(
-                    self.layout().ty, from.layout().ty,
+                    self.layout().ty,
+                    from.layout().ty,
                     "Can't write value of incompatible type to place {:?} {:?}\n\n{:#?}",
-                    self.layout().ty.sty, from.layout().ty.sty,
+                    self.layout().ty.sty,
+                    from.layout().ty.sty,
                     fx,
                 );
             }
@@ -224,7 +240,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             CPlace::Var(var, _) => {
                 let data = from.load_value(fx);
                 fx.bcx.def_var(var, data)
-            },
+            }
             CPlace::Addr(addr, layout) => {
                 let size = layout.size.bytes() as i32;
 
@@ -235,17 +251,26 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                     let from = from.expect_byref();
                     let mut offset = 0;
                     while size - offset >= 8 {
-                        let byte = fx.bcx.ins().load(types::I64, MemFlags::new(), from.0, offset);
+                        let byte = fx
+                            .bcx
+                            .ins()
+                            .load(types::I64, MemFlags::new(), from.0, offset);
                         fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
                         offset += 8;
                     }
                     while size - offset >= 4 {
-                        let byte = fx.bcx.ins().load(types::I32, MemFlags::new(), from.0, offset);
+                        let byte = fx
+                            .bcx
+                            .ins()
+                            .load(types::I32, MemFlags::new(), from.0, offset);
                         fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
                         offset += 4;
                     }
                     while offset < size {
-                        let byte = fx.bcx.ins().load(types::I8, MemFlags::new(), from.0, offset);
+                        let byte = fx
+                            .bcx
+                            .ins()
+                            .load(types::I8, MemFlags::new(), from.0, offset);
                         fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
                         offset += 1;
                     }
@@ -275,7 +300,13 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 }
 
-pub fn cton_intcast<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, from: Ty<'tcx>, to: Ty<'tcx>, signed: bool) -> Value {
+pub fn cton_intcast<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    val: Value,
+    from: Ty<'tcx>,
+    to: Ty<'tcx>,
+    signed: bool,
+) -> Value {
     let from = fx.cton_type(from).unwrap();
     let to = fx.cton_type(to).unwrap();
     if from == to {
@@ -352,7 +383,8 @@ impl<'a, 'tcx> HasTargetSpec for &'a FunctionCx<'a, 'tcx> {
 
 impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T: TypeFoldable<'tcx>
+    where
+        T: TypeFoldable<'tcx>,
     {
         self.tcx.subst_and_normalize_erasing_regions(
             self.param_substs,

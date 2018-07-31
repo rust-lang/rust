@@ -62,16 +62,8 @@ fn cmp_raw_ptr(a: *const u8, b: *const u8) -> bool {
 
 fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize, u8, u32) {
     (
-        a as u8,
-        a as u16,
-        a as u32,
-        a as usize,
-        a as i8,
-        a as i16,
-        a as i32,
-        a as isize,
-        b as u8,
-        b as u32
+        a as u8, a as u16, a as u32, a as usize, a as i8, a as i16, a as i32, a as isize, b as u8,
+        b as u32,
     )
 }
 
@@ -86,9 +78,7 @@ fn debug_tuple() -> DebugTuple {
 }
 
 fn size_of<T>() -> usize {
-    unsafe {
-        intrinsics::size_of::<T>()
-    }
+    unsafe { intrinsics::size_of::<T>() }
 }
 
 fn use_size_of() -> usize {
@@ -111,31 +101,27 @@ fn use_const() -> u8 {
 }
 
 fn call_closure_3arg() {
-    (|_, _, _| {
-
-    })(0u8, 42u16, 0u8)
+    (|_, _, _| {})(0u8, 42u16, 0u8)
 }
 
 fn call_closure_2arg() {
-    (|_, _| {
-
-    })(0u8, 42u16)
+    (|_, _| {})(0u8, 42u16)
 }
 
 struct IsNotEmpty;
 
-impl<'a, 'b> FnOnce<(&'a &'b [u16], )> for IsNotEmpty {
+impl<'a, 'b> FnOnce<(&'a &'b [u16],)> for IsNotEmpty {
     type Output = bool;
 
     #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&'a &'b [u16], )) -> bool {
+    extern "rust-call" fn call_once(mut self, arg: (&'a &'b [u16],)) -> bool {
         self.call_mut(arg)
     }
 }
 
-impl<'a, 'b> FnMut<(&'a &'b [u16], )> for IsNotEmpty {
+impl<'a, 'b> FnMut<(&'a &'b [u16],)> for IsNotEmpty {
     #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&'a &'b [u16], )) -> bool {
+    extern "rust-call" fn call_mut(&mut self, arg: (&'a &'b [u16],)) -> bool {
         true
     }
 }

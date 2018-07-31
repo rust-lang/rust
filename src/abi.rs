@@ -5,14 +5,22 @@ use rustc_target::spec::abi::Abi;
 
 use crate::prelude::*;
 
-pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<'tcx>) -> Signature {
+pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn_ty: Ty<'tcx>,
+) -> Signature {
     let sig = ty_fn_sig(tcx, fn_ty);
     assert!(!sig.variadic, "Variadic function are not yet supported");
     let (call_conv, inputs, _output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::Fast, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
-            println!("rust-call sig: {:?} inputs: {:?} output: {:?}", sig, sig.inputs(), sig.output());
+            println!(
+                "rust-call sig: {:?} inputs: {:?} output: {:?}",
+                sig,
+                sig.inputs(),
+                sig.output()
+            );
             assert_eq!(sig.inputs().len(), 2);
             let extra_args = match sig.inputs().last().unwrap().sty {
                 ty::TyTuple(ref tupled_arguments) => tupled_arguments,
@@ -20,11 +28,7 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
             };
             let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
             inputs.extend(extra_args.into_iter());
-            (
-                CallConv::Fast,
-                inputs,
-                sig.output(),
-            )
+            (CallConv::Fast, inputs, sig.output())
         }
         Abi::System => bug!("system abi should be selected elsewhere"),
         Abi::RustIntrinsic => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
@@ -50,10 +54,7 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_ty: Ty<
     }
 }
 
-fn ty_fn_sig<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    ty: Ty<'tcx>
-) -> ty::FnSig<'tcx> {
+fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::FnSig<'tcx> {
     let sig = match ty.sty {
         ty::TyFnDef(..) |
         // Shims currently have type TyFnPtr. Not sure this should remain.
@@ -104,11 +105,16 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
         assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
         let fn_ty = inst.ty(self.tcx);
         let sig = cton_sig_from_fn_ty(self.tcx, fn_ty);
-        let def_path_based_names = ::rustc_mir::monomorphize::item::DefPathBasedNames::new(self.tcx, false, false);
+        let def_path_based_names =
+            ::rustc_mir::monomorphize::item::DefPathBasedNames::new(self.tcx, false, false);
         let mut name = String::new();
         def_path_based_names.push_instance_as_string(inst, &mut name);
-        let func_id = self.module.declare_function(&name, Linkage::Import, &sig).unwrap();
-        self.module.declare_func_in_func(func_id, &mut self.bcx.func)
+        let func_id = self
+            .module
+            .declare_function(&name, Linkage::Import, &sig)
+            .unwrap();
+        self.module
+            .declare_func_in_func(func_id, &mut self.bcx.func)
     }
 
     fn lib_call(
@@ -124,8 +130,13 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
             call_conv: CallConv::SystemV,
             argument_bytes: None,
         };
-        let func_id = self.module.declare_function(&name, Linkage::Import, &sig).unwrap();
-        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_id = self
+            .module
+            .declare_function(&name, Linkage::Import, &sig)
+            .unwrap();
+        let func_ref = self
+            .module
+            .declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         if output_ty.is_none() {
             return None;
@@ -135,8 +146,20 @@ impl<'a, 'tcx: 'a> FunctionCx<'a, 'tcx> {
         Some(results[0])
     }
 
-    pub fn easy_call(&mut self, name: &str, args: &[CValue<'tcx>], return_ty: Ty<'tcx>) -> CValue<'tcx> {
-        let (input_tys, args): (Vec<_>, Vec<_>) = args.into_iter().map(|arg| (self.cton_type(arg.layout().ty).unwrap(), arg.load_value(self))).unzip();
+    pub fn easy_call(
+        &mut self,
+        name: &str,
+        args: &[CValue<'tcx>],
+        return_ty: Ty<'tcx>,
+    ) -> CValue<'tcx> {
+        let (input_tys, args): (Vec<_>, Vec<_>) = args
+            .into_iter()
+            .map(|arg| {
+                (
+                    self.cton_type(arg.layout().ty).unwrap(),
+                    arg.load_value(self),
+                )
+            }).unzip();
         let return_layout = self.layout_of(return_ty);
         let return_ty = if let TypeVariants::TyTuple(tup) = return_ty.sty {
             if !tup.is_empty() {
@@ -209,7 +232,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
     }).collect::<Vec<(Local, ArgKind, Ty)>>();
 
     let ret_layout = fx.layout_of(fx.return_type());
-    fx.local_map.insert(RETURN_PLACE, CPlace::Addr(ret_param, ret_layout));
+    fx.local_map
+        .insert(RETURN_PLACE, CPlace::Addr(ret_param, ret_layout));
 
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);
@@ -284,17 +308,18 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                 for (i, _) in tupled_arguments.iter().enumerate() {
                     args.push(pack_arg.value_field(fx, mir::Field::new(i)));
                 }
-            },
+            }
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         }
-        println!("{:?} {:?}", pack_arg.layout().ty, args.iter().map(|a|a.layout().ty).collect::<Vec<_>>());
+        println!(
+            "{:?} {:?}",
+            pack_arg.layout().ty,
+            args.iter().map(|a| a.layout().ty).collect::<Vec<_>>()
+        );
         args
     } else {
-        args
-            .into_iter()
-            .map(|arg| {
-                trans_operand(fx, arg)
-            })
+        args.into_iter()
+            .map(|arg| trans_operand(fx, arg))
             .collect::<Vec<_>>()
     };
 
@@ -326,7 +351,11 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     let dst = args[1];
                     let count = args[2].load_value(fx);
                     let byte_amount = fx.bcx.ins().imul(count, elem_size);
-                    fx.easy_call("memmove", &[dst, src, CValue::ByVal(byte_amount, usize_layout)], nil_ty);
+                    fx.easy_call(
+                        "memmove",
+                        &[dst, src, CValue::ByVal(byte_amount, usize_layout)],
+                        nil_ty,
+                    );
                     unimplemented!("copy");
                 }
                 "discriminant_value" => {
@@ -362,12 +391,24 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                         _ => unimplemented!("intrinsic {}", intrinsic),
                     };
                     let res = match ret.layout().ty.sty {
-                        TypeVariants::TyUint(_) => {
-                            crate::base::trans_int_binop(fx, bin_op, args[0], args[1], ret.layout().ty, false, false)
-                        }
-                        TypeVariants::TyInt(_) => {
-                            crate::base::trans_int_binop(fx, bin_op, args[0], args[1], ret.layout().ty, true, false)
-                        }
+                        TypeVariants::TyUint(_) => crate::base::trans_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            false,
+                            false,
+                        ),
+                        TypeVariants::TyInt(_) => crate::base::trans_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            true,
+                            false,
+                        ),
                         _ => panic!(),
                     };
                     ret.write_cvalue(fx, res);
@@ -402,7 +443,10 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     let uninit_val = uninit_place.to_cvalue(fx);
                     ret.write_cvalue(fx, uninit_val);
                 }
-                _ => fx.tcx.sess.fatal(&format!("unsupported intrinsic {}", intrinsic)),
+                _ => fx
+                    .tcx
+                    .sess
+                    .fatal(&format!("unsupported intrinsic {}", intrinsic)),
             }
             if let Some((_, dest)) = *destination {
                 let ret_ebb = fx.get_ebb(dest);
@@ -419,13 +463,15 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         None => fx.bcx.ins().iconst(types::I64, 0),
     };
 
-    let call_args = Some(return_ptr).into_iter().chain(args.into_iter().map(|arg| {
-        if fx.cton_type(arg.layout().ty).is_some() {
-            arg.load_value(fx)
-        } else {
-            arg.force_stack(fx)
-        }
-    })).collect::<Vec<_>>();
+    let call_args = Some(return_ptr)
+        .into_iter()
+        .chain(args.into_iter().map(|arg| {
+            if fx.cton_type(arg.layout().ty).is_some() {
+                arg.load_value(fx)
+            } else {
+                arg.force_stack(fx)
+            }
+        })).collect::<Vec<_>>();
 
     match func {
         CValue::Func(func, _) => {
@@ -434,7 +480,9 @@ pub fn codegen_call<'a, 'tcx: 'a>(
         func => {
             let func_ty = func.layout().ty;
             let func = func.load_value(fx);
-            let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, func_ty));
+            let sig = fx
+                .bcx
+                .import_signature(cton_sig_from_fn_ty(fx.tcx, func_ty));
             fx.bcx.ins().call_indirect(sig, func, &call_args);
         }
     }

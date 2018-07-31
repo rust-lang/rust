@@ -2,7 +2,7 @@
 #![no_core]
 #![allow(dead_code)]
 
-#[lang="sized"]
+#[lang = "sized"]
 pub trait Sized {}
 
 #[lang = "unsize"]
@@ -11,9 +11,9 @@ pub trait Unsize<T: ?Sized> {}
 #[lang = "coerce_unsized"]
 pub trait CoerceUnsized<T> {}
 
-impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
 
-#[lang="copy"]
+#[lang = "copy"]
 pub unsafe trait Copy {}
 
 unsafe impl Copy for bool {}
@@ -30,10 +30,10 @@ unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
 
-#[lang="freeze"]
+#[lang = "freeze"]
 trait Freeze {}
 
-#[lang="mul"]
+#[lang = "mul"]
 pub trait Mul<RHS = Self> {
     type Output;
 
@@ -49,7 +49,7 @@ impl Mul for u8 {
     }
 }
 
-#[lang="bitor"]
+#[lang = "bitor"]
 pub trait BitOr<RHS = Self> {
     type Output;
 
@@ -80,18 +80,30 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 }
 
 impl PartialEq for u8 {
-    fn eq(&self, other: &u8) -> bool { (*self) == (*other) }
-    fn ne(&self, other: &u8) -> bool { (*self) != (*other) }
+    fn eq(&self, other: &u8) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &u8) -> bool {
+        (*self) != (*other)
+    }
 }
 
 impl PartialEq for char {
-    fn eq(&self, other: &char) -> bool { (*self) == (*other) }
-    fn ne(&self, other: &char) -> bool { (*self) != (*other) }
+    fn eq(&self, other: &char) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &char) -> bool {
+        (*self) != (*other)
+    }
 }
 
 impl<T: ?Sized> PartialEq for *const T {
-    fn eq(&self, other: &*const T) -> bool { *self == *other }
-    fn ne(&self, other: &*const T) -> bool { *self != *other }
+    fn eq(&self, other: &*const T) -> bool {
+        *self == *other
+    }
+    fn ne(&self, other: &*const T) -> bool {
+        *self != *other
+    }
 }
 
 #[lang = "fn_once"]
@@ -104,11 +116,11 @@ pub trait FnOnce<Args> {
 
 #[lang = "fn_mut"]
 #[rustc_paren_sugar]
-pub trait FnMut<Args> : FnOnce<Args> {
+pub trait FnMut<Args>: FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
-#[lang="panic"]
+#[lang = "panic"]
 pub fn panic(_expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
     loop {}
 }
