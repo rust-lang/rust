@@ -24,7 +24,6 @@ use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
-use rustc::middle;
 use rustc::middle::cstore::{ExternCrate, ExternCrateSource};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
@@ -1058,8 +1057,8 @@ impl<'a> CrateLoader<'a> {
     }
 }
 
-impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
-    fn postprocess(&mut self, krate: &ast::Crate) {
+impl<'a> CrateLoader<'a> {
+    pub fn postprocess(&mut self, krate: &ast::Crate) {
         // inject the sanitizer runtime before the allocator runtime because all
         // sanitizers force the use of the `alloc_system` allocator
         self.inject_sanitizer_runtime();
@@ -1072,7 +1071,9 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         }
     }
 
-    fn process_extern_crate(&mut self, item: &ast::Item, definitions: &Definitions) -> CrateNum {
+    pub fn process_extern_crate(
+        &mut self, item: &ast::Item, definitions: &Definitions,
+    ) -> CrateNum {
         match item.node {
             ast::ItemKind::ExternCrate(orig_name) => {
                 debug!("resolving extern crate stmt. ident: {} orig_name: {:?}",
@@ -1115,7 +1116,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         }
     }
 
-    fn process_path_extern(
+    pub fn process_path_extern(
         &mut self,
         name: Symbol,
         span: Span,
@@ -1139,7 +1140,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         cnum
     }
 
-    fn process_use_extern(
+    pub fn process_use_extern(
         &mut self,
         name: Symbol,
         span: Span,

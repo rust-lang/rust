@@ -676,7 +676,7 @@ pub trait CompilerCalls<'a> {
                      _: &dyn CodegenBackend,
                      _: &getopts::Matches,
                      _: &Session,
-                     _: &dyn CrateStore,
+                     _: &CStore,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
@@ -884,7 +884,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                      codegen_backend: &dyn CodegenBackend,
                      matches: &getopts::Matches,
                      sess: &Session,
-                     cstore: &dyn CrateStore,
+                     cstore: &CStore,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
@@ -990,7 +990,7 @@ pub fn enable_save_analysis(control: &mut CompileController) {
 
 impl RustcDefaultCalls {
     pub fn list_metadata(sess: &Session,
-                         cstore: &dyn CrateStore,
+                         cstore: &CStore,
                          matches: &getopts::Matches,
                          input: &Input)
                          -> Compilation {

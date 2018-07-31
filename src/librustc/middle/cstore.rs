@@ -25,7 +25,7 @@
 use hir::def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
-use hir::map::definitions::{Definitions, DefKey, DefPathTable};
+use hir::map::definitions::{DefKey, DefPathTable};
 use hir::svh::Svh;
 use ty::{self, TyCtxt};
 use session::{Session, CrateDisambiguator};
@@ -258,26 +258,6 @@ pub trait CrateStore {
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
-
-pub trait CrateLoader {
-    fn process_extern_crate(&mut self, item: &ast::Item, defs: &Definitions) -> CrateNum;
-
-    fn process_path_extern(
-        &mut self,
-        name: Symbol,
-        span: Span,
-    ) -> CrateNum;
-
-    fn process_use_extern(
-        &mut self,
-        name: Symbol,
-        span: Span,
-        id: ast::NodeId,
-        defs: &Definitions,
-    ) -> CrateNum;
-
-    fn postprocess(&mut self, krate: &ast::Crate);
-}
 
 // This method is used when generating the command line to pass through to
 // system linker. The linker expects undefined symbols on the left of the
