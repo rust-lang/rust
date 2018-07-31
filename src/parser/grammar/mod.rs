@@ -99,6 +99,7 @@ fn abi(p: &mut Parser) {
 // fn d(x: i32, y: ()) {}
 fn fn_value_parameters(p: &mut Parser) {
     assert!(p.at(L_PAREN));
+    let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(R_PAREN) {
         value_parameter(p);
@@ -107,6 +108,7 @@ fn fn_value_parameters(p: &mut Parser) {
         }
     }
     p.expect(R_PAREN);
+    m.complete(p, PARAM_LIST);
 
     fn value_parameter(p: &mut Parser) {
         let m = p.start();

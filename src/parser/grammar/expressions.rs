@@ -70,6 +70,13 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
 fn call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(L_PAREN));
     let m = lhs.precede(p);
+    arg_list(p);
+    m.complete(p, CALL_EXPR)
+}
+
+fn arg_list(p: &mut Parser) {
+    assert!(p.at(L_PAREN));
+    let m = p.start();
     p.bump();
     while !p.at(R_PAREN) && !p.at(EOF) {
         expr(p);
@@ -78,7 +85,7 @@ fn call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
         }
     }
     p.eat(R_PAREN);
-    m.complete(p, CALL_EXPR)
+    m.complete(p, ARG_LIST);
 }
 
 // test path_expr

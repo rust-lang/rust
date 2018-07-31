@@ -151,5 +151,8 @@ Grammar(
         "LIFETIME_PARAM",
         "TYPE_PARAM_LIST",
         "TYPE_ARG_LIST",
+
+        "PARAM_LIST",
+        "ARG_LIST",
     ]
 )

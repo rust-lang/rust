@@ -140,6 +140,8 @@ pub enum SyntaxKind {
     LIFETIME_PARAM,
     TYPE_PARAM_LIST,
     TYPE_ARG_LIST,
+    PARAM_LIST,
+    ARG_LIST,
     // Technical SyntaxKinds: they appear temporally during parsing,
     // but never end up in the final tree
     #[doc(hidden)]
@@ -287,6 +289,8 @@ impl SyntaxKind {
             LIFETIME_PARAM => &SyntaxInfo { name: "LIFETIME_PARAM" },
             TYPE_PARAM_LIST => &SyntaxInfo { name: "TYPE_PARAM_LIST" },
             TYPE_ARG_LIST => &SyntaxInfo { name: "TYPE_ARG_LIST" },
+            PARAM_LIST => &SyntaxInfo { name: "PARAM_LIST" },
+            ARG_LIST => &SyntaxInfo { name: "ARG_LIST" },
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
             EOF => &SyntaxInfo { name: "EOF" },
         }
