@@ -160,6 +160,17 @@ Compatibility Notes
 [`{Any + Send + Sync}::downcast_ref`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref-2
 [`{Any + Send + Sync}::is`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.is-2
 
+Version 1.27.2 (2018-07-20)
+===========================
+
+Compatibility Notes
+-------------------
+
+- The borrow checker was fixed to avoid potential unsoundness when using
+  match ergonomics: [#52213][52213].
+
+[52213]: https://github.com/rust-lang/rust/issues/52213
+
 Version 1.27.1 (2018-07-10)
 ===========================
 
