@@ -1,0 +1,28 @@
+FILE@[0; 29)
+  FN_ITEM@[0; 29)
+    FN_KW@[0; 2)
+    NAME@[2; 6)
+      WHITESPACE@[2; 3)
+      IDENT@[3; 6) "foo"
+    TYPE_PARAM_LIST@[6; 9)
+      L_ANGLE@[6; 7)
+      TYPE_PARAM@[7; 8)
+        NAME@[7; 8)
+          IDENT@[7; 8) "T"
+      R_ANGLE@[8; 9)
+    PARAM_LIST@[9; 12)
+      L_PAREN@[9; 10)
+      R_PAREN@[10; 11)
+      WHITESPACE@[11; 12)
+    WHERE_CLAUSE@[12; 26)
+      WHERE_KW@[12; 17)
+      WHITESPACE@[17; 18)
+      IDENT@[18; 19) "T"
+      COLON@[19; 20)
+      WHITESPACE@[20; 21)
+      IDENT@[21; 25) "Copy"
+      WHITESPACE@[25; 26)
+    BLOCK@[26; 29)
+      L_CURLY@[26; 27)
+      R_CURLY@[27; 28)
+      WHITESPACE@[28; 29)

@@ -234,6 +234,10 @@ fn fn_item(p: &mut Parser) {
     p.bump();
 
     name(p);
+    // test fn_item_type_params
+    // fn foo<T: Clone + Copy>(){}
+    type_params::list(p);
+
     if p.at(L_PAREN) {
         fn_value_parameters(p);
     } else {
@@ -243,6 +247,11 @@ fn fn_item(p: &mut Parser) {
     // fn foo() {}
     // fn bar() -> () {}
     fn_ret_type(p);
+
+    // test fn_item_where_clause
+    // fn foo<T>() where T: Copy {}
+    type_params::where_clause(p);
+
     block(p);
 
     // test block
