@@ -118,6 +118,7 @@ Grammar(
         "PLACEHOLDER_TYPE",
         "FN_POINTER_TYPE",
         "FOR_TYPE",
+        "IMPL_TRAIT_TYPE",
 
         "REF_PAT",
         "BIND_PAT",

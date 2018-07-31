@@ -57,6 +57,10 @@ pub(super) fn list(p: &mut Parser) {
 pub(super) fn bounds(p: &mut Parser) {
     assert!(p.at(COLON));
     p.bump();
+    bounds_without_colon(p);
+}
+
+pub(super) fn bounds_without_colon(p: &mut Parser) {
     loop {
         let has_paren = p.eat(L_PAREN);
         p.eat(QUESTION);
@@ -78,6 +82,7 @@ pub(super) fn bounds(p: &mut Parser) {
         }
     }
 }
+
 
 pub(super) fn where_clause(p: &mut Parser) {
     if p.at(WHERE_KW) {

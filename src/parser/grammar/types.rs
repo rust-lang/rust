@@ -10,6 +10,7 @@ pub(super) fn type_(p: &mut Parser) {
         UNDERSCORE => placeholder_type(p),
         FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
         FOR_KW => for_type(p),
+        IMPL_KW => impl_trait_type(p),
         _ if paths::is_path_start(p) => path_type(p),
         _ => {
             p.error("expected type");
@@ -181,6 +182,16 @@ fn for_type(p: &mut Parser) {
     type_params::list(p);
     type_(p);
     m.complete(p, FOR_TYPE);
+}
+
+// test impl_trait_type
+// type A = impl Iterator<Item=Foo<'a>> + 'a;
+fn impl_trait_type(p: &mut Parser) {
+    assert!(p.at(IMPL_KW));
+    let m = p.start();
+    p.bump();
+    type_params::bounds_without_colon(p);
+    m.complete(p, IMPL_TRAIT_TYPE);
 }
 
 // test path_type
