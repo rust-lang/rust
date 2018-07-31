@@ -7,6 +7,7 @@ extern crate tools;
 use clap::{App, Arg, SubCommand};
 use std::{fs, io::Read, path::Path};
 use tools::collect_tests;
+use std::time::Instant;
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -32,7 +33,9 @@ fn main() -> Result<()> {
         .get_matches();
     match matches.subcommand() {
         ("parse", _) => {
+            let start = Instant::now();
             let tree = parse()?;
+            eprintln!("elapsed {:?}", start.elapsed());
             println!("{}", tree);
         }
         ("render-test", Some(matches)) => {
