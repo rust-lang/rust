@@ -2,7 +2,7 @@ error: single-character string constant used as pattern
  --> $DIR/single_char_pattern.rs:5:13
   |
 5 |     x.split("x");
-  |     --------^^^- help: try using a char instead: `x.split('x')`
+  |             ^^^ help: try using a char instead: `'x'`
   |
   = note: `-D single-char-pattern` implied by `-D warnings`
 
@@ -10,103 +10,109 @@ error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:22:16
    |
 22 |     x.contains("x");
-   |     -----------^^^- help: try using a char instead: `x.contains('x')`
+   |                ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:23:19
    |
 23 |     x.starts_with("x");
-   |     --------------^^^- help: try using a char instead: `x.starts_with('x')`
+   |                   ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:24:17
    |
 24 |     x.ends_with("x");
-   |     ------------^^^- help: try using a char instead: `x.ends_with('x')`
+   |                 ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:25:12
    |
 25 |     x.find("x");
-   |     -------^^^- help: try using a char instead: `x.find('x')`
+   |            ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:26:13
    |
 26 |     x.rfind("x");
-   |     --------^^^- help: try using a char instead: `x.rfind('x')`
+   |             ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:27:14
    |
 27 |     x.rsplit("x");
-   |     ---------^^^- help: try using a char instead: `x.rsplit('x')`
+   |              ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:28:24
    |
 28 |     x.split_terminator("x");
-   |     -------------------^^^- help: try using a char instead: `x.split_terminator('x')`
+   |                        ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:29:25
    |
 29 |     x.rsplit_terminator("x");
-   |     --------------------^^^- help: try using a char instead: `x.rsplit_terminator('x')`
+   |                         ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:30:17
    |
 30 |     x.splitn(0, "x");
-   |     ------------^^^- help: try using a char instead: `x.splitn(0, 'x')`
+   |                 ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:31:18
    |
 31 |     x.rsplitn(0, "x");
-   |     -------------^^^- help: try using a char instead: `x.rsplitn(0, 'x')`
+   |                  ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:32:15
    |
 32 |     x.matches("x");
-   |     ----------^^^- help: try using a char instead: `x.matches('x')`
+   |               ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:33:16
    |
 33 |     x.rmatches("x");
-   |     -----------^^^- help: try using a char instead: `x.rmatches('x')`
+   |                ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:34:21
    |
 34 |     x.match_indices("x");
-   |     ----------------^^^- help: try using a char instead: `x.match_indices('x')`
+   |                     ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:35:22
    |
 35 |     x.rmatch_indices("x");
-   |     -----------------^^^- help: try using a char instead: `x.rmatch_indices('x')`
+   |                      ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:36:25
    |
 36 |     x.trim_left_matches("x");
-   |     --------------------^^^- help: try using a char instead: `x.trim_left_matches('x')`
+   |                         ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:37:26
    |
 37 |     x.trim_right_matches("x");
-   |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
+   |                          ^^^ help: try using a char instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:39:13
    |
 39 |     x.split("/n");
-   |     --------^^^^- help: try using a char instead: `x.split('/n')`
+   |             ^^^^ help: try using a char instead: `'/n'`
 
-error: aborting due to 18 previous errors
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:44:31
+   |
+44 |     x.replace(";", ",").split(","); // issue #2978
+   |                               ^^^ help: try using a char instead: `','`
+
+error: aborting due to 19 previous errors
 

@@ -1889,18 +1889,17 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hi
     if let Some((Constant::Str(r), _)) = constant(cx, cx.tables, arg) {
         if r.len() == 1 {
             let c = r.chars().next().unwrap();
-            let snip = snippet(cx, expr.span, "..");
+            let snip = snippet(cx, arg.span, "..");
             let hint = snip.replace(
                 &format!("\"{}\"", c.escape_default()),
                 &format!("'{}'", c.escape_default()));
-            span_lint_and_then(
+            span_lint_and_sugg(
                 cx,
                 SINGLE_CHAR_PATTERN,
                 arg.span,
                 "single-character string constant used as pattern",
-                |db| {
-                    db.span_suggestion(expr.span, "try using a char instead", hint);
-                },
+                "try using a char instead",
+                hint,
             );
         }
     }
