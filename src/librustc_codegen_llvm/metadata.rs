@@ -58,10 +58,8 @@ impl MetadataLoader for LlvmMetadataLoader {
                           -> Result<MetadataRef, String> {
         unsafe {
             let buf = common::path2cstr(filename);
-            let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr());
-            if mb as isize == 0 {
-                return Err(format!("error reading library: '{}'", filename.display()));
-            }
+            let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr())
+                .ok_or_else(|| format!("error reading library: '{}'", filename.display()))?;
             let of = ObjectFile::new(mb)
                 .map(|of| OwningRef::new(box of))
                 .ok_or_else(|| format!("provided path not an object file: '{}'",

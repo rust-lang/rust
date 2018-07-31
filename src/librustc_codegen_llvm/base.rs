@@ -17,11 +17,11 @@
 //!
 //! Hopefully useful general knowledge about codegen:
 //!
-//!   * There's no way to find out the Ty type of a ValueRef.  Doing so
+//!   * There's no way to find out the Ty type of a Value.  Doing so
 //!     would be "trying to get the eggs out of an omelette" (credit:
-//!     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
-//!     but one TypeRef corresponds to many `Ty`s; for instance, tup(int, int,
-//!     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
+//!     pcwalton).  You can, instead, find out its llvm::Type by calling val_ty,
+//!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
+//!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
 use super::ModuleLlvm;
 use super::ModuleSource;
@@ -30,9 +30,8 @@ use super::ModuleKind;
 
 use abi;
 use back::link;
-use back::write::{self, OngoingCodegen, create_target_machine};
-use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
-use llvm;
+use back::write::{self, OngoingCodegen};
+use llvm::{self, TypeKind, get_param};
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
@@ -59,7 +58,7 @@ use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common::{self, C_struct_in_context, C_array, val_ty};
 use consts;
-use context::{self, CodegenCx};
+use context::CodegenCx;
 use debuginfo;
 use declare;
 use meth;
@@ -77,7 +76,6 @@ use rustc_data_structures::sync::Lrc;
 
 use std::any::Any;
 use std::ffi::CString;
-use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
 use std::i32;
@@ -88,18 +86,20 @@ use syntax_pos::symbol::InternedString;
 use syntax::attr;
 use rustc::hir::{self, CodegenFnAttrs};
 
+use value::Value;
+
 use mir::operand::OperandValue;
 
 use rustc_codegen_utils::check_for_rustc_errors_attr;
 
-pub struct StatRecorder<'a, 'tcx: 'a> {
-    cx: &'a CodegenCx<'a, 'tcx>,
+pub struct StatRecorder<'a, 'll: 'a, 'tcx: 'll> {
+    cx: &'a CodegenCx<'ll, 'tcx>,
     name: Option<String>,
     istart: usize,
 }
 
-impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
-    pub fn new(cx: &'a CodegenCx<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
+impl StatRecorder<'a, 'll, 'tcx> {
+    pub fn new(cx: &'a CodegenCx<'ll, 'tcx>, name: String) -> Self {
         let istart = cx.stats.borrow().n_llvm_insns;
         StatRecorder {
             cx,
@@ -109,7 +109,7 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
+impl Drop for StatRecorder<'a, 'll, 'tcx> {
     fn drop(&mut self) {
         if self.cx.sess().codegen_stats() {
             let mut stats = self.cx.stats.borrow_mut();
@@ -156,14 +156,14 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> llvm::RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
-    lhs: ValueRef,
-    rhs: ValueRef,
+pub fn compare_simd_types(
+    bx: &Builder<'a, 'll, 'tcx>,
+    lhs: &'ll Value,
+    rhs: &'ll Value,
     t: Ty<'tcx>,
-    ret_ty: Type,
+    ret_ty: &'ll Type,
     op: hir::BinOpKind
-) -> ValueRef {
+) -> &'ll Value {
     let signed = match t.sty {
         ty::TyFloat(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
@@ -188,11 +188,12 @@ pub fn compare_simd_types<'a, 'tcx>(
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
-                                source: Ty<'tcx>,
-                                target: Ty<'tcx>,
-                                old_info: Option<ValueRef>)
-                                -> ValueRef {
+pub fn unsized_info(
+    cx: &CodegenCx<'ll, 'tcx>,
+    source: Ty<'tcx>,
+    target: Ty<'tcx>,
+    old_info: Option<&'ll Value>,
+) -> &'ll Value {
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => {
@@ -217,12 +218,12 @@ pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
-    src: ValueRef,
+pub fn unsize_thin_ptr(
+    bx: &Builder<'a, 'll, 'tcx>,
+    src: &'ll Value,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
-) -> (ValueRef, ValueRef) {
+) -> (&'ll Value, &'ll Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyRef(_, a, _),
@@ -272,9 +273,11 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
-                                     src: PlaceRef<'tcx>,
-                                     dst: PlaceRef<'tcx>) {
+pub fn coerce_unsized_into(
+    bx: &Builder<'a, 'll, 'tcx>,
+    src: PlaceRef<'ll, 'tcx>,
+    dst: PlaceRef<'ll, 'tcx>
+) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     let coerce_ptr = || {
@@ -330,28 +333,28 @@ pub fn coerce_unsized_into<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 }
 
 pub fn cast_shift_expr_rhs(
-    cx: &Builder, op: hir::BinOpKind, lhs: ValueRef, rhs: ValueRef
-) -> ValueRef {
+    cx: &Builder<'_, 'll, '_>, op: hir::BinOpKind, lhs: &'ll Value, rhs: &'ll Value
+) -> &'ll Value {
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
 
-fn cast_shift_rhs<F, G>(op: hir::BinOpKind,
-                        lhs: ValueRef,
-                        rhs: ValueRef,
+fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
+                        lhs: &'ll Value,
+                        rhs: &'ll Value,
                         trunc: F,
                         zext: G)
-                        -> ValueRef
-    where F: FnOnce(ValueRef, Type) -> ValueRef,
-          G: FnOnce(ValueRef, Type) -> ValueRef
+                        -> &'ll Value
+    where F: FnOnce(&'ll Value, &'ll Type) -> &'ll Value,
+          G: FnOnce(&'ll Value, &'ll Type) -> &'ll Value
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
         let mut rhs_llty = val_ty(rhs);
         let mut lhs_llty = val_ty(lhs);
-        if rhs_llty.kind() == Vector {
+        if rhs_llty.kind() == TypeKind::Vector {
             rhs_llty = rhs_llty.element_type()
         }
-        if lhs_llty.kind() == Vector {
+        if lhs_llty.kind() == TypeKind::Vector {
             lhs_llty = lhs_llty.element_type()
         }
         let rhs_sz = rhs_llty.int_width();
@@ -379,12 +382,12 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn call_assume<'a, 'tcx>(bx: &Builder<'a, 'tcx>, val: ValueRef) {
+pub fn call_assume(bx: &Builder<'_, 'll, '_>, val: &'ll Value) {
     let assume_intrinsic = bx.cx.get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate(bx: &Builder, val: ValueRef) -> ValueRef {
+pub fn from_immediate(bx: &Builder<'_, 'll, '_>, val: &'ll Value) -> &'ll Value {
     if val_ty(val) == Type::i1(bx.cx) {
         bx.zext(val, Type::i8(bx.cx))
     } else {
@@ -392,26 +395,36 @@ pub fn from_immediate(bx: &Builder, val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn to_immediate(bx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
+pub fn to_immediate(
+    bx: &Builder<'_, 'll, '_>,
+    val: &'ll Value,
+    layout: layout::TyLayout,
+) -> &'ll Value {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
     val
 }
 
-pub fn to_immediate_scalar(bx: &Builder, val: ValueRef, scalar: &layout::Scalar) -> ValueRef {
+pub fn to_immediate_scalar(
+    bx: &Builder<'_, 'll, '_>,
+    val: &'ll Value,
+    scalar: &layout::Scalar,
+) -> &'ll Value {
     if scalar.is_bool() {
         return bx.trunc(val, Type::i1(bx.cx));
     }
     val
 }
 
-pub fn call_memcpy(bx: &Builder,
-                   dst: ValueRef,
-                   src: ValueRef,
-                   n_bytes: ValueRef,
-                   align: Align,
-                   flags: MemFlags) {
+pub fn call_memcpy(
+    bx: &Builder<'_, 'll, '_>,
+    dst: &'ll Value,
+    src: &'ll Value,
+    n_bytes: &'ll Value,
+    align: Align,
+    flags: MemFlags,
+) {
     if flags.contains(MemFlags::NONTEMPORAL) {
         // HACK(nox): This is inefficient but there is no nontemporal memcpy.
         let val = bx.load(src, align);
@@ -431,10 +444,10 @@ pub fn call_memcpy(bx: &Builder,
     bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
-    dst: ValueRef,
-    src: ValueRef,
+pub fn memcpy_ty(
+    bx: &Builder<'_, 'll, 'tcx>,
+    dst: &'ll Value,
+    src: &'ll Value,
     layout: TyLayout<'tcx>,
     align: Align,
     flags: MemFlags,
@@ -447,12 +460,14 @@ pub fn memcpy_ty<'a, 'tcx>(
     call_memcpy(bx, dst, src, C_usize(bx.cx, size), align, flags);
 }
 
-pub fn call_memset<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
-                             ptr: ValueRef,
-                             fill_byte: ValueRef,
-                             size: ValueRef,
-                             align: ValueRef,
-                             volatile: bool) -> ValueRef {
+pub fn call_memset(
+    bx: &Builder<'_, 'll, '_>,
+    ptr: &'ll Value,
+    fill_byte: &'ll Value,
+    size: &'ll Value,
+    align: &'ll Value,
+    volatile: bool,
+) -> &'ll Value {
     let ptr_width = &bx.cx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = bx.cx.get_intrinsic(&intrinsic_key);
@@ -511,7 +526,7 @@ pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'
     mir::codegen_mir(cx, lldecl, &mir, instance, sig);
 }
 
-pub fn set_link_section(llval: ValueRef, attrs: &CodegenFnAttrs) {
+pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
     let sect = match attrs.link_section {
         Some(name) => name,
         None => return,
@@ -549,12 +564,14 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         None => {}    // Do nothing.
     }
 
-    fn create_entry_fn<'cx>(cx: &'cx CodegenCx,
-                       sp: Span,
-                       rust_main: ValueRef,
-                       rust_main_def_id: DefId,
-                       use_start_lang_item: bool) {
-        let llfty = Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], &Type::c_int(cx));
+    fn create_entry_fn(
+        cx: &CodegenCx<'ll, '_>,
+        sp: Span,
+        rust_main: &'ll Value,
+        rust_main_def_id: DefId,
+        use_start_lang_item: bool,
+    ) {
+        let llfty = Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], Type::c_int(cx));
 
         let main_ret_ty = cx.tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -609,16 +626,14 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 }
 
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
-                            llmod_id: &str,
+                            llvm_module: &ModuleLlvm,
                             link_meta: &LinkMeta)
-                            -> (ContextRef, ModuleRef, EncodedMetadata) {
+                            -> EncodedMetadata {
     use std::io::Write;
     use flate2::Compression;
     use flate2::write::DeflateEncoder;
 
-    let (metadata_llcx, metadata_llmod) = unsafe {
-        context::create_context_and_module(tcx.sess, llmod_id)
-    };
+    let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
@@ -641,14 +656,12 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     }).max().unwrap_or(MetadataKind::None);
 
     if kind == MetadataKind::None {
-        return (metadata_llcx,
-                metadata_llmod,
-                EncodedMetadata::new());
+        return EncodedMetadata::new();
     }
 
     let metadata = tcx.encode_metadata(link_meta);
     if kind == MetadataKind::Uncompressed {
-        return (metadata_llcx, metadata_llmod, metadata);
+        return metadata;
     }
 
     assert!(kind == MetadataKind::Compressed);
@@ -661,7 +674,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     let name = exported_symbols::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst).to_ref(), buf.as_ptr())
+        llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst), buf.as_ptr())
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
@@ -676,29 +689,27 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let directive = CString::new(directive).unwrap();
         llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
     }
-    return (metadata_llcx, metadata_llmod, metadata);
+    return metadata;
 }
 
-pub struct ValueIter {
-    cur: ValueRef,
-    step: unsafe extern "C" fn(ValueRef) -> ValueRef,
+pub struct ValueIter<'ll> {
+    cur: Option<&'ll Value>,
+    step: unsafe extern "C" fn(&'ll Value) -> Option<&'ll Value>,
 }
 
-impl Iterator for ValueIter {
-    type Item = ValueRef;
+impl Iterator for ValueIter<'ll> {
+    type Item = &'ll Value;
 
-    fn next(&mut self) -> Option<ValueRef> {
+    fn next(&mut self) -> Option<&'ll Value> {
         let old = self.cur;
-        if !old.is_null() {
+        if let Some(old) = old {
             self.cur = unsafe { (self.step)(old) };
-            Some(old)
-        } else {
-            None
         }
+        old
     }
 }
 
-pub fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
+pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     unsafe {
         ValueIter {
             cur: llvm::LLVMGetFirstGlobal(llmod),
@@ -731,19 +742,15 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Codegen the metadata.
     let llmod_id = "metadata";
-    let (metadata_llcx, metadata_llmod, metadata) =
-        time(tcx.sess, "write metadata", || {
-            write_metadata(tcx, llmod_id, &link_meta)
-        });
+    let metadata_llvm_module = ModuleLlvm::new(tcx.sess, llmod_id);
+    let metadata = time(tcx.sess, "write metadata", || {
+        write_metadata(tcx, &metadata_llvm_module, &link_meta)
+    });
 
     let metadata_module = ModuleCodegen {
         name: link::METADATA_MODULE_NAME.to_string(),
         llmod_id: llmod_id.to_string(),
-        source: ModuleSource::Codegened(ModuleLlvm {
-            llcx: metadata_llcx,
-            llmod: metadata_llmod,
-            tm: create_target_machine(tcx.sess, false),
-        }),
+        source: ModuleSource::Codegened(metadata_llvm_module),
         kind: ModuleKind::Metadata,
     };
 
@@ -803,13 +810,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let allocator_module = if let Some(kind) = *tcx.sess.allocator_kind.get() {
         unsafe {
             let llmod_id = "allocator";
-            let (llcx, llmod) =
-                context::create_context_and_module(tcx.sess, llmod_id);
-            let modules = ModuleLlvm {
-                llmod,
-                llcx,
-                tm: create_target_machine(tcx.sess, false),
-            };
+            let modules = ModuleLlvm::new(tcx.sess, llmod_id);
             time(tcx.sess, "write allocator module", || {
                 allocator::codegen(tcx, &modules, kind)
             });
@@ -1200,8 +1201,9 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    .to_fingerprint().to_hex());
 
         // Instantiate monomorphizations without filling out definitions yet...
-        let cx = CodegenCx::new(tcx, cgu, &llmod_id);
-        let module = {
+        let llvm_module = ModuleLlvm::new(tcx.sess, &llmod_id);
+        let stats = {
+            let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit
                                  .items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
@@ -1220,7 +1222,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw.borrow().iter() {
                 unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
+                    let bitcast = llvm::LLVMConstPointerCast(new_g, val_ty(old_g));
                     llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
                     llvm::LLVMDeleteGlobal(old_g);
                 }
@@ -1235,7 +1237,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 unsafe {
                     let g = llvm::LLVMAddGlobal(cx.llmod,
-                                                val_ty(array).to_ref(),
+                                                val_ty(array),
                                                 name.as_ptr());
                     llvm::LLVMSetInitializer(g, array);
                     llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
@@ -1248,21 +1250,15 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 debuginfo::finalize(&cx);
             }
 
-            let llvm_module = ModuleLlvm {
-                llcx: cx.llcx,
-                llmod: cx.llmod,
-                tm: create_target_machine(cx.sess(), false),
-            };
-
-            ModuleCodegen {
-                name: cgu_name,
-                source: ModuleSource::Codegened(llvm_module),
-                kind: ModuleKind::Regular,
-                llmod_id,
-            }
+            cx.stats.into_inner()
         };
 
-        (cx.into_stats(), module)
+        (stats, ModuleCodegen {
+            name: cgu_name,
+            source: ModuleSource::Codegened(llvm_module),
+            kind: ModuleKind::Regular,
+            llmod_id,
+        })
     }
 }
 

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::ValueRef;
 use abi::{FnType, FnTypeExt};
 use callee;
 use common::*;
@@ -17,6 +16,7 @@ use consts;
 use monomorphize;
 use type_::Type;
 use value::Value;
+
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::HasDataLayout;
 use debuginfo;
@@ -33,11 +33,11 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bx: &Builder<'a, 'tcx>,
-                  llvtable: ValueRef,
-                  fn_ty: &FnType<'tcx, Ty<'tcx>>) -> ValueRef {
+    pub fn get_fn(self, bx: &Builder<'a, 'll, 'tcx>,
+                  llvtable: &'ll Value,
+                  fn_ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Value {
         // Load the data pointer from the object.
-        debug!("get_fn({:?}, {:?})", Value(llvtable), self);
+        debug!("get_fn({:?}, {:?})", llvtable, self);
 
         let llvtable = bx.pointercast(llvtable, fn_ty.llvm_type(bx.cx).ptr_to().ptr_to());
         let ptr_align = bx.tcx().data_layout.pointer_align;
@@ -48,9 +48,9 @@ impl<'a, 'tcx> VirtualIndex {
         ptr
     }
 
-    pub fn get_usize(self, bx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+    pub fn get_usize(self, bx: &Builder<'a, 'll, 'tcx>, llvtable: &'ll Value) -> &'ll Value {
         // Load the data pointer from the object.
-        debug!("get_int({:?}, {:?})", Value(llvtable), self);
+        debug!("get_int({:?}, {:?})", llvtable, self);
 
         let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx).ptr_to());
         let usize_align = bx.tcx().data_layout.pointer_align;
@@ -69,11 +69,11 @@ impl<'a, 'tcx> VirtualIndex {
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
-pub fn get_vtable<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                            ty: Ty<'tcx>,
-                            trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
-                            -> ValueRef
-{
+pub fn get_vtable(
+    cx: &CodegenCx<'ll, 'tcx>,
+    ty: Ty<'tcx>,
+    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+) -> &'ll Value {
     let tcx = cx.tcx;
 
     debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);

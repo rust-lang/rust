@@ -22,7 +22,7 @@ use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
 use super::FunctionCx;
 
-pub fn non_ssa_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector<mir::Local> {
+pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx>) -> BitVector<mir::Local> {
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
@@ -34,7 +34,7 @@ pub fn non_ssa_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector<mir::Loc
         let layout = fx.cx.layout_of(ty);
         if layout.is_llvm_immediate() {
             // These sorts of types are immediates that we can store
-            // in an ValueRef without an alloca.
+            // in an Value without an alloca.
         } else if layout.is_llvm_scalar_pair() {
             // We allow pairs and uses of any of their 2 fields.
         } else {
@@ -51,8 +51,8 @@ pub fn non_ssa_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector<mir::Loc
     analyzer.non_ssa_locals
 }
 
-struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
-    fx: &'mir FunctionCx<'a, 'tcx>,
+struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll> {
+    fx: &'mir FunctionCx<'a, 'll, 'tcx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitVector<mir::Local>,
     // The location of the first visited direct assignment to each
@@ -60,8 +60,8 @@ struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
     first_assignment: IndexVec<mir::Local, Location>
 }
 
-impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
-    fn new(fx: &'mir FunctionCx<'a, 'tcx>) -> LocalAnalyzer<'mir, 'a, 'tcx> {
+impl LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
+    fn new(fx: &'mir FunctionCx<'a, 'll, 'tcx>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
         let mut analyzer = LocalAnalyzer {
@@ -102,7 +102,7 @@ impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
     }
 }
 
-impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
+impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
                     place: &mir::Place<'tcx>,

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef, BasicBlockRef};
+use llvm::{self, BasicBlock};
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
@@ -24,6 +24,7 @@ use meth;
 use monomorphize;
 use type_of::LayoutLlvmExt;
 use type_::Type;
+use value::Value;
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
@@ -33,7 +34,7 @@ use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
         let mut bx = self.build_block(bb);
         let data = &self.mir[bb];
@@ -48,7 +49,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     fn codegen_terminator(&mut self,
-                        mut bx: Builder<'a, 'tcx>,
+                        mut bx: Builder<'a, 'll, 'tcx>,
                         bb: mir::BasicBlock,
                         terminator: &mir::Terminator<'tcx>)
     {
@@ -97,7 +98,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             }
         };
 
-        let funclet_br = |this: &mut Self, bx: Builder, target: mir::BasicBlock| {
+        let funclet_br = |this: &mut Self, bx: Builder<'_, 'll, '_>, target: mir::BasicBlock| {
             let (lltarget, is_cleanupret) = lltarget(this, target);
             if is_cleanupret {
                 // micro-optimization: generate a `ret` rather than a jump
@@ -110,11 +111,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
         let do_call = |
             this: &mut Self,
-            bx: Builder<'a, 'tcx>,
+            bx: Builder<'a, 'll, 'tcx>,
             fn_ty: FnType<'tcx, Ty<'tcx>>,
-            fn_ptr: ValueRef,
-            llargs: &[ValueRef],
-            destination: Option<(ReturnDest<'tcx>, mir::BasicBlock)>,
+            fn_ptr: &'ll Value,
+            llargs: &[&'ll Value],
+            destination: Option<(ReturnDest<'ll, 'tcx>, mir::BasicBlock)>,
             cleanup: Option<mir::BasicBlock>
         | {
             if let Some(cleanup) = cleanup {
@@ -285,8 +286,14 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 }
 
                 let place = self.codegen_place(&bx, location);
-                let mut args: &[_] = &[place.llval, place.llextra];
-                args = &args[..1 + place.has_extra() as usize];
+                let (args1, args2);
+                let mut args = if let Some(llextra) = place.llextra {
+                    args2 = [place.llval, llextra];
+                    &args2[..]
+                } else {
+                    args1 = [place.llval];
+                    &args1[..]
+                };
                 let (drop_fn, fn_ty) = match ty.sty {
                     ty::TyDynamic(..) => {
                         let fn_ty = drop_fn.ty(bx.cx.tcx);
@@ -296,8 +303,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                             &sig,
                         );
                         let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
+                        let vtable = args[1];
                         args = &args[..1];
-                        (meth::DESTRUCTOR.get_fn(&bx, place.llextra, &fn_ty), fn_ty)
+                        (meth::DESTRUCTOR.get_fn(&bx, vtable, &fn_ty), fn_ty)
                     }
                     _ => {
                         (callee::get_fn(bx.cx, drop_fn),
@@ -627,9 +635,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     fn codegen_argument(&mut self,
-                      bx: &Builder<'a, 'tcx>,
-                      op: OperandRef<'tcx>,
-                      llargs: &mut Vec<ValueRef>,
+                      bx: &Builder<'a, 'll, 'tcx>,
+                      op: OperandRef<'ll, 'tcx>,
+                      llargs: &mut Vec<&'ll Value>,
                       arg: &ArgType<'tcx, Ty<'tcx>>) {
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
@@ -706,9 +714,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     fn codegen_arguments_untupled(&mut self,
-                                bx: &Builder<'a, 'tcx>,
+                                bx: &Builder<'a, 'll, 'tcx>,
                                 operand: &mir::Operand<'tcx>,
-                                llargs: &mut Vec<ValueRef>,
+                                llargs: &mut Vec<&'ll Value>,
                                 args: &[ArgType<'tcx, Ty<'tcx>>]) {
         let tuple = self.codegen_operand(bx, operand);
 
@@ -728,7 +736,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
     }
 
-    fn get_personality_slot(&mut self, bx: &Builder<'a, 'tcx>) -> PlaceRef<'tcx> {
+    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx>) -> PlaceRef<'ll, 'tcx> {
         let cx = bx.cx;
         if let Some(slot) = self.personality_slot {
             slot
@@ -746,7 +754,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     /// Return the landingpad wrapper around the given basic block
     ///
     /// No-op in MSVC SEH scheme.
-    fn landing_pad_to(&mut self, target_bb: mir::BasicBlock) -> BasicBlockRef {
+    fn landing_pad_to(&mut self, target_bb: mir::BasicBlock) -> &'ll BasicBlock {
         if let Some(block) = self.landing_pads[target_bb] {
             return block;
         }
@@ -757,7 +765,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         landing_pad
     }
 
-    fn landing_pad_uncached(&mut self, target_bb: BasicBlockRef) -> BasicBlockRef {
+    fn landing_pad_uncached(&mut self, target_bb: &'ll BasicBlock) -> &'ll BasicBlock {
         if base::wants_msvc_seh(self.cx.sess()) {
             span_bug!(self.mir.span, "landing pad was not inserted?")
         }
@@ -777,12 +785,12 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         bx.llbb()
     }
 
-    fn landing_pad_type(&self) -> Type {
+    fn landing_pad_type(&self) -> &'ll Type {
         let cx = self.cx;
         Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false)
     }
 
-    fn unreachable_block(&mut self) -> BasicBlockRef {
+    fn unreachable_block(&mut self) -> &'ll BasicBlock {
         self.unreachable_block.unwrap_or_else(|| {
             let bl = self.new_block("unreachable");
             bl.unreachable();
@@ -791,20 +799,20 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         })
     }
 
-    pub fn new_block(&self, name: &str) -> Builder<'a, 'tcx> {
+    pub fn new_block(&self, name: &str) -> Builder<'a, 'll, 'tcx> {
         Builder::new_block(self.cx, self.llfn, name)
     }
 
-    pub fn build_block(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
+    pub fn build_block(&self, bb: mir::BasicBlock) -> Builder<'a, 'll, 'tcx> {
         let bx = Builder::with_cx(self.cx);
         bx.position_at_end(self.blocks[bb]);
         bx
     }
 
-    fn make_return_dest(&mut self, bx: &Builder<'a, 'tcx>,
+    fn make_return_dest(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                         dest: &mir::Place<'tcx>, fn_ret: &ArgType<'tcx, Ty<'tcx>>,
-                        llargs: &mut Vec<ValueRef>, is_intrinsic: bool)
-                        -> ReturnDest<'tcx> {
+                        llargs: &mut Vec<&'ll Value>, is_intrinsic: bool)
+                        -> ReturnDest<'ll, 'tcx> {
         // If the return is ignored, we can just return a do-nothing ReturnDest
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
@@ -857,7 +865,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
     }
 
-    fn codegen_transmute(&mut self, bx: &Builder<'a, 'tcx>,
+    fn codegen_transmute(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                        src: &mir::Operand<'tcx>,
                        dst: &mir::Place<'tcx>) {
         if let mir::Place::Local(index) = *dst {
@@ -884,9 +892,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
     }
 
-    fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'tcx>,
+    fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                             src: &mir::Operand<'tcx>,
-                            dst: PlaceRef<'tcx>) {
+                            dst: PlaceRef<'ll, 'tcx>) {
         let src = self.codegen_operand(bx, src);
         let llty = src.layout.llvm_type(bx.cx);
         let cast_ptr = bx.pointercast(dst.llval, llty.ptr_to());
@@ -897,10 +905,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
     // Stores the return value of a function call into it's final location.
     fn store_return(&mut self,
-                    bx: &Builder<'a, 'tcx>,
-                    dest: ReturnDest<'tcx>,
+                    bx: &Builder<'a, 'll, 'tcx>,
+                    dest: ReturnDest<'ll, 'tcx>,
                     ret_ty: &ArgType<'tcx, Ty<'tcx>>,
-                    llval: ValueRef) {
+                    llval: &'ll Value) {
         use self::ReturnDest::*;
 
         match dest {
@@ -929,13 +937,13 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 }
 
-enum ReturnDest<'tcx> {
+enum ReturnDest<'ll, 'tcx> {
     // Do nothing, the return value is indirect or ignored
     Nothing,
     // Store the return value to the pointer
-    Store(PlaceRef<'tcx>),
+    Store(PlaceRef<'ll, 'tcx>),
     // Stores an indirect return value to an operand local place
-    IndirectOperand(PlaceRef<'tcx>, mir::Local),
+    IndirectOperand(PlaceRef<'ll, 'tcx>, mir::Local),
     // Stores a direct return value to an operand local place
     DirectOperand(mir::Local)
 }

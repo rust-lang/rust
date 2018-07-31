@@ -271,5 +271,6 @@ fn main() {
     if target.contains("windows-gnu") {
         println!("cargo:rustc-link-lib=static-nobundle=gcc_s");
         println!("cargo:rustc-link-lib=static-nobundle=pthread");
+        println!("cargo:rustc-link-lib=dylib=uuid");
     }
 }

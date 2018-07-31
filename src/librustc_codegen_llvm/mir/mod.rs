@@ -10,7 +10,7 @@
 
 use common::{C_i32, C_null};
 use libc::c_uint;
-use llvm::{self, ValueRef, BasicBlockRef};
+use llvm::{self, BasicBlock};
 use llvm::debuginfo::DIScope;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout};
@@ -24,6 +24,7 @@ use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebug
 use monomorphize::Instance;
 use abi::{ArgTypeExt, FnType, FnTypeExt, PassMode};
 use type_::Type;
+use value::Value;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -42,16 +43,16 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx:'a> {
+pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Mir<'tcx>,
 
-    debug_context: debuginfo::FunctionDebugContext,
+    debug_context: FunctionDebugContext<'ll>,
 
-    llfn: ValueRef,
+    llfn: &'ll Value,
 
-    cx: &'a CodegenCx<'a, 'tcx>,
+    cx: &'a CodegenCx<'ll, 'tcx>,
 
     fn_ty: FnType<'tcx, Ty<'tcx>>,
 
@@ -62,24 +63,24 @@ pub struct FunctionCx<'a, 'tcx:'a> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'tcx>>,
+    personality_slot: Option<PlaceRef<'ll, 'tcx>>,
 
     /// A `Block` for each MIR `BasicBlock`
-    blocks: IndexVec<mir::BasicBlock, BasicBlockRef>,
+    blocks: IndexVec<mir::BasicBlock, &'ll BasicBlock>,
 
     /// The funclet status of each basic block
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
 
     /// When targeting MSVC, this stores the cleanup info for each funclet
     /// BB. This is initialized as we compute the funclets' head block in RPO.
-    funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet>>,
+    funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
-    landing_pads: IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
+    landing_pads: IndexVec<mir::BasicBlock, Option<&'ll BasicBlock>>,
 
     /// Cached unreachable block
-    unreachable_block: Option<BasicBlockRef>,
+    unreachable_block: Option<&'ll BasicBlock>,
 
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `PlaceRef` representing an alloca, but not always:
@@ -96,16 +97,16 @@ pub struct FunctionCx<'a, 'tcx:'a> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    locals: IndexVec<mir::Local, LocalRef<'tcx>>,
+    locals: IndexVec<mir::Local, LocalRef<'ll, 'tcx>>,
 
     /// Debug information for MIR scopes.
-    scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope>,
+    scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
 
     /// If this function is being monomorphized, this contains the type substitutions used.
     param_substs: &'tcx Substs<'tcx>,
 }
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
@@ -116,12 +117,12 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         )
     }
 
-    pub fn set_debug_loc(&mut self, bx: &Builder, source_info: mir::SourceInfo) {
+    pub fn set_debug_loc(&mut self, bx: &Builder<'_, 'll, '_>, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
         debuginfo::set_source_location(&self.debug_context, bx, scope, span);
     }
 
-    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
+    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (Option<&'ll DIScope>, Span) {
         // Bail out if debug info emission is not enabled.
         match self.debug_context {
             FunctionDebugContext::DebugInfoDisabled |
@@ -161,29 +162,29 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     // corresponding to span's containing source scope.  If so, we need to create a DIScope
     // "extension" into that file.
     fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
-                               -> llvm::debuginfo::DIScope {
+                               -> Option<&'ll DIScope> {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
             let cm = self.cx.sess().codemap();
             let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
-            debuginfo::extend_scope_to_file(self.cx,
-                                            scope_metadata,
+            Some(debuginfo::extend_scope_to_file(self.cx,
+                                            scope_metadata.unwrap(),
                                             &cm.lookup_char_pos(pos).file,
-                                            defining_crate)
+                                            defining_crate))
         } else {
             scope_metadata
         }
     }
 }
 
-enum LocalRef<'tcx> {
-    Place(PlaceRef<'tcx>),
-    Operand(Option<OperandRef<'tcx>>),
+enum LocalRef<'ll, 'tcx> {
+    Place(PlaceRef<'ll, 'tcx>),
+    Operand(Option<OperandRef<'ll, 'tcx>>),
 }
 
-impl<'a, 'tcx> LocalRef<'tcx> {
-    fn new_operand(cx: &CodegenCx<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
+impl LocalRef<'ll, 'tcx> {
+    fn new_operand(cx: &CodegenCx<'ll, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'ll, 'tcx> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -197,9 +198,9 @@ impl<'a, 'tcx> LocalRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn codegen_mir<'a, 'tcx: 'a>(
-    cx: &'a CodegenCx<'a, 'tcx>,
-    llfn: ValueRef,
+pub fn codegen_mir(
+    cx: &'a CodegenCx<'ll, 'tcx>,
+    llfn: &'ll Value,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
@@ -218,7 +219,7 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
     let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
-    let block_bxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
+    let block_bxs: IndexVec<mir::BasicBlock, &'ll BasicBlock> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK && !reentrant_start_block {
                 bx.llbb()
@@ -280,7 +281,7 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
                         span: decl.source_info.span,
                         scope: decl.visibility_scope,
                     });
-                    declare_local(&bx, &fx.debug_context, name, layout.ty, scope,
+                    declare_local(&bx, &fx.debug_context, name, layout.ty, scope.unwrap(),
                         VariableAccess::DirectVariable { alloca: place.llval },
                         VariableKind::LocalVariable, span);
                 }
@@ -343,13 +344,13 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
     }
 }
 
-fn create_funclets<'a, 'tcx>(
+fn create_funclets(
     mir: &'a Mir<'tcx>,
-    bx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx>,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, BasicBlockRef>)
-    -> (IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
-        IndexVec<mir::BasicBlock, Option<Funclet>>)
+    block_bxs: &IndexVec<mir::BasicBlock, &'ll BasicBlock>)
+    -> (IndexVec<mir::BasicBlock, Option<&'ll BasicBlock>>,
+        IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>)
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
@@ -409,14 +410,15 @@ fn create_funclets<'a, 'tcx>(
     }).unzip()
 }
 
-/// Produce, for each argument, a `ValueRef` pointing at the
+/// Produce, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
-                            fx: &FunctionCx<'a, 'tcx>,
-                            scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope>,
-                            memory_locals: &BitVector<mir::Local>)
-                            -> Vec<LocalRef<'tcx>> {
+fn arg_local_refs(
+    bx: &Builder<'a, 'll, 'tcx>,
+    fx: &FunctionCx<'a, 'll, 'tcx>,
+    scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
+    memory_locals: &BitVector<mir::Local>,
+) -> Vec<LocalRef<'ll, 'tcx>> {
     let mir = fx.mir;
     let tcx = bx.tcx();
     let mut idx = 0;
@@ -424,8 +426,8 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
     // Get the argument scope, if it exists and if we need it.
     let arg_scope = scopes[mir::OUTERMOST_SOURCE_SCOPE];
-    let arg_scope = if arg_scope.is_valid() && bx.sess().opts.debuginfo == FullDebugInfo {
-        Some(arg_scope.scope_metadata)
+    let arg_scope = if bx.sess().opts.debuginfo == FullDebugInfo {
+        arg_scope.scope_metadata
     } else {
         None
     };

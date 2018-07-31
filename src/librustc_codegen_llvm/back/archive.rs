@@ -226,10 +226,13 @@ impl<'a> ArchiveBuilder<'a> {
     }
 
     fn build_with_llvm(&mut self, kind: ArchiveKind) -> io::Result<()> {
-        let mut archives = Vec::new();
+        let removals = mem::replace(&mut self.removals, Vec::new());
+        let mut additions = mem::replace(&mut self.additions, Vec::new());
         let mut strings = Vec::new();
         let mut members = Vec::new();
-        let removals = mem::replace(&mut self.removals, Vec::new());
+
+        let dst = CString::new(self.config.dst.to_str().unwrap())?;
+        let should_update_symbols = self.should_update_symbols;
 
         unsafe {
             if let Some(archive) = self.src_archive() {
@@ -246,22 +249,22 @@ impl<'a> ArchiveBuilder<'a> {
                     let name = CString::new(child_name)?;
                     members.push(llvm::LLVMRustArchiveMemberNew(ptr::null(),
                                                                 name.as_ptr(),
-                                                                child.raw()));
+                                                                Some(child.raw)));
                     strings.push(name);
                 }
             }
-            for addition in mem::replace(&mut self.additions, Vec::new()) {
+            for addition in &mut additions {
                 match addition {
                     Addition::File { path, name_in_archive } => {
                         let path = CString::new(path.to_str().unwrap())?;
-                        let name = CString::new(name_in_archive)?;
+                        let name = CString::new(name_in_archive.clone())?;
                         members.push(llvm::LLVMRustArchiveMemberNew(path.as_ptr(),
                                                                     name.as_ptr(),
-                                                                    ptr::null_mut()));
+                                                                    None));
                         strings.push(path);
                         strings.push(name);
                     }
-                    Addition::Archive { archive, mut skip } => {
+                    Addition::Archive { archive, skip } => {
                         for child in archive.iter() {
                             let child = child.map_err(string_to_io_error)?;
                             if !is_relevant_child(&child) {
@@ -284,21 +287,18 @@ impl<'a> ArchiveBuilder<'a> {
                             let name = CString::new(child_name)?;
                             let m = llvm::LLVMRustArchiveMemberNew(ptr::null(),
                                                                    name.as_ptr(),
-                                                                   child.raw());
+                                                                   Some(child.raw));
                             members.push(m);
                             strings.push(name);
                         }
-                        archives.push(archive);
                     }
                 }
             }
 
-            let dst = self.config.dst.to_str().unwrap().as_bytes();
-            let dst = CString::new(dst)?;
             let r = llvm::LLVMRustWriteArchive(dst.as_ptr(),
                                                members.len() as libc::size_t,
-                                               members.as_ptr(),
-                                               self.should_update_symbols,
+                                               members.as_ptr() as *const &_,
+                                               should_update_symbols,
                                                kind);
             let ret = if r.into_result().is_err() {
                 let err = llvm::LLVMRustGetLastError();

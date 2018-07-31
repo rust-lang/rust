@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::ffi::CString;
-use std::ptr;
 
 use attributes;
 use libc::c_uint;
@@ -21,8 +20,8 @@ use ModuleLlvm;
 use llvm::{self, False, True};
 
 pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
-    let llcx = mods.llcx;
-    let llmod = mods.llmod;
+    let llcx = &*mods.llcx;
+    let llmod = mods.llmod();
     let usize = match &tcx.sess.target.target.target_pointer_width[..] {
         "16" => llvm::LLVMInt16TypeInContext(llcx),
         "32" => llvm::LLVMInt32TypeInContext(llcx),
@@ -90,7 +89,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
                                           callee,
                                           args.as_ptr(),
                                           args.len() as c_uint,
-                                          ptr::null_mut(),
+                                          None,
                                           "\0".as_ptr() as *const _);
         llvm::LLVMSetTailCall(ret, True);
         if output.is_some() {

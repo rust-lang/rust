@@ -14,9 +14,9 @@ pub use self::OptimizationDiagnosticKind::*;
 pub use self::Diagnostic::*;
 
 use libc::c_uint;
-use std::ptr;
+use value::Value;
 
-use {DiagnosticInfoRef, TwineRef, ValueRef};
+use super::{DiagnosticInfo, Twine};
 
 #[derive(Copy, Clone)]
 pub enum OptimizationDiagnosticKind {
@@ -42,21 +42,22 @@ impl OptimizationDiagnosticKind {
     }
 }
 
-pub struct OptimizationDiagnostic {
+pub struct OptimizationDiagnostic<'ll> {
     pub kind: OptimizationDiagnosticKind,
     pub pass_name: String,
-    pub function: ValueRef,
+    pub function: &'ll Value,
     pub line: c_uint,
     pub column: c_uint,
     pub filename: String,
     pub message: String,
 }
 
-impl OptimizationDiagnostic {
-    unsafe fn unpack(kind: OptimizationDiagnosticKind,
-                     di: DiagnosticInfoRef)
-                     -> OptimizationDiagnostic {
-        let mut function = ptr::null_mut();
+impl OptimizationDiagnostic<'ll> {
+    unsafe fn unpack(
+        kind: OptimizationDiagnosticKind,
+        di: &'ll DiagnosticInfo,
+    ) -> Self {
+        let mut function = None;
         let mut line = 0;
         let mut column = 0;
 
@@ -72,9 +73,9 @@ impl OptimizationDiagnostic {
                                                                 &mut column,
                                                                 filename,
                                                                 message)
-                )
-            )
-        );
+                ).ok()
+            ).ok()
+        ).ok();
 
         let mut filename = filename.unwrap_or(String::new());
         if filename.is_empty() {
@@ -84,7 +85,7 @@ impl OptimizationDiagnostic {
         OptimizationDiagnostic {
             kind,
             pass_name: pass_name.expect("got a non-UTF8 pass name from LLVM"),
-            function,
+            function: function.unwrap(),
             line,
             column,
             filename,
@@ -94,41 +95,44 @@ impl OptimizationDiagnostic {
 }
 
 #[derive(Copy, Clone)]
-pub struct InlineAsmDiagnostic {
+pub struct InlineAsmDiagnostic<'ll> {
     pub cookie: c_uint,
-    pub message: TwineRef,
-    pub instruction: ValueRef,
+    pub message: &'ll Twine,
+    pub instruction: &'ll Value,
 }
 
-impl InlineAsmDiagnostic {
-    unsafe fn unpack(di: DiagnosticInfoRef) -> InlineAsmDiagnostic {
+impl InlineAsmDiagnostic<'ll> {
+    unsafe fn unpack(di: &'ll DiagnosticInfo) -> Self {
+        let mut cookie = 0;
+        let mut message = None;
+        let mut instruction = None;
 
-        let mut opt = InlineAsmDiagnostic {
-            cookie: 0,
-            message: ptr::null_mut(),
-            instruction: ptr::null_mut(),
-        };
+        super::LLVMRustUnpackInlineAsmDiagnostic(
+            di,
+            &mut cookie,
+            &mut message,
+            &mut instruction,
+        );
 
-        super::LLVMRustUnpackInlineAsmDiagnostic(di,
-                                                 &mut opt.cookie,
-                                                 &mut opt.message,
-                                                 &mut opt.instruction);
-
-        opt
+        InlineAsmDiagnostic {
+            cookie,
+            message: message.unwrap(),
+            instruction: instruction.unwrap(),
+        }
     }
 }
 
-pub enum Diagnostic {
-    Optimization(OptimizationDiagnostic),
-    InlineAsm(InlineAsmDiagnostic),
-    PGO(DiagnosticInfoRef),
+pub enum Diagnostic<'ll> {
+    Optimization(OptimizationDiagnostic<'ll>),
+    InlineAsm(InlineAsmDiagnostic<'ll>),
+    PGO(&'ll DiagnosticInfo),
 
     /// LLVM has other types that we do not wrap here.
-    UnknownDiagnostic(DiagnosticInfoRef),
+    UnknownDiagnostic(&'ll DiagnosticInfo),
 }
 
-impl Diagnostic {
-    pub unsafe fn unpack(di: DiagnosticInfoRef) -> Diagnostic {
+impl Diagnostic<'ll> {
+    pub unsafe fn unpack(di: &'ll DiagnosticInfo) -> Self {
         use super::DiagnosticKind as Dk;
         let kind = super::LLVMRustGetDiagInfoKind(di);
 

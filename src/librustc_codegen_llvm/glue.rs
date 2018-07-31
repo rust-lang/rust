@@ -16,37 +16,36 @@ use std;
 
 use builder::Builder;
 use common::*;
-use llvm::{ValueRef};
 use llvm;
 use meth;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use value::Value;
 
-pub fn size_and_align_of_dst<'a, 'tcx>(bx: &Builder<'a, 'tcx>, t: Ty<'tcx>, info: ValueRef)
-                                       -> (ValueRef, ValueRef) {
+pub fn size_and_align_of_dst(bx: &Builder<'_, 'll, 'tcx>, t: Ty<'tcx>, info: Option<&'ll Value>)
+                                       -> (&'ll Value, &'ll Value) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
-           t, Value(info));
+           t, info);
     if bx.cx.type_is_sized(t) {
         let (size, align) = bx.cx.size_and_align_of(t);
         debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
-               t, Value(info), size, align);
+               t, info, size, align);
         let size = C_usize(bx.cx, size.bytes());
         let align = C_usize(bx.cx, align.abi());
         return (size, align);
     }
-    assert!(!info.is_null());
     match t.sty {
         ty::TyDynamic(..) => {
             // load size/align from vtable
-            (meth::SIZE.get_usize(bx, info), meth::ALIGN.get_usize(bx, info))
+            let vtable = info.unwrap();
+            (meth::SIZE.get_usize(bx, vtable), meth::ALIGN.get_usize(bx, vtable))
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit = t.sequence_element_type(bx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             let (size, align) = bx.cx.size_and_align_of(unit);
-            (bx.mul(info, C_usize(bx.cx, size.bytes())),
+            (bx.mul(info.unwrap(), C_usize(bx.cx, size.bytes())),
              C_usize(bx.cx, align.abi()))
         }
         _ => {

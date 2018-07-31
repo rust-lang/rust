@@ -10,7 +10,6 @@
 
 use common;
 use llvm;
-use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -19,6 +18,7 @@ use callee;
 use base;
 use declare;
 use monomorphize::Instance;
+use value::Value;
 
 use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
@@ -35,7 +35,6 @@ use rustc_target::spec::{HasTargetSpec, Target};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
-use std::ptr;
 use std::iter;
 use std::str;
 use std::sync::Arc;
@@ -43,65 +42,65 @@ use syntax::symbol::LocalInternedString;
 use abi::Abi;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
-/// `ContextRef` so that several compilation units may be optimized in parallel.
-/// All other LLVM data structures in the `CodegenCx` are tied to that `ContextRef`.
+/// `llvm::Context` so that several compilation units may be optimized in parallel.
+/// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
 pub struct CodegenCx<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
 
-    pub llmod: ModuleRef,
-    pub llcx: ContextRef,
+    pub llmod: &'a llvm::Module,
+    pub llcx: &'a llvm::Context,
     pub stats: RefCell<Stats>,
     pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
-    pub instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
+    pub instances: RefCell<FxHashMap<Instance<'tcx>, &'a Value>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>,
-                                Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>>,
+                                Option<ty::PolyExistentialTraitRef<'tcx>>), &'a Value>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, ValueRef>>,
+    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'a Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
-    /// Key is a ValueRef holding a *T,
-    /// Val is a ValueRef holding a *[T].
+    /// Key is a Value holding a *T,
+    /// Val is a Value holding a *[T].
     ///
     /// Needed because LLVM loses pointer->pointee association
     /// when we ptrcast, and we have to ptrcast during codegen
     /// of a [T] const because we form a slice, a (*T,usize) pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
-    pub const_unsized: RefCell<FxHashMap<ValueRef, ValueRef>>,
+    pub const_unsized: RefCell<FxHashMap<&'a Value, &'a Value>>,
 
     /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<ValueRef, ValueRef>>,
+    pub const_globals: RefCell<FxHashMap<&'a Value, &'a Value>>,
 
     /// Mapping from static definitions to their DefId's.
-    pub statics: RefCell<FxHashMap<ValueRef, DefId>>,
+    pub statics: RefCell<FxHashMap<&'a Value, DefId>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
-    /// (We have to make sure we don't invalidate any ValueRefs referring
+    /// (We have to make sure we don't invalidate any Values referring
     /// to constants.)
-    pub statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
+    pub statics_to_rauw: RefCell<Vec<(&'a Value, &'a Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
-    pub used_statics: RefCell<Vec<ValueRef>>,
+    pub used_statics: RefCell<Vec<&'a Value>>,
 
-    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
-    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
+    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), &'a Type>>,
+    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'a Type>>,
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
-    pub isize_ty: Type,
+    pub isize_ty: &'a Type,
 
-    pub dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
+    pub dbg_cx: Option<debuginfo::CrateDebugContext<'a, 'tcx>>,
 
-    eh_personality: Cell<Option<ValueRef>>,
-    eh_unwind_resume: Cell<Option<ValueRef>>,
-    pub rust_try_fn: Cell<Option<ValueRef>>,
+    eh_personality: Cell<Option<&'a Value>>,
+    eh_unwind_resume: Cell<Option<&'a Value>>,
+    pub rust_try_fn: Cell<Option<&'a Value>>,
 
-    intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
+    intrinsics: RefCell<FxHashMap<&'static str, &'a Value>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -156,8 +155,11 @@ pub fn is_pie_binary(sess: &Session) -> bool {
     !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
-pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
-    let llcx = llvm::LLVMRustContextCreate(sess.fewer_names());
+pub unsafe fn create_module(
+    sess: &Session,
+    llcx: &'ll llvm::Context,
+    mod_name: &str,
+) -> &'ll llvm::Module {
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
@@ -209,13 +211,13 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
         llvm::LLVMRustSetModulePIELevel(llmod);
     }
 
-    (llcx, llmod)
+    llmod
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    crate fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                codegen_unit: Arc<CodegenUnit<'tcx>>,
-               llmod_id: &str)
+               llvm_module: &'a ::ModuleLlvm)
                -> CodegenCx<'a, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -266,55 +268,48 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 
         let tls_model = get_tls_model(&tcx.sess);
 
-        unsafe {
-            let (llcx, llmod) = create_context_and_module(&tcx.sess,
-                                                          &llmod_id[..]);
+        let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
-            let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
-                let dctx = debuginfo::CrateDebugContext::new(llmod);
-                debuginfo::metadata::compile_unit_metadata(tcx,
-                                                           &codegen_unit.name().as_str(),
-                                                           &dctx);
-                Some(dctx)
-            } else {
-                None
-            };
+        let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
+            let dctx = debuginfo::CrateDebugContext::new(llmod);
+            debuginfo::metadata::compile_unit_metadata(tcx,
+                                                        &codegen_unit.name().as_str(),
+                                                        &dctx);
+            Some(dctx)
+        } else {
+            None
+        };
 
-            let mut cx = CodegenCx {
-                tcx,
-                check_overflow,
-                use_dll_storage_attrs,
-                tls_model,
-                llmod,
-                llcx,
-                stats: RefCell::new(Stats::default()),
-                codegen_unit,
-                instances: RefCell::new(FxHashMap()),
-                vtables: RefCell::new(FxHashMap()),
-                const_cstr_cache: RefCell::new(FxHashMap()),
-                const_unsized: RefCell::new(FxHashMap()),
-                const_globals: RefCell::new(FxHashMap()),
-                statics: RefCell::new(FxHashMap()),
-                statics_to_rauw: RefCell::new(Vec::new()),
-                used_statics: RefCell::new(Vec::new()),
-                lltypes: RefCell::new(FxHashMap()),
-                scalar_lltypes: RefCell::new(FxHashMap()),
-                pointee_infos: RefCell::new(FxHashMap()),
-                isize_ty: Type::from_ref(ptr::null_mut()),
-                dbg_cx,
-                eh_personality: Cell::new(None),
-                eh_unwind_resume: Cell::new(None),
-                rust_try_fn: Cell::new(None),
-                intrinsics: RefCell::new(FxHashMap()),
-                local_gen_sym_counter: Cell::new(0),
-            };
-            cx.isize_ty = Type::isize(&cx);
-            cx
+        let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
+
+        CodegenCx {
+            tcx,
+            check_overflow,
+            use_dll_storage_attrs,
+            tls_model,
+            llmod,
+            llcx,
+            stats: RefCell::new(Stats::default()),
+            codegen_unit,
+            instances: RefCell::new(FxHashMap()),
+            vtables: RefCell::new(FxHashMap()),
+            const_cstr_cache: RefCell::new(FxHashMap()),
+            const_unsized: RefCell::new(FxHashMap()),
+            const_globals: RefCell::new(FxHashMap()),
+            statics: RefCell::new(FxHashMap()),
+            statics_to_rauw: RefCell::new(Vec::new()),
+            used_statics: RefCell::new(Vec::new()),
+            lltypes: RefCell::new(FxHashMap()),
+            scalar_lltypes: RefCell::new(FxHashMap()),
+            pointee_infos: RefCell::new(FxHashMap()),
+            isize_ty,
+            dbg_cx,
+            eh_personality: Cell::new(None),
+            eh_unwind_resume: Cell::new(None),
+            rust_try_fn: Cell::new(None),
+            intrinsics: RefCell::new(FxHashMap()),
+            local_gen_sym_counter: Cell::new(0),
         }
-    }
-
-    pub fn into_stats(self) -> Stats {
-        self.stats.into_inner()
     }
 }
 
@@ -323,7 +318,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         &self.tcx.sess
     }
 
-    pub fn get_intrinsic(&self, key: &str) -> ValueRef {
+    pub fn get_intrinsic(&self, key: &str) -> &'b Value {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
@@ -347,7 +342,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         name
     }
 
-    pub fn eh_personality(&self) -> ValueRef {
+    pub fn eh_personality(&self) -> &'b Value {
         // The exception handling personality function.
         //
         // If our compilation unit has the `eh_personality` lang item somewhere
@@ -382,7 +377,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
                 } else {
                     "rust_eh_personality"
                 };
-                let fty = Type::variadic_func(&[], &Type::i32(self));
+                let fty = Type::variadic_func(&[], Type::i32(self));
                 declare::declare_cfn(self, name, fty)
             }
         };
@@ -390,9 +385,9 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         llfn
     }
 
-    // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
+    // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
-    pub fn eh_unwind_resume(&self) -> ValueRef {
+    pub fn eh_unwind_resume(&self) -> &'b Value {
         use attributes;
         let unwresume = &self.eh_unwind_resume;
         if let Some(llfn) = unwresume.get() {
@@ -448,25 +443,25 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CodegenCx<'a, 'tcx> {
+impl ty::layout::HasDataLayout for &'a CodegenCx<'ll, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx> HasTargetSpec for &'a CodegenCx<'a, 'tcx> {
+impl HasTargetSpec for &'a CodegenCx<'ll, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'a, 'tcx> {
+impl ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'ll, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'tcx> LayoutOf for &'a CodegenCx<'a, 'tcx> {
+impl LayoutOf for &'a CodegenCx<'ll, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
@@ -480,11 +475,11 @@ impl<'a, 'tcx> LayoutOf for &'a CodegenCx<'a, 'tcx> {
 }
 
 /// Declare any llvm intrinsics that you might need
-fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
+fn declare_intrinsic(cx: &CodegenCx<'ll, '_>, key: &str) -> Option<&'ll Value> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::func(&[], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::func(&[], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -492,7 +487,7 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
         );
         ($name:expr, fn(...) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::variadic_func(&[], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::variadic_func(&[], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -500,7 +495,7 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::func(&[$($arg),*], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::func(&[$($arg),*], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -522,14 +517,14 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     let t_f32 = Type::f32(cx);
     let t_f64 = Type::f64(cx);
 
-    let t_v2f32 = Type::vector(&t_f32, 2);
-    let t_v4f32 = Type::vector(&t_f32, 4);
-    let t_v8f32 = Type::vector(&t_f32, 8);
-    let t_v16f32 = Type::vector(&t_f32, 16);
+    let t_v2f32 = Type::vector(t_f32, 2);
+    let t_v4f32 = Type::vector(t_f32, 4);
+    let t_v8f32 = Type::vector(t_f32, 8);
+    let t_v16f32 = Type::vector(t_f32, 16);
 
-    let t_v2f64 = Type::vector(&t_f64, 2);
-    let t_v4f64 = Type::vector(&t_f64, 4);
-    let t_v8f64 = Type::vector(&t_f64, 8);
+    let t_v2f64 = Type::vector(t_f64, 2);
+    let t_v4f64 = Type::vector(t_f64, 4);
+    let t_v8f64 = Type::vector(t_f64, 8);
 
     ifn!("llvm.memcpy.p0i8.p0i8.i16", fn(i8p, i8p, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memcpy.p0i8.p0i8.i32", fn(i8p, i8p, t_i32, t_i32, i1) -> void);

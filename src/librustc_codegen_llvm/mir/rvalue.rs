@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, ValueRef};
+use llvm;
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{self, LayoutOf};
@@ -32,15 +32,15 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_rvalue(&mut self,
-                        bx: Builder<'a, 'tcx>,
-                        dest: PlaceRef<'tcx>,
+                        bx: Builder<'a, 'll, 'tcx>,
+                        dest: PlaceRef<'ll, 'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'tcx>
+                        -> Builder<'a, 'll, 'tcx>
     {
         debug!("codegen_rvalue(dest.llval={:?}, rvalue={:?})",
-               Value(dest.llval), rvalue);
+               dest.llval, rvalue);
 
         match *rvalue {
            mir::Rvalue::Use(ref operand) => {
@@ -176,9 +176,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     pub fn codegen_rvalue_operand(&mut self,
-                                bx: Builder<'a, 'tcx>,
+                                bx: Builder<'a, 'll, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
-                                -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
+                                -> (Builder<'a, 'll, 'tcx>, OperandRef<'ll, 'tcx>)
     {
         assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
 
@@ -371,7 +371,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 let val = if !bx.cx.type_has_metadata(ty) {
                     OperandValue::Immediate(cg_place.llval)
                 } else {
-                    OperandValue::Pair(cg_place.llval, cg_place.llextra)
+                    OperandValue::Pair(cg_place.llval, cg_place.llextra.unwrap())
                 };
                 (bx, OperandRef {
                     val,
@@ -511,10 +511,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
     }
 
-    fn evaluate_array_len(&mut self,
-                          bx: &Builder<'a, 'tcx>,
-                          place: &mir::Place<'tcx>) -> ValueRef
-    {
+    fn evaluate_array_len(
+        &mut self,
+        bx: &Builder<'a, 'll, 'tcx>,
+        place: &mir::Place<'tcx>,
+    ) -> &'ll Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
         if let mir::Place::Local(index) = *place {
@@ -530,12 +531,14 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         return cg_value.len(bx.cx);
     }
 
-    pub fn codegen_scalar_binop(&mut self,
-                              bx: &Builder<'a, 'tcx>,
-                              op: mir::BinOp,
-                              lhs: ValueRef,
-                              rhs: ValueRef,
-                              input_ty: Ty<'tcx>) -> ValueRef {
+    pub fn codegen_scalar_binop(
+        &mut self,
+        bx: &Builder<'a, 'll, 'tcx>,
+        op: mir::BinOp,
+        lhs: &'ll Value,
+        rhs: &'ll Value,
+        input_ty: Ty<'tcx>,
+    ) -> &'ll Value {
         let is_float = input_ty.is_fp();
         let is_signed = input_ty.is_signed();
         let is_nil = input_ty.is_nil();
@@ -596,15 +599,16 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
     }
 
-    pub fn codegen_fat_ptr_binop(&mut self,
-                               bx: &Builder<'a, 'tcx>,
-                               op: mir::BinOp,
-                               lhs_addr: ValueRef,
-                               lhs_extra: ValueRef,
-                               rhs_addr: ValueRef,
-                               rhs_extra: ValueRef,
-                               _input_ty: Ty<'tcx>)
-                               -> ValueRef {
+    pub fn codegen_fat_ptr_binop(
+        &mut self,
+        bx: &Builder<'a, 'll, 'tcx>,
+        op: mir::BinOp,
+        lhs_addr: &'ll Value,
+        lhs_extra: &'ll Value,
+        rhs_addr: &'ll Value,
+        rhs_extra: &'ll Value,
+        _input_ty: Ty<'tcx>,
+    ) -> &'ll Value {
         match op {
             mir::BinOp::Eq => {
                 bx.and(
@@ -644,11 +648,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     pub fn codegen_scalar_checked_binop(&mut self,
-                                      bx: &Builder<'a, 'tcx>,
+                                      bx: &Builder<'a, 'll, 'tcx>,
                                       op: mir::BinOp,
-                                      lhs: ValueRef,
-                                      rhs: ValueRef,
-                                      input_ty: Ty<'tcx>) -> OperandValue {
+                                      lhs: &'ll Value,
+                                      rhs: &'ll Value,
+                                      input_ty: Ty<'tcx>) -> OperandValue<'ll> {
         // This case can currently arise only from functions marked
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
@@ -721,7 +725,7 @@ enum OverflowOp {
     Add, Sub, Mul
 }
 
-fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder, ty: Ty) -> ValueRef {
+fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_>, ty: Ty) -> &'ll Value {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     use rustc::ty::{TyInt, TyUint};
@@ -796,11 +800,11 @@ fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder, ty: Ty) -> ValueRef {
     bx.cx.get_intrinsic(&name)
 }
 
-fn cast_int_to_float(bx: &Builder,
+fn cast_int_to_float(bx: &Builder<'_, 'll, '_>,
                      signed: bool,
-                     x: ValueRef,
-                     int_ty: Type,
-                     float_ty: Type) -> ValueRef {
+                     x: &'ll Value,
+                     int_ty: &'ll Type,
+                     float_ty: &'ll Type) -> &'ll Value {
     // Most integer types, even i128, fit into [-f32::MAX, f32::MAX] after rounding.
     // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
@@ -826,11 +830,11 @@ fn cast_int_to_float(bx: &Builder,
     }
 }
 
-fn cast_float_to_int(bx: &Builder,
+fn cast_float_to_int(bx: &Builder<'_, 'll, '_>,
                      signed: bool,
-                     x: ValueRef,
-                     float_ty: Type,
-                     int_ty: Type) -> ValueRef {
+                     x: &'ll Value,
+                     float_ty: &'ll Type,
+                     int_ty: &'ll Type) -> &'ll Value {
     let fptosui_result = if signed {
         bx.fptosi(x, int_ty)
     } else {
@@ -859,14 +863,14 @@ fn cast_float_to_int(bx: &Builder,
     // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
     // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
     // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
-    fn compute_clamp_bounds<F: Float>(signed: bool, int_ty: Type) -> (u128, u128) {
+    fn compute_clamp_bounds<F: Float>(signed: bool, int_ty: &Type) -> (u128, u128) {
         let rounded_min = F::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
         assert_eq!(rounded_min.status, Status::OK);
         let rounded_max = F::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
         assert!(rounded_max.value.is_finite());
         (rounded_min.value.to_bits(), rounded_max.value.to_bits())
     }
-    fn int_max(signed: bool, int_ty: Type) -> u128 {
+    fn int_max(signed: bool, int_ty: &Type) -> u128 {
         let shift_amount = 128 - int_ty.int_width();
         if signed {
             i128::MAX as u128 >> shift_amount
@@ -874,7 +878,7 @@ fn cast_float_to_int(bx: &Builder,
             u128::MAX >> shift_amount
         }
     }
-    fn int_min(signed: bool, int_ty: Type) -> i128 {
+    fn int_min(signed: bool, int_ty: &Type) -> i128 {
         if signed {
             i128::MIN >> (128 - int_ty.int_width())
         } else {
