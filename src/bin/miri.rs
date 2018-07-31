@@ -200,7 +200,8 @@ fn find_sysroot() -> String {
         _ => {
             option_env!("RUST_SYSROOT")
                 .expect(
-                    "need to specify RUST_SYSROOT env var or use rustup or multirust",
+                    "Could not find sysroot. Either set MIRI_SYSROOT at run-time, or at \
+                     build-time specify RUST_SYSROOT env var or use rustup or multirust",
                 )
                 .to_owned()
         }
