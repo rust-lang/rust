@@ -172,19 +172,19 @@ fn execute(opts: &Options) -> Result<i32, failure::Error> {
     match determine_operation(&matches)? {
         Operation::Help(HelpOp::None) => {
             print_usage_to_stdout(opts, "");
-            return Ok(1);
+            return Ok(0);
         }
         Operation::Help(HelpOp::Config) => {
             Config::print_docs(&mut stdout(), options.unstable_features);
-            return Ok(1);
+            return Ok(0);
         }
         Operation::Help(HelpOp::FileLines) => {
             print_help_file_lines();
-            return Ok(1);
+            return Ok(0);
         }
         Operation::Version => {
             print_version();
-            return Ok(1);
+            return Ok(0);
         }
         Operation::ConfigOutputDefault { path } => {
             let toml = Config::default().all_options().to_toml().map_err(err_msg)?;
@@ -194,7 +194,7 @@ fn execute(opts: &Options) -> Result<i32, failure::Error> {
             } else {
                 io::stdout().write_all(toml.as_bytes())?;
             }
-            return Ok(1);
+            return Ok(0);
         }
         Operation::Stdin { input } => format_string(input, options),
         Operation::Format {
