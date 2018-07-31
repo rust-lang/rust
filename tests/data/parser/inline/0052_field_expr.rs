@@ -1,3 +1,4 @@
 fn foo() {
-    x.foo.bar;
+    x.foo;
+    x.0.bar;
 }

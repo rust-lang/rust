@@ -210,7 +210,8 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 
 // test field_expr
 // fn foo() {
-//     x.foo.bar;
+//     x.foo;
+//     x.0.bar;
 // }
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(DOT) && (p.nth(1) == IDENT || p.nth(1) == INT_NUMBER));
