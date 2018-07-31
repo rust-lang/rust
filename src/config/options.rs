@@ -150,7 +150,7 @@ impl NewlineStyle {
         }
         match style {
             Windows => {
-                let mut transformed = String::with_capacity(formatted_text.capacity());
+                let mut transformed = String::with_capacity(2 * formatted_text.capacity());
                 for c in formatted_text.chars() {
                     match c {
                         '\n' => transformed.push_str("\r\n"),
