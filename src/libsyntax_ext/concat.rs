@@ -30,6 +30,9 @@ pub fn expand_syntax_ext(
     let mut string_pos = vec![];
     let mut b_accumulator: Vec<u8> = vec![];
     let mut b_pos: Vec<Span> = vec![];
+    // We don't support mixing things with byte str literals, but do a best effort to fill in a
+    // reasonable byte str output to avoid further errors down the line.
+    let mut unified_accumulator: Vec<u8> = vec![];
     let mut missing_literal = vec![];
     for e in es {
         match e.node {
@@ -39,28 +42,34 @@ pub fn expand_syntax_ext(
                 | ast::LitKind::FloatUnsuffixed(ref s) => {
                     string_accumulator.push_str(&s.as_str());
                     string_pos.push(e.span);
+                    unified_accumulator.extend(s.to_string().into_bytes());
                 }
                 ast::LitKind::Char(c) => {
                     string_accumulator.push(c);
                     string_pos.push(e.span);
+                    unified_accumulator.extend(c.to_string().into_bytes());
                 }
                 ast::LitKind::Int(i, ast::LitIntType::Unsigned(_))
                 | ast::LitKind::Int(i, ast::LitIntType::Signed(_))
                 | ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
                     string_accumulator.push_str(&i.to_string());
                     string_pos.push(e.span);
+                    unified_accumulator.extend(i.to_bytes().iter());
                 }
                 ast::LitKind::Bool(b) => {
                     string_accumulator.push_str(&b.to_string());
                     string_pos.push(e.span);
+                    unified_accumulator.push(b as u8);
                 }
                 ast::LitKind::Byte(byte) => {
                     b_accumulator.push(byte);
                     b_pos.push(e.span);
+                    unified_accumulator.push(byte);
                 }
                 ast::LitKind::ByteStr(ref b_str) => {
                     b_accumulator.extend(b_str.iter());
                     b_pos.push(e.span);
+                    unified_accumulator.extend(b_str.iter());
                 }
             },
             _ => {
@@ -73,7 +82,8 @@ pub fn expand_syntax_ext(
         err.note("only literals (like `\"foo\"`, `42` and `3.14`) can be passed to `concat!()`");
         err.emit();
     }
-    // Do not allow mixing "" and b""
+    let sp = sp.apply_mark(cx.current_expansion.mark);
+    // Do not allow mixing "" and b"", but return the joint b"" to avoid further errors
     if string_accumulator.len() > 0 && b_accumulator.len() > 0 {
         let mut err = cx.struct_span_err(
             b_pos.clone(),
@@ -95,9 +105,8 @@ pub fn expand_syntax_ext(
                 .collect(),
         );
         err.emit();
-    }
-    let sp = sp.apply_mark(cx.current_expansion.mark);
-    if b_accumulator.len() > 0 {
+        base::MacEager::expr(cx.expr_byte_str(sp, unified_accumulator))
+    } else if b_accumulator.len() > 0 {
         base::MacEager::expr(cx.expr_byte_str(sp, b_accumulator))
     } else {
         base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&string_accumulator)))

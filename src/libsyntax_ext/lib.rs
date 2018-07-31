@@ -14,8 +14,9 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![feature(proc_macro_internals)]
 #![feature(decl_macro)]
+#![feature(int_to_from_bytes)]
+#![feature(proc_macro_internals)]
 #![feature(str_escape)]
 
 #![feature(rustc_diagnostic_macros)]
