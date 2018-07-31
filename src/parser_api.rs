@@ -1,7 +1,30 @@
-use SyntaxKind::{self, ERROR};
+use {
+    parser_impl::ParserImpl,
+    SyntaxKind::{self, ERROR},
+};
 
-pub(super) mod imp;
-use self::imp::ParserImpl;
+pub(crate) struct TokenSet {
+    pub tokens: &'static [SyntaxKind],
+}
+
+impl TokenSet {
+    pub fn contains(&self, kind: SyntaxKind) -> bool {
+        self.tokens.contains(&kind)
+    }
+}
+
+#[macro_export]
+macro_rules! token_set {
+    ($($t:ident),*) => {
+        TokenSet {
+            tokens: &[$($t),*],
+        }
+    };
+
+    ($($t:ident),* ,) => {
+        token_set!($($t),*)
+    };
+}
 
 /// `Parser` struct provides the low-level API for
 /// navigating through the stream of tokens and

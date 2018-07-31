@@ -27,7 +27,11 @@ extern crate unicode_xid;
 pub mod algo;
 pub mod ast;
 mod lexer;
-mod parser;
+#[macro_use]
+mod parser_api;
+mod grammar;
+mod parser_impl;
+
 mod syntax_kinds;
 /// Utilities for simple uses of the parser.
 pub mod utils;
@@ -43,5 +47,5 @@ pub use {
 
 pub fn parse(text: String) -> SyntaxNode {
     let tokens = tokenize(&text);
-    parser::parse::<yellow::GreenBuilder>(text, &tokens)
+    parser_impl::parse::<yellow::GreenBuilder>(text, &tokens)
 }

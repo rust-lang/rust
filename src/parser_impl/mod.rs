@@ -1,7 +1,44 @@
-use parser::event::Event;
-use parser::input::{InputPosition, ParserInput};
+mod event;
+mod input;
+
+use {
+    grammar,
+    lexer::Token,
+    parser_api::Parser,
+    parser_impl::{
+        event::{process, Event},
+        input::{InputPosition, ParserInput},
+    },
+    TextUnit,
+};
 
 use SyntaxKind::{self, EOF, TOMBSTONE};
+
+pub(crate) trait Sink {
+    type Tree;
+
+    fn new(text: String) -> Self;
+
+    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
+    fn start_internal(&mut self, kind: SyntaxKind);
+    fn finish_internal(&mut self);
+    fn error(&mut self, err: String);
+    fn finish(self) -> Self::Tree;
+}
+
+/// Parse a sequence of tokens into the representative node tree
+pub(crate) fn parse<S: Sink>(text: String, tokens: &[Token]) -> S::Tree {
+    let events = {
+        let input = input::ParserInput::new(&text, tokens);
+        let parser_impl = ParserImpl::new(&input);
+        let mut parser_api = Parser(parser_impl);
+        grammar::file(&mut parser_api);
+        parser_api.0.into_events()
+    };
+    let mut sink = S::new(text);
+    process(&mut sink, tokens, events);
+    sink.finish()
+}
 
 /// Implementation details of `Parser`, extracted
 /// to a separate struct in order not to pollute

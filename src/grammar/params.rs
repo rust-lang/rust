@@ -68,4 +68,3 @@ fn self_param(p: &mut Parser) {
         p.expect(COMMA);
     }
 }
-

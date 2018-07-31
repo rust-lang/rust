@@ -24,18 +24,15 @@
 mod attributes;
 mod expressions;
 mod items;
+mod params;
 mod paths;
 mod patterns;
-mod params;
-mod type_params;
 mod type_args;
+mod type_params;
 mod types;
 
 use {
-    parser::{
-        parser::{CompletedMarker, Parser},
-        token_set::TokenSet,
-    },
+    parser_api::{CompletedMarker, Parser, TokenSet},
     SyntaxKind::{self, *},
 };
 

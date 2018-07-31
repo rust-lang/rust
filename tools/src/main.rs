@@ -18,7 +18,7 @@ use tools::{collect_tests, Test};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
-const GRAMMAR_DIR: &str = "./src/parser/grammar";
+const GRAMMAR_DIR: &str = "./src/grammar";
 const INLINE_TESTS_DIR: &str = "tests/data/parser/inline";
 const GRAMMAR: &str = "./src/grammar.ron";
 const SYNTAX_KINDS: &str = "./src/syntax_kinds/generated.rs";

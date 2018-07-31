@@ -9,21 +9,9 @@
 //! this stream to a real tree.
 use {
     lexer::Token,
+    parser_impl::Sink,
     SyntaxKind::{self, TOMBSTONE},
-    TextUnit,
 };
-
-pub(crate) trait Sink {
-    type Tree;
-
-    fn new(text: String) -> Self;
-
-    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
-    fn start_internal(&mut self, kind: SyntaxKind);
-    fn finish_internal(&mut self);
-    fn error(&mut self, err: String);
-    fn finish(self) -> Self::Tree;
-}
 
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in

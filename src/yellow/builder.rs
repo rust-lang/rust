@@ -1,5 +1,5 @@
 use {
-    parser::Sink,
+    parser_impl::Sink,
     yellow::{GreenNode, GreenNodeBuilder, SyntaxError, SyntaxNode, SyntaxRoot},
     SyntaxKind, TextRange, TextUnit,
 };

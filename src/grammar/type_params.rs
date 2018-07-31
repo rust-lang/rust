@@ -83,7 +83,6 @@ pub(super) fn bounds_without_colon(p: &mut Parser) {
     }
 }
 
-
 pub(super) fn where_clause(p: &mut Parser) {
     if p.at(WHERE_KW) {
         let m = p.start();
