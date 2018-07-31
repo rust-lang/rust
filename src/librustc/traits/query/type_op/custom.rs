@@ -75,6 +75,19 @@ fn scrape_region_constraints<'gcx, 'tcx, R>(
 ) -> Fallible<(R, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
     let mut fulfill_cx = TraitEngine::new(infcx.tcx);
     let dummy_body_id = ObligationCause::dummy().body_id;
+
+    // During NLL, we expect that nobody will register region
+    // obligations **except** as part of a custom type op (and, at the
+    // end of each custom type op, we scrape out the region
+    // obligations that resulted). So this vector should be empty on
+    // entry.
+    let pre_obligations = infcx.take_registered_region_obligations();
+    assert!(
+        pre_obligations.is_empty(),
+        "scrape_region_constraints: incoming region obligations = {:#?}",
+        pre_obligations,
+    );
+
     let InferOk { value, obligations } = infcx.commit_if_ok(|_| op())?;
     debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
     fulfill_cx.register_predicate_obligations(infcx, obligations);

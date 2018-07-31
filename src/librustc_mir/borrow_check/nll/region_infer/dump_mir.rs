@@ -33,7 +33,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     .universal_regions
                     .region_classification(region)
                     .unwrap();
-                let outlived_by = self.universal_regions.regions_outlived_by(region);
+                let outlived_by = self.universal_region_relations.regions_outlived_by(region);
                 writeln!(
                     out,
                     "| {r:rw$} | {c:cw$} | {ob}",
