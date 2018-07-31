@@ -298,6 +298,8 @@ impl Step for Rls {
         cargo.env("RLS_TEST_WORKSPACE_DIR", test_workspace_path);
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
+        cargo.arg("--")
+            .args(builder.config.cmd.test_args());
 
         if try_run(builder, &mut cargo) {
             builder.save_toolstate("rls", ToolState::TestPass);

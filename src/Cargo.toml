@@ -52,11 +52,15 @@ debug-assertions = false
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "tools/cargo" }
 
-[patch."https://github.com/rust-lang-nursery/rustfmt"]
+[patch.crates-io]
 # Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
 # that we're shipping as well (to ensure that the rustfmt in RLS and the
 # `rustfmt` executable are the same exact version).
 rustfmt-nightly = { path = "tools/rustfmt" }
+
+# See comments in `tools/rustc-workspace-hack/README.md` for what's going on
+# here
+rustc-workspace-hack = { path = 'tools/rustc-workspace-hack' }
 
 [patch."https://github.com/rust-lang-nursery/rust-clippy"]
 clippy_lints = { path = "tools/clippy/clippy_lints" }

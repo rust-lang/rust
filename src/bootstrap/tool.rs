@@ -221,6 +221,10 @@ impl Step for ToolBuild {
                          prev.0, &prev_features - &cur_features, prev.1);
             }
             println!("");
+            println!("to fix this you will probably want to edit the local \
+                      src/tools/rustc-workspace-hack/Cargo.toml crate, as \
+                      that will update the dependency graph to ensure that \
+                      these crates all share the same feature set");
             panic!("tools should not compile multiple copies of the same crate");
         }
 
