@@ -507,7 +507,7 @@ impl Mul<Duration> for u32 {
     type Output = Duration;
 
     fn mul(self, rhs: Duration) -> Duration {
-        rhs.checked_mul(self).expect("overflow when multiplying scalar by duration")
+        rhs * self
     }
 }
 
@@ -540,22 +540,7 @@ impl Mul<Duration> for f64 {
     type Output = Duration;
 
     fn mul(self, rhs: Duration) -> Duration {
-        const NPS: f64 = NANOS_PER_SEC as f64;
-        let nanos_f64 = self * (NPS * (rhs.secs as f64) + (rhs.nanos as f64));
-        if !nanos_f64.is_finite() {
-            panic!("got non-finite value when multiplying float by duration");
-        }
-        if nanos_f64 > MAX_NANOS_F64 {
-            panic!("overflow when multiplying float by duration");
-        }
-        if nanos_f64 < 0.0 {
-            panic!("underflow when multiplying float by duration");
-        }
-        let nanos_u128 = nanos_f64 as u128;
-        Duration {
-            secs: (nanos_u128 / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos_u128 % (NANOS_PER_SEC as u128)) as u32,
-        }
+        rhs * self
     }
 }
 
