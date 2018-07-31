@@ -149,6 +149,18 @@ fn item(p: &mut Parser) {
                 }
             }
         }
+        IMPL_KW => {
+            traits::impl_item(p);
+            IMPL_ITEM
+        }
+        // test default_impl
+        // default impl Foo {}
+        IDENT if p.at_contextual_kw("default") && la == IMPL_KW => {
+            p.bump_remap(DEFAULT_KW);
+            traits::impl_item(p);
+            IMPL_ITEM
+        }
+
         FN_KW => {
             fn_item(p);
             FN_ITEM

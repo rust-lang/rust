@@ -1,0 +1,11 @@
+FILE@[0; 20)
+  IMPL_ITEM@[0; 20)
+    DEFAULT_KW@[0; 7)
+    WHITESPACE@[7; 8)
+    IMPL_KW@[8; 12)
+    WHITESPACE@[12; 13)
+    IDENT@[13; 16) "Foo"
+    WHITESPACE@[16; 17)
+    L_CURLY@[17; 18)
+    R_CURLY@[18; 19)
+    WHITESPACE@[19; 20)

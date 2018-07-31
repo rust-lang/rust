@@ -8,6 +8,9 @@ pub(super) fn trait_item(p: &mut Parser) {
     p.expect(R_CURLY);
 }
 
+
+// test impl_item
+// impl Foo {}
 pub(super) fn impl_item(p: &mut Parser) {
     assert!(p.at(IMPL_KW));
     p.bump();
