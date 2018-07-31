@@ -1,0 +1,39 @@
+FILE@[0; 35)
+  TYPE_ITEM@[0; 35)
+    TYPE_KW@[0; 4)
+    NAME@[4; 7)
+      WHITESPACE@[4; 5)
+      IDENT@[5; 6) "A"
+      WHITESPACE@[6; 7)
+    EQ@[7; 8)
+    PATH_TYPE@[8; 35)
+      PATH@[8; 35)
+        PATH_SEGMENT@[8; 35)
+          NAME_REF@[8; 10)
+            WHITESPACE@[8; 9)
+            IDENT@[9; 10) "B"
+          TYPE_ARG_LIST@[10; 35)
+            L_ANGLE@[10; 11)
+            LIFETIME_ARG@[11; 18)
+              LIFETIME@[11; 18) "'static"
+            COMMA@[18; 19)
+            TYPE_ARG@[19; 23)
+              PATH_TYPE@[19; 23)
+                PATH@[19; 23)
+                  PATH_SEGMENT@[19; 23)
+                    NAME_REF@[19; 23)
+                      WHITESPACE@[19; 20)
+                      IDENT@[20; 23) "i32"
+            COMMA@[23; 24)
+            ASSOC_TYPE_ARG@[24; 33)
+              WHITESPACE@[24; 25)
+              IDENT@[25; 29) "Item"
+              EQ@[29; 30)
+              PATH_TYPE@[30; 33)
+                PATH@[30; 33)
+                  PATH_SEGMENT@[30; 33)
+                    NAME_REF@[30; 33)
+                      IDENT@[30; 33) "u64"
+            R_ANGLE@[33; 34)
+            WHITESPACE@[34; 35)
+            err: `expected SEMI`

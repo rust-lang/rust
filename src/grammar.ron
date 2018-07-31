@@ -152,10 +152,13 @@ Grammar(
         "LET_STMT",
         "EXPR_STMT",
 
-        "TYPE_PARAM",
-        "LIFETIME_PARAM",
         "TYPE_PARAM_LIST",
+        "LIFETIME_PARAM",
+        "TYPE_PARAM",
         "TYPE_ARG_LIST",
+        "LIFETIME_ARG",
+        "TYPE_ARG",
+        "ASSOC_TYPE_ARG",
 
         "PARAM_LIST",
         "SELF_PARAM",
