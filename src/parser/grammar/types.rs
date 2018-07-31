@@ -166,7 +166,7 @@ fn fn_pointer_type(p: &mut Parser) {
         return;
     }
 
-    fn_value_parameters(p);
+    params::list(p);
     // test fn_pointer_type_with_ret
     // type F = fn() -> ();
     fn_ret_type(p);

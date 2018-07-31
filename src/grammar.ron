@@ -131,6 +131,7 @@ Grammar(
         "FIELD_EXPR",
         "REF_EXPR",
         "DEREF_EXPR",
+        "LAMBDA_EXPR",
         "STRUCT_LIT",
         "STRUCT_LIT_FIELD",
 
@@ -150,7 +151,6 @@ Grammar(
         "ABI",
         "NAME",
         "NAME_REF",
-        "VALUE_PARAMETER",
         "BLOCK",
 
         "LET_STMT",
@@ -165,6 +165,7 @@ Grammar(
         "ASSOC_TYPE_ARG",
 
         "PARAM_LIST",
+        "VALUE_PARAMETER",
         "SELF_PARAM",
         "ARG_LIST",
     ]

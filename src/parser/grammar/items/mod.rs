@@ -15,7 +15,7 @@ pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
 pub(super) const ITEM_FIRST: TokenSet =
     token_set![EXTERN_KW, MOD_KW, USE_KW, STRUCT_KW, ENUM_KW, FN_KW, PUB_KW, POUND];
 
-fn item(p: &mut Parser) {
+pub(super) fn item(p: &mut Parser) {
     let item = p.start();
     attributes::outer_attributes(p);
     visibility(p);
@@ -239,7 +239,7 @@ fn fn_item(p: &mut Parser) {
     type_params::list(p);
 
     if p.at(L_PAREN) {
-        fn_value_parameters(p);
+        params::list(p);
     } else {
         p.error("expected function arguments");
     }
@@ -252,64 +252,7 @@ fn fn_item(p: &mut Parser) {
     // fn foo<T>() where T: Copy {}
     type_params::where_clause(p);
 
-    block(p);
-
-    // test block
-    // fn a() {}
-    // fn b() { let _ = 1; }
-    // fn c() { 1; 2; }
-    // fn d() { 1; 2 }
-    fn block(p: &mut Parser) {
-        if !p.at(L_CURLY) {
-            p.error("expected block");
-        }
-        let m = p.start();
-        p.bump();
-        while !p.at(EOF) && !p.at(R_CURLY) {
-            match p.current() {
-                LET_KW => let_stmt(p),
-                c => {
-                    // test block_items
-                    // fn a() { fn b() {} }
-                    if ITEM_FIRST.contains(c) {
-                        item(p)
-                    } else {
-                        let expr_stmt = p.start();
-                        expressions::expr(p);
-                        if p.eat(SEMI) {
-                            expr_stmt.complete(p, EXPR_STMT);
-                        } else {
-                            expr_stmt.abandon(p);
-                        }
-                    }
-                }
-            }
-        }
-        p.expect(R_CURLY);
-        m.complete(p, BLOCK);
-    }
-
-    // test let_stmt;
-    // fn foo() {
-    //     let a;
-    //     let b: i32;
-    //     let c = 92;
-    //     let d: i32 = 92;
-    // }
-    fn let_stmt(p: &mut Parser) {
-        assert!(p.at(LET_KW));
-        let m = p.start();
-        p.bump();
-        patterns::pattern(p);
-        if p.at(COLON) {
-            types::ascription(p);
-        }
-        if p.eat(EQ) {
-            expressions::expr(p);
-        }
-        p.expect(SEMI);
-        m.complete(p, LET_STMT);
-    }
+    expressions::block(p);
 }
 
 // test type_item

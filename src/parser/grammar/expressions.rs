@@ -44,6 +44,63 @@ pub(super) fn expr(p: &mut Parser) {
     }
 }
 
+// test block
+// fn a() {}
+// fn b() { let _ = 1; }
+// fn c() { 1; 2; }
+// fn d() { 1; 2 }
+pub(super) fn block(p: &mut Parser) {
+    if !p.at(L_CURLY) {
+        p.error("expected block");
+    }
+    let m = p.start();
+    p.bump();
+    while !p.at(EOF) && !p.at(R_CURLY) {
+        match p.current() {
+            LET_KW => let_stmt(p),
+            c => {
+                // test block_items
+                // fn a() { fn b() {} }
+                if items::ITEM_FIRST.contains(c) {
+                    items::item(p)
+                } else {
+                    let expr_stmt = p.start();
+                    expressions::expr(p);
+                    if p.eat(SEMI) {
+                        expr_stmt.complete(p, EXPR_STMT);
+                    } else {
+                        expr_stmt.abandon(p);
+                    }
+                }
+            }
+        }
+    }
+    p.expect(R_CURLY);
+    m.complete(p, BLOCK);
+}
+
+// test let_stmt;
+// fn foo() {
+//     let a;
+//     let b: i32;
+//     let c = 92;
+//     let d: i32 = 92;
+// }
+fn let_stmt(p: &mut Parser) {
+    assert!(p.at(LET_KW));
+    let m = p.start();
+    p.bump();
+    patterns::pattern(p);
+    if p.at(COLON) {
+        types::ascription(p);
+    }
+    if p.eat(EQ) {
+        expressions::expr(p);
+    }
+    p.expect(SEMI);
+    m.complete(p, LET_STMT);
+}
+
 fn prefix_expr(p: &mut Parser) -> Option<CompletedMarker> {
     match p.current() {
         AMPERSAND => Some(ref_expr(p)),
@@ -89,6 +146,7 @@ fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
 
     match p.current() {
         L_PAREN => Some(tuple_expr(p)),
+        PIPE => Some(lambda_expr(p)),
         _ => {
             p.err_and_bump("expected expression");
             None
@@ -102,6 +160,25 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
     p.expect(L_PAREN);
     p.expect(R_PAREN);
     m.complete(p, TUPLE_EXPR)
+}
+
+// test lambda_expr
+// fn foo() {
+//     || ();
+//     || -> i32 { 92 };
+//     |x| x;
+//     |x: i32,| x;
+// }
+fn lambda_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(PIPE));
+    let m = p.start();
+    params::list_opt_types(p);
+    if fn_ret_type(p) {
+        block(p);
+    } else {
+        expr(p)
+    }
+    m.complete(p, LAMBDA_EXPR)
 }
 
 // test call_expr

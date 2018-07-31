@@ -26,8 +26,9 @@ mod expressions;
 mod items;
 mod paths;
 mod patterns;
-mod type_args;
+mod params;
 mod type_params;
+mod type_args;
 mod types;
 
 use {
@@ -95,67 +96,13 @@ fn abi(p: &mut Parser) {
     abi.complete(p, ABI);
 }
 
-// test fn_value_parameters
-// fn a() {}
-// fn b(x: i32) {}
-// fn c(x: i32, ) {}
-// fn d(x: i32, y: ()) {}
-fn fn_value_parameters(p: &mut Parser) {
-    assert!(p.at(L_PAREN));
-    let m = p.start();
-    p.bump();
-    self_param(p);
-    while !p.at(EOF) && !p.at(R_PAREN) {
-        value_parameter(p);
-        if !p.at(R_PAREN) {
-            p.expect(COMMA);
-        }
-    }
-    p.expect(R_PAREN);
-    m.complete(p, PARAM_LIST);
-
-    fn value_parameter(p: &mut Parser) {
-        let m = p.start();
-        patterns::pattern(p);
-        p.expect(COLON);
-        types::type_(p);
-        m.complete(p, VALUE_PARAMETER);
-    }
-
-    // test self_param
-    // impl S {
-    //     fn a(self) {}
-    //     fn b(&self,) {}
-    //     fn c(&'a self,) {}
-    //     fn d(&'a mut self, x: i32) {}
-    // }
-    fn self_param(p: &mut Parser) {
-        let la1 = p.nth(1);
-        let la2 = p.nth(2);
-        let la3 = p.nth(3);
-        let n_toks = match (p.current(), la1, la2, la3) {
-            (SELF_KW, _, _, _) => 1,
-            (AMPERSAND, SELF_KW, _, _) => 2,
-            (AMPERSAND, MUT_KW, SELF_KW, _) => 3,
-            (AMPERSAND, LIFETIME, SELF_KW, _) => 3,
-            (AMPERSAND, LIFETIME, MUT_KW, SELF_KW) => 4,
-            _ => return,
-        };
-        let m = p.start();
-        for _ in 0..n_toks {
-            p.bump();
-        }
-        m.complete(p, SELF_PARAM);
-        if !p.at(R_PAREN) {
-            p.expect(COMMA);
-        }
-    }
-}
-
-fn fn_ret_type(p: &mut Parser) {
+fn fn_ret_type(p: &mut Parser) -> bool {
     if p.at(THIN_ARROW) {
         p.bump();
         types::type_(p);
+        true
+    } else {
+        false
     }
 }
 
