@@ -69,7 +69,7 @@ fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
     match p.current() {
         L_PAREN => Some(tuple_expr(p)),
         _ => {
-            p.error("expected expression");
+            p.err_and_bump("expected expression");
             None
         }
     }

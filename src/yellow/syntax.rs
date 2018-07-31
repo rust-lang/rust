@@ -109,7 +109,7 @@ impl<R: TreeRoot> SyntaxNode<R> {
         let red = self.red();
         let parent = self.parent()?;
         let next_sibling_idx = red.index_in_parent()? + 1;
-        if next_sibling_idx == red.n_children() {
+        if next_sibling_idx == parent.red().n_children() {
             return None;
         }
         Some(SyntaxNode {

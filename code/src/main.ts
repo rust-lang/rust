@@ -12,7 +12,6 @@ let uris = {
 
 export function activate(context: vscode.ExtensionContext) {
     let textDocumentContentProvider = new TextDocumentContentProvider()
-
     let dispose = (disposable) => {
         context.subscriptions.push(disposable);
     }
@@ -25,7 +24,6 @@ export function activate(context: vscode.ExtensionContext) {
         let emitter = textDocumentContentProvider.eventEmitter
         emitter.fire(uris.syntaxTree)
         let syntax = activeSyntax()
-        console.log(syntax.highlight());
         setHighlights(vscode.window.activeTextEditor, syntax.highlight())
     })
 
@@ -89,7 +87,10 @@ function documentToFile(disposables: vscode.Disposable[], onChange) {
     }
 
     function createFile(text: String) {
-        return new backend.RustFile(text)
+        console.time("parsing")
+        let res = new backend.RustFile(text);
+        console.timeEnd("parsing")
+        return res
     }
 
     vscode.workspace.onDidChangeTextDocument((event: vscode.TextDocumentChangeEvent) => {
@@ -159,7 +160,6 @@ function setHighlights(
     editor: vscode.TextEditor,
     highlihgs: Array<[number, number, string]>
 ) {
-    console.log("setHighlight");
     let byTag = {}
     for (let tag in decorations) {
         byTag[tag] = []
