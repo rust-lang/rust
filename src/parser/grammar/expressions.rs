@@ -13,39 +13,72 @@ use super::*;
 //     let _ = b"e";
 //     let _ = br"f";
 // }
-pub(super) fn literal(p: &mut Parser) -> bool {
+pub(super) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     match p.current() {
         TRUE_KW | FALSE_KW | INT_NUMBER | FLOAT_NUMBER | BYTE | CHAR | STRING | RAW_STRING
         | BYTE_STRING | RAW_BYTE_STRING => {
-            let lit = p.start();
+            let m = p.start();
             p.bump();
-            lit.complete(p, LITERAL);
-            true
+            Some(m.complete(p, LITERAL))
         }
-        _ => false,
+        _ => None,
     }
 }
 
 pub(super) fn expr(p: &mut Parser) {
-    if literal(p) {
-        return;
-    }
-    if paths::is_path_start(p) {
-        return path_expr(p);
-    }
+    let mut lhs = atom_expr(p);
 
-    match p.current() {
-        L_PAREN => tuple_expr(p),
-        _ => p.error("expected expression"),
+    while let Some(m) = lhs {
+        match p.current() {
+            L_PAREN => lhs = Some(call_expr(p, m)),
+            _ => break,
+        }
     }
 }
 
-fn tuple_expr(p: &mut Parser) {
+fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
+    match literal(p) {
+        Some(m) => return Some(m),
+        None => (),
+    }
+    if paths::is_path_start(p) {
+        return Some(path_expr(p));
+    }
+
+    match p.current() {
+        L_PAREN => Some(tuple_expr(p)),
+        _ => {
+            p.error("expected expression");
+            None
+        }
+    }
+}
+
+fn tuple_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(L_PAREN));
     let m = p.start();
     p.expect(L_PAREN);
     p.expect(R_PAREN);
-    m.complete(p, TUPLE_EXPR);
+    m.complete(p, TUPLE_EXPR)
+}
+
+// test call_expr
+// fn foo() {
+//     let _ = f();
+//     let _ = f()(1)(1, 2,);
+// }
+fn call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
+    assert!(p.at(L_PAREN));
+    let m = lhs.precede(p);
+    p.bump();
+    while !p.at(R_PAREN) && !p.at(EOF) {
+        expr(p);
+        if !p.at(R_PAREN) && !p.expect(COMMA) {
+            break;
+        }
+    }
+    p.eat(R_PAREN);
+    m.complete(p, CALL_EXPR)
 }
 
 // test path_expr
@@ -54,9 +87,9 @@ fn tuple_expr(p: &mut Parser) {
 //     let _ = a::b;
 //     let _ = ::a::<b>;
 // }
-fn path_expr(p: &mut Parser) {
+fn path_expr(p: &mut Parser) -> CompletedMarker {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::expr_path(p);
-    m.complete(p, PATH_EXPR);
+    m.complete(p, PATH_EXPR)
 }

@@ -31,7 +31,7 @@ mod type_args;
 mod types;
 
 use {
-    parser::{parser::Parser, token_set::TokenSet},
+    parser::{parser::{Parser, CompletedMarker}, token_set::TokenSet},
     SyntaxKind::{self, *},
 };
 

@@ -36,7 +36,7 @@ fn meta_item(p: &mut Parser) {
         match p.current() {
             EQ => {
                 p.bump();
-                if !expressions::literal(p) {
+                if expressions::literal(p).is_none() {
                     p.error("expected literal");
                 }
             }
@@ -56,7 +56,7 @@ fn meta_item_arg_list(p: &mut Parser) {
         match p.current() {
             EOF | R_PAREN => break,
             IDENT => meta_item(p),
-            c => if !expressions::literal(p) {
+            c => if expressions::literal(p).is_none() {
                 let message = "expected attribute";
 
                 if items::ITEM_FIRST.contains(c) {
