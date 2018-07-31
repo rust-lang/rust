@@ -103,11 +103,13 @@ fn let_stmt(p: &mut Parser) {
 }
 
 fn prefix_expr(p: &mut Parser) -> Option<CompletedMarker> {
-    match p.current() {
-        AMPERSAND => Some(ref_expr(p)),
-        STAR => Some(deref_expr(p)),
-        _ => atom_expr(p),
-    }
+    let done = match p.current() {
+        AMPERSAND => ref_expr(p),
+        STAR => deref_expr(p),
+        EXCL => not_expr(p),
+        _ => return atom_expr(p),
+    };
+    Some(done)
 }
 
 // test ref_expr
@@ -134,6 +136,18 @@ fn deref_expr(p: &mut Parser) -> CompletedMarker {
     p.bump();
     expr(p);
     m.complete(p, DEREF_EXPR)
+}
+
+// test not_expr
+// fn foo() {
+//     !!true;
+// }
+fn not_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(EXCL));
+    let m = p.start();
+    p.bump();
+    expr(p);
+    m.complete(p, NOT_EXPR)
 }
 
 fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
