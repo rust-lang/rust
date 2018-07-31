@@ -1,17 +1,3 @@
-error[E0597]: `y` does not live long enough
-  --> $DIR/vec_refs_data_with_early_death.rs:29:12
-   |
-LL |     v.push(&y);
-   |            ^^ borrowed value does not live long enough
-...
-LL | }
-   | -
-   | |
-   | `y` dropped here while still borrowed
-   | borrow later used here, when `v` is dropped
-   |
-   = note: values in a scope are dropped in the opposite order they are defined
-
 error[E0597]: `x` does not live long enough
   --> $DIR/vec_refs_data_with_early_death.rs:27:12
    |
@@ -22,6 +8,20 @@ LL | }
    | -
    | |
    | `x` dropped here while still borrowed
+   | borrow later used here, when `v` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/vec_refs_data_with_early_death.rs:29:12
+   |
+LL |     v.push(&y);
+   |            ^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `y` dropped here while still borrowed
    | borrow later used here, when `v` is dropped
    |
    = note: values in a scope are dropped in the opposite order they are defined
