@@ -19,16 +19,24 @@
 extern crate stdsimd;
 
 #[test]
-#[cfg(all(target_arch = "arm",
-          any(target_os = "linux", target_os = "android")))]
+#[cfg(
+    all(
+        target_arch = "arm",
+        any(target_os = "linux", target_os = "android")
+    )
+)]
 fn arm_linux() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
 }
 
 #[test]
-#[cfg(all(target_arch = "aarch64",
-          any(target_os = "linux", target_os = "android")))]
+#[cfg(
+    all(
+        target_arch = "aarch64",
+        any(target_os = "linux", target_os = "android")
+    )
+)]
 fn aarch64_linux() {
     println!("fp: {}", is_aarch64_feature_detected!("fp"));
     println!("fp16: {}", is_aarch64_feature_detected!("fp16"));

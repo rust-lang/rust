@@ -9,7 +9,8 @@
 //! - Core function access -- http://arm-software.github.io/CMSIS_5/Core/html/group__Core__Register__gr.html
 //! - Intrinsic functions for CPU instructions -- http://arm-software.github.io/CMSIS_5/Core/html/group__intrinsic__CPU__gr.html
 //!
-//! The reference C implementation used as the base of this Rust port can be found at
+//! The reference C implementation used as the base of this Rust port can be
+//! found at
 //!
 //! https://github.com/ARM-software/CMSIS_5/blob/5.3.0/CMSIS/Core/Include/cmsis_gcc.h
 

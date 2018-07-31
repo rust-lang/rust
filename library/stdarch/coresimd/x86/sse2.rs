@@ -1286,7 +1286,8 @@ pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
 #[target_feature(enable = "sse2")]
 // FIXME movd on windows, movd on i686
 #[cfg_attr(
-    all(test, not(windows), target_arch = "x86_64"), assert_instr(movq)
+    all(test, not(windows), target_arch = "x86_64"),
+    assert_instr(movq)
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_move_epi64(a: __m128i) -> __m128i {

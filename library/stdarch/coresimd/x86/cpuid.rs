@@ -88,7 +88,8 @@ pub fn has_cpuid() -> bool {
     {
         // Optimization for i586 and i686 Rust targets which SSE enabled
         // and support cpuid:
-        #[cfg(target_feature = "sse")] {
+        #[cfg(target_feature = "sse")]
+        {
             true
         }
 
@@ -99,7 +100,8 @@ pub fn has_cpuid() -> bool {
             // This follows the approach indicated in:
             // http://wiki.osdev.org/CPUID#Checking_CPUID_availability
             // https://software.intel.com/en-us/articles/using-cpuid-to-detect-the-presence-of-sse-41-and-sse-42-instruction-sets/
-            // which detects whether `cpuid` is available by checking whether the 21st bit of the EFLAGS register is modifiable or not.
+            // which detects whether `cpuid` is available by checking whether
+            // the 21st bit of the EFLAGS register is modifiable or not.
             // If it is, then `cpuid` is available.
             let result: u32;
             let _temp: u32;

@@ -26,19 +26,24 @@ extern "C" {
 #[inline]
 #[target_feature(enable = "pclmulqdq")]
 #[cfg_attr(
-    all(test, not(target_os = "linux")), assert_instr(pclmulqdq, imm8 = 0)
+    all(test, not(target_os = "linux")),
+    assert_instr(pclmulqdq, imm8 = 0)
 )]
 #[cfg_attr(
-    all(test, target_os = "linux"), assert_instr(pclmullqlqdq, imm8 = 0)
+    all(test, target_os = "linux"),
+    assert_instr(pclmullqlqdq, imm8 = 0)
 )]
 #[cfg_attr(
-    all(test, target_os = "linux"), assert_instr(pclmulhqlqdq, imm8 = 1)
+    all(test, target_os = "linux"),
+    assert_instr(pclmulhqlqdq, imm8 = 1)
 )]
 #[cfg_attr(
-    all(test, target_os = "linux"), assert_instr(pclmullqhqdq, imm8 = 16)
+    all(test, target_os = "linux"),
+    assert_instr(pclmullqhqdq, imm8 = 16)
 )]
 #[cfg_attr(
-    all(test, target_os = "linux"), assert_instr(pclmulhqhqdq, imm8 = 17)
+    all(test, target_os = "linux"),
+    assert_instr(pclmulhqhqdq, imm8 = 17)
 )]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]

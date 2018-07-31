@@ -539,7 +539,10 @@ mod tests {
         let a = f64x2::new(1., 2.);
         let b = f64x2::new(8., 7.);
         let e = f64x2::new(9., 9.);
-        let r: f64x2 = ::mem::transmute(vaddq_f64(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f64x2 = ::mem::transmute(vaddq_f64(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -589,7 +592,8 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vmaxvq_s16() {
-        let r = vmaxvq_s16(::mem::transmute(i16x8::new(1, 2, 7, 4, -16, 6, 7, 5)));
+        let r =
+            vmaxvq_s16(::mem::transmute(i16x8::new(1, 2, 7, 4, -16, 6, 7, 5)));
         assert_eq!(r, 7_i16);
     }
 
@@ -631,7 +635,8 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vmaxvq_u16() {
-        let r = vmaxvq_u16(::mem::transmute(u16x8::new(1, 2, 7, 4, 16, 6, 7, 5)));
+        let r =
+            vmaxvq_u16(::mem::transmute(u16x8::new(1, 2, 7, 4, 16, 6, 7, 5)));
         assert_eq!(r, 16_u16);
     }
 
@@ -691,7 +696,8 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vminvq_s16() {
-        let r = vminvq_s16(::mem::transmute(i16x8::new(1, 2, 7, 4, -16, 6, 7, 5)));
+        let r =
+            vminvq_s16(::mem::transmute(i16x8::new(1, 2, 7, 4, -16, 6, 7, 5)));
         assert_eq!(r, -16_i16);
     }
 
@@ -733,7 +739,8 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vminvq_u16() {
-        let r = vminvq_u16(::mem::transmute(u16x8::new(1, 2, 7, 4, 16, 6, 7, 5)));
+        let r =
+            vminvq_u16(::mem::transmute(u16x8::new(1, 2, 7, 4, 16, 6, 7, 5)));
         assert_eq!(r, 1_u16);
     }
 
@@ -775,7 +782,10 @@ mod tests {
         let b = i8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
         let e = i8x16::new(-2, -4, 5, 7, 1, 3, 5, 7, 0, 2, 4, 6, 0, 2, 4, 6);
-        let r: i8x16 = ::mem::transmute(vpminq_s8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i8x16 = ::mem::transmute(vpminq_s8(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -784,7 +794,10 @@ mod tests {
         let a = i16x8::new(1, -2, 3, 4, 5, 6, 7, 8);
         let b = i16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = i16x8::new(-2, 3, 5, 7, 0, 2, 4, 6);
-        let r: i16x8 = ::mem::transmute(vpminq_s16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i16x8 = ::mem::transmute(vpminq_s16(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -793,7 +806,10 @@ mod tests {
         let a = i32x4::new(1, -2, 3, 4);
         let b = i32x4::new(0, 3, 2, 5);
         let e = i32x4::new(-2, 3, 0, 2);
-        let r: i32x4 = ::mem::transmute(vpminq_s32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i32x4 = ::mem::transmute(vpminq_s32(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -805,7 +821,10 @@ mod tests {
         let b = u8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
         let e = u8x16::new(1, 3, 5, 7, 1, 3, 5, 7, 0, 2, 4, 6, 0, 2, 4, 6);
-        let r: u8x16 = ::mem::transmute(vpminq_u8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u8x16 = ::mem::transmute(vpminq_u8(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -814,7 +833,10 @@ mod tests {
         let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = u16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = u16x8::new(1, 3, 5, 7, 0, 2, 4, 6);
-        let r: u16x8 = ::mem::transmute(vpminq_u16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u16x8 = ::mem::transmute(vpminq_u16(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -823,7 +845,10 @@ mod tests {
         let a = u32x4::new(1, 2, 3, 4);
         let b = u32x4::new(0, 3, 2, 5);
         let e = u32x4::new(1, 3, 0, 2);
-        let r: u32x4 = ::mem::transmute(vpminq_u32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u32x4 = ::mem::transmute(vpminq_u32(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -832,7 +857,10 @@ mod tests {
         let a = f32x4::new(1., -2., 3., 4.);
         let b = f32x4::new(0., 3., 2., 5.);
         let e = f32x4::new(-2., 3., 0., 2.);
-        let r: f32x4 = ::mem::transmute(vpminq_f32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f32x4 = ::mem::transmute(vpminq_f32(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -841,7 +869,10 @@ mod tests {
         let a = f64x2::new(1., -2.);
         let b = f64x2::new(0., 3.);
         let e = f64x2::new(-2., 0.);
-        let r: f64x2 = ::mem::transmute(vpminq_f64(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f64x2 = ::mem::transmute(vpminq_f64(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -853,7 +884,10 @@ mod tests {
         let b = i8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
         let e = i8x16::new(1, 3, 6, 8, 2, 4, 6, 8, 3, 5, 7, 9, 3, 5, 7, 9);
-        let r: i8x16 = ::mem::transmute(vpmaxq_s8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i8x16 = ::mem::transmute(vpmaxq_s8(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -862,7 +896,10 @@ mod tests {
         let a = i16x8::new(1, -2, 3, 4, 5, 6, 7, 8);
         let b = i16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = i16x8::new(1, 4, 6, 8, 3, 5, 7, 9);
-        let r: i16x8 = ::mem::transmute(vpmaxq_s16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i16x8 = ::mem::transmute(vpmaxq_s16(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -871,7 +908,10 @@ mod tests {
         let a = i32x4::new(1, -2, 3, 4);
         let b = i32x4::new(0, 3, 2, 5);
         let e = i32x4::new(1, 4, 3, 5);
-        let r: i32x4 = ::mem::transmute(vpmaxq_s32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: i32x4 = ::mem::transmute(vpmaxq_s32(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -883,7 +923,10 @@ mod tests {
         let b = u8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
         let e = u8x16::new(2, 4, 6, 8, 2, 4, 6, 8, 3, 5, 7, 9, 3, 5, 7, 9);
-        let r: u8x16 = ::mem::transmute(vpmaxq_u8(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u8x16 = ::mem::transmute(vpmaxq_u8(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -892,7 +935,10 @@ mod tests {
         let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b = u16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
         let e = u16x8::new(2, 4, 6, 8, 3, 5, 7, 9);
-        let r: u16x8 = ::mem::transmute(vpmaxq_u16(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u16x8 = ::mem::transmute(vpmaxq_u16(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -901,7 +947,10 @@ mod tests {
         let a = u32x4::new(1, 2, 3, 4);
         let b = u32x4::new(0, 3, 2, 5);
         let e = u32x4::new(2, 4, 3, 5);
-        let r: u32x4 = ::mem::transmute(vpmaxq_u32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: u32x4 = ::mem::transmute(vpmaxq_u32(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -910,7 +959,10 @@ mod tests {
         let a = f32x4::new(1., -2., 3., 4.);
         let b = f32x4::new(0., 3., 2., 5.);
         let e = f32x4::new(1., 4., 3., 5.);
-        let r: f32x4 = ::mem::transmute(vpmaxq_f32(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f32x4 = ::mem::transmute(vpmaxq_f32(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 
@@ -919,7 +971,10 @@ mod tests {
         let a = f64x2::new(1., -2.);
         let b = f64x2::new(0., 3.);
         let e = f64x2::new(1., 3.);
-        let r: f64x2 = ::mem::transmute(vpmaxq_f64(::mem::transmute(a), ::mem::transmute(b)));
+        let r: f64x2 = ::mem::transmute(vpmaxq_f64(
+            ::mem::transmute(a),
+            ::mem::transmute(b),
+        ));
         assert_eq!(r, e);
     }
 }

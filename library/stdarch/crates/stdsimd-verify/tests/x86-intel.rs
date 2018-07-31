@@ -3,8 +3,14 @@
 #![cfg_attr(
     feature = "cargo-clippy",
     allow(
-        shadow_reuse, cast_lossless, match_same_arms, nonminimal_bool,
-        print_stdout, use_debug, eq_op, useless_format
+        shadow_reuse,
+        cast_lossless,
+        match_same_arms,
+        nonminimal_bool,
+        print_stdout,
+        use_debug,
+        eq_op,
+        useless_format
     )
 )]
 
@@ -324,12 +330,15 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         }
     }
 
-    let any_i64 = rust.arguments.iter().cloned().chain(rust.ret).any(|arg| {
-        match *arg {
-            Type::PrimSigned(64) | Type::PrimUnsigned(64) => true,
-            _ => false,
-        }
-    });
+    let any_i64 =
+        rust.arguments
+            .iter()
+            .cloned()
+            .chain(rust.ret)
+            .any(|arg| match *arg {
+                Type::PrimSigned(64) | Type::PrimUnsigned(64) => true,
+                _ => false,
+            });
     let any_i64_exempt = match rust.name {
         // These intrinsics have all been manually verified against Clang's
         // headers to be available on x86, and the u64 arguments seem

@@ -218,7 +218,7 @@ pub unsafe fn sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res = a\[0\] * b\[0\] + a\[1\] * b\[1\] + c
 #[inline]
 #[cfg_attr(test, assert_instr(smlad))]
-pub unsafe fn smlad(a: int16x2_t , b: int16x2_t, c: i32) -> i32 {
+pub unsafe fn smlad(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlad(::mem::transmute(a), ::mem::transmute(b), c)
 }
 
@@ -229,7 +229,7 @@ pub unsafe fn smlad(a: int16x2_t , b: int16x2_t, c: i32) -> i32 {
 /// res = a\[0\] * b\[0\] - a\[1\] * b\[1\] + c
 #[inline]
 #[cfg_attr(test, assert_instr(smlsd))]
-pub unsafe fn smlsd(a: int16x2_t , b: int16x2_t, c: i32) -> i32 {
+pub unsafe fn smlsd(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlsd(::mem::transmute(a), ::mem::transmute(b), c)
 }
 
