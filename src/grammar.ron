@@ -165,7 +165,7 @@ Grammar(
         "ASSOC_TYPE_ARG",
 
         "PARAM_LIST",
-        "VALUE_PARAMETER",
+        "PARAM",
         "SELF_PARAM",
         "ARG_LIST",
     ]

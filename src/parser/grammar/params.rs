@@ -37,7 +37,7 @@ fn value_parameter(p: &mut Parser, require_type: bool) {
     if p.at(COLON) || require_type {
         types::ascription(p)
     }
-    m.complete(p, VALUE_PARAMETER);
+    m.complete(p, PARAM);
 }
 
 // test self_param

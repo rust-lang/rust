@@ -19,7 +19,7 @@ FILE@[0; 67)
       IDENT@[13; 14) "b"
     PARAM_LIST@[14; 23)
       L_PAREN@[14; 15)
-      VALUE_PARAMETER@[15; 21)
+      PARAM@[15; 21)
         BIND_PAT@[15; 16)
           NAME@[15; 16)
             IDENT@[15; 16) "x"
@@ -43,7 +43,7 @@ FILE@[0; 67)
       IDENT@[29; 30) "c"
     PARAM_LIST@[30; 41)
       L_PAREN@[30; 31)
-      VALUE_PARAMETER@[31; 37)
+      PARAM@[31; 37)
         BIND_PAT@[31; 32)
           NAME@[31; 32)
             IDENT@[31; 32) "x"
@@ -69,7 +69,7 @@ FILE@[0; 67)
       IDENT@[47; 48) "d"
     PARAM_LIST@[48; 64)
       L_PAREN@[48; 49)
-      VALUE_PARAMETER@[49; 55)
+      PARAM@[49; 55)
         BIND_PAT@[49; 50)
           NAME@[49; 50)
             IDENT@[49; 50) "x"
@@ -81,7 +81,7 @@ FILE@[0; 67)
                 WHITESPACE@[51; 52)
                 IDENT@[52; 55) "i32"
       COMMA@[55; 56)
-      VALUE_PARAMETER@[56; 62)
+      PARAM@[56; 62)
         BIND_PAT@[56; 58)
           NAME@[56; 58)
             WHITESPACE@[56; 57)
