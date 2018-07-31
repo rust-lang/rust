@@ -38,7 +38,7 @@ pub(super) fn list(p: &mut Parser) {
     fn type_param(p: &mut Parser) {
         assert!(p.at(IDENT));
         let m = p.start();
-        p.bump();
+        name(p);
         if p.at(COLON) {
             bounds(p);
         }

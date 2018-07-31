@@ -7,7 +7,8 @@ FILE@[0; 290)
     TYPE_PARAM_LIST@[9; 12)
       L_ANGLE@[9; 10)
       TYPE_PARAM@[10; 11)
-        IDENT@[10; 11) "T"
+        NAME@[10; 11)
+          IDENT@[10; 11) "T"
       R_ANGLE@[11; 12)
     SEMI@[12; 13)
     WHITESPACE@[13; 14)
@@ -19,7 +20,8 @@ FILE@[0; 290)
     TYPE_PARAM_LIST@[23; 26)
       L_ANGLE@[23; 24)
       TYPE_PARAM@[24; 25)
-        IDENT@[24; 25) "T"
+        NAME@[24; 25)
+          IDENT@[24; 25) "T"
       R_ANGLE@[25; 26)
     L_PAREN@[26; 27)
     POS_FIELD@[27; 30)
@@ -39,7 +41,8 @@ FILE@[0; 290)
     TYPE_PARAM_LIST@[42; 46)
       L_ANGLE@[42; 43)
       TYPE_PARAM@[43; 44)
-        IDENT@[43; 44) "T"
+        NAME@[43; 44)
+          IDENT@[43; 44) "T"
       R_ANGLE@[44; 45)
       WHITESPACE@[45; 46)
     L_CURLY@[46; 47)
@@ -205,7 +208,8 @@ FILE@[0; 290)
     TYPE_PARAM_LIST@[245; 248)
       L_ANGLE@[245; 246)
       TYPE_PARAM@[246; 247)
-        IDENT@[246; 247) "T"
+        NAME@[246; 247)
+          IDENT@[246; 247) "T"
       R_ANGLE@[247; 248)
     SEMI@[248; 249)
     WHITESPACE@[249; 250)
@@ -217,11 +221,13 @@ FILE@[0; 290)
     TYPE_PARAM_LIST@[260; 266)
       L_ANGLE@[260; 261)
       TYPE_PARAM@[261; 262)
-        IDENT@[261; 262) "T"
+        NAME@[261; 262)
+          IDENT@[261; 262) "T"
       COMMA@[262; 263)
       TYPE_PARAM@[263; 265)
-        WHITESPACE@[263; 264)
-        IDENT@[264; 265) "U"
+        NAME@[263; 265)
+          WHITESPACE@[263; 264)
+          IDENT@[264; 265) "U"
       R_ANGLE@[265; 266)
     SEMI@[266; 267)
     WHITESPACE@[267; 268)
@@ -236,12 +242,14 @@ FILE@[0; 290)
         LIFETIME@[279; 281) "'a"
       COMMA@[281; 282)
       TYPE_PARAM@[282; 284)
-        WHITESPACE@[282; 283)
-        IDENT@[283; 284) "T"
+        NAME@[282; 284)
+          WHITESPACE@[282; 283)
+          IDENT@[283; 284) "T"
       COMMA@[284; 285)
       TYPE_PARAM@[285; 287)
-        WHITESPACE@[285; 286)
-        IDENT@[286; 287) "U"
+        NAME@[285; 287)
+          WHITESPACE@[285; 286)
+          IDENT@[286; 287) "U"
       R_ANGLE@[287; 288)
     SEMI@[288; 289)
     WHITESPACE@[289; 290)

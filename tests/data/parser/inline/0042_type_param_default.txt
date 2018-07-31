@@ -7,8 +7,9 @@ FILE@[0; 19)
     TYPE_PARAM_LIST@[8; 17)
       L_ANGLE@[8; 9)
       TYPE_PARAM@[9; 16)
-        IDENT@[9; 10) "T"
-        WHITESPACE@[10; 11)
+        NAME@[9; 11)
+          IDENT@[9; 10) "T"
+          WHITESPACE@[10; 11)
         EQ@[11; 12)
         PATH_TYPE@[12; 16)
           PATH@[12; 16)

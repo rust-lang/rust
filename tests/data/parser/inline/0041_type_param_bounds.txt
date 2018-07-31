@@ -7,7 +7,8 @@ FILE@[0; 35)
     TYPE_PARAM_LIST@[8; 33)
       L_ANGLE@[8; 9)
       TYPE_PARAM@[9; 32)
-        IDENT@[9; 10) "T"
+        NAME@[9; 10)
+          IDENT@[9; 10) "T"
         COLON@[10; 11)
         WHITESPACE@[11; 12)
         LIFETIME@[12; 14) "'a"

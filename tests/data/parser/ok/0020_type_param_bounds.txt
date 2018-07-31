@@ -7,7 +7,8 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[8; 11)
       L_ANGLE@[8; 9)
       TYPE_PARAM@[9; 10)
-        IDENT@[9; 10) "T"
+        NAME@[9; 10)
+          IDENT@[9; 10) "T"
       R_ANGLE@[10; 11)
     SEMI@[11; 12)
     WHITESPACE@[12; 13)
@@ -19,7 +20,8 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[21; 25)
       L_ANGLE@[21; 22)
       TYPE_PARAM@[22; 24)
-        IDENT@[22; 23) "T"
+        NAME@[22; 23)
+          IDENT@[22; 23) "T"
         COLON@[23; 24)
       R_ANGLE@[24; 25)
     SEMI@[25; 26)
@@ -32,7 +34,8 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[35; 42)
       L_ANGLE@[35; 36)
       TYPE_PARAM@[36; 41)
-        IDENT@[36; 37) "T"
+        NAME@[36; 37)
+          IDENT@[36; 37) "T"
         COLON@[37; 38)
         WHITESPACE@[38; 39)
         LIFETIME@[39; 41) "'a"
@@ -47,7 +50,8 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[52; 62)
       L_ANGLE@[52; 53)
       TYPE_PARAM@[53; 61)
-        IDENT@[53; 54) "T"
+        NAME@[53; 54)
+          IDENT@[53; 54) "T"
         COLON@[54; 55)
         WHITESPACE@[55; 56)
         LIFETIME@[56; 58) "'a"
@@ -65,7 +69,8 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[72; 85)
       L_ANGLE@[72; 73)
       TYPE_PARAM@[73; 84)
-        IDENT@[73; 74) "T"
+        NAME@[73; 74)
+          IDENT@[73; 74) "T"
         COLON@[74; 75)
         WHITESPACE@[75; 76)
         LIFETIME@[76; 78) "'a"
@@ -85,7 +90,8 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[95; 115)
       L_ANGLE@[95; 96)
       TYPE_PARAM@[96; 114)
-        IDENT@[96; 97) "T"
+        NAME@[96; 97)
+          IDENT@[96; 97) "T"
         COLON@[97; 98)
         WHITESPACE@[98; 99)
         LIFETIME@[99; 101) "'a"
@@ -111,7 +117,8 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[125; 142)
       L_ANGLE@[125; 126)
       TYPE_PARAM@[126; 141)
-        IDENT@[126; 127) "T"
+        NAME@[126; 127)
+          IDENT@[126; 127) "T"
         COLON@[127; 128)
         PATH@[128; 135)
           PATH_SEGMENT@[128; 135)
@@ -136,7 +143,8 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[152; 179)
       L_ANGLE@[152; 153)
       TYPE_PARAM@[153; 178)
-        IDENT@[153; 154) "T"
+        NAME@[153; 154)
+          IDENT@[153; 154) "T"
         COLON@[154; 155)
         PATH@[155; 162)
           PATH_SEGMENT@[155; 162)
@@ -170,12 +178,14 @@ FILE@[0; 200)
     TYPE_PARAM_LIST@[189; 198)
       L_ANGLE@[189; 190)
       TYPE_PARAM@[190; 192)
-        IDENT@[190; 191) "T"
+        NAME@[190; 191)
+          IDENT@[190; 191) "T"
         COLON@[191; 192)
       COMMA@[192; 193)
       TYPE_PARAM@[193; 196)
-        WHITESPACE@[193; 194)
-        IDENT@[194; 195) "U"
+        NAME@[193; 195)
+          WHITESPACE@[193; 194)
+          IDENT@[194; 195) "U"
         COLON@[195; 196)
       COMMA@[196; 197)
       R_ANGLE@[197; 198)

@@ -7,7 +7,8 @@ FILE@[0; 21)
     TYPE_PARAM_LIST@[11; 15)
       L_ANGLE@[11; 12)
       TYPE_PARAM@[12; 13)
-        IDENT@[12; 13) "T"
+        NAME@[12; 13)
+          IDENT@[12; 13) "T"
       R_ANGLE@[13; 14)
       WHITESPACE@[14; 15)
     EQ@[15; 16)

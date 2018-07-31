@@ -7,7 +7,8 @@ FILE@[0; 42)
     TYPE_PARAM_LIST@[7; 10)
       L_ANGLE@[7; 8)
       TYPE_PARAM@[8; 9)
-        IDENT@[8; 9) "U"
+        NAME@[8; 9)
+          IDENT@[8; 9) "U"
       R_ANGLE@[9; 10)
     COLON@[10; 11)
     PATH@[11; 17)
