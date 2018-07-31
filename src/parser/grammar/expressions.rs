@@ -48,6 +48,7 @@ pub(super) fn expr(p: &mut Parser) {
 fn prefix_expr(p: &mut Parser) -> Option<CompletedMarker> {
     match p.current() {
         AMPERSAND => Some(ref_expr(p)),
+        STAR => Some(deref_expr(p)),
         _ => atom_expr(p),
     }
 }
@@ -64,6 +65,18 @@ fn ref_expr(p: &mut Parser) -> CompletedMarker {
     p.eat(MUT_KW);
     expr(p);
     m.complete(p, REF_EXPR)
+}
+
+// test deref_expr
+// fn foo() {
+//     **&1;
+// }
+fn deref_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(STAR));
+    let m = p.start();
+    p.bump();
+    expr(p);
+    m.complete(p, DEREF_EXPR)
 }
 
 fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {

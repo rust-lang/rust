@@ -129,6 +129,7 @@ Grammar(
         "METHOD_CALL_EXPR",
         "FIELD_EXPR",
         "REF_EXPR",
+        "DEREF_EXPR",
         "STRUCT_LIT",
         "STRUCT_LIT_FIELD",
 
