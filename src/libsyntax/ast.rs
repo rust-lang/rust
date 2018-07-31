@@ -1300,11 +1300,6 @@ impl LitKind {
         }
     }
 
-    /// Returns a `LitKind::ByteStr` from `content`.
-    pub fn new_byte_str(content: Vec<u8>) -> LitKind {
-        LitKind::ByteStr(Lrc::new(content))
-    }
-
     /// Returns true if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
         match *self {

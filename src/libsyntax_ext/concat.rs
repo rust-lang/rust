@@ -98,10 +98,7 @@ pub fn expand_syntax_ext(
     }
     let sp = sp.apply_mark(cx.current_expansion.mark);
     if b_accumulator.len() > 0 {
-        base::MacEager::expr(cx.expr_lit(
-            sp,
-            ast::LitKind::new_byte_str(b_accumulator),
-        ))
+        base::MacEager::expr(cx.expr_byte_str(sp, b_accumulator))
     } else {
         base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&string_accumulator)))
     }
