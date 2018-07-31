@@ -475,6 +475,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 cx: self.cx,
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
+                tests_nameable: true,
             };
             (fragment.fold_with(&mut collector), collector.invocations)
         };
@@ -1050,6 +1051,11 @@ struct InvocationCollector<'a, 'b: 'a> {
     cfg: StripUnconfigured<'a>,
     invocations: Vec<Invocation>,
     monotonic: bool,
+
+    /// Test functions need to be nameable. Tests inside functions or in other
+    /// unnameable locations need to be ignored. `tests_nameable` tracks whether
+    /// any test functions found in the current context would be nameable.
+    tests_nameable: bool,
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
@@ -1065,6 +1071,20 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             },
         });
         placeholder(fragment_kind, NodeId::placeholder_from_mark(mark))
+    }
+
+    /// Folds the item allowing tests to be expanded because they are still nameable.
+    /// This should probably only be called with module items
+    fn fold_nameable(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+        fold::noop_fold_item(item, self)
+    }
+
+    /// Folds the item but doesn't allow tests to occur within it
+    fn fold_unnameable(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+        let was_nameable = mem::replace(&mut self.tests_nameable, false);
+        let items = fold::noop_fold_item(item, self);
+        self.tests_nameable = was_nameable;
+        items
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: AstFragmentKind) -> AstFragment {
@@ -1307,7 +1327,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
             }
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
                 if item.ident == keywords::Invalid.ident() {
-                    return noop_fold_item(item, self);
+                    return self.fold_nameable(item);
                 }
 
                 let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
@@ -1347,14 +1367,14 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
-                let result = noop_fold_item(item, self);
+                let result = self.fold_nameable(item);
                 self.cx.current_expansion.module = orig_module;
                 self.cx.current_expansion.directory_ownership = orig_directory_ownership;
                 result
             }
             // Ensure that test functions are accessible from the test harness.
             ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
-                if item.attrs.iter().any(|attr| is_test_or_bench(attr)) {
+                if self.tests_nameable && item.attrs.iter().any(|attr| is_test_or_bench(attr)) {
                     let orig_vis = item.vis.clone();
 
                     // Publicize the item under gensymed name to avoid pollution
@@ -1370,16 +1390,16 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         item.ident.span,
                         orig_vis,
                         Some(Ident::from_interned_str(item.ident.as_interned_str())),
-                        self.cx.path(item.ident.span, vec![item.ident]));
+                        self.cx.path(item.ident.span, vec![Ident::from_str("self"), item.ident]));
 
                     SmallVector::many(
-                        noop_fold_item(item, self).into_iter()
-                            .chain(noop_fold_item(use_item, self)))
+                        self.fold_unnameable(item).into_iter()
+                            .chain(self.fold_unnameable(use_item)))
                 } else {
-                    noop_fold_item(item, self)
+                    self.fold_unnameable(item)
                 }
             }
-            _ => noop_fold_item(item, self),
+            _ => self.fold_unnameable(item),
         }
     }
 
