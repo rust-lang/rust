@@ -12,6 +12,7 @@ pub struct TextUnit(u32);
 
 impl TextUnit {
     /// `TextUnit` equal to the length of this char.
+    #[inline(always)]
     pub fn of_char(c: char) -> TextUnit {
         TextUnit(c.len_utf8() as u32)
     }
@@ -20,6 +21,7 @@ impl TextUnit {
     ///
     /// # Panics
     /// Panics if the length of the string is greater than `u32::max_value()`
+    #[inline(always)]
     pub fn of_str(s: &str) -> TextUnit {
         if s.len() > u32::max_value() as usize {
             panic!("string is to long")
@@ -35,18 +37,21 @@ impl fmt::Debug for TextUnit {
 }
 
 impl fmt::Display for TextUnit {
+    #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 impl From<TextUnit> for u32 {
+    #[inline(always)]
     fn from(tu: TextUnit) -> u32 {
         tu.0
     }
 }
 
 impl From<u32> for TextUnit {
+    #[inline(always)]
     fn from(tu: u32) -> TextUnit {
         TextUnit(tu)
     }
@@ -57,6 +62,7 @@ macro_rules! ops_impls {
 
 impl ops::$T<TextUnit> for TextUnit {
     type Output = TextUnit;
+    #[inline(always)]
     fn $f(self, rhs: TextUnit) -> TextUnit {
         TextUnit(self.0 $op rhs.0)
     }
@@ -64,6 +70,7 @@ impl ops::$T<TextUnit> for TextUnit {
 
 impl<'a> ops::$T<&'a TextUnit> for TextUnit {
     type Output = TextUnit;
+    #[inline(always)]
     fn $f(self, rhs: &'a TextUnit) -> TextUnit {
         ops::$T::$f(self, *rhs)
     }
@@ -71,6 +78,7 @@ impl<'a> ops::$T<&'a TextUnit> for TextUnit {
 
 impl<'a> ops::$T<TextUnit> for &'a TextUnit {
     type Output = TextUnit;
+    #[inline(always)]
     fn $f(self, rhs: TextUnit) -> TextUnit {
         ops::$T::$f(*self, rhs)
     }
@@ -78,18 +86,21 @@ impl<'a> ops::$T<TextUnit> for &'a TextUnit {
 
 impl<'a, 'b> ops::$T<&'a TextUnit> for &'b TextUnit {
     type Output = TextUnit;
+    #[inline(always)]
     fn $f(self, rhs: &'a TextUnit) -> TextUnit {
         ops::$T::$f(*self, *rhs)
     }
 }
 
 impl ops::$AT<TextUnit> for TextUnit {
+    #[inline(always)]
     fn $af(&mut self, rhs: TextUnit) {
         self.0 = self.0 $op rhs.0
     }
 }
 
 impl<'a> ops::$AT<&'a TextUnit> for TextUnit {
+    #[inline(always)]
     fn $af(&mut self, rhs: &'a TextUnit) {
         ops::$AT::$af(self, *rhs)
     }
@@ -137,6 +148,7 @@ impl fmt::Display for TextRange {
 
 impl TextRange {
     /// The left-inclusive range (`[from..to)`) between to points in the text
+    #[inline(always)]
     pub fn from_to(from: TextUnit, to: TextUnit) -> TextRange {
         assert!(from <= to, "Invalid text range [{}; {})", from, to);
         TextRange {
@@ -146,26 +158,31 @@ impl TextRange {
     }
 
     /// The left-inclusive range (`[offset..offset + len)`) between to points in the text
+    #[inline(always)]
     pub fn offset_len(offset: TextUnit, len: TextUnit) -> TextRange {
         TextRange::from_to(offset, offset + len)
     }
 
     /// The inclusive start of this range
+    #[inline(always)]
     pub fn start(&self) -> TextUnit {
         self.start
     }
 
     /// The exclusive end of this range
+    #[inline(always)]
     pub fn end(&self) -> TextUnit {
         self.end
     }
 
     /// The length of this range
+    #[inline(always)]
     pub fn len(&self) -> TextUnit {
         self.end - self.start
     }
 
     /// Is this range empty of any content?
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.start() == self.end()
     }
