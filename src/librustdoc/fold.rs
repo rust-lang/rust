@@ -12,19 +12,13 @@ use std::mem;
 
 use clean::*;
 
-pub enum FoldItem {
-    Retain(Item),
-    Strip(Item),
-    Erase,
-}
+pub struct StripItem(pub Item);
 
-impl FoldItem {
-    pub fn fold(self) -> Option<Item> {
-        match self {
-            FoldItem::Erase => None,
-            FoldItem::Retain(i) => Some(i),
-            FoldItem::Strip(item@ Item { inner: StrippedItem(..), .. } ) => Some(item),
-            FoldItem::Strip(mut i) => {
+impl StripItem {
+    pub fn strip(self) -> Option<Item> {
+        match self.0 {
+            Item { inner: StrippedItem(..), .. } => Some(self.0),
+            mut i => {
                 i.inner = StrippedItem(box i.inner);
                 Some(i)
             }
