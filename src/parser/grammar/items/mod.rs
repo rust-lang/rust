@@ -149,6 +149,17 @@ fn item(p: &mut Parser) {
                 }
             }
         }
+        TRAIT_KW => {
+            traits::trait_item(p);
+            TRAIT_ITEM
+        }
+        // test auto_trait
+        // auto trait T {}
+        IDENT if p.at_contextual_kw("auto") && la == TRAIT_KW => {
+            p.bump_remap(AUTO_KW);
+            traits::trait_item(p);
+            TRAIT_ITEM
+        }
         IMPL_KW => {
             traits::impl_item(p);
             IMPL_ITEM

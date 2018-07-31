@@ -1,9 +1,16 @@
 use super::*;
 
+// test trait_item
+// trait T<U>: Hash + Clone where U: Copy {}
 pub(super) fn trait_item(p: &mut Parser) {
     assert!(p.at(TRAIT_KW));
     p.bump();
     name(p);
+    type_params::list(p);
+    if p.at(COLON) {
+        type_params::bounds(p);
+    }
+    type_params::where_clause(p);
     p.expect(L_CURLY);
     p.expect(R_CURLY);
 }

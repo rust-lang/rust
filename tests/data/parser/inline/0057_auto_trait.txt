@@ -1,0 +1,12 @@
+FILE@[0; 16)
+  TRAIT_ITEM@[0; 16)
+    AUTO_KW@[0; 4)
+    WHITESPACE@[4; 5)
+    TRAIT_KW@[5; 10)
+    NAME@[10; 13)
+      WHITESPACE@[10; 11)
+      IDENT@[11; 12) "T"
+      WHITESPACE@[12; 13)
+    L_CURLY@[13; 14)
+    R_CURLY@[14; 15)
+    WHITESPACE@[15; 16)

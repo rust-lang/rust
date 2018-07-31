@@ -1,0 +1,36 @@
+FILE@[0; 42)
+  TRAIT_ITEM@[0; 42)
+    TRAIT_KW@[0; 5)
+    NAME@[5; 7)
+      WHITESPACE@[5; 6)
+      IDENT@[6; 7) "T"
+    TYPE_PARAM_LIST@[7; 10)
+      L_ANGLE@[7; 8)
+      TYPE_PARAM@[8; 9)
+        IDENT@[8; 9) "U"
+      R_ANGLE@[9; 10)
+    COLON@[10; 11)
+    PATH@[11; 17)
+      PATH_SEGMENT@[11; 17)
+        NAME_REF@[11; 17)
+          WHITESPACE@[11; 12)
+          IDENT@[12; 16) "Hash"
+          WHITESPACE@[16; 17)
+    PLUS@[17; 18)
+    PATH@[18; 25)
+      PATH_SEGMENT@[18; 25)
+        NAME_REF@[18; 25)
+          WHITESPACE@[18; 19)
+          IDENT@[19; 24) "Clone"
+          WHITESPACE@[24; 25)
+    WHERE_CLAUSE@[25; 39)
+      WHERE_KW@[25; 30)
+      WHITESPACE@[30; 31)
+      IDENT@[31; 32) "U"
+      COLON@[32; 33)
+      WHITESPACE@[33; 34)
+      IDENT@[34; 38) "Copy"
+      WHITESPACE@[38; 39)
+    L_CURLY@[39; 40)
+    R_CURLY@[40; 41)
+    WHITESPACE@[41; 42)

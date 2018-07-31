@@ -39,29 +39,8 @@ pub(super) fn list(p: &mut Parser) {
         assert!(p.at(IDENT));
         let m = p.start();
         p.bump();
-        if p.eat(COLON) {
-            // test type_param_bounds
-            // struct S<T: 'a + ?Sized + (Copy)>;
-            loop {
-                let has_paren = p.eat(L_PAREN);
-                p.eat(QUESTION);
-                if p.at(FOR_KW) {
-                    //TODO
-                }
-                if p.at(LIFETIME) {
-                    p.bump();
-                } else if paths::is_path_start(p) {
-                    paths::type_path(p);
-                } else {
-                    break;
-                }
-                if has_paren {
-                    p.expect(R_PAREN);
-                }
-                if !p.eat(PLUS) {
-                    break;
-                }
-            }
+        if p.at(COLON) {
+            bounds(p);
         }
         // test type_param_default
         // struct S<T = i32>;
@@ -70,6 +49,33 @@ pub(super) fn list(p: &mut Parser) {
             types::type_(p)
         }
         m.complete(p, TYPE_PARAM);
+    }
+}
+
+// test type_param_bounds
+// struct S<T: 'a + ?Sized + (Copy)>;
+pub(super) fn bounds(p: &mut Parser) {
+    assert!(p.at(COLON));
+    p.bump();
+    loop {
+        let has_paren = p.eat(L_PAREN);
+        p.eat(QUESTION);
+        if p.at(FOR_KW) {
+            //TODO
+        }
+        if p.at(LIFETIME) {
+            p.bump();
+        } else if paths::is_path_start(p) {
+            paths::type_path(p);
+        } else {
+            break;
+        }
+        if has_paren {
+            p.expect(R_PAREN);
+        }
+        if !p.eat(PLUS) {
+            break;
+        }
     }
 }
 

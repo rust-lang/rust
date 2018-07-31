@@ -1,0 +1,1 @@
+auto trait T {}
