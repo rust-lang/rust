@@ -26,7 +26,7 @@ pub(super) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 }
 
 pub(super) fn expr(p: &mut Parser) {
-    let mut lhs = atom_expr(p);
+    let mut lhs = prefix_expr(p);
 
     while let Some(m) = lhs {
         match p.current() {
@@ -34,6 +34,27 @@ pub(super) fn expr(p: &mut Parser) {
             _ => break,
         }
     }
+}
+
+fn prefix_expr(p: &mut Parser) -> Option<CompletedMarker> {
+    match p.current() {
+        AMPERSAND => Some(ref_expr(p)),
+        _ => atom_expr(p)
+    }
+}
+
+// test ref_expr
+// fn foo() {
+//     let _ = &1;
+//     let _ = &mut &f();
+// }
+fn ref_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(AMPERSAND));
+    let m = p.start();
+    p.bump();
+    p.eat(MUT_KW);
+    expr(p);
+    m.complete(p, REF_EXPR)
 }
 
 fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {

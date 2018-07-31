@@ -126,6 +126,7 @@ Grammar(
         "TUPLE_EXPR",
         "PATH_EXPR",
         "CALL_EXPR",
+        "REF_EXPR",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
