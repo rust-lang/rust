@@ -93,6 +93,11 @@ pub struct CStore {
     pub metadata_loader: Box<dyn MetadataLoader + Sync>,
 }
 
+pub enum LoadedMacro {
+    MacroDef(ast::Item),
+    ProcMacro(Lrc<SyntaxExtension>),
+}
+
 impl CStore {
     pub fn new(metadata_loader: Box<dyn MetadataLoader + Sync>) -> CStore {
         CStore {
