@@ -4,7 +4,7 @@ pub(super) fn pattern(p: &mut Parser) {
     match p.current() {
         UNDERSCORE => placeholder_pat(p),
         AMPERSAND => ref_pat(p),
-        IDENT | REF_KW => bind_pat(p),
+        IDENT | REF_KW | MUT_KW => bind_pat(p),
         _ => p.err_and_bump("expected pattern"),
     }
 }
@@ -35,13 +35,17 @@ fn ref_pat(p: &mut Parser) {
 // test bind_pat
 // fn main() {
 //     let a = ();
-//     let ref b = ();
-//     let ref mut c = ();
-//     let d @ _ = ();
+//     let mut b = ();
+//     let ref c = ();
+//     let ref mut d = ();
+//     let e @ _ = ();
+//     let ref mut f @ g @ _ = ();
 // }
 fn bind_pat(p: &mut Parser) {
     let m = p.start();
     if p.eat(REF_KW) {
+        p.eat(MUT_KW);
+    } else {
         p.eat(MUT_KW);
     }
     name(p);

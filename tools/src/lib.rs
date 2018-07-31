@@ -3,22 +3,10 @@ extern crate itertools;
 use std::hash;
 use itertools::Itertools;
 
-#[derive(Debug, Eq)]
+#[derive(Debug)]
 pub struct Test {
     pub name: String,
     pub text: String,
-}
-
-impl PartialEq for Test {
-    fn eq(&self, other: &Test) -> bool {
-        self.name.eq(&other.name)
-    }
-}
-
-impl hash::Hash for Test {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state)
-    }
 }
 
 pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {

@@ -8,7 +8,7 @@ extern crate tools;
 #[macro_use]
 extern crate commandspec;
 
-use std::{collections::{HashSet, HashMap}, fs, path::Path};
+use std::{collections::{HashMap}, fs, path::{Path, PathBuf}};
 use clap::{App, Arg, SubCommand};
 use tools::{collect_tests, Test};
 
@@ -104,21 +104,27 @@ fn gen_tests(verify: bool) -> Result<()> {
     }
     let existing = existing_tests(inline_tests_dir)?;
 
-    for t in existing.difference(&tests) {
-        panic!("Test is deleted: {}\n{}", t.name, t.text);
+    for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
+        panic!("Test is deleted: {}", t);
     }
 
-    let new_tests = tests.difference(&existing);
-    for (i, t) in new_tests.enumerate() {
-        let name = format!("{:04}_{}.rs", existing.len() + i + 1, t.name);
-        let path = inline_tests_dir.join(name);
-        update(&path, &t.text, verify)?;
+    let mut new_idx = existing.len() + 2;
+    for (name, test) in tests {
+        let path = match existing.get(&name) {
+            Some((path, _test)) => path.clone(),
+            None => {
+                let file_name = format!("{:04}_{}.rs", new_idx, name);
+                new_idx += 1;
+                inline_tests_dir.join(file_name)
+            }
+        };
+        update(&path, &test.text, verify)?;
     }
     Ok(())
 }
 
-fn tests_from_dir(dir: &Path) -> Result<HashSet<Test>> {
-    let mut res = HashSet::new();
+fn tests_from_dir(dir: &Path) -> Result<HashMap<String, Test>> {
+    let mut res = HashMap::new();
     for entry in ::walkdir::WalkDir::new(dir) {
         let entry = entry.unwrap();
         if !entry.file_type().is_file() {
@@ -130,7 +136,7 @@ fn tests_from_dir(dir: &Path) -> Result<HashSet<Test>> {
         let text = fs::read_to_string(entry.path())?;
 
         for (_, test) in collect_tests(&text) {
-            if let Some(old_test) = res.replace(test) {
+            if let Some(old_test) = res.insert(test.name.clone(), test) {
                 bail!("Duplicate test: {}", old_test.name)
             }
         }
@@ -138,18 +144,24 @@ fn tests_from_dir(dir: &Path) -> Result<HashSet<Test>> {
     Ok(res)
 }
 
-fn existing_tests(dir: &Path) -> Result<HashSet<Test>> {
-    let mut res = HashSet::new();
+fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
+    let mut res = HashMap::new();
     for file in fs::read_dir(dir)? {
         let file = file?;
         let path = file.path();
         if path.extension().unwrap_or_default() != "rs" {
             continue;
         }
-        let name = path.file_name().unwrap().to_str().unwrap();
-        let name = name["0000_".len()..name.len() - 3].to_string();
+        let name = {
+            let file_name = path.file_name().unwrap().to_str().unwrap();
+            file_name[5..file_name.len() - 3].to_string()
+        };
         let text = fs::read_to_string(&path)?;
-        res.insert(Test { name, text });
+        let test = Test { name: name.clone(), text };
+        match res.insert(name, (path, test)) {
+            Some(old) => println!("Duplicate test: {:?}", old),
+            None => (),
+        }
     }
     Ok(res)
 }

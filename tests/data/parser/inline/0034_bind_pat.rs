@@ -1,6 +1,8 @@
 fn main() {
     let a = ();
-    let ref b = ();
-    let ref mut c = ();
-    let d @ _ = ();
+    let mut b = ();
+    let ref c = ();
+    let ref mut d = ();
+    let e @ _ = ();
+    let ref mut f @ g @ _ = ();
 }
