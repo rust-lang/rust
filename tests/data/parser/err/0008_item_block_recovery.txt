@@ -37,7 +37,7 @@ FILE@[0; 95)
     WHITESPACE@[45; 50)
     R_CURLY@[50; 51)
     WHITESPACE@[51; 52)
-    IDENT@[52; 56) "else"
+    ELSE_KW@[52; 56)
     WHITESPACE@[56; 57)
     L_CURLY@[57; 58)
     WHITESPACE@[58; 67)

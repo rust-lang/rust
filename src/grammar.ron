@@ -60,6 +60,7 @@ Grammar(
         "loop",
         "while",
         "if",
+        "else",
         "match",
         "const",
         "static",
@@ -134,6 +135,7 @@ Grammar(
         "LAMBDA_EXPR",
         "STRUCT_LIT",
         "STRUCT_LIT_FIELD",
+        "IF_EXPR",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",

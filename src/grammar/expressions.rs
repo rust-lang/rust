@@ -145,14 +145,16 @@ fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
         return Some(path_expr(p));
     }
 
-    match p.current() {
-        L_PAREN => Some(tuple_expr(p)),
-        PIPE => Some(lambda_expr(p)),
+    let done = match p.current() {
+        L_PAREN => tuple_expr(p),
+        PIPE => lambda_expr(p),
+        IF_KW => if_expr(p),
         _ => {
             p.err_and_bump("expected expression");
-            None
+            return None;
         }
-    }
+    };
+    Some(done)
 }
 
 fn tuple_expr(p: &mut Parser) -> CompletedMarker {
@@ -180,6 +182,29 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
         expr(p)
     }
     m.complete(p, LAMBDA_EXPR)
+}
+
+// test if_expr
+// fn foo() {
+//     if true {};
+//     if true {} else {};
+//     if true {} else if false {} else {}
+// }
+fn if_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(IF_KW));
+    let m = p.start();
+    p.bump();
+    expr(p);
+    block(p);
+    if p.at(ELSE_KW) {
+        p.bump();
+        if p.at(IF_KW) {
+            if_expr(p);
+        } else {
+            block(p);
+        }
+    }
+    m.complete(p, IF_EXPR)
 }
 
 // test call_expr
