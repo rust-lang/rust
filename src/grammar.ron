@@ -146,7 +146,9 @@ Grammar(
         "NAME_REF",
         "VALUE_PARAMETER",
         "BLOCK",
+
         "LET_STMT",
+        "EXPR_STMT",
 
         "TYPE_PARAM",
         "LIFETIME_PARAM",

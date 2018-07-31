@@ -223,6 +223,11 @@ fn fn_item(p: &mut Parser) {
     fn_ret_type(p);
     block(p);
 
+    // test block
+    // fn a() {}
+    // fn b() { let _ = 1; }
+    // fn c() { 1; 2; }
+    // fn d() { 1; 2 }
     fn block(p: &mut Parser) {
         if !p.at(L_CURLY) {
             p.error("expected block");
@@ -232,7 +237,18 @@ fn fn_item(p: &mut Parser) {
         while !p.at(EOF) && !p.at(R_CURLY) {
             match p.current() {
                 LET_KW => let_stmt(p),
-                _ => p.err_and_bump("expected statement"),
+                _ => {
+                    let expr_stmt = p.start();
+                    expressions::expr(p);
+                    if p.eat(SEMI) {
+                        expr_stmt.complete(p, EXPR_STMT);
+                        if p.at(R_CURLY) {
+                            break;
+                        }
+                    } else {
+                        expr_stmt.abandon(p);
+                    }
+                }
             }
         }
         p.expect(R_CURLY);
