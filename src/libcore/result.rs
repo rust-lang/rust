@@ -1176,9 +1176,13 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
                 }
             }
 
+            #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let (_min, max) = self.iter.size_hint();
-                (0, max)
+                if self.err.is_some() {
+                    (0, Some(0))
+                } else {
+                    self.iter.size_hint()
+                }
             }
         }
 

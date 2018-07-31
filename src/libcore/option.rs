@@ -1267,8 +1267,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
                 if self.found_none {
                     (0, Some(0))
                 } else {
-                    let (_, upper) = self.iter.size_hint();
-                    (0, upper)
+                    self.iter.size_hint()
                 }
             }
         }
