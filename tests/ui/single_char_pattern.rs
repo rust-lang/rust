@@ -40,4 +40,6 @@ fn main() {
 
     let h = HashSet::<String>::new();
     h.contains("X"); // should not warn
+
+    x.replace(";", ",").split(","); // issue #2978
 }
