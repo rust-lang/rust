@@ -18,7 +18,7 @@ FILE@[0; 54)
           COMMA@[12; 13)
           WHITESPACE@[13; 14)
         LITERAL@[14; 16)
-          INT_NUMBER@[14; 16)
+          INT_NUMBER@[14; 16) "92"
         R_PAREN@[16; 17)
       R_BRACK@[17; 18)
       WHITESPACE@[18; 19)

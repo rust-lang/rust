@@ -41,7 +41,7 @@ FILE@[0; 89)
       EQ@[44; 45)
       LITERAL@[45; 48)
         WHITESPACE@[45; 46)
-        INT_NUMBER@[46; 48)
+        INT_NUMBER@[46; 48) "92"
       SEMI@[48; 49)
       WHITESPACE@[49; 54)
     FN_ITEM@[54; 70)

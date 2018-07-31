@@ -39,11 +39,11 @@ FILE@[0; 44)
           ARG_LIST@[33; 40)
             L_PAREN@[33; 34)
             LITERAL@[34; 35)
-              INT_NUMBER@[34; 35)
+              INT_NUMBER@[34; 35) "1"
             COMMA@[35; 36)
             LITERAL@[36; 38)
               WHITESPACE@[36; 37)
-              INT_NUMBER@[37; 38)
+              INT_NUMBER@[37; 38) "2"
             COMMA@[38; 39)
             R_PAREN@[39; 40)
         SEMI@[40; 41)

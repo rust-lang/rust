@@ -17,7 +17,7 @@ FILE@[0; 18)
         err: `expected SEMI`
         err: `expected item`
   ERROR@[13; 15)
-    INT_NUMBER@[13; 15)
+    INT_NUMBER@[13; 15) "92"
     err: `expected item`
   ERROR@[15; 16)
     R_BRACK@[15; 16)

@@ -24,7 +24,7 @@ FILE@[0; 74)
       WHITESPACE@[30; 31)
       err: `expected field declaration`
     ERROR@[31; 38)
-      INT_NUMBER@[31; 33)
+      INT_NUMBER@[31; 33) "92"
       WHITESPACE@[33; 38)
       err: `expected COMMA`
       err: `expected field declaration`

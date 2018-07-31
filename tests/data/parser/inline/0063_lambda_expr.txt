@@ -40,7 +40,7 @@ FILE@[0; 74)
             L_CURLY@[36; 37)
             LITERAL@[37; 41)
               WHITESPACE@[37; 38)
-              INT_NUMBER@[38; 40)
+              INT_NUMBER@[38; 40) "92"
               WHITESPACE@[40; 41)
             R_CURLY@[41; 42)
         SEMI@[42; 43)

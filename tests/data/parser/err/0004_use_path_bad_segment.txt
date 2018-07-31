@@ -14,7 +14,7 @@ FILE@[0; 12)
         err: `expected item`
         PATH_SEGMENT@[9; 9)
   ERROR@[9; 11)
-    INT_NUMBER@[9; 11)
+    INT_NUMBER@[9; 11) "92"
     err: `expected item, found `;`
 consider removing this semicolon`
   ERROR@[11; 12)

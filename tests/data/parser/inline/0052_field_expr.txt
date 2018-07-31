@@ -32,7 +32,7 @@ FILE@[0; 37)
                   NAME_REF@[26; 27)
                     IDENT@[26; 27) "x"
             DOT@[27; 28)
-            INT_NUMBER@[28; 29)
+            INT_NUMBER@[28; 29) "0"
           DOT@[29; 30)
           NAME_REF@[30; 33)
             IDENT@[30; 33) "bar"

@@ -22,7 +22,7 @@ FILE@[0; 52)
           WHITESPACE@[22; 23)
           AMPERSAND@[23; 24)
           LITERAL@[24; 25)
-            INT_NUMBER@[24; 25)
+            INT_NUMBER@[24; 25) "1"
         SEMI@[25; 26)
         WHITESPACE@[26; 31)
       LET_STMT@[31; 50)

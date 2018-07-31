@@ -19,7 +19,7 @@ FILE@[0; 23)
             REF_EXPR@[17; 19)
               AMPERSAND@[17; 18)
               LITERAL@[18; 19)
-                INT_NUMBER@[18; 19)
+                INT_NUMBER@[18; 19) "1"
         SEMI@[19; 20)
         WHITESPACE@[20; 21)
       R_CURLY@[21; 22)

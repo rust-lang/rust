@@ -70,7 +70,7 @@ FILE@[0; 182)
       EQ@[91; 92)
       LITERAL@[92; 95)
         WHITESPACE@[92; 93)
-        INT_NUMBER@[93; 95)
+        INT_NUMBER@[93; 95) "92"
     COMMA@[95; 96)
     ENUM_VARIANT@[96; 146)
       WHITESPACE@[96; 101)

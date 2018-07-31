@@ -8,7 +8,7 @@ FILE@[0; 43)
       L_ANGLE@[8; 9)
       err: `expected type parameter`
       ERROR@[9; 12)
-        INT_NUMBER@[9; 11)
+        INT_NUMBER@[9; 11) "90"
         WHITESPACE@[11; 12)
         err: `expected COMMA`
         err: `expected R_ANGLE`
@@ -19,7 +19,7 @@ FILE@[0; 43)
     WHITESPACE@[13; 14)
     err: `expected item`
   ERROR@[14; 15)
-    INT_NUMBER@[14; 15)
+    INT_NUMBER@[14; 15) "2"
     err: `expected item`
   ERROR@[15; 17)
     R_ANGLE@[15; 16)

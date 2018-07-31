@@ -132,7 +132,7 @@ impl<R: TreeRoot> fmt::Debug for SyntaxNode<R> {
 
 fn has_short_text(kind: SyntaxKind) -> bool {
     match kind {
-        IDENT | LIFETIME => true,
+        IDENT | LIFETIME | INT_NUMBER | FLOAT_NUMBER => true,
         _ => false,
     }
 }
