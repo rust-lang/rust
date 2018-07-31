@@ -248,16 +248,19 @@ fn fn_item(p: &mut Parser) {
         while !p.at(EOF) && !p.at(R_CURLY) {
             match p.current() {
                 LET_KW => let_stmt(p),
-                _ => {
-                    let expr_stmt = p.start();
-                    expressions::expr(p);
-                    if p.eat(SEMI) {
-                        expr_stmt.complete(p, EXPR_STMT);
-                        if p.at(R_CURLY) {
-                            break;
-                        }
+                c => {
+                    // test block_items
+                    // fn a() { fn b() {} }
+                    if ITEM_FIRST.contains(c) {
+                        item(p)
                     } else {
-                        expr_stmt.abandon(p);
+                        let expr_stmt = p.start();
+                        expressions::expr(p);
+                        if p.eat(SEMI) {
+                            expr_stmt.complete(p, EXPR_STMT);
+                        } else {
+                            expr_stmt.abandon(p);
+                        }
                     }
                 }
             }
