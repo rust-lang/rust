@@ -456,9 +456,7 @@ impl GetOptsOptions {
             return Err(format_err!("Can't use both `--verbose` and `--quiet`"));
         }
 
-        let rust_nightly = option_env!("CFG_RELEASE_CHANNEL")
-            .map(|c| c == "nightly")
-            .unwrap_or(false);
+        let rust_nightly = is_nightly();
 
         if rust_nightly {
             options.unstable_features = matches.opt_present("unstable-features");
