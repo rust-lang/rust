@@ -39,6 +39,7 @@ pub(super) fn expr(p: &mut Parser) {
             } else {
                 field_expr(p, lhs)
             },
+            DOT if p.nth(1) == INT_NUMBER => field_expr(p, lhs),
             _ => break,
         }
     }
@@ -202,7 +203,7 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(DOT) && p.nth(1) == IDENT && p.nth(2) == L_PAREN);
     let m = lhs.precede(p);
     p.bump();
-    p.bump();
+    name_ref(p);
     arg_list(p);
     m.complete(p, METHOD_CALL_EXPR)
 }
@@ -212,10 +213,14 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 //     x.foo.bar;
 // }
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(DOT) && p.nth(1) == IDENT);
+    assert!(p.at(DOT) && (p.nth(1) == IDENT || p.nth(1) == INT_NUMBER));
     let m = lhs.precede(p);
     p.bump();
-    p.bump();
+    if p.at(IDENT) {
+        name_ref(p)
+    } else {
+        p.bump()
+    }
     m.complete(p, FIELD_EXPR)
 }
 

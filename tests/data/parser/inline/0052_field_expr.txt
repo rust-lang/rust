@@ -20,9 +20,11 @@ FILE@[0; 28)
                     WHITESPACE@[10; 15)
                     IDENT@[15; 16) "x"
             DOT@[16; 17)
-            IDENT@[17; 20) "foo"
+            NAME_REF@[17; 20)
+              IDENT@[17; 20) "foo"
           DOT@[20; 21)
-          IDENT@[21; 24) "bar"
+          NAME_REF@[21; 24)
+            IDENT@[21; 24) "bar"
         SEMI@[24; 25)
         WHITESPACE@[25; 26)
       R_CURLY@[26; 27)

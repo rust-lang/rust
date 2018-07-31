@@ -19,7 +19,8 @@ FILE@[0; 44)
                   WHITESPACE@[10; 15)
                   IDENT@[15; 16) "x"
           DOT@[16; 17)
-          IDENT@[17; 20) "foo"
+          NAME_REF@[17; 20)
+            IDENT@[17; 20) "foo"
           ARG_LIST@[20; 22)
             L_PAREN@[20; 21)
             R_PAREN@[21; 22)
@@ -33,7 +34,8 @@ FILE@[0; 44)
                 NAME_REF@[28; 29)
                   IDENT@[28; 29) "y"
           DOT@[29; 30)
-          IDENT@[30; 33) "bar"
+          NAME_REF@[30; 33)
+            IDENT@[30; 33) "bar"
           ARG_LIST@[33; 40)
             L_PAREN@[33; 34)
             LITERAL@[34; 35)
