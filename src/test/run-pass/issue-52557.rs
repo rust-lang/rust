@@ -22,12 +22,17 @@ mod a {
 
 mod b {
     #[test]
-    fn foo() {}
+    fn foo() {
+        local_name(); // ensure the local name still works
+    }
+
+    #[test]
+    fn local_name() {}
 }
 
 use a::*;
 use b::*;
 
-fn conflict() {
+pub fn conflict() {
     let _: bool = foo();
 }
