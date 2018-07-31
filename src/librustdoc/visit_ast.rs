@@ -38,10 +38,10 @@ use doctree::*;
 // also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?
 
-pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
+pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
+    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>,
     view_item_stack: FxHashSet<ast::NodeId>,
     inlining: bool,
     /// Is the current module and all of its parents public?
@@ -49,8 +49,10 @@ pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
     exact_paths: Option<FxHashMap<DefId, Vec<String>>>,
 }
 
-impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> RustdocVisitor<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
+    pub fn new(
+        cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>
+    ) -> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet();
         stack.insert(ast::CRATE_NODE_ID);

@@ -18,6 +18,7 @@ use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex,
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
+use rustc::middle::cstore::CrateStore;
 use syntax::ast::{self, Name, Ident};
 use syntax::attr::{self, HasAttrs};
 use syntax::errors::DiagnosticBuilder;
@@ -117,7 +118,7 @@ impl<'a> MacroBinding<'a> {
     }
 }
 
-impl<'a> base::Resolver for Resolver<'a> {
+impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
     fn next_node_id(&mut self) -> ast::NodeId {
         self.session.next_node_id()
     }
@@ -135,9 +136,11 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> {
-        struct EliminateCrateVar<'b, 'a: 'b>(&'b mut Resolver<'a>, Span);
+        struct EliminateCrateVar<'b, 'a: 'b, 'crateloader: 'a>(
+            &'b mut Resolver<'a, 'crateloader>, Span
+        );
 
-        impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
+        impl<'a, 'b, 'crateloader> Folder for EliminateCrateVar<'a, 'b, 'crateloader> {
             fn fold_path(&mut self, path: ast::Path) -> ast::Path {
                 match self.fold_qpath(None, path) {
                     (None, path) => path,
@@ -370,7 +373,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'cl> Resolver<'a, 'cl> {
     fn report_proc_macro_stub(&self, span: Span) {
         self.session.span_err(span,
                               "can't use a procedural macro from the same crate that defines it");

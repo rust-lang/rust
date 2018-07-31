@@ -19,7 +19,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
-use rustc::middle::cstore::LoadedMacro;
+use rustc::middle::cstore::{CrateStore, LoadedMacro};
 use rustc::ty;
 use rustc::util::nodemap::FxHashSet;
 

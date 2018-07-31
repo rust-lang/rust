@@ -25,6 +25,7 @@ use rustc::middle::cstore::LoadedMacro;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
+use rustc::middle::cstore::CrateStore;
 
 use std::cell::Cell;
 use rustc_data_structures::sync::Lrc;
@@ -73,7 +74,7 @@ struct LegacyMacroImports {
     imports: Vec<(Name, Span)>,
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'cl> Resolver<'a, 'cl> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     pub fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
@@ -762,13 +763,13 @@ impl<'a> Resolver<'a> {
     }
 }
 
-pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
-    pub resolver: &'a mut Resolver<'b>,
+pub struct BuildReducedGraphVisitor<'a, 'b: 'a, 'c: 'b> {
+    pub resolver: &'a mut Resolver<'b, 'c>,
     pub legacy_scope: LegacyScope<'b>,
     pub expansion: Mark,
 }
 
-impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b, 'cl> BuildReducedGraphVisitor<'a, 'b, 'cl> {
     fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
         let mark = id.placeholder_to_mark();
         self.resolver.current_module.unresolved_invocations.borrow_mut().insert(mark);
@@ -791,7 +792,7 @@ macro_rules! method {
     }
 }
 
-impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
+impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
     method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
     method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
     method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);

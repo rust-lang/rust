@@ -13,7 +13,6 @@ use rustc_driver::{self, driver, target_features, abort_on_err};
 use rustc::session::{self, config};
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::hir::def::Def;
-use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, AllArenas};
 use rustc::hir::map as hir_map;
@@ -49,13 +48,13 @@ pub use rustc::session::search_paths::SearchPaths;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
+pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
+    pub resolver: &'a RefCell<resolve::Resolver<'rcx, 'cstore>>,
     /// The stack of module NodeIds up till this point
     pub mod_ids: RefCell<Vec<NodeId>>,
     pub crate_name: Option<String>,
-    pub cstore: Rc<dyn CrateStore>,
+    pub cstore: Rc<CStore>,
     pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -87,7 +86,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub all_traits: Vec<DefId>,
 }
 
-impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
+impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
     pub fn sess(&self) -> &session::Session {
         &self.tcx.sess
     }
