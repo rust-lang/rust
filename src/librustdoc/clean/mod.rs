@@ -1211,8 +1211,14 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                 } else {
                     match cx.tcx.type_of(did).sty {
                         ty::TyAdt(def, _) => {
-                            if let Some(item) = def.all_fields()
-                                                   .find(|item| item.ident.name == item_name) {
+                            if let Some(item) = if def.is_enum() {
+                                def.all_fields().find(|item| item.ident.name == item_name)
+                            } else {
+                                def.non_enum_variant()
+                                   .fields
+                                   .iter()
+                                   .find(|item| item.ident.name == item_name)
+                            } {
                                 Ok((ty.def,
                                     Some(format!("{}.{}",
                                                  if def.is_enum() {
