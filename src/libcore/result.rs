@@ -242,7 +242,7 @@
 
 use fmt;
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use ops;
+use ops::{self, Deref};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -906,6 +906,44 @@ impl<T: Default, E> Result<T, E> {
             Ok(x) => x,
             Err(_) => Default::default(),
         }
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: Deref, E> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the `Ok` arm of the Result via
+    /// `Deref`.
+    pub fn deref_ok(&self) -> Result<&T::Target, &E> {
+        self.as_ref().map(|t| t.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T, E: Deref> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T, &E::Target>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the `Err` arm of the Result via
+    /// `Deref`.
+    pub fn deref_err(&self) -> Result<&T, &E::Target>
+    {
+        self.as_ref().map_err(|e| e.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: Deref, E: Deref> Result<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E::Target>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing both the `Ok` and `Err` arms
+    /// of the Result via `Deref`.
+    pub fn deref(&self) -> Result<&T::Target, &E::Target>
+    {
+        self.as_ref().map(|t| t.deref()).map_err(|e| e.deref())
     }
 }
 
