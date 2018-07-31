@@ -260,69 +260,6 @@ pub trait CrateStore {
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 
-/// A dummy crate store that does not support any non-local crates,
-/// for test purposes.
-pub struct DummyCrateStore;
-
-#[allow(unused_variables)]
-impl CrateStore for DummyCrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>
-        { bug!("crate_data_as_rc_any") }
-    // item info
-    fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics
-        { bug!("item_generics_cloned") }
-
-    // trait/impl-item info
-    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
-        { bug!("associated_item_cloned") }
-
-    // crate metadata
-    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
-    fn export_macros_untracked(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator {
-        bug!("crate_disambiguator")
-    }
-    fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
-    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition { bug!("crate_edition_untracked") }
-
-    // resolve
-    fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
-    fn def_path(&self, def: DefId) -> hir_map::DefPath {
-        bug!("relative_def_path")
-    }
-    fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash {
-        bug!("def_path_hash")
-    }
-    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable> {
-        bug!("def_path_table")
-    }
-    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name> {
-        bug!("struct_field_names")
-    }
-    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
-        bug!("item_children")
-    }
-    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
-
-    fn crates_untracked(&self) -> Vec<CrateNum> { vec![] }
-
-    // utility functions
-    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
-    fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta)
-                                 -> EncodedMetadata {
-        bug!("encode_metadata")
-    }
-    fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
-    fn postorder_cnums_untracked(&self) -> Vec<CrateNum> { bug!("postorder_cnums_untracked") }
-
-    // access to the metadata loader
-    fn metadata_loader(&self) -> &dyn MetadataLoader { bug!("metadata_loader") }
-}
-
 pub trait CrateLoader {
     fn process_extern_crate(&mut self, item: &ast::Item, defs: &Definitions) -> CrateNum;
 
