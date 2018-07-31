@@ -28,6 +28,8 @@ pub fn expand_syntax_ext(
     };
     let mut string_accumulator = String::new();
     let mut string_pos = vec![];
+    let mut int_pos = vec![];
+    let mut bool_pos = vec![];
     let mut b_accumulator: Vec<u8> = vec![];
     let mut b_pos: Vec<Span> = vec![];
     // We don't support mixing things with byte str literals, but do a best effort to fill in a
@@ -42,6 +44,8 @@ pub fn expand_syntax_ext(
                 | ast::LitKind::FloatUnsuffixed(ref s) => {
                     string_accumulator.push_str(&s.as_str());
                     string_pos.push(e.span);
+                    // If we ever allow `concat!("", b"")`, we should probably add a warn by default
+                    // lint to this code.
                     unified_accumulator.extend(s.to_string().into_bytes());
                 }
                 ast::LitKind::Char(c) => {
@@ -53,13 +57,19 @@ pub fn expand_syntax_ext(
                 | ast::LitKind::Int(i, ast::LitIntType::Signed(_))
                 | ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
                     string_accumulator.push_str(&i.to_string());
-                    string_pos.push(e.span);
+                    int_pos.push(e.span);
+                    // If we ever allow `concat!()` mixing byte literals with integers, we need to
+                    // define the appropriate behavior for it. Consistently considering them as
+                    // "machine width" would be bug-prone. Taking the smallest possible size for the
+                    // literal is probably what people _that don't think about it_ would expect, but
+                    // would be inconsistent. Another option is only to accept the literals if they
+                    // would fit in a `u8`.
                     unified_accumulator.extend(i.to_bytes().iter());
                 }
                 ast::LitKind::Bool(b) => {
                     string_accumulator.push_str(&b.to_string());
-                    string_pos.push(e.span);
-                    unified_accumulator.push(b as u8);
+                    bool_pos.push(e.span);
+                    // would `concat!(true, b"asdf")` ever make sense?
                 }
                 ast::LitKind::Byte(byte) => {
                     b_accumulator.push(byte);
@@ -71,8 +81,10 @@ pub fn expand_syntax_ext(
                     b_pos.push(e.span);
                     unified_accumulator.extend(b_str.iter());
                 }
-            },
+            }
             _ => {
+                // Consider the possibility of allowing `concat!(b"asdf", [1, 2, 3, 4])`, given
+                // that every single element of the array is a valid `u8`.
                 missing_literal.push(e.span);
             }
         }
@@ -84,26 +96,54 @@ pub fn expand_syntax_ext(
     }
     let sp = sp.apply_mark(cx.current_expansion.mark);
     // Do not allow mixing "" and b"", but return the joint b"" to avoid further errors
-    if string_accumulator.len() > 0 && b_accumulator.len() > 0 {
+    if b_pos.len() > 0 && (string_pos.len() > 0 || int_pos.len() > 0 || bool_pos.len() > 0) {
+        let mut mixings = vec![];
+        if string_pos.len() > 0 {
+            mixings.push("string");
+        }
+        if int_pos.len() > 0 {
+            mixings.push("numeric");
+        }
+        if bool_pos.len() > 0 {
+            mixings.push("boolean");
+        }
         let mut err = cx.struct_span_err(
             b_pos.clone(),
-            "cannot concatenate a byte string literal with string literals",
+            "cannot concatenate a byte string literal with other literals",
         );
+        if mixings.len() > 0 && (int_pos.len() > 0 || bool_pos.len() > 0) {
+            let msg = if mixings.len() >= 2 {
+                format!(
+                    "{} or {}",
+                    mixings[0..mixings.len() - 1].join(", "),
+                    mixings.last().unwrap(),
+                )
+            } else {
+                mixings[0].to_string()
+            };
+            err.note(&format!("we don't support mixing {} literals and byte strings", msg));
+        }
+        if string_pos.len() > 0 && int_pos.len() == 0 && bool_pos.len() == 0 {
+            err.multipart_suggestion(
+                "we don't support mixing string and byte string literals, use only byte strings",
+                string_pos
+                    .iter()
+                    .map(|pos| (pos.shrink_to_lo(), "b".to_string()))
+                    .collect(),
+            );
+        }
         for pos in &b_pos {
             err.span_label(*pos, "byte string literal");
         }
         for pos in &string_pos {
             err.span_label(*pos, "string literal");
-
         }
-        err.help("do not mix byte string literals and string literals");
-        err.multipart_suggestion(
-            "you can use byte string literals",
-            string_pos
-                .iter()
-                .map(|pos| (pos.shrink_to_lo(), "b".to_string()))
-                .collect(),
-        );
+        for pos in &int_pos {
+            err.span_label(*pos, "numeric literal");
+        }
+        for pos in &bool_pos {
+            err.span_label(*pos, "boolean literal");
+        }
         err.emit();
         base::MacEager::expr(cx.expr_byte_str(sp, unified_accumulator))
     } else if b_accumulator.len() > 0 {

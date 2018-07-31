@@ -17,6 +17,18 @@ fn main() {
     //~^ ERROR: expected a literal
     concat!(b'a', b"bc", b"def");
     concat!("abc", b"def", 'g', "hi", b"jkl");
-    //~^ ERROR cannot concatenate a byte string literal with string literals
+    //~^ ERROR cannot concatenate a byte string literal with other literals
     // `concat!()` cannot mix "" and b"" literals (it might allow it in the future)
+    concat!(1, b"def");
+    //~^ ERROR cannot concatenate a byte string literal with other literals
+    concat!(true, b"def");
+    //~^ ERROR cannot concatenate a byte string literal with other literals
+    concat!(1, true, b"def");
+    //~^ ERROR cannot concatenate a byte string literal with other literals
+    concat!(1, true, "abc", b"def");
+    //~^ ERROR cannot concatenate a byte string literal with other literals
+    concat!(true, "abc", b"def");
+    //~^ ERROR cannot concatenate a byte string literal with other literals
+    concat!(1, "abc", b"def");
+    //~^ ERROR cannot concatenate a byte string literal with other literals
 }
