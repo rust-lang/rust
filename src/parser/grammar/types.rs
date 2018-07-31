@@ -17,6 +17,11 @@ pub(super) fn type_(p: &mut Parser) {
     }
 }
 
+pub(super) fn ascription(p: &mut Parser) {
+    p.expect(COLON);
+    type_(p)
+}
+
 fn type_no_plus(p: &mut Parser) {
     type_(p);
 }

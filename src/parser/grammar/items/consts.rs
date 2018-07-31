@@ -13,8 +13,7 @@ fn const_or_static(p: &mut Parser, kw: SyntaxKind) {
     p.bump();
     p.eat(MUT_KW); // TODO: validator to forbid const mut
     name(p);
-    p.expect(COLON);
-    types::type_(p);
+    types::ascription(p);
     p.expect(EQ);
     expressions::expr(p);
     p.expect(SEMI);

@@ -279,8 +279,8 @@ fn fn_item(p: &mut Parser) {
         let m = p.start();
         p.bump();
         patterns::pattern(p);
-        if p.eat(COLON) {
-            types::type_(p);
+        if p.at(COLON) {
+            types::ascription(p);
         }
         if p.eat(EQ) {
             expressions::expr(p);
