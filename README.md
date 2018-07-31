@@ -8,8 +8,10 @@
 
 libsyntax2.0 is an **experimental** implementation of the corresponding [RFC](https://github.com/rust-lang/rfcs/pull/2256).
 
-See [`docs`](./docs) folder to learn how libsyntax2 works, and check 
+See [`docs`](./docs) folder to learn how libsyntax2 works, and check
 [`CONTRIBUTING.md`](./CONTRIBUTING.md) if you want to contribute!
+**WARNING** everything is in a bit of a flux recently, the docs are obsolete,
+see the recent work on red/green trees.
 
 
 ## License
