@@ -154,5 +154,42 @@ fn path_expr(p: &mut Parser) -> CompletedMarker {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::expr_path(p);
-    m.complete(p, PATH_EXPR)
+    if p.at(L_CURLY) {
+        struct_lit(p);
+        m.complete(p, STRUCT_LIT)
+    } else {
+        m.complete(p, PATH_EXPR)
+    }
+}
+
+// test struct_lit
+// fn foo() {
+//     S {};
+//     S { x, y: 32, };
+//     S { x, y: 32, ..Default::default() };
+// }
+fn struct_lit(p: &mut Parser) {
+    assert!(p.at(L_CURLY));
+    p.bump();
+    while !p.at(EOF) && !p.at(R_CURLY) {
+        match p.current() {
+            IDENT => {
+                let m = p.start();
+                name_ref(p);
+                if p.eat(COLON) {
+                    expr(p);
+                }
+                m.complete(p, STRUCT_LIT_FIELD);
+            },
+            DOTDOT => {
+                p.bump();
+                expr(p);
+            },
+            _ => p.err_and_bump("expected identifier"),
+        }
+        if !p.at(R_CURLY) {
+            p.expect(COMMA);
+        }
+    }
+    p.expect(R_CURLY);
 }

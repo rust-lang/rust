@@ -129,6 +129,8 @@ Grammar(
         "METHOD_CALL_EXPR",
         "FIELD_EXPR",
         "REF_EXPR",
+        "STRUCT_LIT",
+        "STRUCT_LIT_FIELD",
 
         "EXTERN_BLOCK",
         "ENUM_VARIANT",
