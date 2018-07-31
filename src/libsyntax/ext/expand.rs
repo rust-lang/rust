@@ -1373,15 +1373,19 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 result
             }
             // Ensure that test functions are accessible from the test harness.
+            // #[test] fn foo() {}
+            // becomes:
+            // #[test] pub fn foo_gensym(){}
+            // use foo_gensym as foo;
             ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
                 if self.tests_nameable && item.attrs.iter().any(|attr| is_test_or_bench(attr)) {
-                    let orig_vis = item.vis.clone();
+                    let orig_ident = item.ident;
+                    let orig_vis   = item.vis.clone();
 
                     // Publicize the item under gensymed name to avoid pollution
                     item = item.map(|mut item| {
                         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
-                        item.ident = Ident::from_interned_str(
-                                                item.ident.as_interned_str()).gensym();
+                        item.ident = item.ident.gensym();
                         item
                     });
 
@@ -1389,8 +1393,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     let use_item = self.cx.item_use_simple_(
                         item.ident.span,
                         orig_vis,
-                        Some(Ident::from_interned_str(item.ident.as_interned_str())),
-                        self.cx.path(item.ident.span, vec![Ident::from_str("self"), item.ident]));
+                        Some(orig_ident),
+                        self.cx.path(item.ident.span,
+                            vec![keywords::SelfValue.ident(), item.ident]));
 
                     SmallVector::many(
                         self.fold_unnameable(item).into_iter()
