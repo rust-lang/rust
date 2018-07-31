@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn list(p: &mut Parser, colon_colon_required: bool) {
+pub(super) fn type_arg_list(p: &mut Parser, colon_colon_required: bool) {
     let m;
     match (colon_colon_required, p.nth(0), p.nth(1)) {
         (_, COLONCOLON, L_ANGLE) => {

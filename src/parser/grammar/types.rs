@@ -166,7 +166,7 @@ fn fn_pointer_type(p: &mut Parser) {
         return;
     }
 
-    params::list(p);
+    params::param_list(p);
     // test fn_pointer_type_with_ret
     // type F = fn() -> ();
     fn_ret_type(p);
@@ -179,7 +179,7 @@ fn for_type(p: &mut Parser) {
     assert!(p.at(FOR_KW));
     let m = p.start();
     p.bump();
-    type_params::list(p);
+    type_params::type_param_list(p);
     type_(p);
     m.complete(p, FOR_TYPE);
 }

@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn list(p: &mut Parser) {
+pub(super) fn type_param_list(p: &mut Parser) {
     if !p.at(L_ANGLE) {
         return;
     }

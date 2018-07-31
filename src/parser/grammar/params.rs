@@ -5,11 +5,11 @@ use super::*;
 // fn b(x: i32) {}
 // fn c(x: i32, ) {}
 // fn d(x: i32, y: ()) {}
-pub(super) fn list(p: &mut Parser) {
+pub(super) fn param_list(p: &mut Parser) {
     list_(p, true)
 }
 
-pub(super) fn list_opt_types(p: &mut Parser) {
+pub(super) fn param_list_opt_types(p: &mut Parser) {
     list_(p, false)
 }
 

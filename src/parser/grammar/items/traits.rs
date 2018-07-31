@@ -6,7 +6,7 @@ pub(super) fn trait_item(p: &mut Parser) {
     assert!(p.at(TRAIT_KW));
     p.bump();
     name(p);
-    type_params::list(p);
+    type_params::type_param_list(p);
     if p.at(COLON) {
         type_params::bounds(p);
     }
@@ -21,7 +21,7 @@ pub(super) fn impl_item(p: &mut Parser) {
     assert!(p.at(IMPL_KW));
     p.bump();
     if choose_type_params_over_qpath(p) {
-        type_params::list(p);
+        type_params::type_param_list(p);
     }
 
     // TODO: never type

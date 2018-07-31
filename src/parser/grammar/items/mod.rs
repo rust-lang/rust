@@ -236,10 +236,10 @@ fn fn_item(p: &mut Parser) {
     name(p);
     // test fn_item_type_params
     // fn foo<T: Clone + Copy>(){}
-    type_params::list(p);
+    type_params::type_param_list(p);
 
     if p.at(L_PAREN) {
-        params::list(p);
+        params::param_list(p);
     } else {
         p.error("expected function arguments");
     }
@@ -265,7 +265,7 @@ fn type_item(p: &mut Parser) {
 
     // test type_item_type_params
     // type Result<T> = ();
-    type_params::list(p);
+    type_params::type_param_list(p);
 
     // test type_item_where_clause
     // type Foo where Foo: Copy = ();

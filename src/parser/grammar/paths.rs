@@ -71,7 +71,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
 fn path_generic_args(p: &mut Parser, mode: Mode) {
     match mode {
         Mode::Use => return,
-        Mode::Type => type_args::list(p, false),
-        Mode::Expr => type_args::list(p, true),
+        Mode::Type => type_args::type_arg_list(p, false),
+        Mode::Expr => type_args::type_arg_list(p, true),
     }
 }

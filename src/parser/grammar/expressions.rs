@@ -172,7 +172,7 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
 fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(PIPE));
     let m = p.start();
-    params::list_opt_types(p);
+    params::param_list_opt_types(p);
     if fn_ret_type(p) {
         block(p);
     } else {
