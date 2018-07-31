@@ -36,7 +36,8 @@ impl RedNode {
 
     fn new(green: GreenNode, parent: Option<ParentData>) -> RedNode {
         let n_children = green.children().len();
-        let children = (0..n_children).map(|_| None)
+        let children = (0..n_children)
+            .map(|_| None)
             .collect::<Vec<_>>()
             .into_boxed_slice();
         RedNode {
@@ -63,7 +64,7 @@ impl RedNode {
 
     pub(crate) fn get_child(&self, idx: usize) -> Option<ptr::NonNull<RedNode>> {
         if idx >= self.n_children() {
-            return None
+            return None;
         }
         match &self.children.read().unwrap()[idx] {
             Some(child) => return Some(child.into()),

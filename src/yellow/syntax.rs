@@ -6,7 +6,7 @@ use {
     TextRange, TextUnit,
 };
 
-pub trait TreeRoot: Deref<Target=SyntaxRoot> + Clone {}
+pub trait TreeRoot: Deref<Target = SyntaxRoot> + Clone {}
 
 impl TreeRoot for Arc<SyntaxRoot> {}
 
@@ -83,14 +83,12 @@ impl<R: TreeRoot> SyntaxNode<R> {
         self.red().green().text()
     }
 
-    pub fn children<'a>(&'a self) -> impl Iterator<Item=SyntaxNode<R>> + 'a {
+    pub fn children<'a>(&'a self) -> impl Iterator<Item = SyntaxNode<R>> + 'a {
         let red = self.red();
         let n_children = red.n_children();
-        (0..n_children).map(move |i| {
-            SyntaxNode {
-                root: self.root.clone(),
-                red: red.get_child(i).unwrap(),
-            }
+        (0..n_children).map(move |i| SyntaxNode {
+            root: self.root.clone(),
+            red: red.get_child(i).unwrap(),
         })
     }
 

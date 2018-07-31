@@ -39,7 +39,7 @@ pub(super) fn expr(p: &mut Parser) {
 fn prefix_expr(p: &mut Parser) -> Option<CompletedMarker> {
     match p.current() {
         AMPERSAND => Some(ref_expr(p)),
-        _ => atom_expr(p)
+        _ => atom_expr(p),
     }
 }
 

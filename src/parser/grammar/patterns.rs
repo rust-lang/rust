@@ -43,11 +43,8 @@ fn ref_pat(p: &mut Parser) {
 // }
 fn bind_pat(p: &mut Parser) {
     let m = p.start();
-    if p.eat(REF_KW) {
-        p.eat(MUT_KW);
-    } else {
-        p.eat(MUT_KW);
-    }
+    p.eat(REF_KW);
+    p.eat(MUT_KW);
     name(p);
     if p.eat(AT) {
         pattern(p);

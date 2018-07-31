@@ -2,7 +2,7 @@ extern crate difference;
 
 use std::{
     fs,
-    path::{Path, PathBuf}
+    path::{Path, PathBuf},
 };
 
 use difference::Changeset;

@@ -20,7 +20,11 @@ pub(super) fn expr_path(p: &mut Parser) {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
-enum Mode { Use, Type, Expr }
+enum Mode {
+    Use,
+    Type,
+    Expr,
+}
 
 fn path(p: &mut Parser, mode: Mode) {
     if !is_path_start(p) {
@@ -55,7 +59,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
         IDENT => {
             name_ref(p);
             path_generic_args(p, mode);
-        },
+        }
         SELF_KW | SUPER_KW => p.bump(),
         _ => {
             p.error("expected identifier");

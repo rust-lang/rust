@@ -80,8 +80,14 @@ fn assert_send_sync() {
 
 #[derive(Clone, Debug)]
 pub(crate) enum GreenLeaf {
-    Whitespace { newlines: u8, spaces: u8 },
-    Token { kind: SyntaxKind, text: Option<Arc<str>> },
+    Whitespace {
+        newlines: u8,
+        spaces: u8,
+    },
+    Token {
+        kind: SyntaxKind,
+        text: Option<Arc<str>>,
+    },
 }
 
 impl GreenLeaf {
@@ -121,7 +127,7 @@ impl GreenLeaf {
                 assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
                 &WS[N_NEWLINES - newlines..N_NEWLINES + spaces]
             }
-            GreenLeaf::Token { kind, text, } => match text {
+            GreenLeaf::Token { kind, text } => match text {
                 None => kind.static_text().unwrap(),
                 Some(t) => t,
             },

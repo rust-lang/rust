@@ -1,7 +1,7 @@
 extern crate itertools;
 
-use std::hash;
 use itertools::Itertools;
+use std::hash;
 
 #[derive(Debug)]
 pub struct Test {
@@ -28,18 +28,17 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
             match block.next() {
                 Some((idx, line)) if line.starts_with("test ") => {
                     break (idx, line["test ".len()..].to_string())
-                },
+                }
                 Some(_) => (),
                 None => continue 'outer,
             }
         };
         let text: String = itertools::join(
-            block.map(|(_, line)| line)
-                .chain(::std::iter::once("")),
-            "\n"
+            block.map(|(_, line)| line).chain(::std::iter::once("")),
+            "\n",
         );
         assert!(!text.trim().is_empty() && text.ends_with("\n"));
-        res.push((start_line, Test {name, text }))
+        res.push((start_line, Test { name, text }))
     }
     res
 }

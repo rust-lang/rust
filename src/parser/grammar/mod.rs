@@ -26,12 +26,15 @@ mod expressions;
 mod items;
 mod paths;
 mod patterns;
-mod type_params;
 mod type_args;
+mod type_params;
 mod types;
 
 use {
-    parser::{parser::{Parser, CompletedMarker}, token_set::TokenSet},
+    parser::{
+        parser::{CompletedMarker, Parser},
+        token_set::TokenSet,
+    },
     SyntaxKind::{self, *},
 };
 

@@ -8,5 +8,5 @@ pub(crate) use self::{
     builder::GreenBuilder,
     green::{GreenNode, GreenNodeBuilder},
     red::RedNode,
-    syntax::{SyntaxError},
+    syntax::SyntaxError,
 };

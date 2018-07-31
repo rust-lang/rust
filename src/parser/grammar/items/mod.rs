@@ -218,7 +218,6 @@ fn extern_block(p: &mut Parser) {
     p.expect(R_CURLY);
 }
 
-
 fn fn_item(p: &mut Parser) {
     assert!(p.at(FN_KW));
     p.bump();

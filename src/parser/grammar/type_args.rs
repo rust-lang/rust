@@ -12,7 +12,7 @@ pub(super) fn list(p: &mut Parser, colon_colon_required: bool) {
             m = p.start();
             p.bump();
         }
-        _ => return
+        _ => return,
     };
 
     while !p.at(EOF) && !p.at(R_ANGLE) {

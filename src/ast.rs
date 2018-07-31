@@ -1,14 +1,16 @@
 use std::sync::Arc;
-use {SyntaxNode, TreeRoot, SyntaxRoot};
+use {SyntaxNode, SyntaxRoot, TreeRoot};
 
 #[derive(Debug)]
 pub struct File<R: TreeRoot = Arc<SyntaxRoot>> {
-    syntax: SyntaxNode<R>
+    syntax: SyntaxNode<R>,
 }
 
 impl File<Arc<SyntaxRoot>> {
     pub fn parse(text: &str) -> Self {
-        File { syntax: ::parse(text.to_owned()) }
+        File {
+            syntax: ::parse(text.to_owned()),
+        }
     }
 }
 

@@ -3,13 +3,17 @@ extern crate clap;
 extern crate failure;
 extern crate ron;
 extern crate tera;
-extern crate walkdir;
 extern crate tools;
+extern crate walkdir;
 #[macro_use]
 extern crate commandspec;
 
-use std::{collections::{HashMap}, fs, path::{Path, PathBuf}};
 use clap::{App, Arg, SubCommand};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+};
 use tools::{collect_tests, Test};
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
@@ -71,7 +75,8 @@ fn get_kinds() -> Result<String> {
     tera.add_raw_template("grammar", &template)
         .map_err(|e| format_err!("template error: {:?}", e))?;
     tera.register_global_function("concat", Box::new(concat));
-    let ret = tera.render("grammar", &grammar)
+    let ret = tera
+        .render("grammar", &grammar)
         .map_err(|e| format_err!("template error: {:?}", e))?;
     return Ok(ret);
 
@@ -157,7 +162,10 @@ fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
             file_name[5..file_name.len() - 3].to_string()
         };
         let text = fs::read_to_string(&path)?;
-        let test = Test { name: name.clone(), text };
+        let test = Test {
+            name: name.clone(),
+            text,
+        };
         match res.insert(name, (path, test)) {
             Some(old) => println!("Duplicate test: {:?}", old),
             None => (),
@@ -167,17 +175,23 @@ fn existing_tests(dir: &Path) -> Result<HashMap<String, (PathBuf, Test)>> {
 }
 
 fn install_code_extension() -> Result<()> {
-    execute!(r"
+    execute!(
+        r"
 cd code
 npm install
-    ")?;
-    execute!(r"
+    "
+    )?;
+    execute!(
+        r"
 cd code
 ./node_modules/vsce/out/vsce package
-    ")?;
-    execute!(r"
+    "
+    )?;
+    execute!(
+        r"
 cd code
 code --install-extension ./libsyntax-rust-0.0.1.vsix
-    ")?;
+    "
+    )?;
     Ok(())
 }

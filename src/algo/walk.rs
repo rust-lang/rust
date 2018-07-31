@@ -1,6 +1,6 @@
 use SyntaxNodeRef;
 
-pub fn preorder<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item=SyntaxNodeRef<'a>> {
+pub fn preorder<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = SyntaxNodeRef<'a>> {
     walk(root).filter_map(|event| match event {
         WalkEvent::Enter(node) => Some(node),
         WalkEvent::Exit(_) => None,
@@ -13,7 +13,7 @@ enum WalkEvent<'a> {
     Exit(SyntaxNodeRef<'a>),
 }
 
-fn walk<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item=WalkEvent<'a>> {
+fn walk<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = WalkEvent<'a>> {
     let mut done = false;
     ::itertools::unfold(WalkEvent::Enter(root), move |pos| {
         if done {
@@ -35,7 +35,7 @@ fn walk<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item=WalkEvent<'a>> {
                         None => match node.parent() {
                             Some(node) => WalkEvent::Exit(node),
                             None => WalkEvent::Exit(node),
-                        }
+                        },
                     }
                 }
             }
@@ -43,4 +43,3 @@ fn walk<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item=WalkEvent<'a>> {
         Some(res)
     })
 }
-

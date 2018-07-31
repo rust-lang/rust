@@ -4,8 +4,8 @@ extern crate failure;
 extern crate libsyntax2;
 extern crate tools;
 
-use std::{fs, path::Path, io::Read};
 use clap::{App, Arg, SubCommand};
+use std::{fs, io::Read, path::Path};
 use tools::collect_tests;
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
@@ -15,8 +15,18 @@ fn main() -> Result<()> {
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("render-test")
-                .arg(Arg::with_name("line").long("--line").required(true).takes_value(true))
-                .arg(Arg::with_name("file").long("--file").required(true).takes_value(true))
+                .arg(
+                    Arg::with_name("line")
+                        .long("--line")
+                        .required(true)
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("file")
+                        .long("--file")
+                        .required(true)
+                        .takes_value(true),
+                ),
         )
         .subcommand(SubCommand::with_name("parse"))
         .get_matches();
@@ -24,7 +34,7 @@ fn main() -> Result<()> {
         ("parse", _) => {
             let tree = parse()?;
             println!("{}", tree);
-        },
+        }
         ("render-test", Some(matches)) => {
             let file = matches.value_of("file").unwrap();
             let file = Path::new(file);
@@ -36,7 +46,6 @@ fn main() -> Result<()> {
         _ => unreachable!(),
     }
     Ok(())
-
 }
 
 fn parse() -> Result<String> {

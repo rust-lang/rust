@@ -20,25 +20,25 @@
 #![allow(missing_docs)]
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
+extern crate itertools;
 extern crate text_unit;
 extern crate unicode_xid;
-extern crate itertools;
 
+pub mod algo;
+pub mod ast;
 mod lexer;
 mod parser;
 mod syntax_kinds;
-mod yellow;
 /// Utilities for simple uses of the parser.
 pub mod utils;
-pub mod ast;
-pub mod algo;
+mod yellow;
 
 pub use {
+    ast::File,
     lexer::{tokenize, Token},
     syntax_kinds::SyntaxKind,
     text_unit::{TextRange, TextUnit},
-    yellow::{SyntaxNode, SyntaxNodeRef, TreeRoot, SyntaxRoot},
-    ast::File,
+    yellow::{SyntaxNode, SyntaxNodeRef, SyntaxRoot, TreeRoot},
 };
 
 pub(crate) use yellow::SyntaxError;
@@ -47,4 +47,3 @@ pub fn parse(text: String) -> SyntaxNode {
     let tokens = tokenize(&text);
     parser::parse::<yellow::GreenBuilder>(text, &tokens)
 }
-

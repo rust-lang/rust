@@ -16,7 +16,7 @@ pub fn dump_tree(syntax: &SyntaxNode) -> String {
         errors: &mut BTreeSet<SyntaxError>,
     ) {
         buff.push_str(&String::from("  ").repeat(level));
-        write!(buff, "{:?}\n", node).unwrap();
+        writeln!(buff, "{:?}", node).unwrap();
         let my_errors: Vec<_> = errors
             .iter()
             .filter(|e| e.offset == node.range().start())
@@ -25,7 +25,7 @@ pub fn dump_tree(syntax: &SyntaxNode) -> String {
         for err in my_errors {
             errors.remove(&err);
             buff.push_str(&String::from("  ").repeat(level));
-            write!(buff, "err: `{}`\n", err.message).unwrap();
+            writeln!(buff, "err: `{}`", err.message).unwrap();
         }
 
         for child in node.children() {
@@ -40,7 +40,7 @@ pub fn dump_tree(syntax: &SyntaxNode) -> String {
         for err in my_errors {
             errors.remove(&err);
             buff.push_str(&String::from("  ").repeat(level));
-            write!(buff, "err: `{}`\n", err.message).unwrap();
+            writeln!(buff, "err: `{}`", err.message).unwrap();
         }
     }
 }
