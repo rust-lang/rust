@@ -47,6 +47,7 @@ TYPE_KIND_PTR               = 15
 TYPE_KIND_FIXED_SIZE_VEC    = 16
 TYPE_KIND_REGULAR_UNION     = 17
 TYPE_KIND_OS_STRING         = 18
+TYPE_KIND_STD_VECDEQUE      = 19
 
 ENCODED_ENUM_PREFIX = "RUST$ENCODED$ENUM$"
 ENUM_DISR_FIELD_NAME = "RUST$ENUM$DISR"
@@ -61,6 +62,14 @@ STD_VEC_FIELD_NAME_LENGTH = "len"
 STD_VEC_FIELD_NAME_BUF = "buf"
 STD_VEC_FIELD_NAMES = [STD_VEC_FIELD_NAME_BUF,
                        STD_VEC_FIELD_NAME_LENGTH]
+
+# std::collections::VecDeque<> related constants
+STD_VECDEQUE_FIELD_NAME_TAIL = "tail"
+STD_VECDEQUE_FIELD_NAME_HEAD = "head"
+STD_VECDEQUE_FIELD_NAME_BUF = "buf"
+STD_VECDEQUE_FIELD_NAMES = [STD_VECDEQUE_FIELD_NAME_TAIL,
+                            STD_VECDEQUE_FIELD_NAME_HEAD,
+                            STD_VECDEQUE_FIELD_NAME_BUF]
 
 # std::String related constants
 STD_STRING_FIELD_NAMES = ["vec"]
@@ -160,6 +169,11 @@ class Type(object):
         if (unqualified_type_name.startswith("Vec<") and
             self.__conforms_to_field_layout(STD_VEC_FIELD_NAMES)):
             return TYPE_KIND_STD_VEC
+
+        # STD COLLECTION VECDEQUE
+        if (unqualified_type_name.startswith("VecDeque<") and
+            self.__conforms_to_field_layout(STD_VECDEQUE_FIELD_NAMES)):
+            return TYPE_KIND_STD_VECDEQUE
 
         # STD STRING
         if (unqualified_type_name.startswith("String") and
@@ -324,6 +338,25 @@ def extract_length_ptr_and_cap_from_std_vec(vec_val):
     data_ptr = unique_ptr_val.get_child_at_index(0)
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
     return (length, data_ptr, capacity)
+
+
+def extract_tail_head_ptr_and_cap_from_std_vecdeque(vec_val):
+    assert vec_val.type.get_type_kind() == TYPE_KIND_STD_VECDEQUE
+    tail_field_index = STD_VECDEQUE_FIELD_NAMES.index(STD_VECDEQUE_FIELD_NAME_TAIL)
+    head_field_index = STD_VECDEQUE_FIELD_NAMES.index(STD_VECDEQUE_FIELD_NAME_HEAD)
+    buf_field_index = STD_VECDEQUE_FIELD_NAMES.index(STD_VECDEQUE_FIELD_NAME_BUF)
+
+    tail = vec_val.get_child_at_index(tail_field_index).as_integer()
+    head = vec_val.get_child_at_index(head_field_index).as_integer()
+    buf = vec_val.get_child_at_index(buf_field_index)
+
+    vec_ptr_val = buf.get_child_at_index(0)
+    capacity = buf.get_child_at_index(1).as_integer()
+    unique_ptr_val = vec_ptr_val.get_child_at_index(0)
+    data_ptr = unique_ptr_val.get_child_at_index(0)
+    assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
+    return (tail, head, data_ptr, capacity)
+
 
 def extract_length_and_ptr_from_slice(slice_val):
     assert (slice_val.type.get_type_kind() == TYPE_KIND_SLICE or

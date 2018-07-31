@@ -856,7 +856,6 @@ impl Step for Src {
             "src/librustc_msan",
             "src/librustc_tsan",
             "src/libstd",
-            "src/libstd_unicode",
             "src/libunwind",
             "src/rustc/compiler_builtins_shim",
             "src/rustc/libc_shim",

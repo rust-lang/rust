@@ -231,6 +231,7 @@ pub struct TestProps {
     pub normalize_stderr: Vec<(String, String)>,
     pub failure_status: i32,
     pub run_rustfix: bool,
+    pub rustfix_only_machine_applicable: bool,
 }
 
 impl TestProps {
@@ -263,6 +264,7 @@ impl TestProps {
             normalize_stderr: vec![],
             failure_status: -1,
             run_rustfix: false,
+            rustfix_only_machine_applicable: false,
         }
     }
 
@@ -396,6 +398,11 @@ impl TestProps {
 
             if !self.run_rustfix {
                 self.run_rustfix = config.parse_run_rustfix(ln);
+            }
+
+            if !self.rustfix_only_machine_applicable {
+                self.rustfix_only_machine_applicable =
+                    config.parse_rustfix_only_machine_applicable(ln);
             }
         });
 
@@ -661,6 +668,10 @@ impl Config {
 
     fn parse_run_rustfix(&self, line: &str) -> bool {
         self.parse_name_directive(line, "run-rustfix")
+    }
+
+    fn parse_rustfix_only_machine_applicable(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "rustfix-only-machine-applicable")
     }
 
     fn parse_edition(&self, line: &str) -> Option<String> {

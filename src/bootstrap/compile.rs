@@ -157,7 +157,6 @@ pub fn std_cargo(builder: &Builder,
         cargo.arg("--features").arg("c mem")
             .args(&["-p", "alloc"])
             .args(&["-p", "compiler_builtins"])
-            .args(&["-p", "std_unicode"])
             .arg("--manifest-path")
             .arg(builder.src.join("src/rustc/compiler_builtins_shim/Cargo.toml"));
     } else {

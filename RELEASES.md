@@ -190,7 +190,7 @@ Version 1.27.0 (2018-06-21)
 Language
 --------
 - [Removed 'proc' from the reserved keywords list.][49699] This allows `proc` to
-  be used as an identifer.
+  be used as an identifier.
 - [The dyn syntax is now available.][49968] This syntax is equivalent to the
   bare `Trait` syntax, and should make it clearer when being used in tandem with
   `impl Trait`. Since it is equivalent to the following syntax:
@@ -4795,7 +4795,7 @@ Language
 --------
 
 * Patterns with `ref mut` now correctly invoke [`DerefMut`] when
-  matching against dereferencable values.
+  matching against dereferenceable values.
 
 Libraries
 ---------

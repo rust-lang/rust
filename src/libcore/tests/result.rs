@@ -233,3 +233,96 @@ fn test_try() {
     }
     assert_eq!(try_result_err(), Err(1));
 }
+
+#[test]
+fn test_result_deref() {
+    // &Result<T: Deref, E>::Ok(T).deref_ok() ->
+    //      Result<&T::Deref::Target, &E>::Ok(&*T)
+    let ref_ok = &Result::Ok::<&i32, u8>(&42);
+    let expected_result = Result::Ok::<&i32, &u8>(&42);
+    assert_eq!(ref_ok.deref_ok(), expected_result);
+
+    let ref_ok = &Result::Ok::<String, u32>(String::from("a result"));
+    let expected_result = Result::Ok::<&str, &u32>("a result");
+    assert_eq!(ref_ok.deref_ok(), expected_result);
+
+    let ref_ok = &Result::Ok::<Vec<i32>, u32>(vec![1, 2, 3, 4, 5]);
+    let expected_result = Result::Ok::<&[i32], &u32>(&[1, 2, 3, 4, 5][..]);
+    assert_eq!(ref_ok.deref_ok(), expected_result);
+
+    // &Result<T: Deref, E: Deref>::Ok(T).deref() ->
+    //      Result<&T::Deref::Target, &E::Deref::Target>::Ok(&*T)
+    let ref_ok = &Result::Ok::<&i32, &u8>(&42);
+    let expected_result = Result::Ok::<&i32, &u8>(&42);
+    assert_eq!(ref_ok.deref(), expected_result);
+
+    let ref_ok = &Result::Ok::<String, &u32>(String::from("a result"));
+    let expected_result = Result::Ok::<&str, &u32>("a result");
+    assert_eq!(ref_ok.deref(), expected_result);
+
+    let ref_ok = &Result::Ok::<Vec<i32>, &u32>(vec![1, 2, 3, 4, 5]);
+    let expected_result = Result::Ok::<&[i32], &u32>(&[1, 2, 3, 4, 5][..]);
+    assert_eq!(ref_ok.deref(), expected_result);
+
+    // &Result<T, E: Deref>::Err(T).deref_err() ->
+    //      Result<&T, &E::Deref::Target>::Err(&*E)
+    let ref_err = &Result::Err::<u8, &i32>(&41);
+    let expected_result = Result::Err::<&u8, &i32>(&41);
+    assert_eq!(ref_err.deref_err(), expected_result);
+
+    let ref_err = &Result::Err::<u32, String>(String::from("an error"));
+    let expected_result = Result::Err::<&u32, &str>("an error");
+    assert_eq!(ref_err.deref_err(), expected_result);
+
+    let ref_err = &Result::Err::<u32, Vec<i32>>(vec![5, 4, 3, 2, 1]);
+    let expected_result = Result::Err::<&u32, &[i32]>(&[5, 4, 3, 2, 1][..]);
+    assert_eq!(ref_err.deref_err(), expected_result);
+
+    // &Result<T: Deref, E: Deref>::Err(T).deref_err() ->
+    //      Result<&T, &E::Deref::Target>::Err(&*E)
+    let ref_err = &Result::Err::<&u8, &i32>(&41);
+    let expected_result = Result::Err::<&u8, &i32>(&41);
+    assert_eq!(ref_err.deref(), expected_result);
+
+    let ref_err = &Result::Err::<&u32, String>(String::from("an error"));
+    let expected_result = Result::Err::<&u32, &str>("an error");
+    assert_eq!(ref_err.deref(), expected_result);
+
+    let ref_err = &Result::Err::<&u32, Vec<i32>>(vec![5, 4, 3, 2, 1]);
+    let expected_result = Result::Err::<&u32, &[i32]>(&[5, 4, 3, 2, 1][..]);
+    assert_eq!(ref_err.deref(), expected_result);
+
+    // The following cases test calling deref_* with the wrong variant (i.e.
+    // `deref_ok()` with a `Result::Err()`, or `deref_err()` with a `Result::Ok()`.
+    // While unusual, these cases are supported to ensure that an `inner_deref`
+    // call can still be made even when one of the Result types does not implement
+    // `Deref` (for example, std::io::Error).
+
+    // &Result<T, E: Deref>::Ok(T).deref_err() ->
+    //      Result<&T, &E::Deref::Target>::Ok(&T)
+    let ref_ok = &Result::Ok::<i32, &u8>(42);
+    let expected_result = Result::Ok::<&i32, &u8>(&42);
+    assert_eq!(ref_ok.deref_err(), expected_result);
+
+    let ref_ok = &Result::Ok::<&str, &u32>("a result");
+    let expected_result = Result::Ok::<&&str, &u32>(&"a result");
+    assert_eq!(ref_ok.deref_err(), expected_result);
+
+    let ref_ok = &Result::Ok::<[i32; 5], &u32>([1, 2, 3, 4, 5]);
+    let expected_result = Result::Ok::<&[i32; 5], &u32>(&[1, 2, 3, 4, 5]);
+    assert_eq!(ref_ok.deref_err(), expected_result);
+
+    // &Result<T: Deref, E>::Err(E).deref_ok() ->
+    //      Result<&T::Deref::Target, &E>::Err(&E)
+    let ref_err = &Result::Err::<&u8, i32>(41);
+    let expected_result = Result::Err::<&u8, &i32>(&41);
+    assert_eq!(ref_err.deref_ok(), expected_result);
+
+    let ref_err = &Result::Err::<&u32, &str>("an error");
+    let expected_result = Result::Err::<&u32, &&str>(&"an error");
+    assert_eq!(ref_err.deref_ok(), expected_result);
+
+    let ref_err = &Result::Err::<&u32, [i32; 5]>([5, 4, 3, 2, 1]);
+    let expected_result = Result::Err::<&u32, &[i32; 5]>(&[5, 4, 3, 2, 1]);
+    assert_eq!(ref_err.deref_ok(), expected_result);
+}
