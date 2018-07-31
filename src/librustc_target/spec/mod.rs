@@ -62,6 +62,7 @@ mod cloudabi_base;
 mod dragonfly_base;
 mod freebsd_base;
 mod haiku_base;
+mod hermit_base;
 mod linux_base;
 mod linux_musl_base;
 mod openbsd_base;
@@ -373,6 +374,9 @@ supported_targets! {
     ("armv7-unknown-cloudabi-eabihf", armv7_unknown_cloudabi_eabihf),
     ("i686-unknown-cloudabi", i686_unknown_cloudabi),
     ("x86_64-unknown-cloudabi", x86_64_unknown_cloudabi),
+
+    ("aarch64-unknown-hermit", aarch64_unknown_hermit),
+    ("x86_64-unknown-hermit", x86_64_unknown_hermit),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
