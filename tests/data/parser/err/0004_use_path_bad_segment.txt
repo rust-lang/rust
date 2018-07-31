@@ -9,8 +9,8 @@ FILE@[0; 12)
               WHITESPACE@[3; 4)
               IDENT@[4; 7) "foo"
         COLONCOLON@[7; 9)
-        err: `expected SEMI`
         err: `expected identifier`
+        err: `expected SEMI`
         err: `expected item`
         PATH_SEGMENT@[9; 9)
   ERROR@[9; 11)

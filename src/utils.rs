@@ -1,46 +1,48 @@
-use std::{collections::BTreeSet, fmt::Write};
-use {SyntaxError, SyntaxNode, SyntaxNodeRef};
+use std::{fmt::Write};
+use {
+    SyntaxNode,
+    algo::walk::{WalkEvent, walk},
+};
 
 /// Parse a file and create a string representation of the resulting parse tree.
 pub fn dump_tree(syntax: &SyntaxNode) -> String {
     let syntax = syntax.as_ref();
-    let mut errors: BTreeSet<_> = syntax.root.errors.iter().cloned().collect();
-    let mut result = String::new();
-    go(syntax, &mut result, 0, &mut errors);
-    return result;
+    let mut errors: Vec<_> = syntax.root.errors.iter().cloned().collect();
+    errors.sort_by_key(|e| e.offset);
+    let mut err_pos = 0;
+    let mut level = 0;
+    let mut buf = String::new();
+    macro_rules! indent {
+        () => {
+            for _ in 0..level {
+                buf.push_str("  ");
+            }
+        };
+    }
 
-    fn go(
-        node: SyntaxNodeRef,
-        buff: &mut String,
-        level: usize,
-        errors: &mut BTreeSet<SyntaxError>,
-    ) {
-        buff.push_str(&String::from("  ").repeat(level));
-        writeln!(buff, "{:?}", node).unwrap();
-        let my_errors: Vec<_> = errors
-            .iter()
-            .filter(|e| e.offset == node.range().start())
-            .cloned()
-            .collect();
-        for err in my_errors {
-            errors.remove(&err);
-            buff.push_str(&String::from("  ").repeat(level));
-            writeln!(buff, "err: `{}`", err.message).unwrap();
-        }
-
-        for child in node.children() {
-            go(child, buff, level + 1, errors)
-        }
-
-        let my_errors: Vec<_> = errors
-            .iter()
-            .filter(|e| e.offset == node.range().end())
-            .cloned()
-            .collect();
-        for err in my_errors {
-            errors.remove(&err);
-            buff.push_str(&String::from("  ").repeat(level));
-            writeln!(buff, "err: `{}`", err.message).unwrap();
+    for event in walk(syntax) {
+        match event {
+            WalkEvent::Enter(node) => {
+                indent!();
+                writeln!(buf, "{:?}", node).unwrap();
+                if node.first_child().is_none() {
+                    let off = node.range().end();
+                    while err_pos < errors.len() && errors[err_pos].offset <= off {
+                        indent!();
+                        writeln!(buf, "err: `{}`", errors[err_pos].message).unwrap();
+                        err_pos += 1;
+                    }
+                }
+                level += 1;
+            },
+            WalkEvent::Exit(_) => level -= 1,
         }
     }
+
+    assert_eq!(level, 0);
+    for err in errors[err_pos..].iter()  {
+        writeln!(buf, "err: `{}`", err.message).unwrap();
+    }
+
+    return buf;
 }

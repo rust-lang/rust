@@ -33,9 +33,7 @@ fn main() -> Result<()> {
         .get_matches();
     match matches.subcommand() {
         ("parse", _) => {
-            let start = Instant::now();
             let tree = parse()?;
-            eprintln!("elapsed {:?}", start.elapsed());
             println!("{}", tree);
         }
         ("render-test", Some(matches)) => {
@@ -53,7 +51,9 @@ fn main() -> Result<()> {
 
 fn parse() -> Result<String> {
     let text = read_stdin()?;
+    let start = Instant::now();
     let file = libsyntax2::parse(text);
+    eprintln!("elapsed {:?}", start.elapsed());
     let tree = libsyntax2::utils::dump_tree(&file);
     Ok(tree)
 }

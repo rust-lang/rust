@@ -1,7 +1,7 @@
 FILE@[0; 21)
-err: `expected item`
   ERROR@[0; 3)
     IF_KW@[0; 2)
+    err: `expected item`
     WHITESPACE@[2; 3)
     err: `expected item`
   ERROR@[3; 10)

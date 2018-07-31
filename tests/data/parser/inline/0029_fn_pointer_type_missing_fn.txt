@@ -8,8 +8,8 @@ FILE@[0; 20)
     EQ@[7; 8)
     WHITESPACE@[8; 9)
     UNSAFE_KW@[9; 15)
-    err: `expected SEMI`
     err: `expected `fn``
+    err: `expected SEMI`
     WHITESPACE@[15; 16)
     err: `expected item`
   ERROR@[16; 17)

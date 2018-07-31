@@ -8,12 +8,12 @@ pub fn preorder<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = SyntaxNodeR
 }
 
 #[derive(Debug, Copy, Clone)]
-enum WalkEvent<'a> {
+pub enum WalkEvent<'a> {
     Enter(SyntaxNodeRef<'a>),
     Exit(SyntaxNodeRef<'a>),
 }
 
-fn walk<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = WalkEvent<'a>> {
+pub fn walk<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = WalkEvent<'a>> {
     let mut done = false;
     ::itertools::unfold(WalkEvent::Enter(root), move |pos| {
         if done {

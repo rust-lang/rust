@@ -41,8 +41,6 @@ pub use {
     yellow::{SyntaxNode, SyntaxNodeRef, SyntaxRoot, TreeRoot},
 };
 
-pub(crate) use yellow::SyntaxError;
-
 pub fn parse(text: String) -> SyntaxNode {
     let tokens = tokenize(&text);
     parser::parse::<yellow::GreenBuilder>(text, &tokens)
