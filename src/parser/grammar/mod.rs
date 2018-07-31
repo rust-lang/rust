@@ -142,7 +142,9 @@ fn fn_value_parameters(p: &mut Parser) {
             _ => return,
         };
         let m = p.start();
-        for _ in 0..n_toks { p.bump(); }
+        for _ in 0..n_toks {
+            p.bump();
+        }
         m.complete(p, SELF_PARAM);
         if !p.at(R_PAREN) {
             p.expect(COMMA);

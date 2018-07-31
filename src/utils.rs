@@ -1,7 +1,7 @@
-use std::{fmt::Write};
+use std::fmt::Write;
 use {
+    algo::walk::{walk, WalkEvent},
     SyntaxNode,
-    algo::walk::{WalkEvent, walk},
 };
 
 /// Parse a file and create a string representation of the resulting parse tree.
@@ -34,13 +34,13 @@ pub fn dump_tree(syntax: &SyntaxNode) -> String {
                     }
                 }
                 level += 1;
-            },
+            }
             WalkEvent::Exit(_) => level -= 1,
         }
     }
 
     assert_eq!(level, 0);
-    for err in errors[err_pos..].iter()  {
+    for err in errors[err_pos..].iter() {
         writeln!(buf, "err: `{}`", err.message).unwrap();
     }
 

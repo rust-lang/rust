@@ -33,16 +33,16 @@ fn type_arg(p: &mut Parser) {
         LIFETIME => {
             p.bump();
             m.complete(p, LIFETIME_ARG);
-        },
+        }
         IDENT if p.nth(1) == EQ => {
             name_ref(p);
             p.bump();
             types::type_(p);
             m.complete(p, ASSOC_TYPE_ARG);
-        },
+        }
         _ => {
             types::type_(p);
             m.complete(p, TYPE_ARG);
-        },
+        }
     }
 }

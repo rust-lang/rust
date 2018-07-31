@@ -5,9 +5,9 @@ extern crate libsyntax2;
 extern crate tools;
 
 use clap::{App, Arg, SubCommand};
+use std::time::Instant;
 use std::{fs, io::Read, path::Path};
 use tools::collect_tests;
-use std::time::Instant;
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 

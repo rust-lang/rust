@@ -34,12 +34,11 @@ pub(super) fn expr(p: &mut Parser) {
     loop {
         lhs = match p.current() {
             L_PAREN => call_expr(p, lhs),
-            DOT if p.nth(1) == IDENT =>
-                if p.nth(2) == L_PAREN {
-                    method_call_expr(p, lhs)
-                } else {
-                    field_expr(p, lhs)
-                }
+            DOT if p.nth(1) == IDENT => if p.nth(2) == L_PAREN {
+                method_call_expr(p, lhs)
+            } else {
+                field_expr(p, lhs)
+            },
             _ => break,
         }
     }
@@ -193,11 +192,11 @@ fn struct_lit(p: &mut Parser) {
                     expr(p);
                 }
                 m.complete(p, STRUCT_LIT_FIELD);
-            },
+            }
             DOTDOT => {
                 p.bump();
                 expr(p);
-            },
+            }
             _ => p.err_and_bump("expected identifier"),
         }
         if !p.at(R_CURLY) {
