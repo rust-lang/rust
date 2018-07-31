@@ -16,7 +16,7 @@ use rustc::infer::InferOk;
 use rustc::middle::cstore::CrateStore;
 use std::fmt::Debug;
 
-use self::def_ctor::{get_def_ctor_from_def_id, get_def_ctor_from_node_id};
+use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
 use self::finder_trait::Finder;
 
 use super::*;
@@ -34,13 +34,13 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
     }
 
     pub fn get_with_def_id(&self, def_id: DefId) -> Vec<Item> {
-        get_def_ctor_from_def_id(&self.cx, def_id, &|def_ctor| {
+        get_def_from_def_id(&self.cx, def_id, &|def_ctor| {
             self.get_auto_trait_impls(def_id, &def_ctor, None)
         })
     }
 
     pub fn get_with_node_id(&self, id: ast::NodeId, name: String) -> Vec<Item> {
-        get_def_ctor_from_node_id(&self.cx, id, name, &|def_ctor, name| {
+        get_def_from_node_id(&self.cx, id, name, &|def_ctor, name| {
             let did = self.cx.tcx.hir.local_def_id(id);
             self.get_auto_trait_impls(did, &def_ctor, Some(name))
         })

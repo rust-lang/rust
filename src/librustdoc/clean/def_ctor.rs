@@ -12,9 +12,9 @@ use core::DocContext;
 
 use super::*;
 
-pub fn get_def_ctor_from_def_id<F>(cx: &DocContext,
-                                   def_id: DefId,
-                                   callback: &F,
+pub fn get_def_from_def_id<F>(cx: &DocContext,
+                              def_id: DefId,
+                              callback: &F,
 ) -> Vec<Item>
 where F: Fn(& dyn Fn(DefId) -> Def) -> Vec<Item> {
     let ty = cx.tcx.type_of(def_id);
@@ -48,10 +48,10 @@ where F: Fn(& dyn Fn(DefId) -> Def) -> Vec<Item> {
     }
 }
 
-pub fn get_def_ctor_from_node_id<F>(cx: &DocContext,
-                                    id: ast::NodeId,
-                                    name: String,
-                                    callback: &F,
+pub fn get_def_from_node_id<F>(cx: &DocContext,
+                               id: ast::NodeId,
+                               name: String,
+                               callback: &F,
 ) -> Vec<Item>
 where F: Fn(& dyn Fn(DefId) -> Def, String) -> Vec<Item> {
     let item = &cx.tcx.hir.expect_item(id).node;
