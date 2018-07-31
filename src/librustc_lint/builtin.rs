@@ -1630,7 +1630,12 @@ fn validate_const<'a, 'tcx>(
 
 fn check_const(cx: &LateContext, body_id: hir::BodyId, what: &str) {
     let def_id = cx.tcx.hir.body_owner_def_id(body_id);
-    let param_env = cx.tcx.param_env(def_id);
+    let is_static = cx.tcx.is_static(def_id).is_some();
+    let param_env = if is_static {
+        ty::ParamEnv::reveal_all()
+    } else {
+        cx.tcx.param_env(def_id)
+    };
     let cid = ::rustc::mir::interpret::GlobalId {
         instance: ty::Instance::mono(cx.tcx, def_id),
         promoted: None
@@ -1638,8 +1643,8 @@ fn check_const(cx: &LateContext, body_id: hir::BodyId, what: &str) {
     match cx.tcx.const_eval(param_env.and(cid)) {
         Ok(val) => validate_const(cx.tcx, val, param_env, cid, what),
         Err(err) => {
-            // errors for statics are already reported directly in the query
-            if cx.tcx.is_static(def_id).is_none() {
+            // errors for statics are already reported directly in the query, avoid duplicates
+            if !is_static {
                 let span = cx.tcx.def_span(def_id);
                 err.report_as_lint(
                     cx.tcx.at(span),
