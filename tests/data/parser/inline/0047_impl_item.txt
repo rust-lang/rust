@@ -1,9 +1,13 @@
 FILE@[0; 12)
   IMPL_ITEM@[0; 12)
     IMPL_KW@[0; 4)
-    WHITESPACE@[4; 5)
-    IDENT@[5; 8) "Foo"
-    WHITESPACE@[8; 9)
+    PATH_TYPE@[4; 9)
+      PATH@[4; 9)
+        PATH_SEGMENT@[4; 9)
+          NAME_REF@[4; 9)
+            WHITESPACE@[4; 5)
+            IDENT@[5; 8) "Foo"
+            WHITESPACE@[8; 9)
     L_CURLY@[9; 10)
     R_CURLY@[10; 11)
     WHITESPACE@[11; 12)
