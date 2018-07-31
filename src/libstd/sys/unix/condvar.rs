@@ -85,7 +85,10 @@ impl Condvar {
     // where we configure condition variable to use monotonic clock (instead of
     // default system clock). This approach avoids all problems that result
     // from changes made to the system time.
-    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "hermit")))]
+    #[cfg(not(any(target_os = "macos",
+                  target_os = "ios",
+                  target_os = "android",
+                  target_os = "hermit")))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use mem;
 
