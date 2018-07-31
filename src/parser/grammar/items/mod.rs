@@ -267,13 +267,24 @@ fn fn_item(p: &mut Parser) {
         m.complete(p, BLOCK);
     }
 
+    // test let_stmt;
+    // fn foo() {
+    //     let a;
+    //     let b: i32;
+    //     let c = 92;
+    //     let d: i32 = 92;
+    // }
     fn let_stmt(p: &mut Parser) {
         assert!(p.at(LET_KW));
         let m = p.start();
         p.bump();
         patterns::pattern(p);
-        p.expect(EQ);
-        expressions::expr(p);
+        if p.eat(COLON) {
+            types::type_(p);
+        }
+        if p.eat(EQ) {
+            expressions::expr(p);
+        }
         p.expect(SEMI);
         m.complete(p, LET_STMT);
     }
