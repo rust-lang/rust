@@ -360,6 +360,7 @@ impl_stable_hash_for!(enum hir::FunctionRetTy {
 impl_stable_hash_for!(struct hir::TraitRef {
     // Don't hash the ref_id. It is tracked via the thing it is used to access
     ref_id -> _,
+    hir_ref_id -> _,
     path,
 });
 
@@ -723,9 +724,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
             hir::VisibilityKind::Crate(sugar) => {
                 sugar.hash_stable(hcx, hasher);
             }
-            hir::VisibilityKind::Restricted { ref path, id } => {
+            hir::VisibilityKind::Restricted { ref path, id, hir_id } => {
                 hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                     id.hash_stable(hcx, hasher);
+                    hir_id.hash_stable(hcx, hasher);
                 });
                 path.hash_stable(hcx, hasher);
             }

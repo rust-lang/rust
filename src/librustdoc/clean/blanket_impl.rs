@@ -119,6 +119,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
                                                         trait_def_id,
                                                         hir::def::Def::Trait),
                                 ref_id: ast::DUMMY_NODE_ID,
+                                hir_ref_id: hir::DUMMY_HIR_ID,
                             };
                             let provided_trait_methods =
                                 infcx.tcx.provided_trait_methods(trait_def_id)

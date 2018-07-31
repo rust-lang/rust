@@ -279,7 +279,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         self.in_pat = false;
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, _: ast::NodeId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
         self.handle_definition(path.def);
         intravisit::walk_path(self, path);
     }

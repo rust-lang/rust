@@ -242,7 +242,7 @@ macro_rules! late_lint_methods {
             fn check_variant(a: &$hir hir::Variant, b: &$hir hir::Generics);
             fn check_variant_post(a: &$hir hir::Variant, b: &$hir hir::Generics);
             fn check_lifetime(a: &$hir hir::Lifetime);
-            fn check_path(a: &$hir hir::Path, b: ast::NodeId);
+            fn check_path(a: &$hir hir::Path, b: hir::HirId);
             fn check_attribute(a: &$hir ast::Attribute);
 
             /// Called when entering a syntax node that can have lint attributes such

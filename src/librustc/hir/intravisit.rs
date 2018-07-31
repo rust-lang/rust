@@ -353,10 +353,10 @@ pub trait Visitor<'v> : Sized {
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         walk_lifetime(self, lifetime)
     }
-    fn visit_qpath(&mut self, qpath: &'v QPath, id: NodeId, span: Span) {
+    fn visit_qpath(&mut self, qpath: &'v QPath, id: HirId, span: Span) {
         walk_qpath(self, qpath, id, span)
     }
-    fn visit_path(&mut self, path: &'v Path, _id: NodeId) {
+    fn visit_path(&mut self, path: &'v Path, _id: HirId) {
         walk_path(self, path)
     }
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment) {
@@ -456,7 +456,7 @@ pub fn walk_trait_ref<'v, V>(visitor: &mut V, trait_ref: &'v TraitRef)
     where V: Visitor<'v>
 {
     visitor.visit_id(trait_ref.ref_id);
-    visitor.visit_path(&trait_ref.path, trait_ref.ref_id)
+    visitor.visit_path(&trait_ref.path, trait_ref.hir_ref_id)
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
@@ -471,7 +471,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         }
         ItemKind::Use(ref path, _) => {
             visitor.visit_id(item.id);
-            visitor.visit_path(path, item.id);
+            visitor.visit_path(path, item.hir_id);
         }
         ItemKind::Static(ref typ, _, body) |
         ItemKind::Const(ref typ, body) => {
@@ -602,7 +602,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_fn_decl(&function_declaration.decl);
         }
         TyKind::Path(ref qpath) => {
-            visitor.visit_qpath(qpath, typ.id, typ.span);
+            visitor.visit_qpath(qpath, typ.hir_id, typ.span);
         }
         TyKind::Array(ref ty, ref length) => {
             visitor.visit_ty(ty);
@@ -621,7 +621,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     }
 }
 
-pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath, id: NodeId, span: Span) {
+pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath, id: HirId, span: Span) {
     match *qpath {
         QPath::Resolved(ref maybe_qself, ref path) => {
             if let Some(ref qself) = *maybe_qself {
@@ -670,14 +670,14 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     visitor.visit_id(pattern.id);
     match pattern.node {
         PatKind::TupleStruct(ref qpath, ref children, _) => {
-            visitor.visit_qpath(qpath, pattern.id, pattern.span);
+            visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
             walk_list!(visitor, visit_pat, children);
         }
         PatKind::Path(ref qpath) => {
-            visitor.visit_qpath(qpath, pattern.id, pattern.span);
+            visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
         }
         PatKind::Struct(ref qpath, ref fields, _) => {
-            visitor.visit_qpath(qpath, pattern.id, pattern.span);
+            visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
             for field in fields {
                 visitor.visit_id(field.node.id);
                 visitor.visit_ident(field.node.ident);
@@ -985,7 +985,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_anon_const(count)
         }
         ExprKind::Struct(ref qpath, ref fields, ref optional_base) => {
-            visitor.visit_qpath(qpath, expression.id, expression.span);
+            visitor.visit_qpath(qpath, expression.hir_id, expression.span);
             for field in fields {
                 visitor.visit_id(field.id);
                 visitor.visit_ident(field.ident);
@@ -1062,7 +1062,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(index_expression)
         }
         ExprKind::Path(ref qpath) => {
-            visitor.visit_qpath(qpath, expression.id, expression.span);
+            visitor.visit_qpath(qpath, expression.hir_id, expression.span);
         }
         ExprKind::Break(ref destination, ref opt_expr) => {
             if let Some(ref label) = destination.label {
@@ -1108,9 +1108,9 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
 }
 
 pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
-    if let VisibilityKind::Restricted { ref path, id } = vis.node {
+    if let VisibilityKind::Restricted { ref path, id, hir_id } = vis.node {
         visitor.visit_id(id);
-        visitor.visit_path(path, id)
+        visitor.visit_path(path, hir_id)
     }
 }
 

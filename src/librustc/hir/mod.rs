@@ -1912,6 +1912,7 @@ pub enum UseKind {
 pub struct TraitRef {
     pub path: Path,
     pub ref_id: NodeId,
+    pub hir_ref_id: HirId,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -1931,7 +1932,7 @@ pub type Visibility = Spanned<VisibilityKind>;
 pub enum VisibilityKind {
     Public,
     Crate(CrateSugar),
-    Restricted { path: P<Path>, id: NodeId },
+    Restricted { path: P<Path>, id: NodeId, hir_id: HirId },
     Inherited,
 }
 
