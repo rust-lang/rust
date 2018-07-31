@@ -126,15 +126,19 @@ fn fn_value_parameters(p: &mut Parser) {
     // impl S {
     //     fn a(self) {}
     //     fn b(&self,) {}
-    //     fn c(&mut self, x: i32) {}
+    //     fn c(&'a self,) {}
+    //     fn d(&'a mut self, x: i32) {}
     // }
     fn self_param(p: &mut Parser) {
         let la1 = p.nth(1);
         let la2 = p.nth(2);
-        let n_toks = match (p.current(), la1, la2) {
-            (SELF_KW, _, _) => 1,
-            (AMPERSAND, SELF_KW, _) => 2,
-            (AMPERSAND, MUT_KW, SELF_KW) => 3,
+        let la3 = p.nth(3);
+        let n_toks = match (p.current(), la1, la2, la3) {
+            (SELF_KW, _, _, _) => 1,
+            (AMPERSAND, SELF_KW, _, _) => 2,
+            (AMPERSAND, MUT_KW, SELF_KW, _) => 3,
+            (AMPERSAND, LIFETIME, SELF_KW, _) => 3,
+            (AMPERSAND, LIFETIME, MUT_KW, SELF_KW) => 4,
             _ => return,
         };
         let m = p.start();
