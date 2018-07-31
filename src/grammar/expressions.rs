@@ -162,6 +162,7 @@ fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
     let done = match p.current() {
         L_PAREN => tuple_expr(p),
         PIPE => lambda_expr(p),
+        MOVE_KW if p.nth(1) == PIPE => lambda_expr(p),
         IF_KW => if_expr(p),
         _ => {
             p.err_and_bump("expected expression");
@@ -184,11 +185,12 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
 //     || ();
 //     || -> i32 { 92 };
 //     |x| x;
-//     |x: i32,| x;
+//     move |x: i32,| x;
 // }
 fn lambda_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(PIPE));
+    assert!(p.at(PIPE) || (p.at(MOVE_KW) && p.nth(1) == PIPE));
     let m = p.start();
+    p.eat(MOVE_KW);
     params::param_list_opt_types(p);
     if fn_ret_type(p) {
         block(p);

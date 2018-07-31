@@ -70,6 +70,7 @@ pub enum SyntaxKind {
     TYPE_KW,
     REF_KW,
     LET_KW,
+    MOVE_KW,
     AUTO_KW,
     DEFAULT_KW,
     UNION_KW,
@@ -235,6 +236,7 @@ impl SyntaxKind {
             TYPE_KW => &SyntaxInfo { name: "TYPE_KW" },
             REF_KW => &SyntaxInfo { name: "REF_KW" },
             LET_KW => &SyntaxInfo { name: "LET_KW" },
+            MOVE_KW => &SyntaxInfo { name: "MOVE_KW" },
             AUTO_KW => &SyntaxInfo { name: "AUTO_KW" },
             DEFAULT_KW => &SyntaxInfo { name: "DEFAULT_KW" },
             UNION_KW => &SyntaxInfo { name: "UNION_KW" },
@@ -359,6 +361,7 @@ impl SyntaxKind {
             "type" => TYPE_KW,
             "ref" => REF_KW,
             "let" => LET_KW,
+            "move" => MOVE_KW,
             _ => return None,
         };
         Some(kw)
@@ -461,6 +464,7 @@ impl SyntaxKind {
             TYPE_KW => "type",
             REF_KW => "ref",
             LET_KW => "let",
+            MOVE_KW => "move",
             AUTO_KW => "auto",
             DEFAULT_KW => "default",
             UNION_KW => "union",
