@@ -1,0 +1,35 @@
+error: expected a literal
+  --> $DIR/concat.rs:14:13
+   |
+LL |     concat!(foo);
+   |             ^^^
+   |
+   = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
+
+error: expected a literal
+  --> $DIR/concat.rs:16:13
+   |
+LL |     concat!(foo());
+   |             ^^^^^
+   |
+   = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
+
+error: cannot concatenate a byte string literal with string literals
+  --> $DIR/concat.rs:19:20
+   |
+LL |     concat!("abc", b"def", 'g', "hi", b"jkl");
+   |             -----  ^^^^^^  ---  ----  ^^^^^^ byte string literal
+   |             |      |       |    |
+   |             |      |       |    string literal
+   |             |      |       string literal
+   |             |      byte string literal
+   |             string literal
+   |
+   = help: do not mix byte string literals and string literals
+help: you can use byte string literals
+   |
+LL |     concat!(b"abc", b"def", b'g', b"hi", b"jkl");
+   |             ^               ^     ^
+
+error: aborting due to 3 previous errors
+

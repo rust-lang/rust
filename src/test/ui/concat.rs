@@ -9,8 +9,14 @@
 // except according to those terms.
 
 fn main() {
-    concat!(b'f');
-    concat!(b"foo");
-    concat!(foo);   //~ ERROR: expected a literal
-    concat!(foo()); //~ ERROR: expected a literal
+    concat!(b'f');    // b'' concat is supported
+    concat!(b"foo");  // b"" concat is supported
+    concat!(foo);
+    //~^ ERROR: expected a literal
+    concat!(foo());
+    //~^ ERROR: expected a literal
+    concat!(b'a', b"bc", b"def");
+    concat!("abc", b"def", 'g', "hi", b"jkl");
+    //~^ ERROR cannot concatenate a byte string literal with string literals
+    // `concat!()` cannot mix "" and b"" literals (it might allow it in the future)
 }
