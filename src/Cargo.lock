@@ -2366,6 +2366,7 @@ name = "rustc_metadata_utils"
 version = "0.0.0"
 dependencies = [
  "rustc 0.0.0",
+ "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
 

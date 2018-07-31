@@ -22,7 +22,6 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use hir::def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::definitions::{DefKey, DefPathTable};
@@ -34,8 +33,6 @@ use session::search_paths::PathKind;
 use std::any::Any;
 use std::path::{Path, PathBuf};
 use syntax::ast;
-use syntax::edition::Edition;
-use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_target::spec::Target;
@@ -140,11 +137,6 @@ pub struct ForeignModule {
     pub def_id: DefId,
 }
 
-pub enum LoadedMacro {
-    MacroDef(ast::Item),
-    ProcMacro(Lrc<SyntaxExtension>),
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct ExternCrate {
     pub src: ExternCrateSource,
@@ -221,9 +213,6 @@ pub trait MetadataLoader {
 pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>;
 
-    // access to the metadata loader
-    fn metadata_loader(&self) -> &dyn MetadataLoader;
-
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
@@ -231,18 +220,11 @@ pub trait CrateStore {
     fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable>;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
-    fn export_macros_untracked(&self, cnum: CrateNum);
-    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind;
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition;
-    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
-    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
-    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem;
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 
     // This is basically a 1-based range of ints, which is a little

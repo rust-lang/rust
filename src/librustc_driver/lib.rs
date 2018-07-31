@@ -78,7 +78,6 @@ use rustc::session::filesearch;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
-use rustc::middle::cstore::CrateStore;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
@@ -1002,7 +1001,7 @@ impl RustcDefaultCalls {
                     let mut v = Vec::new();
                     locator::list_file_metadata(&sess.target.target,
                                                 path,
-                                                cstore.metadata_loader(),
+                                                &*cstore.metadata_loader,
                                                 &mut v)
                             .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
