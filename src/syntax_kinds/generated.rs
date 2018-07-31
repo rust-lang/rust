@@ -145,6 +145,7 @@ pub enum SyntaxKind {
     TYPE_PARAM_LIST,
     TYPE_ARG_LIST,
     PARAM_LIST,
+    SELF_PARAM,
     ARG_LIST,
     // Technical SyntaxKinds: they appear temporally during parsing,
     // but never end up in the final tree
@@ -298,6 +299,7 @@ impl SyntaxKind {
             TYPE_PARAM_LIST => &SyntaxInfo { name: "TYPE_PARAM_LIST" },
             TYPE_ARG_LIST => &SyntaxInfo { name: "TYPE_ARG_LIST" },
             PARAM_LIST => &SyntaxInfo { name: "PARAM_LIST" },
+            SELF_PARAM => &SyntaxInfo { name: "SELF_PARAM" },
             ARG_LIST => &SyntaxInfo { name: "ARG_LIST" },
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
             EOF => &SyntaxInfo { name: "EOF" },

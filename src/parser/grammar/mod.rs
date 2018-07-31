@@ -104,6 +104,7 @@ fn fn_value_parameters(p: &mut Parser) {
     assert!(p.at(L_PAREN));
     let m = p.start();
     p.bump();
+    self_param(p);
     while !p.at(EOF) && !p.at(R_PAREN) {
         value_parameter(p);
         if !p.at(R_PAREN) {
@@ -119,6 +120,29 @@ fn fn_value_parameters(p: &mut Parser) {
         p.expect(COLON);
         types::type_(p);
         m.complete(p, VALUE_PARAMETER);
+    }
+
+    // test self_param
+    // impl S {
+    //     fn a(self) {}
+    //     fn b(&self,) {}
+    //     fn c(&mut self, x: i32) {}
+    // }
+    fn self_param(p: &mut Parser) {
+        let la1 = p.nth(1);
+        let la2 = p.nth(2);
+        let n_toks = match (p.current(), la1, la2) {
+            (SELF_KW, _, _) => 1,
+            (AMPERSAND, SELF_KW, _) => 2,
+            (AMPERSAND, MUT_KW, SELF_KW) => 3,
+            _ => return,
+        };
+        let m = p.start();
+        for _ in 0..n_toks { p.bump(); }
+        m.complete(p, SELF_PARAM);
+        if !p.at(R_PAREN) {
+            p.expect(COMMA);
+        }
     }
 }
 

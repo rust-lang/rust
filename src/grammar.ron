@@ -158,6 +158,7 @@ Grammar(
         "TYPE_ARG_LIST",
 
         "PARAM_LIST",
+        "SELF_PARAM",
         "ARG_LIST",
     ]
 )

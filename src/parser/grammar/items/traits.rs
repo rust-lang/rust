@@ -29,6 +29,17 @@ pub(super) fn impl_item(p: &mut Parser) {
     }
     type_params::where_clause(p);
     p.expect(L_CURLY);
+
+    // test impl_item_items
+    // impl F {
+    //     type A = i32;
+    //     const B: i32 = 92;
+    //     fn foo() {}
+    //     fn bar(&self) {}
+    // }
+    while !p.at(EOF) && !p.at(R_CURLY) {
+        item(p);
+    }
     p.expect(R_CURLY);
 }
 
