@@ -1118,7 +1118,7 @@ impl<'a> ToNameBinding<'a> for &'a NameBinding<'a> {
 
 #[derive(Clone, Debug)]
 enum NameBindingKind<'a> {
-    Def(Def),
+    Def(Def, /* is_macro_export */ bool),
     Module(Module<'a>),
     Import {
         binding: &'a NameBinding<'a>,
@@ -1162,7 +1162,7 @@ impl<'a> NameBinding<'a> {
 
     fn def(&self) -> Def {
         match self.kind {
-            NameBindingKind::Def(def) => def,
+            NameBindingKind::Def(def, _) => def,
             NameBindingKind::Module(module) => module.def().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
             NameBindingKind::Ambiguity { .. } => Def::Err,
@@ -1192,8 +1192,8 @@ impl<'a> NameBinding<'a> {
 
     fn is_variant(&self) -> bool {
         match self.kind {
-            NameBindingKind::Def(Def::Variant(..)) |
-            NameBindingKind::Def(Def::VariantCtor(..)) => true,
+            NameBindingKind::Def(Def::Variant(..), _) |
+            NameBindingKind::Def(Def::VariantCtor(..), _) => true,
             _ => false,
         }
     }
@@ -1242,7 +1242,7 @@ impl<'a> NameBinding<'a> {
 
     fn is_macro_def(&self) -> bool {
         match self.kind {
-            NameBindingKind::Def(Def::Macro(..)) => true,
+            NameBindingKind::Def(Def::Macro(..), _) => true,
             _ => false,
         }
     }
@@ -1398,7 +1398,7 @@ pub struct Resolver<'a> {
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
-    macro_exports: Vec<Export>,
+    macro_exports: Vec<Export>, // FIXME: Remove when `use_extern_macros` is stabilized
     pub whitelisted_legacy_custom_derives: Vec<Name>,
     pub found_unresolved_macro: bool,
 
@@ -1428,6 +1428,9 @@ pub struct Resolver<'a> {
 
     /// Only supposed to be used by rustdoc, otherwise should be false.
     pub ignore_extern_prelude_feature: bool,
+
+    /// Macro invocations in the whole crate that can expand into a `#[macro_export] macro_rules`.
+    unresolved_invocations_macro_export: FxHashSet<Mark>,
 }
 
 /// Nothing really interesting here, it just provides memory for the rest of the crate.
@@ -1702,7 +1705,7 @@ impl<'a> Resolver<'a> {
 
             arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
-                kind: NameBindingKind::Def(Def::Err),
+                kind: NameBindingKind::Def(Def::Err, false),
                 expansion: Mark::root(),
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
@@ -1732,6 +1735,7 @@ impl<'a> Resolver<'a> {
             current_type_ascription: Vec::new(),
             injected_crate: None,
             ignore_extern_prelude_feature: false,
+            unresolved_invocations_macro_export: FxHashSet(),
         }
     }
 

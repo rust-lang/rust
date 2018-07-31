@@ -1,14 +1,18 @@
-error: a macro named `panic` has already been exported
+error[E0255]: the name `panic` is defined multiple times
   --> $DIR/duplicate-check-macro-exports.rs:16:1
    |
-LL | macro_rules! panic { () => {} } //~ ERROR a macro named `panic` has already been exported
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `panic` already exported
-   |
-note: previous macro export here
-  --> $DIR/duplicate-check-macro-exports.rs:13:9
-   |
 LL | pub use std::panic;
-   |         ^^^^^^^^^^
+   |         ---------- previous import of the macro `panic` here
+...
+LL | macro_rules! panic { () => {} } //~ ERROR the name `panic` is defined multiple times
+   | ^^^^^^^^^^^^^^^^^^ `panic` redefined here
+   |
+   = note: `panic` must be defined only once in the macro namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+LL | pub use std::panic as other_panic;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0255`.

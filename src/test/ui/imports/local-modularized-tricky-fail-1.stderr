@@ -1,0 +1,84 @@
+error[E0659]: `exported` is ambiguous
+  --> $DIR/local-modularized-tricky-fail-1.rs:38:1
+   |
+LL | exported!(); //~ ERROR `exported` is ambiguous
+   | ^^^^^^^^
+   |
+note: `exported` could refer to the name defined here
+  --> $DIR/local-modularized-tricky-fail-1.rs:15:5
+   |
+LL | /     macro_rules! exported {
+LL | |         () => ()
+LL | |     }
+   | |_____^
+...
+LL |       define_exported!();
+   |       ------------------- in this macro invocation
+note: `exported` could also refer to the name imported here
+  --> $DIR/local-modularized-tricky-fail-1.rs:32:5
+   |
+LL | use inner1::*;
+   |     ^^^^^^^^^
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `include` is ambiguous
+  --> $DIR/local-modularized-tricky-fail-1.rs:57:1
+   |
+LL | include!(); //~ ERROR `include` is ambiguous
+   | ^^^^^^^
+   |
+note: `include` could refer to the name defined here
+  --> $DIR/local-modularized-tricky-fail-1.rs:27:5
+   |
+LL | /     macro_rules! include {
+LL | |         () => ()
+LL | |     }
+   | |_____^
+...
+LL |       define_include!();
+   |       ------------------ in this macro invocation
+   = note: `include` is also a builtin macro
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `panic` is ambiguous
+  --> $DIR/local-modularized-tricky-fail-1.rs:45:5
+   |
+LL |     panic!(); //~ ERROR `panic` is ambiguous
+   |     ^^^^^
+   |
+note: `panic` could refer to the name defined here
+  --> $DIR/local-modularized-tricky-fail-1.rs:21:5
+   |
+LL | /     macro_rules! panic {
+LL | |         () => ()
+LL | |     }
+   | |_____^
+...
+LL |       define_panic!();
+   |       ---------------- in this macro invocation
+   = note: `panic` is also a builtin macro
+   = note: macro-expanded macros do not shadow
+
+error[E0659]: `panic` is ambiguous
+  --> $DIR/local-modularized-tricky-fail-1.rs:45:5
+   |
+LL |     panic!(); //~ ERROR `panic` is ambiguous
+   |     ^^^^^^^^^
+   |
+note: `panic` could refer to the name defined here
+  --> $DIR/local-modularized-tricky-fail-1.rs:21:5
+   |
+LL | /     macro_rules! panic {
+LL | |         () => ()
+LL | |     }
+   | |_____^
+...
+LL |       define_panic!();
+   |       ---------------- in this macro invocation
+   = note: `panic` is also a builtin macro
+   = note: macro-expanded macros do not shadow
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

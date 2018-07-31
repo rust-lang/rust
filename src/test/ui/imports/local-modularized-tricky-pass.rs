@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_38715.rs
-// aux-build:issue_38715-modern.rs
+// compile-pass
 
-// Test that `#[macro_export] macro_rules!` shadow earlier `#[macro_export] macro_rules!`
+#![feature(use_extern_macros)]
 
-#[macro_use]
-extern crate issue_38715;
-#[macro_use]
-extern crate issue_38715_modern;
+macro_rules! define_exported { () => {
+    #[macro_export]
+    macro_rules! exported {
+        () => ()
+    }
+}}
 
-fn main() {
-    foo!();
-    foo_modern!();
+mod inner1 {
+    use super::*;
+    exported!();
 }
+
+mod inner2 {
+    define_exported!();
+}
+
+fn main() {}
