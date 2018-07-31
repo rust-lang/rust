@@ -6,8 +6,10 @@ use {
     TextRange, TextUnit,
 };
 
-pub trait TreeRoot: Deref<Target = SyntaxRoot> + Clone {}
+pub trait TreeRoot: Deref<Target=SyntaxRoot> + Clone {}
+
 impl TreeRoot for Arc<SyntaxRoot> {}
+
 impl<'a> TreeRoot for &'a SyntaxRoot {}
 
 #[derive(Clone, Copy)]
@@ -18,14 +20,13 @@ pub struct SyntaxNode<R: TreeRoot = Arc<SyntaxRoot>> {
     red: ptr::NonNull<RedNode>,
 }
 
-impl <R1: TreeRoot, R2: TreeRoot> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2> {
+impl<R1: TreeRoot, R2: TreeRoot> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2> {
     fn eq(&self, other: &SyntaxNode<R1>) -> bool {
         self.red == other.red
     }
 }
 
-impl <R: TreeRoot> Eq for SyntaxNode<R> {
-}
+impl<R: TreeRoot> Eq for SyntaxNode<R> {}
 
 pub type SyntaxNodeRef<'a> = SyntaxNode<&'a SyntaxRoot>;
 
@@ -88,7 +89,7 @@ impl<R: TreeRoot> SyntaxNode<R> {
         (0..n_children).map(move |i| {
             SyntaxNode {
                 root: self.root.clone(),
-                red: red.nth_child(i),
+                red: red.get_child(i).unwrap(),
             }
         })
     }
@@ -109,12 +110,10 @@ impl<R: TreeRoot> SyntaxNode<R> {
         let red = self.red();
         let parent = self.parent()?;
         let next_sibling_idx = red.index_in_parent()? + 1;
-        if next_sibling_idx == parent.red().n_children() {
-            return None;
-        }
+        let sibling_red = parent.red().get_child(next_sibling_idx)?;
         Some(SyntaxNode {
             root: self.root.clone(),
-            red: parent.red().nth_child(next_sibling_idx),
+            red: sibling_red,
         })
     }
 

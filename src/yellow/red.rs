@@ -61,9 +61,12 @@ impl RedNode {
         self.green.children().len()
     }
 
-    pub(crate) fn nth_child(&self, idx: usize) -> ptr::NonNull<RedNode> {
+    pub(crate) fn get_child(&self, idx: usize) -> Option<ptr::NonNull<RedNode>> {
+        if idx >= self.n_children() {
+            return None
+        }
         match &self.children.read().unwrap()[idx] {
-            Some(child) => return child.into(),
+            Some(child) => return Some(child.into()),
             None => (),
         }
         let mut children = self.children.write().unwrap();
@@ -78,7 +81,7 @@ impl RedNode {
                 RedNode::new_child(green_children[idx].clone(), self.into(), start_offset, idx);
             children[idx] = Some(child)
         }
-        children[idx].as_ref().unwrap().into()
+        Some(children[idx].as_ref().unwrap().into())
     }
 
     pub(crate) fn parent(&self) -> Option<ptr::NonNull<RedNode>> {
