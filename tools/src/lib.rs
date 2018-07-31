@@ -1,7 +1,6 @@
 extern crate itertools;
 
 use itertools::Itertools;
-use std::hash;
 
 #[derive(Debug)]
 pub struct Test {

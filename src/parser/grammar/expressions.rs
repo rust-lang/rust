@@ -26,11 +26,20 @@ pub(super) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 }
 
 pub(super) fn expr(p: &mut Parser) {
-    let mut lhs = prefix_expr(p);
+    let mut lhs = match prefix_expr(p) {
+        Some(lhs) => lhs,
+        None => return,
+    };
 
-    while let Some(m) = lhs {
-        match p.current() {
-            L_PAREN => lhs = Some(call_expr(p, m)),
+    loop {
+        lhs = match p.current() {
+            L_PAREN => call_expr(p, lhs),
+            DOT if p.nth(1) == IDENT =>
+                if p.nth(2) == L_PAREN {
+                    method_call_expr(p, lhs)
+                } else {
+                    field_expr(p, lhs)
+                }
             _ => break,
         }
     }
@@ -93,6 +102,32 @@ fn call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     arg_list(p);
     m.complete(p, CALL_EXPR)
+}
+
+// test method_call_expr
+// fn foo() {
+//     x.foo();
+//     y.bar(1, 2,);
+// }
+fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
+    assert!(p.at(DOT) && p.nth(1) == IDENT && p.nth(2) == L_PAREN);
+    let m = lhs.precede(p);
+    p.bump();
+    p.bump();
+    arg_list(p);
+    m.complete(p, METHOD_CALL_EXPR)
+}
+
+// test field_expr
+// fn foo() {
+//     x.foo.bar;
+// }
+fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
+    assert!(p.at(DOT) && p.nth(1) == IDENT);
+    let m = lhs.precede(p);
+    p.bump();
+    p.bump();
+    m.complete(p, FIELD_EXPR)
 }
 
 fn arg_list(p: &mut Parser) {
