@@ -2219,6 +2219,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_incremental 0.0.0",
+ "rustc_metadata_utils 0.0.0",
  "rustc_mir 0.0.0",
  "rustc_target 0.0.0",
  "syntax 0.0.0",
@@ -2352,10 +2353,19 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_metadata_utils 0.0.0",
  "rustc_target 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_ext 0.0.0",
+ "syntax_pos 0.0.0",
+]
+
+[[package]]
+name = "rustc_metadata_utils"
+version = "0.0.0"
+dependencies = [
+ "rustc 0.0.0",
  "syntax_pos 0.0.0",
 ]
 

@@ -25,10 +25,12 @@ use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
-use rustc::middle::cstore::{validate_crate_name, ExternCrate, ExternCrateSource};
+use rustc::middle::cstore::{ExternCrate, ExternCrateSource};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
+
+use rustc_metadata_utils::validate_crate_name;
 
 use std::ops::Deref;
 use std::path::PathBuf;
