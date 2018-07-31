@@ -59,6 +59,21 @@ macro_rules! diagnostic_child_methods {
     )
 }
 
+#[derive(Debug, Clone)]
+#[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+/// Iterator over the children diagnostics of a `Diagnostic`.
+pub struct Children<'a>(::std::slice::Iter<'a, Diagnostic>);
+
+#[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+impl<'a> Iterator for Children<'a> {
+    type Item = &'a Diagnostic;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+#[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
 impl Diagnostic {
     /// Create a new diagnostic with the given `level` and `message`.
     #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
@@ -92,6 +107,42 @@ impl Diagnostic {
     #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
     pub fn level(&self) -> Level {
         self.level
+    }
+
+    /// Sets the level in `self` to `level`.
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+    pub fn set_level(&mut self, level: Level) {
+        self.level = level;
+    }
+
+    /// Returns the message in `self`.
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// Sets the message in `self` to `message`.
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+    pub fn set_message<T: Into<String>>(&mut self, message: T) {
+        self.message = message.into();
+    }
+
+    /// Returns the `Span` in `self`.
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+    pub fn span(&self) -> Option<Span> {
+        self.span
+    }
+
+    /// Sets the `Span` in `self` to `span`.
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+    pub fn set_span(&mut self, span: Span) {
+        self.span = Some(span);
+    }
+
+    /// Returns an iterator over the children diagnostics of `self`.
+    #[unstable(feature = "proc_macro_diagnostic", issue = "38356")]
+    pub fn children(&self) -> Children {
+        Children(self.children.iter())
     }
 
     /// Emit the diagnostic.
