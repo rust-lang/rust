@@ -14,7 +14,7 @@
 //! The Qualif flags below can be used to also provide better
 //! diagnostics as to why a constant rvalue wasn't promoted.
 
-use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::bitvec::BitArray;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::fx::FxHashSet;
@@ -116,7 +116,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     local_qualif: IndexVec<Local, Option<Qualif>>,
     qualif: Qualif,
-    const_fn_arg_vars: BitVector<Local>,
+    const_fn_arg_vars: BitArray<Local>,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
@@ -150,7 +150,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             param_env,
             local_qualif,
             qualif: Qualif::empty(),
-            const_fn_arg_vars: BitVector::new(mir.local_decls.len()),
+            const_fn_arg_vars: BitArray::new(mir.local_decls.len()),
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -284,7 +284,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         let mir = self.mir;
 
-        let mut seen_blocks = BitVector::new(mir.basic_blocks().len());
+        let mut seen_blocks = BitArray::new(mir.basic_blocks().len());
         let mut bb = START_BLOCK;
         loop {
             seen_blocks.insert(bb.index());

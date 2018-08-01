@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro-use-warned-against.rs
-// aux-build:macro-use-warned-against2.rs
-// compile-pass
+// compile-flags: -O
 
-#![warn(macro_use_extern_crate, unused)]
-#![feature(use_extern_macros)]
+#![crate_type = "lib"]
 
-#[macro_use] //~ WARN should be replaced at use sites with a `use` statement
-extern crate macro_use_warned_against;
-#[macro_use] //~ WARN unused `#[macro_use]`
-extern crate macro_use_warned_against2;
-
-fn main() {
-    foo!();
+// CHECK-LABEL: @vec_clear
+#[no_mangle]
+pub fn vec_clear(x: &mut Vec<u32>) {
+    // CHECK-NOT: load
+    // CHECK-NOT: icmp
+    x.clear()
 }

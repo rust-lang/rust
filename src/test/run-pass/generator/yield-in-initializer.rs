@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro-use-warned-against.rs
-// aux-build:macro-use-warned-against2.rs
-// compile-pass
-
-#![warn(macro_use_extern_crate, unused)]
-#![feature(use_extern_macros)]
-
-#[macro_use] //~ WARN should be replaced at use sites with a `use` statement
-extern crate macro_use_warned_against;
-#[macro_use] //~ WARN unused `#[macro_use]`
-extern crate macro_use_warned_against2;
+#![feature(generators)]
 
 fn main() {
-    foo!();
+    static || {
+        loop {
+            // Test that `opt` is not live across the yield, even when borrowed in a loop
+            // See https://github.com/rust-lang/rust/issues/52792
+            let opt = {
+                yield;
+                true
+            };
+            &opt;
+        }
+    };
 }

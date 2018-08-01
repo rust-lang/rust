@@ -7,9 +7,8 @@ LL | #[macro_use] //~ WARN should be replaced at use sites with a `use` statemen
 note: lint level defined here
   --> $DIR/macro-use-warned-against.rs:15:9
    |
-LL | #![warn(rust_2018_idioms, unused)]
-   |         ^^^^^^^^^^^^^^^^
-   = note: #[warn(macro_use_extern_crate)] implied by #[warn(rust_2018_idioms)]
+LL | #![warn(macro_use_extern_crate, unused)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused `#[macro_use]` import
   --> $DIR/macro-use-warned-against.rs:20:1
@@ -18,9 +17,9 @@ LL | #[macro_use] //~ WARN unused `#[macro_use]`
    | ^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/macro-use-warned-against.rs:15:27
+  --> $DIR/macro-use-warned-against.rs:15:33
    |
-LL | #![warn(rust_2018_idioms, unused)]
-   |                           ^^^^^^
+LL | #![warn(macro_use_extern_crate, unused)]
+   |                                 ^^^^^^
    = note: #[warn(unused_imports)] implied by #[warn(unused)]
 

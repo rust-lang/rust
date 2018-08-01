@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro-use-warned-against.rs
-// aux-build:macro-use-warned-against2.rs
-// compile-pass
+// Check that mutable promoted length zero arrays don't check for conflicting
+// access
 
-#![warn(macro_use_extern_crate, unused)]
-#![feature(use_extern_macros)]
+// run-pass
 
-#[macro_use] //~ WARN should be replaced at use sites with a `use` statement
-extern crate macro_use_warned_against;
-#[macro_use] //~ WARN unused `#[macro_use]`
-extern crate macro_use_warned_against2;
+#![feature(nll)]
 
-fn main() {
-    foo!();
+pub fn main() {
+    let mut x: Vec<&[i32; 0]> = Vec::new();
+    for i in 0..10 {
+        x.push(&[]);
+    }
 }

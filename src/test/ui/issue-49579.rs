@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro-use-warned-against.rs
-// aux-build:macro-use-warned-against2.rs
+
 // compile-pass
 
-#![warn(macro_use_extern_crate, unused)]
-#![feature(use_extern_macros)]
+#![feature(nll)]
 
-#[macro_use] //~ WARN should be replaced at use sites with a `use` statement
-extern crate macro_use_warned_against;
-#[macro_use] //~ WARN unused `#[macro_use]`
-extern crate macro_use_warned_against2;
+fn fibs(n: u32) -> impl Iterator<Item=u128> {
+    (0 .. n)
+    .scan((0, 1), |st, _| {
+        *st = (st.1, st.0 + st.1);
+        Some(*st)
+    })
+    .map(&|(f, _)| f)
+}
 
 fn main() {
-    foo!();
+    println!("{:?}", fibs(10).collect::<Vec<_>>());
 }

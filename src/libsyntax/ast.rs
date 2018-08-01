@@ -23,6 +23,7 @@ use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
 use ptr::P;
 use rustc_data_structures::indexed_vec;
+use rustc_data_structures::indexed_vec::Idx;
 use symbol::{Symbol, keywords};
 use tokenstream::{ThinTokenStream, TokenStream};
 
@@ -1910,8 +1911,17 @@ pub enum AttrStyle {
     Inner,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, PartialOrd, Ord, Copy)]
 pub struct AttrId(pub usize);
+
+impl Idx for AttrId {
+    fn new(idx: usize) -> Self {
+        AttrId(idx)
+    }
+    fn index(self) -> usize {
+        self.0
+    }
+}
 
 /// Meta-data associated with an item
 /// Doc-comments are promoted to attributes that have is_sugared_doc = true

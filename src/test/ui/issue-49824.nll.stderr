@@ -1,0 +1,20 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/issue-49824.rs:22:9
+   |
+LL |         || {
+   |    _____-
+   |   |_____|
+   |  ||
+LL |  ||         || {
+   |  ||_________^
+LL | |||             let _y = &mut x;
+LL | |||         }
+   | |||_________^ requires that `'1` must outlive `'2`
+LL |  ||     };
+   |  ||     -
+   |  ||_____|
+   |  |______lifetime `'1` represents the closure body
+   |         lifetime `'2` appears in return type
+
+error: aborting due to previous error
+

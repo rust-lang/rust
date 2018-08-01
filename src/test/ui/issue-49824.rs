@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro-use-warned-against.rs
-// aux-build:macro-use-warned-against2.rs
-// compile-pass
+#![feature(rustc_attrs)]
 
-#![warn(macro_use_extern_crate, unused)]
-#![feature(use_extern_macros)]
+// This test checks that a failure occurs with NLL but does not fail with the
+// legacy AST output. Check issue-49824.nll.stderr for expected compilation error
+// output under NLL and #49824 for more information.
 
-#[macro_use] //~ WARN should be replaced at use sites with a `use` statement
-extern crate macro_use_warned_against;
-#[macro_use] //~ WARN unused `#[macro_use]`
-extern crate macro_use_warned_against2;
-
+#[rustc_error]
 fn main() {
-    foo!();
+    //~^ compilation successful
+    let mut x = 0;
+    || {
+        || {
+            let _y = &mut x;
+        }
+    };
 }

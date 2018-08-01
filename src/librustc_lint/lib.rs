@@ -45,7 +45,6 @@ use rustc::lint::{LateContext, LateLintPass, LintPass, LintArray};
 use rustc::lint::builtin::{
     BARE_TRAIT_OBJECTS,
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-    MACRO_USE_EXTERN_CRATE,
     ELIDED_LIFETIMES_IN_PATHS,
     parser::QUESTION_MARK_MACRO_SEP
 };
@@ -195,11 +194,18 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     add_lint_group!(sess,
                     "rust_2018_idioms",
                     BARE_TRAIT_OBJECTS,
-                    UNREACHABLE_PUB,
                     UNUSED_EXTERN_CRATES,
-                    MACRO_USE_EXTERN_CRATE,
-                    ELIDED_LIFETIMES_IN_PATHS,
-                    ELLIPSIS_INCLUSIVE_RANGE_PATTERNS);
+                    ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
+                    ELIDED_LIFETIMES_IN_PATHS
+
+                    // FIXME(#52665, #47816) not always applicable and not all
+                    // macros are ready for this yet.
+                    // UNREACHABLE_PUB,
+
+                    // FIXME macro crates are not up for this yet, too much
+                    // breakage is seen if we try to encourage this lint.
+                    // MACRO_USE_EXTERN_CRATE,
+                    );
 
     // Guidelines for creating a future incompatibility lint:
     //

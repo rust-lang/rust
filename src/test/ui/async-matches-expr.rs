@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro-use-warned-against.rs
-// aux-build:macro-use-warned-against2.rs
 // compile-pass
+// edition:2018
 
-#![warn(macro_use_extern_crate, unused)]
-#![feature(use_extern_macros)]
+#![feature(async_await, await_macro)]
 
-#[macro_use] //~ WARN should be replaced at use sites with a `use` statement
-extern crate macro_use_warned_against;
-#[macro_use] //~ WARN unused `#[macro_use]`
-extern crate macro_use_warned_against2;
+macro_rules! match_expr {
+    ($x:expr) => {}
+}
 
 fn main() {
-    foo!();
+    match_expr!(async {});
+    match_expr!(async || {});
 }

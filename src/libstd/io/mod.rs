@@ -354,19 +354,26 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 // avoid paying to allocate and zero a huge chunk of memory if the reader only
 // has 4 bytes while still making large reads if the reader does have a ton
 // of data to return. Simply tacking on an extra DEFAULT_BUF_SIZE space every
-// time is 4,500 times (!) slower than this if the reader has a very small
-// amount of data to return.
+// time is 4,500 times (!) slower than a default reservation size of 32 if the
+// reader has a very small amount of data to return.
 //
 // Because we're extending the buffer with uninitialized data for trusted
 // readers, we need to make sure to truncate that if any of this panics.
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
+    read_to_end_with_reservation(r, buf, 32)
+}
+
+fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
+                                                  buf: &mut Vec<u8>,
+                                                  reservation_size: usize) -> Result<usize>
+{
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
     let ret;
     loop {
         if g.len == g.buf.len() {
             unsafe {
-                g.buf.reserve(32);
+                g.buf.reserve(reservation_size);
                 let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
                 r.initializer().initialize(&mut g.buf[g.len..]);
@@ -1898,6 +1905,12 @@ impl<T: Read> Read for Take<T> {
 
     unsafe fn initializer(&self) -> Initializer {
         self.inner.initializer()
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+        let reservation_size = cmp::min(self.limit, 32) as usize;
+
+        read_to_end_with_reservation(self, buf, reservation_size)
     }
 }
 

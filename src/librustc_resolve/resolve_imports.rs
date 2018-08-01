@@ -691,6 +691,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                             expansion: directive.expansion,
                         });
                         let _ = self.try_define(directive.parent, target, TypeNS, binding);
+                        let import = self.import_map.entry(directive.id).or_default();
+                        import[TypeNS] = Some(PathResolution::new(binding.def()));
                         return None;
                     }
                 }

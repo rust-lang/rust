@@ -8,18 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro-use-warned-against.rs
-// aux-build:macro-use-warned-against2.rs
-// compile-pass
+// edition:2018
+// aux-build:issue-52489.rs
 
-#![warn(macro_use_extern_crate, unused)]
-#![feature(use_extern_macros)]
+use issue_52489;
+//~^ ERROR use of unstable library feature 'issue_52489_unstable'
 
-#[macro_use] //~ WARN should be replaced at use sites with a `use` statement
-extern crate macro_use_warned_against;
-#[macro_use] //~ WARN unused `#[macro_use]`
-extern crate macro_use_warned_against2;
-
-fn main() {
-    foo!();
-}
+fn main() {}
