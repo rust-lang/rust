@@ -68,12 +68,6 @@ case ${INTEGRATION} in
         check_fmt
         cd -
         ;;
-    failure)
-        git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
-        cd ${INTEGRATION}/failure-1.X
-        check_fmt
-        cd -
-        ;;
     *)
         git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}
