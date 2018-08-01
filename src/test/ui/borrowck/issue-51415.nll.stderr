@@ -4,6 +4,7 @@ error[E0507]: cannot move out of borrowed content
 LL |     let opt = a.iter().enumerate().find(|(_, &s)| {
    |                                          ^^^^^-^
    |                                          |    |
+   |                                          |    data moved here
    |                                          |    help: to prevent move, use ref or ref mut: `ref s`
    |                                          cannot move out of borrowed content
 
