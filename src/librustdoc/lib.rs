@@ -500,12 +500,14 @@ fn main_args(args: &[String]) -> isize {
         }
     }
 
+    let mut id_map = html::markdown::IdMap::new();
+    id_map.populate(html::render::initial_ids());
     let external_html = match ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
             &matches.opt_strs("html-before-content"),
             &matches.opt_strs("html-after-content"),
             &matches.opt_strs("markdown-before-content"),
-            &matches.opt_strs("markdown-after-content"), &diag) {
+            &matches.opt_strs("markdown-after-content"), &diag, &mut id_map) {
         Some(eh) => eh,
         None => return 3,
     };
@@ -562,7 +564,7 @@ fn main_args(args: &[String]) -> isize {
                                   renderinfo,
                                   sort_modules_alphabetically,
                                   themes,
-                                  enable_minification)
+                                  enable_minification, id_map)
                     .expect("failed to generate documentation");
                 0
             }

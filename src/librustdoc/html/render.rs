@@ -50,12 +50,14 @@ use std::mem;
 use std::path::{PathBuf, Path, Component};
 use std::str;
 use std::sync::Arc;
+use std::rc::Rc;
 
 use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
 use syntax::codemap::FileName;
+use syntax::feature_gate::UnstableFeatures;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
@@ -72,7 +74,7 @@ use html::format::{GenericBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCodes, IdMap};
 use html::{highlight, layout};
 
 use minifier;
@@ -88,7 +90,7 @@ pub type NameDoc = (String, Option<String>);
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
 #[derive(Clone)]
-pub struct Context {
+struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     pub current: Vec<String>,
@@ -99,10 +101,13 @@ pub struct Context {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
+    pub codes: ErrorCodes,
+    /// The map used to ensure all generated 'id=' attributes are unique.
+    id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
 }
 
-pub struct SharedContext {
+struct SharedContext {
     /// The path to the crate root source minus the file name.
     /// Used for simplifying paths to the highlighted source code files.
     pub src_root: PathBuf,
@@ -450,9 +455,8 @@ impl ToJson for IndexItemFunctionType {
 
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> = RefCell::new(Vec::new()));
-thread_local!(pub static USED_ID_MAP: RefCell<FxHashMap<String, usize>> = RefCell::new(init_ids()));
 
-fn init_ids() -> FxHashMap<String, usize> {
+pub fn initial_ids() -> Vec<String> {
     [
      "main",
      "search",
@@ -470,36 +474,7 @@ fn init_ids() -> FxHashMap<String, usize> {
      "methods",
      "deref-methods",
      "implementations",
-    ].into_iter().map(|id| (String::from(*id), 1)).collect()
-}
-
-/// This method resets the local table of used ID attributes. This is typically
-/// used at the beginning of rendering an entire HTML page to reset from the
-/// previous state (if any).
-pub fn reset_ids(embedded: bool) {
-    USED_ID_MAP.with(|s| {
-        *s.borrow_mut() = if embedded {
-            init_ids()
-        } else {
-            FxHashMap()
-        };
-    });
-}
-
-pub fn derive_id(candidate: String) -> String {
-    USED_ID_MAP.with(|map| {
-        let id = match map.borrow_mut().get_mut(&candidate) {
-            None => candidate,
-            Some(a) => {
-                let id = format!("{}-{}", candidate, *a);
-                *a += 1;
-                id
-            }
-        };
-
-        map.borrow_mut().insert(id.clone(), 1);
-        id
-    })
+    ].into_iter().map(|id| (String::from(*id))).collect()
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
@@ -513,7 +488,8 @@ pub fn run(mut krate: clean::Crate,
            renderinfo: RenderInfo,
            sort_modules_alphabetically: bool,
            themes: Vec<PathBuf>,
-           enable_minification: bool) -> Result<(), Error> {
+           enable_minification: bool,
+           id_map: IdMap) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -581,6 +557,8 @@ pub fn run(mut krate: clean::Crate,
         current: Vec::new(),
         dst,
         render_redirect_pages: false,
+        codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
+        id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
     };
 
@@ -1708,6 +1686,11 @@ impl<'a> fmt::Display for Settings<'a> {
 }
 
 impl Context {
+    fn derive_id(&self, id: String) -> String {
+        let mut map = self.id_map.borrow_mut();
+        map.derive(id)
+    }
+
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     fn root_path(&self) -> String {
@@ -1862,7 +1845,10 @@ impl Context {
             resource_suffix: &self.shared.resource_suffix,
         };
 
-        reset_ids(true);
+        {
+            self.id_map.borrow_mut().reset();
+            self.id_map.borrow_mut().populate(initial_ids());
+        }
 
         if !self.render_redirect_pages {
             layout::render(writer, &self.shared.layout, &page,
@@ -2219,14 +2205,17 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
 
 /// Render md_text as markdown.
 fn render_markdown(w: &mut fmt::Formatter,
+                   cx: &Context,
                    md_text: &str,
                    links: Vec<(String, String)>,
-                   prefix: &str,)
+                   prefix: &str)
                    -> fmt::Result {
-    write!(w, "<div class='docblock'>{}{}</div>", prefix, Markdown(md_text, &links))
+    let mut ids = cx.id_map.borrow_mut();
+    write!(w, "<div class='docblock'>{}{}</div>",
+        prefix, Markdown(md_text, &links, RefCell::new(&mut ids), cx.codes))
 }
 
-fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
+fn document_short(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item, link: AssocItemLink,
                   prefix: &str) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
@@ -2235,7 +2224,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             plain_summary_line(Some(s)).to_string()
         };
-        render_markdown(w, &markdown, item.links(), prefix)?;
+        render_markdown(w, cx, &markdown, item.links(), prefix)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -2250,7 +2239,6 @@ fn render_assoc_const_value(item: &clean::Item) -> String {
                 None,
                 None,
                 None,
-                None,
             )
         }
         _ => String::new(),
@@ -2261,7 +2249,7 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
                  cx: &Context, prefix: &str) -> fmt::Result {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w, &*s, item.links(), prefix)?;
+        render_markdown(w, cx, &*s, item.links(), prefix)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -2427,7 +2415,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             let (short, name) = item_ty_to_strs(&myty.unwrap());
             write!(w, "<h2 id='{id}' class='section-header'>\
                        <a href=\"#{id}\">{name}</a></h2>\n<table>",
-                   id = derive_id(short.to_owned()), name = name)?;
+                   id = cx.derive_id(short.to_owned()), name = name)?;
         }
 
         match myitem.inner {
@@ -2508,6 +2496,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
 fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
     let mut stability = vec![];
+    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 
     if let Some(stab) = item.stability.as_ref() {
         let deprecated_reason = if show_reason && !stab.deprecated_reason.is_empty() {
@@ -2521,14 +2510,12 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
+            let mut ids = cx.id_map.borrow_mut();
+            let html = MarkdownHtml(&deprecated_reason, RefCell::new(&mut ids), error_codes);
             let text = if stability::deprecation_in_effect(&stab.deprecated_since) {
-                format!("Deprecated{}{}",
-                        since,
-                        MarkdownHtml(&deprecated_reason))
+                format!("Deprecated{}{}", since, html)
             } else {
-                format!("Deprecating in {}{}",
-                        Escape(&stab.deprecated_since),
-                        MarkdownHtml(&deprecated_reason))
+                format!("Deprecating in {}{}", Escape(&stab.deprecated_since), html)
             };
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
@@ -2555,11 +2542,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                                             </div>",
                                            unstable_extra));
                 } else {
+                    let mut ids = cx.id_map.borrow_mut();
                     let text = format!("<summary><span class=microscope>🔬</span> \
                                         This is a nightly-only experimental API. {}\
                                         </summary>{}",
                                        unstable_extra,
-                                       MarkdownHtml(&stab.unstable_reason));
+                                       MarkdownHtml(
+                                           &stab.unstable_reason,
+                                           RefCell::new(&mut ids),
+                                           error_codes));
                     stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
                                    text));
                 }
@@ -2579,14 +2570,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
+        let mut ids = cx.id_map.borrow_mut();
         let text = if stability::deprecation_in_effect(&depr.since) {
             format!("Deprecated{}{}",
                     since,
-                    MarkdownHtml(&note))
+                    MarkdownHtml(&note, RefCell::new(&mut ids), error_codes))
         } else {
             format!("Deprecating in {}{}",
                     Escape(&depr.since),
-                    MarkdownHtml(&note))
+                    MarkdownHtml(&note, RefCell::new(&mut ids), error_codes))
         };
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
@@ -2827,8 +2819,8 @@ fn item_trait(
                   -> fmt::Result {
         let name = m.name.as_ref().unwrap();
         let item_type = m.type_();
-        let id = derive_id(format!("{}.{}", item_type, name));
-        let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
+        let id = cx.derive_id(format!("{}.{}", item_type, name));
+        let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
         write!(w, "{extra}<h3 id='{id}' class='method'>\
                    <span id='{ns_id}' class='invisible'><code>",
                extra = render_spotlight_traits(m)?,
@@ -3183,10 +3175,10 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                        document_non_exhaustive_header(it))?;
             document_non_exhaustive(w, it)?;
             for (field, ty) in fields {
-                let id = derive_id(format!("{}.{}",
+                let id = cx.derive_id(format!("{}.{}",
                                            ItemType::StructField,
                                            field.name.as_ref().unwrap()));
-                let ns_id = derive_id(format!("{}.{}",
+                let ns_id = cx.derive_id(format!("{}.{}",
                                               field.name.as_ref().unwrap(),
                                               ItemType::StructField.name_space()));
                 write!(w, "<span id=\"{id}\" class=\"{item_type} small-section-header\">
@@ -3317,10 +3309,10 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                    document_non_exhaustive_header(it))?;
         document_non_exhaustive(w, it)?;
         for variant in &e.variants {
-            let id = derive_id(format!("{}.{}",
+            let id = cx.derive_id(format!("{}.{}",
                                        ItemType::Variant,
                                        variant.name.as_ref().unwrap()));
-            let ns_id = derive_id(format!("{}.{}",
+            let ns_id = cx.derive_id(format!("{}.{}",
                                           variant.name.as_ref().unwrap(),
                                           ItemType::Variant.name_space()));
             write!(w, "<span id=\"{id}\" class=\"variant small-section-header\">\
@@ -3348,7 +3340,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             if let clean::VariantItem(Variant {
                 kind: VariantKind::Struct(ref s)
             }) = variant.inner {
-                let variant_id = derive_id(format!("{}.{}.fields",
+                let variant_id = cx.derive_id(format!("{}.{}.fields",
                                                    ItemType::Variant,
                                                    variant.name.as_ref().unwrap()));
                 write!(w, "<span class='docblock autohide sub-variant' id='{id}'>",
@@ -3358,10 +3350,10 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 for field in &s.fields {
                     use clean::StructFieldItem;
                     if let StructFieldItem(ref ty) = field.inner {
-                        let id = derive_id(format!("variant.{}.field.{}",
+                        let id = cx.derive_id(format!("variant.{}.field.{}",
                                                    variant.name.as_ref().unwrap(),
                                                    field.name.as_ref().unwrap()));
-                        let ns_id = derive_id(format!("{}.{}.{}.{}",
+                        let ns_id = cx.derive_id(format!("{}.{}.{}.{}",
                                                       variant.name.as_ref().unwrap(),
                                                       ItemType::Variant.name_space(),
                                                       field.name.as_ref().unwrap(),
@@ -3790,7 +3782,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                render_mode: RenderMode, outer_version: Option<&str>,
                show_def_docs: bool) -> fmt::Result {
     if render_mode == RenderMode::Normal {
-        let id = derive_id(match i.inner_impl().trait_ {
+        let id = cx.derive_id(match i.inner_impl().trait_ {
             Some(ref t) => format!("impl-{}", small_url_encode(&format!("{:#}", t))),
             None => "impl".to_string(),
         });
@@ -3810,8 +3802,9 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
         write!(w, "</span></td></tr></tbody></table></h3>")?;
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
+            let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
-                   Markdown(&*dox, &i.impl_item.links()))?;
+                   Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids), cx.codes))?;
         }
     }
 
@@ -3832,8 +3825,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             clean::TyMethodItem(clean::TyMethod{ ref decl, .. }) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
-                    let id = derive_id(format!("{}.{}", item_type, name));
-                    let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
+                    let id = cx.derive_id(format!("{}.{}", item_type, name));
+                    let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                     write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                     write!(w, "{}", spotlight_decl(decl)?)?;
                     write!(w, "<span id='{}' class='invisible'>", ns_id)?;
@@ -3854,24 +3847,24 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
-                let id = derive_id(format!("{}.{}", ItemType::AssociatedType, name));
-                let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
+                let id = cx.derive_id(format!("{}.{}", ItemType::AssociatedType, name));
+                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
                 write!(w, "</code></span></h4>\n")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
-                let id = derive_id(format!("{}.{}", item_type, name));
-                let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
+                let id = cx.derive_id(format!("{}.{}", item_type, name));
+                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
                 write!(w, "</code></span></h4>\n")?;
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
-                let id = derive_id(format!("{}.{}", item_type, name));
-                let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
+                let id = cx.derive_id(format!("{}.{}", item_type, name));
+                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id))?;
@@ -3897,7 +3890,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         } else if show_def_docs {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link, &prefix)?;
+                            document_short(w, cx, it, link, &prefix)?;
                         }
                     }
                 } else {
@@ -3909,7 +3902,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             } else {
                 document_stability(w, cx, item)?;
                 if show_def_docs {
-                    document_short(w, item, link, &prefix)?;
+                    document_short(w, cx, item, link, &prefix)?;
                 }
             }
         }
@@ -4557,7 +4550,7 @@ impl<'a> fmt::Display for Source<'a> {
         }
         write!(fmt, "</pre>")?;
         write!(fmt, "{}",
-               highlight::render_with_highlighting(s, None, None, None, None))?;
+               highlight::render_with_highlighting(s, None, None, None))?;
         Ok(())
     }
 }
@@ -4567,7 +4560,6 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     wrap_into_docblock(w, |w| {
         w.write_str(&highlight::render_with_highlighting(&t.source,
                                                          Some("macro"),
-                                                         None,
                                                          None,
                                                          None))
     })?;
@@ -4713,25 +4705,6 @@ fn get_generics(clean_type: &clean::Type) -> Option<Vec<String>> {
 
 pub fn cache() -> Arc<Cache> {
     CACHE_KEY.with(|c| c.borrow().clone())
-}
-
-#[cfg(test)]
-#[test]
-fn test_unique_id() {
-    let input = ["foo", "examples", "examples", "method.into_iter","examples",
-                 "method.into_iter", "foo", "main", "search", "methods",
-                 "examples", "method.into_iter", "assoc_type.Item", "assoc_type.Item"];
-    let expected = ["foo", "examples", "examples-1", "method.into_iter", "examples-2",
-                    "method.into_iter-1", "foo-1", "main-1", "search-1", "methods-1",
-                    "examples-3", "method.into_iter-2", "assoc_type.Item", "assoc_type.Item-1"];
-
-    let test = || {
-        let actual: Vec<String> = input.iter().map(|s| derive_id(s.to_string())).collect();
-        assert_eq!(&actual[..], expected);
-    };
-    test();
-    reset_ids(true);
-    test();
 }
 
 #[cfg(test)]
