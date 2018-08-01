@@ -126,6 +126,7 @@ pub enum Diagnostic<'ll> {
     Optimization(OptimizationDiagnostic<'ll>),
     InlineAsm(InlineAsmDiagnostic<'ll>),
     PGO(&'ll DiagnosticInfo),
+    Linker(&'ll DiagnosticInfo),
 
     /// LLVM has other types that we do not wrap here.
     UnknownDiagnostic(&'ll DiagnosticInfo),
@@ -167,6 +168,9 @@ impl Diagnostic<'ll> {
 
             Dk::PGOProfile => {
                 PGO(di)
+            }
+            Dk::Linker => {
+                Linker(di)
             }
 
             _ => UnknownDiagnostic(di),

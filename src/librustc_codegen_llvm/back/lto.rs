@@ -11,7 +11,7 @@
 use back::bytecode::{DecodedBytecode, RLIB_BYTECODE_EXTENSION};
 use back::symbol_export;
 use back::write::{ModuleConfig, with_llvm_pmb, CodegenContext};
-use back::write;
+use back::write::{self, DiagnosticHandlers};
 use errors::{FatalError, Handler};
 use llvm::archive_ro::ArchiveRO;
 use llvm::{True, False};
@@ -234,8 +234,16 @@ fn fat_lto(cgcx: &CodegenContext,
     let module = modules.remove(costliest_module);
     let mut serialized_bitcode = Vec::new();
     {
-        let llmod = module.llvm().expect("can't lto pre-codegened modules").llmod();
+        let (llcx, llmod) = {
+            let llvm = module.llvm().expect("can't lto pre-codegened modules");
+            (&llvm.llcx, llvm.llmod())
+        };
         info!("using {:?} as a base module", module.llmod_id);
+
+        // The linking steps below may produce errors and diagnostics within LLVM
+        // which we'd like to handle and print, so set up our diagnostic handlers
+        // (which get unregistered when they go out of scope below).
+        let _handler = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 
         // For all other modules we codegened we'll need to link them into our own
         // bitcode. All modules were codegened in their own LLVM context, however,

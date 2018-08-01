@@ -397,15 +397,15 @@ impl CodegenContext {
     }
 }
 
-struct DiagnosticHandlers<'a> {
+pub struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext, &'a Handler),
     llcx: &'a llvm::Context,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
-    fn new(cgcx: &'a CodegenContext,
-           handler: &'a Handler,
-           llcx: &'a llvm::Context) -> Self {
+    pub fn new(cgcx: &'a CodegenContext,
+               handler: &'a Handler,
+               llcx: &'a llvm::Context) -> Self {
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
             llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data as *mut _);
@@ -475,10 +475,11 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
                                                 opt.message));
             }
         }
-        llvm::diagnostic::PGO(diagnostic_ref) => {
+        llvm::diagnostic::PGO(diagnostic_ref) |
+        llvm::diagnostic::Linker(diagnostic_ref) => {
             let msg = llvm::build_string(|s| {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
-            }).expect("non-UTF8 PGO diagnostic");
+            }).expect("non-UTF8 diagnostic");
             diag_handler.warn(&msg);
         }
         llvm::diagnostic::UnknownDiagnostic(..) => {},
