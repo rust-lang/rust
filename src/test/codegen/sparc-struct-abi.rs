@@ -11,6 +11,7 @@
 // Checks that we correctly codegen extern "C" functions returning structs.
 // See issue #52638.
 
+// only-sparc64
 // compile-flags: -O --target=sparc64-unknown-linux-gnu --crate-type=rlib
 #![feature(no_core, lang_items)]
 #![no_core]
