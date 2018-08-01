@@ -41,51 +41,27 @@ use std::iter;
 
 pub fn mark_used(attr: &Attribute) {
     debug!("Marking {:?} as used.", attr);
-    let AttrId(id) = attr.id;
     GLOBALS.with(|globals| {
-        let mut slot = globals.used_attrs.lock();
-        let idx = (id / 64) as usize;
-        let shift = id % 64;
-        if slot.len() <= idx {
-            slot.resize(idx + 1, 0);
-        }
-        slot[idx] |= 1 << shift;
+        globals.used_attrs.lock().insert(attr.id);
     });
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
-    let AttrId(id) = attr.id;
     GLOBALS.with(|globals| {
-        let slot = globals.used_attrs.lock();
-        let idx = (id / 64) as usize;
-        let shift = id % 64;
-        slot.get(idx).map(|bits| bits & (1 << shift) != 0)
-            .unwrap_or(false)
+        globals.used_attrs.lock().contains(attr.id)
     })
 }
 
 pub fn mark_known(attr: &Attribute) {
     debug!("Marking {:?} as known.", attr);
-    let AttrId(id) = attr.id;
     GLOBALS.with(|globals| {
-        let mut slot = globals.known_attrs.lock();
-        let idx = (id / 64) as usize;
-        let shift = id % 64;
-        if slot.len() <= idx {
-            slot.resize(idx + 1, 0);
-        }
-        slot[idx] |= 1 << shift;
+        globals.known_attrs.lock().insert(attr.id);
     });
 }
 
 pub fn is_known(attr: &Attribute) -> bool {
-    let AttrId(id) = attr.id;
     GLOBALS.with(|globals| {
-        let slot = globals.known_attrs.lock();
-        let idx = (id / 64) as usize;
-        let shift = id % 64;
-        slot.get(idx).map(|bits| bits & (1 << shift) != 0)
-            .unwrap_or(false)
+        globals.known_attrs.lock().contains(attr.id)
     })
 }
 
