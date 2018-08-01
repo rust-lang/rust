@@ -62,13 +62,13 @@ impl<'tcx> Place {
         let (ptr, align, _extra) = self.to_ptr_align_extra();
         (ptr, align)
     }
-/*
+
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         // At this point, we forget about the alignment information -- the place has been turned into a reference,
         // and no matter where it came from, it now must be aligned.
-        self.to_ptr_align().0.to_ptr()
+        self.to_ptr_align().0.unwrap_or_err()?.to_ptr()
     }
-*/
+
     pub(super) fn elem_ty_and_len(
         self,
         ty: Ty<'tcx>,

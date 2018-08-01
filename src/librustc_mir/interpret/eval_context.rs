@@ -1261,7 +1261,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     },
                     _ => false,
                 };
-                self.memory.write_scalar(dest, dest_align, scalar, layout.size, signed)
+                self.memory.write_scalar(dest, dest_align, scalar, layout.size, layout.align, signed)
             }
             Value::ScalarPair(a_val, b_val) => {
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
@@ -1270,12 +1270,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     _ => bug!("write_value_to_ptr: invalid ScalarPair layout: {:#?}", layout)
                 };
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
+                let (a_align, b_align) = (a.align(&self), b.align(&self));
                 let a_ptr = dest;
-                let b_offset = a_size.abi_align(b.align(&self));
+                let b_offset = a_size.abi_align(b_align);
                 let b_ptr = dest.ptr_offset(b_offset, &self)?.into();
                 // TODO: What about signedess?
-                self.memory.write_scalar(a_ptr, dest_align, a_val, a_size, false)?;
-                self.memory.write_scalar(b_ptr, dest_align, b_val, b_size, false)
+                self.memory.write_scalar(a_ptr, dest_align, a_val, a_size, a_align, false)?;
+                self.memory.write_scalar(b_ptr, dest_align, b_val, b_size, b_align, false)
             }
         }
     }
@@ -1290,7 +1291,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     fn validate_scalar(
         &self,
-        value: Scalar,
+        value: ScalarMaybeUndef,
         size: Size,
         scalar: &layout::Scalar,
         path: &str,
@@ -1298,6 +1299,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         trace!("validate scalar: {:#?}, {:#?}, {:#?}, {}", value, size, scalar, ty);
         let (lo, hi) = scalar.valid_range.clone().into_inner();
+
+        let value = match value {
+            ScalarMaybeUndef::Scalar(scalar) => scalar,
+            ScalarMaybeUndef::Undef => return validation_failure!("undefined bytes", path),
+        };
 
         let bits = match value {
             Scalar::Bits { bits, size: value_size } => {
@@ -1351,13 +1357,21 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             if in_range(0..=hi) || in_range(lo..=u128::max_value()) {
                 Ok(())
             } else {
-                validation_failure!("undefined bytes", path)
+                validation_failure!(
+                    bits,
+                    path,
+                    format!("something in the range {:?} or {:?}", ..=hi, lo..)
+                )
             }
         } else {
             if in_range(scalar.valid_range.clone()) {
                 Ok(())
             } else {
-                validation_failure!("undefined bytes", path)
+                validation_failure!(
+                    bits,
+                    path,
+                    format!("something in the range {:?}", scalar.valid_range)
+                )
             }
         }
     }
@@ -1387,10 +1401,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     mir::Field::new(0),
                     layout,
                 )?;
-                let tag_value = self.value_to_scalar(ValTy {
-                    value: tag_value,
-                    ty: tag_layout.ty,
-                })?;
+                let tag_value = match self.follow_by_ref_value(tag_value, tag_layout.ty)? {
+                    Value::Scalar(val) => val,
+                    _ => bug!("tag must be scalar"),
+                };
                 let path = format!("{}.TAG", path);
                 self.validate_scalar(tag_value, size, tag, &path, tag_layout.ty)?;
                 let variant_index = self.read_discriminant_as_variant_index(
@@ -1413,11 +1427,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     // expectation.
                     layout::Abi::Scalar(ref scalar) => {
                         let size = scalar.value.size(self);
-                        let value = self.memory.read_scalar(ptr, ptr_align, size)?.unwrap_or_err()?;
+                        let value = self.memory.read_scalar(ptr, ptr_align, size)?;
                         self.validate_scalar(value, size, scalar, &path, layout.ty)?;
                         if scalar.value == Primitive::Pointer {
                             // ignore integer pointers, we can't reason about the final hardware
-                            if let Scalar::Ptr(ptr) = value {
+                            if let Scalar::Ptr(ptr) = value.unwrap_or_err()? {
                                 let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
                                 if let Some(AllocType::Static(did)) = alloc_kind {
                                     // statics from other crates are already checked

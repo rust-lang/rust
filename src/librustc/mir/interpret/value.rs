@@ -218,30 +218,12 @@ impl ScalarMaybeUndef {
         Value::ScalarPair(self.into(), Scalar::Ptr(vtable).into())
     }
 
-    pub fn ptr_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
-        match self {
-            ScalarMaybeUndef::Scalar(scalar) => {
-                scalar.ptr_signed_offset(i, cx).map(ScalarMaybeUndef::Scalar)
-            },
-            ScalarMaybeUndef::Undef => Ok(ScalarMaybeUndef::Undef)
-        }
-    }
-
     pub fn ptr_offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => {
                 scalar.ptr_offset(i, cx).map(ScalarMaybeUndef::Scalar)
             },
             ScalarMaybeUndef::Undef => Ok(ScalarMaybeUndef::Undef)
-        }
-    }
-
-    pub fn ptr_wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
-        match self {
-            ScalarMaybeUndef::Scalar(scalar) => {
-                ScalarMaybeUndef::Scalar(scalar.ptr_wrapping_signed_offset(i, cx))
-            },
-            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef
         }
     }
 }

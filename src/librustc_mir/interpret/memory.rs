@@ -789,7 +789,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.read_scalar(ptr, ptr_align, self.pointer_size())
     }
 
-    pub fn write_scalar(&mut self, ptr: Scalar, ptr_align: Align, val: ScalarMaybeUndef, type_size: Size, signed: bool) -> EvalResult<'tcx> {
+    pub fn write_scalar(
+        &mut self,
+        ptr: Scalar,
+        ptr_align: Align,
+        val: ScalarMaybeUndef,
+        type_size: Size,
+        type_align: Align,
+        signed: bool,
+    ) -> EvalResult<'tcx> {
         let endianness = self.endianness();
 
         let val = match val {
@@ -818,8 +826,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         let ptr = ptr.to_ptr()?;
 
         {
-            let align = self.int_align(type_size);
-            let dst = self.get_bytes_mut(ptr, type_size, ptr_align.min(align))?;
+            let dst = self.get_bytes_mut(ptr, type_size, ptr_align.min(type_align))?;
             if signed {
                 write_target_int(endianness, dst, bytes as i128).unwrap();
             } else {
@@ -843,7 +850,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn write_ptr_sized_unsigned(&mut self, ptr: Pointer, ptr_align: Align, val: ScalarMaybeUndef) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
-        self.write_scalar(ptr.into(), ptr_align, val, ptr_size, false)
+        self.write_scalar(ptr.into(), ptr_align, val, ptr_size, ptr_align, false)
     }
 
     fn int_align(&self, size: Size) -> Align {
