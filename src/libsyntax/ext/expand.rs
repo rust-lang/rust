@@ -1376,6 +1376,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
             // #[test] fn foo() {}
             // becomes:
             // #[test] pub fn foo_gensym(){}
+            // #[allow(dead_code)]
             // use foo_gensym as foo;
             ast::ItemKind::Fn(..) if self.cx.ecfg.should_test => {
                 if self.tests_nameable && item.attrs.iter().any(|attr| is_test_or_bench(attr)) {
@@ -1390,12 +1391,25 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     });
 
                     // Use the gensymed name under the item's original visibility
-                    let use_item = self.cx.item_use_simple_(
+                    let mut use_item = self.cx.item_use_simple_(
                         item.ident.span,
                         orig_vis,
                         Some(orig_ident),
                         self.cx.path(item.ident.span,
                             vec![keywords::SelfValue.ident(), item.ident]));
+
+                    // #[allow(dead_code)] because the test function probably isn't being referenced
+                    use_item = use_item.map(|mut ui| {
+                        ui.attrs.push(
+                            self.cx.attribute(DUMMY_SP, attr::mk_list_item(DUMMY_SP,
+                                Ident::from_str("allow"), vec![
+                                    attr::mk_nested_word_item(Ident::from_str("dead_code"))
+                                ]
+                            ))
+                        );
+
+                        ui
+                    });
 
                     SmallVector::many(
                         self.fold_unnameable(item).into_iter()
