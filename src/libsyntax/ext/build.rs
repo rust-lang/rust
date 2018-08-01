@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
@@ -145,6 +146,7 @@ pub trait AstBuilder {
     fn expr_vec_ng(&self, sp: Span) -> P<ast::Expr>;
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr>;
     fn expr_str(&self, sp: Span, s: Symbol) -> P<ast::Expr>;
+    fn expr_byte_str(&self, sp: Span, byte_str: Vec<u8>) -> P<ast::Expr>;
 
     fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_none(&self, sp: Span) -> P<ast::Expr>;
@@ -734,6 +736,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn expr_str(&self, sp: Span, s: Symbol) -> P<ast::Expr> {
         self.expr_lit(sp, ast::LitKind::Str(s, ast::StrStyle::Cooked))
+    }
+
+    fn expr_byte_str(&self, sp: Span, byte_str: Vec<u8>) -> P<ast::Expr> {
+        self.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(byte_str)))
     }
 
     fn expr_cast(&self, sp: Span, expr: P<ast::Expr>, ty: P<ast::Ty>) -> P<ast::Expr> {

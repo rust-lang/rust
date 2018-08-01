@@ -1,0 +1,98 @@
+error: expected a literal
+  --> $DIR/concat.rs:14:13
+   |
+LL |     concat!(foo);
+   |             ^^^
+   |
+   = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
+
+error: expected a literal
+  --> $DIR/concat.rs:16:13
+   |
+LL |     concat!(foo());
+   |             ^^^^^
+   |
+   = note: only literals (like `"foo"`, `42` and `3.14`) can be passed to `concat!()`
+
+error: cannot concatenate a byte string literal with other literals
+  --> $DIR/concat.rs:19:20
+   |
+LL |     concat!("abc", b"def", 'g', "hi", b"jkl");
+   |             -----  ^^^^^^  ---  ----  ^^^^^^ byte string literal
+   |             |      |       |    |
+   |             |      |       |    string literal
+   |             |      |       string literal
+   |             |      byte string literal
+   |             string literal
+help: we don't support mixing string and byte string literals, use only byte strings
+   |
+LL |     concat!(b"abc", b"def", b'g', b"hi", b"jkl");
+   |             ^               ^     ^
+
+error: cannot concatenate a byte string literal with other literals
+  --> $DIR/concat.rs:22:16
+   |
+LL |     concat!(1, b"def");
+   |             -  ^^^^^^ byte string literal
+   |             |
+   |             numeric literal
+   |
+   = note: we don't support mixing numeric literals and byte strings
+
+error: cannot concatenate a byte string literal with other literals
+  --> $DIR/concat.rs:24:19
+   |
+LL |     concat!(true, b"def");
+   |             ----  ^^^^^^ byte string literal
+   |             |
+   |             boolean literal
+   |
+   = note: we don't support mixing boolean literals and byte strings
+
+error: cannot concatenate a byte string literal with other literals
+  --> $DIR/concat.rs:26:22
+   |
+LL |     concat!(1, true, b"def");
+   |             -  ----  ^^^^^^ byte string literal
+   |             |  |
+   |             |  boolean literal
+   |             numeric literal
+   |
+   = note: we don't support mixing numeric or boolean literals and byte strings
+
+error: cannot concatenate a byte string literal with other literals
+  --> $DIR/concat.rs:28:29
+   |
+LL |     concat!(1, true, "abc", b"def");
+   |             -  ----  -----  ^^^^^^ byte string literal
+   |             |  |     |
+   |             |  |     string literal
+   |             |  boolean literal
+   |             numeric literal
+   |
+   = note: we don't support mixing string, numeric or boolean literals and byte strings
+
+error: cannot concatenate a byte string literal with other literals
+  --> $DIR/concat.rs:30:26
+   |
+LL |     concat!(true, "abc", b"def");
+   |             ----  -----  ^^^^^^ byte string literal
+   |             |     |
+   |             |     string literal
+   |             boolean literal
+   |
+   = note: we don't support mixing string or boolean literals and byte strings
+
+error: cannot concatenate a byte string literal with other literals
+  --> $DIR/concat.rs:32:23
+   |
+LL |     concat!(1, "abc", b"def");
+   |             -  -----  ^^^^^^ byte string literal
+   |             |  |
+   |             |  string literal
+   |             numeric literal
+   |
+   = note: we don't support mixing string or numeric literals and byte strings
+
+error: aborting due to 9 previous errors
+
