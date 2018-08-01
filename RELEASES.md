@@ -216,7 +216,7 @@ Language
 
 Compiler
 --------
-- [Added the `armv5te-unknown-linux-musl` target.][50423]
+- [Added the `armv5te-unknown-linux-musleabi` target.][50423]
 
 Libraries
 ---------
