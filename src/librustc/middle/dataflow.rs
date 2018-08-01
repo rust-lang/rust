@@ -104,7 +104,7 @@ fn get_cfg_indices<'a>(id: hir::ItemLocalId,
 
 impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     fn has_bitset_for_local_id(&self, n: hir::ItemLocalId) -> bool {
-        assert!(n != hir::DUMMY_ITEM_LOCAL_ID);
+        debug_assert!(n != hir::DUMMY_ITEM_LOCAL_ID);
         self.local_id_to_index.contains_key(&n)
     }
 }

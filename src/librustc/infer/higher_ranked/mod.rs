@@ -252,7 +252,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              -> ty::Region<'tcx> {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
-                assert!(!r0.is_late_bound());
+                debug_assert!(!r0.is_late_bound());
                 debug!("generalize_region(r0={:?}): not new variable", r0);
                 return r0;
             }
@@ -266,7 +266,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                 debug!("generalize_region(r0={:?}): \
                         non-new-variables found in {:?}",
                        r0, tainted);
-                assert!(!r0.is_late_bound());
+                debug_assert!(!r0.is_late_bound());
                 return r0;
             }
 
@@ -349,7 +349,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              r0: ty::Region<'tcx>)
                                              -> ty::Region<'tcx> {
             if !is_var_in_set(new_vars, r0) {
-                assert!(!r0.is_late_bound());
+                debug_assert!(!r0.is_late_bound());
                 return r0;
             }
 
@@ -402,7 +402,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                 return rev_lookup(infcx, span, a_map, a_r.unwrap());
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
-                assert!(!r0.is_late_bound());
+                debug_assert!(!r0.is_late_bound());
                 return r0;
             } else {
                 // Other:
@@ -468,7 +468,7 @@ fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         // we should only be encountering "escaping" late-bound regions here,
         // because the ones at the current level should have been replaced
         // with fresh variables
-        assert!(match *region {
+        debug_assert!(match *region {
             ty::ReLateBound(..) => false,
             _ => true
         });
@@ -746,13 +746,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // trait checking, and all of the skolemized regions
                     // appear inside predicates, which always have
                     // binders, so this assert is satisfied.
-                    assert!(current_depth > ty::INNERMOST);
+                    debug_assert!(current_depth > ty::INNERMOST);
 
                     // since leak-check passed, this skolemized region
                     // should only have incoming edges from variables
                     // (which ought not to escape the snapshot, but we
                     // don't check that) or itself
-                    assert!(
+                    debug_assert!(
                         match *r {
                             ty::ReVar(_) => true,
                             ty::ReSkolemized(_, ref br1) => br == br1,

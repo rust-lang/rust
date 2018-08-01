@@ -122,7 +122,7 @@ impl<'a> StringReader<'a> {
     }
     /// Return the next token. EFFECT: advances the string_reader.
     pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
-        assert!(self.fatal_errs.is_empty());
+        debug_assert!(self.fatal_errs.is_empty());
         let ret_val = TokenAndSpan {
             tok: replace(&mut self.peek_tok, token::Whitespace),
             sp: self.peek_span,
@@ -707,7 +707,7 @@ impl<'a> StringReader<'a> {
     /// interested in, and errors will be emitted for any digits
     /// between `real_radix` and `scan_radix`.
     fn scan_digits(&mut self, real_radix: u32, scan_radix: u32) -> usize {
-        assert!(real_radix <= scan_radix);
+        debug_assert!(real_radix <= scan_radix);
         let mut len = 0;
         loop {
             let c = self.ch;
@@ -1580,8 +1580,8 @@ impl<'a> StringReader<'a> {
 
     fn read_one_line_comment(&mut self) -> String {
         let val = self.read_to_eol();
-        assert!((val.as_bytes()[0] == b'/' && val.as_bytes()[1] == b'/') ||
-                (val.as_bytes()[0] == b'#' && val.as_bytes()[1] == b'!'));
+        debug_assert!((val.as_bytes()[0] == b'/' && val.as_bytes()[1] == b'/') ||
+                      (val.as_bytes()[0] == b'#' && val.as_bytes()[1] == b'!'));
         val
     }
 

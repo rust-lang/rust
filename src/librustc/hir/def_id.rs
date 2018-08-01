@@ -39,7 +39,7 @@ newtype_index!(CrateNum
 
 impl CrateNum {
     pub fn new(x: usize) -> CrateNum {
-        assert!(x < (u32::MAX as usize));
+        debug_assert!(x < (u32::MAX as usize));
         CrateNum(x as u32)
     }
 
@@ -127,7 +127,7 @@ impl DefIndex {
     pub fn from_proc_macro_index(proc_macro_index: usize) -> DefIndex {
         let def_index = DefIndex::from_array_index(proc_macro_index,
                                                    DefIndexAddressSpace::High);
-        assert!(def_index != CRATE_DEF_INDEX);
+        debug_assert!(def_index != CRATE_DEF_INDEX);
         def_index
     }
 
@@ -222,7 +222,7 @@ pub struct LocalDefId(DefIndex);
 impl LocalDefId {
     #[inline]
     pub fn from_def_id(def_id: DefId) -> LocalDefId {
-        assert!(def_id.is_local());
+        debug_assert!(def_id.is_local());
         LocalDefId(def_id.index)
     }
 

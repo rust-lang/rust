@@ -146,7 +146,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         debug!("normalize_projection_type(projection_ty={:?})",
                projection_ty);
 
-        assert!(!projection_ty.has_escaping_regions());
+        debug_assert!(!projection_ty.has_escaping_regions());
 
         // FIXME(#20304) -- cache
 
@@ -197,7 +197,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
         debug!("register_predicate_obligation(obligation={:?})", obligation);
 
-        assert!(!infcx.is_in_snapshot());
+        debug_assert!(!infcx.is_in_snapshot());
 
         self.predicates.register_obligation(PendingPredicateObligation {
             obligation,

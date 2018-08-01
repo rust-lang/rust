@@ -46,7 +46,7 @@ fn is_doc_comment(s: &str) -> bool {
 }
 
 pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
-    assert!(is_doc_comment(comment));
+    debug_assert!(is_doc_comment(comment));
     if comment.starts_with("//!") || comment.starts_with("/*!") {
         ast::AttrStyle::Inner
     } else {
@@ -242,7 +242,7 @@ fn read_block_comment(rdr: &mut StringReader,
     // Count the number of chars since the start of the line by rescanning.
     let mut src_index = rdr.src_index(rdr.filemap.line_begin_pos(rdr.pos));
     let end_src_index = rdr.src_index(rdr.pos);
-    assert!(src_index <= end_src_index,
+    debug_assert!(src_index <= end_src_index,
         "src_index={}, end_src_index={}, line_begin_pos={}",
         src_index, end_src_index, rdr.filemap.line_begin_pos(rdr.pos).to_u32());
     let mut n = 0;
@@ -272,7 +272,7 @@ fn read_block_comment(rdr: &mut StringReader,
         if is_block_doc_comment(&curr_line[..]) {
             return;
         }
-        assert!(!curr_line.contains('\n'));
+        debug_assert!(!curr_line.contains('\n'));
         lines.push(curr_line);
     } else {
         let mut level: isize = 1;

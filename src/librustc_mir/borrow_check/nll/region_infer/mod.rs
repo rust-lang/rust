@@ -671,8 +671,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // of the existing subject-region R. This should be a non-local, universal
         // region, which ensures it can be encoded in a `ClosureOutlivesRequirement`.
         let lower_bound_plus = self.non_local_universal_upper_bound(*lower_bound);
-        assert!(self.universal_regions.is_universal_region(lower_bound_plus));
-        assert!(
+        debug_assert!(self.universal_regions.is_universal_region(lower_bound_plus));
+        debug_assert!(
             !self
                 .universal_regions
                 .is_local_free_region(lower_bound_plus)
@@ -987,7 +987,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Because this free region must be in the ROOT universe, we
         // know it cannot contain any bound universes.
-        assert!(self.scc_universes[longer_fr_scc] == ty::UniverseIndex::ROOT);
+        debug_assert!(self.scc_universes[longer_fr_scc] == ty::UniverseIndex::ROOT);
         debug_assert!(
             self.scc_values
                 .subuniverses_contained_in(longer_fr_scc)

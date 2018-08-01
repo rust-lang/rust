@@ -109,7 +109,7 @@ impl<'a, 'tcx> fmt::Debug for Matrix<'a, 'tcx> {
         }).collect();
 
         let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0);
-        assert!(m.iter().all(|row| row.len() == column_count));
+        debug_assert!(m.iter().all(|row| row.len() == column_count));
         let column_widths: Vec<usize> = (0..column_count).map(|col| {
             pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0)
         }).collect();
@@ -185,7 +185,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                             .builtin_deref(true)
                             .and_then(|t| t.ty.builtin_index())
                             .map_or(false, |t| t == tcx.types.u8);
-                        assert!(is_array_ptr);
+                        debug_assert!(is_array_ptr);
                         let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                         assert_eq!(ptr.offset.bytes(), 0);
                         // FIXME: check length
@@ -265,7 +265,7 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             &Variant(vid) => adt.variant_index_with_id(vid),
             &Single => {
-                assert!(!adt.is_enum());
+                debug_assert!(!adt.is_enum());
                 0
             }
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt)
@@ -615,7 +615,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
     };
 
-    assert!(rows.iter().all(|r| r.len() == v.len()));
+    debug_assert!(rows.iter().all(|r| r.len() == v.len()));
 
     let pcx = PatternContext {
         // TyErr is used to represent the type of wildcard patterns matching
@@ -937,7 +937,7 @@ fn slice_pat_covered_by_constructor<'tcx>(
                     .builtin_deref(true)
                     .and_then(|t| t.ty.builtin_index())
                     .map_or(false, |t| t == tcx.types.u8);
-                assert!(is_array_ptr);
+                debug_assert!(is_array_ptr);
                 tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id).bytes.as_ref()
             } else {
                 bug!("unexpected non-ptr ConstantValue")
@@ -1074,7 +1074,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                             .builtin_deref(true)
                             .and_then(|t| t.ty.builtin_index())
                             .map_or(false, |t| t == cx.tcx.types.u8);
-                        assert!(is_array_ptr);
+                        debug_assert!(is_array_ptr);
                         let data_len = cx.tcx
                             .alloc_map
                             .lock()

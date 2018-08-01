@@ -1374,7 +1374,7 @@ impl Stack {
 
     // Used by Parser to remove the top-most element of the stack.
     fn pop(&mut self) {
-        assert!(!self.is_empty());
+        debug_assert!(!self.is_empty());
         match *self.stack.last().unwrap() {
             InternalKey(_, sz) => {
                 let new_size = self.str_buffer.len() - sz as usize;

@@ -576,8 +576,8 @@ pub fn make_query_outlives<'tcx>(
         givens,
     } = region_constraints;
 
-    assert!(verifys.is_empty());
-    assert!(givens.is_empty());
+    debug_assert!(verifys.is_empty());
+    debug_assert!(givens.is_empty());
 
     let mut outlives: Vec<_> = constraints
             .into_iter()

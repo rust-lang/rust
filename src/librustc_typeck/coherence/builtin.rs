@@ -106,7 +106,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let span = tcx.hir.span(impl_node_id);
     let param_env = tcx.param_env(impl_did);
-    assert!(!self_type.has_escaping_regions());
+    debug_assert!(!self_type.has_escaping_regions());
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)",
            self_type);
@@ -200,7 +200,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     let span = gcx.hir.span(impl_node_id);
     let param_env = gcx.param_env(impl_did);
-    assert!(!source.has_escaping_regions());
+    debug_assert!(!source.has_escaping_regions());
 
     let err_info = CoerceUnsizedInfo { custom_kind: None };
 

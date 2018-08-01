@@ -59,7 +59,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             self.equate_normalized_input_or_output(normalized_input_ty, mir_input_ty);
         }
 
-        assert!(
+        debug_assert!(
             mir.yield_ty.is_some() && universal_regions.yield_ty.is_some()
                 || mir.yield_ty.is_none() && universal_regions.yield_ty.is_none()
         );

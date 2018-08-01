@@ -853,7 +853,7 @@ impl MirPass for StateTransform {
             return
         };
 
-        assert!(mir.generator_drop.is_none());
+        debug_assert!(mir.generator_drop.is_none());
 
         let def_id = source.def_id;
 

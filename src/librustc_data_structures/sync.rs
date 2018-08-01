@@ -338,7 +338,7 @@ pub trait HashMapExt<K, V> {
 
 impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> {
     fn insert_same(&mut self, key: K, value: V) {
-        self.entry(key).and_modify(|old| assert!(*old == value)).or_insert(value);
+        self.entry(key).and_modify(|old| debug_assert!(*old == value)).or_insert(value);
     }
 }
 
@@ -383,7 +383,7 @@ impl<T> Once<T> {
     pub fn try_set_same(&self, value: T) -> Option<T> where T: Eq {
         let mut lock = self.0.lock();
         if let Some(ref inner) = *lock {
-            assert!(*inner == value);
+            debug_assert!(*inner == value);
             return Some(value);
         }
         *lock = Some(value);

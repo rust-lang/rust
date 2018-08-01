@@ -474,7 +474,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            op: hir::UnOp)
                            -> Ty<'tcx>
     {
-        assert!(op.is_by_value());
+        debug_assert!(op.is_by_value());
         match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {
             Ok(method) => {
                 self.write_method_call(ex.hir_id, method);

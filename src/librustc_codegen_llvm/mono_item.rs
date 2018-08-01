@@ -151,8 +151,8 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                           linkage: Linkage,
                           visibility: Visibility,
                           symbol_name: &str) {
-    assert!(!instance.substs.needs_infer() &&
-            !instance.substs.has_param_types());
+    debug_assert!(!instance.substs.needs_infer() &&
+                  !instance.substs.has_param_types());
 
     let mono_ty = instance.ty(cx.tcx);
     let attrs = cx.tcx.codegen_fn_attrs(instance.def_id());

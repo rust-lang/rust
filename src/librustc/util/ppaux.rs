@@ -318,7 +318,7 @@ impl PrintContext {
             let mut child_types = 0;
             if let Some(def_id) = generics.parent {
                 // Methods.
-                assert!(is_value_path);
+                debug_assert!(is_value_path);
                 child_types = child_own_counts.types;
                 generics = tcx.generics_of(def_id);
                 own_counts = generics.own_counts();

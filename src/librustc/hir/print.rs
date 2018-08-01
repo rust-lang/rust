@@ -2001,7 +2001,7 @@ impl<'a> State<'a> {
         self.popen()?;
         let mut i = 0;
         // Make sure we aren't supplied *both* `arg_names` and `body_id`.
-        assert!(arg_names.is_empty() || body_id.is_none());
+        debug_assert!(arg_names.is_empty() || body_id.is_none());
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(indent_unit)?;
             if let Some(arg_name) = arg_names.get(i) {

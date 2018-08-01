@@ -873,7 +873,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
                 LocalRef::Operand(None) => {
                     let dst_layout = bx.cx.layout_of(self.monomorphized_place_ty(dst));
-                    assert!(!dst_layout.ty.has_erasable_regions());
+                    debug_assert!(!dst_layout.ty.has_erasable_regions());
                     let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
                     place.storage_live(bx);
                     self.codegen_transmute_into(bx, src, place);
@@ -882,7 +882,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     self.locals[index] = LocalRef::Operand(Some(op));
                 }
                 LocalRef::Operand(Some(op)) => {
-                    assert!(op.layout.is_zst(),
+                    debug_assert!(op.layout.is_zst(),
                             "assigning to initialized SSAtemp");
                 }
             }

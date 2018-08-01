@@ -80,7 +80,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let name = it.name.as_str();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
-        assert!(split.len() >= 2, "Atomic intrinsic not correct format");
+        debug_assert!(split.len() >= 2, "Atomic intrinsic not correct format");
 
         //We only care about the operation here
         let (n_tps, inputs, output) = match split[1] {

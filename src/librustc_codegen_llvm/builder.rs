@@ -1130,8 +1130,8 @@ impl Builder<'a, 'll, 'tcx> {
             fn_ty = fn_ty.element_type();
         }
 
-        assert!(fn_ty.kind() == llvm::TypeKind::Function,
-                "builder::{} not passed a function, but {:?}", typ, fn_ty);
+        debug_assert!(fn_ty.kind() == llvm::TypeKind::Function,
+                      "builder::{} not passed a function, but {:?}", typ, fn_ty);
 
         let param_tys = fn_ty.func_params();
 

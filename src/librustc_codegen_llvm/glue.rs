@@ -53,7 +53,7 @@ pub fn size_and_align_of_dst(bx: &Builder<'_, 'll, 'tcx>, t: Ty<'tcx>, info: Opt
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
             // want to avoid, as the unsized field's alignment could be smaller.
-            assert!(!t.is_simd());
+            debug_assert!(!t.is_simd());
             let layout = cx.layout_of(t);
             debug!("DST {} layout: {:?}", t, layout);
 

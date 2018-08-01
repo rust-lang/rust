@@ -347,7 +347,7 @@ impl<'s> AllocDecodingSession<'s> {
                     Ok(alloc_id)
                 },
                 AllocKind::Fn => {
-                    assert!(alloc_id.is_none());
+                    debug_assert!(alloc_id.is_none());
                     trace!("creating fn alloc id");
                     let instance = ty::Instance::decode(decoder)?;
                     trace!("decoded fn alloc instance: {:?}", instance);
@@ -355,7 +355,7 @@ impl<'s> AllocDecodingSession<'s> {
                     Ok(alloc_id)
                 },
                 AllocKind::Static => {
-                    assert!(alloc_id.is_none());
+                    debug_assert!(alloc_id.is_none());
                     trace!("creating extern static alloc id at");
                     let did = DefId::decode(decoder)?;
                     let alloc_id = decoder.tcx().alloc_map.lock().intern_static(did);

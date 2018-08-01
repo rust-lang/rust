@@ -37,7 +37,7 @@ pub fn analyze_filemap(
     // it again.
     if let Some(&last_line_start) = lines.last() {
         let file_map_end = filemap_start_pos + BytePos::from_usize(src.len());
-        assert!(file_map_end >= last_line_start);
+        debug_assert!(file_map_end >= last_line_start);
         if last_line_start == file_map_end {
             lines.pop();
         }
@@ -114,7 +114,7 @@ cfg_if! {
 
                 // If the bit mask is all zero, we only have ASCII chars here:
                 if multibyte_mask == 0 {
-                    assert!(intra_chunk_offset == 0);
+                    debug_assert!(intra_chunk_offset == 0);
 
                     // Check if there are any control characters in the chunk. All
                     // control characters that we can encounter at this point have a
@@ -219,7 +219,7 @@ fn analyze_filemap_generic(src: &str,
                            non_narrow_chars: &mut Vec<NonNarrowChar>)
                            -> usize
 {
-    assert!(src.len() >= scan_len);
+    debug_assert!(src.len() >= scan_len);
     let mut i = 0;
     let src_bytes = src.as_bytes();
 
@@ -260,7 +260,7 @@ fn analyze_filemap_generic(src: &str,
             let pos = BytePos::from_usize(i) + output_offset;
 
             if char_len > 1 {
-                assert!(char_len >=2 && char_len <= 4);
+                debug_assert!(char_len >=2 && char_len <= 4);
                 let mbc = MultiByteChar {
                     pos,
                     bytes: char_len as u8,

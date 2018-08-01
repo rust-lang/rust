@@ -555,7 +555,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.places[local].is_none());
+                            debug_assert!(self.places[local].is_none());
                             self.places[local] = Some(value);
                         }
                     }

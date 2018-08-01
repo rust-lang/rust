@@ -89,8 +89,8 @@ pub fn value_to_const_value<'tcx>(
             Value::ByRef(ptr, align) => {
                 let ptr = ptr.to_ptr().unwrap();
                 let alloc = ecx.memory.get(ptr.alloc_id)?;
-                assert!(alloc.align.abi() >= align.abi());
-                assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
+                debug_assert!(alloc.align.abi() >= align.abi());
+                debug_assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
                 let mut alloc = alloc.clone();
                 alloc.align = align;
                 let alloc = ecx.tcx.intern_const_alloc(alloc);
@@ -148,7 +148,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
         mir = &mir.promoted[index];
     }
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
-    assert!(!layout.is_unsized());
+    debug_assert!(!layout.is_unsized());
     let ptr = ecx.memory.allocate(
         layout.size,
         layout.align,
@@ -165,7 +165,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
-    assert!(mir.arg_count == 0);
+    debug_assert!(mir.arg_count == 0);
     ecx.push_stack_frame(
         cid.instance,
         mir.span,

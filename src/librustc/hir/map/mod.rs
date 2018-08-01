@@ -350,7 +350,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {
-        assert!(def_id.is_local());
+        debug_assert!(def_id.is_local());
         self.definitions.def_key(def_id.index)
     }
 
@@ -361,7 +361,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_path(&self, def_id: DefId) -> DefPath {
-        assert!(def_id.is_local());
+        debug_assert!(def_id.is_local());
         self.definitions.def_path(def_id.index)
     }
 
@@ -554,7 +554,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
         let parent = self.get_parent_node(node_id);
-        assert!(self.map[parent.as_usize()].is_body_owner(node_id));
+        debug_assert!(self.map[parent.as_usize()].is_body_owner(node_id));
         parent
     }
 

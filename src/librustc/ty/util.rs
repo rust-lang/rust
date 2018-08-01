@@ -77,7 +77,7 @@ impl<'tcx> Discr<'tcx> {
             let min = sext(1_u128 << (bit_size - 1));
             let max = i128::max_value() >> shift;
             let val = sext(self.val);
-            assert!(n < (i128::max_value() as u128));
+            debug_assert!(n < (i128::max_value() as u128));
             let n = n as i128;
             let oflo = val > max - n;
             let val = if oflo {
@@ -366,7 +366,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                erased_self_ty,
                predicates);
 
-        assert!(!erased_self_ty.has_escaping_regions());
+        debug_assert!(!erased_self_ty.has_escaping_regions());
 
         traits::elaborate_predicates(self, predicates)
             .filter_map(|predicate| {
@@ -920,7 +920,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
 
-    assert!(!ty.needs_infer());
+    debug_assert!(!ty.needs_infer());
 
     match ty.sty {
         // Fast-path for primitive types

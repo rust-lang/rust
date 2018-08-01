@@ -248,7 +248,7 @@ pub fn codegen_mir(
         locals: IndexVec::new(),
         debug_context,
         param_substs: {
-            assert!(!instance.substs.needs_infer());
+            debug_assert!(!instance.substs.needs_infer());
             instance.substs
         },
     };
@@ -262,7 +262,7 @@ pub fn codegen_mir(
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
             let layout = bx.cx.layout_of(fx.monomorphize(&decl.ty));
-            assert!(!layout.ty.has_erasable_regions());
+            debug_assert!(!layout.ty.has_erasable_regions());
 
             if let Some(name) = decl.name {
                 // User variable

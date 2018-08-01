@@ -1320,7 +1320,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
             _ if codegen_results.crate_info.compiler_builtins == Some(cnum) => {
-                assert!(compiler_builtins.is_none());
+                debug_assert!(compiler_builtins.is_none());
                 compiler_builtins = Some(cnum);
             }
             Linkage::NotLinked |
@@ -1537,7 +1537,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
-        assert!(!is_full_lto_enabled(sess));
+        debug_assert!(!is_full_lto_enabled(sess));
 
         // Just need to tell the linker about where the library lives and
         // what its name is

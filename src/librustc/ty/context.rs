@@ -803,9 +803,9 @@ impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         // Ensure our type representation does not grow
         #[cfg(target_pointer_width = "64")]
-        assert!(mem::size_of::<ty::TypeVariants>() <= 24);
+        debug_assert!(mem::size_of::<ty::TypeVariants>() <= 24);
         #[cfg(target_pointer_width = "64")]
-        assert!(mem::size_of::<ty::TyS>() <= 32);
+        debug_assert!(mem::size_of::<ty::TyS>() <= 32);
 
         let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
         let mk_region = |r| {
@@ -1921,7 +1921,7 @@ pub mod tls {
         where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
         let gcx = GCX_PTR.with(|lock| *lock.lock());
-        assert!(gcx != 0);
+        debug_assert!(gcx != 0);
         let gcx = &*(gcx as *const GlobalCtxt<'_>);
         let tcx = TyCtxt {
             gcx,
@@ -1971,7 +1971,7 @@ pub mod tls {
         with_context(|context| {
             unsafe {
                 let gcx = tcx.gcx as *const _ as usize;
-                assert!(context.tcx.gcx as *const _ as usize == gcx);
+                debug_assert!(context.tcx.gcx as *const _ as usize == gcx);
                 let context: &ImplicitCtxt = mem::transmute(context);
                 f(context)
             }
@@ -1990,8 +1990,8 @@ pub mod tls {
             unsafe {
                 let gcx = tcx.gcx as *const _ as usize;
                 let interners = tcx.interners as *const _ as usize;
-                assert!(context.tcx.gcx as *const _ as usize == gcx);
-                assert!(context.tcx.interners as *const _ as usize == interners);
+                debug_assert!(context.tcx.gcx as *const _ as usize == gcx);
+                debug_assert!(context.tcx.interners as *const _ as usize == interners);
                 let context: &ImplicitCtxt = mem::transmute(context);
                 f(context)
             }
@@ -2407,7 +2407,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     if param.index == 0 {
                         ty.into()
                     } else {
-                        assert!(has_default);
+                        debug_assert!(has_default);
                         self.type_of(param.def_id).subst(self, substs).into()
                     }
                 }
@@ -2561,8 +2561,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])
         -> &'tcx Slice<ExistentialPredicate<'tcx>> {
-        assert!(!eps.is_empty());
-        assert!(eps.windows(2).all(|w| w[0].stable_cmp(self, &w[1]) != Ordering::Greater));
+        debug_assert!(!eps.is_empty());
+        debug_assert!(eps.windows(2).all(|w| w[0].stable_cmp(self, &w[1]) != Ordering::Greater));
         self._intern_existential_predicates(eps)
     }
 

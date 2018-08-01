@@ -167,7 +167,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue));
+                debug_assert!(self.rvalue_creates_operand(rvalue));
                 let (bx, temp) = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(&bx, dest);
                 bx
@@ -180,7 +180,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                 rvalue: &mir::Rvalue<'tcx>)
                                 -> (Builder<'a, 'll, 'tcx>, OperandRef<'ll, 'tcx>)
     {
-        assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
+        debug_assert!(self.rvalue_creates_operand(rvalue),
+                      "cannot codegen {:?} to operand",
+                      rvalue);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
@@ -221,7 +223,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         operand.val
                     }
                     mir::CastKind::Unsize => {
-                        assert!(cast.is_llvm_scalar_pair());
+                        debug_assert!(cast.is_llvm_scalar_pair());
                         match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
                                 // unsize from a fat pointer - this is a
@@ -265,7 +267,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         }
                     }
                     mir::CastKind::Misc => {
-                        assert!(cast.is_llvm_immediate());
+                        debug_assert!(cast.is_llvm_immediate());
                         let ll_t_out = cast.immediate_llvm_type(bx.cx);
                         if operand.layout.abi == layout::Abi::Uninhabited {
                             return (bx, OperandRef {
@@ -462,7 +464,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             }
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
-                assert!(bx.cx.type_is_sized(ty));
+                debug_assert!(bx.cx.type_is_sized(ty));
                 let val = C_usize(bx.cx, bx.cx.size_of(ty).bytes());
                 let tcx = bx.tcx();
                 (bx, OperandRef {
@@ -867,7 +869,7 @@ fn cast_float_to_int(bx: &Builder<'_, 'll, '_>,
         let rounded_min = F::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
         assert_eq!(rounded_min.status, Status::OK);
         let rounded_max = F::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
-        assert!(rounded_max.value.is_finite());
+        debug_assert!(rounded_max.value.is_finite());
         (rounded_min.value.to_bits(), rounded_max.value.to_bits())
     }
     fn int_max(signed: bool, int_ty: &Type) -> u128 {

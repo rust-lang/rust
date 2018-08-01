@@ -662,7 +662,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn live_on_entry(&self, ln: LiveNode, var: Variable)
                       -> Option<LiveNodeKind> {
-        assert!(ln.is_valid());
+        debug_assert!(ln.is_valid());
         let reader = self.users[self.idx(ln, var)].reader;
         if reader.is_valid() {Some(self.ir.lnk(reader))} else {None}
     }
@@ -677,13 +677,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
-        assert!(ln.is_valid());
+        debug_assert!(ln.is_valid());
         self.users[self.idx(ln, var)].used
     }
 
     fn assigned_on_entry(&self, ln: LiveNode, var: Variable)
                          -> Option<LiveNodeKind> {
-        assert!(ln.is_valid());
+        debug_assert!(ln.is_valid());
         let writer = self.users[self.idx(ln, var)].writer;
         if writer.is_valid() {Some(self.ir.lnk(writer))} else {None}
     }
@@ -1356,7 +1356,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.propagate_through_expr(&cond, ln)
                 }
             };
-            assert!(cond_ln == new_cond_ln);
+            debug_assert!(cond_ln == new_cond_ln);
             assert!(body_ln == self.propagate_through_block(body, cond_ln));
         }
 

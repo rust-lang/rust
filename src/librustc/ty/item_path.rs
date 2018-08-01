@@ -196,7 +196,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let key = self.def_key(def_id);
         match key.disambiguated_data.data {
             DefPathData::CrateRoot => {
-                assert!(key.parent.is_none());
+                debug_assert!(key.parent.is_none());
                 self.push_krate_path(buffer, def_id.krate);
             }
 

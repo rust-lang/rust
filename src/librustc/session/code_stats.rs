@@ -142,7 +142,7 @@ impl CodeStats {
                              indent, name, size - discr_size);
                     "        "
                 } else {
-                    assert!(i < 1);
+                    debug_assert!(i < 1);
                     "    "
                 };
                 max_variant_size = cmp::max(max_variant_size, size);
@@ -182,9 +182,9 @@ impl CodeStats {
                 }
             }
 
-            assert!(max_variant_size <= info.overall_size,
-                    "max_variant_size {} !<= {} overall_size",
-                    max_variant_size, info.overall_size);
+            debug_assert!(max_variant_size <= info.overall_size,
+                          "max_variant_size {} !<= {} overall_size",
+                          max_variant_size, info.overall_size);
             if max_variant_size < info.overall_size {
                 println!("print-type-size {}end padding: {} bytes",
                          indent, info.overall_size - max_variant_size);

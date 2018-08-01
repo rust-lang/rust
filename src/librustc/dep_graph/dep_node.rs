@@ -301,7 +301,7 @@ macro_rules! define_dep_nodes {
             pub fn from_def_path_hash(kind: DepKind,
                                       def_path_hash: DefPathHash)
                                       -> DepNode {
-                assert!(kind.can_reconstruct_query_key() && kind.has_params());
+                debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
                 DepNode {
                     kind,
                     hash: def_path_hash.0,
@@ -313,7 +313,7 @@ macro_rules! define_dep_nodes {
             /// does not require any parameters.
             #[inline]
             pub fn new_no_params(kind: DepKind) -> DepNode {
-                assert!(!kind.has_params());
+                debug_assert!(!kind.has_params());
                 DepNode {
                     kind,
                     hash: Fingerprint::ZERO,

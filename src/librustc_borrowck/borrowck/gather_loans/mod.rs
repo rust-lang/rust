@@ -520,7 +520,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         if self.bccx.region_scope_tree.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {
-            assert!(self.bccx.region_scope_tree.is_subscope_of(loan_scope, lexical_scope));
+            debug_assert!(self.bccx.region_scope_tree.is_subscope_of(loan_scope, lexical_scope));
             loan_scope
         }
     }

@@ -90,7 +90,7 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
 fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     -> Lrc<BorrowCheckResult>
 {
-    assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());
+    debug_assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());
 
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 

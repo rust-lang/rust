@@ -897,9 +897,9 @@ mod tests {
             for &src in &srcs {
                 let spans = get_spans_of_pat_idents(src);
                 let (lo, hi) = (spans[0].lo(), spans[0].hi());
-                assert!("self" == &src[lo.to_usize()..hi.to_usize()],
-                        "\"{}\" != \"self\". src=\"{}\"",
-                        &src[lo.to_usize()..hi.to_usize()], src)
+                debug_assert!("self" == &src[lo.to_usize()..hi.to_usize()],
+                              "\"{}\" != \"self\". src=\"{}\"",
+                              &src[lo.to_usize()..hi.to_usize()], src)
             }
         })
     }
@@ -990,7 +990,7 @@ mod tests {
             ).unwrap().unwrap();
 
             if let ast::ItemKind::Mod(ref m) = item.node {
-                assert!(m.items.len() == 2);
+                debug_assert!(m.items.len() == 2);
             } else {
                 panic!();
             }

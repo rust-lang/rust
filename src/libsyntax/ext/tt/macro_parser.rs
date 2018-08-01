@@ -653,7 +653,7 @@ pub fn parse(
 
         // Matcher positions that would be valid if the macro invocation was over now
         let mut eof_items = SmallVector::new();
-        assert!(next_items.is_empty());
+        debug_assert!(next_items.is_empty());
 
         // Process `cur_items` until either we have finished the input or we need to get some
         // parsing from the black-box parser done. The result is that `next_items` will contain a
@@ -673,7 +673,7 @@ pub fn parse(
         }
 
         // inner parse loop handled all cur_items, so it's empty
-        assert!(cur_items.is_empty());
+        debug_assert!(cur_items.is_empty());
 
         // We need to do some post processing after the `inner_parser_loop`.
         //
@@ -757,7 +757,7 @@ pub fn parse(
             cur_items.push(item);
         }
 
-        assert!(!cur_items.is_empty());
+        debug_assert!(!cur_items.is_empty());
     }
 }
 

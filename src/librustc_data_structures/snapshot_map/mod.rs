@@ -96,8 +96,8 @@ impl<K, V> SnapshotMap<K, V>
     }
 
     fn assert_open_snapshot(&self, snapshot: &Snapshot) {
-        assert!(snapshot.len < self.undo_log.len());
-        assert!(match self.undo_log[snapshot.len] {
+        debug_assert!(snapshot.len < self.undo_log.len());
+        debug_assert!(match self.undo_log[snapshot.len] {
             UndoLog::OpenSnapshot => true,
             _ => false,
         });
@@ -143,11 +143,11 @@ impl<K, V> SnapshotMap<K, V>
         }
 
         let v = self.undo_log.pop().unwrap();
-        assert!(match v {
+        debug_assert!(match v {
             UndoLog::OpenSnapshot => true,
             _ => false,
         });
-        assert!(self.undo_log.len() == snapshot.len);
+        debug_assert!(self.undo_log.len() == snapshot.len);
     }
 
     fn reverse(&mut self, entry: UndoLog<K, V>) {

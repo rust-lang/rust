@@ -616,9 +616,9 @@ unsafe impl<T: Sync> Sync for Slice<T> {}
 impl<T: Copy> Slice<T> {
     #[inline]
     fn from_arena<'tcx>(arena: &'tcx SyncDroplessArena, slice: &[T]) -> &'tcx Slice<T> {
-        assert!(!mem::needs_drop::<T>());
-        assert!(mem::size_of::<T>() != 0);
-        assert!(slice.len() != 0);
+        debug_assert!(!mem::needs_drop::<T>());
+        debug_assert!(mem::size_of::<T>() != 0);
+        debug_assert!(slice.len() != 0);
 
         // Align up the size of the len (usize) field
         let align = mem::align_of::<T>();
@@ -716,7 +716,7 @@ impl<T> Slice<T> {
         #[repr(align(64), C)]
         struct EmptySlice([u8; 64]);
         static EMPTY_SLICE: EmptySlice = EmptySlice([0; 64]);
-        assert!(mem::align_of::<T>() <= 64);
+        debug_assert!(mem::align_of::<T>() <= 64);
         unsafe {
             &*(&EMPTY_SLICE as *const _ as *const Slice<T>)
         }
@@ -2023,7 +2023,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     /// Asserts this is a struct or union and returns its unique variant.
     pub fn non_enum_variant(&self) -> &VariantDef {
-        assert!(self.is_struct() || self.is_union());
+        debug_assert!(self.is_struct() || self.is_union());
         &self.variants[0]
     }
 

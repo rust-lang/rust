@@ -535,7 +535,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
-            assert!(args.next().is_none());
+            debug_assert!(args.next().is_none());
 
             let tuple = Place::Local(tuple);
             let tuple_tys = if let ty::TyTuple(s) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {

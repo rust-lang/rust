@@ -147,7 +147,7 @@ impl<'tcx> Mir<'tcx> {
         span: Span,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place
-        assert!(
+        debug_assert!(
             local_decls.len() >= arg_count + 1,
             "expected at least {} locals, got {}",
             arg_count + 1,
@@ -306,7 +306,7 @@ impl<'tcx> Mir<'tcx> {
         if idx < stmts.len() {
             &stmts[idx].source_info
         } else {
-            assert!(idx == stmts.len());
+            debug_assert!(idx == stmts.len());
             &block.terminator().source_info
         }
     }

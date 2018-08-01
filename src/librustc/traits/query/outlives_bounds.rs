@@ -117,7 +117,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 return vec![];
             }
         };
-        assert!(result.value.is_proven());
+        debug_assert!(result.value.is_proven());
 
         let result = self.instantiate_query_result_and_region_obligations(
             &ObligationCause::misc(span, body_id), param_env, &orig_values, &result);

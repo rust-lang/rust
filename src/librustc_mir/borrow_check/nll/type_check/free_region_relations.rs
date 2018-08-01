@@ -114,8 +114,8 @@ impl UniversalRegionRelations<'tcx> {
     /// (See `TransitiveRelation::postdom_upper_bound` for details on
     /// the postdominating upper bound in general.)
     crate fn postdom_upper_bound(&self, fr1: RegionVid, fr2: RegionVid) -> RegionVid {
-        assert!(self.universal_regions.is_universal_region(fr1));
-        assert!(self.universal_regions.is_universal_region(fr2));
+        debug_assert!(self.universal_regions.is_universal_region(fr1));
+        debug_assert!(self.universal_regions.is_universal_region(fr2));
         *self
             .inverse_outlives
             .postdom_upper_bound(&fr1, &fr2)
@@ -158,7 +158,7 @@ impl UniversalRegionRelations<'tcx> {
     ) -> Option<RegionVid> {
         // This method assumes that `fr0` is one of the universally
         // quantified region variables.
-        assert!(self.universal_regions.is_universal_region(fr0));
+        debug_assert!(self.universal_regions.is_universal_region(fr0));
 
         let mut external_parents = vec![];
         let mut queue = vec![&fr0];
@@ -353,9 +353,9 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
 impl<'tcx> FreeRegionRelations<'tcx> for UniversalRegionRelations<'tcx> {
     fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool {
         let shorter = shorter.to_region_vid();
-        assert!(self.universal_regions.is_universal_region(shorter));
+        debug_assert!(self.universal_regions.is_universal_region(shorter));
         let longer = longer.to_region_vid();
-        assert!(self.universal_regions.is_universal_region(longer));
+        debug_assert!(self.universal_regions.is_universal_region(longer));
         self.outlives(longer, shorter)
     }
 }

@@ -493,7 +493,7 @@ pub fn declare_local(
     variable_kind: VariableKind,
     span: Span,
 ) {
-    assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
+    debug_assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
     let cx = bx.cx;
 
     let file = span_start(cx, span).file;

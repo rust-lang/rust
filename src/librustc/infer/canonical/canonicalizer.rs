@@ -396,7 +396,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 // If `var_values` has become big enough to be heap-allocated,
                 // fill up `indices` to facilitate subsequent lookups.
                 if !var_values.is_array() {
-                    assert!(indices.is_empty());
+                    debug_assert!(indices.is_empty());
                     *indices =
                         var_values.iter()
                             .enumerate()

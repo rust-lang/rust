@@ -492,8 +492,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// false overflow results (#47139) and because it costs
     /// computation time.
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
-        assert!(self.intercrate.is_some());
-        assert!(self.intercrate_ambiguity_causes.is_none());
+        debug_assert!(self.intercrate.is_some());
+        debug_assert!(self.intercrate_ambiguity_causes.is_none());
         self.intercrate_ambiguity_causes = Some(vec![]);
         debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
     }
@@ -502,7 +502,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// was enabled and disables tracking at the same time. If
     /// tracking is not enabled, just returns an empty vector.
     pub fn take_intercrate_ambiguity_causes(&mut self) -> Vec<IntercrateAmbiguityCause> {
-        assert!(self.intercrate.is_some());
+        debug_assert!(self.intercrate.is_some());
         self.intercrate_ambiguity_causes.take().unwrap_or(vec![])
     }
 
@@ -563,7 +563,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     pub fn select(&mut self, obligation: &TraitObligation<'tcx>)
                   -> SelectionResult<'tcx, Selection<'tcx>> {
         debug!("select({:?})", obligation);
-        assert!(!obligation.predicate.has_escaping_regions());
+        debug_assert!(!obligation.predicate.has_escaping_regions());
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
 
@@ -571,7 +571,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             Err(SelectionError::Overflow) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
-                assert!(self.query_mode == TraitQueryMode::Canonical);
+                debug_assert!(self.query_mode == TraitQueryMode::Canonical);
                 return Err(SelectionError::Overflow);
             },
             Err(e) => { return Err(e); },
@@ -581,7 +581,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match self.confirm_candidate(obligation, candidate) {
             Err(SelectionError::Overflow) => {
-                assert!(self.query_mode == TraitQueryMode::Canonical);
+                debug_assert!(self.query_mode == TraitQueryMode::Canonical);
                 return Err(SelectionError::Overflow);
             },
             Err(e) => Err(e),
@@ -609,7 +609,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // This fatal query is a stopgap that should only be used in standard mode,
         // where we do not expect overflow to be propagated.
-        assert!(self.query_mode == TraitQueryMode::Standard);
+        debug_assert!(self.query_mode == TraitQueryMode::Standard);
 
         self.evaluate_obligation_recursively(obligation)
             .expect("Overflow should be caught earlier in standard query mode")
@@ -662,7 +662,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
-                assert!(!t.has_escaping_regions());
+                debug_assert!(!t.has_escaping_regions());
                 let obligation = obligation.with(t.clone());
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
@@ -1076,7 +1076,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("candidate_from_obligation(cache_fresh_trait_pred={:?}, obligation={:?})",
                cache_fresh_trait_pred,
                stack);
-        assert!(!stack.obligation.predicate.has_escaping_regions());
+        debug_assert!(!stack.obligation.predicate.has_escaping_regions());
 
         if let Some(c) = self.check_candidate_cache(stack.obligation.param_env,
                                                     &cache_fresh_trait_pred) {
@@ -1572,7 +1572,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 self.infcx.pop_skolemized(skol_map, snapshot);
 
-                assert!(result);
+                debug_assert!(result);
                 true
             }
         }
@@ -1586,7 +1586,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         snapshot: &infer::CombinedSnapshot<'cx, 'tcx>)
                         -> bool
     {
-        assert!(!skol_trait_ref.has_escaping_regions());
+        debug_assert!(!skol_trait_ref.has_escaping_regions());
         if let Err(_) = self.infcx.at(&obligation.cause, obligation.param_env)
                                   .sup(ty::Binder::dummy(skol_trait_ref), trait_bound) {
             return false;
@@ -2500,7 +2500,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let result =
                 this.match_projection_obligation_against_definition_bounds(obligation,
                                                                            snapshot);
-            assert!(result);
+            debug_assert!(result);
         })
     }
 

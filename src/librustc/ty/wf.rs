@@ -158,7 +158,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         let infcx = &mut self.infcx;
         let param_env = self.param_env;
         self.out.iter()
-                .inspect(|pred| assert!(!pred.has_escaping_regions()))
+                .inspect(|pred| debug_assert!(!pred.has_escaping_regions()))
                 .flat_map(|pred| {
                     let mut selcx = traits::SelectionContext::new(infcx);
                     let pred = traits::normalize(&mut selcx, param_env, cause.clone(), pred);
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                         // Yes, resolved, proceed with the
                         // result. Should never return false because
                         // `ty` is not a TyInfer.
-                        assert!(self.compute(ty));
+                        debug_assert!(self.compute(ty));
                     }
                 }
             }

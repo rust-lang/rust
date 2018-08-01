@@ -41,7 +41,7 @@ pub fn sign_extend<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, value: u128, ty: Ty<'t
     let param_env = ParamEnv::empty();
     let layout = tcx.layout_of(param_env.and(ty)).map_err(|layout| EvalErrorKind::Layout(layout))?;
     let size = layout.size.bits();
-    assert!(layout.abi.is_signed());
+    debug_assert!(layout.abi.is_signed());
     // sign extend
     let shift = 128 - size;
     // shift the unsigned value to the left

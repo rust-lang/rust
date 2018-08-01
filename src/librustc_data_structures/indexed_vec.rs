@@ -43,7 +43,7 @@ impl Idx for usize {
 
 impl Idx for u32 {
     #[inline]
-    fn new(idx: usize) -> Self { assert!(idx <= u32::MAX as usize); idx as u32 }
+    fn new(idx: usize) -> Self { debug_assert!(idx <= u32::MAX as usize); idx as u32 }
     #[inline]
     fn index(self) -> usize { self as usize }
 }
@@ -85,7 +85,7 @@ macro_rules! newtype_index {
         impl Idx for $type {
             #[inline]
             fn new(value: usize) -> Self {
-                assert!(value < ($max) as usize);
+                debug_assert!(value < ($max) as usize);
                 $type(value as u32)
             }
 

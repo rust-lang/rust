@@ -236,7 +236,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             }
         }
         let successful_obligations = self.compress();
-        assert!(successful_obligations.is_empty());
+        debug_assert!(successful_obligations.is_empty());
         errors
     }
 

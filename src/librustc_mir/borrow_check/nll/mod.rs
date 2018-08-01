@@ -434,7 +434,7 @@ fn live_variable_set(
         string.push_str(&format!("{:?}", local));
 
         if !regular.contains(&local) {
-            assert!(drops.contains(&local));
+            debug_assert!(drops.contains(&local));
             string.push_str(" (drop)");
         }
 

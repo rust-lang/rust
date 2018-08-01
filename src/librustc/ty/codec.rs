@@ -156,7 +156,7 @@ pub fn decode_ty<'a, 'tcx, D>(decoder: &mut D) -> Result<Ty<'tcx>, D::Error>
     // Handle shorthands first, if we have an usize > 0x80.
     if decoder.positioned_at_shorthand() {
         let pos = decoder.read_usize()?;
-        assert!(pos >= SHORTHAND_OFFSET);
+        debug_assert!(pos >= SHORTHAND_OFFSET);
         let shorthand = pos - SHORTHAND_OFFSET;
 
         decoder.cached_ty_for_shorthand(shorthand, |decoder| {
@@ -180,7 +180,7 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
                 // Handle shorthands first, if we have an usize > 0x80.
                 if decoder.positioned_at_shorthand() {
                     let pos = decoder.read_usize()?;
-                    assert!(pos >= SHORTHAND_OFFSET);
+                    debug_assert!(pos >= SHORTHAND_OFFSET);
                     let shorthand = pos - SHORTHAND_OFFSET;
 
                     decoder.with_position(shorthand, ty::Predicate::decode)

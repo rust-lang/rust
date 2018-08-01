@@ -43,9 +43,9 @@ pub fn get_fn(
 
     debug!("get_fn(instance={:?})", instance);
 
-    assert!(!instance.substs.needs_infer());
-    assert!(!instance.substs.has_escaping_regions());
-    assert!(!instance.substs.has_param_types());
+    debug_assert!(!instance.substs.needs_infer());
+    debug_assert!(!instance.substs.has_escaping_regions());
+    debug_assert!(!instance.substs.has_param_types());
 
     let fn_ty = instance.ty(cx.tcx);
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {

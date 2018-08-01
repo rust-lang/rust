@@ -232,13 +232,13 @@ pub fn unsize_thin_ptr(
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(bx.cx.type_is_sized(a));
+            debug_assert!(bx.cx.type_is_sized(a));
             let ptr_ty = bx.cx.layout_of(b).llvm_type(bx.cx).ptr_to();
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx, a, b, None))
         }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
-            assert!(bx.cx.type_is_sized(a));
+            debug_assert!(bx.cx.type_is_sized(a));
             let ptr_ty = bx.cx.layout_of(b).llvm_type(bx.cx).ptr_to();
             (bx.pointercast(src, ptr_ty), unsized_info(bx.cx, a, b, None))
         }
@@ -664,7 +664,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         return metadata;
     }
 
-    assert!(kind == MetadataKind::Compressed);
+    debug_assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
     DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();

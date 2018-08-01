@@ -681,7 +681,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // artifacts. This means it is safe to put into the
             // `WhereClauseCandidate` and (eventually) into the
             // `WhereClausePick`.
-            assert!(!trait_ref.substs.needs_infer());
+            debug_assert!(!trait_ref.substs.needs_infer());
 
             this.push_candidate(Candidate {
                 xform_self_ty, xform_ret_ty, item,
@@ -823,7 +823,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     // THE ACTUAL SEARCH
 
     fn pick(mut self) -> PickResult<'tcx> {
-        assert!(self.method_name.is_some());
+        debug_assert!(self.method_name.is_some());
 
         if let Some(r) = self.pick_core() {
             return r;
@@ -863,7 +863,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     .collect()
             }
             Some(Err(MethodError::NoMatch(NoMatchData { out_of_scope_traits: others, .. }))) => {
-                assert!(others.is_empty());
+                debug_assert!(others.is_empty());
                 vec![]
             }
             _ => vec![],
@@ -1372,7 +1372,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                fn_sig,
                substs);
 
-        assert!(!substs.has_escaping_regions());
+        debug_assert!(!substs.has_escaping_regions());
 
         // It is possible for type parameters or early-bound lifetimes
         // to appear in the signature of `self`. The substitutions we
@@ -1487,7 +1487,7 @@ impl<'tcx> Candidate<'tcx> {
                     // inference variables or other artifacts. This
                     // means they are safe to put into the
                     // `WhereClausePick`.
-                    assert!(
+                    debug_assert!(
                         !trait_ref.skip_binder().substs.needs_infer()
                             && !trait_ref.skip_binder().substs.has_skol()
                     );

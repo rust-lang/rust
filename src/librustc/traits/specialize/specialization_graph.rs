@@ -250,7 +250,7 @@ impl<'a, 'gcx, 'tcx> Graph {
                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                   impl_def_id: DefId)
                   -> Result<Option<OverlapError>, OverlapError> {
-        assert!(impl_def_id.is_local());
+        debug_assert!(impl_def_id.is_local());
 
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let trait_def_id = trait_ref.def_id;

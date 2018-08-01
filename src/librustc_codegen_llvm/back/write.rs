@@ -541,7 +541,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
                 true
             };
 
-            if config.verify_llvm_ir { assert!(addpass("verify")); }
+            if config.verify_llvm_ir { debug_assert!(addpass("verify")); }
             if !config.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
@@ -1728,8 +1728,8 @@ fn start_executing_work(tcx: TyCtxt,
                 if work_items.len() == 0 &&
                    running == 0 &&
                    main_thread_worker_state == MainThreadWorkerState::Idle {
-                    assert!(!started_lto);
-                    assert!(needs_lto.len() > 0);
+                    debug_assert!(!started_lto);
+                    debug_assert!(needs_lto.len() > 0);
                     started_lto = true;
                     let modules = mem::replace(&mut needs_lto, Vec::new());
                     for (work, cost) in generate_lto_work(&cgcx, modules) {
@@ -1880,17 +1880,17 @@ fn start_executing_work(tcx: TyCtxt,
                             compiled_modules.push(compiled_module);
                         }
                         ModuleKind::Metadata => {
-                            assert!(compiled_metadata_module.is_none());
+                            debug_assert!(compiled_metadata_module.is_none());
                             compiled_metadata_module = Some(compiled_module);
                         }
                         ModuleKind::Allocator => {
-                            assert!(compiled_allocator_module.is_none());
+                            debug_assert!(compiled_allocator_module.is_none());
                             compiled_allocator_module = Some(compiled_module);
                         }
                     }
                 }
                 Message::NeedsLTO { result, worker_id } => {
-                    assert!(!started_lto);
+                    debug_assert!(!started_lto);
                     if main_thread_worker_state == MainThreadWorkerState::LLVMing {
                         main_thread_worker_state = MainThreadWorkerState::Idle;
                     } else {

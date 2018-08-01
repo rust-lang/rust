@@ -543,7 +543,7 @@ impl<'a> Printer<'a> {
           Token::End => {
             debug!("print End -> pop End");
             let print_stack = &mut self.print_stack;
-            assert!(!print_stack.is_empty());
+            debug_assert!(!print_stack.is_empty());
             print_stack.pop().unwrap();
             Ok(())
           }

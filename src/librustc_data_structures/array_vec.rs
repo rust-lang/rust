@@ -129,8 +129,8 @@ impl<A: Array> ArrayVec<A> {
             Excluded(&n) => n,
             Unbounded    => len,
         };
-        assert!(start <= end);
-        assert!(end <= len);
+        debug_assert!(start <= end);
+        debug_assert!(end <= len);
 
         unsafe {
             // set self.vec length's to start, to be safe in case Drain is leaked

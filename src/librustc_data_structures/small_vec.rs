@@ -69,7 +69,7 @@ impl<A: Array> SmallVec<A> {
     }
 
     pub fn expect_one(self, err: &'static str) -> A::Element {
-        assert!(self.len() == 1, err);
+        debug_assert!(self.len() == 1, err);
         match self.0 {
             AccumulateVec::Array(arr) => arr.into_iter().next().unwrap(),
             AccumulateVec::Heap(vec) => vec.into_iter().next().unwrap(),
@@ -117,7 +117,7 @@ impl<A: Array> SmallVec<A> {
         // Reserve space for shifting elements to the right
         self.reserve(1);
 
-        assert!(index <= len);
+        debug_assert!(index <= len);
 
         unsafe {
             // infallible

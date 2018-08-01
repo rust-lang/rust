@@ -59,7 +59,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         InferBorrowKindVisitor { fcx: self }.visit_body(body);
 
         // it's our job to process these.
-        assert!(self.deferred_call_resolutions.borrow().is_empty());
+        debug_assert!(self.deferred_call_resolutions.borrow().is_empty());
     }
 }
 
@@ -447,7 +447,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
     fn try_adjust_upvar_deref(&mut self, cmt: &mc::cmt_<'tcx>, borrow_kind: ty::BorrowKind)
                               -> bool
     {
-        assert!(match borrow_kind {
+        debug_assert!(match borrow_kind {
             ty::MutBorrow => true,
             ty::UniqueImmBorrow => true,
 

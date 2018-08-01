@@ -65,7 +65,7 @@ pub fn scalar_to_llvm(
                     callee::get_fn(cx, fn_instance)
                 }
                 Some(AllocType::Static(def_id)) => {
-                    assert!(cx.tcx.is_static(def_id).is_some());
+                    debug_assert!(cx.tcx.is_static(def_id).is_some());
                     consts::get_static(cx, def_id)
                 }
                 None => bug!("missing allocation {:?}", ptr.alloc_id),

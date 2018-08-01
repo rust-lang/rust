@@ -482,7 +482,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     // binders in `bound2_value` (nmatsakis added in
                     // the course of this PR; seems like a reasonable
                     // sanity check though).
-                    assert!(debruijn == current_depth);
+                    debug_assert!(debruijn == current_depth);
                     self.mk_region(ty::ReLateBound(current_depth, br))
                 }
                 _ => {
@@ -518,7 +518,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let mut collector = LateBoundRegionsCollector::new(just_constraint);
         let result = value.skip_binder().visit_with(&mut collector);
-        assert!(!result); // should never have stopped early
+        debug_assert!(!result); // should never have stopped early
         collector.regions
     }
 

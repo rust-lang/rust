@@ -143,7 +143,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         body_id: ast::NodeId,
     ) {
-        assert!(
+        debug_assert!(
             !self.in_snapshot.get(),
             "cannot process registered region obligations in a snapshot"
         );
@@ -284,7 +284,7 @@ where
             ty, region, origin
         );
 
-        assert!(!ty.has_escaping_regions());
+        debug_assert!(!ty.has_escaping_regions());
 
         let components = self.tcx.outlives_components(ty);
         self.components_must_outlive(origin, components, region);

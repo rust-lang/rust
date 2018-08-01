@@ -354,7 +354,7 @@ impl CodeMap {
                 debug!("char pos {:?} is on the line at char pos {:?}",
                        chpos, linechpos);
                 debug!("byte is on line: {}", line);
-                assert!(chpos >= linechpos);
+                debug_assert!(chpos >= linechpos);
                 Loc {
                     file: f,
                     line,
@@ -490,7 +490,7 @@ impl CodeMap {
                 end: (hi.file.name.clone(), hi.file.start_pos),
             }));
         }
-        assert!(hi.line >= lo.line);
+        debug_assert!(hi.line >= lo.line);
 
         let mut lines = Vec::with_capacity(hi.line - lo.line + 1);
 
@@ -831,13 +831,13 @@ impl CodeMap {
                 total_extra_bytes += mbc.bytes as u32 - 1;
                 // We should never see a byte position in the middle of a
                 // character
-                assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes as u32);
+                debug_assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes as u32);
             } else {
                 break;
             }
         }
 
-        assert!(map.start_pos.to_u32() + total_extra_bytes <= bpos.to_u32());
+        debug_assert!(map.start_pos.to_u32() + total_extra_bytes <= bpos.to_u32());
         CharPos(bpos.to_usize() - map.start_pos.to_usize() - total_extra_bytes as usize)
     }
 
@@ -859,7 +859,8 @@ impl CodeMap {
             }
         }
 
-        assert!(a < count, "position {} does not resolve to a source location", pos.to_usize());
+        debug_assert!(a < count, "position {} does not resolve to a source location",
+            pos.to_usize());
 
         return a;
     }

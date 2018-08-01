@@ -199,7 +199,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // least during method dispach). This is because we
             // currently only unsize `[T;N]` to `[T]`, and naturally
             // that must occur being a reference.
-            assert!(pick.unsize.is_none());
+            debug_assert!(pick.unsize.is_none());
         }
 
         autoderef.finalize();
@@ -226,9 +226,9 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         match pick.kind {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container.id();
-                assert!(self.tcx.impl_trait_ref(impl_def_id).is_none(),
-                        "impl {:?} is not an inherent impl",
-                        impl_def_id);
+                debug_assert!(self.tcx.impl_trait_ref(impl_def_id).is_none(),
+                              "impl {:?} is not an inherent impl",
+                              impl_def_id);
                 self.impl_self_ty(self.span, impl_def_id).substs
             }
 

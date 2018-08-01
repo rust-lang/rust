@@ -848,7 +848,7 @@ impl Session {
         let mut ret = true;
         match self.optimization_fuel_crate {
             Some(ref c) if c == crate_name => {
-                assert!(self.query_threads() == 1);
+                debug_assert!(self.query_threads() == 1);
                 let fuel = self.optimization_fuel_limit.get();
                 ret = fuel != 0;
                 if fuel == 0 && !self.out_of_fuel.get() {
@@ -862,7 +862,7 @@ impl Session {
         }
         match self.print_fuel_crate {
             Some(ref c) if c == crate_name => {
-                assert!(self.query_threads() == 1);
+                debug_assert!(self.query_threads() == 1);
                 self.print_fuel.set(self.print_fuel.get() + 1);
             }
             _ => {}

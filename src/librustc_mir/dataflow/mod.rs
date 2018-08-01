@@ -523,7 +523,7 @@ impl<'a, E:Idx> BlockSets<'a, E> {
             let j = j.borrow();
             let retval = self.gen_set.add(j);
             self.kill_set.remove(j);
-            assert!(retval);
+            debug_assert!(retval);
         }
     }
 

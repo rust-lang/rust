@@ -304,7 +304,7 @@ where
                     min_depth: successor_min_depth,
                 } => {
                     // Track the minimum depth we can reach.
-                    assert!(successor_min_depth <= depth);
+                    debug_assert!(successor_min_depth <= depth);
                     if successor_min_depth < min_depth {
                         debug!(
                             "walk_unvisited_node: node = {:?} successor_min_depth = {:?}",

@@ -68,7 +68,7 @@ impl fmt::Debug for OperandRef<'ll, 'tcx> {
 impl OperandRef<'ll, 'tcx> {
     pub fn new_zst(cx: &CodegenCx<'ll, 'tcx>,
                    layout: TyLayout<'tcx>) -> OperandRef<'ll, 'tcx> {
-        assert!(layout.is_zst());
+        debug_assert!(layout.is_zst());
         OperandRef {
             val: OperandValue::Immediate(C_undef(layout.immediate_llvm_type(cx))),
             layout

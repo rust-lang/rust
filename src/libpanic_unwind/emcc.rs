@@ -30,7 +30,7 @@ pub fn payload() -> *mut u8 {
 }
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
-    assert!(!ptr.is_null());
+    debug_assert!(!ptr.is_null());
     let ex = ptr::read(ptr as *mut _);
     __cxa_free_exception(ptr as *mut _);
     ex

@@ -59,7 +59,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> InternedString {
         debug!("give_region_a_name(fr={:?}, counter={})", fr, counter);
 
-        assert!(self.universal_regions.is_universal_region(fr));
+        debug_assert!(self.universal_regions.is_universal_region(fr));
 
         self.give_name_from_error_region(infcx.tcx, mir_def_id, fr, counter, diag)
             .or_else(|| {

@@ -506,7 +506,7 @@ impl<'tcx> ScopeTree {
 
         if let Some(p) = parent {
             let prev = self.parent_map.insert(child, p);
-            assert!(prev.is_none());
+            debug_assert!(prev.is_none());
         }
 
         // record the destruction scopes for later so we can query them
@@ -539,21 +539,21 @@ impl<'tcx> ScopeTree {
                              sup_closure: hir::ItemLocalId) {
         debug!("record_closure_parent(sub_closure={:?}, sup_closure={:?})",
                sub_closure, sup_closure);
-        assert!(sub_closure != sup_closure);
+        debug_assert!(sub_closure != sup_closure);
         let previous = self.closure_tree.insert(sub_closure, sup_closure);
-        assert!(previous.is_none());
+        debug_assert!(previous.is_none());
     }
 
     fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
         debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
-        assert!(var != lifetime.item_local_id());
+        debug_assert!(var != lifetime.item_local_id());
         self.var_map.insert(var, lifetime);
     }
 
     fn record_rvalue_scope(&mut self, var: hir::ItemLocalId, lifetime: Option<Scope>) {
         debug!("record_rvalue_scope(sub={:?}, sup={:?})", var, lifetime);
         if let Some(lifetime) = lifetime {
-            assert!(var != lifetime.item_local_id());
+            debug_assert!(var != lifetime.item_local_id());
         }
         self.rvalue_scopes.insert(var, lifetime);
     }
@@ -700,7 +700,7 @@ impl<'tcx> ScopeTree {
             // Both scopes are at the same depth, and we know they're not equal
             // because that case was tested for at the top of this function. So
             // we can trivially move them both up one level now.
-            assert!(parent_a_depth != 0);
+            debug_assert!(parent_a_depth != 0);
             a = parent_a;
             b = parent_b;
         }
