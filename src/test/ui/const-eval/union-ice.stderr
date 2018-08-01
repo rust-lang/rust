@@ -1,21 +1,19 @@
-error[E0080]: this constant likely exhibits undefined behavior
+error: this constant cannot be used
   --> $DIR/union-ice.rs:23:1
    |
-LL | const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR this constant likely exhibits undefined
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered undefined bytes
+LL | const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR this constant cannot be used
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to read undefined bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   = note: #[deny(const_err)] on by default
 
-error[E0080]: this constant likely exhibits undefined behavior
+error: this constant cannot be used
   --> $DIR/union-ice.rs:25:1
    |
-LL | / const FIELD_PATH: Struct = Struct { //~ ERROR this constant likely exhibits undefined behavior
+LL | / const FIELD_PATH: Struct = Struct { //~ ERROR this constant cannot be used
 LL | |     a: 42,
 LL | |     b: unsafe { UNION.field3 },
 LL | | };
-   | |__^ type validation failed: encountered undefined bytes at .b
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   | |__^ attempted to read undefined bytes
 
 error[E0080]: this constant likely exhibits undefined behavior
   --> $DIR/union-ice.rs:35:1

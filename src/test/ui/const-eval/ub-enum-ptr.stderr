@@ -1,11 +1,10 @@
-error[E0080]: this constant likely exhibits undefined behavior
+error: this constant cannot be used
   --> $DIR/ub-enum-ptr.rs:23:1
    |
 LL | const BAD_ENUM: Enum = unsafe { Foo { a: &1 }.b};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer at .TAG, but expected something in the range 0..=0
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a raw memory access tried to access part of a pointer value as raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+   = note: #[deny(const_err)] on by default
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0080`.

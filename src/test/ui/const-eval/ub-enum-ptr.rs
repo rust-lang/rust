@@ -21,7 +21,7 @@ union Foo {
 
 // A pointer is guaranteed non-null
 const BAD_ENUM: Enum = unsafe { Foo { a: &1 }.b};
-//~^ ERROR this constant likely exhibits undefined behavior
+//~^ ERROR this constant cannot be used
 
 fn main() {
 }

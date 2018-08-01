@@ -5,7 +5,7 @@ use rustc::hir;
 use rustc::mir::interpret::{ConstEvalErr, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
-use rustc::ty::layout::{self, LayoutOf, Primitive, TyLayout, Size};
+use rustc::ty::layout::{self, LayoutOf, Primitive, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::IndexVec;
 
@@ -77,7 +77,7 @@ pub fn value_to_const_value<'tcx>(
     ecx: &EvalContext<'_, '_, 'tcx, CompileTimeEvaluator>,
     val: Value,
     layout: TyLayout<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
+) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
     match (val, &layout.abi) {
         (Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { size: 0, ..})), _) if layout.is_zst() => {},
         (Value::ByRef(..), _) |
@@ -85,38 +85,21 @@ pub fn value_to_const_value<'tcx>(
         (Value::ScalarPair(..), &layout::Abi::ScalarPair(..)) => {},
         _ => bug!("bad value/layout combo: {:#?}, {:#?}", val, layout),
     }
-    let val = (|| {
-        match val {
-            Value::Scalar(val) => Ok(ConstValue::Scalar(val.unwrap_or_err()?)),
-            Value::ScalarPair(a, b) => Ok(ConstValue::ScalarPair(a.unwrap_or_err()?, b.unwrap_or_err()?)),
-            Value::ByRef(ptr, align) => {
-                let ptr = ptr.to_ptr().unwrap();
-                let alloc = ecx.memory.get(ptr.alloc_id)?;
-                assert!(alloc.align.abi() >= align.abi());
-                assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
-                let mut alloc = alloc.clone();
-                alloc.align = align;
-                let alloc = ecx.tcx.intern_const_alloc(alloc);
-                Ok(ConstValue::ByRef(alloc, ptr.offset))
-            }
-        }
-    })();
-    match val {
-        Ok(val) => ty::Const::from_const_value(ecx.tcx.tcx, val, layout.ty),
-        Err(error) => {
-            let (stacktrace, span) = ecx.generate_stacktrace(None);
-            let err = ConstEvalErr { span, error, stacktrace };
-            if let Some(mut err) = err.struct_error(ecx.tcx, "failed to convert Value to ConstValue") {
-                err.delay_as_bug();
-            } else {
-                span_bug!(span, "failed to convert Value to ConstValue")
-            }
-            let alloc = Allocation::undef(layout.size, layout.align);
+    let val = match val {
+        Value::Scalar(val) => ConstValue::Scalar(val.unwrap_or_err()?),
+        Value::ScalarPair(a, b) => ConstValue::ScalarPair(a.unwrap_or_err()?, b.unwrap_or_err()?),
+        Value::ByRef(ptr, align) => {
+            let ptr = ptr.to_ptr().unwrap();
+            let alloc = ecx.memory.get(ptr.alloc_id)?;
+            assert!(alloc.align.abi() >= align.abi());
+            assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
+            let mut alloc = alloc.clone();
+            alloc.align = align;
             let alloc = ecx.tcx.intern_const_alloc(alloc);
-            let val = ConstValue::ByRef(alloc, Size::ZERO);
-            ty::Const::from_const_value(ecx.tcx.tcx, val, layout.ty)
+            ConstValue::ByRef(alloc, ptr.offset)
         }
-    }
+    };
+    Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, layout.ty))
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -454,7 +437,7 @@ pub fn const_val_field<'a, 'tcx>(
             ),
             _ => {},
         }
-        Ok(value_to_const_value(&ecx, new_value, layout))
+        value_to_const_value(&ecx, new_value, layout)
     })();
     result.map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
@@ -555,7 +538,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         if tcx.is_static(def_id).is_none() && cid.promoted.is_none() {
             val = ecx.try_read_by_ref(val, layout.ty)?;
         }
-        Ok(value_to_const_value(&ecx, val, layout))
+        value_to_const_value(&ecx, val, layout)
     }).map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
         let err = ConstEvalErr {
