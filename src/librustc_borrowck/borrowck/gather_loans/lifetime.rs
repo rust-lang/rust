@@ -28,8 +28,7 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     span: Span,
                                     cause: euv::LoanCause,
                                     cmt: &'a mc::cmt_<'tcx>,
-                                    loan_region: ty::Region<'tcx>,
-                                    _: ty::BorrowKind)
+                                    loan_region: ty::Region<'tcx>)
                                     -> Result<(),()> {
     //! Reports error if `loan_region` is larger than S
     //! where S is `item_scope` if `cmt` is an upvar,

@@ -638,8 +638,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                      use_kind: MovedValueUseKind,
                                      lp: &LoanPath<'tcx>,
                                      the_move: &move_data::Move,
-                                     moved_lp: &LoanPath<'tcx>,
-                                     _param_env: ty::ParamEnv<'tcx>) {
+                                     moved_lp: &LoanPath<'tcx>) {
         let (verb, verb_participle) = match use_kind {
             MovedInUse => ("use", "used"),
             MovedInCapture => ("capture", "captured"),
@@ -802,23 +801,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
         err.emit();
         self.signal_error();
-    }
-
-    pub fn struct_span_err_with_code<S: Into<MultiSpan>>(&self,
-                                                         s: S,
-                                                         msg: &str,
-                                                         code: DiagnosticId)
-                                                         -> DiagnosticBuilder<'a> {
-        self.tcx.sess.struct_span_err_with_code(s, msg, code)
-    }
-
-    pub fn span_err_with_code<S: Into<MultiSpan>>(
-        &self,
-        s: S,
-        msg: &str,
-        code: DiagnosticId,
-    ) {
-        self.tcx.sess.span_err_with_code(s, msg, code);
     }
 
     fn report_bckerr(&self, err: &BckError<'a, 'tcx>) {
