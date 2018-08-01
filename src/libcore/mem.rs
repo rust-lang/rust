@@ -953,7 +953,6 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 ///     }
 /// }
 /// ```
-#[cfg(not(stage0))]
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -961,10 +960,6 @@ pub struct ManuallyDrop<T> {
     value: T,
 }
 
-#[cfg(stage0)]
-include!("manually_drop_stage0.rs");
-
-#[cfg(not(stage0))]
 impl<T> ManuallyDrop<T> {
     /// Wrap a value to be manually dropped.
     ///
@@ -1010,7 +1005,6 @@ impl<T> ManuallyDrop<T> {
     }
 }
 
-#[cfg(not(stage0))]
 #[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T> Deref for ManuallyDrop<T> {
     type Target = T;
@@ -1020,7 +1014,6 @@ impl<T> Deref for ManuallyDrop<T> {
     }
 }
 
-#[cfg(not(stage0))]
 #[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T> DerefMut for ManuallyDrop<T> {
     #[inline]

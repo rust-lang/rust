@@ -12,16 +12,10 @@
 
 pub use core::task::*;
 
-#[cfg(any(
-    all(stage0, target_has_atomic = "ptr"),
-    all(not(stage0), target_has_atomic = "ptr", target_has_atomic = "cas")
-))]
+#[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
 pub use self::if_arc::*;
 
-#[cfg(any(
-    all(stage0, target_has_atomic = "ptr"),
-    all(not(stage0), target_has_atomic = "ptr", target_has_atomic = "cas")
-))]
+#[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
 mod if_arc {
     use super::*;
     use core::marker::PhantomData;
@@ -53,10 +47,7 @@ mod if_arc {
         }
     }
 
-    #[cfg(any(
-        all(stage0, target_has_atomic = "ptr"),
-        all(not(stage0), target_has_atomic = "ptr", target_has_atomic = "cas")
-    ))]
+    #[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
     struct ArcWrapped<T>(PhantomData<T>);
 
     unsafe impl<T: Wake + 'static> UnsafeWake for ArcWrapped<T> {

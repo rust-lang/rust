@@ -1087,11 +1087,9 @@ extern "rust-intrinsic" {
 
     /// Perform a volatile load from the `src` pointer
     /// The pointer is not required to be aligned.
-    #[cfg(not(stage0))]
     pub fn unaligned_volatile_load<T>(src: *const T) -> T;
     /// Perform a volatile store to the `dst` pointer.
     /// The pointer is not required to be aligned.
-    #[cfg(not(stage0))]
     pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 
     /// Returns the square root of an `f32`

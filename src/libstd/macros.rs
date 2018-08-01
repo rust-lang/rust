@@ -157,12 +157,7 @@ macro_rules! print {
 macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({
-        #[cfg(not(stage0))] {
-            ($crate::io::_print(format_args_nl!($($arg)*)));
-        }
-        #[cfg(stage0)] {
-            print!("{}\n", format_args!($($arg)*))
-        }
+        $crate::io::_print(format_args_nl!($($arg)*));
     })
 }
 
@@ -221,12 +216,7 @@ macro_rules! eprint {
 macro_rules! eprintln {
     () => (eprint!("\n"));
     ($($arg:tt)*) => ({
-        #[cfg(all(not(stage0), not(stage1)))] {
-            ($crate::io::_eprint(format_args_nl!($($arg)*)));
-        }
-        #[cfg(any(stage0, stage1))] {
-            eprint!("{}\n", format_args!($($arg)*))
-        }
+        $crate::io::_eprint(format_args_nl!($($arg)*));
     })
 }
 
