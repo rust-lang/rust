@@ -94,9 +94,9 @@ Misc
 
 Compatibility Notes
 -------------------
-- [Rust will no longer consider trait objects with duplicated constraints to
-  have implementations.][51276] For example the below code will now fail
-  to compile.
+- [Rust will consider trait objects with duplicated constraints to be the same
+  type as without the duplicated constraint.][51276] For example the below code will
+  now fail to compile.
   ```rust
   trait Trait {}
 
