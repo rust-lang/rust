@@ -201,4 +201,13 @@ fn refutable() {
     while let Some(&value) = values.iter().next() {
         values.remove(&value);
     }
+
+    // This should not cause an ICE and suggest:
+    //
+    // for _ in values.iter() {}
+    //
+    // See #2965
+    while let Some(..) = values.iter().next() {
+        values.remove(&1);
+    }
 }

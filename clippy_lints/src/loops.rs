@@ -488,12 +488,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
                 if method_path.ident.name == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR)
-                    && lhs_constructor.ident.name == "Some" && !is_refutable(cx, &pat_args[0])
-                    && !is_iterator_used_after_while_let(cx, iter_expr)
-                    && !is_nested(cx, expr, &method_args[0])
+                    && lhs_constructor.ident.name == "Some" && (
+                        pat_args.is_empty()
+                        || !is_refutable(cx, &pat_args[0])
+                        && !is_iterator_used_after_while_let(cx, iter_expr)
+                        && !is_nested(cx, expr, &method_args[0]))
                 {
                     let iterator = snippet(cx, method_args[0].span, "_");
-                    let loop_var = snippet(cx, pat_args[0].span, "_");
+                    let loop_var = if pat_args.is_empty() {
+                        "_".to_string()
+                    } else {
+                        snippet(cx, pat_args[0].span, "_").into_owned()
+                    };
                     span_lint_and_sugg(
                         cx,
                         WHILE_LET_ON_ITERATOR,
