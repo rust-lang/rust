@@ -43,6 +43,8 @@ extern crate rustc_target;
 extern crate serialize as rustc_serialize; // used by deriving
 
 use rustc_data_structures::sync::Lock;
+use rustc_data_structures::bitvec::BitVector;
+use ast::AttrId;
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
@@ -75,16 +77,18 @@ macro_rules! unwrap_or {
 }
 
 pub struct Globals {
-    used_attrs: Lock<Vec<u64>>,
-    known_attrs: Lock<Vec<u64>>,
+    used_attrs: Lock<BitVector<AttrId>>,
+    known_attrs: Lock<BitVector<AttrId>>,
     syntax_pos_globals: syntax_pos::Globals,
 }
 
 impl Globals {
     fn new() -> Globals {
         Globals {
-            used_attrs: Lock::new(Vec::new()),
-            known_attrs: Lock::new(Vec::new()),
+            // We have no idea how many attributes their will be, so just
+            // initiate the vectors with 0 bits. We'll grow them as necessary.
+            used_attrs: Lock::new(BitVector::new()),
+            known_attrs: Lock::new(BitVector::new()),
             syntax_pos_globals: syntax_pos::Globals::new(),
         }
     }

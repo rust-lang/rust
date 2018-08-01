@@ -18,7 +18,7 @@ use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
 use build::scope::{CachedBlock, DropKind};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::bitvec::BitArray;
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use rustc::hir;
@@ -496,7 +496,7 @@ enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
         adt_def: &'tcx ty::AdtDef,
-        variants: BitVector<usize>,
+        variants: BitArray<usize>,
     },
 
     // test the branches of enum
