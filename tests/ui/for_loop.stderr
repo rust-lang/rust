@@ -4,7 +4,7 @@ error: for loop over `option`, which is an `Option`. This is more readably writt
 17 |     for x in option {
    |              ^^^^^^
    |
-   = note: `-D for-loop-over-option` implied by `-D warnings`
+   = note: `-D clippy::for-loop-over-option` implied by `-D warnings`
    = help: consider replacing `for x in option` with `if let Some(x) = option`
 
 error: for loop over `result`, which is a `Result`. This is more readably written as an `if let` statement.
@@ -13,7 +13,7 @@ error: for loop over `result`, which is a `Result`. This is more readably writte
 22 |     for x in result {
    |              ^^^^^^
    |
-   = note: `-D for-loop-over-result` implied by `-D warnings`
+   = note: `-D clippy::for-loop-over-result` implied by `-D warnings`
    = help: consider replacing `for x in result` with `if let Ok(x) = result`
 
 error: for loop over `option.ok_or("x not found")`, which is a `Result`. This is more readably written as an `if let` statement.
@@ -30,7 +30,7 @@ error: you are iterating over `Iterator::next()` which is an Option; this will c
 32 |     for x in v.iter().next() {
    |              ^^^^^^^^^^^^^^^
    |
-   = note: `-D iter-next-loop` implied by `-D warnings`
+   = note: `-D clippy::iter-next-loop` implied by `-D warnings`
 
 error: for loop over `v.iter().next().and(Some(0))`, which is an `Option`. This is more readably written as an `if let` statement.
   --> $DIR/for_loop.rs:37:14
@@ -57,7 +57,7 @@ error: this loop never actually loops
 56 | |     }
    | |_____^
    |
-   = note: `-D never-loop` implied by `-D warnings`
+   = note: `-D clippy::never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
   --> $DIR/for_loop.rs:59:5
@@ -74,7 +74,7 @@ error: the loop variable `i` is only used to index `vec`.
 86 |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
    |
-   = note: `-D needless-range-loop` implied by `-D warnings`
+   = note: `-D clippy::needless-range-loop` implied by `-D warnings`
 help: consider using an iterator
    |
 86 |     for <item> in &vec {
@@ -206,7 +206,7 @@ error: this range is empty so this for loop will never run
 148 |     for i in 10..0 {
     |              ^^^^^
     |
-    = note: `-D reverse-range-loop` implied by `-D warnings`
+    = note: `-D clippy::reverse-range-loop` implied by `-D warnings`
 help: consider using the following if you are attempting to iterate over this range in reverse
     |
 148 |     for i in (0..10).rev() {
@@ -270,7 +270,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
 215 |     for _v in vec.iter() {}
     |               ^^^^^^^^^^ help: to write this more concisely, try: `&vec`
     |
-    = note: `-D explicit-iter-loop` implied by `-D warnings`
+    = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:217:15
@@ -284,7 +284,7 @@ error: it is more idiomatic to loop over containers instead of using explicit it
 220 |     for _v in out_vec.into_iter() {}
     |               ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `out_vec`
     |
-    = note: `-D explicit-into-iter-loop` implied by `-D warnings`
+    = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> $DIR/for_loop.rs:223:15
@@ -358,7 +358,7 @@ error: you are collect()ing an iterator and throwing away the result. Consider u
 264 |     vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = note: `-D unused-collect` implied by `-D warnings`
+    = note: `-D clippy::unused-collect` implied by `-D warnings`
 
 error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
    --> $DIR/for_loop.rs:269:15
@@ -366,7 +366,7 @@ error: the variable `_index` is used as a loop counter. Consider using `for (_in
 269 |     for _v in &vec {
     |               ^^^^
     |
-    = note: `-D explicit-counter-loop` implied by `-D warnings`
+    = note: `-D clippy::explicit-counter-loop` implied by `-D warnings`
 
 error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
    --> $DIR/for_loop.rs:275:15
@@ -380,7 +380,7 @@ error: you seem to want to iterate on a map's values
 385 |     for (_, v) in &m {
     |                   ^^
     |
-    = note: `-D for-kv-map` implied by `-D warnings`
+    = note: `-D clippy::for-kv-map` implied by `-D warnings`
 help: use the corresponding method
     |
 385 |     for v in m.values() {
@@ -432,7 +432,7 @@ error: it looks like you're manually copying between slices
 462 |     for i in 0..src.len() {
     |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
     |
-    = note: `-D manual-memcpy` implied by `-D warnings`
+    = note: `-D clippy::manual-memcpy` implied by `-D warnings`
 
 error: it looks like you're manually copying between slices
    --> $DIR/for_loop.rs:467:14

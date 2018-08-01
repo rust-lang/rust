@@ -4,7 +4,7 @@ error: calling `.extend(_.chars())`
 16 |     s.extend(abc.chars());
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(abc)`
    |
-   = note: `-D string-extend-chars` implied by `-D warnings`
+   = note: `-D clippy::string-extend-chars` implied by `-D warnings`
 
 error: calling `.extend(_.chars())`
   --> $DIR/string_extend.rs:19:5

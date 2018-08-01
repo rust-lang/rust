@@ -4,7 +4,7 @@ error: because of the numeric bounds on `u8` prior to casting, this expression i
 16 |     (u8 as u32) > 300;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D invalid-upcast-comparisons` implied by `-D warnings`
+   = note: `-D clippy::invalid-upcast-comparisons` implied by `-D warnings`
 
 error: because of the numeric bounds on `u8` prior to casting, this expression is always false
   --> $DIR/invalid_upcast_comparisons.rs:17:5

@@ -4,7 +4,7 @@ error: explicit lifetimes given in parameter types where they could be elided
 7 | fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) { }
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = note: `-D needless-lifetimes` implied by `-D warnings`
+  = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
 
 error: explicit lifetimes given in parameter types where they could be elided
  --> $DIR/lifetimes.rs:9:1

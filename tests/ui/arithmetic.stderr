@@ -4,7 +4,7 @@ error: integer arithmetic detected
 8 |     1 + i;
   |     ^^^^^
   |
-  = note: `-D integer-arithmetic` implied by `-D warnings`
+  = note: `-D clippy::integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
  --> $DIR/arithmetic.rs:9:5
@@ -37,7 +37,7 @@ error: floating-point arithmetic detected
 23 |     f * 2.0;
    |     ^^^^^^^
    |
-   = note: `-D float-arithmetic` implied by `-D warnings`
+   = note: `-D clippy::float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
   --> $DIR/arithmetic.rs:25:5

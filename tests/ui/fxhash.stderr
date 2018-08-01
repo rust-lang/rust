@@ -1,39 +1,39 @@
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
- --> $DIR/fxhash.rs:6:24
+ --> $DIR/fxhash.rs:8:24
   |
-6 | use std::collections::{HashMap, HashSet};
+8 | use std::collections::{HashMap, HashSet};
   |                        ^^^^^^^ help: use: `FxHashMap`
   |
-  = note: `-D default-hash-types` implied by `-D warnings`
+  = note: `-D clippy::default-hash-types` implied by `-D warnings`
 
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
- --> $DIR/fxhash.rs:6:33
+ --> $DIR/fxhash.rs:8:33
   |
-6 | use std::collections::{HashMap, HashSet};
+8 | use std::collections::{HashMap, HashSet};
   |                                 ^^^^^^^ help: use: `FxHashSet`
 
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
-  --> $DIR/fxhash.rs:10:15
+  --> $DIR/fxhash.rs:12:15
    |
-10 |     let _map: HashMap<String, String> = HashMap::default();
+12 |     let _map: HashMap<String, String> = HashMap::default();
    |               ^^^^^^^ help: use: `FxHashMap`
 
 error: Prefer FxHashMap over HashMap, it has better performance and we don't need any collision prevention in clippy
-  --> $DIR/fxhash.rs:10:41
+  --> $DIR/fxhash.rs:12:41
    |
-10 |     let _map: HashMap<String, String> = HashMap::default();
+12 |     let _map: HashMap<String, String> = HashMap::default();
    |                                         ^^^^^^^ help: use: `FxHashMap`
 
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
-  --> $DIR/fxhash.rs:11:15
+  --> $DIR/fxhash.rs:13:15
    |
-11 |     let _set: HashSet<String> = HashSet::default();
+13 |     let _set: HashSet<String> = HashSet::default();
    |               ^^^^^^^ help: use: `FxHashSet`
 
 error: Prefer FxHashSet over HashSet, it has better performance and we don't need any collision prevention in clippy
-  --> $DIR/fxhash.rs:11:33
+  --> $DIR/fxhash.rs:13:33
    |
-11 |     let _set: HashSet<String> = HashSet::default();
+13 |     let _set: HashSet<String> = HashSet::default();
    |                                 ^^^^^^^ help: use: `FxHashSet`
 
 error: aborting due to 6 previous errors

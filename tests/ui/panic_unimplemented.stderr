@@ -4,7 +4,7 @@ error: you probably are missing some parameter in your format string
 8 |         panic!("{}");
   |                ^^^^
   |
-  = note: `-D panic-params` implied by `-D warnings`
+  = note: `-D clippy::panic-params` implied by `-D warnings`
 
 error: you probably are missing some parameter in your format string
   --> $DIR/panic_unimplemented.rs:10:16
@@ -30,7 +30,7 @@ error: `unimplemented` should not be present in production code
 58 |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D unimplemented` implied by `-D warnings`
+   = note: `-D clippy::unimplemented` implied by `-D warnings`
 
 error: aborting due to 5 previous errors
 

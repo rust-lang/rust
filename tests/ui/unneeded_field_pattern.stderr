@@ -4,7 +4,7 @@ error: You matched a field with a wildcard pattern. Consider using `..` instead
 17 |         Foo { a: _, b: 0, .. } => {}
    |               ^^^^
    |
-   = note: `-D unneeded-field-pattern` implied by `-D warnings`
+   = note: `-D clippy::unneeded-field-pattern` implied by `-D warnings`
    = help: Try with `Foo { b: 0, .. }`
 
 error: All the struct fields are matched to a wildcard pattern, consider using `..`.

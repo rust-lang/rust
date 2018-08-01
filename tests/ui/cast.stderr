@@ -4,7 +4,7 @@ error: casting i32 to f32 causes a loss of precision (i32 is 32 bits wide, but f
 8 |     1i32 as f32;
   |     ^^^^^^^^^^^
   |
-  = note: `-D cast-precision-loss` implied by `-D warnings`
+  = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
 
 error: casting i64 to f32 causes a loss of precision (i64 is 64 bits wide, but f32's mantissa is only 23 bits wide)
  --> $DIR/cast.rs:9:5
@@ -42,7 +42,7 @@ error: casting f32 to i32 may truncate the value
 15 |     1f32 as i32;
    |     ^^^^^^^^^^^
    |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
+   = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
 
 error: casting f32 to u32 may truncate the value
   --> $DIR/cast.rs:16:5
@@ -56,7 +56,7 @@ error: casting f32 to u32 may lose the sign of the value
 16 |     1f32 as u32;
    |     ^^^^^^^^^^^
    |
-   = note: `-D cast-sign-loss` implied by `-D warnings`
+   = note: `-D clippy::cast-sign-loss` implied by `-D warnings`
 
 error: casting f64 to f32 may truncate the value
   --> $DIR/cast.rs:17:5
@@ -106,7 +106,7 @@ error: casting u8 to i8 may wrap around the value
 23 |     1u8 as i8;
    |     ^^^^^^^^^
    |
-   = note: `-D cast-possible-wrap` implied by `-D warnings`
+   = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
 
 error: casting u16 to i16 may wrap around the value
   --> $DIR/cast.rs:24:5
@@ -138,7 +138,7 @@ error: casting f32 to f64 may become silently lossy if types change
 29 |     1.0f32 as f64;
    |     ^^^^^^^^^^^^^ help: try: `f64::from(1.0f32)`
    |
-   = note: `-D cast-lossless` implied by `-D warnings`
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
 
 error: casting u8 to u16 may become silently lossy if types change
   --> $DIR/cast.rs:31:5
@@ -164,7 +164,7 @@ error: casting to the same type is unnecessary (`i32` -> `i32`)
 37 |     1i32 as i32;
    |     ^^^^^^^^^^^
    |
-   = note: `-D unnecessary-cast` implied by `-D warnings`
+   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
 
 error: casting to the same type is unnecessary (`f32` -> `f32`)
   --> $DIR/cast.rs:38:5

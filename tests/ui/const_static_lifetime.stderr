@@ -4,7 +4,7 @@ error: Constants have by default a `'static` lifetime
 4 | const VAR_ONE: &'static str = "Test constant #1"; // ERROR Consider removing 'static.
   |                -^^^^^^^---- help: consider removing `'static`: `&str`
   |
-  = note: `-D const-static-lifetime` implied by `-D warnings`
+  = note: `-D clippy::const-static-lifetime` implied by `-D warnings`
 
 error: Constants have by default a `'static` lifetime
  --> $DIR/const_static_lifetime.rs:8:21

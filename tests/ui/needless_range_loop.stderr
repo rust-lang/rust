@@ -4,7 +4,7 @@ error: the loop variable `i` is only used to index `ns`.
 8 |     for i in 3..10 {
   |              ^^^^^
   |
-  = note: `-D needless-range-loop` implied by `-D warnings`
+  = note: `-D clippy::needless-range-loop` implied by `-D warnings`
 help: consider using an iterator
   |
 8 |     for <item> in ns.iter().take(10).skip(3) {

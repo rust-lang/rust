@@ -4,7 +4,7 @@ error: large size difference between variants
 10 |     B([i32; 8000]),
    |     ^^^^^^^^^^^^^^
    |
-   = note: `-D large-enum-variant` implied by `-D warnings`
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
 help: consider boxing the large fields to reduce the total size of the enum
    |
 10 |     B(Box<[i32; 8000]>),

@@ -4,7 +4,7 @@ error: this looks like an `else if` but the `else` is missing
 15 |     } if foo() {
    |      ^
    |
-   = note: `-D suspicious-else-formatting` implied by `-D warnings`
+   = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
    = note: to remove this lint, add the missing `else` or add a new line before the second `if`
 
 error: this looks like an `else if` but the `else` is missing
@@ -50,7 +50,7 @@ error: this looks like you are trying to use `.. -= ..`, but you really are doin
 71 |     a =- 35;
    |      ^^^^
    |
-   = note: `-D suspicious-assignment-formatting` implied by `-D warnings`
+   = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
    = note: to remove this lint, use either `-=` or `= -`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
@@ -75,7 +75,7 @@ error: possibly missing a comma here
 84 |         -1, -2, -3 // <= no comma here
    |                   ^
    |
-   = note: `-D possible-missing-comma` implied by `-D warnings`
+   = note: `-D clippy::possible-missing-comma` implied by `-D warnings`
    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here

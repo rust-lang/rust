@@ -10,7 +10,7 @@ error: the function has a cyclomatic complexity of 3
 17 | | }
    | |_^
    |
-   = note: `-D cyclomatic-complexity` implied by `-D warnings`
+   = note: `-D clippy::cyclomatic-complexity` implied by `-D warnings`
    = help: you could split it up into multiple smaller functions
 
 error: aborting due to previous error

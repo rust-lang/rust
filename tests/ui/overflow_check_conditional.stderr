@@ -4,7 +4,7 @@ error: You are trying to use classic C overflow conditions that will fail in Rus
 11 |     if a + b < a {
    |        ^^^^^^^^^
    |
-   = note: `-D overflow-check-conditional` implied by `-D warnings`
+   = note: `-D clippy::overflow-check-conditional` implied by `-D warnings`
 
 error: You are trying to use classic C overflow conditions that will fail in Rust.
   --> $DIR/overflow_check_conditional.rs:14:5

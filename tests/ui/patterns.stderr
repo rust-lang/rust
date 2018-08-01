@@ -4,7 +4,7 @@ error: the `y @ _` pattern can be written as just `y`
 10 |         y @ _   => (),
    |         ^^^^^
    |
-   = note: `-D redundant-pattern` implied by `-D warnings`
+   = note: `-D clippy::redundant-pattern` implied by `-D warnings`
 
 error: aborting due to previous error
 

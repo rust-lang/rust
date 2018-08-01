@@ -4,7 +4,7 @@ error: this creates an owned instance just for comparison
 8 |         x != "foo".to_string();
   |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
   |
-  = note: `-D cmp-owned` implied by `-D warnings`
+  = note: `-D clippy::cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
   --> $DIR/cmp_owned.rs:10:9

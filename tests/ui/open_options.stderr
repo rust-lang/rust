@@ -4,7 +4,7 @@ error: file opened with "truncate" and "read"
 8 |     OpenOptions::new().read(true).truncate(true).open("foo.txt");
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = note: `-D nonsensical-open-options` implied by `-D warnings`
+  = note: `-D clippy::nonsensical-open-options` implied by `-D warnings`
 
 error: file opened with "append" and "truncate"
  --> $DIR/open_options.rs:9:5

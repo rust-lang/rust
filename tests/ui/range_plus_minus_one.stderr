@@ -1,47 +1,47 @@
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:10:14
+  --> $DIR/range_plus_minus_one.rs:12:14
    |
-10 |     for _ in 0..3+1 { }
+12 |     for _ in 0..3+1 { }
    |              ^^^^^^ help: use: `0..=3`
    |
-   = note: `-D range-plus-one` implied by `-D warnings`
+   = note: `-D clippy::range-plus-one` implied by `-D warnings`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:13:14
+  --> $DIR/range_plus_minus_one.rs:15:14
    |
-13 |     for _ in 0..1+5 { }
+15 |     for _ in 0..1+5 { }
    |              ^^^^^^ help: use: `0..=5`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:16:14
+  --> $DIR/range_plus_minus_one.rs:18:14
    |
-16 |     for _ in 1..1+1 { }
+18 |     for _ in 1..1+1 { }
    |              ^^^^^^ help: use: `1..=1`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:22:14
+  --> $DIR/range_plus_minus_one.rs:24:14
    |
-22 |     for _ in 0..(1+f()) { }
+24 |     for _ in 0..(1+f()) { }
    |              ^^^^^^^^^^ help: use: `0..=f()`
 
 error: an exclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:26:13
+  --> $DIR/range_plus_minus_one.rs:28:13
    |
-26 |     let _ = ..=11-1;
+28 |     let _ = ..=11-1;
    |             ^^^^^^^ help: use: `..11`
    |
-   = note: `-D range-minus-one` implied by `-D warnings`
+   = note: `-D clippy::range-minus-one` implied by `-D warnings`
 
 error: an exclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:27:13
+  --> $DIR/range_plus_minus_one.rs:29:13
    |
-27 |     let _ = ..=(11-1);
+29 |     let _ = ..=(11-1);
    |             ^^^^^^^^^ help: use: `..11`
 
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:28:13
+  --> $DIR/range_plus_minus_one.rs:30:13
    |
-28 |     let _ = (f()+1)..(f()+1);
+30 |     let _ = (f()+1)..(f()+1);
    |             ^^^^^^^^^^^^^^^^ help: use: `(f()+1)..=f()`
 
 error: aborting due to 7 previous errors

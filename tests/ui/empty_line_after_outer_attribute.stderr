@@ -7,7 +7,7 @@ error: Found an empty line after an outer attribute. Perhaps you forgot to add a
 8 | | fn with_one_newline_and_comment() { assert!(true) }
   | |_
   |
-  = note: `-D empty-line-after-outer-attr` implied by `-D warnings`
+  = note: `-D clippy::empty-line-after-outer-attr` implied by `-D warnings`
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
   --> $DIR/empty_line_after_outer_attribute.rs:17:1

@@ -4,7 +4,7 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 12 |     drop(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
+   = note: `-D clippy::drop-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> $DIR/drop_forget_ref.rs:12:10
    |
@@ -17,7 +17,7 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 13 |     forget(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
+   = note: `-D clippy::forget-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> $DIR/drop_forget_ref.rs:13:12
    |

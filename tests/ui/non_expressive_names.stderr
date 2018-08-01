@@ -4,7 +4,7 @@ error: binding's name is too similar to existing binding
 18 |     let bpple: i32;
    |         ^^^^^
    |
-   = note: `-D similar-names` implied by `-D warnings`
+   = note: `-D clippy::similar-names` implied by `-D warnings`
 note: existing binding defined here
   --> $DIR/non_expressive_names.rs:16:9
    |
@@ -109,7 +109,7 @@ error: 5th binding whose name is just one char
 120 |             let e: i32;
     |                 ^
     |
-    = note: `-D many-single-char-names` implied by `-D warnings`
+    = note: `-D clippy::many-single-char-names` implied by `-D warnings`
 
 error: 5th binding whose name is just one char
    --> $DIR/non_expressive_names.rs:123:17
@@ -135,7 +135,7 @@ error: consider choosing a more descriptive name
 139 |     let _1 = 1; //~ERROR Consider a more descriptive name
     |         ^^
     |
-    = note: `-D just-underscores-and-digits` implied by `-D warnings`
+    = note: `-D clippy::just-underscores-and-digits` implied by `-D warnings`
 
 error: consider choosing a more descriptive name
    --> $DIR/non_expressive_names.rs:140:9

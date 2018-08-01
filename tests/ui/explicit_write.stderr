@@ -1,39 +1,39 @@
 error: use of `write!(stdout(), ...).unwrap()`. Consider using `print!` instead
-  --> $DIR/explicit_write.rs:16:9
+  --> $DIR/explicit_write.rs:18:9
    |
-16 |         write!(std::io::stdout(), "test").unwrap();
+18 |         write!(std::io::stdout(), "test").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D explicit-write` implied by `-D warnings`
+   = note: `-D clippy::explicit-write` implied by `-D warnings`
 
 error: use of `write!(stderr(), ...).unwrap()`. Consider using `eprint!` instead
-  --> $DIR/explicit_write.rs:17:9
+  --> $DIR/explicit_write.rs:19:9
    |
-17 |         write!(std::io::stderr(), "test").unwrap();
+19 |         write!(std::io::stderr(), "test").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `writeln!(stdout(), ...).unwrap()`. Consider using `println!` instead
-  --> $DIR/explicit_write.rs:18:9
+  --> $DIR/explicit_write.rs:20:9
    |
-18 |         writeln!(std::io::stdout(), "test").unwrap();
+20 |         writeln!(std::io::stdout(), "test").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `writeln!(stderr(), ...).unwrap()`. Consider using `eprintln!` instead
-  --> $DIR/explicit_write.rs:19:9
+  --> $DIR/explicit_write.rs:21:9
    |
-19 |         writeln!(std::io::stderr(), "test").unwrap();
+21 |         writeln!(std::io::stderr(), "test").unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `stdout().write_fmt(...).unwrap()`. Consider using `print!` instead
-  --> $DIR/explicit_write.rs:20:9
+  --> $DIR/explicit_write.rs:22:9
    |
-20 |         std::io::stdout().write_fmt(format_args!("test")).unwrap();
+22 |         std::io::stdout().write_fmt(format_args!("test")).unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `stderr().write_fmt(...).unwrap()`. Consider using `eprint!` instead
-  --> $DIR/explicit_write.rs:21:9
+  --> $DIR/explicit_write.rs:23:9
    |
-21 |         std::io::stderr().write_fmt(format_args!("test")).unwrap();
+23 |         std::io::stderr().write_fmt(format_args!("test")).unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors

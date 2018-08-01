@@ -4,7 +4,7 @@ error: this boolean expression can be simplified
 37 |     true && true;
    |     ^^^^^^^^^^^^ help: try: `true`
    |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression can be simplified
   --> $DIR/eq_op.rs:39:5
@@ -42,7 +42,7 @@ error: equal expressions as operands to `==`
 10 |     1 == 1;
    |     ^^^^^^
    |
-   = note: `-D eq-op` implied by `-D warnings`
+   = note: `-D clippy::eq-op` implied by `-D warnings`
 
 error: equal expressions as operands to `==`
   --> $DIR/eq_op.rs:11:5
@@ -202,7 +202,7 @@ error: taken reference of right operand
    |                 |
    |                 help: use the right value directly: `y`
    |
-   = note: `-D op-ref` implied by `-D warnings`
+   = note: `-D clippy::op-ref` implied by `-D warnings`
 
 error: equal expressions as operands to `/`
   --> $DIR/eq_op.rs:97:20

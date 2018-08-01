@@ -4,7 +4,7 @@ error: this `.fold` can be written more succinctly using another method
 4 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
   |
-  = note: `-D unnecessary-fold` implied by `-D warnings`
+  = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
 
 error: this `.fold` can be written more succinctly using another method
  --> $DIR/unnecessary_fold.rs:6:19

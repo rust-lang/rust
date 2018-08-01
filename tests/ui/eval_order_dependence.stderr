@@ -4,7 +4,7 @@ error: unsequenced read of a variable
 8 |     let a = { x = 1; 1 } + x;
   |                            ^
   |
-  = note: `-D eval-order-dependence` implied by `-D warnings`
+  = note: `-D clippy::eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
  --> $DIR/eval_order_dependence.rs:8:15
   |

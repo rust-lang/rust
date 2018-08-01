@@ -4,7 +4,7 @@ error: variable appears on both sides of an assignment operation
 8 |     a += a + 1;
   |     ^^^^^^^^^^
   |
-  = note: `-D misrefactored-assign-op` implied by `-D warnings`
+  = note: `-D clippy::misrefactored-assign-op` implied by `-D warnings`
 help: Did you mean a = a + 1 or a = a + a + 1? Consider replacing it with
   |
 8 |     a += 1;

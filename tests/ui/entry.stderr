@@ -4,7 +4,7 @@ error: usage of `contains_key` followed by `insert` on a `HashMap`
 13 |     if !m.contains_key(&k) { m.insert(k, v); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `m.entry(k).or_insert(v)`
    |
-   = note: `-D map-entry` implied by `-D warnings`
+   = note: `-D clippy::map-entry` implied by `-D warnings`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:17:5

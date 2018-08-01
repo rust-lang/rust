@@ -4,7 +4,7 @@ error: this boolean expression can be simplified
 25 |     match test && test {
    |           ^^^^^^^^^^^^ help: try: `test`
    |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
  --> $DIR/match_bool.rs:4:5
@@ -15,7 +15,7 @@ error: you seem to be trying to match on a boolean expression
 7 | |     };
   | |_____^ help: consider using an if/else expression: `if test { 0 } else { 42 }`
   |
-  = note: `-D match-bool` implied by `-D warnings`
+  = note: `-D clippy::match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:10:5
@@ -59,7 +59,7 @@ error: equal expressions as operands to `&&`
 25 |     match test && test {
    |           ^^^^^^^^^^^^
    |
-   = note: #[deny(eq_op)] on by default
+   = note: #[deny(clippy::eq_op)] on by default
 
 error: you seem to be trying to match on a boolean expression
   --> $DIR/match_bool.rs:30:5
