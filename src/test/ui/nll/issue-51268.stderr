@@ -8,7 +8,7 @@ LL |            self.thing.bar(|| {
    | ||
 LL | ||         //~^ ERROR cannot borrow `self.thing` as mutable because it is also borrowed as immutable [E0502]
 LL | ||             &self.number;
-   | ||              ---- previous borrow occurs due to use of `self` in closure
+   | ||              ---- first borrow occurs due to use of `self` in closure
 LL | ||         });
    | ||          ^
    | ||__________|

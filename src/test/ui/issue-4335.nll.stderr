@@ -5,10 +5,12 @@ LL |     id(Box::new(|| *v))
    |                    ^^ cannot move out of captured variable in an `FnMut` closure
 
 error[E0597]: `v` does not live long enough
-  --> $DIR/issue-4335.rs:16:17
+  --> $DIR/issue-4335.rs:16:21
    |
 LL |     id(Box::new(|| *v))
-   |                 ^^^^^ borrowed value does not live long enough
+   |                 --  ^ borrowed value does not live long enough
+   |                 |
+   |                 value captured here
 ...
 LL | }
    | - `v` dropped here while still borrowed
