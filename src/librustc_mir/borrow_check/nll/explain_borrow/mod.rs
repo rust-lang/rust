@@ -11,7 +11,7 @@
 use borrow_check::borrow_set::BorrowData;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::{Context, MirBorrowckCtxt, WriteKind};
-use rustc::mir::Place;
+use rustc::mir::{Location, Place, TerminatorKind};
 use rustc_errors::DiagnosticBuilder;
 
 mod find_use;
@@ -63,10 +63,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
             Some(Cause::LiveVar(_local, location)) => {
-                err.span_label(
-                    mir.source_info(location).span,
-                    "borrow later used here".to_string(),
-                );
+                if self.is_borrow_location_in_loop(context.loc) {
+                    err.span_label(
+                        mir.source_info(location).span,
+                        "borrow used here in later iteration of loop".to_string(),
+                    );
+                } else {
+                    err.span_label(
+                        mir.source_info(location).span,
+                        "borrow later used here".to_string(),
+                    );
+                }
             }
 
             Some(Cause::DropVar(local, location)) => match &mir.local_decls[local].name {
@@ -106,5 +113,77 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
         }
+    }
+
+    /// Check if a borrow location is within a loop.
+    fn is_borrow_location_in_loop(
+        &self,
+        borrow_location: Location,
+    ) -> bool {
+        let mut visited_locations = Vec::new();
+        let mut pending_locations = vec![ borrow_location ];
+        debug!("is_in_loop: borrow_location={:?}", borrow_location);
+
+        while let Some(location) = pending_locations.pop() {
+            debug!("is_in_loop: location={:?} pending_locations={:?} visited_locations={:?}",
+                   location, pending_locations, visited_locations);
+            if location == borrow_location && visited_locations.contains(&borrow_location) {
+                // We've managed to return to where we started (and this isn't the start of the
+                // search).
+                debug!("is_in_loop: found!");
+                return true;
+            }
+
+            // Skip locations we've been.
+            if visited_locations.contains(&location) { continue; }
+
+            let block = &self.mir.basic_blocks()[location.block];
+            if location.statement_index ==  block.statements.len() {
+                // Add start location of the next blocks to pending locations.
+                match block.terminator().kind {
+                    TerminatorKind::Goto { target } => {
+                        pending_locations.push(target.start_location());
+                    },
+                    TerminatorKind::SwitchInt { ref targets, .. } => {
+                        for target in targets {
+                            pending_locations.push(target.start_location());
+                        }
+                    },
+                    TerminatorKind::Drop { target, unwind, .. } |
+                    TerminatorKind::DropAndReplace { target, unwind, .. } |
+                    TerminatorKind::Assert { target, cleanup: unwind, .. } |
+                    TerminatorKind::Yield { resume: target, drop: unwind, .. } |
+                    TerminatorKind::FalseUnwind { real_target: target, unwind, .. } => {
+                        pending_locations.push(target.start_location());
+                        if let Some(unwind) = unwind {
+                            pending_locations.push(unwind.start_location());
+                        }
+                    },
+                    TerminatorKind::Call { ref destination, cleanup, .. } => {
+                        if let Some((_, destination)) = destination {
+                            pending_locations.push(destination.start_location());
+                        }
+                        if let Some(cleanup) = cleanup {
+                            pending_locations.push(cleanup.start_location());
+                        }
+                    },
+                    TerminatorKind::FalseEdges { real_target, ref imaginary_targets, .. } => {
+                        pending_locations.push(real_target.start_location());
+                        for target in imaginary_targets {
+                            pending_locations.push(target.start_location());
+                        }
+                    },
+                    _ => {},
+                }
+            } else {
+                // Add the next statement to pending locations.
+                pending_locations.push(location.successor_within_block());
+            }
+
+            // Keep track of where we have visited.
+            visited_locations.push(location);
+        }
+
+        false
     }
 }
