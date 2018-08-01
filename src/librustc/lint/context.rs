@@ -42,7 +42,7 @@ use util::nodemap::FxHashMap;
 use std::default::Default as StdDefault;
 use syntax::ast;
 use syntax::edition;
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span, symbol::LocalInternedString};
 use errors::DiagnosticBuilder;
 use hir;
 use hir::def_id::LOCAL_CRATE;
@@ -133,6 +133,12 @@ pub enum CheckLintNameResult<'a> {
     /// The lint is either renamed or removed. This is the warning
     /// message, and an optional new name (`None` if removed).
     Warning(String, Option<String>),
+    /// The lint is from a tool. If the Option is None, then either
+    /// the lint does not exist in the tool or the code was not
+    /// compiled with the tool and therefore the lint was never
+    /// added to the `LintStore`. Otherwise the `LintId` will be
+    /// returned as if it where a rustc lint.
+    Tool(Option<&'a [LintId]>),
 }
 
 impl LintStore {
@@ -288,7 +294,7 @@ impl LintStore {
                                    sess: &Session,
                                    lint_name: &str,
                                    level: Level) {
-        let db = match self.check_lint_name(lint_name) {
+        let db = match self.check_lint_name(lint_name, None) {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => {
                 Some(sess.struct_warn(msg))
@@ -296,6 +302,7 @@ impl LintStore {
             CheckLintNameResult::NoLint => {
                 Some(struct_err!(sess, E0602, "unknown lint: `{}`", lint_name))
             }
+            CheckLintNameResult::Tool(_) => unreachable!(),
         };
 
         if let Some(mut db) = db {
@@ -319,26 +326,41 @@ impl LintStore {
     /// it emits non-fatal warnings and there are *two* lint passes that
     /// inspect attributes, this is only run from the late pass to avoid
     /// printing duplicate warnings.
-    pub fn check_lint_name(&self, lint_name: &str) -> CheckLintNameResult {
-        match self.by_name.get(lint_name) {
-            Some(&Renamed(ref new_name, _)) => {
-                CheckLintNameResult::Warning(
-                    format!("lint `{}` has been renamed to `{}`", lint_name, new_name),
-                    Some(new_name.to_owned())
-                )
-            },
-            Some(&Removed(ref reason)) => {
-                CheckLintNameResult::Warning(
-                    format!("lint `{}` has been removed: `{}`", lint_name, reason),
-                    None
-                )
-            },
-            None => {
-                match self.lint_groups.get(lint_name) {
-                    None => CheckLintNameResult::NoLint,
-                    Some(ids) => CheckLintNameResult::Ok(&ids.0),
-                }
+    pub fn check_lint_name(
+        &self,
+        lint_name: &str,
+        tool_name: Option<LocalInternedString>,
+    ) -> CheckLintNameResult {
+        let complete_name = if let Some(tool_name) = tool_name {
+            format!("{}::{}", tool_name, lint_name)
+        } else {
+            lint_name.to_string()
+        };
+        if let Some(_) = tool_name {
+            match self.by_name.get(&complete_name) {
+                None => match self.lint_groups.get(&*complete_name) {
+                    None => return CheckLintNameResult::Tool(None),
+                    Some(ids) => return CheckLintNameResult::Tool(Some(&ids.0)),
+                },
+                Some(&Id(ref id)) => return CheckLintNameResult::Tool(Some(slice::from_ref(id))),
+                // If the lint was registered as removed or renamed by the lint tool, we don't need
+                // to treat tool_lints and rustc lints different and can use the code below.
+                _ => {}
             }
+        }
+        match self.by_name.get(&complete_name) {
+            Some(&Renamed(ref new_name, _)) => CheckLintNameResult::Warning(
+                format!("lint `{}` has been renamed to `{}`", lint_name, new_name),
+                Some(new_name.to_owned()),
+            ),
+            Some(&Removed(ref reason)) => CheckLintNameResult::Warning(
+                format!("lint `{}` has been removed: `{}`", lint_name, reason),
+                None,
+            ),
+            None => match self.lint_groups.get(&*complete_name) {
+                None => CheckLintNameResult::NoLint,
+                Some(ids) => CheckLintNameResult::Ok(&ids.0),
+            },
             Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
         }
     }
