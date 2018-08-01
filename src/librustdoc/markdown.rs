@@ -12,6 +12,7 @@ use std::default::Default;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{PathBuf, Path};
+use std::cell::RefCell;
 
 use errors;
 use getopts;
@@ -19,14 +20,14 @@ use testing;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{Externs, CodegenOptions};
 use syntax::codemap::DUMMY_SP;
+use syntax::feature_gate::UnstableFeatures;
 use syntax::edition::Edition;
 
 use externalfiles::{ExternalHtml, LoadStringError, load_string};
 
-use html::render::reset_ids;
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{Markdown, MarkdownWithToc, find_testable_code};
+use html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_testable_code};
 use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
@@ -86,12 +87,12 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
     }
     let title = metadata[0];
 
-    reset_ids(false);
-
+    let mut ids = IdMap::new();
+    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let text = if include_toc {
-        MarkdownWithToc(text).to_string()
+        MarkdownWithToc(text, RefCell::new(&mut ids), error_codes).to_string()
     } else {
-        Markdown(text, &[]).to_string()
+        Markdown(text, &[], RefCell::new(&mut ids), error_codes).to_string()
     };
 
     let err = write!(
@@ -156,7 +157,12 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                                        true, opts, maybe_sysroot, None,
                                        Some(PathBuf::from(input)),
                                        linker, edition);
-    find_testable_code(&input_str, &mut collector, DUMMY_SP, None);
+    collector.set_position(DUMMY_SP);
+    let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+    let res = find_testable_code(&input_str, &mut collector, codes);
+    if let Err(err) = res {
+        diag.span_warn(DUMMY_SP, &err.to_string());
+    }
     test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&test_args, collector.tests,
                        testing::Options::new().display_output(display_warnings));

@@ -94,9 +94,9 @@ Misc
 
 Compatibility Notes
 -------------------
-- [Rust will no longer consider trait objects with duplicated constraints to
-  have implementations.][51276] For example the below code will now fail
-  to compile.
+- [Rust will consider trait objects with duplicated constraints to be the same
+  type as without the duplicated constraint.][51276] For example the below code will
+  now fail to compile.
   ```rust
   trait Trait {}
 
@@ -160,6 +160,17 @@ Compatibility Notes
 [`{Any + Send + Sync}::downcast_ref`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref-2
 [`{Any + Send + Sync}::is`]: https://doc.rust-lang.org/std/any/trait.Any.html#method.is-2
 
+Version 1.27.2 (2018-07-20)
+===========================
+
+Compatibility Notes
+-------------------
+
+- The borrow checker was fixed to avoid potential unsoundness when using
+  match ergonomics: [#52213][52213].
+
+[52213]: https://github.com/rust-lang/rust/issues/52213
+
 Version 1.27.1 (2018-07-10)
 ===========================
 
@@ -190,7 +201,7 @@ Version 1.27.0 (2018-06-21)
 Language
 --------
 - [Removed 'proc' from the reserved keywords list.][49699] This allows `proc` to
-  be used as an identifer.
+  be used as an identifier.
 - [The dyn syntax is now available.][49968] This syntax is equivalent to the
   bare `Trait` syntax, and should make it clearer when being used in tandem with
   `impl Trait`. Since it is equivalent to the following syntax:
@@ -4795,7 +4806,7 @@ Language
 --------
 
 * Patterns with `ref mut` now correctly invoke [`DerefMut`] when
-  matching against dereferencable values.
+  matching against dereferenceable values.
 
 Libraries
 ---------

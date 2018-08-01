@@ -31,12 +31,6 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 5
    = note: where '_#1r: '_#2r
 
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-trait-bound-closure.rs:47:5
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:43:1
    |
@@ -54,6 +48,12 @@ LL | | }
                T
            ]
 
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-trait-bound-closure.rs:47:5
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+
 note: External requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:58:29
    |
@@ -69,12 +69,6 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 5
    = note: where '_#2r: '_#3r
-
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-trait-bound-closure.rs:58:5
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:53:1
@@ -94,6 +88,12 @@ LL | | }
                T
            ]
 
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-trait-bound-closure.rs:58:5
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+
 note: External requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:79:29
    |
@@ -109,12 +109,6 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: number of external vids: 5
    = note: where '_#2r: '_#3r
-
-error: unsatisfied lifetime constraints
-  --> $DIR/projection-one-region-trait-bound-closure.rs:79:5
-   |
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:64:1
@@ -133,6 +127,12 @@ LL | | }
                '_#2r,
                T
            ]
+
+error: unsatisfied lifetime constraints
+  --> $DIR/projection-one-region-trait-bound-closure.rs:79:5
+   |
+LL |     with_signature(cell, t, |cell, t| require(cell, t));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: External requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:90:29

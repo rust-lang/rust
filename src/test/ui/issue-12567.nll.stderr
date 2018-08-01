@@ -3,28 +3,40 @@ error[E0508]: cannot move out of type `[T]`, a non-copy slice
    |
 LL |     match (l1, l2) {
    |           ^^^^^^^^ cannot move out of here
+LL |         (&[], &[]) => println!("both empty"),
+LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
+   |                 -- data moved here
+...
+LL |         (&[hd1, ..], &[hd2, ..])
+   |                        --- ... and here
 help: to prevent move, use ref or ref mut
    |
 LL |         (&[], &[ref hd, ..]) | (&[hd, ..], &[])
-   |                 ^^^^^^
-help: to prevent move, use ref or ref mut
-   |
+LL |             => println!("one empty"),
+LL |         //~^^ ERROR: cannot move out of type `[T]`, a non-copy slice
+LL |         //~^^^ ERROR: cannot move out of type `[T]`, a non-copy slice
 LL |         (&[hd1, ..], &[ref hd2, ..])
-   |                        ^^^^^^^
+   |
 
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
   --> $DIR/issue-12567.rs:14:11
    |
 LL |     match (l1, l2) {
    |           ^^^^^^^^ cannot move out of here
+LL |         (&[], &[]) => println!("both empty"),
+LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
+   |                 -- data moved here
+...
+LL |         (&[hd1, ..], &[hd2, ..])
+   |            --- ... and here
 help: to prevent move, use ref or ref mut
    |
 LL |         (&[], &[ref hd, ..]) | (&[hd, ..], &[])
-   |                 ^^^^^^
-help: to prevent move, use ref or ref mut
-   |
+LL |             => println!("one empty"),
+LL |         //~^^ ERROR: cannot move out of type `[T]`, a non-copy slice
+LL |         //~^^^ ERROR: cannot move out of type `[T]`, a non-copy slice
 LL |         (&[ref hd1, ..], &[hd2, ..])
-   |            ^^^^^^^
+   |
 
 error: aborting due to 2 previous errors
 
