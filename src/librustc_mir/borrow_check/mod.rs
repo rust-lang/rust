@@ -331,6 +331,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     }
 
     if mbcx.errors_buffer.len() > 0 {
+        mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
+
         if tcx.migrate_borrowck() {
             match tcx.borrowck(def_id).signalled_any_error {
                 SignalledError::NoErrorsSeen => {

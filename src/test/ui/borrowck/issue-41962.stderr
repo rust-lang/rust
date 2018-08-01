@@ -17,6 +17,25 @@ LL |         if let Some(thing) = maybe {
    = note: move occurs because the value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `maybe` (Mir)
+  --> $DIR/issue-41962.rs:17:16
+   |
+LL |         if let Some(thing) = maybe {
+   |                ^^^^^-----^
+   |                |    |
+   |                |    value moved here
+   |                value used here after move
+   |
+   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value (Mir)
+  --> $DIR/issue-41962.rs:17:21
+   |
+LL |         if let Some(thing) = maybe {
+   |                     ^^^^^ value moved here in previous iteration of loop
+   |
+   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `maybe` (Mir)
   --> $DIR/issue-41962.rs:17:30
    |
 LL |         if let Some(thing) = maybe {
@@ -33,25 +52,6 @@ LL |         if let Some(thing) = maybe {
    |                     -----    ^^^^^ value borrowed here after move
    |                     |
    |                     value moved here
-   |
-   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
-
-error[E0382]: use of moved value: `maybe` (Mir)
-  --> $DIR/issue-41962.rs:17:16
-   |
-LL |         if let Some(thing) = maybe {
-   |                ^^^^^-----^
-   |                |    |
-   |                |    value moved here
-   |                value used here after move
-   |
-   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
-
-error[E0382]: use of moved value (Mir)
-  --> $DIR/issue-41962.rs:17:21
-   |
-LL |         if let Some(thing) = maybe {
-   |                     ^^^^^ value moved here in previous iteration of loop
    |
    = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
