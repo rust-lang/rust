@@ -25,7 +25,7 @@ fn main() {
     #[cfg(not(target_arch = "asmjs"))]
     {
         const BE_U128: u128 = 999999u128.to_be();
-        const LE_I128: i128 = -999999i128.to_le();
+        const LE_I128: i128 = (-999999i128).to_le();
         assert_eq!(BE_U128, b(999999u128).to_be());
         assert_eq!(LE_I128, b(-999999i128).to_le());
     }
