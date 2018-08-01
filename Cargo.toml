@@ -11,6 +11,7 @@ members = [ "tools", "cli", "libeditor" ]
 unicode-xid = "0.1.0"
 text_unit = "0.1.2"
 itertools = "0.7.5"
+drop_bomb = "0.1.4"
 
 [dev-dependencies]
 testutils = { path = "./tests/testutils" }

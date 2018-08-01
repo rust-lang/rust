@@ -18,24 +18,14 @@ impl TokenSet {
 
 #[macro_export]
 macro_rules! token_set {
-    ($($t:ident),*) => {
-        TokenSet($(1u128 << ($t as usize))|*)
-    };
-
-    ($($t:ident),* ,) => {
-        token_set!($($t),*)
-    };
+    ($($t:ident),*) => { TokenSet($(1u128 << ($t as usize))|*) };
+    ($($t:ident),* ,) => { token_set!($($t),*) };
 }
 
 #[macro_export]
 macro_rules! token_set_union {
-    ($($ts:expr),*) => {
-        TokenSet($($ts.0)|*)
-    };
-
-    ($($ts:expr),* ,) => {
-        token_set_union!($($ts),*)
-    };
+    ($($ts:expr),*) => { TokenSet($($ts.0)|*) };
+    ($($ts:expr),* ,) => { token_set_union!($($ts),*) };
 }
 
 /// `Parser` struct provides the low-level API for
@@ -141,7 +131,7 @@ impl Marker {
     fn new(pos: u32) -> Marker {
         Marker {
             pos,
-            bomb: DropBomb::new("Marker must be either completed or abandoned")
+            bomb: DropBomb::new("Marker must be either completed or abandoned"),
         }
     }
 

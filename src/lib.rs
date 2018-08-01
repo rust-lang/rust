@@ -23,6 +23,7 @@
 extern crate itertools;
 extern crate text_unit;
 extern crate unicode_xid;
+extern crate drop_bomb;
 
 pub mod algo;
 pub mod ast;
@@ -31,7 +32,6 @@ mod lexer;
 mod parser_api;
 mod grammar;
 mod parser_impl;
-mod drop_bomb;
 
 mod syntax_kinds;
 /// Utilities for simple uses of the parser.
