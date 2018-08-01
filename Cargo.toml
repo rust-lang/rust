@@ -5,7 +5,7 @@ authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 license = "MIT OR Apache-2.0"
 
 [workspace]
-members = [ "tools", "cli" ]
+members = [ "tools", "cli", "libeditor" ]
 
 [dependencies]
 unicode-xid = "0.1.0"

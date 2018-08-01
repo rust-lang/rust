@@ -1,0 +1,9 @@
+[package]
+name = "libeditor"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+publish = false
+
+[dependencies]
+libsyntax2 = { path = "../" }
+text_unit = "0.1.2"

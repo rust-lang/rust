@@ -8,7 +8,7 @@ use testutils::dir_tests;
 #[test]
 fn parser_tests() {
     dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
-        let file = parse(text.to_string());
+        let file = parse(text);
         dump_tree(&file)
     })
 }

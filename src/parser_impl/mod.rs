@@ -14,10 +14,10 @@ use {
 
 use SyntaxKind::{self, EOF, TOMBSTONE};
 
-pub(crate) trait Sink {
+pub(crate) trait Sink<'a> {
     type Tree;
 
-    fn new(text: String) -> Self;
+    fn new(text: &'a str) -> Self;
 
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
     fn start_internal(&mut self, kind: SyntaxKind);
@@ -27,9 +27,9 @@ pub(crate) trait Sink {
 }
 
 /// Parse a sequence of tokens into the representative node tree
-pub(crate) fn parse<S: Sink>(text: String, tokens: &[Token]) -> S::Tree {
+pub(crate) fn parse<'a, S: Sink<'a>>(text: &'a str, tokens: &[Token]) -> S::Tree {
     let events = {
-        let input = input::ParserInput::new(&text, tokens);
+        let input = input::ParserInput::new(text, tokens);
         let parser_impl = ParserImpl::new(&input);
         let mut parser_api = Parser(parser_impl);
         grammar::file(&mut parser_api);

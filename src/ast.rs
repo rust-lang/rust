@@ -9,7 +9,7 @@ pub struct File<R: TreeRoot = Arc<SyntaxRoot>> {
 impl File<Arc<SyntaxRoot>> {
     pub fn parse(text: &str) -> Self {
         File {
-            syntax: ::parse(text.to_owned()),
+            syntax: ::parse(text),
         }
     }
 }

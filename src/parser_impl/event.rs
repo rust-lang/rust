@@ -76,7 +76,7 @@ pub(crate) enum Event {
     },
 }
 
-pub(super) fn process(builder: &mut impl Sink, tokens: &[Token], events: Vec<Event>) {
+pub(super) fn process<'a>(builder: &mut impl Sink<'a>, tokens: &[Token], events: Vec<Event>) {
     let mut idx = 0;
 
     let mut holes = Vec::new();

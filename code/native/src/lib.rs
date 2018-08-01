@@ -1,34 +1,12 @@
 #[macro_use]
 extern crate neon;
-extern crate libsyntax2;
+extern crate libeditor;
 
-use libsyntax2::{
-    TextRange,
-    File,
-    utils::dump_tree,
-    SyntaxKind::*,
-    algo,
-};
 use neon::prelude::*;
 
 pub struct Wrapper {
-    inner: File,
+    inner: libeditor::File,
 }
-
-impl Wrapper {
-    fn highlight(&self) -> Vec<(TextRange, &'static str)> {
-        let mut res = Vec::new();
-        let syntax = self.inner.syntax();
-        for node in algo::walk::preorder(syntax.as_ref()) {
-            if node.kind() == ERROR {
-                res.push((node.range(), "error"))
-            }
-        }
-        res
-    }
-}
-
-
 
 declare_types! {
     /// A class for generating greeting strings.
@@ -36,7 +14,7 @@ declare_types! {
         init(mut cx) {
             let text = cx.argument::<JsString>(0)?.value();
             Ok(Wrapper {
-                inner: File::parse(&text)
+                inner: libeditor::File::new(&text)
             })
         }
 
@@ -45,7 +23,7 @@ declare_types! {
             let tree = {
                 let guard = cx.lock();
                 let wrapper = this.borrow(&guard);
-                dump_tree(&wrapper.inner.syntax())
+                wrapper.inner.syntax_tree()
             };
             Ok(cx.string(tree.as_str()).upcast())
         }
@@ -55,15 +33,15 @@ declare_types! {
             let highlights = {
                 let guard = cx.lock();
                 let wrapper = this.borrow(&guard);
-                wrapper.highlight()
+                wrapper.inner.highlight()
             };
             let res = cx.empty_array();
-            for (i, (range, tag)) in highlights.into_iter().enumerate() {
-                let start: u32 = range.start().into();
-                let end: u32 = range.end().into();
+            for (i, hl) in highlights.into_iter().enumerate() {
+                let start: u32 = hl.range.start().into();
+                let end: u32 = hl.range.end().into();
                 let start = cx.number(start);
                 let end = cx.number(end);
-                let tag = cx.string(tag);
+                let tag = cx.string(hl.tag);
                 let hl = cx.empty_array();
                 hl.set(&mut cx, 0, start)?;
                 hl.set(&mut cx, 1, end)?;

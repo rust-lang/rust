@@ -169,6 +169,47 @@ pub enum SyntaxKind {
 use self::SyntaxKind::*;
 
 impl SyntaxKind {
+    pub fn is_keyword(self) -> bool {
+        match self {
+            | USE_KW
+            | FN_KW
+            | STRUCT_KW
+            | ENUM_KW
+            | TRAIT_KW
+            | IMPL_KW
+            | TRUE_KW
+            | FALSE_KW
+            | AS_KW
+            | EXTERN_KW
+            | CRATE_KW
+            | MOD_KW
+            | PUB_KW
+            | SELF_KW
+            | SUPER_KW
+            | IN_KW
+            | WHERE_KW
+            | FOR_KW
+            | LOOP_KW
+            | WHILE_KW
+            | IF_KW
+            | ELSE_KW
+            | MATCH_KW
+            | CONST_KW
+            | STATIC_KW
+            | MUT_KW
+            | UNSAFE_KW
+            | TYPE_KW
+            | REF_KW
+            | LET_KW
+            | MOVE_KW
+            | AUTO_KW
+            | DEFAULT_KW
+            | UNION_KW
+                => true,
+            _ => false
+        }
+    }
+
     pub(crate) fn info(self) -> &'static SyntaxInfo {
         match self {
             SEMI => &SyntaxInfo { name: "SEMI" },

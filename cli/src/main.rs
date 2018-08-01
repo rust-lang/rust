@@ -52,7 +52,7 @@ fn main() -> Result<()> {
 fn parse() -> Result<String> {
     let text = read_stdin()?;
     let start = Instant::now();
-    let file = libsyntax2::parse(text);
+    let file = libsyntax2::parse(&text);
     eprintln!("elapsed {:?}", start.elapsed());
     let tree = libsyntax2::utils::dump_tree(&file);
     Ok(tree)
@@ -74,7 +74,7 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
         None => bail!("No test found at line {} at {}", line, file.display()),
         Some((_start_line, test)) => test,
     };
-    let file = libsyntax2::parse(test.text.clone());
+    let file = libsyntax2::parse(&test.text);
     let tree = libsyntax2::utils::dump_tree(&file);
     Ok((test.text, tree))
 }

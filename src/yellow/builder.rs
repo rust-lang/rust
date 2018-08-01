@@ -4,20 +4,18 @@ use {
     SyntaxKind, TextRange, TextUnit,
 };
 
-pub(crate) struct GreenBuilder {
-    text: String,
+pub(crate) struct GreenBuilder<'a> {
+    text: &'a str,
     stack: Vec<GreenNodeBuilder>,
     pos: TextUnit,
     root: Option<GreenNode>,
     errors: Vec<SyntaxError>,
 }
 
-impl GreenBuilder {}
-
-impl Sink for GreenBuilder {
+impl<'a> Sink<'a> for GreenBuilder<'a> {
     type Tree = SyntaxNode;
 
-    fn new(text: String) -> Self {
+    fn new(text: &'a str) -> Self {
         GreenBuilder {
             text,
             stack: Vec::new(),
