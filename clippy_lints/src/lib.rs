@@ -366,9 +366,11 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
     reg.register_late_lint_pass(box explicit_write::Pass);
     reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
+
+    let target = &reg.sess.target;
     reg.register_late_lint_pass(box trivially_copy_pass_by_ref::TriviallyCopyPassByRef::new(
             conf.trivial_copy_size_limit,
-            &reg.sess.target,
+            target,
     ));
     reg.register_early_lint_pass(box literal_representation::LiteralDigitGrouping);
     reg.register_early_lint_pass(box literal_representation::LiteralRepresentation::new(

@@ -241,7 +241,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         match *o {
             Bool(b) => Some(Bool(!b)),
             Int(value) => {
-                let mut value = !value;
+                let value = !value;
                 match ty.sty {
                     ty::TyInt(ity) => Some(Int(unsext(self.tcx, value as i128, ity))),
                     ty::TyUint(ity) => Some(Int(clip(self.tcx, value, ity))),
