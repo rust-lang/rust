@@ -1247,6 +1247,12 @@ impl<T> Receiver<T> {
     /// [`SyncSender`]: struct.SyncSender.html
     /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
     ///
+    /// # Panics
+    ///
+    /// Panics due to a known issue ([`#39364`][]).
+    ///
+    /// [`#39364`]: https://github.com/rust-lang/rust/issues/39364
+    ///
     /// # Examples
     ///
     /// Successfully receiving value before encountering timeout:
