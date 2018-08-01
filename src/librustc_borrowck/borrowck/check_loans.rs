@@ -500,7 +500,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                new_loan);
 
         // Should only be called for loans that are in scope at the same time.
-        assert!(self.bccx.region_scope_tree.scopes_intersect(old_loan.kill_scope,
+        debug_assert!(self.bccx.region_scope_tree.scopes_intersect(old_loan.kill_scope,
                                                        new_loan.kill_scope));
 
         let err_old_new = self.report_error_if_loan_conflicts_with_restriction(

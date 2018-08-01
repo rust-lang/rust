@@ -249,7 +249,7 @@ impl<'tcx> InliningMap<'tcx> {
                           new_targets: I)
         where I: Iterator<Item=(MonoItem<'tcx>, bool)> + ExactSizeIterator
     {
-        assert!(!self.index.contains_key(&source));
+        debug_assert!(!self.index.contains_key(&source));
 
         let start_index = self.targets.len();
         let new_items_count = new_targets.len();
@@ -877,8 +877,8 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let source_fields = &source_adt_def.non_enum_variant().fields;
             let target_fields = &target_adt_def.non_enum_variant().fields;
 
-            assert!(coerce_index < source_fields.len() &&
-                    source_fields.len() == target_fields.len());
+            debug_assert!(coerce_index < source_fields.len() &&
+                          source_fields.len() == target_fields.len());
 
             find_vtable_types_for_unsizing(tcx,
                                            source_fields[coerce_index].ty(tcx,
@@ -903,13 +903,13 @@ fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   trait_ty: Ty<'tcx>,
                                                   impl_ty: Ty<'tcx>,
                                                   output: &mut Vec<MonoItem<'tcx>>) {
-    assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_regions() &&
-            !impl_ty.needs_subst() && !impl_ty.has_escaping_regions());
+    debug_assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_regions() &&
+                  !impl_ty.needs_subst() && !impl_ty.has_escaping_regions());
 
     if let ty::TyDynamic(ref trait_ty, ..) = trait_ty.sty {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
-            assert!(!poly_trait_ref.has_escaping_regions());
+            debug_assert!(!poly_trait_ref.has_escaping_regions());
 
             // Walk all methods of the trait, including those of its supertraits
             let methods = tcx.vtable_methods(poly_trait_ref);

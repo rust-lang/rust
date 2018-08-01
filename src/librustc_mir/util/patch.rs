@@ -48,7 +48,7 @@ impl<'tcx> MirPatch<'tcx> {
         for (bb, block) in mir.basic_blocks().iter_enumerated() {
             if let TerminatorKind::Resume = block.terminator().kind {
                 if block.statements.len() > 0 {
-                    assert!(resume_stmt_block.is_none());
+                    debug_assert!(resume_stmt_block.is_none());
                     resume_stmt_block = Some(bb);
                 } else {
                     resume_block = Some(bb);
@@ -119,7 +119,7 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn patch_terminator(&mut self, block: BasicBlock, new: TerminatorKind<'tcx>) {
-        assert!(self.patch_map[block].is_none());
+        debug_assert!(self.patch_map[block].is_none());
         debug!("MirPatch: patch_terminator({:?}, {:?})", block, new);
         self.patch_map[block] = Some(new);
     }

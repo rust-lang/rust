@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 value
             }
         };
-        assert!(!bounds.has_escaping_regions());
+        debug_assert!(!bounds.has_escaping_regions());
 
         let cause = traits::ObligationCause::misc(span, self.body_id);
         obligations.extend(traits::predicates_for_generics(cause.clone(),

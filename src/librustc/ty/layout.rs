@@ -215,7 +215,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         let dl = self.data_layout();
         let scalar_unit = |value: Primitive| {
             let bits = value.size(dl).bits();
-            assert!(bits <= 128);
+            debug_assert!(bits <= 128);
             Scalar {
                 value,
                 valid_range: 0..=(!0 >> (128 - bits))
@@ -466,7 +466,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         let univariant = |fields: &[TyLayout], repr: &ReprOptions, kind| {
             Ok(tcx.intern_layout(univariant_uninterned(fields, repr, kind)?))
         };
-        assert!(!ty.has_infer_types());
+        debug_assert!(!ty.has_infer_types());
 
         Ok(match ty.sty {
             // Basic scalars.
@@ -634,7 +634,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::TyAdt(def, ..) if def.repr.simd() => {
                 let element = self.layout_of(ty.simd_type(tcx))?;
                 let count = ty.simd_size(tcx) as u64;
-                assert!(count > 0);
+                debug_assert!(count > 0);
                 let scalar = match element.abi {
                     Abi::Scalar(ref scalar) => scalar.clone(),
                     _ => {
@@ -697,7 +697,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                     let mut size = Size::ZERO;
                     for field in &variants[0] {
-                        assert!(!field.is_unsized());
+                        debug_assert!(!field.is_unsized());
 
                         if packed {
                             let field_pack = field.align.min(pack);
@@ -903,7 +903,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     min = 0;
                     max = 0;
                 }
-                assert!(min <= max, "discriminant range is {}...{}", min, max);
+                debug_assert!(min <= max, "discriminant range is {}...{}", min, max);
                 let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
 
                 let mut align = dl.aggregate_align;
@@ -1283,7 +1283,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    param_env: ty::ParamEnv<'tcx>)
                    -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
-        assert!(!ty.has_infer_types());
+        debug_assert!(!ty.has_infer_types());
 
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
@@ -1300,7 +1300,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 let tail = tcx.struct_tail(pointee);
                 match tail.sty {
                     ty::TyParam(_) | ty::TyProjection(_) => {
-                        assert!(tail.has_param_types() || tail.has_self_ty());
+                        debug_assert!(tail.has_param_types() || tail.has_self_ty());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
                             tail: tcx.erase_regions(&tail)
@@ -1599,7 +1599,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             // Potentially-fat pointers.
             ty::TyRef(_, pointee, _) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                assert!(i < this.fields.count());
+                debug_assert!(i < this.fields.count());
 
                 // Reuse the fat *T type as its own thin pointer data field.
                 // This provides information about e.g. DST struct pointees
@@ -1711,7 +1711,7 @@ impl Niche {
         }
         let Scalar { value, valid_range: ref v } = self.scalar;
         let bits = value.size(cx).bits();
-        assert!(bits <= 128);
+        debug_assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
         let start = v.end().wrapping_add(1) & max_value;
         let end = v.end().wrapping_add(count) & max_value;
@@ -1728,7 +1728,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let Scalar { value, valid_range: ref v } = *scalar;
 
             let bits = value.size(self).bits();
-            assert!(bits <= 128);
+            debug_assert!(bits <= 128);
             let max_value = !0u128 >> (128 - bits);
 
             // Find out how many values are outside the valid range.

@@ -331,7 +331,7 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
                            -> RelateResult<'tcx, GeneratorWitness<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        assert!(a.0.len() == b.0.len());
+        debug_assert!(a.0.len() == b.0.len());
         let tcx = relation.tcx();
         let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
         Ok(GeneratorWitness(types))

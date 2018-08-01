@@ -243,7 +243,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub(super) fn report_cycle(self, CycleError { usage, cycle: stack }: CycleError<'gcx>)
         -> DiagnosticBuilder<'a>
     {
-        assert!(!stack.is_empty());
+        debug_assert!(!stack.is_empty());
 
         let fix_span = |span: Span, query: &Query<'gcx>| {
             self.sess.codemap().def_span(query.default_span(self, span))
@@ -476,10 +476,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
             use ich::Fingerprint;
 
-            assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
-                    self.dep_graph.prev_fingerprint_of(dep_node),
-                    "Fingerprint for green query instance not loaded \
-                        from cache: {:?}", dep_node);
+            debug_assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
+                          self.dep_graph.prev_fingerprint_of(dep_node),
+                          "Fingerprint for green query instance not loaded \
+                           from cache: {:?}", dep_node);
 
             debug!("BEGIN verify_ich({:?})", dep_node);
             let mut hcx = self.create_stable_hashing_context();
@@ -492,8 +492,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             let old_hash = self.dep_graph.fingerprint_of(dep_node_index);
 
-            assert!(new_hash == old_hash, "Found unstable fingerprints \
-                for {:?}", dep_node);
+            debug_assert!(new_hash == old_hash, "Found unstable fingerprints for {:?}", dep_node);
         }
 
         if self.sess.opts.debugging_opts.query_dep_graph {
@@ -516,11 +515,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //    in DepGraph::try_mark_green()
         // 2. Two distinct query keys get mapped to the same DepNode
         //    (see for example #48923)
-        assert!(!self.dep_graph.dep_node_exists(&dep_node),
-                "Forcing query with already existing DepNode.\n\
-                    - query-key: {:?}\n\
-                    - dep-node: {:?}",
-                key, dep_node);
+        debug_assert!(!self.dep_graph.dep_node_exists(&dep_node),
+                      "Forcing query with already existing DepNode.\n\
+                       - query-key: {:?}\n\
+                       - dep-node: {:?}",
+                      key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
         let res = job.start(self, |tcx| {
@@ -565,8 +564,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let dep_node = Q::to_dep_node(self, &key);
 
         // Ensuring an "input" or anonymous query makes no sense
-        assert!(!dep_node.kind.is_anon());
-        assert!(!dep_node.kind.is_input());
+        debug_assert!(!dep_node.kind.is_anon());
+        debug_assert!(!dep_node.kind.is_input());
         if self.try_mark_green_and_read(&dep_node).is_none() {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.

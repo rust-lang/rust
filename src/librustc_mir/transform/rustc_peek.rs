@@ -122,7 +122,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(args_and_span) => args_and_span,
         None => return,
     };
-    assert!(args.len() == 1);
+    debug_assert!(args.len() == 1);
     let peek_arg_place = match args[0] {
         mir::Operand::Copy(ref place @ mir::Place::Local(_)) |
         mir::Operand::Move(ref place @ mir::Place::Local(_)) => Some(place),

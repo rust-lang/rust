@@ -84,7 +84,7 @@ impl TimeGraph {
                 open_work_package: None,
             });
 
-            assert!(data.open_work_package.is_none());
+            debug_assert!(data.open_work_package.is_none());
             data.open_work_package = Some((Instant::now(), work_package_kind, name.to_string()));
         }
 
@@ -121,7 +121,7 @@ impl TimeGraph {
         let table = self.data.lock().unwrap();
 
         for data in table.values() {
-            assert!(data.open_work_package.is_none());
+            debug_assert!(data.open_work_package.is_none());
         }
 
         let mut threads: Vec<PerThread> =

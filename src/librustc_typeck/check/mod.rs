@@ -879,7 +879,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Closure and generater analysis may run after fallback
         // because they don't constrain other type variables.
         fcx.closure_analyze(body);
-        assert!(fcx.deferred_call_resolutions.borrow().is_empty());
+        debug_assert!(fcx.deferred_call_resolutions.borrow().is_empty());
         fcx.resolve_generator_interiors(def_id);
         fcx.select_all_obligations_or_error();
 
@@ -2168,7 +2168,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut anon_types = self.anon_types.borrow_mut();
         for (ty, decl) in anon_type_map {
             let old_value = anon_types.insert(ty, decl);
-            assert!(old_value.is_none(), "instantiated twice: {:?}/{:?}", ty, decl);
+            debug_assert!(old_value.is_none(), "instantiated twice: {:?}/{:?}", ty, decl);
         }
 
         value
@@ -2283,7 +2283,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                           cause: traits::ObligationCause<'tcx>,
                                           predicates: &ty::InstantiatedPredicates<'tcx>)
     {
-        assert!(!predicates.has_escaping_regions());
+        debug_assert!(!predicates.has_escaping_regions());
 
         debug!("add_obligations_for_parameters(predicates={:?})",
                predicates);
@@ -2332,7 +2332,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
-        assert!(ty.is_ty_infer());
+        debug_assert!(ty.is_ty_infer());
         let fallback = match self.type_is_unconstrained_numeric(ty) {
             _ if self.is_tainted_by_errors() => self.tcx().types.err,
             UnconstrainedInt => self.tcx.types.i32,
@@ -2918,8 +2918,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
         if ty.is_never() {
-            assert!(!self.tables.borrow().adjustments().contains_key(expr.hir_id),
-                    "expression with never type wound up being adjusted");
+            debug_assert!(!self.tables.borrow().adjustments().contains_key(expr.hir_id),
+                          "expression with never type wound up being adjusted");
             let adj_ty = self.next_diverging_ty_var(
                 TypeVariableOrigin::AdjustmentType(expr.span));
             self.apply_adjustments(expr, vec![Adjustment {
@@ -3868,7 +3868,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(ref e) = *expr_opt {
                             coerce.coerce(self, &cause, e, e_ty);
                         } else {
-                            assert!(e_ty.is_nil());
+                            debug_assert!(e_ty.is_nil());
                             coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
                         }
                     } else {
@@ -3879,7 +3879,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // else an error would have been flagged by the
                         // `loops` pass for using break with an expression
                         // where you are not supposed to.
-                        assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
+                        debug_assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
                     }
 
                     ctxt.may_break = true;
@@ -4820,7 +4820,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // The first step then is to categorize the segments appropriately.
 
-        assert!(!segments.is_empty());
+        debug_assert!(!segments.is_empty());
 
         let mut ufcs_associated = None;
         let mut type_segment = None;
@@ -5008,8 +5008,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
         let ty = self.tcx.type_of(def.def_id());
-        assert!(!substs.has_escaping_regions());
-        assert!(!ty.has_escaping_regions());
+        debug_assert!(!substs.has_escaping_regions());
+        debug_assert!(!ty.has_escaping_regions());
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
@@ -5298,7 +5298,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         } else if let ty::TyError = leaf_ty.sty {
             // If there is already another error, do not emit
             // an error for not using a type Parameter.
-            assert!(tcx.sess.err_count() > 0);
+            debug_assert!(tcx.sess.err_count() > 0);
             return;
         }
     }

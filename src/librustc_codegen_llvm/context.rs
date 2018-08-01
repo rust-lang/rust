@@ -395,7 +395,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         }
 
         let tcx = self.tcx;
-        assert!(self.sess().target.target.options.custom_unwind_resume);
+        debug_assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
             let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
             unwresume.set(Some(llfn));

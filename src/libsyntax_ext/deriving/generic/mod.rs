@@ -1296,7 +1296,7 @@ impl<'a> MethodDef<'a> {
                             // opt_idents are the same.  (Assert
                             // here to make it self-evident that
                             // it is okay to ignore `_opt_ident`.)
-                            assert!(opt_ident == _opt_ident);
+                            debug_assert!(opt_ident == _opt_ident);
 
                             other_getter_expr.clone()
                         }).collect::<Vec<P<Expr>>>();

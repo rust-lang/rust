@@ -223,8 +223,10 @@ pub fn mk_section_iter(llof: &'a ffi::ObjectFile) -> SectionIter<'a> {
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
 pub fn get_param(llfn: &'a Value, index: c_uint) -> &'a Value {
     unsafe {
-        assert!(index < LLVMCountParams(llfn),
-            "out of bounds argument access: {} out of {} arguments", index, LLVMCountParams(llfn));
+        debug_assert!(index < LLVMCountParams(llfn),
+                      "out of bounds argument access: {} out of {} arguments",
+                      index,
+                      LLVMCountParams(llfn));
         LLVMGetParam(llfn, index)
     }
 }

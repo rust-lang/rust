@@ -504,7 +504,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// going to help).
     pub fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
         let cycle = self.resolve_type_vars_if_possible(&cycle.to_owned());
-        assert!(cycle.len() > 0);
+        debug_assert!(cycle.len() > 0);
 
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
 
@@ -1182,7 +1182,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                    type_def_id: DefId)
                                                    -> DiagnosticBuilder<'tcx>
     {
-        assert!(type_def_id.is_local());
+        debug_assert!(type_def_id.is_local());
         let span = self.hir.span_if_local(type_def_id).unwrap();
         let span = self.sess.codemap().def_span(span);
         let mut err = struct_span_err!(self.sess, span, E0072,
@@ -1304,7 +1304,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
                     // both must be type variables, or the other would've been instantiated
-                    assert!(a.is_ty_var() && b.is_ty_var());
+                    debug_assert!(a.is_ty_var() && b.is_ty_var());
                     self.need_type_info_err(body_id,
                                             obligation.cause.span,
                                             a).emit();

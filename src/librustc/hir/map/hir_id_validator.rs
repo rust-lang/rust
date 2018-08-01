@@ -82,7 +82,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
     fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self,
                                                        node_id: NodeId,
                                                        walk: F) {
-        assert!(self.owner_def_index.is_none());
+        debug_assert!(self.owner_def_index.is_none());
         let owner_def_index = self.hir_map.local_def_id(node_id).index;
         self.owner_def_index = Some(owner_def_index);
         walk(self);

@@ -21,7 +21,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         debug!("get_vtable(trait_ref={:?})", trait_ref);
 
         let layout = self.layout_of(trait_ref.self_ty())?;
-        assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
+        debug_assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
         let size = layout.size.bytes();
         let align = layout.align.abi();
 

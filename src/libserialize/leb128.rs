@@ -75,7 +75,7 @@ macro_rules! impl_read_unsigned_leb128 {
             }
 
             // Do a single bounds check at the end instead of for every byte.
-            assert!(position <= slice.len());
+            debug_assert!(position <= slice.len());
 
             (result, position)
         }

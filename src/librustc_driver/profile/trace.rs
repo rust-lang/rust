@@ -46,14 +46,14 @@ pub struct QueryMetric {
 pub fn cons_of_query_msg(q: &trace::Query) -> String {
     let s = format!("{:?}", q.msg);
     let cons: Vec<&str> = s.split(|d| d == '(' || d == '{').collect();
-    assert!(cons.len() > 0 && cons[0] != "");
+    debug_assert!(cons.len() > 0 && cons[0] != "");
     cons[0].to_string()
 }
 
 pub fn cons_of_key(k: &DepNode) -> String {
     let s = format!("{:?}", k);
     let cons: Vec<&str> = s.split(|d| d == '(' || d == '{').collect();
-    assert!(cons.len() > 0 && cons[0] != "");
+    debug_assert!(cons.len() > 0 && cons[0] != "");
     cons[0].to_string()
 }
 

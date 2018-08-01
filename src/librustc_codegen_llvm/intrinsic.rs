@@ -602,7 +602,7 @@ pub fn codegen_intrinsic_call(
                         // This assumes the type is "simple", i.e. no
                         // destructors, and the contents are SIMD
                         // etc.
-                        assert!(!bx.cx.type_needs_drop(arg.layout.ty));
+                        debug_assert!(!bx.cx.type_needs_drop(arg.layout.ty));
                         let (ptr, align) = match arg.val {
                             OperandValue::Ref(ptr, align) => (ptr, align),
                             _ => bug!()
@@ -654,7 +654,7 @@ pub fn codegen_intrinsic_call(
             match *intr.output {
                 intrinsics::Type::Aggregate(flatten, ref elems) => {
                     // the output is a tuple so we need to munge it properly
-                    assert!(!flatten);
+                    debug_assert!(!flatten);
 
                     for i in 0..elems.len() {
                         let dest = result.project_field(bx, i);
@@ -1368,8 +1368,8 @@ fn generic_simd_intrinsic(
                 unreachable!();
             }
         };
-        assert!(pointer_count > 0);
-        assert!(pointer_count - 1 == ptr_count(arg_tys[0].simd_type(tcx)));
+        debug_assert!(pointer_count > 0);
+        debug_assert!(pointer_count - 1 == ptr_count(arg_tys[0].simd_type(tcx)));
         assert_eq!(underlying_ty, non_ptr(arg_tys[0].simd_type(tcx)));
 
         // The element type of the third argument must be a signed integer type of any width:
@@ -1465,8 +1465,8 @@ fn generic_simd_intrinsic(
                 unreachable!();
             }
         };
-        assert!(pointer_count > 0);
-        assert!(pointer_count - 1 == ptr_count(arg_tys[0].simd_type(tcx)));
+        debug_assert!(pointer_count > 0);
+        debug_assert!(pointer_count - 1 == ptr_count(arg_tys[0].simd_type(tcx)));
         assert_eq!(underlying_ty, non_ptr(arg_tys[0].simd_type(tcx)));
 
         // The element type of the third argument must be a signed integer type of any width:

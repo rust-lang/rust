@@ -170,7 +170,7 @@ pub fn C_usize(cx: &CodegenCx<'ll, '_>, i: u64) -> &'ll Value {
     let bit_size = cx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow
-        assert!(i < (1<<bit_size));
+        debug_assert!(i < (1<<bit_size));
     }
 
     C_uint(cx.isize_ty, i)

@@ -490,7 +490,7 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<'tcx>,
                              target_cgu_count: usize,
                              crate_name: &str) {
-    assert!(target_cgu_count >= 1);
+    debug_assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
 
     // Note that at this point in time the `codegen_units` here may not be in a

@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.breakable_scopes.push(scope);
         let res = f(self);
         let breakable_scope = self.breakable_scopes.pop().unwrap();
-        assert!(breakable_scope.region_scope == region_scope);
+        debug_assert!(breakable_scope.region_scope == region_scope);
         res
     }
 
@@ -413,7 +413,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 span_bug!(span, "region_scope {:?} does not enclose", region_scope)
             });
         let len = self.scopes.len();
-        assert!(scope_count < len, "should not use `exit_scope` to pop ALL scopes");
+        debug_assert!(scope_count < len, "should not use `exit_scope` to pop ALL scopes");
 
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
@@ -565,8 +565,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn region_scope_of_return_scope(&self) -> region::Scope {
         // The outermost scope (`scopes[0]`) will be the `CallSiteScope`.
         // We want `scopes[1]`, which is the `ParameterScope`.
-        assert!(self.scopes.len() >= 2);
-        assert!(match self.scopes[1].region_scope.data() {
+        debug_assert!(self.scopes.len() >= 2);
+        debug_assert!(match self.scopes[1].region_scope.data() {
             region::ScopeData::Arguments(_) => true,
             _ => false,
         });

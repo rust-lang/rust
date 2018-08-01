@@ -147,7 +147,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let offset = base_layout.fields.offset(field_index);
                 let ptr = base_ptr.ptr_offset(offset, self)?;
                 let align = align.min(base_layout.align).min(field.align);
-                assert!(!field.is_unsized());
+                debug_assert!(!field.is_unsized());
                 Value::ByRef(ptr, align)
             },
             Value::Scalar(val) => bug!("field access on non aggregate {:#?}, {:#?}", val, base_layout),
@@ -354,7 +354,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         let (elem_ty, len) = base.elem_ty_and_len(outer_ty, self.tcx.tcx);
         let elem_size = self.layout_of(elem_ty)?.size;
-        assert!(
+        debug_assert!(
             n < len,
             "Tried to access element {} of array/slice with length {}",
             n,
@@ -432,7 +432,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
                 let elem_size = self.layout_of(elem_ty)?.size;
-                assert!(n >= min_length as u64);
+                debug_assert!(n >= min_length as u64);
 
                 let index = if from_end {
                     n - u64::from(offset)
@@ -451,7 +451,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
                 let elem_size = self.layout_of(elem_ty)?.size;
-                assert!(u64::from(from) <= n - u64::from(to));
+                debug_assert!(u64::from(from) <= n - u64::from(to));
                 let ptr = base_ptr.ptr_offset(elem_size * u64::from(from), &self)?;
                 // sublicing arrays produces arrays
                 let extra = if self.type_is_sized(base_ty) {

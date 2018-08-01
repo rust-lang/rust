@@ -165,7 +165,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn modify_size_estimate(&mut self, delta: usize) {
-        assert!(self.size_estimate.is_some());
+        debug_assert!(self.size_estimate.is_some());
         if let Some(size_estimate) = self.size_estimate {
             self.size_estimate = Some(size_estimate + delta);
         }

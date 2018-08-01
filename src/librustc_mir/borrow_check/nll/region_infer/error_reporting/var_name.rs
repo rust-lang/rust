@@ -24,7 +24,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
     ) -> Option<(Option<Symbol>, Span)> {
         debug!("get_var_name_and_span_for_region(fr={:?})", fr);
-        assert!(self.universal_regions.is_universal_region(fr));
+        debug_assert!(self.universal_regions.is_universal_region(fr));
 
         debug!("get_var_name_and_span_for_region: attempting upvar");
         self.get_upvar_index_for_region(tcx, fr)

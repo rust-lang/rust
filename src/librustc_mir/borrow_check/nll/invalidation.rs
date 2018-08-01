@@ -525,7 +525,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(&this.dominators, borrow, context.loc) {
                             // If the borrow isn't active yet, reads don't invalidate it
-                            assert!(allow_two_phase_borrow(&this.infcx.tcx, borrow.kind));
+                            debug_assert!(allow_two_phase_borrow(&this.infcx.tcx, borrow.kind));
                             return Control::Continue;
                         }
 

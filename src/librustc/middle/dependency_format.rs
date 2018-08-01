@@ -210,7 +210,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if src.dylib.is_none() &&
            !formats.contains_key(&cnum) &&
            tcx.dep_kind(cnum) == DepKind::Explicit {
-            assert!(src.rlib.is_some() || src.rmeta.is_some());
+            debug_assert!(src.rlib.is_some() || src.rmeta.is_some());
             info!("adding staticlib: {}", tcx.crate_name(cnum));
             add_library(tcx, cnum, RequireStatic, &mut formats);
             ret[cnum.as_usize() - 1] = Linkage::Static;

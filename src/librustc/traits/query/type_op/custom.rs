@@ -82,7 +82,7 @@ fn scrape_region_constraints<'gcx, 'tcx, R>(
     // obligations that resulted). So this vector should be empty on
     // entry.
     let pre_obligations = infcx.take_registered_region_obligations();
-    assert!(
+    debug_assert!(
         pre_obligations.is_empty(),
         "scrape_region_constraints: incoming region obligations = {:#?}",
         pre_obligations,

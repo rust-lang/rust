@@ -123,7 +123,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // Record the start of this item's inferreds.
         let start = self.inferred_terms.len();
         let newly_added = self.inferred_starts.insert(id, InferredIndex(start)).is_none();
-        assert!(newly_added);
+        debug_assert!(newly_added);
 
         // NB: In the code below for writing the results back into the
         // `CrateVariancesMap`, we rely on the fact that all inferreds

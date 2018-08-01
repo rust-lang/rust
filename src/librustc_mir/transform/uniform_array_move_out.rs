@@ -82,9 +82,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                     let place_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if let ty::TyArray(item_ty, const_size) = place_ty.sty {
                         if let Some(size) = const_size.assert_usize(self.tcx) {
-                            assert!(size <= u32::max_value() as u64,
-                                    "uniform array move out doesn't supported
-                                     for array bigger then u32");
+                            debug_assert!(size <= u32::max_value() as u64,
+                                          "uniform array move out doesn't supported
+                                           for array bigger then u32");
                             self.uniform(location, dst_place, proj, item_ty, size as u32);
                         }
                     }

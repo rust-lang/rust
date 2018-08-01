@@ -131,7 +131,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         let target_offset = layout.fields.offset(i as usize);
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?}",
             i, field, offset, target_offset);
-        assert!(target_offset >= offset);
+        debug_assert!(target_offset >= offset);
         let padding = target_offset - offset;
         let padding_align = layout.align.min(prev_align).min(field.align);
         assert_eq!(offset.abi_align(padding_align) + padding, target_offset);
@@ -153,7 +153,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
                padding, offset, layout.size);
         result.push(Type::padding_filler(cx, padding, padding_align));
-        assert!(result.len() == 1 + field_count * 2);
+        debug_assert!(result.len() == 1 + field_count * 2);
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}",
                offset, layout.size);
@@ -284,7 +284,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
         debug!("llvm_type({:#?})", self);
 
-        assert!(!self.ty.has_escaping_regions(), "{:?} has escaping regions", self.ty);
+        debug_assert!(!self.ty.has_escaping_regions(), "{:?} has escaping regions", self.ty);
 
         // Make sure lifetimes are erased, to avoid generating distinct LLVM
         // types for Rust types that only differ in the choice of lifetimes.

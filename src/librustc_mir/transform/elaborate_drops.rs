@@ -51,7 +51,7 @@ impl MirPass for ElaborateDrops {
                 // If we are in the migration path, we have already
                 // reported these errors as warnings to the user. So
                 // we will just ignore them here.
-                assert!(tcx.migrate_borrowck());
+                debug_assert!(tcx.migrate_borrowck());
                 move_data
             }
         };
@@ -441,7 +441,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 TerminatorKind::DropAndReplace { ref location, ref value,
                                                  target, unwind } =>
                 {
-                    assert!(!data.is_cleanup);
+                    debug_assert!(!data.is_cleanup);
 
                     self.elaborate_replace(
                         loc,
@@ -477,7 +477,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let bb = loc.block;
         let data = &self.mir[bb];
         let terminator = data.terminator();
-        assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
+        debug_assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
             kind: StatementKind::Assign(location.clone(), Rvalue::Use(value.clone())),
@@ -569,7 +569,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             if let TerminatorKind::Call {
                 destination: Some((ref place, tgt)), cleanup: Some(_), ..
             } = data.terminator().kind {
-                assert!(!self.patch.is_patched(bb));
+                debug_assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: tgt, statement_index: 0 };
                 let path = self.move_data().rev_lookup.find(place);
@@ -614,7 +614,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             // only want the former - the latter is handled
                             // by the elaboration code and must be done
                             // *after* the destination is dropped.
-                            assert!(self.patch.is_patched(bb));
+                            debug_assert!(self.patch.is_patched(bb));
                             allow_initializations = false;
                         }
                         TerminatorKind::Resume => {
@@ -623,7 +623,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             // a Goto; see `MirPatch::new`).
                         }
                         _ => {
-                            assert!(!self.patch.is_patched(bb));
+                            debug_assert!(!self.patch.is_patched(bb));
                         }
                     }
                 }
@@ -643,7 +643,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             if let TerminatorKind::Call {
                 destination: Some((ref place, _)), cleanup: None, ..
             } = data.terminator().kind {
-                assert!(!self.patch.is_patched(bb));
+                debug_assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
                 let path = self.move_data().rev_lookup.find(place);

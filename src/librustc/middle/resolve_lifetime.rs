@@ -651,7 +651,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         ref i => bug!("impl Trait pointed to non-existential type?? {:#?}", i),
                     };
 
-                    assert!(exist_ty_did.is_local());
+                    debug_assert!(exist_ty_did.is_local());
                     // Resolve the lifetimes that are applied to the existential type.
                     // These are resolved in the current scope.
                     // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
@@ -810,7 +810,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
             Const(_, _) => {
                 // Only methods and types support generics.
-                assert!(trait_item.generics.params.is_empty());
+                debug_assert!(trait_item.generics.params.is_empty());
                 intravisit::walk_trait_item(self, trait_item);
             }
         }
@@ -885,7 +885,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
             Const(_, _) => {
                 // Only methods and types support generics.
-                assert!(impl_item.generics.params.is_empty());
+                debug_assert!(impl_item.generics.params.is_empty());
                 intravisit::walk_impl_item(self, impl_item);
             }
         }
@@ -2589,7 +2589,7 @@ fn insert_late_bound_lifetimes(
                param.id);
 
         let inserted = map.late_bound.insert(param.id);
-        assert!(inserted, "visited lifetime {:?} twice", param.id);
+        debug_assert!(inserted, "visited lifetime {:?} twice", param.id);
     }
 
     return;

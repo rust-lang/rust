@@ -95,7 +95,7 @@ impl<C: Idx> BitVector<C> {
 
     #[inline]
     pub fn merge(&mut self, all: &BitVector<C>) -> bool {
-        assert!(self.data.len() == all.data.len());
+        debug_assert!(self.data.len() == all.data.len());
         let mut changed = false;
         for (i, j) in self.data.iter_mut().zip(&all.data) {
             let value = *i;

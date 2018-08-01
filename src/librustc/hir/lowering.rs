@@ -654,8 +654,8 @@ impl<'a> LoweringContext<'a> {
     where
         F: FnOnce(&mut LoweringContext) -> (Vec<hir::GenericParam>, T),
     {
-        assert!(!self.is_collecting_in_band_lifetimes);
-        assert!(self.lifetimes_to_define.is_empty());
+        debug_assert!(!self.is_collecting_in_band_lifetimes);
+        debug_assert!(self.lifetimes_to_define.is_empty());
         let old_anonymous_lifetime_mode = self.anonymous_lifetime_mode;
 
         self.is_collecting_in_band_lifetimes = self.sess.features_untracked().in_band_lifetimes;
@@ -735,7 +735,7 @@ impl<'a> LoweringContext<'a> {
     /// When we have either an elided or `'_` lifetime in an impl
     /// header, we convert it to
     fn collect_fresh_in_band_lifetime(&mut self, span: Span) -> ParamName {
-        assert!(self.is_collecting_in_band_lifetimes);
+        debug_assert!(self.is_collecting_in_band_lifetimes);
         let index = self.lifetimes_to_define.len();
         let hir_name = ParamName::Fresh(index);
         self.lifetimes_to_define.push((span, hir_name));
@@ -1596,7 +1596,7 @@ impl<'a> LoweringContext<'a> {
                         if let Some(&n) = self.type_def_lifetime_params.get(&def_id) {
                             return n;
                         }
-                        assert!(!def_id.is_local());
+                        debug_assert!(!def_id.is_local());
                         let item_generics =
                             self.cstore.item_generics_cloned_untracked(def_id, self.sess);
                         let n = item_generics.own_counts().lifetimes;
@@ -4369,7 +4369,7 @@ impl<'a> LoweringContext<'a> {
                 has_value: has_value,
             },
             Defaultness::Final => {
-                assert!(has_value);
+                debug_assert!(has_value);
                 hir::Defaultness::Final
             }
         }

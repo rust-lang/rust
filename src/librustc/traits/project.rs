@@ -1142,7 +1142,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 if !is_default {
                     true
                 } else if obligation.param_env.reveal == Reveal::All {
-                    assert!(!poly_trait_ref.needs_infer());
+                    debug_assert!(!poly_trait_ref.needs_infer());
                     if !poly_trait_ref.needs_subst() {
                         true
                     } else {
@@ -1697,7 +1697,7 @@ impl<'tcx> ProjectionCache<'tcx> {
         debug!("ProjectionCacheEntry::insert_ty: adding cache entry: key={:?}, value={:?}",
                key, value);
         let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value));
-        assert!(!fresh_key, "never started projecting `{:?}`", key);
+        debug_assert!(!fresh_key, "never started projecting `{:?}`", key);
     }
 
     /// Mark the relevant projection cache key as having its derived obligations
@@ -1749,13 +1749,13 @@ impl<'tcx> ProjectionCache<'tcx> {
     /// be different).
     fn ambiguous(&mut self, key: ProjectionCacheKey<'tcx>) {
         let fresh = self.map.insert(key, ProjectionCacheEntry::Ambiguous);
-        assert!(!fresh, "never started projecting `{:?}`", key);
+        debug_assert!(!fresh, "never started projecting `{:?}`", key);
     }
 
     /// Indicates that trying to normalize `key` resulted in
     /// error.
     fn error(&mut self, key: ProjectionCacheKey<'tcx>) {
         let fresh = self.map.insert(key, ProjectionCacheEntry::Error);
-        assert!(!fresh, "never started projecting `{:?}`", key);
+        debug_assert!(!fresh, "never started projecting `{:?}`", key);
     }
 }

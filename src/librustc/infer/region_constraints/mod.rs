@@ -301,7 +301,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     ///
     /// Not legal during a snapshot.
     pub fn into_infos_and_data(self) -> (VarInfos, RegionConstraintData<'tcx>) {
-        assert!(!self.in_snapshot());
+        debug_assert!(!self.in_snapshot());
         (self.var_infos, self.data)
     }
 
@@ -318,7 +318,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     ///
     /// Not legal during a snapshot.
     pub fn take_and_reset_data(&mut self) -> RegionConstraintData<'tcx> {
-        assert!(!self.in_snapshot());
+        debug_assert!(!self.in_snapshot());
 
         // If you add a new field to `RegionConstraintCollector`, you
         // should think carefully about whether it needs to be cleared
@@ -374,8 +374,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn commit(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionConstraintCollector: commit({})", snapshot.length);
-        assert!(self.undo_log.len() > snapshot.length);
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
+        debug_assert!(self.undo_log.len() > snapshot.length);
+        debug_assert!(self.undo_log[snapshot.length] == OpenSnapshot);
 
         if snapshot.length == 0 {
             self.undo_log.truncate(0);
@@ -387,14 +387,14 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionConstraintCollector: rollback_to({:?})", snapshot);
-        assert!(self.undo_log.len() > snapshot.length);
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
+        debug_assert!(self.undo_log.len() > snapshot.length);
+        debug_assert!(self.undo_log[snapshot.length] == OpenSnapshot);
         while self.undo_log.len() > snapshot.length + 1 {
             let undo_entry = self.undo_log.pop().unwrap();
             self.rollback_undo_entry(undo_entry);
         }
         let c = self.undo_log.pop().unwrap();
-        assert!(c == OpenSnapshot);
+        debug_assert!(c == OpenSnapshot);
         self.unification_table.rollback_to(snapshot.region_snapshot);
         self.any_unifications = snapshot.any_unifications;
     }
@@ -474,9 +474,9 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     ) {
         debug!("pop_skolemized_regions(skols={:?})", skols);
 
-        assert!(self.in_snapshot());
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
-        assert!(
+        debug_assert!(self.in_snapshot());
+        debug_assert!(self.undo_log[snapshot.length] == OpenSnapshot);
+        debug_assert!(
             skolemization_count.as_usize() >= skols.len(),
             "popping more skolemized variables than actually exist, \
              sc now = {:?}, skols.len = {:?}",

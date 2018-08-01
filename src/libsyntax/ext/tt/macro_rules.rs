@@ -503,7 +503,7 @@ impl FirstSets {
 
         let mut first = TokenSet::empty();
         for tt in tts.iter() {
-            assert!(first.maybe_empty);
+            debug_assert!(first.maybe_empty);
             match *tt {
                 TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
                     first.add_one(tt.clone());
@@ -525,7 +525,7 @@ impl FirstSets {
                                 first.add_one_maybe(TokenTree::Token(sp, sep.clone()));
                             }
 
-                            assert!(first.maybe_empty);
+                            debug_assert!(first.maybe_empty);
                             first.add_all(subfirst);
                             if subfirst.maybe_empty ||
                                seq_rep.op == quoted::KleeneOp::ZeroOrMore {
@@ -553,7 +553,7 @@ impl FirstSets {
 
         // we only exit the loop if `tts` was empty or if every
         // element of `tts` matches the empty sequence.
-        assert!(first.maybe_empty);
+        debug_assert!(first.maybe_empty);
         first
     }
 }

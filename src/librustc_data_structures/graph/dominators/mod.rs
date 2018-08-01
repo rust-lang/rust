@@ -122,12 +122,12 @@ impl<Node: Idx> Dominators<Node> {
     }
 
     pub fn immediate_dominator(&self, node: Node) -> Node {
-        assert!(self.is_reachable(node), "node {:?} is not reachable", node);
+        debug_assert!(self.is_reachable(node), "node {:?} is not reachable", node);
         self.immediate_dominators[node].unwrap()
     }
 
     pub fn dominators(&self, node: Node) -> Iter<Node> {
-        assert!(self.is_reachable(node), "node {:?} is not reachable", node);
+        debug_assert!(self.is_reachable(node), "node {:?} is not reachable", node);
         Iter {
             dominators: self,
             node: Some(node),

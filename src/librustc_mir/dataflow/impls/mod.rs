@@ -339,7 +339,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,
             |path, s| {
-                assert!(s == DropFlagState::Present);
+                debug_assert!(s == DropFlagState::Present);
                 entry_set.add(&path);
             });
     }
@@ -394,7 +394,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> 
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,
             |path, s| {
-                assert!(s == DropFlagState::Present);
+                debug_assert!(s == DropFlagState::Present);
                 entry_set.remove(&path);
             });
     }
@@ -448,7 +448,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedPlaces<'a, 'gcx, 'tc
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,
             |path, s| {
-                assert!(s == DropFlagState::Present);
+                debug_assert!(s == DropFlagState::Present);
                 entry_set.add(&path);
             });
     }
@@ -559,7 +559,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
                               move_data,
                               move_data.rev_lookup.find(dest_place),
                               |mpi| for moi in &path_map[mpi] {
-                                  assert!(moi.index() < bits_per_block);
+                                  debug_assert!(moi.index() < bits_per_block);
                                   in_out.remove(&moi);
                               });
     }
@@ -655,7 +655,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedPlaces<'a, 'gcx, 'tcx> {
             statement_index: self.mir[call_bb].statements.len(),
         };
         for init_index in &init_loc_map[call_loc] {
-            assert!(init_index.index() < bits_per_block);
+            debug_assert!(init_index.index() < bits_per_block);
             in_out.add(init_index);
         }
     }

@@ -682,7 +682,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
             if is_if_let_fallback {
                 let cause = self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse);
-                assert!(arm_ty.is_nil());
+                debug_assert!(arm_ty.is_nil());
                 coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
             } else {
                 let cause = self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {

@@ -234,7 +234,7 @@ impl<'sess> OnDiskCache<'sess> {
                 // const eval is special, it only encodes successfully evaluated constants
                 use ty::query::QueryAccessors;
                 let cache = const_eval::query_cache(tcx).borrow();
-                assert!(cache.active.is_empty());
+                debug_assert!(cache.active.is_empty());
                 for (key, entry) in cache.results.iter() {
                     use ty::query::config::QueryDescription;
                     if const_eval::cache_on_disk(key.clone()) {
@@ -1100,7 +1100,7 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     time(tcx.sess, desc, || {
 
     let map = Q::query_cache(tcx).borrow();
-    assert!(map.active.is_empty());
+    debug_assert!(map.active.is_empty());
     for (key, entry) in map.results.iter() {
         if Q::cache_on_disk(key.clone()) {
             let dep_node = SerializedDepNodeIndex::new(entry.index.index());

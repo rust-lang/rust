@@ -1033,7 +1033,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         outlives_env: &OutlivesEnvironment<'tcx>,
         will_later_be_reported_by_nll: bool,
     ) {
-        assert!(self.is_tainted_by_errors() || self.region_obligations.borrow().is_empty(),
+        debug_assert!(self.is_tainted_by_errors() || self.region_obligations.borrow().is_empty(),
                 "region_obligations not empty: {:#?}",
                 self.region_obligations.borrow());
 
@@ -1049,7 +1049,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             lexical_region_resolve::resolve(region_rels, var_infos, data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
-        assert!(old_value.is_none());
+        debug_assert!(old_value.is_none());
 
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors
@@ -1072,9 +1072,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// translate them into the form that the NLL solver
     /// understands. See the NLL module for mode details.
     pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
-        assert!(self.region_obligations.borrow().is_empty(),
-                "region_obligations not empty: {:#?}",
-                self.region_obligations.borrow());
+        debug_assert!(self.region_obligations.borrow().is_empty(),
+                      "region_obligations not empty: {:#?}",
+                      self.region_obligations.borrow());
 
         self.borrow_region_constraints().take_and_reset_data()
     }
@@ -1099,7 +1099,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                          .take()
                                                          .expect("regions already resolved")
                                                          .into_infos_and_data();
-        assert!(data.is_empty());
+        debug_assert!(data.is_empty());
         var_infos
     }
 

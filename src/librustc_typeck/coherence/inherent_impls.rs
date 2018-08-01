@@ -49,7 +49,7 @@ pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 ty_def_id: DefId)
                                 -> Lrc<Vec<DefId>> {
-    assert!(ty_def_id.is_local());
+    debug_assert!(ty_def_id.is_local());
 
     // NB. Until we adopt the red-green dep-tracking algorithm (see
     // [the plan] for details on that), we do some hackery here to get

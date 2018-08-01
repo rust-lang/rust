@@ -66,7 +66,7 @@ impl<'cx, 'tcx> TyCtxt<'cx, 'tcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        assert!(!value.needs_subst());
+        debug_assert!(!value.needs_subst());
         let value = self.erase_late_bound_regions(value);
         self.normalize_erasing_regions(param_env, value)
     }

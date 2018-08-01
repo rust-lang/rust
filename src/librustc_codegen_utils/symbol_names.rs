@@ -161,7 +161,7 @@ fn get_symbol_hash<'a, 'tcx>(
         // Include the main item-type. Note that, in this case, the
         // assertions about `needs_subst` may not hold, but this item-type
         // ought to be the same for every reference anyway.
-        assert!(!item_type.has_erasable_regions());
+        debug_assert!(!item_type.has_erasable_regions());
         hcx.while_hashing_spans(false, |hcx| {
             hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                 item_type.hash_stable(hcx, &mut hasher);
@@ -176,8 +176,8 @@ fn get_symbol_hash<'a, 'tcx>(
         }
 
         // also include any type parameters (for generic items)
-        assert!(!substs.has_erasable_regions());
-        assert!(!substs.needs_subst());
+        debug_assert!(!substs.has_erasable_regions());
+        debug_assert!(!substs.needs_subst());
         substs.hash_stable(&mut hcx, &mut hasher);
 
         let is_generic = substs.types().next().is_some();

@@ -182,7 +182,7 @@ pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $
         run_passes(promoted_mir, Some(index));
 
         // Let's make sure we don't miss any nested instances
-        assert!(promoted_mir.promoted.is_empty());
+        debug_assert!(promoted_mir.promoted.is_empty());
     }
 }}
 

@@ -416,7 +416,7 @@ pub fn mk_attr_id() -> AttrId {
     static NEXT_ATTR_ID: AtomicUsize = AtomicUsize::new(0);
 
     let id = NEXT_ATTR_ID.fetch_add(1, Ordering::SeqCst);
-    assert!(id != ::std::usize::MAX);
+    debug_assert!(id != ::std::usize::MAX);
     AttrId(id)
 }
 

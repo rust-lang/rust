@@ -123,7 +123,7 @@ impl std::fmt::Display for FileName {
 
 impl From<PathBuf> for FileName {
     fn from(p: PathBuf) -> Self {
-        assert!(!p.to_string_lossy().ends_with('>'));
+        debug_assert!(!p.to_string_lossy().ends_with('>'));
         FileName::Real(p)
     }
 }
@@ -1089,7 +1089,7 @@ impl FileMap {
         }
 
         let line_index = lookup_line(&self.lines[..], pos);
-        assert!(line_index < self.lines.len() as isize);
+        debug_assert!(line_index < self.lines.len() as isize);
         if line_index >= 0 {
             Some(line_index as usize)
         } else {
@@ -1102,7 +1102,7 @@ impl FileMap {
             return (self.start_pos, self.end_pos);
         }
 
-        assert!(line_index < self.lines.len());
+        debug_assert!(line_index < self.lines.len());
         if line_index == (self.lines.len() - 1) {
             (self.lines[line_index], self.end_pos)
         } else {

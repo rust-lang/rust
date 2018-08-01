@@ -350,7 +350,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn alloc_ptr(&mut self, layout: TyLayout<'tcx>) -> EvalResult<'tcx, Pointer> {
-        assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
+        debug_assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
 
         self.memory.allocate(layout.size, layout.align, MemoryKind::Stack)
     }
@@ -369,7 +369,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     #[inline]
     pub fn cur_frame(&self) -> usize {
-        assert!(self.stack.len() > 0);
+        debug_assert!(self.stack.len() > 0);
         self.stack.len() - 1
     }
 
@@ -466,7 +466,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     // Don't use type_of::sizing_type_of because that expects t to be sized,
                     // and it also rounds up to alignment, which we want to avoid,
                     // as the unsized field's alignment could be smaller.
-                    assert!(!ty.is_simd());
+                    debug_assert!(!ty.is_simd());
                     debug!("DST {} layout: {:?}", ty, layout);
 
                     let sized_size = layout.fields.offset(layout.fields.count() - 1);
@@ -779,7 +779,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             NullaryOp(mir::NullOp::SizeOf, ty) => {
                 let ty = self.monomorphize(ty, self.substs());
                 let layout = self.layout_of(ty)?;
-                assert!(!layout.is_unsized(),
+                debug_assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");
                 let defined = self.memory.pointer_size().bits() as u8;
                 self.write_scalar(
@@ -953,8 +953,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let variants_end = *niche_variants.end() as u128;
                 match raw_discr {
                     Scalar::Ptr(_) => {
-                        assert!(niche_start == 0);
-                        assert!(variants_start == variants_end);
+                        debug_assert!(niche_start == 0);
+                        debug_assert!(variants_start == variants_end);
                         dataful_variant as u128
                     },
                     Scalar::Bits { bits: raw_discr, defined } => {
@@ -1846,7 +1846,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             // Potentially-fat pointers.
             ty::TyRef(_, pointee, _) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                assert!(i < 2);
+                debug_assert!(i < 2);
 
                 // Reuse the fat *T type as its own thin pointer data field.
                 // This provides information about e.g. DST struct pointees

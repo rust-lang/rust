@@ -484,7 +484,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 // `identity_substs`, we will get only those regions
                 // that correspond to early-bound regions declared on
                 // the `closure_base_def_id`.
-                assert!(substs.len() >= identity_substs.len());
+                debug_assert!(substs.len() >= identity_substs.len());
                 assert_eq!(substs.regions().count(), identity_substs.regions().count());
                 substs
             }

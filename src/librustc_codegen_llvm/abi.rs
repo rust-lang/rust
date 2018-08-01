@@ -352,7 +352,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
         let mut inputs = sig.inputs();
         let extra_args = if sig.abi == RustCall {
-            assert!(!sig.variadic && extra_args.is_empty());
+            debug_assert!(!sig.variadic && extra_args.is_empty());
 
             match sig.inputs().last().unwrap().sty {
                 ty::TyTuple(ref tupled_arguments) => {
@@ -365,7 +365,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 }
             }
         } else {
-            assert!(sig.variadic || extra_args.is_empty());
+            debug_assert!(sig.variadic || extra_args.is_empty());
             extra_args
         };
 

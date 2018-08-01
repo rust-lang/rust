@@ -115,10 +115,10 @@ pub fn get_static(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll Value {
     let defined_in_current_codegen_unit = cx.codegen_unit
                                             .items()
                                             .contains_key(&MonoItem::Static(def_id));
-    assert!(!defined_in_current_codegen_unit,
-            "consts::get_static() should always hit the cache for \
-             statics defined in the same CGU, but did not for `{:?}`",
-             def_id);
+    debug_assert!(!defined_in_current_codegen_unit,
+                  "consts::get_static() should always hit the cache for \
+                   statics defined in the same CGU, but did not for `{:?}`",
+                  def_id);
 
     let ty = instance.ty(cx.tcx);
     let sym = cx.tcx.symbol_name(instance).as_str();

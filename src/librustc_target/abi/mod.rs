@@ -620,7 +620,7 @@ impl Scalar {
         // However, that is fine here (it would still represent the full range),
         // i.e., if the range is everything.
         let bits = self.value.size(cx).bits();
-        assert!(bits <= 128);
+        debug_assert!(bits <= 128);
         let mask = !0u128 >> (128 - bits);
         let start = *self.valid_range.start();
         let end = *self.valid_range.end();
@@ -683,7 +683,7 @@ impl FieldPlacement {
             FieldPlacement::Union(_) => Size::ZERO,
             FieldPlacement::Array { stride, count } => {
                 let i = i as u64;
-                assert!(i < count);
+                debug_assert!(i < count);
                 stride * i
             }
             FieldPlacement::Arbitrary { ref offsets, .. } => offsets[i]

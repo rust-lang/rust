@@ -130,7 +130,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
         rcx.resolve_regions_and_report_errors_unless_nll();
 
-        assert!(self.tables.borrow().free_region_map.is_empty());
+        debug_assert!(self.tables.borrow().free_region_map.is_empty());
         self.tables.borrow_mut().free_region_map = rcx.outlives_environment.into_free_region_map();
     }
 
@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // In this mode, we also copy the free-region-map into the
         // tables of the enclosing fcx. In the other regionck modes
         // (e.g., `regionck_item`), we don't have an enclosing tables.
-        assert!(self.tables.borrow().free_region_map.is_empty());
+        debug_assert!(self.tables.borrow().free_region_map.is_empty());
         self.tables.borrow_mut().free_region_map = rcx.outlives_environment.into_free_region_map();
     }
 }
@@ -439,8 +439,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 body_id: hir::BodyId,
                 span: Span,
                 id: ast::NodeId) {
-        assert!(match fk { intravisit::FnKind::Closure(..) => true, _ => false },
-                "visit_fn invoked for something other than a closure");
+        debug_assert!(match fk { intravisit::FnKind::Closure(..) => true, _ => false },
+                      "visit_fn invoked for something other than a closure");
 
         // Save state of current function before invoking
         // `visit_fn_body`.  We will restore afterwards.

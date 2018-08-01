@@ -166,8 +166,8 @@ impl<T> TypedArena<T> {
     where
         T: Copy,
     {
-        assert!(mem::size_of::<T>() != 0);
-        assert!(slice.len() != 0);
+        debug_assert!(mem::size_of::<T>() != 0);
+        debug_assert!(slice.len() != 0);
 
         let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
         let at_least_bytes = slice.len() * mem::size_of::<T>();
@@ -318,7 +318,7 @@ impl DroplessArena {
     fn align(&self, align: usize) {
         let final_address = ((self.ptr.get() as usize) + align - 1) & !(align - 1);
         self.ptr.set(final_address as *mut u8);
-        assert!(self.ptr <= self.end);
+        debug_assert!(self.ptr <= self.end);
     }
 
     #[inline(never)]
@@ -357,7 +357,7 @@ impl DroplessArena {
     #[inline]
     pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
         unsafe {
-            assert!(bytes != 0);
+            debug_assert!(bytes != 0);
 
             self.align(align);
 
@@ -377,7 +377,7 @@ impl DroplessArena {
 
     #[inline]
     pub fn alloc<T>(&self, object: T) -> &mut T {
-        assert!(!mem::needs_drop::<T>());
+        debug_assert!(!mem::needs_drop::<T>());
 
         let mem = self.alloc_raw(
             mem::size_of::<T>(),
@@ -402,9 +402,9 @@ impl DroplessArena {
     where
         T: Copy,
     {
-        assert!(!mem::needs_drop::<T>());
-        assert!(mem::size_of::<T>() != 0);
-        assert!(slice.len() != 0);
+        debug_assert!(!mem::needs_drop::<T>());
+        debug_assert!(mem::size_of::<T>() != 0);
+        debug_assert!(slice.len() != 0);
 
         let mem = self.alloc_raw(
             slice.len() * mem::size_of::<T>(),

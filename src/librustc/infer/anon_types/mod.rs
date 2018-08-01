@@ -513,7 +513,7 @@ impl<'cx, 'gcx, 'tcx> ReverseMapper<'cx, 'gcx, 'tcx> {
     }
 
     fn fold_kind_mapping_missing_regions_to_empty(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
-        assert!(!self.map_missing_regions_to_empty);
+        debug_assert!(!self.map_missing_regions_to_empty);
         self.map_missing_regions_to_empty = true;
         let kind = kind.fold_with(self);
         self.map_missing_regions_to_empty = false;
@@ -521,7 +521,7 @@ impl<'cx, 'gcx, 'tcx> ReverseMapper<'cx, 'gcx, 'tcx> {
     }
 
     fn fold_kind_normally(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
-        assert!(!self.map_missing_regions_to_empty);
+        debug_assert!(!self.map_missing_regions_to_empty);
         kind.fold_with(self)
     }
 }

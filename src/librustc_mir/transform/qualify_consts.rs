@@ -768,10 +768,10 @@ This does not pose a problem by itself because they can't be accessed directly."
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
                 if let ty::TyRawPtr(_) = lhs.ty(self.mir, self.tcx).sty {
-                    assert!(op == BinOp::Eq || op == BinOp::Ne ||
-                            op == BinOp::Le || op == BinOp::Lt ||
-                            op == BinOp::Ge || op == BinOp::Gt ||
-                            op == BinOp::Offset);
+                    debug_assert!(op == BinOp::Eq || op == BinOp::Ne ||
+                                  op == BinOp::Le || op == BinOp::Lt ||
+                                  op == BinOp::Ge || op == BinOp::Gt ||
+                                  op == BinOp::Offset);
 
                     self.add(Qualif::NOT_CONST);
                     if self.mode != Mode::Fn {
@@ -814,7 +814,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     if Some(def.did) == self.tcx.lang_items().unsafe_cell_type() {
                         let ty = rvalue.ty(self.mir, self.tcx);
                         self.add_type(ty);
-                        assert!(self.qualif.contains(Qualif::MUTABLE_INTERIOR));
+                        debug_assert!(self.qualif.contains(Qualif::MUTABLE_INTERIOR));
                     }
                 }
             }
@@ -836,7 +836,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                 match self.tcx.fn_sig(def_id).abi() {
                     Abi::RustIntrinsic |
                     Abi::PlatformIntrinsic => {
-                        assert!(!self.tcx.is_const_fn(def_id));
+                        debug_assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id).as_str()[..] {
                             | "size_of"
                             | "min_align_of"

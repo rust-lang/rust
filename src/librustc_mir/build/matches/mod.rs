@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // The region is unknown at this point; we rely on NLL
             // inference to find an appropriate one. Therefore you can
             // only use this when NLL is turned on.
-            assert!(tcx.use_mir_borrowck());
+            debug_assert!(tcx.use_mir_borrowck());
             let borrowed_input =
                 Rvalue::Ref(tcx.types.re_empty, BorrowKind::Shared, discriminant_place.clone());
             let borrowed_input_ty = borrowed_input.ty(&self.local_decls, tcx);
@@ -332,8 +332,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             has_guard: ArmHasGuard,
                             opt_match_place: Option<(Option<&Place<'tcx>>, Span)>)
                             -> Option<SourceScope> {
-        assert!(!(visibility_scope.is_some() && lint_level.is_explicit()),
-                "can't have both a visibility and a lint scope at the same time");
+        debug_assert!(!(visibility_scope.is_some() && lint_level.is_explicit()),
+                      "can't have both a visibility and a lint scope at the same time");
         let mut scope = self.source_scope;
         let num_patterns = patterns.len();
         self.visit_bindings(&patterns[0], &mut |this, mutability, name, mode, var, span, ty| {
@@ -837,7 +837,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                           c,
                                                           &mut target_candidates))
                       .count();
-        assert!(tested_candidates > 0); // at least the last candidate ought to be tested
+        debug_assert!(tested_candidates > 0); // at least the last candidate ought to be tested
         debug!("tested_candidates: {}", tested_candidates);
         debug!("untested_candidates: {}", candidates.len() - tested_candidates);
 

@@ -83,8 +83,8 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
             ProjectionElem::Downcast(adt_def1, index) =>
                 match self.to_ty(tcx).sty {
                     ty::TyAdt(adt_def, substs) => {
-                        assert!(adt_def.is_enum());
-                        assert!(index < adt_def.variants.len());
+                        debug_assert!(adt_def.is_enum());
+                        debug_assert!(index < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
                         PlaceTy::Downcast { adt_def,
                                              substs,

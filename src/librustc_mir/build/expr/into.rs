@@ -236,7 +236,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let mut args = args.into_iter();
                     let ptr = args.next().expect("0 arguments to `move_val_init`");
                     let val = args.next().expect("1 argument to `move_val_init`");
-                    assert!(args.next().is_none(), ">2 arguments to `move_val_init`");
+                    debug_assert!(args.next().is_none(), ">2 arguments to `move_val_init`");
 
                     let ptr = this.hir.mirror(ptr);
                     let ptr_ty = ptr.ty;

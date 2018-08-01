@@ -257,7 +257,7 @@ impl DefPath {
             debug!("DefPath::make: key={:?}", key);
             match key.disambiguated_data.data {
                 DefPathData::CrateRoot => {
-                    assert!(key.parent.is_none());
+                    debug_assert!(key.parent.is_none());
                     break;
                 }
                 _ => {
@@ -500,7 +500,7 @@ impl Definitions {
         let address_space = super::ITEM_LIKE_SPACE;
         let root_index = self.table.allocate(key, def_path_hash, address_space);
         assert_eq!(root_index, CRATE_DEF_INDEX);
-        assert!(self.def_index_to_node[address_space.index()].is_empty());
+        debug_assert!(self.def_index_to_node[address_space.index()].is_empty());
         self.def_index_to_node[address_space.index()].push(ast::CRATE_NODE_ID);
         self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
 
@@ -522,14 +522,15 @@ impl Definitions {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
                parent, node_id, data);
 
-        assert!(!self.node_to_def_index.contains_key(&node_id),
-                "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
-                node_id,
-                data,
-                self.table.def_key(self.node_to_def_index[&node_id]));
+        debug_assert!(!self.node_to_def_index.contains_key(&node_id),
+                      "adding a def'n for node-id {:?} and data {:?} \
+                       but a previous def'n exists: {:?}",
+                      node_id,
+                      data,
+                      self.table.def_key(self.node_to_def_index[&node_id]));
 
         // The root node must be created with create_root_def()
-        assert!(data != DefPathData::CrateRoot);
+        debug_assert!(data != DefPathData::CrateRoot);
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
@@ -581,8 +582,8 @@ impl Definitions {
     /// AST to HIR lowering.
     pub fn init_node_id_to_hir_id_mapping(&mut self,
                                           mapping: IndexVec<ast::NodeId, hir::HirId>) {
-        assert!(self.node_to_hir_id.is_empty(),
-                "Trying initialize NodeId -> HirId mapping twice");
+        debug_assert!(self.node_to_hir_id.is_empty(),
+                      "Trying initialize NodeId -> HirId mapping twice");
         self.node_to_hir_id = mapping;
     }
 

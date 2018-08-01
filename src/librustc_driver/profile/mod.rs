@@ -90,8 +90,8 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
         match msg {
             ProfileQueriesMsg::Halt => return,
             ProfileQueriesMsg::Dump(params) => {
-                assert!(stack.len() == 0);
-                assert!(frame.parse_st == ParseState::Clear);
+                debug_assert!(stack.len() == 0);
+                debug_assert!(frame.parse_st == ParseState::Clear);
                 {
                     // write log of all messages
                     if params.dump_profq_msg_log {
