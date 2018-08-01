@@ -10,7 +10,7 @@
 
 // compile-pass
 
-#![feature(use_extern_macros, decl_macro)]
+#![feature(decl_macro)]
 
 mod type_ns {
     pub type A = u8;

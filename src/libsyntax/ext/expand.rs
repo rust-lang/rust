@@ -36,7 +36,7 @@ use visit::{self, Visitor};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
-use std::mem;
+use std::{iter, mem};
 use std::rc::Rc;
 use std::path::PathBuf;
 
@@ -238,6 +238,15 @@ impl Invocation {
         match self.kind {
             InvocationKind::Bang { span, .. } => span,
             InvocationKind::Attr { attr: Some(ref attr), .. } => attr.span,
+            InvocationKind::Attr { attr: None, .. } => DUMMY_SP,
+            InvocationKind::Derive { ref path, .. } => path.span,
+        }
+    }
+
+    pub fn path_span(&self) -> Span {
+        match self.kind {
+            InvocationKind::Bang { ref mac, .. } => mac.node.path.span,
+            InvocationKind::Attr { attr: Some(ref attr), .. } => attr.path.span,
             InvocationKind::Attr { attr: None, .. } => DUMMY_SP,
             InvocationKind::Derive { ref path, .. } => path.span,
         }
@@ -566,6 +575,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         });
 
         match *ext {
+            NonMacroAttr => {
+                attr::mark_known(&attr);
+                let item = item.map_attrs(|mut attrs| { attrs.push(attr); attrs });
+                Some(invoc.fragment_kind.expect_from_annotatables(iter::once(item)))
+            }
             MultiModifier(ref mac) => {
                 let meta = attr.parse_meta(self.cx.parse_sess)
                                .map_err(|mut e| { e.emit(); }).ok()?;
@@ -810,7 +824,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             }
 
-            MultiDecorator(..) | MultiModifier(..) | AttrProcMacro(..) => {
+            MultiDecorator(..) | MultiModifier(..) |
+            AttrProcMacro(..) | SyntaxExtension::NonMacroAttr => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", path));
                 self.cx.trace_macros_diag();
@@ -1612,12 +1627,15 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
         fn enable_format_args_nl = format_args_nl,
-        fn use_extern_macros_enabled = use_extern_macros,
         fn macros_in_extern_enabled = macros_in_extern,
         fn proc_macro_mod = proc_macro_mod,
         fn proc_macro_gen = proc_macro_gen,
         fn proc_macro_expr = proc_macro_expr,
         fn proc_macro_non_items = proc_macro_non_items,
+    }
+
+    pub fn use_extern_macros_enabled(&self) -> bool {
+        self.features.map_or(false, |features| features.use_extern_macros())
     }
 }
 

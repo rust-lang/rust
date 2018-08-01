@@ -588,6 +588,9 @@ impl MacroKind {
 
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
+    /// A trivial "extension" that does nothing, only keeps the attribute and marks it as known.
+    NonMacroAttr,
+
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
     ///
@@ -667,6 +670,7 @@ impl SyntaxExtension {
             SyntaxExtension::IdentTT(..) |
             SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
+            SyntaxExtension::NonMacroAttr |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
             SyntaxExtension::AttrProcMacro(..) =>
@@ -696,6 +700,7 @@ impl SyntaxExtension {
             SyntaxExtension::AttrProcMacro(.., edition) |
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,
             // Unstable legacy stuff
+            SyntaxExtension::NonMacroAttr |
             SyntaxExtension::IdentTT(..) |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |

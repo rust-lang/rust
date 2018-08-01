@@ -31,7 +31,7 @@ use syntax::symbol::keywords;
 
 use std::iter;
 
-use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::bitvec::BitArray;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 pub use self::constant::codegen_static_initializer;
@@ -323,7 +323,7 @@ pub fn codegen_mir(
     debuginfo::start_emitting_source_locations(&fx.debug_context);
 
     let rpo = traversal::reverse_postorder(&mir);
-    let mut visited = BitVector::new(mir.basic_blocks().len());
+    let mut visited = BitArray::new(mir.basic_blocks().len());
 
     // Codegen the body of each block using reverse postorder
     for (bb, _) in rpo {
@@ -417,7 +417,7 @@ fn arg_local_refs(
     bx: &Builder<'a, 'll, 'tcx>,
     fx: &FunctionCx<'a, 'll, 'tcx>,
     scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
-    memory_locals: &BitVector<mir::Local>,
+    memory_locals: &BitArray<mir::Local>,
 ) -> Vec<LocalRef<'ll, 'tcx>> {
     let mir = fx.mir;
     let tcx = bx.tcx();

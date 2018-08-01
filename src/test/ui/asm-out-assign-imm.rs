@@ -16,6 +16,7 @@
 // ignore-sparc
 // ignore-sparc64
 // ignore-mips
+// ignore-mips64
 
 #![feature(asm)]
 
