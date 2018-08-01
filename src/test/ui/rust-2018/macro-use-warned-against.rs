@@ -12,7 +12,7 @@
 // aux-build:macro-use-warned-against2.rs
 // compile-pass
 
-#![warn(rust_2018_idioms, unused)]
+#![warn(macro_use_extern_crate, unused)]
 #![feature(use_extern_macros)]
 
 #[macro_use] //~ WARN should be replaced at use sites with a `use` statement
