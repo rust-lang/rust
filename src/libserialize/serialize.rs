@@ -46,58 +46,67 @@ pub trait Encoder {
 
     // Compound types:
     fn emit_enum<F>(&mut self, _name: &str, f: F) -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
-
-    fn emit_enum_variant<F>(&mut self, _v_name: &str,
-                            v_id: usize,
-                            _len: usize,
-                            f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
+
+    fn emit_enum_variant<F>(&mut self, _v_name: &str, v_id: usize, _len: usize, f: F)
+        -> Result<(), Self::Error> where F: FnOnce(&mut Self) -> Result<(), Self::Error>
     {
         self.emit_usize(v_id)?;
         f(self)
     }
-    fn emit_enum_variant_arg<F>(&mut self, _a_idx: usize, f: F)
-                                -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
 
-    fn emit_enum_struct_variant<F>(&mut self, v_name: &str,
-                                   v_id: usize,
-                                   len: usize,
-                                   f: F) -> Result<(), Self::Error>
+    fn emit_enum_variant_arg<F>(&mut self, _a_idx: usize, f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
+
+    fn emit_enum_struct_variant<F>(&mut self, v_name: &str, v_id: usize, len: usize, f: F)
+        -> Result<(), Self::Error> where F: FnOnce(&mut Self) -> Result<(), Self::Error>
     {
         self.emit_enum_variant(v_name, v_id, len, f)
     }
-    fn emit_enum_struct_variant_field<F>(&mut self,
-                                         _f_name: &str,
-                                         f_idx: usize,
-                                         f: F) -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+
+    fn emit_enum_struct_variant_field<F>(&mut self, _f_name: &str, f_idx: usize, f: F)
+        -> Result<(), Self::Error> where F: FnOnce(&mut Self) -> Result<(), Self::Error>
     {
         self.emit_enum_variant_arg(f_idx, f)
     }
 
-    fn emit_struct<F>(&mut self, _name: &str, _len: usize, f: F)
-                      -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
+    fn emit_struct<F>(&mut self, _name: &str, _len: usize, f: F) -> Result<(), Self::Error>
+        where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
+
     fn emit_struct_field<F>(&mut self, _f_name: &str, _f_idx: usize, f: F)
-                            -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
+        -> Result<(), Self::Error> where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
 
     fn emit_tuple<F>(&mut self, _len: usize, f: F) -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
-    fn emit_tuple_arg<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
+        where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
 
-    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F)
-                            -> Result<(), Self::Error>
+    fn emit_tuple_arg<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
+        where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
+
+    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>
     {
         self.emit_tuple(len, f)
     }
-    fn emit_tuple_struct_arg<F>(&mut self, f_idx: usize, f: F)
-                                -> Result<(), Self::Error>
+
+    fn emit_tuple_struct_arg<F>(&mut self, f_idx: usize, f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>
     {
         self.emit_tuple_arg(f_idx, f)
@@ -109,13 +118,14 @@ pub trait Encoder {
     {
         self.emit_enum("Option", f)
     }
+
     fn emit_option_none(&mut self) -> Result<(), Self::Error> {
         self.emit_enum_variant("None", 0, 0, |_| Ok(()))
     }
+
     fn emit_option_some<F>(&mut self, f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>
     {
-
         self.emit_enum_variant("Some", 1, 1, f)
     }
 
@@ -125,8 +135,12 @@ pub trait Encoder {
         self.emit_usize(len)?;
         f(self)
     }
+
     fn emit_seq_elt<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
+        where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
 
     fn emit_map<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>
@@ -134,10 +148,18 @@ pub trait Encoder {
         self.emit_usize(len)?;
         f(self)
     }
+
     fn emit_map_elt_key<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
+        where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
+
     fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
-        where F: FnOnce(&mut Self) -> Result<(), Self::Error> { f(self) }
+        where F: FnOnce(&mut Self) -> Result<(), Self::Error>
+    {
+        f(self)
+    }
 }
 
 pub trait Decoder {
@@ -165,59 +187,67 @@ pub trait Decoder {
 
     // Compound types:
     fn read_enum<T, F>(&mut self, _name: &str, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
 
-    fn read_enum_variant<T, F>(&mut self, _names: &[&str], mut f: F)
-                               -> Result<T, Self::Error>
+    fn read_enum_variant<T, F>(&mut self, _names: &[&str], mut f: F) -> Result<T, Self::Error>
         where F: FnMut(&mut Self, usize) -> Result<T, Self::Error>
     {
         let disr = self.read_usize()?;
         f(self, disr)
     }
-    fn read_enum_variant_arg<T, F>(&mut self, _a_idx: usize, f: F)
-                                   -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
 
-    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F)
-                                      -> Result<T, Self::Error>
+    fn read_enum_variant_arg<T, F>(&mut self, _a_idx: usize, f: F) -> Result<T, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
+
+    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> Result<T, Self::Error>
         where F: FnMut(&mut Self, usize) -> Result<T, Self::Error>
     {
         self.read_enum_variant(names, f)
     }
-    fn read_enum_struct_variant_field<T, F>(&mut self,
-                                            _f_name: &str,
-                                            f_idx: usize,
-                                            f: F)
-                                            -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+
+    fn read_enum_struct_variant_field<T, F>(&mut self, _f_name: &str, f_idx: usize, f: F)
+        -> Result<T, Self::Error> where F: FnOnce(&mut Self) -> Result<T, Self::Error>
     {
         self.read_enum_variant_arg(f_idx, f)
     }
 
-    fn read_struct<T, F>(&mut self, _s_name: &str, _len: usize, f: F)
-                         -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
-    fn read_struct_field<T, F>(&mut self,
-                               _f_name: &str,
-                               _f_idx: usize,
-                               f: F)
-                               -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
+    fn read_struct<T, F>(&mut self, _s_name: &str, _len: usize, f: F) -> Result<T, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
+
+    fn read_struct_field<T, F>(&mut self, _f_name: &str, _f_idx: usize, f: F)
+        -> Result<T, Self::Error> where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
 
     fn read_tuple<T, F>(&mut self, _len: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
-    fn read_tuple_arg<T, F>(&mut self, _a_idx: usize, f: F)
-                            -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
 
-    fn read_tuple_struct<T, F>(&mut self, _s_name: &str, len: usize, f: F)
-                               -> Result<T, Self::Error>
+    fn read_tuple_arg<T, F>(&mut self, _a_idx: usize, f: F) -> Result<T, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
+
+    fn read_tuple_struct<T, F>(&mut self, _s_name: &str, len: usize, f: F) -> Result<T, Self::Error>
         where F: FnOnce(&mut Self) -> Result<T, Self::Error>
     {
         self.read_tuple(len, f)
     }
-    fn read_tuple_struct_arg<T, F>(&mut self, a_idx: usize, f: F)
-                                   -> Result<T, Self::Error>
+
+    fn read_tuple_struct_arg<T, F>(&mut self, a_idx: usize, f: F) -> Result<T, Self::Error>
         where F: FnOnce(&mut Self) -> Result<T, Self::Error>
     {
         self.read_tuple_arg(a_idx, f)
@@ -244,8 +274,12 @@ pub trait Decoder {
         let len = self.read_usize()?;
         f(self, len)
     }
+
     fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
 
     fn read_map<T, F>(&mut self, f: F) -> Result<T, Self::Error>
         where F: FnOnce(&mut Self, usize) -> Result<T, Self::Error>
@@ -253,12 +287,18 @@ pub trait Decoder {
         let len = self.read_usize()?;
         f(self, len)
     }
-    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F)
-                              -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
-    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F)
-                              -> Result<T, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<T, Self::Error> { f(self) }
+
+    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
+
+    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<T, Self::Error>
+    {
+        f(self)
+    }
 
     // Failure
     fn error(&mut self, err: &str) -> Self::Error;
@@ -567,9 +607,7 @@ impl<T:Decodable> Decodable for Vec<T> {
     }
 }
 
-impl<'a, T:Encodable> Encodable for Cow<'a, [T]>
-where [T]: ToOwned<Owned = Vec<T>>
-{
+impl<'a, T:Encodable> Encodable for Cow<'a, [T]> where [T]: ToOwned<Owned = Vec<T>> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
@@ -580,9 +618,7 @@ where [T]: ToOwned<Owned = Vec<T>>
     }
 }
 
-impl<T:Decodable+ToOwned> Decodable for Cow<'static, [T]>
-where [T]: ToOwned<Owned = Vec<T>>
-{
+impl<T:Decodable+ToOwned> Decodable for Cow<'static, [T]> where [T]: ToOwned<Owned = Vec<T>> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Cow<'static, [T]>, D::Error> {
         d.read_seq(|d, len| {
             let mut v = Vec::with_capacity(len);
@@ -685,8 +721,7 @@ macro_rules! tuple {
                 let len: usize = count_idents!($($name,)*);
                 d.read_tuple(len, |d| {
                     let mut i = 0;
-                    let ret = ($(d.read_tuple_arg({ i+=1; i-1 },
-                                                  |d| -> Result<$name,D::Error> {
+                    let ret = ($(d.read_tuple_arg({ i+=1; i-1 }, |d| -> Result<$name, D::Error> {
                         Decodable::decode(d)
                     })?,)*);
                     Ok(ret)
@@ -778,13 +813,11 @@ pub trait SpecializationError {
     /// `T` is the type being encoded/decoded, and
     /// the arguments are the names of the trait
     /// and method that should've been overridden.
-    fn not_found<S, T: ?Sized>(trait_name: &'static str,
-                               method_name: &'static str) -> Self;
+    fn not_found<S, T: ?Sized>(trait_name: &'static str, method_name: &'static str) -> Self;
 }
 
 impl<E> SpecializationError for E {
-    default fn not_found<S, T: ?Sized>(trait_name: &'static str,
-                                       method_name: &'static str) -> E {
+    default fn not_found<S, T: ?Sized>(trait_name: &'static str, method_name: &'static str) -> E {
         panic!("missing specialization: `<{} as {}<{}>>::{}` not overridden",
                unsafe { intrinsics::type_name::<S>() },
                trait_name,
