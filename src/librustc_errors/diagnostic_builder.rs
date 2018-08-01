@@ -26,6 +26,7 @@ use syntax_pos::{MultiSpan, Span};
 pub struct DiagnosticBuilder<'a> {
     pub handler: &'a Handler,
     diagnostic: Diagnostic,
+    allow_suggestions: bool,
 }
 
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
@@ -186,26 +187,66 @@ impl<'a> DiagnosticBuilder<'a> {
                                      msg: &str,
                                      suggestions: Vec<String>)
                                      -> &mut Self);
-    forward!(pub fn span_suggestion_with_applicability(&mut self,
-                                                sp: Span,
-                                                msg: &str,
-                                                suggestion: String,
-                                                applicability: Applicability)
-                                                -> &mut Self);
-    forward!(pub fn span_suggestions_with_applicability(&mut self,
-                                                 sp: Span,
-                                                 msg: &str,
-                                                 suggestions: Vec<String>,
-                                                 applicability: Applicability)
-                                                 -> &mut Self);
-    forward!(pub fn span_suggestion_short_with_applicability(&mut self,
-                                                             sp: Span,
-                                                             msg: &str,
-                                                             suggestion: String,
-                                                             applicability: Applicability)
-                                                             -> &mut Self);
+    pub fn span_suggestion_with_applicability(&mut self,
+                                              sp: Span,
+                                              msg: &str,
+                                              suggestion: String,
+                                              applicability: Applicability)
+                                              -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.span_suggestion_with_applicability(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
+
+    pub fn span_suggestions_with_applicability(&mut self,
+                                               sp: Span,
+                                               msg: &str,
+                                               suggestions: Vec<String>,
+                                               applicability: Applicability)
+                                               -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.span_suggestions_with_applicability(
+            sp,
+            msg,
+            suggestions,
+            applicability,
+        );
+        self
+    }
+
+    pub fn span_suggestion_short_with_applicability(&mut self,
+                                                    sp: Span,
+                                                    msg: &str,
+                                                    suggestion: String,
+                                                    applicability: Applicability)
+                                                    -> &mut Self {
+        if !self.allow_suggestions {
+            return self
+        }
+        self.diagnostic.span_suggestion_short_with_applicability(
+            sp,
+            msg,
+            suggestion,
+            applicability,
+        );
+        self
+    }
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
+
+    pub fn allow_suggestions(&mut self, allow: bool) -> &mut Self {
+        self.allow_suggestions = allow;
+        self
+    }
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
@@ -228,7 +269,11 @@ impl<'a> DiagnosticBuilder<'a> {
     /// diagnostic.
     pub fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic)
                          -> DiagnosticBuilder<'a> {
-        DiagnosticBuilder { handler, diagnostic }
+        DiagnosticBuilder {
+            handler,
+            diagnostic,
+            allow_suggestions: true,
+        }
     }
 }
 
