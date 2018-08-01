@@ -1,4 +1,5 @@
-#![allow(many_single_char_names)]
+#![feature(tool_lints)]
+#![allow(clippy::many_single_char_names)]
 
 #[derive(Copy, Clone)]
 struct Foo(u8);
