@@ -49,7 +49,7 @@ pub(super) fn enum_item(p: &mut Parser) {
             let var = p.start();
             attributes::outer_attributes(p);
             if p.at(IDENT) {
-                p.bump();
+                name(p);
                 match p.current() {
                     L_CURLY => named_fields(p),
                     L_PAREN => pos_fields(p),
