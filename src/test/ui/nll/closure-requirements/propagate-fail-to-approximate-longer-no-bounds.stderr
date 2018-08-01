@@ -4,17 +4,6 @@ warning: not reporting region error due to nll
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: unsatisfied lifetime constraints
-  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9
-   |
-LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |                                                ---------  - has type `&std::cell::Cell<&'1 u32>`
-   |                                                |
-   |                                                has type `&std::cell::Cell<&'2 &u32>`
-LL |         // Only works if 'x: 'y:
-LL |         demand_y(x, y, x.get())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
-
 note: No external requirements
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:45:47
    |
@@ -31,6 +20,17 @@ LL | |     });
                i16,
                for<'r, 's, 't0, 't1, 't2> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) &'_#1r u32>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't0)) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't1)) u32>, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't2)) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) u32>))
            ]
+
+error: unsatisfied lifetime constraints
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9
+   |
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |                                                ---------  - has type `&std::cell::Cell<&'1 u32>`
+   |                                                |
+   |                                                has type `&std::cell::Cell<&'2 &u32>`
+LL |         // Only works if 'x: 'y:
+LL |         demand_y(x, y, x.get())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:44:1

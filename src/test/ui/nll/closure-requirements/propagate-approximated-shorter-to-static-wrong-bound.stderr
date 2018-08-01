@@ -23,19 +23,6 @@ LL | |     });
    = note: number of external vids: 5
    = note: where '_#1r: '_#0r
 
-error: borrowed data escapes outside of function
-  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:5
-   |
-LL |   fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-   |                     ------ `cell_a` is a reference that is only valid in the function body
-LL | /     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-LL | |         //~^ ERROR
-LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get())
-LL | |         //~^ WARNING not reporting region error due to nll
-LL | |     });
-   | |______^ `cell_a` escapes the function body here
-
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:47:1
    |
@@ -49,6 +36,19 @@ LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_shorter_to_static_wrong_bound[317d]::supply[0]) with substs []
+
+error: borrowed data escapes outside of function
+  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:5
+   |
+LL |   fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   |                     ------ `cell_a` is a reference that is only valid in the function body
+LL | /     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+LL | |         //~^ ERROR
+LL | |         // Only works if 'x: 'y:
+LL | |         demand_y(x, y, x.get())
+LL | |         //~^ WARNING not reporting region error due to nll
+LL | |     });
+   | |______^ `cell_a` escapes the function body here
 
 error: aborting due to previous error
 

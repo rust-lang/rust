@@ -683,46 +683,6 @@ impl<T: ?Sized> *const T {
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
     ///
-    /// If the address different between the two pointers ia not a multiple of
-    /// `mem::size_of::<T>()` then the result of the division is rounded towards
-    /// zero.
-    ///
-    /// This function returns `None` if `T` is a zero-sized type.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(offset_to)]
-    /// #![allow(deprecated)]
-    ///
-    /// fn main() {
-    ///     let a = [0; 5];
-    ///     let ptr1: *const i32 = &a[1];
-    ///     let ptr2: *const i32 = &a[3];
-    ///     assert_eq!(ptr1.offset_to(ptr2), Some(2));
-    ///     assert_eq!(ptr2.offset_to(ptr1), Some(-2));
-    ///     assert_eq!(unsafe { ptr1.offset(2) }, ptr2);
-    ///     assert_eq!(unsafe { ptr2.offset(-2) }, ptr1);
-    /// }
-    /// ```
-    #[unstable(feature = "offset_to", issue = "41079")]
-    #[rustc_deprecated(since = "1.27.0", reason = "Replaced by `wrapping_offset_from`, with the \
-        opposite argument order.  If you're writing unsafe code, consider `offset_from`.")]
-    #[inline]
-    pub fn offset_to(self, other: *const T) -> Option<isize> where T: Sized {
-        let size = mem::size_of::<T>();
-        if size == 0 {
-            None
-        } else {
-            Some(other.wrapping_offset_from(self))
-        }
-    }
-
-    /// Calculates the distance between two pointers. The returned value is in
-    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
-    ///
     /// This function is the inverse of [`offset`].
     ///
     /// [`offset`]: #method.offset
@@ -1461,46 +1421,6 @@ impl<T: ?Sized> *mut T {
             None
         } else {
             Some(&mut *self)
-        }
-    }
-
-    /// Calculates the distance between two pointers. The returned value is in
-    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
-    ///
-    /// If the address different between the two pointers ia not a multiple of
-    /// `mem::size_of::<T>()` then the result of the division is rounded towards
-    /// zero.
-    ///
-    /// This function returns `None` if `T` is a zero-sized type.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(offset_to)]
-    /// #![allow(deprecated)]
-    ///
-    /// fn main() {
-    ///     let mut a = [0; 5];
-    ///     let ptr1: *mut i32 = &mut a[1];
-    ///     let ptr2: *mut i32 = &mut a[3];
-    ///     assert_eq!(ptr1.offset_to(ptr2), Some(2));
-    ///     assert_eq!(ptr2.offset_to(ptr1), Some(-2));
-    ///     assert_eq!(unsafe { ptr1.offset(2) }, ptr2);
-    ///     assert_eq!(unsafe { ptr2.offset(-2) }, ptr1);
-    /// }
-    /// ```
-    #[unstable(feature = "offset_to", issue = "41079")]
-    #[rustc_deprecated(since = "1.27.0", reason = "Replaced by `wrapping_offset_from`, with the \
-        opposite argument order.  If you're writing unsafe code, consider `offset_from`.")]
-    #[inline]
-    pub fn offset_to(self, other: *const T) -> Option<isize> where T: Sized {
-        let size = mem::size_of::<T>();
-        if size == 0 {
-            None
-        } else {
-            Some(other.wrapping_offset_from(self))
         }
     }
 

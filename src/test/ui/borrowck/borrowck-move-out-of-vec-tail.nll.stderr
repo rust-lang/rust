@@ -3,14 +3,19 @@ error[E0508]: cannot move out of type `[Foo]`, a non-copy slice
    |
 LL |             match tail {
    |                   ^^^^ cannot move out of here
+LL |                 &[Foo { string: a },
+   |                                 - data moved here
+...
+LL |                   Foo { string: b }] => {
+   |                                 - ... and here
 help: to prevent move, use ref or ref mut
    |
 LL |                 &[Foo { string: ref a },
-   |                                 ^^^^^
-help: to prevent move, use ref or ref mut
-   |
+LL |                 //~^ ERROR cannot move out of type `[Foo]`
+LL |                 //~| cannot move out
+LL |                 //~| to prevent move
 LL |                   Foo { string: ref b }] => {
-   |                                 ^^^^^
+   |
 
 error: aborting due to previous error
 

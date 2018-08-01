@@ -172,3 +172,14 @@ pub mod os {
     pub const EXE_SUFFIX: &'static str = "";
     pub const EXE_EXTENSION: &'static str = "";
 }
+
+#[cfg(target_os = "hermit")]
+pub mod os {
+    pub const FAMILY: &'static str = "unix";
+    pub const OS: &'static str = "hermit";
+    pub const DLL_PREFIX: &'static str = "lib";
+    pub const DLL_SUFFIX: &'static str = ".so";
+    pub const DLL_EXTENSION: &'static str = "so";
+    pub const EXE_SUFFIX: &'static str = "";
+    pub const EXE_EXTENSION: &'static str = "";
+}

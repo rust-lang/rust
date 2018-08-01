@@ -60,14 +60,6 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    = note: number of external vids: 4
    = note: where T: '_#1r
 
-error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:24
-   |
-LL |     twice(cell, value, |a, b| invoke(a, b));
-   |                        ^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(1:15), 'a))`...
-
 note: No external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:41:1
    |
@@ -82,6 +74,14 @@ LL | | }
    = note: defining type: DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]) with substs [
                T
            ]
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:24
+   |
+LL |     twice(cell, value, |a, b| invoke(a, b));
+   |                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(1:15), 'a))`...
 
 error: aborting due to previous error
 

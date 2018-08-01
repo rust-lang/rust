@@ -25,6 +25,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("freebsd", "freebsd"),
     ("fuchsia", "fuchsia"),
     ("haiku", "haiku"),
+    ("hermit", "hermit"),
     ("ios", "ios"),
     ("l4re", "l4re"),
     ("linux", "linux"),

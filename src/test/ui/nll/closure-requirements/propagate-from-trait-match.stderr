@@ -26,21 +26,6 @@ LL | |     });
    = note: number of external vids: 3
    = note: where T: '_#1r
 
-error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/propagate-from-trait-match.rs:42:36
-   |
-LL |       establish_relationships(value, |value| {
-   |  ____________________________________^
-LL | |         //~^ ERROR the parameter type `T` may not live long enough
-LL | |
-LL | |         // This function call requires that
-...  |
-LL | |         //~^ WARNING not reporting region error due to nll
-LL | |     });
-   | |_____^
-   |
-   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
-
 note: No external requirements
   --> $DIR/propagate-from-trait-match.rs:38:1
    |
@@ -57,6 +42,21 @@ LL | | }
                '_#1r,
                T
            ]
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/propagate-from-trait-match.rs:42:36
+   |
+LL |       establish_relationships(value, |value| {
+   |  ____________________________________^
+LL | |         //~^ ERROR the parameter type `T` may not live long enough
+LL | |
+LL | |         // This function call requires that
+...  |
+LL | |         //~^ WARNING not reporting region error due to nll
+LL | |     });
+   | |_____^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
 error: aborting due to previous error
 

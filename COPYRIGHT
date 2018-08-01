@@ -10,8 +10,8 @@ Copyrights in the Rust project are retained by their contributors. No
 copyright assignment is required to contribute to the Rust project.
 
 Some files include explicit copyright notices and/or license notices.
-For full authorship information, see AUTHORS.txt and the version control
-history.
+For full authorship information, see the version control history or
+https://thanks.rust-lang.org
 
 Except as otherwise noted (below and/or in individual files), Rust is
 licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or

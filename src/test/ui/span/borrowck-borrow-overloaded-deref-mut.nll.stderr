@@ -10,7 +10,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:51:11
    |
 LL | fn deref_extend_mut1<'a>(x: &'a Own<isize>) -> &'a mut isize {
-   |                             -------------- help: consider changing this to be a mutable reference: `&mut Own<isize>`
+   |                             -------------- help: consider changing this to be a mutable reference: `&'a mut Own<isize>`
 LL |     &mut **x //~ ERROR cannot borrow
    |           ^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
@@ -26,7 +26,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:63:6
    |
 LL | fn assign2<'a>(x: &'a Own<isize>) {
-   |                   -------------- help: consider changing this to be a mutable reference: `&mut Own<isize>`
+   |                   -------------- help: consider changing this to be a mutable reference: `&'a mut Own<isize>`
 LL |     **x = 3; //~ ERROR cannot borrow
    |      ^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 

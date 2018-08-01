@@ -28,7 +28,10 @@ error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy sli
 LL |     match vec {
    |           ^^^ cannot move out of here
 LL |         &mut [_a, //~ ERROR cannot move out
-   |               -- help: to prevent move, use ref or ref mut: `ref _a`
+   |               --
+   |               |
+   |               data moved here
+   |               help: to prevent move, use ref or ref mut: `ref _a`
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:57:13
@@ -46,7 +49,10 @@ LL |     match vec {
    |           ^^^ cannot move out of here
 ...
 LL |          _b] => {}
-   |          -- help: to prevent move, use ref or ref mut: `ref _b`
+   |          --
+   |          |
+   |          data moved here
+   |          help: to prevent move, use ref or ref mut: `ref _b`
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:70:13
@@ -62,18 +68,15 @@ error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy sli
    |
 LL |     match vec {
    |           ^^^ cannot move out of here
+LL |         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
+   |               --  --  -- ... and here
+   |               |   |
+   |               |   ... and here
+   |               data moved here
 help: to prevent move, use ref or ref mut
    |
-LL |         &mut [ref _a, _b, _c] => {}  //~ ERROR cannot move out
-   |               ^^^^^^
-help: to prevent move, use ref or ref mut
-   |
-LL |         &mut [_a, ref _b, _c] => {}  //~ ERROR cannot move out
-   |                   ^^^^^^
-help: to prevent move, use ref or ref mut
-   |
-LL |         &mut [_a, _b, ref _c] => {}  //~ ERROR cannot move out
-   |                       ^^^^^^
+LL |         &mut [ref _a, ref _b, ref _c] => {}  //~ ERROR cannot move out
+   |               ^^^^^^  ^^^^^^  ^^^^^^
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:82:13

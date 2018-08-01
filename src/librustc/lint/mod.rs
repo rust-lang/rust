@@ -139,6 +139,26 @@ macro_rules! declare_lint {
     );
 }
 
+#[macro_export]
+macro_rules! declare_tool_lint {
+    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr) => (
+        declare_tool_lint!{$vis $tool::$NAME, $Level, $desc, false}
+    );
+    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr,
+     report_in_external_macro: $rep: expr) => (
+         declare_tool_lint!{$vis $tool::$NAME, $Level, $desc, $rep}
+    );
+    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr, $external: expr) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: &concat!(stringify!($tool), "::", stringify!($NAME)),
+            default_level: $crate::lint::$Level,
+            desc: $desc,
+            edition_lint_opts: None,
+            report_in_external_macro: $external,
+        };
+    );
+}
+
 /// Declare a static `LintArray` and return it as an expression.
 #[macro_export]
 macro_rules! lint_array {
@@ -575,7 +595,8 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();
     let lint_id = LintId::of(lint);
-    if let Some(future_incompatible) = lints.future_incompatible(lint_id) {
+    let future_incompatible = lints.future_incompatible(lint_id);
+    if let Some(future_incompatible) = future_incompatible {
         const STANDARD_MESSAGE: &str =
             "this was previously accepted by the compiler but is being phased out; \
              it will become a hard error";
@@ -593,20 +614,21 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                                future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
+    }
 
-    // If this lint is *not* a future incompatibility warning then we want to be
-    // sure to not be too noisy in some situations. If this code originates in a
-    // foreign macro, aka something that this crate did not itself author, then
-    // it's likely that there's nothing this crate can do about it. We probably
-    // want to skip the lint entirely.
-    //
-    // For some lints though (like unreachable code) there's clear actionable
-    // items to take care of (delete the macro invocation). As a result we have
-    // a few lints we whitelist here for allowing a lint even though it's in a
-    // foreign macro invocation.
-    } else if !lint.report_in_external_macro {
-        if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
-            err.cancel();
+    // If this code originates in a foreign macro, aka something that this crate
+    // did not itself author, then it's likely that there's nothing this crate
+    // can do about it. We probably want to skip the lint entirely.
+    if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
+        // Any suggestions made here are likely to be incorrect, so anything we
+        // emit shouldn't be automatically fixed by rustfix.
+        err.allow_suggestions(false);
+
+        // If this is a future incompatible lint it'll become a hard error, so
+        // we have to emit *something*. Also allow lints to whitelist themselves
+        // on a case-by-case basis for emission in a foreign macro.
+        if future_incompatible.is_none() && !lint.report_in_external_macro {
+            err.cancel()
         }
     }
 
