@@ -365,6 +365,9 @@ impl std::error::Error for EncoderError {
 }
 
 impl From<fmt::Error> for EncoderError {
+    /// Converts a `fmt::Error` into `EncoderError`
+    ///
+    /// This conversion does not allocate memory.
     fn from(err: fmt::Error) -> EncoderError { EncoderError::FmtError(err) }
 }
 
