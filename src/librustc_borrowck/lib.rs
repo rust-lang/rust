@@ -39,4 +39,6 @@ mod borrowck;
 
 pub mod graphviz;
 
+mod dataflow;
+
 pub use borrowck::provide;

@@ -13,12 +13,10 @@
 
 pub use self::MoveKind::*;
 
+use dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
+
 use borrowck::*;
 use rustc::cfg;
-use rustc::middle::dataflow::DataFlowContext;
-use rustc::middle::dataflow::BitwiseOperator;
-use rustc::middle::dataflow::DataFlowOperator;
-use rustc::middle::dataflow::KillFrom;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
 use rustc::ty::{self, TyCtxt};

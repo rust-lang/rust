@@ -24,10 +24,6 @@ use rustc::hir::HirId;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::cfg;
-use rustc::middle::dataflow::DataFlowContext;
-use rustc::middle::dataflow::BitwiseOperator;
-use rustc::middle::dataflow::DataFlowOperator;
-use rustc::middle::dataflow::KillFrom;
 use rustc::middle::borrowck::{BorrowCheckResult, SignalledError};
 use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::expr_use_visitor as euv;
@@ -53,6 +49,8 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
+
+use dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
 
 pub mod check_loans;
 
