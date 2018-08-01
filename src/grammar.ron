@@ -70,6 +70,7 @@ Grammar(
         "ref",
         "let",
         "move",
+        "return",
     ],
     contextual_keywords: [
         "auto",
@@ -138,6 +139,8 @@ Grammar(
         "STRUCT_LIT",
         "STRUCT_LIT_FIELD",
         "IF_EXPR",
+        "BLOCK_EXPR",
+        "RETURN_EXPR",
 
         "EXTERN_BLOCK_EXPR",
         "ENUM_VARIANT",
@@ -155,7 +158,6 @@ Grammar(
         "ABI",
         "NAME",
         "NAME_REF",
-        "BLOCK_EXPR",
 
         "LET_STMT",
         "EXPR_STMT",

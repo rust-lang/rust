@@ -13,18 +13,20 @@ use super::*;
 //     let _ = b"e";
 //     let _ = br"f";
 // }
+const LITERAL_FIRST: TokenSet =
+    token_set![TRUE_KW, FALSE_KW, INT_NUMBER, FLOAT_NUMBER, BYTE, CHAR,
+               STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
+
 pub(super) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
-    match p.current() {
-        TRUE_KW | FALSE_KW | INT_NUMBER | FLOAT_NUMBER | BYTE | CHAR | STRING | RAW_STRING
-        | BYTE_STRING | RAW_BYTE_STRING => {
-            let m = p.start();
-            p.bump();
-            Some(m.complete(p, LITERAL))
-        }
-        _ => None,
+    if !LITERAL_FIRST.contains(p.current()) {
+        return None;
     }
+    let m = p.start();
+    p.bump();
+    Some(m.complete(p, LITERAL))
 }
 
+const EXPR_FIRST: TokenSet = PREFIX_EXPR_FIRST;
 pub(super) fn expr(p: &mut Parser) {
     let mut lhs = match prefix_expr(p) {
         Some(lhs) => lhs,
@@ -80,6 +82,11 @@ fn let_stmt(p: &mut Parser) {
     m.complete(p, LET_STMT);
 }
 
+const PREFIX_EXPR_FIRST: TokenSet =
+    token_set_union![
+        token_set![AMPERSAND, STAR, EXCL],
+        ATOM_EXPR_FIRST,
+    ];
 fn prefix_expr(p: &mut Parser) -> Option<CompletedMarker> {
     let done = match p.current() {
         AMPERSAND => ref_expr(p),
@@ -128,6 +135,11 @@ fn not_expr(p: &mut Parser) -> CompletedMarker {
     m.complete(p, NOT_EXPR)
 }
 
+const ATOM_EXPR_FIRST: TokenSet =
+    token_set_union![
+        LITERAL_FIRST,
+        token_set![L_PAREN, PIPE, MOVE_KW, IF_KW, UNSAFE_KW, L_CURLY, RETURN_KW],
+    ];
 fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
     match literal(p) {
         Some(m) => return Some(m),
@@ -144,6 +156,7 @@ fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
         IF_KW => if_expr(p),
         UNSAFE_KW if la == L_CURLY => block_expr(p),
         L_CURLY => block_expr(p),
+        RETURN_KW => return_expr(p),
         _ => {
             p.err_and_bump("expected expression");
             return None;
@@ -235,6 +248,21 @@ fn block_expr(p: &mut Parser) -> CompletedMarker {
     }
     p.expect(R_CURLY);
     m.complete(p, BLOCK_EXPR)
+}
+
+// test return_expr
+// fn foo() {
+//     return;
+//     return 92;
+// }
+fn return_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(RETURN_KW));
+    let m = p.start();
+    p.bump();
+    if EXPR_FIRST.contains(p.current()) {
+        expr(p);
+    }
+    m.complete(p, RETURN_EXPR)
 }
 
 // test call_expr

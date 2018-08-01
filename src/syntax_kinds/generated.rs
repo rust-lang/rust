@@ -71,6 +71,7 @@ pub enum SyntaxKind {
     REF_KW,
     LET_KW,
     MOVE_KW,
+    RETURN_KW,
     AUTO_KW,
     DEFAULT_KW,
     UNION_KW,
@@ -129,6 +130,8 @@ pub enum SyntaxKind {
     STRUCT_LIT,
     STRUCT_LIT_FIELD,
     IF_EXPR,
+    BLOCK_EXPR,
+    RETURN_EXPR,
     EXTERN_BLOCK_EXPR,
     ENUM_VARIANT,
     NAMED_FIELD,
@@ -145,7 +148,6 @@ pub enum SyntaxKind {
     ABI,
     NAME,
     NAME_REF,
-    BLOCK_EXPR,
     LET_STMT,
     EXPR_STMT,
     TYPE_PARAM_LIST,
@@ -202,6 +204,7 @@ impl SyntaxKind {
             | REF_KW
             | LET_KW
             | MOVE_KW
+            | RETURN_KW
             | AUTO_KW
             | DEFAULT_KW
             | UNION_KW
@@ -278,6 +281,7 @@ impl SyntaxKind {
             REF_KW => &SyntaxInfo { name: "REF_KW" },
             LET_KW => &SyntaxInfo { name: "LET_KW" },
             MOVE_KW => &SyntaxInfo { name: "MOVE_KW" },
+            RETURN_KW => &SyntaxInfo { name: "RETURN_KW" },
             AUTO_KW => &SyntaxInfo { name: "AUTO_KW" },
             DEFAULT_KW => &SyntaxInfo { name: "DEFAULT_KW" },
             UNION_KW => &SyntaxInfo { name: "UNION_KW" },
@@ -336,6 +340,8 @@ impl SyntaxKind {
             STRUCT_LIT => &SyntaxInfo { name: "STRUCT_LIT" },
             STRUCT_LIT_FIELD => &SyntaxInfo { name: "STRUCT_LIT_FIELD" },
             IF_EXPR => &SyntaxInfo { name: "IF_EXPR" },
+            BLOCK_EXPR => &SyntaxInfo { name: "BLOCK_EXPR" },
+            RETURN_EXPR => &SyntaxInfo { name: "RETURN_EXPR" },
             EXTERN_BLOCK_EXPR => &SyntaxInfo { name: "EXTERN_BLOCK_EXPR" },
             ENUM_VARIANT => &SyntaxInfo { name: "ENUM_VARIANT" },
             NAMED_FIELD => &SyntaxInfo { name: "NAMED_FIELD" },
@@ -352,7 +358,6 @@ impl SyntaxKind {
             ABI => &SyntaxInfo { name: "ABI" },
             NAME => &SyntaxInfo { name: "NAME" },
             NAME_REF => &SyntaxInfo { name: "NAME_REF" },
-            BLOCK_EXPR => &SyntaxInfo { name: "BLOCK_EXPR" },
             LET_STMT => &SyntaxInfo { name: "LET_STMT" },
             EXPR_STMT => &SyntaxInfo { name: "EXPR_STMT" },
             TYPE_PARAM_LIST => &SyntaxInfo { name: "TYPE_PARAM_LIST" },
@@ -403,6 +408,7 @@ impl SyntaxKind {
             "ref" => REF_KW,
             "let" => LET_KW,
             "move" => MOVE_KW,
+            "return" => RETURN_KW,
             _ => return None,
         };
         Some(kw)
@@ -506,6 +512,7 @@ impl SyntaxKind {
             REF_KW => "ref",
             LET_KW => "let",
             MOVE_KW => "move",
+            RETURN_KW => "return",
             AUTO_KW => "auto",
             DEFAULT_KW => "default",
             UNION_KW => "union",
