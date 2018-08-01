@@ -109,6 +109,7 @@ static TARGETS: &'static [&'static str] = &[
     "x86_64-sun-solaris",
     "x86_64-unknown-cloudabi",
     "x86_64-unknown-freebsd",
+    "x86_64-unknown-hermit",
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-gnux32",
     "x86_64-unknown-linux-musl",
