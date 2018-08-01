@@ -30,7 +30,10 @@ error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:24:9
    |
 LL |     println!("Some more $STUFF",
-   |              ------------------ multiple missing formatting specifiers
+   |              ------------------
+   |              |          |
+   |              |          help: format specifiers use curly braces: `{STUFF}`
+   |              multiple missing formatting specifiers
 LL |         "woo!",  //~ ERROR multiple unused formatting arguments
    |         ^^^^^^
 LL |             STUFF=
@@ -39,7 +42,6 @@ LL |        "things"
 LL |              , UNUSED="args");
    |                       ^^^^^^
    |
-   = help: `$STUFF` should be written as `{STUFF}`
    = note: shell formatting not supported; see the documentation for `std::fmt`
 
 error: aborting due to 4 previous errors
