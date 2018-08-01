@@ -104,6 +104,7 @@ pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
     [
+        keywords::Async.name(),
         keywords::Do.name(),
         keywords::Box.name(),
         keywords::Break.name(),
