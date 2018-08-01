@@ -139,7 +139,7 @@ Grammar(
         "STRUCT_LIT_FIELD",
         "IF_EXPR",
 
-        "EXTERN_BLOCK",
+        "EXTERN_BLOCK_EXPR",
         "ENUM_VARIANT",
         "NAMED_FIELD",
         "POS_FIELD",
@@ -155,7 +155,7 @@ Grammar(
         "ABI",
         "NAME",
         "NAME_REF",
-        "BLOCK",
+        "BLOCK_EXPR",
 
         "LET_STMT",
         "EXPR_STMT",

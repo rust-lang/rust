@@ -22,7 +22,7 @@ FILE@[0; 29)
       WHITESPACE@[20; 21)
       IDENT@[21; 25) "Copy"
       WHITESPACE@[25; 26)
-    BLOCK@[26; 29)
+    BLOCK_EXPR@[26; 29)
       L_CURLY@[26; 27)
       R_CURLY@[27; 28)
       WHITESPACE@[28; 29)

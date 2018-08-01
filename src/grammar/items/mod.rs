@@ -44,7 +44,7 @@ pub(super) fn item(p: &mut Parser) {
                 // extern {}
                 L_CURLY => {
                     extern_block(p);
-                    EXTERN_BLOCK
+                    EXTERN_BLOCK_EXPR
                 }
                 // test extern_struct
                 // extern struct Foo;

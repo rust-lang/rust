@@ -1,5 +1,5 @@
 FILE@[0; 10)
-  EXTERN_BLOCK@[0; 10)
+  EXTERN_BLOCK_EXPR@[0; 10)
     ABI@[0; 7)
       EXTERN_KW@[0; 6)
       WHITESPACE@[6; 7)

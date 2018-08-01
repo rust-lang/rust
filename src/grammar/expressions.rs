@@ -53,31 +53,9 @@ pub(super) fn expr(p: &mut Parser) {
 pub(super) fn block(p: &mut Parser) {
     if !p.at(L_CURLY) {
         p.error("expected block");
+        return;
     }
-    let m = p.start();
-    p.bump();
-    while !p.at(EOF) && !p.at(R_CURLY) {
-        match p.current() {
-            LET_KW => let_stmt(p),
-            c => {
-                // test block_items
-                // fn a() { fn b() {} }
-                if items::ITEM_FIRST.contains(c) {
-                    items::item(p)
-                } else {
-                    let expr_stmt = p.start();
-                    expressions::expr(p);
-                    if p.eat(SEMI) {
-                        expr_stmt.complete(p, EXPR_STMT);
-                    } else {
-                        expr_stmt.abandon(p);
-                    }
-                }
-            }
-        }
-    }
-    p.expect(R_CURLY);
-    m.complete(p, BLOCK);
+    block_expr(p);
 }
 
 // test let_stmt;
@@ -158,12 +136,14 @@ fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
     if paths::is_path_start(p) {
         return Some(path_expr(p));
     }
-
+    let la = p.nth(1);
     let done = match p.current() {
         L_PAREN => tuple_expr(p),
         PIPE => lambda_expr(p),
-        MOVE_KW if p.nth(1) == PIPE => lambda_expr(p),
+        MOVE_KW if la == PIPE => lambda_expr(p),
         IF_KW => if_expr(p),
+        UNSAFE_KW if la == L_CURLY => block_expr(p),
+        L_CURLY => block_expr(p),
         _ => {
             p.err_and_bump("expected expression");
             return None;
@@ -221,6 +201,40 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
         }
     }
     m.complete(p, IF_EXPR)
+}
+
+// test block_expr
+// fn foo() {
+//     {};
+//     unsafe {};
+// }
+fn block_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(L_CURLY) || p.at(UNSAFE_KW) && p.nth(1) == L_CURLY);
+    let m = p.start();
+    p.eat(UNSAFE_KW);
+    p.bump();
+    while !p.at(EOF) && !p.at(R_CURLY) {
+        match p.current() {
+            LET_KW => let_stmt(p),
+            c => {
+                // test block_items
+                // fn a() { fn b() {} }
+                if items::ITEM_FIRST.contains(c) {
+                    items::item(p)
+                } else {
+                    let expr_stmt = p.start();
+                    expressions::expr(p);
+                    if p.eat(SEMI) {
+                        expr_stmt.complete(p, EXPR_STMT);
+                    } else {
+                        expr_stmt.abandon(p);
+                    }
+                }
+            }
+        }
+    }
+    p.expect(R_CURLY);
+    m.complete(p, BLOCK_EXPR)
 }
 
 // test call_expr

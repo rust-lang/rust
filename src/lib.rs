@@ -45,6 +45,7 @@ pub use {
     yellow::{SyntaxNode, SyntaxNodeRef, SyntaxRoot, TreeRoot},
 };
 
+
 pub fn parse(text: &str) -> SyntaxNode {
     let tokens = tokenize(&text);
     parser_impl::parse::<yellow::GreenBuilder>(text, &tokens)
