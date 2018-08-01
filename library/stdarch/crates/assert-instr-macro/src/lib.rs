@@ -94,8 +94,7 @@ pub fn assert_instr(
                 .ident
                 .to_string()
                 .starts_with("target")
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
     let attrs = Append(&attrs);
 
     // Use an ABI on Windows that passes SIMD values in registers, like what

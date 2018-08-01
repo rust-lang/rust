@@ -65,6 +65,46 @@ types! {
     pub struct uint64x2_t(u64, u64);
 }
 
+/// ARM-specific type containing two `int8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct int8x8x2_t(pub int8x8_t, pub int8x8_t);
+/// ARM-specific type containing three `int8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct int8x8x3_t(pub int8x8_t, pub int8x8_t, pub int8x8_t);
+/// ARM-specific type containing four `int8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct int8x8x4_t(pub int8x8_t, pub int8x8_t, pub int8x8_t, pub int8x8_t);
+
+/// ARM-specific type containing two `uint8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct uint8x8x2_t(pub uint8x8_t, pub uint8x8_t);
+/// ARM-specific type containing three `uint8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct uint8x8x3_t(pub uint8x8_t, pub uint8x8_t, pub uint8x8_t);
+/// ARM-specific type containing four `uint8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct uint8x8x4_t(
+    pub uint8x8_t,
+    pub uint8x8_t,
+    pub uint8x8_t,
+    pub uint8x8_t,
+);
+
+/// ARM-specific type containing two `poly8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly8x8x2_t(pub poly8x8_t, pub poly8x8_t);
+/// ARM-specific type containing three `poly8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly8x8x3_t(pub poly8x8_t, pub poly8x8_t, pub poly8x8_t);
+/// ARM-specific type containing four `poly8x8_t` vectors.
+#[derive(Copy, Clone)]
+pub struct poly8x8x4_t(
+    pub poly8x8_t,
+    pub poly8x8_t,
+    pub poly8x8_t,
+    pub poly8x8_t,
+);
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[cfg_attr(
@@ -192,6 +232,35 @@ extern "C" {
         link_name = "llvm.aarch64.neon.fmaxp.v2f32"
     )]
     fn vpmaxf_v2f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
+}
+
+#[cfg(target_arch = "arm")]
+#[allow(improper_ctypes)]
+extern "C" {
+    #[link_name = "llvm.arm.neon.vtbl1"]
+    fn vtbl1(a: int8x8_t, b: int8x8_t) -> int8x8_t;
+    #[link_name = "llvm.arm.neon.vtbl2"]
+    fn vtbl2(a: int8x8_t, b: int8x8_t, b: int8x8_t) -> int8x8_t;
+    #[link_name = "llvm.arm.neon.vtbl3"]
+    fn vtbl3(a: int8x8_t, b: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
+    #[link_name = "llvm.arm.neon.vtbl4"]
+    fn vtbl4(
+        a: int8x8_t, b: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t,
+    ) -> int8x8_t;
+
+    #[link_name = "llvm.arm.neon.vtbx1"]
+    fn vtbx1(a: int8x8_t, b: int8x8_t, b: int8x8_t) -> int8x8_t;
+    #[link_name = "llvm.arm.neon.vtbx2"]
+    fn vtbx2(a: int8x8_t, b: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
+    #[link_name = "llvm.arm.neon.vtbx3"]
+    fn vtbx3(
+        a: int8x8_t, b: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t,
+    ) -> int8x8_t;
+    #[link_name = "llvm.arm.neon.vtbx4"]
+    fn vtbx4(
+        a: int8x8_t, b: int8x8_t, b: int8x8_t, c: int8x8_t, d: int8x8_t,
+        e: int8x8_t,
+    ) -> int8x8_t;
 }
 
 /// Vector add.
@@ -693,6 +762,308 @@ pub unsafe fn vpmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmaxp))]
 pub unsafe fn vpmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     vpmaxf_v2f32(a, b)
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
+    vtbl1(a, b)
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+    ::mem::transmute(vtbl1(::mem::transmute(a), ::mem::transmute(b)))
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
+    ::mem::transmute(vtbl1(::mem::transmute(a), ::mem::transmute(b)))
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl2_s8(a: int8x8x2_t, b: int8x8_t) -> int8x8_t {
+    vtbl2(a.0, a.1, b)
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl2_u8(a: uint8x8x2_t, b: uint8x8_t) -> uint8x8_t {
+    ::mem::transmute(vtbl2(
+        ::mem::transmute(a.0),
+        ::mem::transmute(a.1),
+        ::mem::transmute(b),
+    ))
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl2_p8(a: poly8x8x2_t, b: uint8x8_t) -> poly8x8_t {
+    ::mem::transmute(vtbl2(
+        ::mem::transmute(a.0),
+        ::mem::transmute(a.1),
+        ::mem::transmute(b),
+    ))
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl3_s8(a: int8x8x3_t, b: int8x8_t) -> int8x8_t {
+    vtbl3(a.0, a.1, a.2, b)
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl3_u8(a: uint8x8x3_t, b: uint8x8_t) -> uint8x8_t {
+    ::mem::transmute(vtbl3(
+        ::mem::transmute(a.0),
+        ::mem::transmute(a.1),
+        ::mem::transmute(a.2),
+        ::mem::transmute(b),
+    ))
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl3_p8(a: poly8x8x3_t, b: uint8x8_t) -> poly8x8_t {
+    ::mem::transmute(vtbl3(
+        ::mem::transmute(a.0),
+        ::mem::transmute(a.1),
+        ::mem::transmute(a.2),
+        ::mem::transmute(b),
+    ))
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl4_s8(a: int8x8x4_t, b: int8x8_t) -> int8x8_t {
+    vtbl4(a.0, a.1, a.2, a.3, b)
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl4_u8(a: uint8x8x4_t, b: uint8x8_t) -> uint8x8_t {
+    ::mem::transmute(vtbl4(
+        ::mem::transmute(a.0),
+        ::mem::transmute(a.1),
+        ::mem::transmute(a.2),
+        ::mem::transmute(a.3),
+        ::mem::transmute(b),
+    ))
+}
+
+/// Table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbl))]
+pub unsafe fn vtbl4_p8(a: poly8x8x4_t, b: uint8x8_t) -> poly8x8_t {
+    ::mem::transmute(vtbl4(
+        ::mem::transmute(a.0),
+        ::mem::transmute(a.1),
+        ::mem::transmute(a.2),
+        ::mem::transmute(a.3),
+        ::mem::transmute(b),
+    ))
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx1_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
+    vtbx1(a, b, c)
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx1_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
+    ::mem::transmute(vtbx1(
+        ::mem::transmute(a),
+        ::mem::transmute(b),
+        ::mem::transmute(c),
+    ))
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx1_p8(a: poly8x8_t, b: poly8x8_t, c: uint8x8_t) -> poly8x8_t {
+    ::mem::transmute(vtbx1(
+        ::mem::transmute(a),
+        ::mem::transmute(b),
+        ::mem::transmute(c),
+    ))
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx2_s8(a: int8x8_t, b: int8x8x2_t, c: int8x8_t) -> int8x8_t {
+    vtbx2(a, b.0, b.1, c)
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx2_u8(
+    a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t,
+) -> uint8x8_t {
+    ::mem::transmute(vtbx2(
+        ::mem::transmute(a),
+        ::mem::transmute(b.0),
+        ::mem::transmute(b.1),
+        ::mem::transmute(c),
+    ))
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx2_p8(
+    a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t,
+) -> poly8x8_t {
+    ::mem::transmute(vtbx2(
+        ::mem::transmute(a),
+        ::mem::transmute(b.0),
+        ::mem::transmute(b.1),
+        ::mem::transmute(c),
+    ))
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
+    vtbx3(a, b.0, b.1, b.2, c)
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx3_u8(
+    a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t,
+) -> uint8x8_t {
+    ::mem::transmute(vtbx3(
+        ::mem::transmute(a),
+        ::mem::transmute(b.0),
+        ::mem::transmute(b.1),
+        ::mem::transmute(b.2),
+        ::mem::transmute(c),
+    ))
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx3_p8(
+    a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t,
+) -> poly8x8_t {
+    ::mem::transmute(vtbx3(
+        ::mem::transmute(a),
+        ::mem::transmute(b.0),
+        ::mem::transmute(b.1),
+        ::mem::transmute(b.2),
+        ::mem::transmute(c),
+    ))
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx4_s8(a: int8x8_t, b: int8x8x4_t, c: int8x8_t) -> int8x8_t {
+    vtbx4(a, b.0, b.1, b.2, b.3, c)
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx4_u8(
+    a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t,
+) -> uint8x8_t {
+    ::mem::transmute(vtbx4(
+        ::mem::transmute(a),
+        ::mem::transmute(b.0),
+        ::mem::transmute(b.1),
+        ::mem::transmute(b.2),
+        ::mem::transmute(b.3),
+        ::mem::transmute(c),
+    ))
+}
+
+/// Extended table look-up
+#[inline]
+#[cfg(target_arch = "arm")]
+#[target_feature(enable = "neon,v7")]
+#[cfg_attr(test, assert_instr(vtbx))]
+pub unsafe fn vtbx4_p8(
+    a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t,
+) -> poly8x8_t {
+    ::mem::transmute(vtbx4(
+        ::mem::transmute(a),
+        ::mem::transmute(b.0),
+        ::mem::transmute(b.1),
+        ::mem::transmute(b.2),
+        ::mem::transmute(b.3),
+        ::mem::transmute(c),
+    ))
 }
 
 #[cfg(test)]
@@ -1220,3 +1591,7 @@ mod tests {
         assert_eq!(r, e);
     }
 }
+
+#[cfg(test)]
+#[path = "table_lookup_tests.rs"]
+mod table_lookup_tests;
