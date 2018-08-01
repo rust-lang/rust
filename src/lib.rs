@@ -24,6 +24,7 @@ extern crate itertools;
 extern crate text_unit;
 extern crate unicode_xid;
 extern crate drop_bomb;
+extern crate parking_lot;
 
 pub mod algo;
 pub mod ast;

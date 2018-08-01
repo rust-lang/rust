@@ -1,4 +1,5 @@
-use std::{ptr, sync::RwLock};
+use std::ptr;
+use parking_lot::RwLock;
 use {yellow::GreenNode, TextUnit};
 
 #[derive(Debug)]
@@ -66,20 +67,20 @@ impl RedNode {
         if idx >= self.n_children() {
             return None;
         }
-        match &self.children.read().unwrap()[idx] {
+        match &self.children.read()[idx] {
             Some(child) => return Some(child.into()),
             None => (),
         }
-        let mut children = self.children.write().unwrap();
+        let green_children = self.green.children();
+        let start_offset = self.start_offset()
+            + green_children[..idx]
+            .iter()
+            .map(|x| x.text_len())
+            .sum::<TextUnit>();
+        let child =
+            RedNode::new_child(green_children[idx].clone(), self.into(), start_offset, idx);
+        let mut children = self.children.write();
         if children[idx].is_none() {
-            let green_children = self.green.children();
-            let start_offset = self.start_offset()
-                + green_children[..idx]
-                    .iter()
-                    .map(|x| x.text_len())
-                    .sum::<TextUnit>();
-            let child =
-                RedNode::new_child(green_children[idx].clone(), self.into(), start_offset, idx);
             children[idx] = Some(child)
         }
         Some(children[idx].as_ref().unwrap().into())

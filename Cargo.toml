@@ -12,6 +12,7 @@ unicode-xid = "0.1.0"
 text_unit = "0.1.2"
 itertools = "0.7.5"
 drop_bomb = "0.1.4"
+parking_lot = "0.6.0"
 
 [dev-dependencies]
 testutils = { path = "./tests/testutils" }
