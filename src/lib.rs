@@ -31,6 +31,7 @@ mod lexer;
 mod parser_api;
 mod grammar;
 mod parser_impl;
+mod drop_bomb;
 
 mod syntax_kinds;
 /// Utilities for simple uses of the parser.
