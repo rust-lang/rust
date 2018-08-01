@@ -55,10 +55,19 @@ fn parse_dot_or_call_expr_with(mut attrs: Vec<u32>) {
     );
 }
 
+// Found when trying to bootstrap rustc
+fn if_guard(x: Result<i32, i32>) {
+    match x {
+        Ok(mut r) | Err(mut r) if true => r = 1,
+        _ => (),
+    }
+}
+
 fn main() {
     ref_argument(0);
     mutable_upvar();
     generator_mutable_upvar();
     ref_closure_argument();
     parse_dot_or_call_expr_with(Vec::new());
+    if_guard(Ok(0));
 }
