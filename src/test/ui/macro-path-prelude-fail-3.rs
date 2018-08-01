@@ -10,8 +10,9 @@
 
 #![feature(use_extern_macros)]
 
+#[derive(inline)] //~ ERROR expected a macro, found non-macro attribute
+struct S;
+
 fn main() {
-    #[rustfmt::skip] //~ ERROR tool attributes are unstable
-    let x = 3
-        ;
+    inline!(); //~ ERROR expected a macro, found non-macro attribute
 }

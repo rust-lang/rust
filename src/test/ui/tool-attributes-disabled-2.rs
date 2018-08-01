@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    #[rustfmt::skip] //~ ERROR scoped attribute `rustfmt::skip` is experimental
-    let x =
-        3;
-}
+// If macro modularization (`use_extern_macros`) is not enabled,
+// then tool attributes are treated as custom attributes.
+
+// compile-pass
+
+#![feature(custom_attribute)]
+
+#[rustfmt::bar]
+fn main() {}

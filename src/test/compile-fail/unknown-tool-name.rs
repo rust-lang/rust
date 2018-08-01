@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_attributes)]
+#![feature(use_extern_macros, proc_macro_path_invoc)]
 
-#![foo::bar] //~ ERROR an unknown tool name found in scoped attribute: `foo::bar`. [E0694]
-
-#[foo::bar] //~ ERROR an unknown tool name found in scoped attribute: `foo::bar`. [E0694]
+#[foo::bar] //~ ERROR failed to resolve. Use of undeclared type or module `foo`
 fn main() {}

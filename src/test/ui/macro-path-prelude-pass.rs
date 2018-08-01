@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_extern_macros)]
+// compile-pass
 
-fn main() {
-    #[rustfmt::skip] //~ ERROR tool attributes are unstable
-    let x = 3
-        ;
+#![feature(use_extern_macros, extern_prelude)]
+
+mod m {
+    fn check() {
+        std::panic!(); // OK
+    }
 }
+
+fn main() {}
