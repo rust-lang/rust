@@ -765,6 +765,7 @@ pub unsafe fn vcombine_f64(
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
@@ -773,6 +774,7 @@ pub unsafe fn vtbl1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
@@ -781,6 +783,7 @@ pub unsafe fn vtbl1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl1_p8(a: poly8x8_t, b: uint8x8_t) -> poly8x8_t {
@@ -789,6 +792,7 @@ pub unsafe fn vtbl1_p8(a: poly8x8_t, b: uint8x8_t) -> poly8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl2_s8(a: int8x8x2_t, b: int8x8_t) -> int8x8_t {
@@ -797,6 +801,7 @@ pub unsafe fn vtbl2_s8(a: int8x8x2_t, b: int8x8_t) -> int8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl2_u8(a: uint8x8x2_t, b: uint8x8_t) -> uint8x8_t {
@@ -805,6 +810,7 @@ pub unsafe fn vtbl2_u8(a: uint8x8x2_t, b: uint8x8_t) -> uint8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl2_p8(a: poly8x8x2_t, b: uint8x8_t) -> poly8x8_t {
@@ -813,6 +819,7 @@ pub unsafe fn vtbl2_p8(a: poly8x8x2_t, b: uint8x8_t) -> poly8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl3_s8(a: int8x8x3_t, b: int8x8_t) -> int8x8_t {
@@ -824,6 +831,7 @@ pub unsafe fn vtbl3_s8(a: int8x8x3_t, b: int8x8_t) -> int8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl3_u8(a: uint8x8x3_t, b: uint8x8_t) -> uint8x8_t {
@@ -835,6 +843,7 @@ pub unsafe fn vtbl3_u8(a: uint8x8x3_t, b: uint8x8_t) -> uint8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl3_p8(a: poly8x8x3_t, b: uint8x8_t) -> poly8x8_t {
@@ -846,6 +855,7 @@ pub unsafe fn vtbl3_p8(a: poly8x8x3_t, b: uint8x8_t) -> poly8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl4_s8(a: int8x8x4_t, b: int8x8_t) -> int8x8_t {
@@ -857,6 +867,7 @@ pub unsafe fn vtbl4_s8(a: int8x8x4_t, b: int8x8_t) -> int8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl4_u8(a: uint8x8x4_t, b: uint8x8_t) -> uint8x8_t {
@@ -868,6 +879,7 @@ pub unsafe fn vtbl4_u8(a: uint8x8x4_t, b: uint8x8_t) -> uint8x8_t {
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vtbl4_p8(a: poly8x8x4_t, b: uint8x8_t) -> poly8x8_t {
@@ -879,6 +891,7 @@ pub unsafe fn vtbl4_p8(a: poly8x8x4_t, b: uint8x8_t) -> poly8x8_t {
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx1_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
@@ -890,6 +903,7 @@ pub unsafe fn vtbx1_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx1_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
@@ -901,6 +915,7 @@ pub unsafe fn vtbx1_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx1_p8(a: poly8x8_t, b: poly8x8_t, c: uint8x8_t) -> poly8x8_t {
@@ -912,6 +927,7 @@ pub unsafe fn vtbx1_p8(a: poly8x8_t, b: poly8x8_t, c: uint8x8_t) -> poly8x8_t {
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx2_s8(a: int8x8_t, b: int8x8x2_t, c: int8x8_t) -> int8x8_t {
@@ -920,6 +936,7 @@ pub unsafe fn vtbx2_s8(a: int8x8_t, b: int8x8x2_t, c: int8x8_t) -> int8x8_t {
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx2_u8(
@@ -930,6 +947,7 @@ pub unsafe fn vtbx2_u8(
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx2_p8(
@@ -940,6 +958,7 @@ pub unsafe fn vtbx2_p8(
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
@@ -955,6 +974,7 @@ pub unsafe fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx3_u8(
@@ -972,6 +992,7 @@ pub unsafe fn vtbx3_u8(
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx3_p8(
@@ -989,6 +1010,7 @@ pub unsafe fn vtbx3_p8(
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx4_s8(a: int8x8_t, b: int8x8x4_t, c: int8x8_t) -> int8x8_t {
@@ -1001,6 +1023,7 @@ pub unsafe fn vtbx4_s8(a: int8x8_t, b: int8x8x4_t, c: int8x8_t) -> int8x8_t {
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx4_u8(
@@ -1015,6 +1038,7 @@ pub unsafe fn vtbx4_u8(
 
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx4_p8(
@@ -1029,6 +1053,7 @@ pub unsafe fn vtbx4_p8(
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl1_s8(t: int8x16_t, idx: uint8x8_t) -> int8x8_t {
@@ -1036,6 +1061,7 @@ pub unsafe fn vqtbl1_s8(t: int8x16_t, idx: uint8x8_t) -> int8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl1q_s8(t: int8x16_t, idx: uint8x16_t) -> int8x16_t {
@@ -1043,6 +1069,7 @@ pub unsafe fn vqtbl1q_s8(t: int8x16_t, idx: uint8x16_t) -> int8x16_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl1_u8(t: uint8x16_t, idx: uint8x8_t) -> uint8x8_t {
@@ -1050,6 +1077,7 @@ pub unsafe fn vqtbl1_u8(t: uint8x16_t, idx: uint8x8_t) -> uint8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl1q_u8(t: uint8x16_t, idx: uint8x16_t) -> uint8x16_t {
@@ -1057,6 +1085,7 @@ pub unsafe fn vqtbl1q_u8(t: uint8x16_t, idx: uint8x16_t) -> uint8x16_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl1_p8(t: poly8x16_t, idx: uint8x8_t) -> poly8x8_t {
@@ -1064,6 +1093,7 @@ pub unsafe fn vqtbl1_p8(t: poly8x16_t, idx: uint8x8_t) -> poly8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl1q_p8(t: poly8x16_t, idx: uint8x16_t) -> poly8x16_t {
@@ -1071,6 +1101,7 @@ pub unsafe fn vqtbl1q_p8(t: poly8x16_t, idx: uint8x16_t) -> poly8x16_t {
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx1_s8(
@@ -1080,6 +1111,7 @@ pub unsafe fn vqtbx1_s8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx1q_s8(
@@ -1089,6 +1121,7 @@ pub unsafe fn vqtbx1q_s8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx1_u8(
@@ -1102,6 +1135,7 @@ pub unsafe fn vqtbx1_u8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx1q_u8(
@@ -1115,6 +1149,7 @@ pub unsafe fn vqtbx1q_u8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx1_p8(
@@ -1128,6 +1163,7 @@ pub unsafe fn vqtbx1_p8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx1q_p8(
@@ -1142,6 +1178,7 @@ pub unsafe fn vqtbx1q_p8(
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl2_s8(t: int8x16x2_t, idx: uint8x8_t) -> int8x8_t {
@@ -1149,6 +1186,7 @@ pub unsafe fn vqtbl2_s8(t: int8x16x2_t, idx: uint8x8_t) -> int8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl2q_s8(t: int8x16x2_t, idx: uint8x16_t) -> int8x16_t {
@@ -1156,6 +1194,7 @@ pub unsafe fn vqtbl2q_s8(t: int8x16x2_t, idx: uint8x16_t) -> int8x16_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl2_u8(t: uint8x16x2_t, idx: uint8x8_t) -> uint8x8_t {
@@ -1167,6 +1206,7 @@ pub unsafe fn vqtbl2_u8(t: uint8x16x2_t, idx: uint8x8_t) -> uint8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl2q_u8(t: uint8x16x2_t, idx: uint8x16_t) -> uint8x16_t {
@@ -1178,6 +1218,7 @@ pub unsafe fn vqtbl2q_u8(t: uint8x16x2_t, idx: uint8x16_t) -> uint8x16_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl2_p8(t: poly8x16x2_t, idx: uint8x8_t) -> poly8x8_t {
@@ -1189,6 +1230,7 @@ pub unsafe fn vqtbl2_p8(t: poly8x16x2_t, idx: uint8x8_t) -> poly8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl2q_p8(t: poly8x16x2_t, idx: uint8x16_t) -> poly8x16_t {
@@ -1200,6 +1242,7 @@ pub unsafe fn vqtbl2q_p8(t: poly8x16x2_t, idx: uint8x16_t) -> poly8x16_t {
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx2_s8(
@@ -1209,6 +1252,7 @@ pub unsafe fn vqtbx2_s8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx2q_s8(
@@ -1218,6 +1262,7 @@ pub unsafe fn vqtbx2q_s8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx2_u8(
@@ -1232,6 +1277,7 @@ pub unsafe fn vqtbx2_u8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx2q_u8(
@@ -1246,6 +1292,7 @@ pub unsafe fn vqtbx2q_u8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx2_p8(
@@ -1260,6 +1307,7 @@ pub unsafe fn vqtbx2_p8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx2q_p8(
@@ -1275,6 +1323,7 @@ pub unsafe fn vqtbx2q_p8(
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl3_s8(t: int8x16x3_t, idx: uint8x8_t) -> int8x8_t {
@@ -1282,6 +1331,7 @@ pub unsafe fn vqtbl3_s8(t: int8x16x3_t, idx: uint8x8_t) -> int8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl3q_s8(t: int8x16x3_t, idx: uint8x16_t) -> int8x16_t {
@@ -1289,6 +1339,7 @@ pub unsafe fn vqtbl3q_s8(t: int8x16x3_t, idx: uint8x16_t) -> int8x16_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl3_u8(t: uint8x16x3_t, idx: uint8x8_t) -> uint8x8_t {
@@ -1301,6 +1352,7 @@ pub unsafe fn vqtbl3_u8(t: uint8x16x3_t, idx: uint8x8_t) -> uint8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl3q_u8(t: uint8x16x3_t, idx: uint8x16_t) -> uint8x16_t {
@@ -1313,6 +1365,7 @@ pub unsafe fn vqtbl3q_u8(t: uint8x16x3_t, idx: uint8x16_t) -> uint8x16_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl3_p8(t: poly8x16x3_t, idx: uint8x8_t) -> poly8x8_t {
@@ -1325,6 +1378,7 @@ pub unsafe fn vqtbl3_p8(t: poly8x16x3_t, idx: uint8x8_t) -> poly8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl3q_p8(t: poly8x16x3_t, idx: uint8x16_t) -> poly8x16_t {
@@ -1337,6 +1391,7 @@ pub unsafe fn vqtbl3q_p8(t: poly8x16x3_t, idx: uint8x16_t) -> poly8x16_t {
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx3_s8(
@@ -1346,6 +1401,7 @@ pub unsafe fn vqtbx3_s8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx3q_s8(
@@ -1355,6 +1411,7 @@ pub unsafe fn vqtbx3q_s8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx3_u8(
@@ -1370,6 +1427,7 @@ pub unsafe fn vqtbx3_u8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx3q_u8(
@@ -1385,6 +1443,7 @@ pub unsafe fn vqtbx3q_u8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx3_p8(
@@ -1400,6 +1459,7 @@ pub unsafe fn vqtbx3_p8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx3q_p8(
@@ -1416,6 +1476,7 @@ pub unsafe fn vqtbx3q_p8(
 
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl4_s8(t: int8x16x4_t, idx: uint8x8_t) -> int8x8_t {
@@ -1423,6 +1484,7 @@ pub unsafe fn vqtbl4_s8(t: int8x16x4_t, idx: uint8x8_t) -> int8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl4q_s8(t: int8x16x4_t, idx: uint8x16_t) -> int8x16_t {
@@ -1430,6 +1492,7 @@ pub unsafe fn vqtbl4q_s8(t: int8x16x4_t, idx: uint8x16_t) -> int8x16_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl4_u8(t: uint8x16x4_t, idx: uint8x8_t) -> uint8x8_t {
@@ -1443,6 +1506,7 @@ pub unsafe fn vqtbl4_u8(t: uint8x16x4_t, idx: uint8x8_t) -> uint8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl4q_u8(t: uint8x16x4_t, idx: uint8x16_t) -> uint8x16_t {
@@ -1456,6 +1520,7 @@ pub unsafe fn vqtbl4q_u8(t: uint8x16x4_t, idx: uint8x16_t) -> uint8x16_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl4_p8(t: poly8x16x4_t, idx: uint8x8_t) -> poly8x8_t {
@@ -1469,6 +1534,7 @@ pub unsafe fn vqtbl4_p8(t: poly8x16x4_t, idx: uint8x8_t) -> poly8x8_t {
 }
 /// Table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbl))]
 pub unsafe fn vqtbl4q_p8(t: poly8x16x4_t, idx: uint8x16_t) -> poly8x16_t {
@@ -1482,6 +1548,7 @@ pub unsafe fn vqtbl4q_p8(t: poly8x16x4_t, idx: uint8x16_t) -> poly8x16_t {
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx4_s8(
@@ -1491,6 +1558,7 @@ pub unsafe fn vqtbx4_s8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx4q_s8(
@@ -1500,6 +1568,7 @@ pub unsafe fn vqtbx4q_s8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx4_u8(
@@ -1516,6 +1585,7 @@ pub unsafe fn vqtbx4_u8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx4q_u8(
@@ -1532,6 +1602,7 @@ pub unsafe fn vqtbx4q_u8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx4_p8(
@@ -1548,6 +1619,7 @@ pub unsafe fn vqtbx4_p8(
 }
 /// Extended table look-up
 #[inline]
+#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vqtbx4q_p8(
@@ -2064,5 +2136,6 @@ mod tests {
 }
 
 #[cfg(test)]
+#[cfg(target_endian = "little")]
 #[path = "../arm/table_lookup_tests.rs"]
 mod table_lookup_tests;
