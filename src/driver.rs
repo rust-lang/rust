@@ -1,13 +1,14 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![allow(unknown_lints, missing_docs_in_private_items)]
+#![feature(tool_lints)]
+#![allow(unknown_lints, clippy::missing_docs_in_private_items)]
 
 use rustc_driver::{self, driver::CompileController, Compilation};
 use rustc_plugin;
 use std::process::{exit, Command};
 
-#[allow(print_stdout)]
+#[allow(clippy::print_stdout)]
 fn show_version() {
     println!(env!("CARGO_PKG_VERSION"));
 }

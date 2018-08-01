@@ -1,4 +1,4 @@
-#![allow(print_stdout, use_debug)]
+#![allow(clippy::print_stdout, clippy::use_debug)]
 
 //! checks for attributes
 

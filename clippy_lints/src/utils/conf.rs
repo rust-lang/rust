@@ -1,6 +1,6 @@
 //! Read configurations files.
 
-#![deny(missing_docs_in_private_items)]
+#![deny(clippy::missing_docs_in_private_items)]
 
 use lazy_static::lazy_static;
 use std::{env, fmt, fs, io, path};

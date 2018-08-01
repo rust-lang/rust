@@ -1525,7 +1525,7 @@ enum FullInt {
 }
 
 impl FullInt {
-    #[allow(cast_sign_loss)]
+    #[allow(clippy::cast_sign_loss)]
     fn cmp_s_u(s: i128, u: u128) -> Ordering {
         if s < 0 {
             Ordering::Less
@@ -1744,7 +1744,7 @@ impl LintPass for ImplicitHasher {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
-    #[allow(cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation)]
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         use syntax_pos::BytePos;
 

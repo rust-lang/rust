@@ -83,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => (cx.tcx.lang_items().ord_trait(), true),
             };
             if let Some(trait_id) = trait_id {
-                #[allow(match_same_arms)]
+                #[allow(clippy::match_same_arms)]
                 match (&left.node, &right.node) {
                     // do not suggest to dereference literals
                     (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},

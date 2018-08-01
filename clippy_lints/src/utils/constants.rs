@@ -1,6 +1,6 @@
 //! This module contains some useful constants.
 
-#![deny(missing_docs_in_private_items)]
+#![deny(clippy::missing_docs_in_private_items)]
 
 /// List of the built-in types names.
 ///

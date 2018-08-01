@@ -32,7 +32,7 @@ impl LintPass for NegMultiply {
     }
 }
 
-#[allow(match_same_arms)]
+#[allow(clippy::match_same_arms)]
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref l, ref r) = e.node {

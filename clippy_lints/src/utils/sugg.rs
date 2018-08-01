@@ -1,7 +1,5 @@
 //! Contains utility functions to generate suggestions.
-#![deny(missing_docs_in_private_items)]
-// currently ignores lifetimes and generics
-#![allow(use_self)]
+#![deny(clippy::missing_docs_in_private_items)]
 
 use matches::matches;
 use rustc::hir;
@@ -40,7 +38,7 @@ impl Display for Sugg<'_> {
     }
 }
 
-#[allow(wrong_self_convention)] // ok, because of the function `as_ty` method
+#[allow(clippy::wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
     pub fn hir_opt(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<Self> {

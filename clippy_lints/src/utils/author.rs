@@ -1,7 +1,7 @@
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
-#![allow(print_stdout, use_debug)]
+#![allow(clippy::print_stdout, clippy::use_debug)]
 
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
