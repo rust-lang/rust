@@ -19,7 +19,7 @@ use std::str::FromStr;
 use std::rc::Rc;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
-use syntax::codemap::{CompilerDesugaringKind, ExpnFormat, Span, DUMMY_SP};
+use syntax::codemap::{Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
@@ -58,23 +58,7 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: NodeId) -> bool {
 
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
-    span.ctxt().outer().expn_info().map_or(false, |info| {
-        match info.format {
-            // don't treat range expressions desugared to structs as "in_macro"
-            ExpnFormat::CompilerDesugaring(kind) => kind != CompilerDesugaringKind::DotFill,
-            _ => true,
-        }
-    })
-}
-
-/// Returns true if `expn_info` was expanded by range expressions.
-pub fn is_range_expression(span: Span) -> bool {
-    span.ctxt().outer().expn_info().map_or(false, |info| {
-        match info.format {
-            ExpnFormat::CompilerDesugaring(CompilerDesugaringKind::DotFill) => true,
-            _ => false,
-        }
-    })
+    span.ctxt().outer().expn_info().is_some()
 }
 
 /// Check if a `DefId`'s path matches the given absolute type path usage.

@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
 use rustc::hir::*;
-use crate::utils::{in_macro, is_range_expression, match_var, span_lint_and_sugg};
+use crate::utils::{in_macro, match_var, span_lint_and_sugg};
 
 /// **What it does:** Checks for fields in struct literals where shorthands
 /// could be used.
@@ -40,7 +40,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
         // Ignore all macros including range expressions.
         // They can have redundant field names when expanded.
         // e.g. range expression `start..end` is desugared to `Range { start: start, end: end }`
-        if in_macro(expr.span) || is_range_expression(expr.span) {
+        if in_macro(expr.span) {
             return;
         }
 
