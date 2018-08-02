@@ -90,6 +90,12 @@ pub fn initialize_available_targets() {
                  LLVMInitializeMSP430Target,
                  LLVMInitializeMSP430TargetMC,
                  LLVMInitializeMSP430AsmPrinter);
+    init_target!(llvm_component = "riscv",
+                 LLVMInitializeRISCVTargetInfo,
+                 LLVMInitializeRISCVTarget,
+                 LLVMInitializeRISCVTargetMC,
+                 LLVMInitializeRISCVAsmPrinter,
+                 LLVMInitializeRISCVAsmParser);
     init_target!(llvm_component = "sparc",
                  LLVMInitializeSparcTargetInfo,
                  LLVMInitializeSparcTarget,
