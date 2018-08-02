@@ -1626,8 +1626,12 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
 fn is_full_lto_enabled(sess: &Session) -> bool {
     match sess.lto() {
         Lto::Yes |
-        Lto::Thin |
         Lto::Fat => true,
+        Lto::Thin => {
+            // If we defer LTO to the linker, we haven't run LTO ourselves, so
+            // any upstream object files have not been copied yet.
+            !sess.opts.debugging_opts.cross_lang_lto.enabled()
+        }
         Lto::No |
         Lto::ThinLocal => false,
     }
