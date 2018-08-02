@@ -15,10 +15,10 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::Mir;
 use rustc::ty::subst::{Substs, UnpackedKind};
-use rustc::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::util::ppaux::with_highlight_region;
 use rustc_errors::DiagnosticBuilder;
-use syntax::ast::Name;
+use syntax::ast::{Name, DUMMY_NODE_ID};
 use syntax::symbol::keywords;
 use syntax_pos::symbol::InternedString;
 
@@ -90,14 +90,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
         let error_region = self.to_error_region(fr)?;
+
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match error_region {
-            ty::ReEarlyBound(ebr) => Some(ebr.name),
+            ty::ReEarlyBound(ebr) => {
+                self.highlight_named_span(tcx, error_region, &ebr.name, diag);
+                Some(ebr.name)
+            },
 
             ty::ReStatic => Some(keywords::StaticLifetime.name().as_interned_str()),
 
             ty::ReFree(free_region) => match free_region.bound_region {
-                ty::BoundRegion::BrNamed(_, name) => Some(name),
+                ty::BoundRegion::BrNamed(_, name) => {
+                    self.highlight_named_span(tcx, error_region, &name, diag);
+                    Some(name)
+                },
 
                 ty::BoundRegion::BrEnv => {
                     let closure_span = tcx.hir.span_if_local(mir_def_id).unwrap();
@@ -121,6 +128,45 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | ty::ReClosureBound(..)
             | ty::ReCanonical(..) => None,
         }
+    }
+
+    /// Highlight a named span to provide context for error messages that
+    /// mention that span, for example:
+    ///
+    /// ```
+    ///  |
+    ///  | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+    ///  |                --  -- lifetime `'b` defined here
+    ///  |                |
+    ///  |                lifetime `'a` defined here
+    ///  |
+    ///  |     with_signature(cell, t, |cell, t| require(cell, t));
+    ///  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must
+    ///  |                                                         outlive `'a`
+    /// ```
+    fn highlight_named_span(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        error_region: &RegionKind,
+        name: &InternedString,
+        diag: &mut DiagnosticBuilder<'_>,
+    ) {
+        let cm = tcx.sess.codemap();
+
+        let scope = error_region.free_region_binding_scope(tcx);
+        let node = tcx.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
+
+        let mut sp = cm.def_span(tcx.hir.span(node));
+        if let Some(param) = tcx.hir.get_generics(scope).and_then(|generics| {
+            generics.get_named(name)
+        }) {
+            sp = param.span;
+        }
+
+        diag.span_label(
+            sp,
+            format!("lifetime `{}` defined here", name),
+        );
     }
 
     /// Find an argument that contains `fr` and label it with a fully
