@@ -27,7 +27,7 @@ the "travis example" badge above.
 
 ## Quick start
 
-You can use `rustfmt` on Rust 1.24 and above.
+You can run `rustfmt` with Rust 1.24 and above.
 
 To install:
 
@@ -94,6 +94,7 @@ rustup component add rustfmt-preview
 ## Installing from source
 
 To install from source (nightly required), first checkout to the tag or branch you want to install, then issue
+
 ```
 cargo install --path .
 ```
