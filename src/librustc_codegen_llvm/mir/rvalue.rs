@@ -35,7 +35,7 @@ use super::place::PlaceRef;
 impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_rvalue(&mut self,
                         bx: Builder<'a, 'll, 'tcx>,
-                        dest: PlaceRef<'ll, 'tcx>,
+                        dest: PlaceRef<'tcx, &'ll Value>,
                         rvalue: &mir::Rvalue<'tcx>)
                         -> Builder<'a, 'll, 'tcx>
     {
@@ -201,7 +201,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_rvalue_operand(&mut self,
                                 bx: Builder<'a, 'll, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
-                                -> (Builder<'a, 'll, 'tcx>, OperandRef<'ll, 'tcx>)
+                                -> (Builder<'a, 'll, 'tcx>, OperandRef<'tcx, &'ll Value>)
     {
         assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
 
@@ -677,7 +677,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                       op: mir::BinOp,
                                       lhs: &'ll Value,
                                       rhs: &'ll Value,
-                                      input_ty: Ty<'tcx>) -> OperandValue<'ll> {
+                                      input_ty: Ty<'tcx>) -> OperandValue<&'ll Value> {
         // This case can currently arise only from functions marked
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),

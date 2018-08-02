@@ -63,7 +63,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'ll, 'tcx>>,
+    personality_slot: Option<PlaceRef<'tcx, &'ll Value>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, &'ll BasicBlock>,
@@ -97,7 +97,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    locals: IndexVec<mir::Local, LocalRef<'ll, 'tcx>>,
+    locals: IndexVec<mir::Local, LocalRef<'tcx, &'ll Value>>,
 
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
@@ -178,18 +178,18 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 }
 
-enum LocalRef<'ll, 'tcx> {
-    Place(PlaceRef<'ll, 'tcx>),
+enum LocalRef<'tcx, V> {
+    Place(PlaceRef<'tcx, V>),
     /// `UnsizedPlace(p)`: `p` itself is a thin pointer (indirect place).
     /// `*p` is the fat pointer that references the actual unsized place.
     /// Every time it is initialized, we have to reallocate the place
     /// and update the fat pointer. That's the reason why it is indirect.
-    UnsizedPlace(PlaceRef<'ll, 'tcx>),
-    Operand(Option<OperandRef<'ll, 'tcx>>),
+    UnsizedPlace(PlaceRef<'tcx, V>),
+    Operand(Option<OperandRef<'tcx, V>>),
 }
 
-impl LocalRef<'ll, 'tcx> {
-    fn new_operand(cx: &CodegenCx<'ll, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'ll, 'tcx> {
+impl LocalRef<'tcx, &'ll Value> {
+    fn new_operand(cx: &CodegenCx<'ll, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx, &'ll Value> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -436,7 +436,7 @@ fn arg_local_refs(
     fx: &FunctionCx<'a, 'll, 'tcx>,
     scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
     memory_locals: &BitSet<mir::Local>,
-) -> Vec<LocalRef<'ll, 'tcx>> {
+) -> Vec<LocalRef<'tcx, &'ll Value>> {
     let mir = fx.mir;
     let tcx = bx.tcx();
     let mut idx = 0;

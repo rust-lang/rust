@@ -167,8 +167,8 @@ impl LlvmType for CastTarget {
 
 pub trait ArgTypeExt<'ll, 'tcx> {
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'ll, 'tcx>);
-    fn store_fn_arg(&self, bx: &Builder<'_, 'll, 'tcx>, idx: &mut usize, dst: PlaceRef<'ll, 'tcx>);
+    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'tcx, &'ll Value>);
+    fn store_fn_arg(&self, bx: &Builder<'_, 'll, 'tcx>, idx: &mut usize, dst: PlaceRef<'tcx, &'ll Value>);
 }
 
 impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
@@ -182,7 +182,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'ll, 'tcx>) {
+    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'tcx, &'ll Value>) {
         if self.is_ignore() {
             return;
         }
@@ -237,7 +237,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn store_fn_arg(&self, bx: &Builder<'a, 'll, 'tcx>, idx: &mut usize, dst: PlaceRef<'ll, 'tcx>) {
+    fn store_fn_arg(&self, bx: &Builder<'a, 'll, 'tcx>, idx: &mut usize, dst: PlaceRef<'tcx, &'ll Value>) {
         let mut next = || {
             let val = llvm::get_param(bx.llfn(), *idx as c_uint);
             *idx += 1;

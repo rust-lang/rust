@@ -27,12 +27,12 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 
 #[derive(Copy, Clone, Debug)]
-pub struct PlaceRef<'ll, 'tcx> {
+pub struct PlaceRef<'tcx, V> {
     /// Pointer to the contents of the place
-    pub llval: &'ll Value,
+    pub llval: V,
 
     /// This place's extra data if it is unsized, or null
-    pub llextra: Option<&'ll Value>,
+    pub llextra: Option<V>,
 
     /// Monomorphized type of this place, including variant information
     pub layout: TyLayout<'tcx>,
@@ -41,12 +41,12 @@ pub struct PlaceRef<'ll, 'tcx> {
     pub align: Align,
 }
 
-impl PlaceRef<'ll, 'tcx> {
+impl PlaceRef<'tcx, &'ll Value> {
     pub fn new_sized(
         llval: &'ll Value,
         layout: TyLayout<'tcx>,
         align: Align,
-    ) -> PlaceRef<'ll, 'tcx> {
+    ) -> PlaceRef<'tcx, &'ll Value> {
         assert!(!layout.is_unsized());
         PlaceRef {
             llval,
@@ -61,7 +61,7 @@ impl PlaceRef<'ll, 'tcx> {
         layout: TyLayout<'tcx>,
         alloc: &mir::interpret::Allocation,
         offset: Size,
-    ) -> PlaceRef<'ll, 'tcx> {
+    ) -> PlaceRef<'tcx, &'ll Value> {
         let init = const_alloc_to_llvm(bx.cx, alloc);
         let base_addr = consts::addr_of(bx.cx, init, layout.align, None);
 
@@ -75,7 +75,7 @@ impl PlaceRef<'ll, 'tcx> {
     }
 
     pub fn alloca(bx: &Builder<'a, 'll, 'tcx>, layout: TyLayout<'tcx>, name: &str)
-                  -> PlaceRef<'ll, 'tcx> {
+                  -> PlaceRef<'tcx, &'ll Value> {
         debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(layout.llvm_type(bx.cx), name, layout.align);
@@ -105,7 +105,7 @@ impl PlaceRef<'ll, 'tcx> {
         }
     }
 
-    pub fn load(&self, bx: &Builder<'a, 'll, 'tcx>) -> OperandRef<'ll, 'tcx> {
+    pub fn load(&self, bx: &Builder<'a, 'll, 'tcx>) -> OperandRef<'tcx, &'ll Value> {
         debug!("PlaceRef::load: {:?}", self);
 
         assert_eq!(self.llextra.is_some(), self.layout.is_unsized());
@@ -169,7 +169,7 @@ impl PlaceRef<'ll, 'tcx> {
     }
 
     /// Access a field, at a point when the value's case is known.
-    pub fn project_field(self, bx: &Builder<'a, 'll, 'tcx>, ix: usize) -> PlaceRef<'ll, 'tcx> {
+    pub fn project_field(self, bx: &Builder<'a, 'll, 'tcx>, ix: usize) -> PlaceRef<'tcx, &'ll Value> {
         let cx = bx.cx;
         let field = self.layout.field(cx, ix);
         let offset = self.layout.fields.offset(ix);
@@ -392,7 +392,7 @@ impl PlaceRef<'ll, 'tcx> {
     }
 
     pub fn project_index(&self, bx: &Builder<'a, 'll, 'tcx>, llindex: &'ll Value)
-                         -> PlaceRef<'ll, 'tcx> {
+                         -> PlaceRef<'tcx, &'ll Value> {
         PlaceRef {
             llval: bx.inbounds_gep(self.llval, &[C_usize(bx.cx, 0), llindex]),
             llextra: None,
@@ -402,7 +402,7 @@ impl PlaceRef<'ll, 'tcx> {
     }
 
     pub fn project_downcast(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize)
-                            -> PlaceRef<'ll, 'tcx> {
+                            -> PlaceRef<'tcx, &'ll Value> {
         let mut downcast = *self;
         downcast.layout = self.layout.for_variant(bx.cx, variant_index);
 
@@ -426,7 +426,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_place(&mut self,
                         bx: &Builder<'a, 'll, 'tcx>,
                         place: &mir::Place<'tcx>)
-                        -> PlaceRef<'ll, 'tcx> {
+                        -> PlaceRef<'tcx, &'ll Value> {
         debug!("codegen_place(place={:?})", place);
 
         let cx = bx.cx;

@@ -276,8 +276,8 @@ pub fn unsize_thin_ptr(
 /// to a value of type `dst_ty` and store the result in `dst`
 pub fn coerce_unsized_into(
     bx: &Builder<'a, 'll, 'tcx>,
-    src: PlaceRef<'ll, 'tcx>,
-    dst: PlaceRef<'ll, 'tcx>
+    src: PlaceRef<'tcx, &'ll Value>,
+    dst: PlaceRef<'tcx, &'ll Value>
 ) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
