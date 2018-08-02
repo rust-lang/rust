@@ -447,8 +447,6 @@ declare_features! (
     // Access to crate names passed via `--extern` through prelude
     (active, extern_prelude, "1.27.0", Some(44660), Some(Edition::Edition2018)),
 
-    // Scoped attributes
-    (active, tool_attributes, "1.25.0", Some(44690), None),
     // Scoped lints
     (active, tool_lints, "1.28.0", Some(44690), None),
 
@@ -619,6 +617,8 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
     // Defining procedural macros in `proc-macro` crates
     (accepted, proc_macro, "1.29.0", Some(38356), None),
+    // Scoped attributes
+    (accepted, tool_attributes, "1.29.0", Some(44690), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1199,8 +1199,6 @@ impl<'a> Context<'a> {
             // so we skip this then
             if !is_macro {
                 if attr.is_scoped() {
-                    gate_feature!(self, tool_attributes, attr.span,
-                                  &format!("scoped attribute `{}` is experimental", attr.path));
                     if attr::is_known_tool(attr) {
                         attr::mark_used(attr);
                     } else {
