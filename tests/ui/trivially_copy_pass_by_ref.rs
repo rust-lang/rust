@@ -6,6 +6,10 @@ struct Foo(u32);
 #[derive(Copy, Clone)]
 struct Bar([u8; 24]);
 
+struct FooRef<'a> {
+    foo: &'a Foo,
+}
+
 type Baz = u32;
 
 fn good(a: &mut u32, b: u32, c: &Bar) {
@@ -18,6 +22,19 @@ fn good_return_implicit_lt_ref(foo: &Foo) -> &u32 {
 #[allow(needless_lifetimes)]
 fn good_return_explicit_lt_ref<'a>(foo: &'a Foo) -> &'a u32 {
     &foo.0
+}
+
+fn good_return_implicit_lt_struct(foo: &Foo) -> FooRef {
+    FooRef {
+        foo,
+    }
+}
+
+#[allow(needless_lifetimes)]
+fn good_return_explicit_lt_struct<'a>(foo: &'a Foo) -> FooRef<'a> {
+    FooRef {
+        foo,
+    }
 }
 
 fn bad(x: &u32, y: &Foo, z: &Baz) {
