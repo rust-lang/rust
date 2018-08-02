@@ -274,39 +274,35 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 // input. We try to handle both sensibly.
                 'args: for arg in &generic_args.args {
                     while let Some(param) = next_param {
-                        match param.kind {
-                            GenericParamDefKind::Lifetime => match arg {
-                                GenericArg::Lifetime(_) => {
-                                    push_kind(&mut substs, provided_kind(param, arg));
-                                    next_param = params.next();
-                                    continue 'args;
-                                }
-                                GenericArg::Type(_) => {
-                                    // We expected a lifetime argument, but got a type
-                                    // argument. That means we're inferring the lifetimes.
-                                    push_kind(&mut substs, inferred_kind(None, param, infer_types));
-                                    next_param = params.next();
-                                }
+                        match (&param.kind, arg) {
+                            (GenericParamDefKind::Lifetime, GenericArg::Lifetime(_)) => {
+                                push_kind(&mut substs, provided_kind(param, arg));
+                                next_param = params.next();
+                                continue 'args;
                             }
-                            GenericParamDefKind::Type { .. } => match arg {
-                                GenericArg::Type(_) => {
-                                    push_kind(&mut substs, provided_kind(param, arg));
-                                    next_param = params.next();
-                                    continue 'args;
+                            (GenericParamDefKind::Lifetime, GenericArg::Type(_)) => {
+                                // We expected a lifetime argument, but got a type
+                                // argument. That means we're inferring the lifetimes.
+                                push_kind(&mut substs, inferred_kind(None, param, infer_types));
+                                next_param = params.next();
+                            }
+                            (GenericParamDefKind::Type { .. }, GenericArg::Type(_)) => {
+                                push_kind(&mut substs, provided_kind(param, arg));
+                                next_param = params.next();
+                                continue 'args;
+                            }
+                            (GenericParamDefKind::Type { .. }, GenericArg::Lifetime(_)) => {
+                                // We expected a type argument, but got a lifetime
+                                // argument. This is an error, but we need to handle it
+                                // gracefully so we can report sensible errors. In this
+                                // case, we're simply going to infer the remaining
+                                // arguments.
+                                if err_if_invalid {
+                                    tcx.sess.delay_span_bug(span,
+                                        "found a GenericArg::Lifetime where a \
+                                        GenericArg::Type was expected");
                                 }
-                                GenericArg::Lifetime(_) => {
-                                    // We expected a type argument, but got a lifetime
-                                    // argument. This is an error, but we need to handle it
-                                    // gracefully so we can report sensible errors. In this
-                                    // case, we're simply going to infer the remaining
-                                    // arguments.
-                                    if err_if_invalid {
-                                        tcx.sess.delay_span_bug(span,
-                                            "found a GenericArg::Lifetime where a \
-                                            GenericArg::Type was expected");
-                                    }
-                                    break 'args;
-                                }
+                                break 'args;
                             }
                         }
                     }
