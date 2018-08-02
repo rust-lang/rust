@@ -44,7 +44,7 @@ impl Step for Std {
         std_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
-        println!("Checking std artifacts ({} -> {})", &compiler.host, target);
+        builder.info(&format!("Checking std artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
                   vec![],
@@ -89,7 +89,7 @@ impl Step for Rustc {
         rustc_cargo(builder, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-rustc", compiler.stage));
-        println!("Checking compiler artifacts ({} -> {})", &compiler.host, target);
+        builder.info(&format!("Checking compiler artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
                   vec![],
@@ -177,7 +177,7 @@ impl Step for Test {
         test_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
-        println!("Checking test artifacts ({} -> {})", &compiler.host, target);
+        builder.info(&format!("Checking test artifacts ({} -> {})", &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
                   vec![],
