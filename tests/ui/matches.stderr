@@ -33,15 +33,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 41 | |         &(v, 1) => println!("{}", v),
 42 | |         _ => println!("none"),
 43 | |     }
-   | |_____^
-help: try this
-   |
-40 |     if let &(v, 1) = tup {
-41 | # [ cfg ( not ( stage0 ) ) ] {
-42 | ( $ crate :: io :: _print ( format_args_nl ! ( $ ( $ arg ) * ) ) ) ; } # [
-43 | cfg ( stage0 ) ] { print ! ( "{}/n" , format_args ! ( $ ( $ arg ) * ) ) } } else {
-44 | ( $ crate :: io :: _print ( format_args_nl ! ( $ ( $ arg ) * ) ) ) ; }
-   |
+   | |_____^ help: try this: `if let &(v, 1) = tup { $ crate :: io :: _print ( format_args_nl ! ( $ ( $ arg ) * ) ) ; } else { $ crate :: io :: _print ( format_args_nl ! ( $ ( $ arg ) * ) ) ; }`
 
 error: you don't need to add `&` to all patterns
   --> $DIR/matches.rs:40:5
