@@ -80,7 +80,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub INDEXING_SLICING,
-    pedantic,
+    restriction,
     "indexing/slicing usage"
 }
 
