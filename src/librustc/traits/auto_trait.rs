@@ -358,7 +358,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 &Err(SelectionError::Unimplemented) => {
                     if self.is_of_param(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
-                        self.add_user_pred(&mut user_computed_preds, ty::Predicate::Trait(pred.clone()));
+                        self.add_user_pred(&mut user_computed_preds,
+                                           ty::Predicate::Trait(pred.clone()));
                         predicates.push_back(pred);
                     } else {
                         debug!(
@@ -416,7 +417,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // under which a type implements an auto trait. A trait predicate involving
     // a HRTB means that the type needs to work with any choice of lifetime,
     // not just one specific lifetime (e.g. 'static).
-    fn add_user_pred<'c>(&self, user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>, new_pred: ty::Predicate<'c>) {
+    fn add_user_pred<'c>(&self, user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>,
+                         new_pred: ty::Predicate<'c>) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             match (&new_pred, old_pred) {
@@ -430,11 +432,17 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             return true
                         }
 
-                        for (new_region, old_region) in new_substs.regions().zip(old_substs.regions()) {
+                        for (new_region, old_region) in new_substs
+                            .regions()
+                            .zip(old_substs.regions()) {
+
                             match (new_region, old_region) {
                                 // If both predicates have an 'ReLateBound' (a HRTB) in the
                                 // same spot, we do nothing
-                                (ty::RegionKind::ReLateBound(_, _), ty::RegionKind::ReLateBound(_, _)) => {},
+                                (
+                                    ty::RegionKind::ReLateBound(_, _),
+                                    ty::RegionKind::ReLateBound(_, _)
+                                ) => {},
 
                                 (ty::RegionKind::ReLateBound(_, _), _) => {
                                     // The new predicate has a HRTB in a spot where the old
