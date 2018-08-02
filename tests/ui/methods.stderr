@@ -358,79 +358,79 @@ error: use of `expect` followed by a function call
     |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!(format!("Error {}: fake error", error_code).as_str()))`
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:402:23
+   --> $DIR/methods.rs:406:23
     |
-402 |         let bad_vec = some_vec.iter().nth(3);
+406 |         let bad_vec = some_vec.iter().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:403:26
+   --> $DIR/methods.rs:407:26
     |
-403 |         let bad_slice = &some_vec[..].iter().nth(3);
+407 |         let bad_slice = &some_vec[..].iter().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:404:31
+   --> $DIR/methods.rs:408:31
     |
-404 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
+408 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:405:29
+   --> $DIR/methods.rs:409:29
     |
-405 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
+409 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:410:23
+   --> $DIR/methods.rs:414:23
     |
-410 |         let bad_vec = some_vec.iter_mut().nth(3);
+414 |         let bad_vec = some_vec.iter_mut().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:413:26
+   --> $DIR/methods.rs:417:26
     |
-413 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
+417 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:416:29
+   --> $DIR/methods.rs:420:29
     |
-416 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
+420 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:428:13
+   --> $DIR/methods.rs:432:13
     |
-428 |     let _ = some_vec.iter().skip(42).next();
+432 |     let _ = some_vec.iter().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:429:13
+   --> $DIR/methods.rs:433:13
     |
-429 |     let _ = some_vec.iter().cycle().skip(42).next();
+433 |     let _ = some_vec.iter().cycle().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:430:13
+   --> $DIR/methods.rs:434:13
     |
-430 |     let _ = (1..10).skip(10).next();
+434 |     let _ = (1..10).skip(10).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:431:14
+   --> $DIR/methods.rs:435:14
     |
-431 |     let _ = &some_vec[..].iter().skip(3).next();
+435 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:440:13
+   --> $DIR/methods.rs:444:13
     |
-440 |     let _ = opt.unwrap();
+444 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`

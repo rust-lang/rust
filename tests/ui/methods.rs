@@ -389,6 +389,10 @@ fn expect_fun_call() {
 
     let with_dummy_type_and_as_str = Foo::new();
     with_dummy_type_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+
+    //Issue #2979 - this should not lint
+    let msg = "bar";
+    Some("foo").expect(msg);
 }
 
 /// Checks implementation of `ITER_NTH` lint

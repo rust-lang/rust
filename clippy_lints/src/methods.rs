@@ -1047,10 +1047,21 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
             return;
         }
 
-        // don't lint for constant values
-        let owner_def = cx.tcx.hir.get_parent_did(arg.id);
-        let promotable = cx.tcx.rvalue_promotable_map(owner_def).contains(&arg.hir_id.local_id);
-        if promotable {
+        fn is_call(node: &hir::ExprKind) -> bool {
+            match node {
+                hir::ExprKind::AddrOf(_, expr) => {
+                    is_call(&expr.node)
+                },
+                hir::ExprKind::Call(..)
+                | hir::ExprKind::MethodCall(..)
+                // These variants are debatable or require further examination
+                | hir::ExprKind::If(..)
+                | hir::ExprKind::Match(..) => true,
+                _ => false,
+            }
+        }
+
+        if !is_call(&arg.node) {
             return;
         }
 
