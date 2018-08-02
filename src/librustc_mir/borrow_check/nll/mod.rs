@@ -39,7 +39,9 @@ use polonius_engine::{Algorithm, Output};
 use util as mir_util;
 use util::pretty::{self, ALIGN};
 
+mod constraints;
 mod constraint_generation;
+mod escaping_locals;
 pub mod explain_borrow;
 mod facts;
 mod invalidation;
@@ -48,8 +50,6 @@ mod renumber;
 crate mod type_check;
 mod universal_regions;
 crate mod liveness_map;
-
-mod constraints;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;
@@ -120,6 +120,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         location_table,
         borrow_set,
         &liveness,
+        &liveness_map,
         &mut all_facts,
         flow_inits,
         move_data,
