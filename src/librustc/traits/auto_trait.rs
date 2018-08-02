@@ -326,9 +326,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let mut user_computed_preds: FxHashSet<_> =
             user_env.caller_bounds.iter().cloned().collect();
 
-
-
-
         let mut new_env = param_env.clone();
         let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
 
@@ -362,7 +359,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     if self.is_of_param(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
                         self.add_user_pred(&mut user_computed_preds, ty::Predicate::Trait(pred.clone()));
-                        //user_computed_preds.insert(ty::Predicate::Trait(pred.clone()));
                         predicates.push_back(pred);
                     } else {
                         debug!(
@@ -397,6 +393,29 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         return Some((new_env, final_user_env));
     }
 
+    // This method is designed to work around the following issue:
+    // When we compute auto trait bounds, we repeatedly call SelectionContext.select,
+    // progressively building a ParamEnv based on the results we get.
+    // However, our usage of SelectionContext differs from its normal use within the compiler,
+    // in that we capture and re-reprocess predicates from Unimplemented errors.
+    //
+    // This can lead to a corner case when dealing with region parameters.
+    // During our selection loop in evaluate_predicates, we might end up with
+    // two trait predicates that differ only in their region parameters:
+    // one containing a HRTB lifetime parameter, and one containing a 'normal'
+    // lifetime parameter. For example:
+    //
+    // T as MyTrait<'a>
+    // T as MyTrait<'static>
+    //
+    // If we put both of these predicates in our computed ParamEnv, we'll
+    // confuse SelectionContext, since it will (correctly) view both as being applicable.
+    //
+    // To solve this, we pick the 'more strict' lifetime bound - i.e. the HRTB
+    // Our end goal is to generate a user-visible description of the conditions
+    // under which a type implements an auto trait. A trait predicate involving
+    // a HRTB means that the type needs to work with any choice of lifetime,
+    // not just one specific lifetime (e.g. 'static).
     fn add_user_pred<'c>(&self, user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>, new_pred: ty::Predicate<'c>) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
