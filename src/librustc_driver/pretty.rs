@@ -798,17 +798,17 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
             fold::noop_fold_block(b, self)
         } else {
             b.map(|b| {
-                let old_blocks = self.nested_blocks.replace(vec![]);
+                let mut stmts = vec![];
+                for s in b.stmts {
+                    let old_blocks = self.nested_blocks.replace(vec![]);
 
-                let mut stmts = b.stmts.into_iter()
-                                       .flat_map(|s| self.fold_stmt(s))
-                                       .filter(|s| s.is_item())
-                                       .collect::<Vec<ast::Stmt>>();
+                    stmts.extend(self.fold_stmt(s).into_iter().filter(|s| s.is_item()));
 
-                // we put a Some in there earlier with that replace(), so this is valid
-                let new_blocks = self.nested_blocks.take().unwrap();
-                self.nested_blocks = old_blocks;
-                stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, &self.sess)));
+                    // we put a Some in there earlier with that replace(), so this is valid
+                    let new_blocks = self.nested_blocks.take().unwrap();
+                    self.nested_blocks = old_blocks;
+                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, &self.sess)));
+                }
 
                 let mut new_block = ast::Block {
                     stmts,
