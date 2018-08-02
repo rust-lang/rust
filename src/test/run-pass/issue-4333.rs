@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(io)]
-
 use std::io;
 
 pub fn main() {

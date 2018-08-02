@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax, io)]
+#![feature(box_syntax)]
 
 use std::io::{self, Write};
 
