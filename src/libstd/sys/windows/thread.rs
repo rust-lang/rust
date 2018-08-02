@@ -42,7 +42,8 @@ impl Thread {
         let stack_size = (stack + 0xfffe) & (!0xfffe);
         let ret = c::CreateThread(ptr::null_mut(), stack_size,
                                   thread_start, &*p as *const _ as *mut _,
-                                  0, ptr::null_mut());
+                                  c::STACK_SIZE_PARAM_IS_A_RESERVATION,
+                                  ptr::null_mut());
 
         return if ret as usize == 0 {
             Err(io::Error::last_os_error())

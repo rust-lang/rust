@@ -296,6 +296,8 @@ pub const PIPE_READMODE_BYTE: DWORD = 0x00000000;
 
 pub const FD_SETSIZE: usize = 64;
 
+pub const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x00010000;
+
 #[repr(C)]
 #[cfg(not(target_pointer_width = "64"))]
 pub struct WSADATA {
