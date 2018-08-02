@@ -326,6 +326,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let mut user_computed_preds: FxHashSet<_> =
             user_env.caller_bounds.iter().cloned().collect();
 
+
+
+
         let mut new_env = param_env.clone();
         let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
 
@@ -358,7 +361,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 &Err(SelectionError::Unimplemented) => {
                     if self.is_of_param(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
-                        user_computed_preds.insert(ty::Predicate::Trait(pred.clone()));
+                        self.add_user_pred(&mut user_computed_preds, ty::Predicate::Trait(pred.clone()));
+                        //user_computed_preds.insert(ty::Predicate::Trait(pred.clone()));
                         predicates.push_back(pred);
                     } else {
                         debug!(
@@ -391,6 +395,62 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         );
 
         return Some((new_env, final_user_env));
+    }
+
+    fn add_user_pred<'c>(&self, user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>, new_pred: ty::Predicate<'c>) {
+        let mut should_add_new = true;
+        user_computed_preds.retain(|&old_pred| {
+            match (&new_pred, old_pred) {
+                (&ty::Predicate::Trait(new_trait), ty::Predicate::Trait(old_trait)) => {
+                    if new_trait.def_id() == old_trait.def_id() {
+                        let new_substs = new_trait.skip_binder().trait_ref.substs;
+                        let old_substs = old_trait.skip_binder().trait_ref.substs;
+                        if !new_substs.types().eq(old_substs.types()) {
+                            // We can't compare lifetimes if the types are different,
+                            // so skip checking old_pred
+                            return true
+                        }
+
+                        for (new_region, old_region) in new_substs.regions().zip(old_substs.regions()) {
+                            match (new_region, old_region) {
+                                // If both predicates have an 'ReLateBound' (a HRTB) in the
+                                // same spot, we do nothing
+                                (ty::RegionKind::ReLateBound(_, _), ty::RegionKind::ReLateBound(_, _)) => {},
+
+                                (ty::RegionKind::ReLateBound(_, _), _) => {
+                                    // The new predicate has a HRTB in a spot where the old
+                                    // predicate does not (if they both had a HRTB, the previous
+                                    // match arm would have executed).
+                                    //
+                                    // The means we want to remove the older predicate from
+                                    // user_computed_preds, since having both it and the new
+                                    // predicate in a ParamEnv would confuse SelectionContext
+                                    // We're currently in the predicate passed to 'retain',
+                                    // so we return 'false' to remove the old predicate from
+                                    // user_computed_preds
+                                    return false;
+                                },
+                                (_, ty::RegionKind::ReLateBound(_, _)) => {
+                                    // This is the opposite situation as the previous arm - the
+                                    // old predicate has a HRTB lifetime in a place where the
+                                    // new predicate does not. We want to leave the old
+                                    // predicate in user_computed_preds, and skip adding
+                                    // new_pred to user_computed_params.
+                                    should_add_new = false
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                },
+                _ => {}
+            }
+            return true
+        });
+
+        if should_add_new {
+            user_computed_preds.insert(new_pred);
+        }
     }
 
     pub fn region_name(&self, region: Region) -> Option<String> {
@@ -555,7 +615,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     let substs = &p.skip_binder().trait_ref.substs;
 
                     if self.is_of_param(substs) && !only_projections && is_new_pred {
-                        computed_preds.insert(predicate);
+                        self.add_user_pred(computed_preds, predicate);
                     }
                     predicates.push_back(p.clone());
                 }
@@ -563,7 +623,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // If the projection isn't all type vars, then
                     // we don't want to add it as a bound
                     if self.is_of_param(p.skip_binder().projection_ty.substs) && is_new_pred {
-                        computed_preds.insert(predicate);
+                        self.add_user_pred(computed_preds, predicate);
                     } else {
                         match poly_project_and_unify_type(select, &obligation.with(p.clone())) {
                             Err(e) => {
