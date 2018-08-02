@@ -1005,7 +1005,7 @@ struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
 impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path: &hir::Path) -> bool {
         let did = match path.def {
-            Def::PrimTy(..) | Def::SelfTy(..) => return false,
+            Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => return false,
             def => def.def_id(),
         };
 
