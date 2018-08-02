@@ -159,34 +159,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         }
         debug_assert!(self.memory.cur_frame == self.cur_frame());
 
-        // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
-        // We currently insta-UB on anything passing around uninitialized memory, so we have to whitelist
-        // the places that are allowed to do that.
-        // The second group is stuff libstd does that is forbidden even under relaxed validation.
-        {
-            // The regexp we use for filtering
-            use regex::Regex;
-            lazy_static! {
-                static ref RE: Regex = Regex::new("^(\
-                    (std|alloc::heap::__core)::mem::(uninitialized|forget)::|\
-                    <(std|alloc)::heap::Heap as (std::heap|alloc::allocator)::Alloc>::|\
-                    <(std|alloc::heap::__core)::mem::ManuallyDrop<T>><.*>::new$|\
-                    <(std|alloc::heap::__core)::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
-                    (std|alloc::heap::__core)::ptr::read::|\
-                    \
-                    <std::sync::Arc<T>><.*>::inner$|\
-                    <std::sync::Arc<T>><.*>::drop_slow$|\
-                    (std::heap|alloc::allocator)::Layout::for_value::|\
-                    (std|alloc::heap::__core)::mem::(size|align)_of_val::\
-                )").unwrap();
-            }
-            // Now test
-            let name = self.frame().instance.to_string();
-            if RE.is_match(&name) {
-                return Ok(());
-            }
-        }
-
         // We need to monomorphize ty *without* erasing lifetimes
         trace!("validation_op1: {:?}", operand.ty.sty);
         let ty = operand.ty.subst(self.tcx.tcx, self.substs());

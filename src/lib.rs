@@ -17,9 +17,6 @@ extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate rustc_target;
 extern crate syntax;
-extern crate regex;
-#[macro_use]
-extern crate lazy_static;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
