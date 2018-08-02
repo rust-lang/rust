@@ -381,7 +381,7 @@ the current edition.
 Erroneous code example:
 
 ```compile_fail,E0705
-#![allow(rust_2018_preview)]
+#![feature(rust_2018_preview)]
 #![feature(raw_identifiers)] // error: the feature `raw_identifiers` is
                              // included in the Rust 2018 edition
 ```

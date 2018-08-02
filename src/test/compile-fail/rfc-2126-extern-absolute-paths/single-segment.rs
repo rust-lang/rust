@@ -11,9 +11,6 @@
 // aux-build:xcrate.rs
 // edition:2018
 
-#![feature(crate_in_paths)]
-#![feature(extern_absolute_paths)]
-
 use crate; //~ ERROR unresolved import `crate`
            //~^ NOTE crate root imports need to be explicitly named: `use crate as name;`
 use *; //~ ERROR unresolved import `*`

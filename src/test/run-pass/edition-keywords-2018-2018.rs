@@ -11,8 +11,6 @@
 // edition:2018
 // aux-build:edition-kw-macro-2018.rs
 
-#![feature(raw_identifiers)]
-
 #[macro_use]
 extern crate edition_kw_macro_2018;
 

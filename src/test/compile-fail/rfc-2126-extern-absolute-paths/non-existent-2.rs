@@ -10,8 +10,6 @@
 
 // edition:2018
 
-#![feature(extern_absolute_paths)]
-
 fn main() {
     let s = ::xcrate::S; //~ ERROR can't find crate for `xcrate`
 }

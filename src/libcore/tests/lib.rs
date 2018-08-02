@@ -13,7 +13,6 @@
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
-#![feature(decode_utf8)]
 #![feature(euclidean_division)]
 #![feature(exact_size_is_empty)]
 #![feature(fixed_size_array)]
