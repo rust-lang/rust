@@ -78,7 +78,6 @@ use rustc::session::filesearch;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
-use rustc::middle::cstore::CrateStore;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
@@ -676,7 +675,7 @@ pub trait CompilerCalls<'a> {
                      _: &dyn CodegenBackend,
                      _: &getopts::Matches,
                      _: &Session,
-                     _: &dyn CrateStore,
+                     _: &CStore,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
@@ -884,7 +883,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                      codegen_backend: &dyn CodegenBackend,
                      matches: &getopts::Matches,
                      sess: &Session,
-                     cstore: &dyn CrateStore,
+                     cstore: &CStore,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
@@ -990,7 +989,7 @@ pub fn enable_save_analysis(control: &mut CompileController) {
 
 impl RustcDefaultCalls {
     pub fn list_metadata(sess: &Session,
-                         cstore: &dyn CrateStore,
+                         cstore: &CStore,
                          matches: &getopts::Matches,
                          input: &Input)
                          -> Compilation {
@@ -1002,7 +1001,7 @@ impl RustcDefaultCalls {
                     let mut v = Vec::new();
                     locator::list_file_metadata(&sess.target.target,
                                                 path,
-                                                cstore.metadata_loader(),
+                                                &*cstore.metadata_loader,
                                                 &mut v)
                             .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());

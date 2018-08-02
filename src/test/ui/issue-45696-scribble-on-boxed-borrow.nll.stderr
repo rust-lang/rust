@@ -1,0 +1,48 @@
+error[E0597]: `*s.0` does not live long enough
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:63:5
+   |
+LL |     &mut *s.0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
+   |     ^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `*s.0` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 62:14...
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:62:14
+   |
+LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
+   |              ^^
+
+error[E0597]: `*s.0` does not live long enough
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:73:5
+   |
+LL |     &mut *(*s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
+   |     ^^^^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `*s.0` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 72:20...
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:72:20
+   |
+LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
+   |                    ^^
+
+error[E0597]: `*s.0` does not live long enough
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:83:5
+   |
+LL |     &mut *(**s).0 //[nll]~ ERROR `*s.0` does not live long enough [E0597]
+   |     ^^^^^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `*s.0` dropped here while still borrowed
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 82:26...
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:82:26
+   |
+LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
+   |                          ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

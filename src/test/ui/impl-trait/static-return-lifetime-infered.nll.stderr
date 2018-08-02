@@ -21,6 +21,8 @@ LL |         self.x.iter().map(|a| a.0)
 error: unsatisfied lifetime constraints
   --> $DIR/static-return-lifetime-infered.rs:21:9
    |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                    -- lifetime `'a` defined here
 LL |         self.x.iter().map(|a| a.0)
    |         ^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 

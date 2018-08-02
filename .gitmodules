@@ -56,3 +56,11 @@
 [submodule "src/libbacktrace"]
 	path = src/libbacktrace
 	url = https://github.com/rust-lang-nursery/libbacktrace
+[submodule "src/lldb"]
+	path = src/lldb
+	url = https://github.com/rust-lang-nursery/lldb/
+	branch = rust-release-70
+[submodule "src/clang"]
+	path = src/clang
+	url = https://github.com/rust-lang-nursery/clang/
+	branch = master

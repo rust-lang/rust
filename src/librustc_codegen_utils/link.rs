@@ -10,11 +10,12 @@
 
 use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
-use rustc::middle::cstore::{self, LinkMeta};
+use rustc::middle::cstore::LinkMeta;
 use rustc::hir::svh::Svh;
 use std::path::{Path, PathBuf};
 use syntax::{ast, attr};
 use syntax_pos::Span;
+use rustc_metadata::creader;
 
 pub fn out_filename(sess: &Session,
                 crate_type: config::CrateType,
@@ -61,7 +62,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        cstore::validate_crate_name(sess, &s, span);
+        creader::validate_crate_name(sess, &s, span);
         s
     };
 
