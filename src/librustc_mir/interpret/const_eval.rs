@@ -87,7 +87,7 @@ pub fn value_to_const_value<'tcx>(
     }
     let val = match val {
         Value::Scalar(val) => ConstValue::Scalar(val.unwrap_or_err()?),
-        Value::ScalarPair(a, b) => ConstValue::ScalarPair(a.unwrap_or_err()?, b.unwrap_or_err()?),
+        Value::ScalarPair(a, b) => ConstValue::ScalarPair(a.unwrap_or_err()?, b),
         Value::ByRef(ptr, align) => {
             let ptr = ptr.to_ptr().unwrap();
             let alloc = ecx.memory.get(ptr.alloc_id)?;

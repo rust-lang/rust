@@ -16,7 +16,7 @@ union Foo {
 
 enum Bar {
     Boo = [unsafe { Foo { b: () }.a }; 4][3],
-    //~^ ERROR constant evaluation of enum discriminant resulted in non-integer
+    //~^ ERROR could not evaluate enum discriminant
 }
 
 fn main() {

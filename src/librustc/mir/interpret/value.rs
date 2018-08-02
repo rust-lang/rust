@@ -18,7 +18,9 @@ pub enum ConstValue<'tcx> {
     /// Used only for types with layout::abi::Scalar ABI and ZSTs
     Scalar(Scalar),
     /// Used only for types with layout::abi::ScalarPair
-    ScalarPair(Scalar, Scalar),
+    ///
+    /// The second field may be undef in case of `Option<usize>::None`
+    ScalarPair(Scalar, ScalarMaybeUndef),
     /// Used only for the remaining cases. An allocation + offset into the allocation
     ByRef(&'tcx Allocation, Size),
 }
@@ -28,10 +30,7 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn from_byval_value(val: Value) -> EvalResult<'static, Self> {
         Ok(match val {
             Value::ByRef(..) => bug!(),
-            Value::ScalarPair(a, b) => ConstValue::ScalarPair(
-                a.unwrap_or_err()?,
-                b.unwrap_or_err()?,
-            ),
+            Value::ScalarPair(a, b) => ConstValue::ScalarPair(a.unwrap_or_err()?, b),
             Value::Scalar(val) => ConstValue::Scalar(val.unwrap_or_err()?),
         })
     }
@@ -41,7 +40,7 @@ impl<'tcx> ConstValue<'tcx> {
         match *self {
             ConstValue::Unevaluated(..) |
             ConstValue::ByRef(..) => None,
-            ConstValue::ScalarPair(a, b) => Some(Value::ScalarPair(a.into(), b.into())),
+            ConstValue::ScalarPair(a, b) => Some(Value::ScalarPair(a.into(), b)),
             ConstValue::Scalar(val) => Some(Value::Scalar(val.into())),
         }
     }
