@@ -243,7 +243,6 @@
 #![feature(align_offset)]
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
-#![feature(ascii_ctype)]
 #![feature(asm)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
