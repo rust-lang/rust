@@ -13,7 +13,7 @@ use rustc_errors;
 use syntax::{
     ast::{
         self, Arg, Attribute, Crate, Expr, FnHeader, Generics, Ident, Item, ItemKind,
-        LitKind, Mac, Mod, Mutability, StrStyle, Ty, TyKind, Unsafety, VisibilityKind,
+        Mac, Mod, Mutability, Ty, TyKind, Unsafety, VisibilityKind,
     },
     attr,
     codemap::{
@@ -236,17 +236,12 @@ impl<'a> AllocFnFactory<'a> {
     }
 
     fn attrs(&self) -> Vec<Attribute> {
-        let key = Symbol::intern("linkage");
-        let value = LitKind::Str(Symbol::intern("external"), StrStyle::Cooked);
-        let linkage = self.cx.meta_name_value(self.span, key, value);
-
         let no_mangle = Symbol::intern("no_mangle");
         let no_mangle = self.cx.meta_word(self.span, no_mangle);
 
         let special = Symbol::intern("rustc_std_internal_symbol");
         let special = self.cx.meta_word(self.span, special);
         vec![
-            self.cx.attribute(self.span, linkage),
             self.cx.attribute(self.span, no_mangle),
             self.cx.attribute(self.span, special),
         ]

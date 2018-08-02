@@ -15,7 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use hir::CodegenFnAttrs;
+use hir::{CodegenFnAttrs, CodegenFnAttrFlags};
 use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
@@ -28,7 +28,6 @@ use util::nodemap::{NodeSet, FxHashSet};
 
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::attr;
 use hir;
 use hir::def_id::LOCAL_CRATE;
 use hir::intravisit::{Visitor, NestedVisitorMap};
@@ -359,8 +358,12 @@ struct CollectPrivateImplItemsVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         // Anything which has custom linkage gets thrown on the worklist no
-        // matter where it is in the crate.
-        if attr::contains_name(&item.attrs, "linkage") {
+        // matter where it is in the crate, along with "special std symbols"
+        // which are currently akin to allocator symbols.
+        let def_id = self.tcx.hir.local_def_id(item.id);
+        let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
+        if codegen_attrs.linkage.is_some() ||
+            codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
             self.worklist.push(item.id);
         }
 

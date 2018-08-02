@@ -67,14 +67,15 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
         if tcx.sess.target.target.options.default_hidden_visibility {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
-       if tcx.sess.target.target.options.requires_uwtable {
-           attributes::emit_uwtable(llfn, true);
-       }
+        if tcx.sess.target.target.options.requires_uwtable {
+            attributes::emit_uwtable(llfn, true);
+        }
 
         let callee = CString::new(kind.fn_name(method.name)).unwrap();
         let callee = llvm::LLVMRustGetOrInsertFunction(llmod,
                                                        callee.as_ptr(),
                                                        ty);
+        llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
 
         let llbb = llvm::LLVMAppendBasicBlockInContext(llcx,
                                                        llfn,
