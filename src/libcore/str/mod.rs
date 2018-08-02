@@ -3604,14 +3604,17 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = " Hello\tworld\t";
+    /// #![feature(trim_direction)]
     ///
+    /// let s = " Hello\tworld\t";
     /// assert_eq!("Hello\tworld\t", s.trim_start());
     /// ```
     ///
     /// Directionality:
     ///
     /// ```
+    /// #![feature(trim_direction)]
+    ///
     /// let s = "  English";
     /// assert!(Some('E') == s.trim_start().chars().next());
     ///
@@ -3640,14 +3643,17 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = " Hello\tworld\t";
+    /// #![feature(trim_direction)]
     ///
+    /// let s = " Hello\tworld\t";
     /// assert_eq!(" Hello\tworld", s.trim_end());
     /// ```
     ///
     /// Directionality:
     ///
     /// ```
+    /// #![feature(trim_direction)]
+    ///
     /// let s = "English  ";
     /// assert!(Some('h') == s.trim_end().chars().rev().next());
     ///
@@ -3799,6 +3805,8 @@ impl str {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(trim_direction)]
+    ///
     /// assert_eq!("11foo1bar11".trim_start_matches('1'), "foo1bar11");
     /// assert_eq!("123foo1bar123".trim_start_matches(char::is_numeric), "foo1bar123");
     ///
@@ -3838,6 +3846,8 @@ impl str {
     /// Simple patterns:
     ///
     /// ```
+    /// #![feature(trim_direction)]
+    ///
     /// assert_eq!("11foo1bar11".trim_end_matches('1'), "11foo1bar");
     /// assert_eq!("123foo1bar123".trim_end_matches(char::is_numeric), "123foo1bar");
     ///
@@ -3848,6 +3858,8 @@ impl str {
     /// A more complex pattern, using a closure:
     ///
     /// ```
+    /// #![feature(trim_direction)]
+    ///
     /// assert_eq!("1fooX".trim_end_matches(|c| c == '1' || c == 'X'), "1foo");
     /// ```
     #[unstable(feature = "trim_direction", issue = "30459")]
