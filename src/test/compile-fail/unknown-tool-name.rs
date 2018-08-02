@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_attributes)]
 
 #![foo::bar] //~ ERROR an unknown tool name found in scoped attribute: `foo::bar`. [E0694]
 
