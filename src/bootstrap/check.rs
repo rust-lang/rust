@@ -85,6 +85,8 @@ impl Step for Rustc {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
 
+        builder.ensure(Test { target });
+
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "check");
         rustc_cargo(builder, &mut cargo);
 
@@ -132,8 +134,7 @@ impl Step for CodegenBackend {
         let target = self.target;
         let backend = self.backend;
 
-        let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
-        builder.clear_if_dirty(&out_dir, &librustc_stamp(builder, compiler, target));
+        builder.ensure(Rustc { target });
 
         let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "check");
         cargo.arg("--manifest-path").arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
@@ -172,6 +173,8 @@ impl Step for Test {
     fn run(self, builder: &Builder) {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
+
+        builder.ensure(Std { target });
 
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "check");
         test_cargo(builder, &compiler, target, &mut cargo);
@@ -213,10 +216,7 @@ impl Step for Rustdoc {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
 
-        let stage_out = builder.stage_out(compiler, Mode::ToolRustc);
-        builder.clear_if_dirty(&stage_out, &libstd_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&stage_out, &libtest_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&stage_out, &librustc_stamp(builder, compiler, target));
+        builder.ensure(Rustc { target });
 
         let mut cargo = prepare_tool_cargo(builder,
                                            compiler,
