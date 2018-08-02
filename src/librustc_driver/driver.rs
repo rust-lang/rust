@@ -20,7 +20,6 @@ use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::middle::cstore::CrateStoreDyn;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
@@ -475,7 +474,7 @@ impl<'a> ::CompilerCalls<'a> for CompileController<'a> {
         codegen_backend: &dyn (::CodegenBackend),
         matches: &::getopts::Matches,
         sess: &Session,
-        cstore: &dyn (::CrateStore),
+        cstore: &CStore,
         input: &Input,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
@@ -717,9 +716,9 @@ pub struct ExpansionResult {
     pub hir_forest: hir_map::Forest,
 }
 
-pub struct InnerExpansionResult<'a> {
+pub struct InnerExpansionResult<'a, 'b: 'a> {
     pub expanded_crate: ast::Crate,
-    pub resolver: Resolver<'a>,
+    pub resolver: Resolver<'a, 'b>,
     pub hir_forest: hir_map::Forest,
 }
 
@@ -795,7 +794,7 @@ where
 
 /// Same as phase_2_configure_and_expand, but doesn't let you keep the resolver
 /// around
-pub fn phase_2_configure_and_expand_inner<'a, F>(
+pub fn phase_2_configure_and_expand_inner<'a, 'b: 'a, F>(
     sess: &'a Session,
     cstore: &'a CStore,
     mut krate: ast::Crate,
@@ -804,9 +803,9 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(
     addl_plugins: Option<Vec<String>>,
     make_glob_map: MakeGlobMap,
     resolver_arenas: &'a ResolverArenas<'a>,
-    crate_loader: &'a mut CrateLoader,
+    crate_loader: &'a mut CrateLoader<'b>,
     after_expand: F,
-) -> Result<InnerExpansionResult<'a>, CompileIncomplete>
+) -> Result<InnerExpansionResult<'a, 'b>, CompileIncomplete>
 where
     F: FnOnce(&ast::Crate) -> CompileResult,
 {
@@ -1196,7 +1195,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     codegen_backend: &dyn CodegenBackend,
     control: &CompileController,
     sess: &'tcx Session,
-    cstore: &'tcx CrateStoreDyn,
+    cstore: &'tcx CStore,
     hir_map: hir_map::Map<'tcx>,
     mut analysis: ty::CrateAnalysis,
     resolutions: Resolutions,
