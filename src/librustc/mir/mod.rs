@@ -429,8 +429,8 @@ pub enum BorrowKind {
 
     /// Data must be immutable but not aliasable.  This kind of borrow
     /// cannot currently be expressed by the user and is used only in
-    /// implicit closure bindings. It is needed when you the closure
-    /// is borrowing or mutating a mutable referent, e.g.:
+    /// implicit closure bindings. It is needed when the closure is
+    /// borrowing or mutating a mutable referent, e.g.:
     ///
     ///    let x: &mut isize = ...;
     ///    let y = || *x += 5;
@@ -443,7 +443,7 @@ pub enum BorrowKind {
     ///    let y = (&mut Env { &x }, fn_ptr);  // Closure is pair of env and fn
     ///    fn fn_ptr(env: &mut Env) { **env.x += 5; }
     ///
-    /// This is then illegal because you cannot mutate a `&mut` found
+    /// This is then illegal because you cannot mutate an `&mut` found
     /// in an aliasable location. To solve, you'd have to translate with
     /// an `&mut` borrow:
     ///
@@ -673,7 +673,7 @@ pub struct LocalDecl<'tcx> {
     /// ROOT SCOPE
     ///  │{ argument x: &str }
     ///  │
-    ///  │ │{ #[allow(unused_mut] } // this is actually split into 2 scopes
+    ///  │ │{ #[allow(unused_mut)] } // this is actually split into 2 scopes
     ///  │ │                        // in practice because I'm lazy.
     ///  │ │
     ///  │ │← x.source_info.scope
@@ -906,7 +906,7 @@ pub enum TerminatorKind<'tcx> {
 
     /// Drop the Place and assign the new value over it. This ensures
     /// that the assignment to `P` occurs *even if* the destructor for
-    /// place unwinds. Its semantics are best explained by by the
+    /// place unwinds. Its semantics are best explained by the
     /// elaboration:
     ///
     /// ```

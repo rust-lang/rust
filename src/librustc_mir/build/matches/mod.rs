@@ -321,9 +321,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         block.unit()
     }
 
-    /// Declares the bindings of the given pattern and returns the visibility scope
-    /// for the bindings in this patterns, if such a scope had to be created.
-    /// NOTE: Declaring the bindings should always be done in their drop scope.
+    /// Declares the bindings of the given patterns and returns the visibility
+    /// scope for the bindings in these patterns, if such a scope had to be
+    /// created. NOTE: Declaring the bindings should always be done in their
+    /// drop scope.
     pub fn declare_bindings(&mut self,
                             mut visibility_scope: Option<SourceScope>,
                             scope_span: Span,

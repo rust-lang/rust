@@ -155,7 +155,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         statement_span: Span,
     ) {
         debug!(
-            "append_to_grouped_errors(match_place={:?}, match_span={:?})",
+            "append_binding_error(match_place={:?}, match_span={:?})",
             match_place, match_span
         );
 
