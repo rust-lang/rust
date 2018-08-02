@@ -1785,6 +1785,7 @@ impl<T> [T] {
             return (self, &[], &[]);
         } else {
             let (left, rest) = self.split_at(offset);
+            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             return (left,
                     from_raw_parts(rest.as_ptr() as *const U, us_len),
@@ -1837,6 +1838,7 @@ impl<T> [T] {
             return (self, &mut [], &mut []);
         } else {
             let (left, rest) = self.split_at_mut(offset);
+            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             let mut_ptr = rest.as_mut_ptr();
             return (left,
