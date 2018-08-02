@@ -596,6 +596,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 
         // `main` should respect same config for frame pointer elimination as rest of code
         attributes::set_frame_pointer_elimination(cx, llfn);
+        attributes::apply_target_cpu_attr(cx, llfn);
 
         let bx = Builder::new_block(cx, llfn, "top");
 
