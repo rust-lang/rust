@@ -25,6 +25,7 @@
 use self::AttributeType::*;
 use self::AttributeGate::*;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
@@ -1900,10 +1901,13 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 
     let mut feature_checker = FeatureChecker::default();
 
-    for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
+    let mut edition_enabled_features = FxHashMap();
+
+    for &(name, .., f_edition, set) in ACTIVE_FEATURES.iter() {
         if let Some(f_edition) = f_edition {
             if f_edition <= crate_edition {
                 set(&mut features, DUMMY_SP);
+                edition_enabled_features.insert(Symbol::intern(name), crate_edition);
             }
         }
     }
@@ -1931,10 +1935,40 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 continue
             };
 
+            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
+                if *edition <= crate_edition {
+                    continue
+                }
+
+                for &(name, .., f_edition, set) in ACTIVE_FEATURES.iter() {
+                    if let Some(f_edition) = f_edition {
+                        if f_edition <= *edition {
+                            // FIXME(Manishearth) there is currently no way to set
+                            // lib features by edition
+                            set(&mut features, DUMMY_SP);
+                            edition_enabled_features.insert(Symbol::intern(name), *edition);
+                        }
+                    }
+                }
+
+                continue
+            }
+
             if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
-                set(&mut features, mi.span);
-                feature_checker.collect(&features, mi.span);
-                features.declared_lang_features.push((name, mi.span, None));
+                if let Some(edition) = edition_enabled_features.get(&name) {
+                    struct_span_err!(
+                        span_handler,
+                        mi.span,
+                        E0705,
+                        "the feature `{}` is included in the Rust {} edition",
+                        name,
+                        edition,
+                    ).emit();
+                } else {
+                    set(&mut features, mi.span);
+                    feature_checker.collect(&features, mi.span);
+                    features.declared_lang_features.push((name, mi.span, None));
+                }
                 continue
             }
 
@@ -1948,24 +1982,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             if let Some((_, since, ..)) = ACCEPTED_FEATURES.iter().find(|f| name == f.0) {
                 let since = Some(Symbol::intern(since));
                 features.declared_lang_features.push((name, mi.span, since));
-                continue
-            }
-
-            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
-                if *edition <= crate_edition {
-                    continue
-                }
-
-                for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
-                    if let Some(f_edition) = f_edition {
-                        if *edition >= f_edition {
-                            // FIXME(Manishearth) there is currently no way to set
-                            // lib features by edition
-                            set(&mut features, DUMMY_SP);
-                        }
-                    }
-                }
-
                 continue
             }
 
