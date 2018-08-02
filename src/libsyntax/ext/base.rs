@@ -726,7 +726,7 @@ pub trait Resolver {
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>, allow_derive: bool)
                               -> Option<Attribute>;
 
-    fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
+    fn resolve_invoc(&mut self, invoc: &Invocation, scope: Mark, force: bool)
                      -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Lrc<SyntaxExtension>, Determinacy>;
@@ -754,7 +754,7 @@ impl Resolver for DummyResolver {
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>, _allow_derive: bool)
                               -> Option<Attribute> { None }
-    fn resolve_invoc(&mut self, _invoc: &mut Invocation, _scope: Mark, _force: bool)
+    fn resolve_invoc(&mut self, _invoc: &Invocation, _scope: Mark, _force: bool)
                      -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         Err(Determinacy::Determined)
     }

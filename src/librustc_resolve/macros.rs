@@ -20,13 +20,12 @@ use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
 use rustc::middle::cstore::CrateStore;
 use syntax::ast::{self, Name, Ident};
-use syntax::attr::{self, HasAttrs};
+use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
-use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
+use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
-use syntax::ext::expand::{self, AstFragment, AstFragmentKind, Invocation, InvocationKind};
+use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark};
-use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, feature_err, emit_feature_err, is_builtin_attr_name, GateIssue};
 use syntax::fold::{self, Folder};
@@ -320,7 +319,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         None
     }
 
-    fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
+    fn resolve_invoc(&mut self, invoc: &Invocation, scope: Mark, force: bool)
                      -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         let def = match invoc.kind {
             InvocationKind::Attr { attr: None, .. } => return Ok(None),
@@ -330,17 +329,22 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             self.report_proc_macro_stub(invoc.span());
             return Err(Determinacy::Determined);
         } else if let Def::NonMacroAttr(attr_kind) = def {
-            let is_attr = if let InvocationKind::Attr { .. } = invoc.kind { true } else { false };
-            if is_attr && attr_kind == NonMacroAttrKind::Tool {
-                if !self.session.features_untracked().tool_attributes {
-                    feature_err(&self.session.parse_sess, "tool_attributes",
-                                invoc.span(), GateIssue::Language,
-                                "tool attributes are unstable").emit();
+            let is_attr_invoc =
+                if let InvocationKind::Attr { .. } = invoc.kind { true } else { false };
+            match attr_kind {
+                NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper if is_attr_invoc => {
+                    if attr_kind == NonMacroAttrKind::Tool &&
+                       !self.session.features_untracked().tool_attributes {
+                        feature_err(&self.session.parse_sess, "tool_attributes",
+                                    invoc.span(), GateIssue::Language,
+                                    "tool attributes are unstable").emit();
+                    }
+                    return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr)));
                 }
-                return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr)));
-            } else {
-                self.report_non_macro_attr(invoc.path_span(), def);
-                return Err(Determinacy::Determined);
+                _ => {
+                    self.report_non_macro_attr(invoc.path_span(), def);
+                    return Err(Determinacy::Determined);
+                }
             }
         }
         let def_id = def.def_id();
@@ -401,10 +405,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         self.session.span_err(span, &format!("expected a macro, found {}", def.kind_name()));
     }
 
-    fn resolve_invoc_to_def(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
+    fn resolve_invoc_to_def(&mut self, invoc: &Invocation, scope: Mark, force: bool)
                             -> Result<Def, Determinacy> {
-        let (attr, traits, item) = match invoc.kind {
-            InvocationKind::Attr { ref mut attr, ref traits, ref mut item } => (attr, traits, item),
+        let (attr, traits) = match invoc.kind {
+            InvocationKind::Attr { ref attr, ref traits, .. } => (attr, traits),
             InvocationKind::Bang { ref mac, .. } => {
                 return self.resolve_macro_to_def(scope, &mac.node.path, MacroKind::Bang, force);
             }
@@ -412,7 +416,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 return self.resolve_macro_to_def(scope, path, MacroKind::Derive, force);
             }
         };
-
 
         let path = attr.as_ref().unwrap().path.clone();
         let mut determinacy = Determinacy::Determined;
@@ -434,11 +437,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // This loop here looks through all of the derive annotations in scope
         // and tries to resolve them. If they themselves successfully resolve
         // *and* the resolve mentions that this attribute's name is a registered
-        // custom attribute then we flag this attribute as known and update
-        // `invoc` above to point to the next invocation.
-        //
-        // By then returning `Undetermined` we should continue resolution to
-        // resolve the next attribute.
+        // custom attribute then we return that custom attribute as the resolution result.
         let attr_name = match path.segments.len() {
             1 => path.segments[0].ident.name,
             _ => return Err(determinacy),
@@ -447,20 +446,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             match self.resolve_macro(scope, path, MacroKind::Derive, force) {
                 Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
                     if inert_attrs.contains(&attr_name) {
-                        // FIXME(jseyfried) Avoid `mem::replace` here.
-                        let dummy_item = placeholder(AstFragmentKind::Items, ast::DUMMY_NODE_ID)
-                            .make_items().pop().unwrap();
-                        let dummy_item = Annotatable::Item(dummy_item);
-                        *item = mem::replace(item, dummy_item).map_attrs(|mut attrs| {
-                            let inert_attr = attr.take().unwrap();
-                            attr::mark_known(&inert_attr);
-                            if self.use_extern_macros {
-                                *attr = expand::find_attr_invoc(&mut attrs);
-                            }
-                            attrs.push(inert_attr);
-                            attrs
-                        });
-                        return Err(Determinacy::Undetermined)
+                        return Ok(Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper));
                     }
                 },
                 Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
