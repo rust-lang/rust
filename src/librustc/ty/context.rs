@@ -1395,10 +1395,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// If true, we should enable two-phase borrows checks. This is
-    /// done with either `-Ztwo-phase-borrows` or with
-    /// `#![feature(nll)]`.
+    /// done with either: `-Ztwo-phase-borrows`, `#![feature(nll)]`,
+    /// or by opting into an edition after 2015.
     pub fn two_phase_borrows(self) -> bool {
-        self.features().nll || self.sess.opts.debugging_opts.two_phase_borrows
+        if self.features().nll || self.sess.opts.debugging_opts.two_phase_borrows {
+            return true;
+        }
+
+        match self.sess.edition() {
+            Edition::Edition2015 => false,
+            Edition::Edition2018 => true,
+            _ => true,
+        }
     }
 
     /// What mode(s) of borrowck should we run? AST? MIR? both?
