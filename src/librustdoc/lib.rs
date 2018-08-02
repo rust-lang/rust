@@ -289,7 +289,7 @@ pub fn opts() -> Vec<RustcOptGroup> {
                      "edition to use when compiling rust code (default: 2015)",
                      "EDITION")
         }),
-        unstable("color", |o| {
+        stable("color", |o| {
             o.optopt("",
                      "color",
                      "Configure coloring of output:
@@ -298,7 +298,7 @@ pub fn opts() -> Vec<RustcOptGroup> {
                                           never  = never colorize output",
                      "auto|always|never")
         }),
-        unstable("error-format", |o| {
+        stable("error-format", |o| {
             o.optopt("",
                      "error-format",
                      "How errors and other messages are produced",
