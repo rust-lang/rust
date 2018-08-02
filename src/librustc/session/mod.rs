@@ -20,7 +20,7 @@ use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{OutputType};
+use session::config::{OutputType, Lto};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -1189,7 +1189,25 @@ pub fn build_session_(
         driver_lint_caps: FxHashMap(),
     };
 
+    validate_commandline_args_with_session_available(&sess);
+
     sess
+}
+
+// If it is useful to have a Session available already for validating a
+// commandline argument, you can do so here.
+fn validate_commandline_args_with_session_available(sess: &Session) {
+
+    if sess.lto() != Lto::No && sess.opts.incremental.is_some() {
+        sess.err("can't perform LTO when compiling incrementally");
+    }
+
+    if sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+       sess.opts.cg.prefer_dynamic &&
+       sess.target.target.options.is_like_msvc {
+        sess.err("Linker plugin based LTO is not supported together with \
+                  `-C prefer-dynamic` when targeting MSVC");
+    }
 }
 
 /// Hash value constructed out of all the `-C metadata` arguments passed to the
