@@ -84,7 +84,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
                         let msg = "denote infinite loops with `loop { ... }`";
                         let condition_span = cx.tcx.sess.codemap().def_span(e.span);
                         let mut err = cx.struct_span_lint(WHILE_TRUE, condition_span, msg);
-                        err.span_suggestion_short(condition_span, "use `loop`", "loop".to_owned());
+                        err.span_suggestion_short_with_applicability(
+                            condition_span,
+                            "use `loop`",
+                            "loop".to_owned(),
+                            Applicability::MachineApplicable
+                        );
                         err.emit();
                     }
                 }
@@ -191,7 +196,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant", ident));
                         let subspan = cx.tcx.sess.codemap().span_through_char(fieldpat.span, ':');
-                        err.span_suggestion_short(subspan, "remove this", ident.to_string());
+                        err.span_suggestion_short_with_applicability(
+                            subspan,
+                            "remove this",
+                            ident.to_string(),
+                            Applicability::MachineApplicable
+                        );
                         err.emit();
                     }
                 }
@@ -708,10 +718,11 @@ impl EarlyLintPass for BadRepr {
                         | "i8" | "i16" | "i32" | "i64" | "i128" | "isize" => {
                             // if the literal could have been a valid `repr` arg,
                             // suggest the correct syntax
-                            warn.span_suggestion(
+                            warn.span_suggestion_with_applicability(
                                 attr.span,
                                 "give `repr` a hint",
                                 repr_str(&lit.as_str()),
+                                Applicability::MachineApplicable
                             );
                             suggested = true;
                         }
@@ -779,7 +790,12 @@ impl EarlyLintPass for DeprecatedAttr {
                     let msg = format!("use of deprecated attribute `{}`: {}. See {}",
                                       name, reason, link);
                     let mut err = cx.struct_span_lint(DEPRECATED, attr.span, &msg);
-                    err.span_suggestion_short(attr.span, "remove this attribute", "".to_owned());
+                    err.span_suggestion_short_with_applicability(
+                        attr.span,
+                        "remove this attribute",
+                        "".to_owned(),
+                        Applicability::MachineApplicable
+                    );
                     err.emit();
                 }
                 return;
@@ -1201,7 +1217,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                 }
             };
             if let Some(replacement) = suggestion {
-                err.span_suggestion(vis.span, "try making it public", replacement);
+                err.span_suggestion_with_applicability(
+                    vis.span,
+                    "try making it public",
+                    replacement,
+                    Applicability::MachineApplicable
+                );
             }
         };
 
@@ -1225,9 +1246,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                                                                   it.span,
                                                                   "functions generic over \
                                                                    types must be mangled");
-                                err.span_suggestion_short(no_mangle_attr.span,
-                                                          "remove this attribute",
-                                                          "".to_owned());
+                                err.span_suggestion_short_with_applicability(
+                                    no_mangle_attr.span,
+                                    "remove this attribute",
+                                    "".to_owned(),
+                                    // Use of `#[no_mangle]` suggests FFI intent; correct
+                                    // fix may be to monomorphize source by hand
+                                    Applicability::MaybeIncorrect
+                                );
                                 err.emit();
                                 break;
                             }
@@ -1257,9 +1283,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                         .unwrap_or(0) as u32;
                     // `const` is 5 chars
                     let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
-                    err.span_suggestion(const_span,
-                                        "try a static value",
-                                        "pub static".to_owned());
+                    err.span_suggestion_with_applicability(
+                        const_span,
+                        "try a static value",
+                        "pub static".to_owned(),
+                        Applicability::MachineApplicable
+                    );
                     err.emit();
                 }
             }
