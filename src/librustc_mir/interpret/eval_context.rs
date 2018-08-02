@@ -1521,7 +1521,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn try_read_value(&self, ptr: Scalar, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
-        let mut layout = self.layout_of(ty)?;
+        let layout = self.layout_of(ty)?;
         self.memory.check_align(ptr, ptr_align)?;
 
         if layout.size.bytes() == 0 {
@@ -1529,19 +1529,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
 
         let ptr = ptr.to_ptr()?;
-
-        match layout.variants {
-            layout::Variants::NicheFilling { .. } |
-            layout::Variants::Tagged { .. } => {
-                let variant_index = self.read_discriminant_as_variant_index(
-                    Place::from_ptr(ptr, ptr_align),
-                    layout,
-                )?;
-                layout = layout.for_variant(self, variant_index);
-                trace!("variant layout: {:#?}", layout);
-            },
-            layout::Variants::Single { .. } => {},
-        }
 
         match layout.abi {
             layout::Abi::Scalar(..) => {
@@ -1558,7 +1545,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let b_val = self.memory.read_scalar(b_ptr, ptr_align, b_size)?;
                 Ok(Some(Value::ScalarPair(a_val, b_val)))
             }
-            _ => Ok(None),
+            _ =>  Ok(None),
         }
     }
 
