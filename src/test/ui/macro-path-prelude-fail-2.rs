@@ -10,8 +10,10 @@
 
 #![feature(use_extern_macros)]
 
-fn main() {
-    #[rustfmt::skip] //~ ERROR tool attributes are unstable
-    let x = 3
-        ;
+mod m {
+    fn check() {
+        Result::Ok!(); //~ ERROR fail to resolve non-ident macro path
+    }
 }
+
+fn main() {}

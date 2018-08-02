@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_extern_macros)]
+// If macro modularization (`use_extern_macros`) is not enabled,
+// then tool attributes are treated as custom attributes.
 
-fn main() {
-    #[rustfmt::skip] //~ ERROR tool attributes are unstable
-    let x = 3
-        ;
-}
+#[rustfmt::bar] //~ ERROR The attribute `rustfmt::bar` is currently unknown to the compiler
+fn main() {}

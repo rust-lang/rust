@@ -11,7 +11,7 @@
 // aux-build:parent-source-spans.rs
 // ignore-stage1
 
-#![feature(use_extern_macros, decl_macro, proc_macro_non_items)]
+#![feature(decl_macro, proc_macro_non_items)]
 
 extern crate parent_source_spans;
 

@@ -629,7 +629,8 @@ impl<'a> Resolver<'a> {
     pub fn get_macro(&mut self, def: Def) -> Lrc<SyntaxExtension> {
         let def_id = match def {
             Def::Macro(def_id, ..) => def_id,
-            _ => panic!("Expected Def::Macro(..)"),
+            Def::NonMacroAttr => return Lrc::new(SyntaxExtension::NonMacroAttr),
+            _ => panic!("Expected Def::Macro(..) or Def::NonMacroAttr"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
             return ext.clone();

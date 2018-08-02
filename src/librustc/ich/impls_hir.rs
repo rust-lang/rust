@@ -1016,6 +1016,8 @@ impl_stable_hash_for!(enum hir::def::Def {
     Label(node_id),
     Macro(def_id, macro_kind),
     GlobalAsm(def_id),
+    ToolMod,
+    NonMacroAttr,
     Err
 });
 

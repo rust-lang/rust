@@ -1,7 +1,7 @@
-error[E0658]: scoped attribute `rustfmt::skip` is experimental (see issue #44690)
-  --> $DIR/feature-gate-tool_attributes.rs:12:5
+error[E0658]: tool attributes are unstable (see issue #44690)
+  --> $DIR/feature-gate-tool_attributes.rs:14:5
    |
-LL |     #[rustfmt::skip] //~ ERROR scoped attribute `rustfmt::skip` is experimental
+LL |     #[rustfmt::skip] //~ ERROR tool attributes are unstable
    |     ^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(tool_attributes)] to the crate attributes to enable

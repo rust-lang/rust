@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_extern_macros)]
+#![feature(use_extern_macros, extern_prelude)]
 
-fn main() {
-    #[rustfmt::skip] //~ ERROR tool attributes are unstable
-    let x = 3
-        ;
+mod m {
+    fn check() {
+        Vec::clone!(); //~ ERROR failed to resolve. Not a module `Vec`
+        u8::clone!(); //~ ERROR failed to resolve. Not a module `u8`
+    }
 }
+
+fn main() {}

@@ -1,0 +1,8 @@
+error: fail to resolve non-ident macro path
+  --> $DIR/macro-path-prelude-fail-2.rs:15:9
+   |
+LL |         Result::Ok!(); //~ ERROR fail to resolve non-ident macro path
+   |         ^^^^^^^^^^
+
+error: aborting due to previous error
+

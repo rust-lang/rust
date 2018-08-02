@@ -131,8 +131,7 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
                  directive.vis.get() == ty::Visibility::Public ||
                  directive.span.is_dummy() => {
                 if let ImportDirectiveSubclass::MacroUse = directive.subclass {
-                    if resolver.session.features_untracked().use_extern_macros &&
-                        !directive.span.is_dummy() {
+                    if resolver.use_extern_macros && !directive.span.is_dummy() {
                         resolver.session.buffer_lint(
                             lint::builtin::MACRO_USE_EXTERN_CRATE,
                             directive.id,

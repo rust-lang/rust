@@ -811,6 +811,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Label(..) |
             HirDef::Macro(..) |
             HirDef::GlobalAsm(..) |
+            HirDef::ToolMod |
+            HirDef::NonMacroAttr |
             HirDef::Err => None,
         }
     }

@@ -49,6 +49,7 @@ pub enum Def {
     PrimTy(hir::PrimTy),
     TyParam(DefId),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
+    ToolMod, // e.g. `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
     Fn(DefId),
@@ -67,6 +68,7 @@ pub enum Def {
 
     // Macro namespace
     Macro(DefId, MacroKind),
+    NonMacroAttr, // e.g. `#[inline]` or `#[rustfmt::skip]`
 
     GlobalAsm(DefId),
 
@@ -259,6 +261,8 @@ impl Def {
             Def::Label(..)  |
             Def::PrimTy(..) |
             Def::SelfTy(..) |
+            Def::ToolMod |
+            Def::NonMacroAttr |
             Def::Err => {
                 bug!("attempted .def_id() on invalid def: {:?}", self)
             }
@@ -299,6 +303,8 @@ impl Def {
             Def::SelfTy(..) => "self type",
             Def::Macro(.., macro_kind) => macro_kind.descr(),
             Def::GlobalAsm(..) => "global asm",
+            Def::ToolMod => "tool module",
+            Def::NonMacroAttr => "non-macro attribute",
             Def::Err => "unresolved item",
         }
     }
