@@ -778,7 +778,7 @@ impl<'a> Builder<'a> {
         // compiler, but for tools we just use the precompiled libraries that
         // we've downloaded
         let use_snapshot = mode == Mode::ToolBootstrap;
-        assert!(!use_snapshot || stage == 0);
+        assert!(!use_snapshot || stage == 0 || self.local_rebuild);
 
         let maybe_sysroot = self.sysroot(compiler);
         let sysroot = if use_snapshot {
