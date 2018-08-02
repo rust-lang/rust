@@ -33,6 +33,7 @@ use syntax::fold::{self, Folder};
 use syntax::print::{pprust};
 use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
+use syntax::util::ThinVec;
 use syntax::util::small_vector::SmallVector;
 use syntax_pos::{self, FileName};
 
@@ -650,12 +651,17 @@ impl UserIdentifiedItem {
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
 pub struct ReplaceBodyWithLoop<'a> {
     within_static_or_const: bool,
+    nested_blocks: Option<Vec<ast::Block>>,
     sess: &'a Session,
 }
 
 impl<'a> ReplaceBodyWithLoop<'a> {
     pub fn new(sess: &'a Session) -> ReplaceBodyWithLoop<'a> {
-        ReplaceBodyWithLoop { within_static_or_const: false, sess }
+        ReplaceBodyWithLoop {
+            within_static_or_const: false,
+            nested_blocks: None,
+            sess
+        }
     }
 
     fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
@@ -740,41 +746,81 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
     }
 
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
-        fn expr_to_block(rules: ast::BlockCheckMode,
+        fn stmt_to_block(rules: ast::BlockCheckMode,
                          recovered: bool,
-                         e: Option<P<ast::Expr>>,
-                         sess: &Session) -> P<ast::Block> {
-            P(ast::Block {
-                stmts: e.map(|e| {
-                        ast::Stmt {
-                            id: sess.next_node_id(),
-                            span: e.span,
-                            node: ast::StmtKind::Expr(e),
-                        }
-                    })
-                    .into_iter()
-                    .collect(),
+                         s: Option<ast::Stmt>,
+                         sess: &Session) -> ast::Block {
+            ast::Block {
+                stmts: s.into_iter().collect(),
                 rules,
                 id: sess.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
                 recovered,
-            })
+            }
         }
 
-        if !self.within_static_or_const {
-
-            let empty_block = expr_to_block(BlockCheckMode::Default, false, None, self.sess);
-            let loop_expr = P(ast::Expr {
-                node: ast::ExprKind::Loop(empty_block, None),
-                id: self.sess.next_node_id(),
+        fn block_to_stmt(b: ast::Block, sess: &Session) -> ast::Stmt {
+            let expr = P(ast::Expr {
+                id: sess.next_node_id(),
+                node: ast::ExprKind::Block(P(b), None),
                 span: syntax_pos::DUMMY_SP,
-                attrs: ast::ThinVec::new(),
+                attrs: ThinVec::new(),
             });
 
-            expr_to_block(b.rules, b.recovered, Some(loop_expr), self.sess)
+            ast::Stmt {
+                id: sess.next_node_id(),
+                node: ast::StmtKind::Expr(expr),
+                span: syntax_pos::DUMMY_SP,
+            }
+        }
 
-        } else {
+        let empty_block = stmt_to_block(BlockCheckMode::Default, false, None, self.sess);
+        let loop_expr = P(ast::Expr {
+            node: ast::ExprKind::Loop(P(empty_block), None),
+            id: self.sess.next_node_id(),
+            span: syntax_pos::DUMMY_SP,
+            attrs: ast::ThinVec::new(),
+        });
+
+        let loop_stmt = ast::Stmt {
+            id: self.sess.next_node_id(),
+            span: syntax_pos::DUMMY_SP,
+            node: ast::StmtKind::Expr(loop_expr),
+        };
+
+        if self.within_static_or_const {
             fold::noop_fold_block(b, self)
+        } else {
+            b.map(|b| {
+                let old_blocks = self.nested_blocks.replace(vec![]);
+
+                let mut stmts = b.stmts.into_iter()
+                                       .flat_map(|s| self.fold_stmt(s))
+                                       .filter(|s| s.is_item())
+                                       .collect::<Vec<ast::Stmt>>();
+
+                // we put a Some in there earlier with that replace(), so this is valid
+                let new_blocks = self.nested_blocks.take().unwrap();
+                self.nested_blocks = old_blocks;
+                stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, &self.sess)));
+
+                let mut new_block = ast::Block {
+                    stmts,
+                    ..b
+                };
+
+                if let Some(old_blocks) = self.nested_blocks.as_mut() {
+                    //push our fresh block onto the cache and yield an empty block with `loop {}`
+                    old_blocks.push(new_block);
+
+                    stmt_to_block(b.rules, b.recovered, Some(loop_stmt), self.sess)
+                } else {
+                    //push `loop {}` onto the end of our fresh block and yield that
+                    new_block.stmts.push(loop_stmt);
+
+                    new_block
+                }
+            })
         }
     }
 

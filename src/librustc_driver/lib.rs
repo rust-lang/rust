@@ -20,6 +20,7 @@
 
 #![feature(box_syntax)]
 #![cfg_attr(unix, feature(libc))]
+#![feature(option_replace)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
