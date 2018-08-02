@@ -3514,7 +3514,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     if let Some(next_module) = binding.module() {
                         module = Some(next_module);
                     } else if def == Def::ToolMod && i + 1 != path.len() {
-                        return PathResult::NonModule(PathResolution::new(Def::NonMacroAttr))
+                        let def = Def::NonMacroAttr(NonMacroAttrKind::Tool);
+                        return PathResult::NonModule(PathResolution::new(def));
                     } else if def == Def::Err {
                         return PathResult::NonModule(err_path_resolution());
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {

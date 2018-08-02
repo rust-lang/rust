@@ -29,6 +29,18 @@ pub enum CtorKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum NonMacroAttrKind {
+    /// Single-segment attribute defined by the language (`#[inline]`)
+    Builtin,
+    /// Multi-segment custom attribute living in a "tool module" (`#[rustfmt::skip]`).
+    Tool,
+    /// Single-segment custom attribute registered by a derive macro (`#[serde(default)]`).
+    DeriveHelper,
+    /// Single-segment custom attribute not registered in any way (`#[my_attr]`).
+    Custom,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
     // Type namespace
     Mod(DefId),
@@ -68,7 +80,7 @@ pub enum Def {
 
     // Macro namespace
     Macro(DefId, MacroKind),
-    NonMacroAttr, // e.g. `#[inline]` or `#[rustfmt::skip]`
+    NonMacroAttr(NonMacroAttrKind), // e.g. `#[inline]` or `#[rustfmt::skip]`
 
     GlobalAsm(DefId),
 
@@ -242,6 +254,17 @@ impl CtorKind {
     }
 }
 
+impl NonMacroAttrKind {
+    fn descr(self) -> &'static str {
+        match self {
+            NonMacroAttrKind::Builtin => "built-in attribute",
+            NonMacroAttrKind::Tool => "tool attribute",
+            NonMacroAttrKind::DeriveHelper => "derive helper attribute",
+            NonMacroAttrKind::Custom => "custom attribute",
+        }
+    }
+}
+
 impl Def {
     pub fn def_id(&self) -> DefId {
         match *self {
@@ -262,7 +285,7 @@ impl Def {
             Def::PrimTy(..) |
             Def::SelfTy(..) |
             Def::ToolMod |
-            Def::NonMacroAttr |
+            Def::NonMacroAttr(..) |
             Def::Err => {
                 bug!("attempted .def_id() on invalid def: {:?}", self)
             }
@@ -304,7 +327,7 @@ impl Def {
             Def::Macro(.., macro_kind) => macro_kind.descr(),
             Def::GlobalAsm(..) => "global asm",
             Def::ToolMod => "tool module",
-            Def::NonMacroAttr => "non-macro attribute",
+            Def::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Def::Err => "unresolved item",
         }
     }

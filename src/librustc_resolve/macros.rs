@@ -15,7 +15,7 @@ use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex,
                          DefIndexAddressSpace};
-use rustc::hir::def::{Def, Export};
+use rustc::hir::def::{Def, Export, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
 use rustc::middle::cstore::CrateStore;
@@ -329,8 +329,9 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
             self.report_proc_macro_stub(invoc.span());
             return Err(Determinacy::Determined);
-        } else if let Def::NonMacroAttr = def {
-            if let InvocationKind::Attr { .. } = invoc.kind {
+        } else if let Def::NonMacroAttr(attr_kind) = def {
+            let is_attr = if let InvocationKind::Attr { .. } = invoc.kind { true } else { false };
+            if is_attr && attr_kind == NonMacroAttrKind::Tool {
                 if !self.session.features_untracked().tool_attributes {
                     feature_err(&self.session.parse_sess, "tool_attributes",
                                 invoc.span(), GateIssue::Language,
@@ -338,7 +339,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                 }
                 return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr)));
             } else {
-                self.report_non_macro_attr(invoc.path_span());
+                self.report_non_macro_attr(invoc.path_span(), def);
                 return Err(Determinacy::Determined);
             }
         }
@@ -363,8 +364,8 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
                 self.report_proc_macro_stub(path.span);
                 return Err(Determinacy::Determined);
-            } else if let Def::NonMacroAttr = def {
-                self.report_non_macro_attr(path.span);
+            } else if let Def::NonMacroAttr(..) = def {
+                self.report_non_macro_attr(path.span, def);
                 return Err(Determinacy::Determined);
             }
             self.unused_macros.remove(&def.def_id());
@@ -396,9 +397,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                               "can't use a procedural macro from the same crate that defines it");
     }
 
-    fn report_non_macro_attr(&self, span: Span) {
-        self.session.span_err(span,
-                              "expected a macro, found non-macro attribute");
+    fn report_non_macro_attr(&self, span: Span, def: Def) {
+        self.session.span_err(span, &format!("expected a macro, found {}", def.kind_name()));
     }
 
     fn resolve_invoc_to_def(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
@@ -481,7 +481,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                       "generic arguments in macro path");
             });
         }
-        if kind != MacroKind::Bang && path.segments.len() > 1 && def != Ok(Def::NonMacroAttr) {
+        if kind != MacroKind::Bang && path.segments.len() > 1 &&
+           def != Ok(Def::NonMacroAttr(NonMacroAttrKind::Tool)) {
             if !self.session.features_untracked().proc_macro_path_invoc {
                 emit_feature_err(
                     &self.session.parse_sess,
@@ -647,8 +648,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 WhereToResolve::BuiltinAttrs => {
                     if is_builtin_attr_name(ident.name) {
-                        let binding = (Def::NonMacroAttr, ty::Visibility::Public,
-                                       ident.span, Mark::root()).to_name_binding(self.arenas);
+                        let binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
+                                       ty::Visibility::Public, ident.span, Mark::root())
+                                       .to_name_binding(self.arenas);
                         Ok(MacroBinding::Global(binding))
                     } else {
                         Err(Determinacy::Determined)

@@ -988,6 +988,13 @@ impl_stable_hash_for!(enum hir::def::CtorKind {
     Fictive
 });
 
+impl_stable_hash_for!(enum hir::def::NonMacroAttrKind {
+    Builtin,
+    Tool,
+    DeriveHelper,
+    Custom,
+});
+
 impl_stable_hash_for!(enum hir::def::Def {
     Mod(def_id),
     Struct(def_id),
@@ -1017,7 +1024,7 @@ impl_stable_hash_for!(enum hir::def::Def {
     Macro(def_id, macro_kind),
     GlobalAsm(def_id),
     ToolMod,
-    NonMacroAttr,
+    NonMacroAttr(attr_kind),
     Err
 });
 
