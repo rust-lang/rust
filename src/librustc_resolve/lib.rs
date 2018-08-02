@@ -200,15 +200,10 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                         err.span_label(typaram_span, "type variable from outer function");
                     }
                 },
-                Def::Mod(..) | Def::Struct(..) | Def::Union(..) | Def::Enum(..) | Def::Variant(..) |
-                Def::Trait(..) | Def::TyAlias(..) | Def::TyForeign(..) | Def::TraitAlias(..) |
-                Def::AssociatedTy(..) | Def::PrimTy(..) | Def::Fn(..) | Def::Const(..) |
-                Def::Static(..) | Def::StructCtor(..) | Def::VariantCtor(..) | Def::Method(..) |
-                Def::AssociatedConst(..) | Def::Local(..) | Def::Upvar(..) | Def::Label(..) |
-                Def::Existential(..) | Def::AssociatedExistential(..) |
-                Def::Macro(..) | Def::GlobalAsm(..) | Def::Err =>
+                _ => {
                     bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
                          Def::TyParam")
+                }
             }
 
             // Try to retrieve the span of the function signature and generate a new message with
