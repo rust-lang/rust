@@ -432,7 +432,6 @@ impl<'hir> Map<'hir> {
                     ItemKind::Const(..) => Some(Def::Const(def_id())),
                     ItemKind::Fn(..) => Some(Def::Fn(def_id())),
                     ItemKind::Mod(..) => Some(Def::Mod(def_id())),
-                    ItemKind::GlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
                     ItemKind::Existential(..) => Some(Def::Existential(def_id())),
                     ItemKind::Ty(..) => Some(Def::TyAlias(def_id())),
                     ItemKind::Enum(..) => Some(Def::Enum(def_id())),
@@ -445,6 +444,7 @@ impl<'hir> Map<'hir> {
                     ItemKind::ExternCrate(_) |
                     ItemKind::Use(..) |
                     ItemKind::ForeignMod(..) |
+                    ItemKind::GlobalAsm(..) |
                     ItemKind::Impl(..) => None,
                 }
             }

@@ -1006,6 +1006,18 @@ impl<'a> Linker for WasmLd<'a> {
             OptLevel::Size => "-O2",
             OptLevel::SizeMin => "-O2"
         });
+        match self.sess.opts.optimize {
+            OptLevel::No => (),
+            OptLevel::Less |
+            OptLevel::Default |
+            OptLevel::Aggressive |
+            OptLevel::Size |
+            OptLevel::SizeMin => {
+                // LLD generates incorrect debugging information when
+                // optimization is applied: strip debug sections.
+                self.cmd.arg("--strip-debug");
+            }
+        }
     }
 
     fn pgo_gen(&mut self) {

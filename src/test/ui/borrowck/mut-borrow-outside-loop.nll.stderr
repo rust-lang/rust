@@ -17,7 +17,7 @@ LL |         let inner_second = &mut inner_void; //~ ERROR cannot borrow
    |                            ^^^^^^^^^^^^^^^ second mutable borrow occurs here
 LL |         inner_second.use_mut();
 LL |         inner_first.use_mut();
-   |         ----------- borrow later used here
+   |         ----------- borrow used here in later iteration of loop
 
 error: aborting due to 2 previous errors
 
