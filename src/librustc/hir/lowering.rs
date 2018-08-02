@@ -3753,16 +3753,14 @@ impl<'a> LoweringContext<'a> {
             }
             // Desugar `<start>..=<end>` to `std::ops::RangeInclusive::new(<start>, <end>)`
             ExprKind::Range(Some(ref e1), Some(ref e2), RangeLimits::Closed) => {
-                // FIXME: Use e.span directly after RangeInclusive::new() is stabilized in stage0.
-                let span = self.allow_internal_unstable(CompilerDesugaringKind::DotFill, e.span);
                 let id = self.next_id();
                 let e1 = self.lower_expr(e1);
                 let e2 = self.lower_expr(e2);
-                let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], None, false));
-                let ty = P(self.ty_path(id, span, hir::QPath::Resolved(None, ty_path)));
+                let ty_path = P(self.std_path(e.span, &["ops", "RangeInclusive"], None, false));
+                let ty = P(self.ty_path(id, e.span, hir::QPath::Resolved(None, ty_path)));
                 let new_seg = P(hir::PathSegment::from_ident(Ident::from_str("new")));
                 let new_path = hir::QPath::TypeRelative(ty, new_seg);
-                let new = P(self.expr(span, hir::ExprKind::Path(new_path), ThinVec::new()));
+                let new = P(self.expr(e.span, hir::ExprKind::Path(new_path), ThinVec::new()));
                 hir::ExprKind::Call(new, hir_vec![e1, e2])
             }
             ExprKind::Range(ref e1, ref e2, lims) => {
@@ -3785,20 +3783,16 @@ impl<'a> LoweringContext<'a> {
                     .chain(e2.iter().map(|e| ("end", e)))
                     .map(|(s, e)| {
                         let expr = P(self.lower_expr(&e));
-                        let unstable_span =
-                            self.allow_internal_unstable(CompilerDesugaringKind::DotFill, e.span);
-                        let ident = Ident::new(Symbol::intern(s), unstable_span);
-                        self.field(ident, expr, unstable_span)
+                        let ident = Ident::new(Symbol::intern(s), e.span);
+                        self.field(ident, expr, e.span)
                     })
                     .collect::<P<[hir::Field]>>();
 
                 let is_unit = fields.is_empty();
-                let unstable_span =
-                    self.allow_internal_unstable(CompilerDesugaringKind::DotFill, e.span);
                 let struct_path = iter::once("ops")
                     .chain(iter::once(path))
                     .collect::<Vec<_>>();
-                let struct_path = self.std_path(unstable_span, &struct_path, None, is_unit);
+                let struct_path = self.std_path(e.span, &struct_path, None, is_unit);
                 let struct_path = hir::QPath::Resolved(None, P(struct_path));
 
                 let LoweredNodeId { node_id, hir_id } = self.lower_node_id(e.id);
@@ -3811,7 +3805,7 @@ impl<'a> LoweringContext<'a> {
                     } else {
                         hir::ExprKind::Struct(struct_path, fields, None)
                     },
-                    span: unstable_span,
+                    span: e.span,
                     attrs: e.attrs.clone(),
                 };
             }

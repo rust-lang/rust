@@ -19,10 +19,6 @@ use usize;
 use ptr::{self, NonNull};
 use num::NonZeroUsize;
 
-#[unstable(feature = "alloc_internals", issue = "0")]
-#[cfg(stage0)]
-pub type Opaque = u8;
-
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -48,7 +44,7 @@ fn size_align<T>() -> (usize, usize) {
 /// use specific allocators with looser requirements.)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(not(stage0), lang = "alloc_layout")]
+#[lang = "alloc_layout"]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
     size_: usize,
