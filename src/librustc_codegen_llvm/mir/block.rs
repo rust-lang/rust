@@ -115,7 +115,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             fn_ty: FnType<'tcx, Ty<'tcx>>,
             fn_ptr: &'ll Value,
             llargs: &[&'ll Value],
-            destination: Option<(ReturnDest<'ll, 'tcx>, mir::BasicBlock)>,
+            destination: Option<(ReturnDest<'tcx, &'ll Value>, mir::BasicBlock)>,
             cleanup: Option<mir::BasicBlock>
         | {
             if let Some(cleanup) = cleanup {
@@ -731,7 +731,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     fn codegen_argument(&mut self,
                       bx: &Builder<'a, 'll, 'tcx>,
-                      op: OperandRef<'ll, 'tcx>,
+                      op: OperandRef<'tcx, &'ll Value>,
                       llargs: &mut Vec<&'ll Value>,
                       arg: &ArgType<'tcx, Ty<'tcx>>) {
         // Fill padding with undef value, where applicable.
@@ -843,7 +843,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         }
     }
 
-    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx>) -> PlaceRef<'ll, 'tcx> {
+    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx>) -> PlaceRef<'tcx, &'ll Value> {
         let cx = bx.cx;
         if let Some(slot) = self.personality_slot {
             slot
@@ -919,7 +919,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     fn make_return_dest(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                         dest: &mir::Place<'tcx>, fn_ret: &ArgType<'tcx, Ty<'tcx>>,
                         llargs: &mut Vec<&'ll Value>, is_intrinsic: bool)
-                        -> ReturnDest<'ll, 'tcx> {
+                        -> ReturnDest<'tcx, &'ll Value> {
         // If the return is ignored, we can just return a do-nothing ReturnDest
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
@@ -1003,7 +1003,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                               src: &mir::Operand<'tcx>,
-                              dst: PlaceRef<'ll, 'tcx>) {
+                              dst: PlaceRef<'tcx, &'ll Value>) {
         let src = self.codegen_operand(bx, src);
         let llty = src.layout.llvm_type(bx.cx);
         let cast_ptr = bx.pointercast(dst.llval, llty.ptr_to());
@@ -1015,7 +1015,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     // Stores the return value of a function call into it's final location.
     fn store_return(&mut self,
                     bx: &Builder<'a, 'll, 'tcx>,
-                    dest: ReturnDest<'ll, 'tcx>,
+                    dest: ReturnDest<'tcx, &'ll Value>,
                     ret_ty: &ArgType<'tcx, Ty<'tcx>>,
                     llval: &'ll Value) {
         use self::ReturnDest::*;
@@ -1046,13 +1046,13 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 }
 
-enum ReturnDest<'ll, 'tcx> {
+enum ReturnDest<'tcx, V> {
     // Do nothing, the return value is indirect or ignored
     Nothing,
     // Store the return value to the pointer
-    Store(PlaceRef<'ll, 'tcx>),
+    Store(PlaceRef<'tcx, V>),
     // Stores an indirect return value to an operand local place
-    IndirectOperand(PlaceRef<'ll, 'tcx>, mir::Local),
+    IndirectOperand(PlaceRef<'tcx, V>, mir::Local),
     // Stores a direct return value to an operand local place
     DirectOperand(mir::Local)
 }

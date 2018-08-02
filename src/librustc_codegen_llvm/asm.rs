@@ -28,7 +28,7 @@ use libc::{c_uint, c_char};
 pub fn codegen_inline_asm(
     bx: &Builder<'a, 'll, 'tcx>,
     ia: &hir::InlineAsm,
-    outputs: Vec<PlaceRef<'ll, 'tcx>>,
+    outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
     mut inputs: Vec<&'ll Value>
 ) -> bool {
     let mut ext_constraints = vec![];
