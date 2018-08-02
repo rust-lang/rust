@@ -105,11 +105,10 @@ fn main() {
         cmd.arg("--with-jemalloc-prefix=je_");
     }
 
-    // FIXME: building with jemalloc assertions is currently broken.
-    // See <https://github.com/rust-lang/rust/issues/44152>.
-    //if cfg!(feature = "debug") {
-    //    cmd.arg("--enable-debug");
-    //}
+    if cfg!(feature = "debug") {
+        // Enable jemalloc assertions.
+        cmd.arg("--enable-debug");
+    }
 
     cmd.arg(format!("--host={}", build_helper::gnu_target(&target)));
     cmd.arg(format!("--build={}", build_helper::gnu_target(&host)));
