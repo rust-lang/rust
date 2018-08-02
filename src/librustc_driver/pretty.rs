@@ -666,8 +666,10 @@ impl<'a> ReplaceBodyWithLoop<'a> {
 
     fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
         let old_const = mem::replace(&mut self.within_static_or_const, is_const);
+        let old_blocks = self.nested_blocks.take();
         let ret = action(self);
         self.within_static_or_const = old_const;
+        self.nested_blocks = old_blocks;
         ret
     }
 
@@ -745,6 +747,10 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
         self.run(is_const, |s| fold::noop_fold_impl_item(i, s))
     }
 
+    fn fold_anon_const(&mut self, c: ast::AnonConst) -> ast::AnonConst {
+        self.run(true, |s| fold::noop_fold_anon_const(c, s))
+    }
+
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
         fn stmt_to_block(rules: ast::BlockCheckMode,
                          recovered: bool,
@@ -811,7 +817,9 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
 
                 if let Some(old_blocks) = self.nested_blocks.as_mut() {
                     //push our fresh block onto the cache and yield an empty block with `loop {}`
-                    old_blocks.push(new_block);
+                    if !new_block.stmts.is_empty() {
+                        old_blocks.push(new_block);
+                    }
 
                     stmt_to_block(b.rules, b.recovered, Some(loop_stmt), self.sess)
                 } else {
