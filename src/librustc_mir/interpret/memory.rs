@@ -799,6 +799,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         signed: bool,
     ) -> EvalResult<'tcx> {
         let endianness = self.endianness();
+        self.check_align(ptr, ptr_align)?;
 
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
