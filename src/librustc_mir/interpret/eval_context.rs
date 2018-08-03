@@ -1545,7 +1545,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let b_val = self.memory.read_scalar(b_ptr, ptr_align, b_size)?;
                 Ok(Some(Value::ScalarPair(a_val, b_val)))
             }
-            _ =>  Ok(None),
+            _ => Ok(None),
         }
     }
 
