@@ -34,7 +34,7 @@ use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
         let mut bx = self.build_block(bb);
         let data = &self.mir[bb];

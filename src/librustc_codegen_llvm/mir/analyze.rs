@@ -21,8 +21,9 @@ use rustc::ty;
 use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
 use super::FunctionCx;
+use value::Value;
 
-pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx>) -> BitSet<mir::Local> {
+pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx, &'ll Value>) -> BitSet<mir::Local> {
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
@@ -51,8 +52,8 @@ pub fn non_ssa_locals(fx: &FunctionCx<'a, 'll, 'tcx>) -> BitSet<mir::Local> {
     analyzer.non_ssa_locals
 }
 
-struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll> {
-    fx: &'mir FunctionCx<'a, 'll, 'tcx>,
+struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll, V: 'll> {
+    fx: &'mir FunctionCx<'a, 'll, 'tcx, V>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
     // The location of the first visited direct assignment to each
@@ -60,8 +61,8 @@ struct LocalAnalyzer<'mir, 'a: 'mir, 'll: 'a, 'tcx: 'll> {
     first_assignment: IndexVec<mir::Local, Location>
 }
 
-impl LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
-    fn new(fx: &'mir FunctionCx<'a, 'll, 'tcx>) -> Self {
+impl LocalAnalyzer<'mir, 'a, 'll, 'tcx, &'ll Value> {
+    fn new(fx: &'mir FunctionCx<'a, 'll, 'tcx, &'ll Value>) -> Self {
         let invalid_location =
             mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
         let mut analyzer = LocalAnalyzer {
@@ -102,7 +103,7 @@ impl LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
     }
 }
 
-impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
+impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx, &'ll Value> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
                     place: &mir::Place<'tcx>,

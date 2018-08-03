@@ -430,7 +430,7 @@ impl PlaceRef<'tcx, &'ll Value> {
     }
 }
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     pub fn codegen_place(&mut self,
                         bx: &Builder<'a, 'll, 'tcx>,
                         place: &mir::Place<'tcx>)

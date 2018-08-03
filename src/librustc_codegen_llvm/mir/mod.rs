@@ -44,14 +44,14 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
+pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, V> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Mir<'tcx>,
 
     debug_context: FunctionDebugContext<'ll>,
 
-    llfn: &'ll Value,
+    llfn: V,
 
     cx: &'a CodegenCx<'ll, 'tcx>,
 
@@ -64,7 +64,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'tcx, &'ll Value>>,
+    personality_slot: Option<PlaceRef<'tcx, V>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, &'ll BasicBlock>,
@@ -73,7 +73,8 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
 
     /// When targeting MSVC, this stores the cleanup info for each funclet
-    /// BB. This is initialized as we compute the funclets' head block in RPO.
+    /// BB. Thisrustup component add rustfmt-preview is initialized as we compute the funclets'
+    /// head block in RPO.
     funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
@@ -98,7 +99,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    locals: IndexVec<mir::Local, LocalRef<'tcx, &'ll Value>>,
+    locals: IndexVec<mir::Local, LocalRef<'tcx, V>>,
 
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
@@ -107,7 +108,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     param_substs: &'tcx Substs<'tcx>,
 }
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
@@ -437,7 +438,7 @@ fn create_funclets(
 /// indirect.
 fn arg_local_refs(
     bx: &Builder<'a, 'll, 'tcx>,
-    fx: &FunctionCx<'a, 'll, 'tcx>,
+    fx: &FunctionCx<'a, 'll, 'tcx, &'ll Value>,
     scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, &'ll Value>> {

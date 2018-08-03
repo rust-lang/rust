@@ -16,7 +16,7 @@ use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use base;
 use common::{CodegenCx, C_undef, C_usize};
 use builder::{Builder, MemFlags};
-use value::Value;
+use value::{Value, ValueTrait};
 use type_of::LayoutLlvmExt;
 use type_::Type;
 use glue;
@@ -60,7 +60,7 @@ pub struct OperandRef<'tcx, V> {
     pub layout: TyLayout<'tcx>,
 }
 
-impl fmt::Debug for OperandRef<'tcx, &'ll Value> {
+impl<Value: ?Sized> fmt::Debug for OperandRef<'tcx, &'ll Value> where Value: ValueTrait {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
@@ -344,7 +344,7 @@ impl OperandValue<&'ll Value> {
     }
 }
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     fn maybe_codegen_consume_direct(&mut self,
                                   bx: &Builder<'a, 'll, 'tcx>,
                                   place: &mir::Place<'tcx>)

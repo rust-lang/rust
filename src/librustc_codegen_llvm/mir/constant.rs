@@ -139,7 +139,7 @@ pub fn codegen_static_initializer(
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     fn fully_evaluate(
         &mut self,
         bx: &Builder<'a, 'll, 'tcx>,

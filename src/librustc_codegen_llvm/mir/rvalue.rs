@@ -32,7 +32,7 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     pub fn codegen_rvalue(&mut self,
                         bx: Builder<'a, 'll, 'tcx>,
                         dest: PlaceRef<'tcx, &'ll Value>,

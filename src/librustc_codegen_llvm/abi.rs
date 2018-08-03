@@ -172,7 +172,7 @@ pub trait ArgTypeExt<'ll, 'tcx> {
         &self,
         bx: &Builder<'_, 'll, 'tcx>,
         idx: &mut usize,
-       dst: PlaceRef<'tcx, &'ll Value>,
+        dst: PlaceRef<'tcx, &'ll Value>,
     );
 }
 
