@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-const_compare_raw_pointers
+
 static FOO: i32 = 42;
 static BAR: i32 = 42;
 
