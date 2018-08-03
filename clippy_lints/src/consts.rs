@@ -426,7 +426,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 }
 
 pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'tcx>) -> Option<Constant> {
-    use rustc::mir::interpret::{Scalar, ConstValue};
+    use rustc::mir::interpret::{Scalar, ScalarMaybeUndef, ConstValue};
     match result.val {
         ConstValue::Scalar(Scalar::Bits{ bits: b, ..}) => match result.ty.sty {
             ty::TyBool => Some(Constant::Bool(b == 1)),
@@ -436,7 +436,9 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             // FIXME: implement other conversion
             _ => None,
         },
-        ConstValue::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: n, .. }) => match result.ty.sty {
+        ConstValue::ScalarPair(Scalar::Ptr(ptr),
+                               ScalarMaybeUndef::Scalar(
+                                Scalar::Bits { bits: n, .. })) => match result.ty.sty {
             ty::TyRef(_, tam, _) => match tam.sty {
                 ty::TyStr => {
                     let alloc = tcx
