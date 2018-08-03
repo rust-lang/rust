@@ -1956,7 +1956,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 
             if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
                 if let Some(edition) = edition_enabled_features.get(&name) {
-                    struct_span_err!(
+                    struct_span_warn!(
                         span_handler,
                         mi.span,
                         E0705,

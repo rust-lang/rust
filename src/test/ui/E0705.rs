@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
+
 #![feature(rust_2018_preview)]
 #![feature(raw_identifiers)]
-//~^ ERROR the feature `raw_identifiers` is included in the Rust 2018 edition
+//~^ WARN the feature `raw_identifiers` is included in the Rust 2018 edition
 
 fn main() {
     let foo = 0;
