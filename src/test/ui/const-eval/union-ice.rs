@@ -20,9 +20,9 @@ union DummyUnion {
 
 const UNION: DummyUnion = DummyUnion { field1: 1065353216 };
 
-const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR this constant likely exhibits undefined
+const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR this constant cannot be used
 
-const FIELD_PATH: Struct = Struct { //~ ERROR this constant likely exhibits undefined behavior
+const FIELD_PATH: Struct = Struct { //~ ERROR this constant cannot be used
     a: 42,
     b: unsafe { UNION.field3 },
 };

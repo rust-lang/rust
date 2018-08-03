@@ -392,6 +392,11 @@ for ::mir::interpret::ConstValue<'gcx> {
     }
 }
 
+impl_stable_hash_for!(enum mir::interpret::ScalarMaybeUndef {
+    Scalar(v),
+    Undef
+});
+
 impl_stable_hash_for!(enum mir::interpret::Value {
     Scalar(v),
     ScalarPair(a, b),
@@ -466,9 +471,9 @@ for ::mir::interpret::Scalar {
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            Bits { bits, defined } => {
+            Bits { bits, size } => {
                 bits.hash_stable(hcx, hasher);
-                defined.hash_stable(hcx, hasher);
+                size.hash_stable(hcx, hasher);
             },
             Ptr(ptr) => ptr.hash_stable(hcx, hasher),
         }

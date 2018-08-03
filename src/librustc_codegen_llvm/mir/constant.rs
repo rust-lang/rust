@@ -39,10 +39,12 @@ pub fn scalar_to_llvm(
 ) -> &'ll Value {
     let bitsize = if layout.is_bool() { 1 } else { layout.value.size(cx).bits() };
     match cv {
-        Scalar::Bits { defined, .. } if (defined as u64) < bitsize || defined == 0 => {
-            C_undef(Type::ix(cx, bitsize))
+        Scalar::Bits { size: 0, .. } => {
+            assert_eq!(0, layout.value.size(cx).bytes());
+            C_undef(Type::ix(cx, 0))
         },
-        Scalar::Bits { bits, .. } => {
+        Scalar::Bits { bits, size } => {
+            assert_eq!(size as u64, layout.value.size(cx).bytes());
             let llval = C_uint_big(Type::ix(cx, bitsize), bits);
             if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
@@ -192,7 +194,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         mir::Field::new(field as usize),
                         c,
                     )?;
-                    if let Some(prim) = field.to_scalar() {
+                    if let Some(prim) = field.val.try_to_scalar() {
                         let layout = bx.cx.layout_of(field_ty);
                         let scalar = match layout.abi {
                             layout::Abi::Scalar(ref x) => x,

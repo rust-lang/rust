@@ -1,5 +1,5 @@
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::{self, LayoutOf, TyLayout};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_apfloat::ieee::{Single, Double};
@@ -18,11 +18,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest_ty: Ty<'tcx>,
         dest: Place,
     ) -> EvalResult<'tcx> {
+        let src_layout = self.layout_of(src.ty)?;
+        let dst_layout = self.layout_of(dest_ty)?;
         use rustc::mir::CastKind::*;
         match kind {
             Unsize => {
-                let src_layout = self.layout_of(src.ty)?;
-                let dst_layout = self.layout_of(dest_ty)?;
                 self.unsize_into(src.value, src_layout, dest, dst_layout)?;
             }
 
@@ -57,16 +57,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 let discr_val = def
                                     .discriminant_for_variant(*self.tcx, index)
                                     .val;
-                                let defined = self
-                                    .layout_of(dest_ty)
-                                    .unwrap()
-                                    .size
-                                    .bits() as u8;
                                 return self.write_scalar(
                                     dest,
                                     Scalar::Bits {
                                         bits: discr_val,
-                                        defined,
+                                        size: dst_layout.size.bytes() as u8,
                                     },
                                     dest_ty);
                             }
@@ -76,9 +71,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     }
 
                     let src_val = self.value_to_scalar(src)?;
-                    let dest_val = self.cast_scalar(src_val, src.ty, dest_ty)?;
+                    let dest_val = self.cast_scalar(src_val, src_layout, dst_layout)?;
                     let valty = ValTy {
-                        value: Value::Scalar(dest_val),
+                        value: Value::Scalar(dest_val.into()),
                         ty: dest_ty,
                     };
                     self.write_value(valty, dest)?;
@@ -100,7 +95,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         ).ok_or_else(|| EvalErrorKind::TooGeneric.into());
                         let fn_ptr = self.memory.create_fn_alloc(instance?);
                         let valty = ValTy {
-                            value: Value::Scalar(fn_ptr.into()),
+                            value: Value::Scalar(Scalar::Ptr(fn_ptr.into()).into()),
                             ty: dest_ty,
                         };
                         self.write_value(valty, dest)?;
@@ -136,7 +131,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         );
                         let fn_ptr = self.memory.create_fn_alloc(instance);
                         let valty = ValTy {
-                            value: Value::Scalar(fn_ptr.into()),
+                            value: Value::Scalar(Scalar::Ptr(fn_ptr.into()).into()),
                             ty: dest_ty,
                         };
                         self.write_value(valty, dest)?;
@@ -151,20 +146,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub(super) fn cast_scalar(
         &self,
         val: Scalar,
-        src_ty: Ty<'tcx>,
-        dest_ty: Ty<'tcx>,
+        src_layout: TyLayout<'tcx>,
+        dest_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
         use rustc::ty::TypeVariants::*;
-        trace!("Casting {:?}: {:?} to {:?}", val, src_ty, dest_ty);
+        trace!("Casting {:?}: {:?} to {:?}", val, src_layout.ty, dest_layout.ty);
 
         match val {
-            Scalar::Bits { defined: 0, .. } => Ok(val),
-            Scalar::Ptr(ptr) => self.cast_from_ptr(ptr, dest_ty),
-            Scalar::Bits { bits, .. } => {
-                // TODO(oli-obk): check defined bits here
-                match src_ty.sty {
-                    TyFloat(fty) => self.cast_from_float(bits, fty, dest_ty),
-                    _ => self.cast_from_int(bits, src_ty, dest_ty),
+            Scalar::Ptr(ptr) => self.cast_from_ptr(ptr, dest_layout.ty),
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, src_layout.size.bytes());
+                match src_layout.ty.sty {
+                    TyFloat(fty) => self.cast_from_float(bits, fty, dest_layout.ty),
+                    _ => self.cast_from_int(bits, src_layout, dest_layout),
                 }
             }
         }
@@ -173,56 +167,58 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn cast_from_int(
         &self,
         v: u128,
-        src_ty: Ty<'tcx>,
-        dest_ty: Ty<'tcx>,
+        src_layout: TyLayout<'tcx>,
+        dest_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
-        let signed = self.layout_of(src_ty)?.abi.is_signed();
+        let signed = src_layout.abi.is_signed();
         let v = if signed {
-            self.sign_extend(v, src_ty)?
+            self.sign_extend(v, src_layout)
         } else {
             v
         };
-        trace!("cast_from_int: {}, {}, {}", v, src_ty, dest_ty);
+        trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
         use rustc::ty::TypeVariants::*;
-        match dest_ty.sty {
+        match dest_layout.ty.sty {
             TyInt(_) | TyUint(_) => {
-                let v = self.truncate(v, dest_ty)?;
+                let v = self.truncate(v, dest_layout);
                 Ok(Scalar::Bits {
                     bits: v,
-                    defined: self.layout_of(dest_ty).unwrap().size.bits() as u8,
+                    size: dest_layout.size.bytes() as u8,
                 })
             }
 
             TyFloat(FloatTy::F32) if signed => Ok(Scalar::Bits {
                 bits: Single::from_i128(v as i128).value.to_bits(),
-                defined: 32,
+                size: 4,
             }),
             TyFloat(FloatTy::F64) if signed => Ok(Scalar::Bits {
                 bits: Double::from_i128(v as i128).value.to_bits(),
-                defined: 64,
+                size: 8,
             }),
             TyFloat(FloatTy::F32) => Ok(Scalar::Bits {
                 bits: Single::from_u128(v).value.to_bits(),
-                defined: 32,
+                size: 4,
             }),
             TyFloat(FloatTy::F64) => Ok(Scalar::Bits {
                 bits: Double::from_u128(v).value.to_bits(),
-                defined: 64,
+                size: 8,
             }),
 
-            TyChar if v as u8 as u128 == v => Ok(Scalar::Bits { bits: v, defined: 32 }),
-            TyChar => err!(InvalidChar(v)),
+            TyChar => {
+                assert_eq!(v as u8 as u128, v);
+                Ok(Scalar::Bits { bits: v, size: 4 })
+            },
 
             // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
             TyRawPtr(_) => {
                 Ok(Scalar::Bits {
                     bits: self.memory.truncate_to_ptr(v).0 as u128,
-                    defined: self.memory.pointer_size().bits() as u8,
+                    size: self.memory.pointer_size().bytes() as u8,
                 })
             },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            _ => err!(Unimplemented(format!("int to {:?} cast", dest_ty))),
+            _ => err!(Unimplemented(format!("int to {:?} cast", dest_layout.ty))),
         }
     }
 
@@ -236,11 +232,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 match fty {
                     FloatTy::F32 => Ok(Scalar::Bits {
                         bits: Single::from_bits(bits).to_u128(width).value,
-                        defined: width as u8,
+                        size: (width / 8) as u8,
                     }),
                     FloatTy::F64 => Ok(Scalar::Bits {
                         bits: Double::from_bits(bits).to_u128(width).value,
-                        defined: width as u8,
+                        size: (width / 8) as u8,
                     }),
                 }
             },
@@ -250,11 +246,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 match fty {
                     FloatTy::F32 => Ok(Scalar::Bits {
                         bits: Single::from_bits(bits).to_i128(width).value as u128,
-                        defined: width as u8,
+                        size: (width / 8) as u8,
                     }),
                     FloatTy::F64 => Ok(Scalar::Bits {
                         bits: Double::from_bits(bits).to_i128(width).value as u128,
-                        defined: width as u8,
+                        size: (width / 8) as u8,
                     }),
                 }
             },
@@ -262,24 +258,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             TyFloat(FloatTy::F32) if fty == FloatTy::F64 => {
                 Ok(Scalar::Bits {
                     bits: Single::to_bits(Double::from_bits(bits).convert(&mut false).value),
-                    defined: 32,
+                    size: 4,
                 })
             },
             // f32 -> f64
             TyFloat(FloatTy::F64) if fty == FloatTy::F32 => {
                 Ok(Scalar::Bits {
                     bits: Double::to_bits(Single::from_bits(bits).convert(&mut false).value),
-                    defined: 64,
+                    size: 8,
                 })
             },
             // identity cast
             TyFloat(FloatTy:: F64) => Ok(Scalar::Bits {
                 bits,
-                defined: 64,
+                size: 8,
             }),
             TyFloat(FloatTy:: F32) => Ok(Scalar::Bits {
                 bits,
-                defined: 32,
+                size: 4,
             }),
             _ => err!(Unimplemented(format!("float to {:?} cast", dest_ty))),
         }

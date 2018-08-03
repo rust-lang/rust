@@ -2,11 +2,12 @@ use std::fmt;
 use std::error::Error;
 
 use rustc::hir;
-use rustc::mir::interpret::{ConstEvalErr};
+use rustc::mir::interpret::{ConstEvalErr, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf, Primitive, TyLayout};
 use rustc::ty::subst::Subst;
+use rustc_data_structures::indexed_vec::IndexVec;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
@@ -28,13 +29,16 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     let param_env = tcx.param_env(instance.def_id());
     let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeEvaluator, ());
     // insert a stack frame so any queries have the correct substs
-    ecx.push_stack_frame(
+    ecx.stack.push(super::eval_context::Frame {
+        block: mir::START_BLOCK,
+        locals: IndexVec::new(),
         instance,
         span,
         mir,
-        Place::undef(),
-        StackPopCleanup::None,
-    )?;
+        return_place: Place::undef(),
+        return_to_block: StackPopCleanup::None,
+        stmt: 0,
+    });
     Ok(ecx)
 }
 
@@ -72,48 +76,30 @@ pub fn eval_promoted<'a, 'mir, 'tcx>(
 pub fn value_to_const_value<'tcx>(
     ecx: &EvalContext<'_, '_, 'tcx, CompileTimeEvaluator>,
     val: Value,
-    ty: Ty<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
-    let layout = ecx.layout_of(ty).unwrap();
+    layout: TyLayout<'tcx>,
+) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
     match (val, &layout.abi) {
-        (Value::Scalar(Scalar::Bits { defined: 0, ..}), _) if layout.is_zst() => {},
+        (Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { size: 0, ..})), _) if layout.is_zst() => {},
         (Value::ByRef(..), _) |
         (Value::Scalar(_), &layout::Abi::Scalar(_)) |
         (Value::ScalarPair(..), &layout::Abi::ScalarPair(..)) => {},
         _ => bug!("bad value/layout combo: {:#?}, {:#?}", val, layout),
     }
-    let val = (|| {
-        match val {
-            Value::Scalar(val) => Ok(ConstValue::Scalar(val)),
-            Value::ScalarPair(a, b) => Ok(ConstValue::ScalarPair(a, b)),
-            Value::ByRef(ptr, align) => {
-                let ptr = ptr.to_ptr().unwrap();
-                let alloc = ecx.memory.get(ptr.alloc_id)?;
-                assert!(alloc.align.abi() >= align.abi());
-                assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
-                let mut alloc = alloc.clone();
-                alloc.align = align;
-                let alloc = ecx.tcx.intern_const_alloc(alloc);
-                Ok(ConstValue::ByRef(alloc, ptr.offset))
-            }
+    let val = match val {
+        Value::Scalar(val) => ConstValue::Scalar(val.unwrap_or_err()?),
+        Value::ScalarPair(a, b) => ConstValue::ScalarPair(a.unwrap_or_err()?, b),
+        Value::ByRef(ptr, align) => {
+            let ptr = ptr.to_ptr().unwrap();
+            let alloc = ecx.memory.get(ptr.alloc_id)?;
+            assert!(alloc.align.abi() >= align.abi());
+            assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
+            let mut alloc = alloc.clone();
+            alloc.align = align;
+            let alloc = ecx.tcx.intern_const_alloc(alloc);
+            ConstValue::ByRef(alloc, ptr.offset)
         }
-    })();
-    match val {
-        Ok(val) => ty::Const::from_const_value(ecx.tcx.tcx, val, ty),
-        Err(err) => {
-            let (frames, span) = ecx.generate_stacktrace(None);
-            let err = ConstEvalErr {
-                span,
-                error: err,
-                stacktrace: frames,
-            };
-            err.report_as_error(
-                ecx.tcx,
-                "failed to convert Value to ConstValue, this is a bug",
-            );
-            span_bug!(span, "miri error occured when converting Value to ConstValue")
-        }
-    }
+    };
+    Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, layout.ty))
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -307,7 +293,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                 let elem_align = ecx.layout_of(elem_ty)?.align.abi();
                 let align_val = Scalar::Bits {
                     bits: elem_align as u128,
-                    defined: dest_layout.size.bits() as u8,
+                    size: dest_layout.size.bytes() as u8,
                 };
                 ecx.write_scalar(dest, align_val, dest_layout.ty)?;
             }
@@ -317,7 +303,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                 let size = ecx.layout_of(ty)?.size.bytes() as u128;
                 let size_val = Scalar::Bits {
                     bits: size,
-                    defined: dest_layout.size.bits() as u8,
+                    size: dest_layout.size.bytes() as u8,
                 };
                 ecx.write_scalar(dest, size_val, dest_layout.ty)?;
             }
@@ -327,7 +313,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                 let type_id = ecx.tcx.type_id_hash(ty) as u128;
                 let id_val = Scalar::Bits {
                     bits: type_id,
-                    defined: dest_layout.size.bits() as u8,
+                    size: dest_layout.size.bytes() as u8,
                 };
                 ecx.write_scalar(dest, id_val, dest_layout.ty)?;
             }
@@ -437,7 +423,7 @@ pub fn const_val_field<'a, 'tcx>(
         let place = ecx.allocate_place_for_value(value, layout, variant)?;
         let (place, layout) = ecx.place_field(place, field, layout)?;
         let (ptr, align) = place.to_ptr_align();
-        let mut new_value = Value::ByRef(ptr, align);
+        let mut new_value = Value::ByRef(ptr.unwrap_or_err()?, align);
         new_value = ecx.try_read_by_ref(new_value, layout.ty)?;
         use rustc_data_structures::indexed_vec::Idx;
         match (value, new_value) {
@@ -451,7 +437,7 @@ pub fn const_val_field<'a, 'tcx>(
             ),
             _ => {},
         }
-        Ok(value_to_const_value(&ecx, new_value, layout.ty))
+        value_to_const_value(&ecx, new_value, layout)
     })();
     result.map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
@@ -481,7 +467,7 @@ pub fn const_variant_index<'a, 'tcx>(
         },
         Value::ByRef(ptr, align) => (ptr, align),
     };
-    let place = Place::from_scalar_ptr(ptr, align);
+    let place = Place::from_scalar_ptr(ptr.into(), align);
     ecx.read_discriminant_as_variant_index(place, layout)
 }
 
@@ -552,7 +538,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         if tcx.is_static(def_id).is_none() && cid.promoted.is_none() {
             val = ecx.try_read_by_ref(val, layout.ty)?;
         }
-        Ok(value_to_const_value(&ecx, val, layout.ty))
+        value_to_const_value(&ecx, val, layout)
     }).map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
         let err = ConstEvalErr {
@@ -562,6 +548,9 @@ pub fn const_eval_provider<'a, 'tcx>(
         };
         if tcx.is_static(def_id).is_some() {
             err.report_as_error(ecx.tcx, "could not evaluate static initializer");
+            if tcx.sess.err_count() == 0 {
+                span_bug!(span, "static eval failure didn't emit an error: {:#?}", err);
+            }
         }
         err.into()
     })
@@ -572,11 +561,11 @@ fn numeric_intrinsic<'tcx>(
     bits: u128,
     kind: Primitive,
 ) -> EvalResult<'tcx, Scalar> {
-    let defined = match kind {
-        Primitive::Int(integer, _) => integer.size().bits() as u8,
+    let size = match kind {
+        Primitive::Int(integer, _) => integer.size(),
         _ => bug!("invalid `{}` argument: {:?}", name, bits),
     };
-    let extra = 128 - defined as u128;
+    let extra = 128 - size.bits() as u128;
     let bits_out = match name {
         "ctpop" => bits.count_ones() as u128,
         "ctlz" => bits.leading_zeros() as u128 - extra,
@@ -584,5 +573,5 @@ fn numeric_intrinsic<'tcx>(
         "bswap" => (bits << extra).swap_bytes(),
         _ => bug!("not a numeric intrinsic: {}", name),
     };
-    Ok(Scalar::Bits { bits: bits_out, defined })
+    Ok(Scalar::Bits { bits: bits_out, size: size.bytes() as u8 })
 }

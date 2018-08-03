@@ -11,8 +11,10 @@ mod step;
 mod terminator;
 mod traits;
 
-pub use self::eval_context::{EvalContext, Frame, StackPopCleanup,
-                             TyAndPacked, ValTy};
+pub use self::eval_context::{
+    EvalContext, Frame, StackPopCleanup,
+    TyAndPacked, ValTy,
+};
 
 pub use self::place::{Place, PlaceExtra};
 
@@ -34,26 +36,21 @@ pub use self::machine::Machine;
 
 pub use self::memory::{write_target_uint, write_target_int, read_target_uint};
 
-use rustc::mir::interpret::{EvalResult, EvalErrorKind};
-use rustc::ty::{Ty, TyCtxt, ParamEnv};
+use rustc::ty::layout::TyLayout;
 
-pub fn sign_extend<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-    let param_env = ParamEnv::empty();
-    let layout = tcx.layout_of(param_env.and(ty)).map_err(|layout| EvalErrorKind::Layout(layout))?;
+pub fn sign_extend(value: u128, layout: TyLayout<'_>) -> u128 {
     let size = layout.size.bits();
     assert!(layout.abi.is_signed());
     // sign extend
     let shift = 128 - size;
     // shift the unsigned value to the left
     // and back to the right as signed (essentially fills with FF on the left)
-    Ok((((value << shift) as i128) >> shift) as u128)
+    (((value << shift) as i128) >> shift) as u128
 }
 
-pub fn truncate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-    let param_env = ParamEnv::empty();
-    let layout = tcx.layout_of(param_env.and(ty)).map_err(|layout| EvalErrorKind::Layout(layout))?;
+pub fn truncate(value: u128, layout: TyLayout<'_>) -> u128 {
     let size = layout.size.bits();
     let shift = 128 - size;
     // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
-    Ok((value << shift) >> shift)
+    (value << shift) >> shift
 }

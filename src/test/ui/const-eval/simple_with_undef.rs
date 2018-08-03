@@ -8,17 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Copy, Clone)]
-union Foo {
-    a: isize,
-    b: (),
-}
+// compile-pass
 
-enum Bar {
-    Boo = [unsafe { Foo { b: () }.a }; 4][3],
-    //~^ ERROR could not evaluate enum discriminant
-}
+const PARSE_BOOL: Option<&'static str> = None;
+static FOO: (Option<&str>, u32) = (PARSE_BOOL, 42);
 
-fn main() {
-    assert_ne!(Bar::Boo as isize, 0);
-}
+fn main() {}
