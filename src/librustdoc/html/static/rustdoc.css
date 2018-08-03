@@ -500,6 +500,19 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 90%;
 }
 
+.content .stability {
+	position: relative;
+	margin-left: 33px;
+	margin-top: -13px;
+}
+.content .stability::before {
+	content: '˪';
+	font-size: 30px;
+	position: absolute;
+	top: -9px;
+	left: -13px;
+}
+
 nav {
 	border-bottom: 1px solid;
 	padding-bottom: 10px;
