@@ -13,6 +13,7 @@
 
 use rustc::mir::visit::Visitor;
 use rustc::mir::*;
+use rustc::ty::{self, TyCtxt};
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::unify as ut;
@@ -22,11 +23,13 @@ crate struct EscapingLocals {
 }
 
 impl EscapingLocals {
-    crate fn compute(mir: &Mir<'_>) -> Self {
-        let mut visitor = GatherAssignedLocalsVisitor::new();
+    crate fn compute(tcx: TyCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) -> Self {
+        let mut visitor = GatherAssignedLocalsVisitor::new(tcx, mir);
         visitor.visit_mir(mir);
 
-        EscapingLocals { unification_table: visitor.unification_table }
+        EscapingLocals {
+            unification_table: visitor.unification_table,
+        }
     }
 
     /// True if `local` is known to escape into static
@@ -40,8 +43,10 @@ impl EscapingLocals {
 
 /// The MIR visitor gathering the union-find of the locals used in
 /// assignments.
-struct GatherAssignedLocalsVisitor {
+struct GatherAssignedLocalsVisitor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     unification_table: ut::UnificationTable<ut::InPlace<AssignedLocal>>,
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    mir: &'cx Mir<'tcx>,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -71,10 +76,12 @@ impl From<Local> for AssignedLocal {
     }
 }
 
-impl GatherAssignedLocalsVisitor {
-    fn new() -> Self {
+impl GatherAssignedLocalsVisitor<'cx, 'gcx, 'tcx> {
+    fn new(tcx: TyCtxt<'cx, 'gcx, 'tcx>, mir: &'cx Mir<'tcx>) -> Self {
         Self {
             unification_table: ut::UnificationTable::new(),
+            tcx,
+            mir,
         }
     }
 
@@ -82,6 +89,7 @@ impl GatherAssignedLocalsVisitor {
         if let Some(lvalue) = lvalue {
             if let Some(rvalue) = rvalue {
                 if lvalue != rvalue {
+                    debug!("EscapingLocals: union {:?} and {:?}", lvalue, rvalue);
                     self.unification_table
                         .union(AssignedLocal::from(lvalue), AssignedLocal::from(rvalue));
                 }
@@ -115,7 +123,7 @@ fn find_local_in_operand(op: &Operand) -> Option<Local> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for GatherAssignedLocalsVisitor {
+impl Visitor<'tcx> for GatherAssignedLocalsVisitor<'_, '_, 'tcx> {
     fn visit_mir(&mut self, mir: &Mir<'tcx>) {
         // We need as many union-find keys as there are locals
         for _ in 0..mir.local_decls.len() {
@@ -139,6 +147,19 @@ impl<'tcx> Visitor<'tcx> for GatherAssignedLocalsVisitor {
         match rvalue {
             Rvalue::Use(op) => self.union_locals_if_needed(local, find_local_in_operand(op)),
             Rvalue::Ref(_, _, place) => {
+                // Special case: if you have `X = &*Y` where `Y` is a
+                // reference, then the outlives relationships should
+                // ensure that all regions in `Y` are constrained by
+                // regions in `X`.
+                if let Place::Projection(proj) = place {
+                    if let ProjectionElem::Deref = proj.elem {
+                        if let ty::TyRef(..) = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx).sty
+                        {
+                            self.union_locals_if_needed(local, find_local_in_place(&proj.base));
+                        }
+                    }
+                }
+
                 self.union_locals_if_needed(local, find_local_in_place(place))
             }
 

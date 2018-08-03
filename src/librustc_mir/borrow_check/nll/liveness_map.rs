@@ -18,7 +18,7 @@
 
 use borrow_check::nll::escaping_locals::EscapingLocals;
 use rustc::mir::{Local, Mir};
-use rustc::ty::TypeFoldable;
+use rustc::ty::{TyCtxt, TypeFoldable};
 use rustc_data_structures::indexed_vec::IndexVec;
 use util::liveness::LiveVariableMap;
 
@@ -55,10 +55,12 @@ impl LiveVariableMap for NllLivenessMap {
 impl NllLivenessMap {
     /// Iterates over the variables in Mir and assigns each Local whose type contains
     /// regions a LocalWithRegion index. Returns a map for converting back and forth.
-    crate fn compute(mir: &Mir<'_>) -> Self {
-        let mut escaping_locals = EscapingLocals::compute(mir);
+    crate fn compute(tcx: TyCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) -> Self {
+        let mut escaping_locals = EscapingLocals::compute(tcx, mir);
 
         let mut to_local = IndexVec::default();
+        let mut escapes_into_return = 0;
+        let mut no_regions = 0;
         let from_local: IndexVec<Local, Option<_>> = mir
             .local_decls
             .iter_enumerated()
@@ -70,13 +72,21 @@ impl NllLivenessMap {
                     // (e.g., `'static`) and hence liveness is not
                     // needed. This is particularly important for big
                     // statics.
+                    escapes_into_return += 1;
                     None
                 } else if local_decl.ty.has_free_regions() {
-                    Some(to_local.push(local))
+                    let l = to_local.push(local);
+                    debug!("liveness_map: {:?} = {:?}", local, l);
+                    Some(l)
                 } else {
+                    no_regions += 1;
                     None
                 }
             }).collect();
+
+        debug!("liveness_map: {} variables need liveness", to_local.len());
+        debug!("liveness_map: {} escapes into return", escapes_into_return);
+        debug!("liveness_map: {} no regions", no_regions);
 
         Self {
             from_local,
