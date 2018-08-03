@@ -502,7 +502,7 @@ impl Mul<u32> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.29.0")]
+#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
 impl Mul<Duration> for u32 {
     type Output = Duration;
 
@@ -511,7 +511,7 @@ impl Mul<Duration> for u32 {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.29.0")]
+#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
 impl Mul<f64> for Duration {
     type Output = Duration;
 
@@ -535,7 +535,7 @@ impl Mul<f64> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.29.0")]
+#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
 impl Mul<Duration> for f64 {
     type Output = Duration;
 
@@ -551,7 +551,7 @@ impl MulAssign<u32> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.29.0")]
+#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
 impl MulAssign<f64> for Duration {
     fn mul_assign(&mut self, rhs: f64) {
         *self = *self * rhs;
@@ -567,7 +567,7 @@ impl Div<u32> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.29.0")]
+#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
 impl Div<f64> for Duration {
     type Output = Duration;
 
@@ -591,7 +591,7 @@ impl Div<f64> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.29.0")]
+#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
 impl Div<Duration> for Duration {
     type Output = f64;
 
@@ -610,7 +610,7 @@ impl DivAssign<u32> for Duration {
     }
 }
 
-#[stable(feature = "duration_mul_div_extras", since = "1.29.0")]
+#[stable(feature = "duration_mul_div_extras", since = "1.30.0")]
 impl DivAssign<f64> for Duration {
     fn div_assign(&mut self, rhs: f64) {
         *self = *self / rhs;
