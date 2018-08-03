@@ -165,6 +165,7 @@ pub mod util {
     pub mod nodemap;
     pub mod fs;
     pub mod time_graph;
+    pub mod profiling;
 }
 
 // A private module so that macro-expanded idents like

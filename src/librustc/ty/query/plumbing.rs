@@ -118,6 +118,11 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             let mut lock = cache.borrow_mut();
             if let Some(value) = lock.results.get(key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
+                tcx.sess.profiler(|p| {
+                    p.record_query(Q::CATEGORY);
+                    p.record_query_hit(Q::CATEGORY);
+                });
+
                 let result = Ok((value.value.clone(), value.index));
                 return TryGetJob::JobCompleted(result);
             }
@@ -358,10 +363,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             )
         );
 
+        self.sess.profiler(|p| p.record_query(Q::CATEGORY));
+
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::JobCompleted(result) => {
                 return result.map(|(v, index)| {
+                    self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
                     self.dep_graph.read_index(index);
                     v
                 })
@@ -379,6 +387,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if dep_node.kind.is_anon() {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
+            self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
             let res = job.start(self, |tcx| {
                 tcx.dep_graph.with_anon_task(dep_node.kind, || {
@@ -386,6 +395,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 })
             });
 
+            self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
             profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
             let ((result, dep_node_index), diagnostics) = res;
 
@@ -402,6 +412,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if !dep_node.kind.is_input() {
             if let Some(dep_node_index) = self.try_mark_green_and_read(&dep_node) {
                 profq_msg!(self, ProfileQueriesMsg::CacheHit);
+                self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
+
                 return self.load_from_disk_and_cache_in_memory::<Q>(key,
                                                                     job,
                                                                     dep_node_index,
@@ -523,6 +535,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
+        self.sess.profiler(|p| {
+            p.start_activity(Q::CATEGORY);
+            p.record_query(Q::CATEGORY);
+        });
+
         let res = job.start(self, |tcx| {
             if dep_node.kind.is_eval_always() {
                 tcx.dep_graph.with_eval_always_task(dep_node,
@@ -536,6 +553,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                         Q::compute)
             }
         });
+
+        self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
         let ((result, dep_node_index), diagnostics) = res;
@@ -574,7 +593,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
+
+            self.sess.profiler(|p| {
+                p.start_activity(Q::CATEGORY);
+                p.record_query(Q::CATEGORY);
+            });
+
             let _ = self.get_query::<Q>(DUMMY_SP, key);
+
+            self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
         }
     }
 
@@ -655,6 +682,7 @@ macro_rules! define_queries_inner {
             rustc_data_structures::stable_hasher::StableHasher,
             ich::StableHashingContext
         };
+        use util::profiling::ProfileCategory;
 
         define_queries_struct! {
             tcx: $tcx,
@@ -768,6 +796,7 @@ macro_rules! define_queries_inner {
             type Value = $V;
 
             const NAME: &'static str = stringify!($name);
+            const CATEGORY: ProfileCategory = $category;
         }
 
         impl<$tcx> QueryAccessors<$tcx> for queries::$name<$tcx> {

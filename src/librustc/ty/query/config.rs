@@ -21,6 +21,7 @@ use ty::subst::Substs;
 use ty::query::queries;
 use ty::query::Query;
 use ty::query::QueryCache;
+use util::profiling::ProfileCategory;
 
 use std::hash::Hash;
 use std::fmt::Debug;
@@ -33,6 +34,7 @@ use ich::StableHashingContext;
 
 pub trait QueryConfig<'tcx> {
     const NAME: &'static str;
+    const CATEGORY: ProfileCategory;
 
     type Key: Eq + Hash + Clone + Debug;
     type Value: Clone + for<'a> HashStable<StableHashingContext<'a>>;

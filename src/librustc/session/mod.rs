@@ -40,6 +40,7 @@ use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{MultiSpan, Span};
+use util::profiling::SelfProfiler;
 
 use rustc_target::spec::{LinkerFlavor, PanicStrategy};
 use rustc_target::spec::{Target, TargetTriple};
@@ -132,6 +133,9 @@ pub struct Session {
 
     /// Used by -Z profile-queries in util::common
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
+
+    /// Used by -Z self-profile
+    pub self_profiling: Lock<SelfProfiler>,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
@@ -825,6 +829,21 @@ impl Session {
         }
     }
 
+    pub fn profiler<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
+        let mut profiler = self.self_profiling.borrow_mut();
+        f(&mut profiler);
+    }
+
+    pub fn print_profiler_results(&self) {
+        let mut profiler = self.self_profiling.borrow_mut();
+        profiler.print_results(&self.opts);
+    }
+
+    pub fn save_json_results(&self) {
+        let profiler = self.self_profiling.borrow();
+        profiler.save_results(&self.opts);
+    }
+
     pub fn print_perf_stats(&self) {
         println!(
             "Total time spent computing symbol hashes:      {}",
@@ -1125,6 +1144,7 @@ pub fn build_session_(
         imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         ignored_attr_names: ich::compute_ignored_attr_names(),
+        self_profiling: Lock::new(SelfProfiler::new()),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
             symbol_hash_time: Lock::new(Duration::from_secs(0)),

@@ -84,6 +84,7 @@ use rustc::session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::time_graph;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::util::profiling::ProfileCategory;
 use rustc_mir::monomorphize;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
@@ -240,10 +241,12 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
+        sess.profiler(|p| p.start_activity(ProfileCategory::Linking));
         time(sess, "linking", || {
             back::link::link_binary(sess, &ongoing_codegen,
                                     outputs, &ongoing_codegen.crate_name.as_str());
         });
+        sess.profiler(|p| p.end_activity(ProfileCategory::Linking));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
