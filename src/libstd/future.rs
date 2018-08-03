@@ -108,9 +108,9 @@ where
 
 #[unstable(feature = "gen_future", issue = "50547")]
 /// Polls a future in the current thread-local task context.
-pub fn poll_in_task_cx<F>(f: &mut PinMut<F>) -> Poll<F::Output>
+pub fn poll_in_task_cx<F>(f: PinMut<F>) -> Poll<F::Output>
 where
     F: Future
 {
-    get_task_cx(|cx| f.reborrow().poll(cx))
+    get_task_cx(|cx| f.poll(cx))
 }
