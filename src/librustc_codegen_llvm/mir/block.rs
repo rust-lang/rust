@@ -32,7 +32,7 @@ use syntax_pos::Pos;
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
 use super::operand::OperandRef;
-use super::operand::OperandValue::{Pair, Ref, UnsizedRef, Immediate};
+use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
@@ -232,10 +232,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
                     PassMode::Direct(_) | PassMode::Pair(..) => {
                         let op = self.codegen_consume(&bx, &mir::Place::Local(mir::RETURN_PLACE));
-                        if let Ref(llval, align) = op.val {
+                        if let Ref(llval, _, align) = op.val {
                             bx.load(llval, align)
-                        } else if let UnsizedRef(..) = op.val {
-                            bug!("return type must be sized");
                         } else {
                             op.immediate_or_packed_pair(&bx)
                         }
@@ -247,7 +245,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                             LocalRef::Operand(None) => bug!("use of return before def"),
                             LocalRef::Place(cg_place) => {
                                 OperandRef {
-                                    val: Ref(cg_place.llval, cg_place.align),
+                                    val: Ref(cg_place.llval, None, cg_place.align),
                                     layout: cg_place.layout
                                 }
                             }
@@ -259,12 +257,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                 op.val.store(&bx, scratch);
                                 scratch.llval
                             }
-                            Ref(llval, align) => {
+                            Ref(llval, _, align) => {
                                 assert_eq!(align.abi(), op.layout.align.abi(),
                                            "return place is unaligned!");
                                 llval
                             }
-                            UnsizedRef(..) => bug!("return type must be sized"),
                         };
                         bx.load(
                             bx.pointercast(llslot, cast_ty.llvm_type(bx.cx).ptr_to()),
@@ -605,15 +602,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     // The callee needs to own the argument memory if we pass it
                     // by-ref, so make a local copy of non-immediate constants.
                     match (arg, op.val) {
-                        (&mir::Operand::Copy(_), Ref(..)) |
-                        (&mir::Operand::Constant(_), Ref(..)) => {
+                        (&mir::Operand::Copy(_), Ref(_, None, _)) |
+                        (&mir::Operand::Constant(_), Ref(_, None, _)) => {
                             let tmp = PlaceRef::alloca(&bx, op.layout, "const");
                             op.val.store(&bx, tmp);
-                            op.val = Ref(tmp.llval, tmp.align);
-                        }
-                        (&mir::Operand::Copy(_), UnsizedRef(..)) |
-                        (&mir::Operand::Constant(_), UnsizedRef(..)) => {
-                            bug!("tried to pass an unsized argument by copy or constant")
+                            op.val = Ref(tmp.llval, None, tmp.align);
                         }
                         _ => {}
                     }
@@ -667,7 +660,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             }
         } else if arg.is_unsized_indirect() {
             match op.val {
-                UnsizedRef(a, b) => {
+                Ref(a, Some(b), _) => {
                     llargs.push(a);
                     llargs.push(b);
                     return;
@@ -690,7 +683,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     }
                 }
             }
-            Ref(llval, align) => {
+            Ref(llval, _, align) => {
                 if arg.is_indirect() && align.abi() < arg.layout.align.abi() {
                     // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
                     // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
@@ -703,8 +696,6 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     (llval, align, true)
                 }
             }
-            UnsizedRef(..) =>
-                bug!("codegen_argument: tried to pass unsized operand to sized argument"),
         };
 
         if by_ref && !arg.is_indirect() {
@@ -740,13 +731,13 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let tuple = self.codegen_operand(bx, operand);
 
         // Handle both by-ref and immediate tuples.
-        if let Ref(llval, align) = tuple.val {
+        if let Ref(llval, None, align) = tuple.val {
             let tuple_ptr = PlaceRef::new_sized(llval, tuple.layout, align);
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 self.codegen_argument(bx, field_ptr.load(bx), llargs, &args[i]);
             }
-        } else if let UnsizedRef(..) = tuple.val {
+        } else if let Ref(_, Some(_), _) = tuple.val {
             bug!("closure arguments must be sized")
         } else {
             // If the tuple is immediate, the elements are as well.

@@ -83,11 +83,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         base::coerce_unsized_into(&bx, scratch, dest);
                         scratch.storage_dead(&bx);
                     }
-                    OperandValue::Ref(llref, align) => {
+                    OperandValue::Ref(llref, None, align) => {
                         let source = PlaceRef::new_sized(llref, operand.layout, align);
                         base::coerce_unsized_into(&bx, source, dest);
                     }
-                    OperandValue::UnsizedRef(..) => {
+                    OperandValue::Ref(_, Some(_), _) => {
                         bug!("unsized coercion on an unsized rvalue")
                     }
                 }
@@ -267,9 +267,6 @@ impl FunctionCx<'a, 'll, 'tcx> {
                             OperandValue::Ref(..) => {
                                 bug!("by-ref operand {:?} in codegen_rvalue_operand",
                                      operand);
-                            }
-                            OperandValue::UnsizedRef(..) => {
-                                bug!("unsized coercion on an unsized rvalue")
                             }
                         }
                     }

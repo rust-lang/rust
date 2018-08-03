@@ -132,7 +132,7 @@ impl PlaceRef<'ll, 'tcx> {
         };
 
         let val = if let Some(llextra) = self.llextra {
-            OperandValue::UnsizedRef(self.llval, llextra)
+            OperandValue::Ref(self.llval, Some(llextra), self.align)
         } else if self.layout.is_llvm_immediate() {
             let mut const_llval = None;
             unsafe {
@@ -163,7 +163,7 @@ impl PlaceRef<'ll, 'tcx> {
             };
             OperandValue::Pair(load(0, a), load(1, b))
         } else {
-            OperandValue::Ref(self.llval, self.align)
+            OperandValue::Ref(self.llval, None, self.align)
         };
 
         OperandRef { val, layout: self.layout }

@@ -188,7 +188,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
         }
         let cx = bx.cx;
         if self.is_sized_indirect() {
-            OperandValue::Ref(val, self.layout.align).store(bx, dst)
+            OperandValue::Ref(val, None, self.layout.align).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized ArgType must be handled through store_fn_arg");
         } else if let PassMode::Cast(cast) = self.mode {
@@ -249,7 +249,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect(_, Some(_)) => {
-                OperandValue::UnsizedRef(next(), next()).store(bx, dst);
+                OperandValue::Ref(next(), Some(next()), self.layout.align).store(bx, dst);
             }
             PassMode::Direct(_) | PassMode::Indirect(_, None) | PassMode::Cast(_) => {
                 self.store(bx, next(), dst);

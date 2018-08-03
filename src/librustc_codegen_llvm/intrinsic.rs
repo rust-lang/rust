@@ -605,7 +605,7 @@ pub fn codegen_intrinsic_call(
                         // etc.
                         assert!(!bx.cx.type_needs_drop(arg.layout.ty));
                         let (ptr, align) = match arg.val {
-                            OperandValue::Ref(ptr, align) => (ptr, align),
+                            OperandValue::Ref(ptr, None, align) => (ptr, align),
                             _ => bug!()
                         };
                         let arg = PlaceRef::new_sized(ptr, arg.layout, align);

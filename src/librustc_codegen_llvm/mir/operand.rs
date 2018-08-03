@@ -37,11 +37,9 @@ use super::place::PlaceRef;
 pub enum OperandValue<'ll> {
     /// A reference to the actual operand. The data is guaranteed
     /// to be valid for the operand's lifetime.
-    Ref(&'ll Value, Align),
-    /// A reference to the unsized operand. The data is guaranteed
-    /// to be valid for the operand's lifetime.
-    /// The second field is the extra.
-    UnsizedRef(&'ll Value, &'ll Value),
+    /// The second value, if any, is the extra data (vtable or length)
+    /// which indicates that it refers to an unsized rvalue.
+    Ref(&'ll Value, Option<&'ll Value>, Align),
     /// A single LLVM value.
     Immediate(&'ll Value),
     /// A pair of immediate LLVM values. Used by fat pointers too.
@@ -154,8 +152,7 @@ impl OperandRef<'ll, 'tcx> {
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, None),
             OperandValue::Pair(llptr, llextra) => (llptr, Some(llextra)),
-            OperandValue::Ref(..) |
-            OperandValue::UnsizedRef(..) => bug!("Deref of by-Ref operand {:?}", self)
+            OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
         };
         let layout = cx.layout_of(projected_ty);
         PlaceRef {
@@ -250,8 +247,7 @@ impl OperandRef<'ll, 'tcx> {
                 *a = bx.bitcast(*a, field.scalar_pair_element_llvm_type(bx.cx, 0, true));
                 *b = bx.bitcast(*b, field.scalar_pair_element_llvm_type(bx.cx, 1, true));
             }
-            OperandValue::Ref(..) |
-            OperandValue::UnsizedRef(..) => bug!()
+            OperandValue::Ref(..) => bug!()
         }
 
         OperandRef {
@@ -291,11 +287,11 @@ impl OperandValue<'ll> {
             return;
         }
         match self {
-            OperandValue::Ref(r, source_align) => {
+            OperandValue::Ref(r, None, source_align) => {
                 base::memcpy_ty(bx, dest.llval, r, dest.layout,
                                 source_align.min(dest.align), flags)
             }
-            OperandValue::UnsizedRef(..) => {
+            OperandValue::Ref(_, Some(_), _) => {
                 bug!("cannot directly store unsized values");
             }
             OperandValue::Immediate(s) => {
@@ -321,7 +317,7 @@ impl OperandValue<'ll> {
             .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest)).ty;
 
         let (llptr, llextra) =
-            if let OperandValue::UnsizedRef(llptr, llextra) = self {
+            if let OperandValue::Ref(llptr, Some(llextra), _) = self {
                 (llptr, llextra)
             } else {
                 bug!("store_unsized called with a sized value")
