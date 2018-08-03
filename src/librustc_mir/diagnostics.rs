@@ -1113,36 +1113,6 @@ fn main() {
 ```
 "##,
 
-E0395: r##"
-The value assigned to a constant scalar must be known at compile time,
-which is not the case when comparing raw pointers.
-
-Erroneous code example:
-
-```compile_fail,E0395
-static FOO: i32 = 42;
-static BAR: i32 = 42;
-
-static BAZ: bool = { (&FOO as *const i32) == (&BAR as *const i32) };
-// error: raw pointers cannot be compared in statics!
-```
-
-The address assigned by the linker to `FOO` and `BAR` may or may not
-be identical, so the value of `BAZ` can't be determined.
-
-If you want to do the comparison, please do it at run-time.
-
-For example:
-
-```
-static FOO: i32 = 42;
-static BAR: i32 = 42;
-
-let baz: bool = { (&FOO as *const i32) == (&BAR as *const i32) };
-// baz isn't a constant expression so it's ok
-```
-"##,
-
 E0161: r##"
 A value was moved. However, its size was not known at compile time, and only
 values of a known size can be moved.
