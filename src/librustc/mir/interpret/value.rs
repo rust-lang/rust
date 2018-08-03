@@ -103,6 +103,10 @@ impl<'tcx> Scalar {
         ScalarMaybeUndef::Scalar(self).to_value_with_len(len, cx)
     }
 
+    pub fn to_value_with_vtable(self, vtable: Pointer) -> Value {
+        ScalarMaybeUndef::Scalar(self).to_value_with_vtable(vtable)
+    }
+
     pub fn ptr_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self {
@@ -207,14 +211,14 @@ impl ScalarMaybeUndef {
     }
 
     pub fn to_value_with_len<C: HasDataLayout>(self, len: u64, cx: C) -> Value {
-        Value::ScalarPair(self.into(), Scalar::Bits {
+        Value::ScalarPair(self, Scalar::Bits {
             bits: len as u128,
             size: cx.data_layout().pointer_size.bytes() as u8,
         }.into())
     }
 
     pub fn to_value_with_vtable(self, vtable: Pointer) -> Value {
-        Value::ScalarPair(self.into(), Scalar::Ptr(vtable).into())
+        Value::ScalarPair(self, Scalar::Ptr(vtable).into())
     }
 
     pub fn ptr_offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
