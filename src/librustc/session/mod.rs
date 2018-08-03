@@ -1235,7 +1235,7 @@ impl From<Fingerprint> for CrateDisambiguator {
     }
 }
 
-impl_stable_hash_for!(tuple_struct CrateDisambiguator { fingerprint });
+impl_stable_hash_via_hash!(CrateDisambiguator);
 
 /// Holds data on the current incremental compilation session, if there is one.
 #[derive(Debug)]

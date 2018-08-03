@@ -92,14 +92,7 @@ impl stable_hasher::StableHasherResult for Fingerprint {
     }
 }
 
-impl<CTX> stable_hasher::HashStable<CTX> for Fingerprint {
-    #[inline]
-    fn hash_stable<W: stable_hasher::StableHasherResult>(&self,
-                                          _: &mut CTX,
-                                          hasher: &mut stable_hasher::StableHasher<W>) {
-        ::std::hash::Hash::hash(self, hasher);
-    }
-}
+impl_stable_hash_via_hash!(Fingerprint);
 
 impl serialize::UseSpecializedEncodable for Fingerprint { }
 
