@@ -21,4 +21,8 @@ fn smoke() {
 
     let x = ManuallyDrop::new(TypeWithDrop);
     drop(x);
+
+    // also test unsizing
+    let x : Box<ManuallyDrop<[TypeWithDrop]>> = Box::new(ManuallyDrop::new([TypeWithDrop]));
+    drop(x);
 }
