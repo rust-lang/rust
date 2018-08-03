@@ -225,7 +225,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
             mir::TerminatorKind::Return => {
                 let llval = match self.fn_ty.ret.mode {
-                    PassMode::Ignore | PassMode::Indirect(_) => {
+                    PassMode::Ignore | PassMode::Indirect(..) => {
                         bx.ret_void();
                         return;
                     }
@@ -270,8 +270,6 @@ impl FunctionCx<'a, 'll, 'tcx> {
                             bx.pointercast(llslot, cast_ty.llvm_type(bx.cx).ptr_to()),
                             self.fn_ty.ret.layout.align)
                     }
-
-                    PassMode::UnsizedIndirect(..) => bug!("return value must be sized"),
                 };
                 bx.ret(llval);
             }
@@ -667,7 +665,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair arugment", op)
             }
-        } else if let PassMode::UnsizedIndirect(..) = arg.mode {
+        } else if arg.is_unsized_indirect() {
             match op.val {
                 UnsizedRef(a, b) => {
                     llargs.push(a);
@@ -682,7 +680,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 match arg.mode {
-                    PassMode::Indirect(_) | PassMode::Cast(_) => {
+                    PassMode::Indirect(..) | PassMode::Cast(_) => {
                         let scratch = PlaceRef::alloca(bx, arg.layout, "arg");
                         op.val.store(bx, scratch);
                         (scratch.llval, scratch.align, true)

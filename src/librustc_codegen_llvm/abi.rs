@@ -187,7 +187,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             return;
         }
         let cx = bx.cx;
-        if self.is_indirect() {
+        if self.is_sized_indirect() {
             OperandValue::Ref(val, self.layout.align).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized ArgType must be handled through store_fn_arg");
@@ -248,10 +248,10 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
-            PassMode::UnsizedIndirect(..) => {
+            PassMode::Indirect(_, Some(_)) => {
                 OperandValue::UnsizedRef(next(), next()).store(bx, dst);
             }
-            PassMode::Direct(_) | PassMode::Indirect(_) | PassMode::Cast(_) => {
+            PassMode::Direct(_) | PassMode::Indirect(_, None) | PassMode::Cast(_) => {
                 self.store(bx, next(), dst);
             }
         }
@@ -547,9 +547,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 }
 
                 let size = arg.layout.size;
-                if arg.layout.is_unsized() {
-                    arg.make_unsized_indirect(None);
-                } else if size > layout::Pointer.size(cx) {
+                if arg.layout.is_unsized() || size > layout::Pointer.size(cx) {
                     arg.make_indirect();
                 } else {
                     // We want to pass small aggregates as immediates, but using
@@ -565,7 +563,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             for arg in &mut self.args {
                 fixup(arg);
             }
-            if let PassMode::Indirect(ref mut attrs) = self.ret.mode {
+            if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
                 attrs.set(ArgAttribute::StructRet);
             }
             return;
@@ -582,7 +580,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             if let PassMode::Pair(_, _) = arg.mode { 2 } else { 1 }
         ).sum();
         let mut llargument_tys = Vec::with_capacity(
-            if let PassMode::Indirect(_) = self.ret.mode { 1 } else { 0 } + args_capacity
+            if let PassMode::Indirect(..) = self.ret.mode { 1 } else { 0 } + args_capacity
         );
 
         let llreturn_ty = match self.ret.mode {
@@ -591,11 +589,10 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 self.ret.layout.immediate_llvm_type(cx)
             }
             PassMode::Cast(cast) => cast.llvm_type(cx),
-            PassMode::Indirect(_) => {
+            PassMode::Indirect(..) => {
                 llargument_tys.push(self.ret.memory_ty(cx).ptr_to());
                 Type::void(cx)
             }
-            PassMode::UnsizedIndirect(..) => bug!("return type must be sized"),
         };
 
         for arg in &self.args {
@@ -612,7 +609,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::UnsizedIndirect(..) => {
+                PassMode::Indirect(_, Some(_)) => {
                     let ptr_ty = cx.tcx.mk_mut_ptr(arg.layout.ty);
                     let ptr_layout = cx.layout_of(ptr_ty);
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 0, true));
@@ -620,7 +617,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),
-                PassMode::Indirect(_) => arg.memory_ty(cx).ptr_to(),
+                PassMode::Indirect(_, None) => arg.memory_ty(cx).ptr_to(),
             };
             llargument_tys.push(llarg_ty);
         }
@@ -659,7 +656,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             PassMode::Direct(ref attrs) => {
                 attrs.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
             }
-            PassMode::Indirect(ref attrs) => apply(attrs),
+            PassMode::Indirect(ref attrs, _) => apply(attrs),
             _ => {}
         }
         for arg in &self.args {
@@ -669,8 +666,8 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             match arg.mode {
                 PassMode::Ignore => {}
                 PassMode::Direct(ref attrs) |
-                PassMode::Indirect(ref attrs) => apply(attrs),
-                PassMode::UnsizedIndirect(ref attrs, ref extra_attrs) => {
+                PassMode::Indirect(ref attrs, None) => apply(attrs),
+                PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
                     apply(attrs);
                     apply(extra_attrs);
                 }
@@ -693,7 +690,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             PassMode::Direct(ref attrs) => {
                 attrs.apply_callsite(llvm::AttributePlace::ReturnValue, callsite);
             }
-            PassMode::Indirect(ref attrs) => apply(attrs),
+            PassMode::Indirect(ref attrs, _) => apply(attrs),
             _ => {}
         }
         if let layout::Abi::Scalar(ref scalar) = self.ret.layout.abi {
@@ -717,8 +714,8 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             match arg.mode {
                 PassMode::Ignore => {}
                 PassMode::Direct(ref attrs) |
-                PassMode::Indirect(ref attrs) => apply(attrs),
-                PassMode::UnsizedIndirect(ref attrs, ref extra_attrs) => {
+                PassMode::Indirect(ref attrs, None) => apply(attrs),
+                PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
                     apply(attrs);
                     apply(extra_attrs);
                 }

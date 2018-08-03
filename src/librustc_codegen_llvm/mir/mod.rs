@@ -541,7 +541,7 @@ fn arg_local_refs(
             }
         }
 
-        let place = if arg.is_indirect() {
+        let place = if arg.is_sized_indirect() {
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up.
             // FIXME: lifetimes
