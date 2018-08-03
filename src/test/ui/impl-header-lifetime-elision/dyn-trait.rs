@@ -13,7 +13,7 @@
 
 #![allow(warnings)]
 
-#![feature(in_band_lifetimes)]
+#![feature(impl_header_lifetime_elision)]
 
 use std::fmt::Debug;
 
