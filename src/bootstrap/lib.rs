@@ -555,8 +555,8 @@ impl Build {
         let suffix = match mode {
             Mode::Std => "-std",
             Mode::Test => "-test",
-            Mode::Codegen => "-rustc",
             Mode::Rustc => "-rustc",
+            Mode::Codegen => "-codegen",
             Mode::ToolBootstrap => "-bootstrap-tools",
             Mode::ToolStd => "-tools",
             Mode::ToolRustc => "-tools",
