@@ -32,7 +32,7 @@ use attr;
 use codemap::Spanned;
 use edition::{ALL_EDITIONS, Edition};
 use syntax_pos::{Span, DUMMY_SP};
-use errors::{DiagnosticBuilder, Handler, FatalError};
+use errors::{DiagnosticBuilder, Handler};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use symbol::{keywords, Symbol};
@@ -83,8 +83,10 @@ macro_rules! declare_features {
             }
 
             pub fn use_extern_macros(&self) -> bool {
-                // The `decl_macro` and `tool_attributes` features imply `use_extern_macros`.
-                self.use_extern_macros || self.decl_macro || self.tool_attributes
+                // The `decl_macro`, `tool_attributes` and `custom_attributes`
+                // features imply `use_extern_macros`.
+                self.use_extern_macros || self.decl_macro ||
+                self.tool_attributes || self.custom_attribute
             }
         }
     };
@@ -1898,9 +1900,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     }
 
     let mut features = Features::new();
-
-    let mut feature_checker = FeatureChecker::default();
-
     let mut edition_enabled_features = FxHashMap();
 
     for &(name, .., f_edition, set) in ACTIVE_FEATURES.iter() {
@@ -1989,43 +1988,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         }
     }
 
-    feature_checker.check(span_handler);
-
     features
-}
-
-/// A collector for mutually exclusive and interdependent features and their flag spans.
-#[derive(Default)]
-struct FeatureChecker {
-    use_extern_macros: Option<Span>,
-    custom_attribute: Option<Span>,
-}
-
-impl FeatureChecker {
-    // If this method turns out to be a hotspot due to branching,
-    // the branching can be eliminated by modifying `set!()` to set these spans
-    // only for the features that need to be checked for mutual exclusion.
-    fn collect(&mut self, features: &Features, span: Span) {
-        if features.use_extern_macros() {
-            // If self.use_extern_macros is None, set to Some(span)
-            self.use_extern_macros = self.use_extern_macros.or(Some(span));
-        }
-
-        if features.custom_attribute {
-            self.custom_attribute = self.custom_attribute.or(Some(span));
-        }
-    }
-
-    fn check(self, handler: &Handler) {
-        if let (Some(pm_span), Some(ca_span)) = (self.use_extern_macros, self.custom_attribute) {
-            handler.struct_span_err(pm_span, "Cannot use `#![feature(use_extern_macros)]` and \
-                                              `#![feature(custom_attribute)] at the same time")
-                .span_note(ca_span, "`#![feature(custom_attribute)]` declared here")
-                .emit();
-
-            FatalError.raise();
-        }
-    }
 }
 
 pub fn check_crate(krate: &ast::Crate,

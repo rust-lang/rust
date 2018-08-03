@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tool_attributes)]
+#![feature(tool_attributes, custom_attribute)]
 
 type A = rustfmt; //~ ERROR expected type, found tool module `rustfmt`
 type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::skip`
@@ -16,7 +16,7 @@ type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::
 #[derive(rustfmt)] //~ ERROR cannot find derive macro `rustfmt` in this scope
 struct S;
 
-#[rustfmt] //~ ERROR cannot find attribute macro `rustfmt` in this scope
+#[rustfmt] // OK, interpreted as a custom attribute
 fn check() {}
 
 #[rustfmt::skip] // OK

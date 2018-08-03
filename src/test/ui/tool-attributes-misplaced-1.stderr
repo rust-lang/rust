@@ -4,12 +4,6 @@ error: cannot find derive macro `rustfmt` in this scope
 LL | #[derive(rustfmt)] //~ ERROR cannot find derive macro `rustfmt` in this scope
    |          ^^^^^^^
 
-error: cannot find attribute macro `rustfmt` in this scope
-  --> $DIR/tool-attributes-misplaced-1.rs:19:3
-   |
-LL | #[rustfmt] //~ ERROR cannot find attribute macro `rustfmt` in this scope
-   |   ^^^^^^^
-
 error: cannot find macro `rustfmt!` in this scope
   --> $DIR/tool-attributes-misplaced-1.rs:25:5
    |
@@ -40,7 +34,7 @@ error[E0423]: expected value, found tool attribute `rustfmt::skip`
 LL |     rustfmt::skip; //~ ERROR expected value, found tool attribute `rustfmt::skip`
    |     ^^^^^^^^^^^^^ not a value
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 Some errors occurred: E0423, E0573.
 For more information about an error, try `rustc --explain E0423`.

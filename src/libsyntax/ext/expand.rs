@@ -244,12 +244,12 @@ impl Invocation {
         }
     }
 
-    pub fn path_span(&self) -> Span {
+    pub fn path(&self) -> Option<&Path> {
         match self.kind {
-            InvocationKind::Bang { ref mac, .. } => mac.node.path.span,
-            InvocationKind::Attr { attr: Some(ref attr), .. } => attr.path.span,
-            InvocationKind::Attr { attr: None, .. } => DUMMY_SP,
-            InvocationKind::Derive { ref path, .. } => path.span,
+            InvocationKind::Bang { ref mac, .. } => Some(&mac.node.path),
+            InvocationKind::Attr { attr: Some(ref attr), .. } => Some(&attr.path),
+            InvocationKind::Attr { attr: None, .. } => None,
+            InvocationKind::Derive { ref path, .. } => Some(path),
         }
     }
 }
@@ -548,7 +548,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             _ => unreachable!(),
         };
 
-        attr::mark_used(&attr);
+        if let NonMacroAttr { mark_used: false } = *ext {} else {
+            attr::mark_used(&attr);
+        }
         invoc.expansion_data.mark.set_expn_info(ExpnInfo {
             call_site: attr.span,
             def_site: None,
@@ -560,7 +562,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         });
 
         match *ext {
-            NonMacroAttr => {
+            NonMacroAttr { .. } => {
                 attr::mark_known(&attr);
                 let item = item.map_attrs(|mut attrs| { attrs.push(attr); attrs });
                 Some(invoc.fragment_kind.expect_from_annotatables(iter::once(item)))
@@ -810,7 +812,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
 
             MultiDecorator(..) | MultiModifier(..) |
-            AttrProcMacro(..) | SyntaxExtension::NonMacroAttr => {
+            AttrProcMacro(..) | SyntaxExtension::NonMacroAttr { .. } => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", path));
                 self.cx.trace_macros_diag();
@@ -1487,7 +1489,8 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         };
 
         if attr.is_some() || !traits.is_empty()  {
-            if !self.cx.ecfg.macros_in_extern_enabled() {
+            if !self.cx.ecfg.macros_in_extern_enabled() &&
+               !self.cx.ecfg.custom_attribute_enabled() {
                 if let Some(ref attr) = attr {
                     emit_feature_err(&self.cx.parse_sess, "macros_in_extern", attr.span,
                                      GateIssue::Language, explain);
@@ -1668,6 +1671,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_custom_derive = custom_derive,
         fn enable_format_args_nl = format_args_nl,
         fn macros_in_extern_enabled = macros_in_extern,
+        fn custom_attribute_enabled = custom_attribute,
         fn proc_macro_mod = proc_macro_mod,
         fn proc_macro_gen = proc_macro_gen,
         fn proc_macro_expr = proc_macro_expr,

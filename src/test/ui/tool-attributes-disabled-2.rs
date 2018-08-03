@@ -11,9 +11,5 @@
 // If macro modularization (`use_extern_macros`) is not enabled,
 // then tool attributes are treated as custom attributes.
 
-// compile-pass
-
-#![feature(custom_attribute)]
-
-#[rustfmt::bar]
+#[rustfmt::bar] //~ ERROR attribute `rustfmt::bar` is currently unknown to the compiler
 fn main() {}

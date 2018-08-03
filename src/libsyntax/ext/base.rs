@@ -589,7 +589,7 @@ impl MacroKind {
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
     /// A trivial "extension" that does nothing, only keeps the attribute and marks it as known.
-    NonMacroAttr,
+    NonMacroAttr { mark_used: bool },
 
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
@@ -670,7 +670,7 @@ impl SyntaxExtension {
             SyntaxExtension::IdentTT(..) |
             SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
-            SyntaxExtension::NonMacroAttr |
+            SyntaxExtension::NonMacroAttr { .. } |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
             SyntaxExtension::AttrProcMacro(..) =>
@@ -700,7 +700,7 @@ impl SyntaxExtension {
             SyntaxExtension::AttrProcMacro(.., edition) |
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,
             // Unstable legacy stuff
-            SyntaxExtension::NonMacroAttr |
+            SyntaxExtension::NonMacroAttr { .. } |
             SyntaxExtension::IdentTT(..) |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
@@ -737,6 +737,12 @@ pub trait Resolver {
 pub enum Determinacy {
     Determined,
     Undetermined,
+}
+
+impl Determinacy {
+    pub fn determined(determined: bool) -> Determinacy {
+        if determined { Determinacy::Determined } else { Determinacy::Undetermined }
+    }
 }
 
 pub struct DummyResolver;

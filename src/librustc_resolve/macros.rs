@@ -331,18 +331,29 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         } else if let Def::NonMacroAttr(attr_kind) = def {
             let is_attr_invoc =
                 if let InvocationKind::Attr { .. } = invoc.kind { true } else { false };
+            let path = invoc.path().expect("no path for non-macro attr");
             match attr_kind {
-                NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper if is_attr_invoc => {
+                NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper |
+                NonMacroAttrKind::Custom if is_attr_invoc => {
                     if attr_kind == NonMacroAttrKind::Tool &&
                        !self.session.features_untracked().tool_attributes {
                         feature_err(&self.session.parse_sess, "tool_attributes",
                                     invoc.span(), GateIssue::Language,
                                     "tool attributes are unstable").emit();
                     }
-                    return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr)));
+                    if attr_kind == NonMacroAttrKind::Custom &&
+                       !self.session.features_untracked().custom_attribute {
+                        let msg = format!("The attribute `{}` is currently unknown to the compiler \
+                                           and may have meaning added to it in the future", path);
+                        feature_err(&self.session.parse_sess, "custom_attribute", invoc.span(),
+                                    GateIssue::Language, &msg).emit();
+                    }
+                    return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr {
+                        mark_used: attr_kind == NonMacroAttrKind::Tool,
+                    })));
                 }
                 _ => {
-                    self.report_non_macro_attr(invoc.path_span(), def);
+                    self.report_non_macro_attr(path.span, def);
                     return Err(Determinacy::Determined);
                 }
             }
@@ -418,43 +429,42 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         };
 
         let path = attr.as_ref().unwrap().path.clone();
-        let mut determinacy = Determinacy::Determined;
-        match self.resolve_macro_to_def(scope, &path, MacroKind::Attr, force) {
-            Ok(def) => return Ok(def),
-            Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
-            Err(Determinacy::Determined) if force => return Err(Determinacy::Determined),
-            Err(Determinacy::Determined) => {}
+        let def = self.resolve_macro_to_def(scope, &path, MacroKind::Attr, force);
+        if let Ok(Def::NonMacroAttr(NonMacroAttrKind::Custom)) = def {} else {
+            return def;
         }
 
-        // Ok at this point we've determined that the `attr` above doesn't
-        // actually resolve at this time, so we may want to report an error.
-        // It could be the case, though, that `attr` won't ever resolve! If
-        // there's a custom derive that could be used it might declare `attr` as
-        // a custom attribute accepted by the derive. In this case we don't want
-        // to report this particular invocation as unresolved, but rather we'd
-        // want to move on to the next invocation.
+        // At this point we've found that the `attr` is determinately unresolved and thus can be
+        // interpreted as a custom attribute. Normally custom attributes are feature gated, but
+        // it may be a custom attribute whitelisted by a derive macro and they do not require
+        // a feature gate.
         //
-        // This loop here looks through all of the derive annotations in scope
-        // and tries to resolve them. If they themselves successfully resolve
-        // *and* the resolve mentions that this attribute's name is a registered
-        // custom attribute then we return that custom attribute as the resolution result.
-        let attr_name = match path.segments.len() {
-            1 => path.segments[0].ident.name,
-            _ => return Err(determinacy),
-        };
+        // So here we look through all of the derive annotations in scope and try to resolve them.
+        // If they themselves successfully resolve *and* one of the resolved derive macros
+        // whitelists this attribute's name, then this is a registered attribute and we can convert
+        // it from a "generic custom attrite" into a "known derive helper attribute".
+        enum ConvertToDeriveHelper { Yes, No, DontKnow }
+        let mut convert_to_derive_helper = ConvertToDeriveHelper::No;
+        let attr_name = path.segments[0].ident.name;
         for path in traits {
             match self.resolve_macro(scope, path, MacroKind::Derive, force) {
                 Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
                     if inert_attrs.contains(&attr_name) {
-                        return Ok(Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper));
+                        convert_to_derive_helper = ConvertToDeriveHelper::Yes;
+                        break
                     }
                 },
-                Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
+                Err(Determinacy::Undetermined) =>
+                    convert_to_derive_helper = ConvertToDeriveHelper::DontKnow,
                 Err(Determinacy::Determined) => {}
             }
         }
 
-        Err(determinacy)
+        match convert_to_derive_helper {
+            ConvertToDeriveHelper::Yes => Ok(Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper)),
+            ConvertToDeriveHelper::No => def,
+            ConvertToDeriveHelper::DontKnow => Err(Determinacy::determined(force)),
+        }
     }
 
     fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
@@ -537,10 +547,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
             Ok(Def::Macro(binding.def_id, MacroKind::Bang))
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, span) {
+            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, force,
+                                                          kind == MacroKind::Attr, span) {
                 Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
-                Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
-                Err(_) => {
+                Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
+                Err(Determinacy::Determined) => {
                     self.found_unresolved_macro = true;
                     Err(Determinacy::Determined)
                 }
@@ -561,6 +572,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                               mut ident: Ident,
                                               ns: Namespace,
                                               record_used: bool,
+                                              force: bool,
+                                              is_attr: bool,
                                               path_span: Span)
                                               -> Result<MacroBinding<'a>, Determinacy> {
         // General principles:
@@ -591,6 +604,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // 3. Builtin attributes (closed, controlled).
 
         assert!(ns == TypeNS  || ns == MacroNS);
+        let force = force || record_used;
         ident = ident.modern();
 
         // Names from inner scope that can't shadow names from outer scopes, e.g.
@@ -764,7 +778,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 Err(Determinacy::Determined) => {
                     continue_search!();
                 }
-                Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
+                Err(Determinacy::Undetermined) => return Err(Determinacy::determined(force)),
             }
         }
 
@@ -773,7 +787,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             return Ok(previous_result);
         }
 
-        if record_used { Err(Determinacy::Determined) } else { Err(Determinacy::Undetermined) }
+        let determinacy = Determinacy::determined(force);
+        if determinacy == Determinacy::Determined && is_attr {
+            // For attributes interpret determinate "no solution" as a custom attribute.
+            let binding = (Def::NonMacroAttr(NonMacroAttrKind::Custom),
+                           ty::Visibility::Public, ident.span, Mark::root())
+                           .to_name_binding(self.arenas);
+            Ok(MacroBinding::Global(binding))
+        } else {
+            Err(determinacy)
+        }
     }
 
     pub fn resolve_legacy_scope(&mut self,
@@ -857,7 +880,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let span = ident.span;
             let legacy_scope = &self.invocations[&mark].legacy_scope;
             let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident, true);
-            let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, true, span);
+            let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, true, true,
+                                                                     kind == MacroKind::Attr, span);
 
             let check_consistency = |this: &Self, binding: MacroBinding| {
                 if let Some(def) = def {

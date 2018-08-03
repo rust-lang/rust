@@ -630,7 +630,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     pub fn get_macro(&mut self, def: Def) -> Lrc<SyntaxExtension> {
         let def_id = match def {
             Def::Macro(def_id, ..) => def_id,
-            Def::NonMacroAttr(..) => return Lrc::new(SyntaxExtension::NonMacroAttr),
+            Def::NonMacroAttr(attr_kind) => return Lrc::new(SyntaxExtension::NonMacroAttr {
+                mark_used: attr_kind == NonMacroAttrKind::Tool,
+            }),
             _ => panic!("expected `Def::Macro` or `Def::NonMacroAttr`"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
