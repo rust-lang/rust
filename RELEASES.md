@@ -29,23 +29,22 @@ Cargo
   `--locked` to disable this behaviour.
 - [`cargo-install` will now ignore the target triple specified in a project
   directory's `.cargo/config`.][cargo/5606]
-- [`cargo-install` will now allow you to cross compile an install
-  using `--target`][cargo/5614]
-- [Added the `cargo-fix` to automatically move project code from 2015 edition
-  to 2018.][cargo/5723]
+- [Added the `cargo-fix` subcommand to automatically move project code from
+  2015 edition to 2018.][cargo/5723]
 
 Misc
 ----
-- [`rustdoc` now has the `--cap-lints` which allows you to set what level of
-  lint will cause and compilation failure.][52354]
-- [`rustc` and `rustdoc` will now have the exit code of one if compilation
-  fails, and 101 if there is a panic.][52197]
+- [`rustdoc` now has the `--cap-lints` option which demotes all lints above
+  the specified level to that level.][52354] For example `--cap-lints warn`
+  will demote `deny` and `forbid` lints to `warn`.
+- [`rustc` and `rustdoc` will now have the exit code of `1` if compilation
+  fails, and `101` if there is a panic.][52197]
 
 Compatibility Notes
 -------------------
 - [`str::{slice_unchecked, slice_unchecked_mut}` are now deprecated.][51807]
   Use `str::get_unchecked(begin..end)` instead.
-- [`std::env::home_dir` is now deprecated for it's unintuitive behaviour.][51656]
+- [`std::env::home_dir` is now deprecated for its unintuitive behaviour.][51656]
   Consider using the `home_dir` function from
   https://crates.io/crates/dirs instead.
 - [`rustc` will no longer silently ignore invalid data in target spec.][52330]
@@ -67,7 +66,6 @@ Compatibility Notes
 [51178]: https://github.com/rust-lang/rust/pull/51178/
 [50494]: https://github.com/rust-lang/rust/pull/50494/
 [cargo/5606]: https://github.com/rust-lang/cargo/pull/5606/
-[cargo/5614]: https://github.com/rust-lang/cargo/pull/5614/
 [cargo/5723]: https://github.com/rust-lang/cargo/pull/5723/
 [cargo/5831]: https://github.com/rust-lang/cargo/pull/5831/
 [`Arc::downcast`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.downcast
