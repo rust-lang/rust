@@ -70,7 +70,7 @@ Compatibility Notes
 [cargo/5831]: https://github.com/rust-lang/cargo/pull/5831/
 [`Arc::downcast`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.downcast
 [`Iterator::flatten`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.flatten
-[`Rc::downcast`]: https://doc.rust-lang.org/std/sync/struct.Rc.html#method.downcast
+[`Rc::downcast`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downcast
 
 
 Version 1.28.0 (2018-08-02)
