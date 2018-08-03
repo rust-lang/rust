@@ -1,3 +1,0 @@
-[submodule "cranelift"]
-	path = cranelift
-	url = https://github.com/bjorn3/cretonne.git
