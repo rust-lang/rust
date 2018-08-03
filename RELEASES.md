@@ -27,8 +27,8 @@ Cargo
 -----
 - [Cargo can silently fix some bad lockfiles ][cargo/5831] You can use
   `--locked` to disable this behaviour.
-- [`cargo-install` will now ignore the target triple specified in a project
-  directory's `.cargo/config`.][cargo/5606]
+- [`cargo-install` will now allow you to cross compile an install
+  using `--target`][cargo/5614]
 - [Added the `cargo-fix` subcommand to automatically move project code from
   2015 edition to 2018.][cargo/5723]
 
@@ -65,7 +65,7 @@ Compatibility Notes
 [51656]: https://github.com/rust-lang/rust/pull/51656/
 [51178]: https://github.com/rust-lang/rust/pull/51178/
 [50494]: https://github.com/rust-lang/rust/pull/50494/
-[cargo/5606]: https://github.com/rust-lang/cargo/pull/5606/
+[cargo/5614]: https://github.com/rust-lang/cargo/pull/5614/
 [cargo/5723]: https://github.com/rust-lang/cargo/pull/5723/
 [cargo/5831]: https://github.com/rust-lang/cargo/pull/5831/
 [`Arc::downcast`]: https://doc.rust-lang.org/std/sync/struct.Arc.html#method.downcast
