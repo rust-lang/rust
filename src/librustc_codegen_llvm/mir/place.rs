@@ -57,7 +57,7 @@ impl PlaceRef<'tcx, &'ll Value> {
     }
 
     pub fn from_const_alloc(
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
         layout: TyLayout<'tcx>,
         alloc: &mir::interpret::Allocation,
         offset: Size,
@@ -74,7 +74,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         PlaceRef::new_sized(llval, layout, alloc.align)
     }
 
-    pub fn alloca(bx: &Builder<'a, 'll, 'tcx>, layout: TyLayout<'tcx>, name: &str)
+    pub fn alloca(bx: &Builder<'a, 'll, 'tcx, &'ll Value>, layout: TyLayout<'tcx>, name: &str)
                   -> PlaceRef<'tcx, &'ll Value> {
         debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
@@ -83,8 +83,11 @@ impl PlaceRef<'tcx, &'ll Value> {
     }
 
     /// Returns a place for an indirect reference to an unsized place.
-    pub fn alloca_unsized_indirect(bx: &Builder<'a, 'll, 'tcx>, layout: TyLayout<'tcx>, name: &str)
-                  -> PlaceRef<'ll, 'tcx> {
+    pub fn alloca_unsized_indirect(
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        layout: TyLayout<'tcx>,
+        name: &str
+    ) -> PlaceRef<'tcx, &'ll Value> {
         debug!("alloca_unsized_indirect({:?}: {:?})", name, layout);
         assert!(layout.is_unsized(), "tried to allocate indirect place for sized values");
         let ptr_ty = bx.cx.tcx.mk_mut_ptr(layout.ty);
@@ -92,7 +95,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         Self::alloca(bx, ptr_layout, name)
     }
 
-    pub fn len(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Value {
+    pub fn len(&self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> &'ll Value {
         if let layout::FieldPlacement::Array { count, .. } = self.layout.fields {
             if self.layout.is_unsized() {
                 assert_eq!(count, 0);
@@ -105,7 +108,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         }
     }
 
-    pub fn load(&self, bx: &Builder<'a, 'll, 'tcx>) -> OperandRef<'tcx, &'ll Value> {
+    pub fn load(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
         debug!("PlaceRef::load: {:?}", self);
 
         assert_eq!(self.llextra.is_some(), self.layout.is_unsized());
@@ -169,7 +172,10 @@ impl PlaceRef<'tcx, &'ll Value> {
     }
 
     /// Access a field, at a point when the value's case is known.
-    pub fn project_field(self, bx: &Builder<'a, 'll, 'tcx>, ix: usize) -> PlaceRef<'tcx, &'ll Value> {
+    pub fn project_field(
+        self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        ix: usize
+    ) -> PlaceRef<'tcx, &'ll Value> {
         let cx = bx.cx;
         let field = self.layout.field(cx, ix);
         let offset = self.layout.fields.offset(ix);
@@ -273,7 +279,7 @@ impl PlaceRef<'tcx, &'ll Value> {
     }
 
     /// Obtain the actual discriminant of a value.
-    pub fn codegen_get_discr(self, bx: &Builder<'a, 'll, 'tcx>, cast_to: Ty<'tcx>) -> &'ll Value {
+    pub fn codegen_get_discr(self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, cast_to: Ty<'tcx>) -> &'ll Value {
         let cast_to = bx.cx.layout_of(cast_to).immediate_llvm_type(bx.cx);
         if self.layout.abi.is_uninhabited() {
             return C_undef(cast_to);
@@ -337,7 +343,7 @@ impl PlaceRef<'tcx, &'ll Value> {
 
     /// Set the discriminant for a new value of the given case of the given
     /// representation.
-    pub fn codegen_set_discr(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize) {
+    pub fn codegen_set_discr(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, variant_index: usize) {
         if self.layout.for_variant(bx.cx, variant_index).abi.is_uninhabited() {
             return;
         }
@@ -391,7 +397,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         }
     }
 
-    pub fn project_index(&self, bx: &Builder<'a, 'll, 'tcx>, llindex: &'ll Value)
+    pub fn project_index(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, llindex: &'ll Value)
                          -> PlaceRef<'tcx, &'ll Value> {
         PlaceRef {
             llval: bx.inbounds_gep(self.llval, &[C_usize(bx.cx, 0), llindex]),
@@ -401,7 +407,7 @@ impl PlaceRef<'tcx, &'ll Value> {
         }
     }
 
-    pub fn project_downcast(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize)
+    pub fn project_downcast(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, variant_index: usize)
                             -> PlaceRef<'tcx, &'ll Value> {
         let mut downcast = *self;
         downcast.layout = self.layout.for_variant(bx.cx, variant_index);
@@ -413,18 +419,18 @@ impl PlaceRef<'tcx, &'ll Value> {
         downcast
     }
 
-    pub fn storage_live(&self, bx: &Builder<'a, 'll, 'tcx>) {
+    pub fn storage_live(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>) {
         bx.lifetime_start(self.llval, self.layout.size);
     }
 
-    pub fn storage_dead(&self, bx: &Builder<'a, 'll, 'tcx>) {
+    pub fn storage_dead(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>) {
         bx.lifetime_end(self.llval, self.layout.size);
     }
 }
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     pub fn codegen_place(&mut self,
-                        bx: &Builder<'a, 'll, 'tcx>,
+                        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                         place: &mir::Place<'tcx>)
                         -> PlaceRef<'tcx, &'ll Value> {
         debug!("codegen_place(place={:?})", place);

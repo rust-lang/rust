@@ -14,6 +14,7 @@ use common::CodegenCx;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
+use value::Value;
 
 use rustc::hir;
 
@@ -21,7 +22,7 @@ use rustc::hir;
 // any caching, i.e. calling the function twice with the same type will also do
 // the work twice. The `qualified` parameter only affects the first level of the
 // type name, further levels (i.e. type parameters) are always fully qualified.
-pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
                                              t: Ty<'tcx>,
                                              qualified: bool)
                                              -> String {
@@ -32,7 +33,7 @@ pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
-pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
                                           t: Ty<'tcx>,
                                           qualified: bool,
                                           output: &mut String) {
@@ -181,7 +182,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
     }
 
-    fn push_item_name(cx: &CodegenCx,
+    fn push_item_name(cx: &CodegenCx<'ll, '_, &'ll Value>,
                       def_id: DefId,
                       qualified: bool,
                       output: &mut String) {
@@ -201,7 +202,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     // reconstructed for items from non-local crates. For local crates, this
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
-    fn push_type_params<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+    fn push_type_params<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
                                   substs: &Substs<'tcx>,
                                   output: &mut String) {
         if substs.types().next().is_none() {

@@ -36,7 +36,7 @@ use rustc::ty::subst::Substs;
 /// - `cx`: the crate context
 /// - `instance`: the instance to be instantiated
 pub fn get_fn(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     instance: Instance<'tcx>,
 ) -> &'ll Value {
     let tcx = cx.tcx;
@@ -206,7 +206,7 @@ pub fn get_fn(
 }
 
 pub fn resolve_and_get_fn(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     def_id: DefId,
     substs: &'tcx Substs<'tcx>,
 ) -> &'ll Value {

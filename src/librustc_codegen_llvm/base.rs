@@ -94,13 +94,13 @@ use mir::operand::OperandValue;
 use rustc_codegen_utils::check_for_rustc_errors_attr;
 
 pub struct StatRecorder<'a, 'll: 'a, 'tcx: 'll> {
-    cx: &'a CodegenCx<'ll, 'tcx>,
+    cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
     name: Option<String>,
     istart: usize,
 }
 
 impl StatRecorder<'a, 'll, 'tcx> {
-    pub fn new(cx: &'a CodegenCx<'ll, 'tcx>, name: String) -> Self {
+    pub fn new(cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>, name: String) -> Self {
         let istart = cx.stats.borrow().n_llvm_insns;
         StatRecorder {
             cx,
@@ -158,7 +158,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> llvm::RealPredicate {
 }
 
 pub fn compare_simd_types(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     lhs: &'ll Value,
     rhs: &'ll Value,
     t: Ty<'tcx>,
@@ -190,7 +190,7 @@ pub fn compare_simd_types(
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
 pub fn unsized_info(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
     old_info: Option<&'ll Value>,
@@ -220,7 +220,7 @@ pub fn unsized_info(
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
 pub fn unsize_thin_ptr(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     src: &'ll Value,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
@@ -275,7 +275,7 @@ pub fn unsize_thin_ptr(
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub fn coerce_unsized_into(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     src: PlaceRef<'tcx, &'ll Value>,
     dst: PlaceRef<'tcx, &'ll Value>
 ) {
@@ -334,7 +334,7 @@ pub fn coerce_unsized_into(
 }
 
 pub fn cast_shift_expr_rhs(
-    cx: &Builder<'_, 'll, '_>, op: hir::BinOpKind, lhs: &'ll Value, rhs: &'ll Value
+    cx: &Builder<'_, 'll, '_, &'ll Value>, op: hir::BinOpKind, lhs: &'ll Value, rhs: &'ll Value
 ) -> &'ll Value {
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
@@ -383,12 +383,12 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn call_assume(bx: &Builder<'_, 'll, '_>, val: &'ll Value) {
+pub fn call_assume(bx: &Builder<'_, 'll, '_, &'ll Value>, val: &'ll Value) {
     let assume_intrinsic = bx.cx.get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate(bx: &Builder<'_, 'll, '_>, val: &'ll Value) -> &'ll Value {
+pub fn from_immediate(bx: &Builder<'_, 'll, '_, &'ll Value>, val: &'ll Value) -> &'ll Value {
     if val_ty(val) == Type::i1(bx.cx) {
         bx.zext(val, Type::i8(bx.cx))
     } else {
@@ -397,7 +397,7 @@ pub fn from_immediate(bx: &Builder<'_, 'll, '_>, val: &'ll Value) -> &'ll Value 
 }
 
 pub fn to_immediate(
-    bx: &Builder<'_, 'll, '_>,
+    bx: &Builder<'_, 'll, '_, &'ll Value>,
     val: &'ll Value,
     layout: layout::TyLayout,
 ) -> &'ll Value {
@@ -408,7 +408,7 @@ pub fn to_immediate(
 }
 
 pub fn to_immediate_scalar(
-    bx: &Builder<'_, 'll, '_>,
+    bx: &Builder<'_, 'll, '_, &'ll Value>,
     val: &'ll Value,
     scalar: &layout::Scalar,
 ) -> &'ll Value {
@@ -419,7 +419,7 @@ pub fn to_immediate_scalar(
 }
 
 pub fn call_memcpy(
-    bx: &Builder<'_, 'll, '_>,
+    bx: &Builder<'_, 'll, '_, &'ll Value>,
     dst: &'ll Value,
     src: &'ll Value,
     n_bytes: &'ll Value,
@@ -446,7 +446,7 @@ pub fn call_memcpy(
 }
 
 pub fn memcpy_ty(
-    bx: &Builder<'_, 'll, 'tcx>,
+    bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
     dst: &'ll Value,
     src: &'ll Value,
     layout: TyLayout<'tcx>,
@@ -462,7 +462,7 @@ pub fn memcpy_ty(
 }
 
 pub fn call_memset(
-    bx: &Builder<'_, 'll, '_>,
+    bx: &Builder<'_, 'll, '_, &'ll Value>,
     ptr: &'ll Value,
     fill_byte: &'ll Value,
     size: &'ll Value,
@@ -476,7 +476,7 @@ pub fn call_memset(
     bx.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
-pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'tcx>) {
+pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>, instance: Instance<'tcx>) {
     let _s = if cx.sess().codegen_stats() {
         let mut instance_name = String::new();
         DefPathBasedNames::new(cx.tcx, true, true)
@@ -517,7 +517,7 @@ pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
 
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
-fn maybe_create_entry_wrapper(cx: &CodegenCx) {
+fn maybe_create_entry_wrapper(cx: &CodegenCx<'ll, '_, &'ll Value>) {
     let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
         Some((id, span, _)) => {
             (cx.tcx.hir.local_def_id(id), span)
@@ -543,7 +543,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
     }
 
     fn create_entry_fn(
-        cx: &CodegenCx<'ll, '_>,
+        cx: &CodegenCx<'ll, '_, &'ll Value>,
         sp: Span,
         rust_main: &'ll Value,
         rust_main_def_id: DefId,

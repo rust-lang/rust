@@ -45,7 +45,7 @@ use abi::Abi;
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub struct CodegenCx<'a, 'tcx: 'a> {
+pub struct CodegenCx<'a, 'tcx: 'a, V> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
@@ -57,12 +57,11 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
-    pub instances: RefCell<FxHashMap<Instance<'tcx>, &'a Value>>,
+    pub instances: RefCell<FxHashMap<Instance<'tcx>, V>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>),
-                                   &'a Value>>,
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), V>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'a Value>>,
+    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, V>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     /// Key is a Value holding a *T,
@@ -72,20 +71,20 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     /// when we ptrcast, and we have to ptrcast during codegen
     /// of a [T] const because we form a slice, a (*T,usize) pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
-    pub const_unsized: RefCell<FxHashMap<&'a Value, &'a Value>>,
+    pub const_unsized: RefCell<FxHashMap<V, V>>,
 
     /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<&'a Value, &'a Value>>,
+    pub const_globals: RefCell<FxHashMap<V, V>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
     /// (We have to make sure we don't invalidate any Values referring
     /// to constants.)
-    pub statics_to_rauw: RefCell<Vec<(&'a Value, &'a Value)>>,
+    pub statics_to_rauw: RefCell<Vec<(V, V)>>,
 
     /// Statics that will be placed in the llvm.used variable
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
-    pub used_statics: RefCell<Vec<&'a Value>>,
+    pub used_statics: RefCell<Vec<V>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), &'a Type>>,
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'a Type>>,
@@ -94,17 +93,17 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
 
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'a, 'tcx>>,
 
-    eh_personality: Cell<Option<&'a Value>>,
-    eh_unwind_resume: Cell<Option<&'a Value>>,
-    pub rust_try_fn: Cell<Option<&'a Value>>,
+    eh_personality: Cell<Option<V>>,
+    eh_unwind_resume: Cell<Option<V>>,
+    pub rust_try_fn: Cell<Option<V>>,
 
-    intrinsics: RefCell<FxHashMap<&'static str, &'a Value>>,
+    intrinsics: RefCell<FxHashMap<&'static str, V>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
 }
 
-impl<'a, 'tcx> DepGraphSafe for CodegenCx<'a, 'tcx> {
+impl<'a, 'tcx> DepGraphSafe for CodegenCx<'a, 'tcx, &'a Value> {
 }
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
@@ -218,11 +217,11 @@ pub unsafe fn create_module(
     llmod
 }
 
-impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
+impl<'a, 'tcx> CodegenCx<'a, 'tcx, &'a Value> {
     crate fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                  codegen_unit: Arc<CodegenUnit<'tcx>>,
                  llvm_module: &'a ::ModuleLlvm)
-                 -> CodegenCx<'a, 'tcx> {
+                 -> CodegenCx<'a, 'tcx, &'a Value> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -316,7 +315,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     }
 }
 
-impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
+impl<'b, 'tcx> CodegenCx<'b, 'tcx, &'b Value> {
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.tcx.sess
     }
@@ -446,25 +445,25 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl ty::layout::HasDataLayout for &'a CodegenCx<'ll, 'tcx> {
+impl ty::layout::HasDataLayout for &'a CodegenCx<'ll, 'tcx, &'ll Value> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl HasTargetSpec for &'a CodegenCx<'ll, 'tcx> {
+impl HasTargetSpec for &'a CodegenCx<'ll, 'tcx, &'ll Value> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }
 }
 
-impl ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'ll, 'tcx> {
+impl ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'ll, 'tcx, &'ll Value> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl LayoutOf for &'a CodegenCx<'ll, 'tcx> {
+impl LayoutOf for &'a CodegenCx<'ll, 'tcx, &'ll Value> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
@@ -479,7 +478,7 @@ impl LayoutOf for &'a CodegenCx<'ll, 'tcx> {
 }
 
 /// Declare any llvm intrinsics that you might need
-fn declare_intrinsic(cx: &CodegenCx<'ll, '_>, key: &str) -> Option<&'ll Value> {
+fn declare_intrinsic(cx: &CodegenCx<'ll, '_, &'ll Value>, key: &str) -> Option<&'ll Value> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {

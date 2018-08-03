@@ -33,7 +33,7 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bx: &Builder<'a, 'll, 'tcx>,
+    pub fn get_fn(self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                   llvtable: &'ll Value,
                   fn_ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Value {
         // Load the data pointer from the object.
@@ -48,7 +48,7 @@ impl<'a, 'tcx> VirtualIndex {
         ptr
     }
 
-    pub fn get_usize(self, bx: &Builder<'a, 'll, 'tcx>, llvtable: &'ll Value) -> &'ll Value {
+    pub fn get_usize(self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, llvtable: &'ll Value) -> &'ll Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 
@@ -70,7 +70,7 @@ impl<'a, 'tcx> VirtualIndex {
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
 pub fn get_vtable(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     ty: Ty<'tcx>,
     trait_ref: ty::PolyExistentialTraitRef<'tcx>,
 ) -> &'ll Value {

@@ -150,23 +150,23 @@ pub fn C_uint_big(t: &'ll Type, u: u128) -> &'ll Value {
     }
 }
 
-pub fn C_bool(cx: &CodegenCx<'ll, '_>, val: bool) -> &'ll Value {
+pub fn C_bool(cx: &CodegenCx<'ll, '_, &'ll Value>, val: bool) -> &'ll Value {
     C_uint(Type::i1(cx), val as u64)
 }
 
-pub fn C_i32(cx: &CodegenCx<'ll, '_>, i: i32) -> &'ll Value {
+pub fn C_i32(cx: &CodegenCx<'ll, '_, &'ll Value>, i: i32) -> &'ll Value {
     C_int(Type::i32(cx), i as i64)
 }
 
-pub fn C_u32(cx: &CodegenCx<'ll, '_>, i: u32) -> &'ll Value {
+pub fn C_u32(cx: &CodegenCx<'ll, '_, &'ll Value>, i: u32) -> &'ll Value {
     C_uint(Type::i32(cx), i as u64)
 }
 
-pub fn C_u64(cx: &CodegenCx<'ll, '_>, i: u64) -> &'ll Value {
+pub fn C_u64(cx: &CodegenCx<'ll, '_, &'ll Value>, i: u64) -> &'ll Value {
     C_uint(Type::i64(cx), i)
 }
 
-pub fn C_usize(cx: &CodegenCx<'ll, '_>, i: u64) -> &'ll Value {
+pub fn C_usize(cx: &CodegenCx<'ll, '_, &'ll Value>, i: u64) -> &'ll Value {
     let bit_size = cx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow
@@ -176,7 +176,7 @@ pub fn C_usize(cx: &CodegenCx<'ll, '_>, i: u64) -> &'ll Value {
     C_uint(cx.isize_ty, i)
 }
 
-pub fn C_u8(cx: &CodegenCx<'ll, '_>, i: u8) -> &'ll Value {
+pub fn C_u8(cx: &CodegenCx<'ll, '_, &'ll Value>, i: u8) -> &'ll Value {
     C_uint(Type::i8(cx), i as u64)
 }
 
@@ -184,7 +184,7 @@ pub fn C_u8(cx: &CodegenCx<'ll, '_>, i: u8) -> &'ll Value {
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
     s: LocalInternedString,
     null_terminated: bool,
 ) -> &'ll Value {
@@ -212,20 +212,28 @@ pub fn C_cstr(
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_str_slice(cx: &CodegenCx<'ll, '_>, s: LocalInternedString) -> &'ll Value {
+pub fn C_str_slice(cx: &CodegenCx<'ll, '_, &'ll Value>, s: LocalInternedString) -> &'ll Value {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
         cx.layout_of(cx.tcx.mk_str()).llvm_type(cx).ptr_to());
     C_fat_ptr(cx, cs, C_usize(cx, len as u64))
 }
 
-pub fn C_fat_ptr(cx: &CodegenCx<'ll, '_>, ptr: &'ll Value, meta: &'ll Value) -> &'ll Value {
+pub fn C_fat_ptr(
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
+    ptr: &'ll Value,
+    meta: &'ll Value
+) -> &'ll Value {
     assert_eq!(abi::FAT_PTR_ADDR, 0);
     assert_eq!(abi::FAT_PTR_EXTRA, 1);
     C_struct(cx, &[ptr, meta], false)
 }
 
-pub fn C_struct(cx: &CodegenCx<'ll, '_>, elts: &[&'ll Value], packed: bool) -> &'ll Value {
+pub fn C_struct(
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
+    elts: &[&'ll Value],
+    packed: bool
+) -> &'ll Value {
     C_struct_in_context(cx.llcx, elts, packed)
 }
 
@@ -253,7 +261,7 @@ pub fn C_vector(elts: &[&'ll Value]) -> &'ll Value {
     }
 }
 
-pub fn C_bytes(cx: &CodegenCx<'ll, '_>, bytes: &[u8]) -> &'ll Value {
+pub fn C_bytes(cx: &CodegenCx<'ll, '_, &'ll Value>, bytes: &[u8]) -> &'ll Value {
     C_bytes_in_context(cx.llcx, bytes)
 }
 
@@ -351,7 +359,7 @@ pub fn langcall(tcx: TyCtxt,
 // of Java. (See related discussion on #1877 and #10183.)
 
 pub fn build_unchecked_lshift(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     lhs: &'ll Value,
     rhs: &'ll Value
 ) -> &'ll Value {
@@ -362,7 +370,7 @@ pub fn build_unchecked_lshift(
 }
 
 pub fn build_unchecked_rshift(
-    bx: &Builder<'a, 'll, 'tcx>, lhs_t: Ty<'tcx>, lhs: &'ll Value, rhs: &'ll Value
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>, lhs_t: Ty<'tcx>, lhs: &'ll Value, rhs: &'ll Value
 ) -> &'ll Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
@@ -375,13 +383,13 @@ pub fn build_unchecked_rshift(
     }
 }
 
-fn shift_mask_rhs(bx: &Builder<'a, 'll, 'tcx>, rhs: &'ll Value) -> &'ll Value {
+fn shift_mask_rhs(bx: &Builder<'a, 'll, 'tcx, &'ll Value>, rhs: &'ll Value) -> &'ll Value {
     let rhs_llty = val_ty(rhs);
     bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
 }
 
 pub fn shift_mask_val(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     llty: &'ll Type,
     mask_llty: &'ll Type,
     invert: bool
@@ -405,7 +413,7 @@ pub fn shift_mask_val(
     }
 }
 
-pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
                            ty: Ty<'tcx>)
                            -> ty::PolyFnSig<'tcx>
 {

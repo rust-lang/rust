@@ -26,7 +26,7 @@ use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
 pub fn codegen_inline_asm(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     ia: &hir::InlineAsm,
     outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
     mut inputs: Vec<&'ll Value>
@@ -125,7 +125,7 @@ pub fn codegen_inline_asm(
     return true;
 }
 
-pub fn codegen_global_asm<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn codegen_global_asm<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
                                   ga: &hir::GlobalAsm) {
     let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
     unsafe {

@@ -36,7 +36,7 @@ use syntax_pos::Span;
 use std::cmp::Ordering;
 use std::iter;
 
-fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
+fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_, &'ll Value>, name: &str) -> Option<&'ll Value> {
     let llvm_name = match name {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -87,7 +87,7 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Valu
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_codegen_llvm/context.rs
 pub fn codegen_intrinsic_call(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     callee_ty: Ty<'tcx>,
     fn_ty: &FnType<'tcx, Ty<'tcx>>,
     args: &[OperandRef<'tcx, &'ll Value>],
@@ -546,7 +546,10 @@ pub fn codegen_intrinsic_call(
                 assert_eq!(x.len(), 1);
                 x.into_iter().next().unwrap()
             }
-            fn ty_to_type(cx: &CodegenCx<'ll, '_>, t: &intrinsics::Type) -> Vec<&'ll Type> {
+            fn ty_to_type(
+                cx: &CodegenCx<'ll, '_, &'ll Value>,
+                 t: &intrinsics::Type
+             ) -> Vec<&'ll Type> {
                 use intrinsics::Type::*;
                 match *t {
                     Void => vec![Type::void(cx)],
@@ -589,7 +592,7 @@ pub fn codegen_intrinsic_call(
             // arguments to be truncated as needed and pointers to be
             // cast.
             fn modify_as_needed(
-                bx: &Builder<'a, 'll, 'tcx>,
+                bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                 t: &intrinsics::Type,
                 arg: &OperandRef<'tcx, &'ll Value>,
             ) -> Vec<&'ll Value> {
@@ -679,7 +682,7 @@ pub fn codegen_intrinsic_call(
 }
 
 fn copy_intrinsic(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     allow_overlap: bool,
     volatile: bool,
     ty: Ty<'tcx>,
@@ -715,7 +718,7 @@ fn copy_intrinsic(
 }
 
 fn memset_intrinsic(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     volatile: bool,
     ty: Ty<'tcx>,
     dst: &'ll Value,
@@ -731,8 +734,8 @@ fn memset_intrinsic(
 }
 
 fn try_intrinsic(
-    bx: &Builder<'a, 'll, 'tcx>,
-    cx: &CodegenCx<'ll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     func: &'ll Value,
     data: &'ll Value,
     local_ptr: &'ll Value,
@@ -757,8 +760,8 @@ fn try_intrinsic(
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
 fn codegen_msvc_try(
-    bx: &Builder<'a, 'll, 'tcx>,
-    cx: &CodegenCx<'ll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     func: &'ll Value,
     data: &'ll Value,
     local_ptr: &'ll Value,
@@ -866,8 +869,8 @@ fn codegen_msvc_try(
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
 fn codegen_gnu_try(
-    bx: &Builder<'a, 'll, 'tcx>,
-    cx: &CodegenCx<'ll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     func: &'ll Value,
     data: &'ll Value,
     local_ptr: &'ll Value,
@@ -927,11 +930,11 @@ fn codegen_gnu_try(
 // Helper function to give a Block to a closure to codegen a shim function.
 // This is currently primarily used for the `try` intrinsic functions above.
 fn gen_fn<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     name: &str,
     inputs: Vec<Ty<'tcx>>,
     output: Ty<'tcx>,
-    codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
+    codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx, &'ll Value>),
 ) -> &'ll Value {
     let rust_fn_ty = cx.tcx.mk_fn_ptr(ty::Binder::bind(cx.tcx.mk_fn_sig(
         inputs.into_iter(),
@@ -952,8 +955,8 @@ fn gen_fn<'ll, 'tcx>(
 //
 // This function is only generated once and is then cached.
 fn get_rust_try_fn<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
+    codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx, &'ll Value>),
 ) -> &'ll Value {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
@@ -980,7 +983,7 @@ fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
 }
 
 fn generic_simd_intrinsic(
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     name: &str,
     callee_ty: Ty<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
@@ -1156,7 +1159,7 @@ fn generic_simd_intrinsic(
         in_elem: &::rustc::ty::TyS,
         in_ty: &::rustc::ty::TyS,
         in_len: usize,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
     ) -> Result<&'ll Value, ()> {
@@ -1274,7 +1277,7 @@ fn generic_simd_intrinsic(
         }
     }
 
-    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: ty::Ty, vec_len: usize,
+    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_, &'ll Value>, elem_ty: ty::Ty, vec_len: usize,
                       mut no_pointers: usize) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let mut elem_ty = match elem_ty.sty {
@@ -1755,7 +1758,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 // Returns None if the type is not an integer
 // FIXME: there’s multiple of this functions, investigate using some of the already existing
 // stuffs.
-fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
+fn int_type_width_signed(ty: Ty, cx: &CodegenCx<'ll, '_, &'ll Value>) -> Option<(u64, bool)> {
     match ty.sty {
         ty::Int(t) => Some((match t {
             ast::IntTy::Isize => cx.tcx.sess.target.isize_ty.bit_width().unwrap() as u64,

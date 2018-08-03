@@ -26,12 +26,12 @@ use std::ptr;
 
 // All Builders must have an llfn associated with them
 #[must_use]
-pub struct Builder<'a, 'll: 'a, 'tcx: 'll> {
+pub struct Builder<'a, 'll: 'a, 'tcx: 'll, V : 'll> {
     pub llbuilder: &'ll mut llvm::Builder<'ll>,
-    pub cx: &'a CodegenCx<'ll, 'tcx>,
+    pub cx: &'a CodegenCx<'ll, 'tcx, V>,
 }
 
-impl Drop for Builder<'a, 'll, 'tcx> {
+impl<V> Drop for Builder<'_, '_, '_, V> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMDisposeBuilder(&mut *(self.llbuilder as *mut _));
@@ -54,8 +54,12 @@ bitflags! {
     }
 }
 
-impl Builder<'a, 'll, 'tcx> {
-    pub fn new_block<'b>(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &'b str) -> Self {
+impl Builder<'a, 'll, 'tcx, &'ll Value> {
+    pub fn new_block<'b>(
+        cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
+        llfn: &'ll Value,
+        name: &'b str
+    ) -> Self {
         let bx = Builder::with_cx(cx);
         let llbb = unsafe {
             let name = SmallCStr::new(name);
@@ -69,7 +73,7 @@ impl Builder<'a, 'll, 'tcx> {
         bx
     }
 
-    pub fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
+    pub fn with_cx(cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>) -> Self {
         // Create a fresh builder from the crate context.
         let llbuilder = unsafe {
             llvm::LLVMCreateBuilderInContext(cx.llcx)
@@ -80,7 +84,7 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn build_sibling_block<'b>(&self, name: &'b str) -> Builder<'a, 'll, 'tcx> {
+    pub fn build_sibling_block<'b>(&self, name: &'b str) -> Builder<'a, 'll, 'tcx, &'ll Value> {
         Builder::new_block(self.cx, self.llfn(), name)
     }
 

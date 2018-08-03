@@ -19,10 +19,11 @@ use rustc::ty::DefIdTree;
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilder, DIDescriptor, DIArray};
 use common::{CodegenCx};
+use value::Value;
 
 use syntax_pos::{self, Span};
 
-pub fn is_node_local_to_unit(cx: &CodegenCx, def_id: DefId) -> bool
+pub fn is_node_local_to_unit(cx: &CodegenCx<'ll, '_, &'ll Value>, def_id: DefId) -> bool
 {
     // The is_local_to_unit flag indicates whether a function is local to the
     // current compilation unit (i.e. if it is *static* in the C-sense). The
@@ -46,22 +47,22 @@ pub fn create_DIArray(
 }
 
 /// Return syntax_pos::Loc corresponding to the beginning of the span
-pub fn span_start(cx: &CodegenCx, span: Span) -> syntax_pos::Loc {
+pub fn span_start(cx: &CodegenCx<'ll, '_, &'ll Value>, span: Span) -> syntax_pos::Loc {
     cx.sess().source_map().lookup_char_pos(span.lo())
 }
 
 #[inline]
-pub fn debug_context(cx: &'a CodegenCx<'ll, 'tcx>) -> &'a CrateDebugContext<'ll, 'tcx> {
+pub fn debug_context(cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>) -> &'a CrateDebugContext<'ll, 'tcx> {
     cx.dbg_cx.as_ref().unwrap()
 }
 
 #[inline]
 #[allow(non_snake_case)]
-pub fn DIB(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
+pub fn DIB(cx: &'a CodegenCx<'ll, '_, &'ll Value>) -> &'a DIBuilder<'ll> {
     cx.dbg_cx.as_ref().unwrap().builder
 }
 
-pub fn get_namespace_for_item(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
+pub fn get_namespace_for_item(cx: &CodegenCx<'ll, '_, &'ll Value>, def_id: DefId) -> &'ll DIScope {
     item_namespace(cx, cx.tcx.parent(def_id)
         .expect("get_namespace_for_item: missing parent?"))
 }

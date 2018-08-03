@@ -39,7 +39,10 @@ use value::Value;
 ///
 /// If there’s a value with the same name already declared, the function will
 /// return its Value instead.
-pub fn declare_global(cx: &CodegenCx<'ll, '_>, name: &str, ty: &'ll Type) -> &'ll Value {
+pub fn declare_global(
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
+    name: &str, ty: &'ll Type
+) -> &'ll Value {
     debug!("declare_global(name={:?})", name);
     let namebuf = SmallCStr::new(name);
     unsafe {
@@ -53,7 +56,7 @@ pub fn declare_global(cx: &CodegenCx<'ll, '_>, name: &str, ty: &'ll Type) -> &'l
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
 fn declare_raw_fn(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
     name: &str,
     callconv: llvm::CallConv,
     ty: &'ll Type,
@@ -117,7 +120,11 @@ fn declare_raw_fn(
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-pub fn declare_cfn(cx: &CodegenCx<'ll, '_>, name: &str, fn_type: &'ll Type) -> &'ll Value {
+pub fn declare_cfn(
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
+    name: &str,
+    fn_type: &'ll Type
+) -> &'ll Value {
     declare_raw_fn(cx, name, llvm::CCallConv, fn_type)
 }
 
@@ -127,7 +134,7 @@ pub fn declare_cfn(cx: &CodegenCx<'ll, '_>, name: &str, fn_type: &'ll Type) -> &
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
 pub fn declare_fn(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     name: &str,
     fn_type: Ty<'tcx>,
 ) -> &'ll Value {
@@ -159,7 +166,11 @@ pub fn declare_fn(
 /// return None if the name already has a definition associated with it. In that
 /// case an error should be reported to the user, because it usually happens due
 /// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
-pub fn define_global(cx: &CodegenCx<'ll, '_>, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
+pub fn define_global(
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
+    name: &str,
+    ty: &'ll Type
+) -> Option<&'ll Value> {
     if get_defined_value(cx, name).is_some() {
         None
     } else {
@@ -182,7 +193,7 @@ pub fn define_private_global(cx: &CodegenCx<'ll, '_>, ty: &'ll Type) -> &'ll Val
 /// return panic if the name already has a definition associated with it. This
 /// can happen with #[no_mangle] or #[export_name], for example.
 pub fn define_fn(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     name: &str,
     fn_type: Ty<'tcx>,
 ) -> &'ll Value {
@@ -199,7 +210,7 @@ pub fn define_fn(
 /// return panic if the name already has a definition associated with it. This
 /// can happen with #[no_mangle] or #[export_name], for example.
 pub fn define_internal_fn(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     name: &str,
     fn_type: Ty<'tcx>,
 ) -> &'ll Value {
@@ -210,7 +221,7 @@ pub fn define_internal_fn(
 
 
 /// Get declared value by name.
-pub fn get_declared_value(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
+pub fn get_declared_value(cx: &CodegenCx<'ll, '_, &'ll Value>, name: &str) -> Option<&'ll Value> {
     debug!("get_declared_value(name={:?})", name);
     let namebuf = SmallCStr::new(name);
     unsafe { llvm::LLVMRustGetNamedValue(cx.llmod, namebuf.as_ptr()) }
@@ -218,7 +229,7 @@ pub fn get_declared_value(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Va
 
 /// Get defined or externally defined (AvailableExternally linkage) value by
 /// name.
-pub fn get_defined_value(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
+pub fn get_defined_value(cx: &CodegenCx<'ll, '_, &'ll Value>, name: &str) -> Option<&'ll Value> {
     get_declared_value(cx, name).and_then(|val|{
         let declaration = unsafe {
             llvm::LLVMIsDeclaration(val) != 0

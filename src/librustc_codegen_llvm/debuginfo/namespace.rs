@@ -20,18 +20,19 @@ use llvm::debuginfo::DIScope;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use common::CodegenCx;
+use value::Value;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 
 pub fn mangled_name_of_instance<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
+    cx: &CodegenCx<'a, 'tcx, &'a Value>,
     instance: Instance<'tcx>,
 ) -> ty::SymbolName {
      let tcx = cx.tcx;
      tcx.symbol_name(instance)
 }
 
-pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
+pub fn item_namespace(cx: &CodegenCx<'ll, '_, &'ll Value>, def_id: DefId) -> &'ll DIScope {
     if let Some(&scope) = debug_context(cx).namespace_map.borrow().get(&def_id) {
         return scope;
     }

@@ -32,12 +32,12 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     pub fn codegen_rvalue(&mut self,
-                        bx: Builder<'a, 'll, 'tcx>,
+                        bx: Builder<'a, 'll, 'tcx, &'ll Value>,
                         dest: PlaceRef<'tcx, &'ll Value>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'll, 'tcx>
+                        -> Builder<'a, 'll, 'tcx, &'ll Value>
     {
         debug!("codegen_rvalue(dest.llval={:?}, rvalue={:?})",
                dest.llval, rvalue);
@@ -199,9 +199,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     pub fn codegen_rvalue_operand(&mut self,
-                                bx: Builder<'a, 'll, 'tcx>,
+                                bx: Builder<'a, 'll, 'tcx, &'ll Value>,
                                 rvalue: &mir::Rvalue<'tcx>)
-                                -> (Builder<'a, 'll, 'tcx>, OperandRef<'tcx, &'ll Value>)
+                                -> (Builder<'a, 'll, 'tcx, &'ll Value>, OperandRef<'tcx, &'ll Value>)
     {
         assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
 
@@ -538,7 +538,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     fn evaluate_array_len(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
         place: &mir::Place<'tcx>,
     ) -> &'ll Value {
         // ZST are passed as operands and require special handling
@@ -558,7 +558,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     pub fn codegen_scalar_binop(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
         op: mir::BinOp,
         lhs: &'ll Value,
         rhs: &'ll Value,
@@ -626,7 +626,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     pub fn codegen_fat_ptr_binop(
         &mut self,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
         op: mir::BinOp,
         lhs_addr: &'ll Value,
         lhs_extra: &'ll Value,
@@ -673,7 +673,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     pub fn codegen_scalar_checked_binop(&mut self,
-                                      bx: &Builder<'a, 'll, 'tcx>,
+                                      bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                                       op: mir::BinOp,
                                       lhs: &'ll Value,
                                       rhs: &'ll Value,
@@ -750,7 +750,7 @@ enum OverflowOp {
     Add, Sub, Mul
 }
 
-fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_>, ty: Ty) -> &'ll Value {
+fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_, &'ll Value>, ty: Ty) -> &'ll Value {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     use rustc::ty::{Int, Uint};
@@ -815,7 +815,7 @@ fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_>, ty: Ty) ->
     bx.cx.get_intrinsic(&name)
 }
 
-fn cast_int_to_float(bx: &Builder<'_, 'll, '_>,
+fn cast_int_to_float(bx: &Builder<'_, 'll, '_, &'ll Value>,
                      signed: bool,
                      x: &'ll Value,
                      int_ty: &'ll Type,
@@ -845,7 +845,7 @@ fn cast_int_to_float(bx: &Builder<'_, 'll, '_>,
     }
 }
 
-fn cast_float_to_int(bx: &Builder<'_, 'll, '_>,
+fn cast_float_to_int(bx: &Builder<'_, 'll, '_, &'ll Value>,
                      signed: bool,
                      x: &'ll Value,
                      float_ty: &'ll Type,

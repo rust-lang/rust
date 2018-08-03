@@ -20,13 +20,14 @@ use builder::Builder;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};
+use value::Value;
 
 /// Sets the current debug location at the beginning of the span.
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
 pub fn set_source_location(
     debug_context: &FunctionDebugContext<'ll>,
-    bx: &Builder<'_, 'll, '_>,
+    bx: &Builder<'_, 'll, '_, &'ll Value>,
     scope: Option<&'ll DIScope>,
     span: Span,
 ) {
@@ -78,7 +79,7 @@ impl InternalDebugLocation<'ll> {
     }
 }
 
-pub fn set_debug_location(bx: &Builder<'_, 'll, '_>, debug_location: InternalDebugLocation<'ll>) {
+pub fn set_debug_location(bx: &Builder<'_, 'll, '_, &'ll Value>, debug_location: InternalDebugLocation<'ll>) {
     let metadata_node = match debug_location {
         KnownLocation { scope, line, col } => {
             // For MSVC, set the column number to zero.

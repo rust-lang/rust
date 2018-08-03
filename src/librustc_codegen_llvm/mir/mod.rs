@@ -43,16 +43,16 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
+pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll, V> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Mir<'tcx>,
 
     debug_context: FunctionDebugContext<'ll>,
 
-    llfn: &'ll Value,
+    llfn: V,
 
-    cx: &'a CodegenCx<'ll, 'tcx>,
+    cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
 
     fn_ty: FnType<'tcx, Ty<'tcx>>,
 
@@ -63,7 +63,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'tcx, &'ll Value>>,
+    personality_slot: Option<PlaceRef<'tcx, V>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, &'ll BasicBlock>,
@@ -72,7 +72,8 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
 
     /// When targeting MSVC, this stores the cleanup info for each funclet
-    /// BB. This is initialized as we compute the funclets' head block in RPO.
+    /// BB. Thisrustup component add rustfmt-preview is initialized as we compute the funclets'
+    /// head block in RPO.
     funclets: &'a IndexVec<mir::BasicBlock, Option<Funclet<'ll>>>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
@@ -97,7 +98,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.
-    locals: IndexVec<mir::Local, LocalRef<'tcx, &'ll Value>>,
+    locals: IndexVec<mir::Local, LocalRef<'tcx, V>>,
 
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
@@ -106,7 +107,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     param_substs: &'tcx Substs<'tcx>,
 }
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
@@ -117,7 +118,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         )
     }
 
-    pub fn set_debug_loc(&mut self, bx: &Builder<'_, 'll, '_>, source_info: mir::SourceInfo) {
+    pub fn set_debug_loc(&mut self, bx: &Builder<'_, 'll, '_, &'ll Value>, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
         debuginfo::set_source_location(&self.debug_context, bx, scope, span);
     }
@@ -189,7 +190,10 @@ enum LocalRef<'tcx, V> {
 }
 
 impl LocalRef<'tcx, &'ll Value> {
-    fn new_operand(cx: &CodegenCx<'ll, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx, &'ll Value> {
+    fn new_operand(
+        cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
+        layout: TyLayout<'tcx>
+    ) -> LocalRef<'tcx, &'ll Value> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -204,7 +208,7 @@ impl LocalRef<'tcx, &'ll Value> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn codegen_mir(
-    cx: &'a CodegenCx<'ll, 'tcx>,
+    cx: &'a CodegenCx<'ll, 'tcx, &'ll Value>,
     llfn: &'ll Value,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
@@ -364,7 +368,7 @@ pub fn codegen_mir(
 
 fn create_funclets(
     mir: &'a Mir<'tcx>,
-    bx: &Builder<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, &'ll BasicBlock>)
     -> (IndexVec<mir::BasicBlock, Option<&'ll BasicBlock>>,
@@ -432,8 +436,8 @@ fn create_funclets(
 /// argument's value. As arguments are places, these are always
 /// indirect.
 fn arg_local_refs(
-    bx: &Builder<'a, 'll, 'tcx>,
-    fx: &FunctionCx<'a, 'll, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+    fx: &FunctionCx<'a, 'll, 'tcx, &'ll Value>,
     scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, &'ll Value>> {

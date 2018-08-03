@@ -104,11 +104,11 @@ impl ArgAttributesExt for ArgAttributes {
 }
 
 pub trait LlvmType {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type;
+    fn llvm_type(&self, cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type;
 }
 
 impl LlvmType for Reg {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type(&self, cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type {
         match self.kind {
             RegKind::Integer => Type::ix(cx, self.size.bits()),
             RegKind::Float => {
@@ -126,7 +126,7 @@ impl LlvmType for Reg {
 }
 
 impl LlvmType for CastTarget {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type(&self, cx: &CodegenCx<'ll, '_, &'ll Value>) -> &'ll Type {
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
         let (rest_count, rem_bytes) = if self.rest.unit.size.bytes() == 0 {
             (0, 0)
@@ -166,15 +166,19 @@ impl LlvmType for CastTarget {
 }
 
 pub trait ArgTypeExt<'ll, 'tcx> {
-    fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'tcx, &'ll Value>);
-    fn store_fn_arg(&self, bx: &Builder<'_, 'll, 'tcx>, idx: &mut usize, dst: PlaceRef<'tcx, &'ll Value>);
+    fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> &'ll Type;
+    fn store(&self, bx: &Builder<'_, 'll, 'tcx, &'ll Value>, val: &'ll Value, dst: PlaceRef<'tcx, &'ll Value>);
+    fn store_fn_arg(
+        &self,
+        bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
+        idx: &mut usize, dst: PlaceRef<'tcx, &'ll Value>
+    );
 }
 
 impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
     /// Get the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
-    fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> &'ll Type {
         self.layout.llvm_type(cx)
     }
 
@@ -182,7 +186,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'tcx, &'ll Value>) {
+    fn store(&self, bx: &Builder<'_, 'll, 'tcx, &'ll Value>, val: &'ll Value, dst: PlaceRef<'tcx, &'ll Value>) {
         if self.is_ignore() {
             return;
         }
@@ -237,7 +241,12 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn store_fn_arg(&self, bx: &Builder<'a, 'll, 'tcx>, idx: &mut usize, dst: PlaceRef<'tcx, &'ll Value>) {
+    fn store_fn_arg(
+        &self,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        idx: &mut usize,
+        dst: PlaceRef<'tcx, &'ll Value>
+    ) {
         let mut next = || {
             let val = llvm::get_param(bx.llfn(), *idx as c_uint);
             *idx += 1;
@@ -259,37 +268,37 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
 }
 
 pub trait FnTypeExt<'tcx> {
-    fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>) -> Self;
-    fn new(cx: &CodegenCx<'ll, 'tcx>,
+    fn of_instance(cx: &CodegenCx<'ll, 'tcx, &'ll Value>, instance: &ty::Instance<'tcx>) -> Self;
+    fn new(cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
            sig: ty::FnSig<'tcx>,
            extra_args: &[Ty<'tcx>]) -> Self;
-    fn new_vtable(cx: &CodegenCx<'ll, 'tcx>,
+    fn new_vtable(cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
                   sig: ty::FnSig<'tcx>,
                   extra_args: &[Ty<'tcx>]) -> Self;
     fn new_internal(
-        cx: &CodegenCx<'ll, 'tcx>,
+        cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
         sig: ty::FnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
     ) -> Self;
     fn adjust_for_abi(&mut self,
-                      cx: &CodegenCx<'ll, 'tcx>,
+                      cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
                       abi: Abi);
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, llfn: &'ll Value);
-    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, callsite: &'ll Value);
 }
 
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
-    fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>) -> Self {
+    fn of_instance(cx: &CodegenCx<'ll, 'tcx, &'ll Value>, instance: &ty::Instance<'tcx>) -> Self {
         let fn_ty = instance.ty(cx.tcx);
         let sig = ty_fn_sig(cx, fn_ty);
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         FnType::new(cx, sig, &[])
     }
 
-    fn new(cx: &CodegenCx<'ll, 'tcx>,
+    fn new(cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
            sig: ty::FnSig<'tcx>,
            extra_args: &[Ty<'tcx>]) -> Self {
         FnType::new_internal(cx, sig, extra_args, |ty, _| {
@@ -297,7 +306,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         })
     }
 
-    fn new_vtable(cx: &CodegenCx<'ll, 'tcx>,
+    fn new_vtable(cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
                   sig: ty::FnSig<'tcx>,
                   extra_args: &[Ty<'tcx>]) -> Self {
         FnType::new_internal(cx, sig, extra_args, |ty, arg_idx| {
@@ -324,7 +333,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
     }
 
     fn new_internal(
-        cx: &CodegenCx<'ll, 'tcx>,
+        cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
         sig: ty::FnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
@@ -505,7 +514,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
     }
 
     fn adjust_for_abi(&mut self,
-                      cx: &CodegenCx<'ll, 'tcx>,
+                      cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
                       abi: Abi) {
         if abi == Abi::Unadjusted { return }
 
@@ -575,7 +584,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx, &'ll Value>) -> &'ll Type {
         let args_capacity: usize = self.args.iter().map(|arg|
             if arg.pad.is_some() { 1 } else { 0 } +
             if let PassMode::Pair(_, _) = arg.mode { 2 } else { 1 }
@@ -681,7 +690,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, callsite: &'ll Value) {
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes| {
             attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);

@@ -15,11 +15,15 @@ use llvm;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+pub trait ValueTrait : fmt::Debug {}
+
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         self as *const _ == other as *const _
     }
 }
+
+impl ValueTrait for Value {}
 
 impl Eq for Value {}
 

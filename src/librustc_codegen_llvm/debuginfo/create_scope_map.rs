@@ -16,6 +16,7 @@ use llvm;
 use llvm::debuginfo::DIScope;
 use common::CodegenCx;
 use rustc::mir::{Mir, SourceScope};
+use value::Value;
 
 use libc::c_uint;
 
@@ -44,7 +45,7 @@ impl MirDebugScope<'ll> {
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
     mir: &Mir,
     debug_context: &FunctionDebugContext<'ll>,
 ) -> IndexVec<SourceScope, MirDebugScope<'ll>> {
@@ -79,7 +80,7 @@ pub fn create_mir_scopes(
     scopes
 }
 
-fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
+fn make_mir_scope(cx: &CodegenCx<'ll, '_, &'ll Value>,
                   mir: &Mir,
                   has_variables: &BitSet<SourceScope>,
                   debug_context: &FunctionDebugContextData<'ll>,

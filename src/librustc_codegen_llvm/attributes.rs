@@ -76,7 +76,7 @@ pub fn naked(val: &'ll Value, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
-pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_, &'ll Value>, llfn: &'ll Value) {
     if cx.sess().must_not_eliminate_frame_pointers() {
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
@@ -84,7 +84,7 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
     }
 }
 
-pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+pub fn set_probestack(cx: &CodegenCx<'ll, '_, &'ll Value>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
     if !cx.sess().target.target.options.stack_probes {
@@ -149,7 +149,7 @@ pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
     llfn: &'ll Value,
     id: Option<DefId>,
 ) {

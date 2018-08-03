@@ -34,7 +34,7 @@ use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
-impl FunctionCx<'a, 'll, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
         let mut bx = self.build_block(bb);
         let data = &self.mir[bb];
@@ -49,7 +49,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     fn codegen_terminator(&mut self,
-                          mut bx: Builder<'a, 'll, 'tcx>,
+                          mut bx: Builder<'a, 'll, 'tcx, &'ll Value>,
                           bb: mir::BasicBlock,
                           terminator: &mir::Terminator<'tcx>)
     {
@@ -98,7 +98,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             }
         };
 
-        let funclet_br = |this: &mut Self, bx: Builder<'_, 'll, '_>, target: mir::BasicBlock| {
+        let funclet_br = |this: &mut Self, bx: Builder<'_, 'll, '_, &'ll Value>, target: mir::BasicBlock| {
             let (lltarget, is_cleanupret) = lltarget(this, target);
             if is_cleanupret {
                 // micro-optimization: generate a `ret` rather than a jump
@@ -111,7 +111,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
         let do_call = |
             this: &mut Self,
-            bx: Builder<'a, 'll, 'tcx>,
+            bx: Builder<'a, 'll, 'tcx, &'ll Value>,
             fn_ty: FnType<'tcx, Ty<'tcx>>,
             fn_ptr: &'ll Value,
             llargs: &[&'ll Value],
@@ -691,7 +691,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     fn codegen_argument(&mut self,
-                      bx: &Builder<'a, 'll, 'tcx>,
+                      bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                       op: OperandRef<'tcx, &'ll Value>,
                       llargs: &mut Vec<&'ll Value>,
                       arg: &ArgType<'tcx, Ty<'tcx>>) {
@@ -779,7 +779,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     fn codegen_arguments_untupled(&mut self,
-                                  bx: &Builder<'a, 'll, 'tcx>,
+                                  bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                                   operand: &mir::Operand<'tcx>,
                                   llargs: &mut Vec<&'ll Value>,
                                   args: &[ArgType<'tcx, Ty<'tcx>>]) {
@@ -803,7 +803,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         }
     }
 
-    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx>) -> PlaceRef<'tcx, &'ll Value> {
+    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>) -> PlaceRef<'tcx, &'ll Value> {
         let cx = bx.cx;
         if let Some(slot) = self.personality_slot {
             slot
@@ -866,17 +866,17 @@ impl FunctionCx<'a, 'll, 'tcx> {
         })
     }
 
-    pub fn new_block(&self, name: &str) -> Builder<'a, 'll, 'tcx> {
+    pub fn new_block(&self, name: &str) -> Builder<'a, 'll, 'tcx, &'ll Value> {
         Builder::new_block(self.cx, self.llfn, name)
     }
 
-    pub fn build_block(&self, bb: mir::BasicBlock) -> Builder<'a, 'll, 'tcx> {
+    pub fn build_block(&self, bb: mir::BasicBlock) -> Builder<'a, 'll, 'tcx, &'ll Value> {
         let bx = Builder::with_cx(self.cx);
         bx.position_at_end(self.blocks[bb]);
         bx
     }
 
-    fn make_return_dest(&mut self, bx: &Builder<'a, 'll, 'tcx>,
+    fn make_return_dest(&mut self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                         dest: &mir::Place<'tcx>, fn_ret: &ArgType<'tcx, Ty<'tcx>>,
                         llargs: &mut Vec<&'ll Value>, is_intrinsic: bool)
                         -> ReturnDest<'tcx, &'ll Value> {
@@ -933,7 +933,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         }
     }
 
-    fn codegen_transmute(&mut self, bx: &Builder<'a, 'll, 'tcx>,
+    fn codegen_transmute(&mut self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                          src: &mir::Operand<'tcx>,
                          dst: &mir::Place<'tcx>) {
         if let mir::Place::Local(index) = *dst {
@@ -961,7 +961,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         }
     }
 
-    fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'll, 'tcx>,
+    fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                               src: &mir::Operand<'tcx>,
                               dst: PlaceRef<'tcx, &'ll Value>) {
         let src = self.codegen_operand(bx, src);
@@ -974,7 +974,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
     // Stores the return value of a function call into it's final location.
     fn store_return(&mut self,
-                    bx: &Builder<'a, 'll, 'tcx>,
+                    bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
                     dest: ReturnDest<'tcx, &'ll Value>,
                     ret_ty: &ArgType<'tcx, Ty<'tcx>>,
                     llval: &'ll Value) {

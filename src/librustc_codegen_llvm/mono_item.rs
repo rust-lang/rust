@@ -30,13 +30,14 @@ use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::TypeFoldable;
 use rustc::ty::layout::LayoutOf;
 use std::fmt;
+use value::Value;
 
 pub use rustc::mir::mono::MonoItem;
 
 pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 
 pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
-    fn define(&self, cx: &CodegenCx<'a, 'tcx>) {
+    fn define(&self, cx: &CodegenCx<'a, 'tcx, &'a Value>) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                self.to_string(cx.tcx),
                self.to_raw_string(),
@@ -76,7 +77,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     }
 
     fn predefine(&self,
-                 cx: &CodegenCx<'a, 'tcx>,
+                 cx: &CodegenCx<'a, 'tcx, &'a Value>,
                  linkage: Linkage,
                  visibility: Visibility) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
@@ -123,7 +124,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
 
 impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {}
 
-fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
                               def_id: DefId,
                               linkage: Linkage,
                               visibility: Visibility,
@@ -145,7 +146,7 @@ fn predefine_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     cx.instances.borrow_mut().insert(instance, g);
 }
 
-fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
                           instance: Instance<'tcx>,
                           linkage: Linkage,
                           visibility: Visibility,

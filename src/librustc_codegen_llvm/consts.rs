@@ -43,7 +43,7 @@ pub fn bitcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
     }
 }
 
-fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
+fn set_global_alignment(cx: &CodegenCx<'ll, '_, &'ll Value>,
                         gv: &'ll Value,
                         mut align: Align) {
     // The target may require greater alignment for globals than the type does.
@@ -63,7 +63,7 @@ fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
 }
 
 pub fn addr_of_mut(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
     cv: &'ll Value,
     align: Align,
     kind: Option<&str>,
@@ -88,7 +88,7 @@ pub fn addr_of_mut(
 }
 
 pub fn addr_of(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
     cv: &'ll Value,
     align: Align,
     kind: Option<&str>,
@@ -112,7 +112,7 @@ pub fn addr_of(
     gv
 }
 
-pub fn get_static(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll Value {
+pub fn get_static(cx: &CodegenCx<'ll, '_, &'ll Value>, def_id: DefId) -> &'ll Value {
     let instance = Instance::mono(cx.tcx, def_id);
     if let Some(&g) = cx.instances.borrow().get(&instance) {
         return g;
@@ -234,7 +234,7 @@ pub fn get_static(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll Value {
 }
 
 fn check_and_apply_linkage(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'ll, 'tcx, &'ll Value>,
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
     sym: LocalInternedString,
@@ -293,7 +293,7 @@ fn check_and_apply_linkage(
 }
 
 pub fn codegen_static<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
+    cx: &CodegenCx<'a, 'tcx, &'a Value>,
     def_id: DefId,
     is_mutable: bool,
 ) {
