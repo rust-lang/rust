@@ -24,19 +24,19 @@ use utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_wit
 use visitor::SnippetProvider;
 
 pub struct ListFormatting<'a> {
-    pub(self) tactic: DefinitiveListTactic,
-    pub(self) separator: &'a str,
-    pub(self) trailing_separator: SeparatorTactic,
-    pub(self) separator_place: SeparatorPlace,
-    pub(self) shape: Shape,
+    tactic: DefinitiveListTactic,
+    separator: &'a str,
+    trailing_separator: SeparatorTactic,
+    separator_place: SeparatorPlace,
+    shape: Shape,
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
-    pub(self) ends_with_newline: bool,
+    ends_with_newline: bool,
     // Remove newlines between list elements for expressions.
-    pub(self) preserve_newline: bool,
+    preserve_newline: bool,
     // Nested import lists get some special handling for the "Mixed" list type
-    pub(self) nested: bool,
-    pub(self) config: &'a Config,
+    nested: bool,
+    config: &'a Config,
 }
 
 impl<'a> ListFormatting<'a> {
