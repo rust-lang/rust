@@ -713,21 +713,17 @@ fn rewrite_nested_use_tree(
 
     let ends_with_newline = context.config.imports_indent() == IndentStyle::Block
         && tactic != DefinitiveListTactic::Horizontal;
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: if ends_with_newline {
-            context.config.trailing_comma()
-        } else {
-            SeparatorTactic::Never
-        },
-        separator_place: SeparatorPlace::Back,
-        shape: nested_shape,
-        ends_with_newline,
-        preserve_newline: true,
-        nested: has_nested_list,
-        config: context.config,
+    let trailing_separator = if ends_with_newline {
+        context.config.trailing_comma()
+    } else {
+        SeparatorTactic::Never
     };
+    let fmt = ListFormatting::new(nested_shape, context.config)
+        .tactic(tactic)
+        .trailing_separator(trailing_separator)
+        .ends_with_newline(ends_with_newline)
+        .preserve_newline(true)
+        .nested(has_nested_list);
 
     let list_str = write_list(&list_items, &fmt)?;
 

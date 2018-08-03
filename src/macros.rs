@@ -412,17 +412,10 @@ pub fn rewrite_macro_def(
         false,
     ).collect::<Vec<_>>();
 
-    let fmt = ListFormatting {
-        tactic: DefinitiveListTactic::Vertical,
-        separator: if def.legacy { ";" } else { "" },
-        trailing_separator: SeparatorTactic::Always,
-        separator_place: SeparatorPlace::Back,
-        shape: arm_shape,
-        ends_with_newline: true,
-        preserve_newline: true,
-        nested: false,
-        config: context.config,
-    };
+    let fmt = ListFormatting::new(arm_shape, context.config)
+        .separator(if def.legacy { ";" } else { "" })
+        .trailing_separator(SeparatorTactic::Always)
+        .preserve_newline(true);
 
     if multi_branch_style {
         result += " {";

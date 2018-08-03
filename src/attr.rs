@@ -296,17 +296,9 @@ where
 
     let tactic =
         ::lists::definitive_tactic(&item_vec, tactic, ::lists::Separator::Comma, shape.width);
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: SeparatorPlace::Back,
-        shape,
-        ends_with_newline: false,
-        preserve_newline: false,
-        nested: false,
-        config: context.config,
-    };
+    let fmt = ListFormatting::new(shape, context.config)
+        .tactic(tactic)
+        .ends_with_newline(false);
     let item_str = write_list(&item_vec, &fmt)?;
 
     let one_line_budget = one_line_shape.width;

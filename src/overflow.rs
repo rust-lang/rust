@@ -363,32 +363,27 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         // indentation. If its first line fits on one line with the other arguments,
         // we format the function arguments horizontally.
         let tactic = self.try_overflow_last_item(&mut list_items);
-
-        let fmt = ListFormatting {
-            tactic,
-            separator: ",",
-            trailing_separator: if let Some(tactic) = self.force_separator_tactic {
-                tactic
-            } else if !self.context.use_block_indent() {
-                SeparatorTactic::Never
-            } else if tactic == DefinitiveListTactic::Mixed {
-                // We are using mixed layout because everything did not fit within a single line.
-                SeparatorTactic::Always
-            } else {
-                self.context.config.trailing_comma()
-            },
-            separator_place: SeparatorPlace::Back,
-            shape: self.nested_shape,
-            ends_with_newline: match tactic {
-                DefinitiveListTactic::Vertical | DefinitiveListTactic::Mixed => {
-                    self.context.use_block_indent()
-                }
-                _ => false,
-            },
-            preserve_newline: false,
-            nested: false,
-            config: self.context.config,
+        let trailing_separator = if let Some(tactic) = self.force_separator_tactic {
+            tactic
+        } else if !self.context.use_block_indent() {
+            SeparatorTactic::Never
+        } else if tactic == DefinitiveListTactic::Mixed {
+            // We are using mixed layout because everything did not fit within a single line.
+            SeparatorTactic::Always
+        } else {
+            self.context.config.trailing_comma()
         };
+        let ends_with_newline = match tactic {
+            DefinitiveListTactic::Vertical | DefinitiveListTactic::Mixed => {
+                self.context.use_block_indent()
+            }
+            _ => false,
+        };
+
+        let fmt = ListFormatting::new(self.nested_shape, self.context.config)
+            .tactic(tactic)
+            .trailing_separator(trailing_separator)
+            .ends_with_newline(ends_with_newline);
 
         write_list(&list_items, &fmt)
             .map(|items_str| (tactic == DefinitiveListTactic::Horizontal, items_str))
