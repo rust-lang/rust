@@ -11,8 +11,10 @@
 use rustc_lint;
 use rustc_driver::{self, driver, target_features, abort_on_err};
 use rustc::session::{self, config};
-use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
+use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
 use rustc::hir::def::Def;
+use rustc::hir::{self, HirVec};
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, AllArenas};
 use rustc::hir::map as hir_map;
@@ -24,11 +26,14 @@ use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
-use syntax::ast::{Name, NodeId};
+use syntax::ast::{self, Ident, Name, NodeId};
 use syntax::codemap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
+use syntax::ptr::P;
+use syntax::symbol::keywords;
+use syntax_pos::DUMMY_SP;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 
@@ -40,7 +45,7 @@ use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
 use clean;
-use clean::Clean;
+use clean::{get_path_for_type, Clean, MAX_DEF_ID};
 use html::render::RenderInfo;
 
 pub use rustc::session::config::{Input, CodegenOptions};
@@ -105,6 +110,140 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
         *self.ty_substs.borrow_mut() = old_tys;
         *self.lt_substs.borrow_mut() = old_lts;
         r
+    }
+
+    // This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
+    // refactoring either librustdoc or librustc. In particular, allowing new DefIds to be
+    // registered after the AST is constructed would require storing the defid mapping in a
+    // RefCell, decreasing the performance for normal compilation for very little gain.
+    //
+    // Instead, we construct 'fake' def ids, which start immediately after the last DefId in
+    // DefIndexAddressSpace::Low. In the Debug impl for clean::Item, we explicitly check for fake
+    // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
+    pub fn next_def_id(&self, crate_num: CrateNum) -> DefId {
+        let start_def_id = {
+            let next_id = if crate_num == LOCAL_CRATE {
+                self.tcx
+                    .hir
+                    .definitions()
+                    .def_path_table()
+                    .next_id(DefIndexAddressSpace::Low)
+            } else {
+                self.cstore
+                    .def_path_table(crate_num)
+                    .next_id(DefIndexAddressSpace::Low)
+            };
+
+            DefId {
+                krate: crate_num,
+                index: next_id,
+            }
+        };
+
+        let mut fake_ids = self.fake_def_ids.borrow_mut();
+
+        let def_id = fake_ids.entry(crate_num).or_insert(start_def_id).clone();
+        fake_ids.insert(
+            crate_num,
+            DefId {
+                krate: crate_num,
+                index: DefIndex::from_array_index(
+                    def_id.index.as_array_index() + 1,
+                    def_id.index.address_space(),
+                ),
+            },
+        );
+
+        MAX_DEF_ID.with(|m| {
+            m.borrow_mut()
+                .entry(def_id.krate.clone())
+                .or_insert(start_def_id);
+        });
+
+        self.all_fake_def_ids.borrow_mut().insert(def_id);
+
+        def_id.clone()
+    }
+
+    pub fn get_real_ty<F>(&self,
+                          def_id: DefId,
+                          def_ctor: &F,
+                          real_name: &Option<Ident>,
+                          generics: &ty::Generics,
+    ) -> hir::Ty
+    where F: Fn(DefId) -> Def {
+        let path = get_path_for_type(self.tcx, def_id, def_ctor);
+        let mut segments = path.segments.into_vec();
+        let last = segments.pop().expect("segments were empty");
+
+        segments.push(hir::PathSegment::new(
+            real_name.unwrap_or(last.ident),
+            self.generics_to_path_params(generics.clone()),
+            false,
+        ));
+
+        let new_path = hir::Path {
+            span: path.span,
+            def: path.def,
+            segments: HirVec::from_vec(segments),
+        };
+
+        hir::Ty {
+            id: ast::DUMMY_NODE_ID,
+            node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
+            span: DUMMY_SP,
+            hir_id: hir::DUMMY_HIR_ID,
+        }
+    }
+
+    pub fn generics_to_path_params(&self, generics: ty::Generics) -> hir::GenericArgs {
+        let mut args = vec![];
+
+        for param in generics.params.iter() {
+            match param.kind {
+                ty::GenericParamDefKind::Lifetime => {
+                    let name = if param.name == "" {
+                        hir::ParamName::Plain(keywords::StaticLifetime.ident())
+                    } else {
+                        hir::ParamName::Plain(ast::Ident::from_interned_str(param.name))
+                    };
+
+                    args.push(hir::GenericArg::Lifetime(hir::Lifetime {
+                        id: ast::DUMMY_NODE_ID,
+                        span: DUMMY_SP,
+                        name: hir::LifetimeName::Param(name),
+                    }));
+                }
+                ty::GenericParamDefKind::Type {..} => {
+                    args.push(hir::GenericArg::Type(self.ty_param_to_ty(param.clone())));
+                }
+            }
+        }
+
+        hir::GenericArgs {
+            args: HirVec::from_vec(args),
+            bindings: HirVec::new(),
+            parenthesized: false,
+        }
+    }
+
+    pub fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
+        debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
+        hir::Ty {
+            id: ast::DUMMY_NODE_ID,
+            node: hir::TyKind::Path(hir::QPath::Resolved(
+                None,
+                P(hir::Path {
+                    span: DUMMY_SP,
+                    def: Def::TyParam(param.def_id),
+                    segments: HirVec::from_vec(vec![
+                        hir::PathSegment::from_ident(Ident::from_interned_str(param.name))
+                    ]),
+                }),
+            )),
+            span: DUMMY_SP,
+            hir_id: hir::DUMMY_HIR_ID,
+        }
     }
 }
 

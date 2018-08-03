@@ -20,7 +20,6 @@ use core::DocAccessLevels;
 use super::*;
 
 use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
-use self::finder_trait::Finder;
 
 pub struct BlanketImplFinder<'a, 'tcx: 'a, 'rcx: 'a> {
     pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
@@ -127,7 +126,7 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
                                          .map(|meth| meth.ident.to_string())
                                          .collect();
 
-                            let ty = self.get_real_ty(def_id, def_ctor, &real_name, generics);
+                            let ty = self.cx.get_real_ty(def_id, def_ctor, &real_name, generics);
                             let predicates = infcx.tcx.predicates_of(impl_def_id);
 
                             impls.push(Item {
@@ -135,7 +134,7 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
                                 name: None,
                                 attrs: Default::default(),
                                 visibility: None,
-                                def_id: self.next_def_id(impl_def_id.krate),
+                                def_id: self.cx.next_def_id(impl_def_id.krate),
                                 stability: None,
                                 deprecation: None,
                                 inner: ImplItem(Impl {
@@ -159,11 +158,5 @@ impl<'a, 'tcx, 'rcx> BlanketImplFinder <'a, 'tcx, 'rcx> {
             }
         }
         impls
-    }
-}
-
-impl<'a, 'tcx: 'a, 'rcx: 'a> Finder<'a, 'tcx, 'rcx> for BlanketImplFinder<'a, 'tcx, 'rcx> {
-    fn get_cx(&self) -> &DocContext<'a, 'tcx, 'rcx> {
-        &self.cx
     }
 }

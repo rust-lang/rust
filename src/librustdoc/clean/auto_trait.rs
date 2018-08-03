@@ -17,7 +17,6 @@ use rustc::middle::cstore::CrateStore;
 use std::fmt::Debug;
 
 use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
-use self::finder_trait::Finder;
 
 use super::*;
 
@@ -168,14 +167,14 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                 _ => unreachable!(),
             };
             let real_name = name.map(|name| Ident::from_str(&name));
-            let ty = self.get_real_ty(def_id, def_ctor, &real_name, &generics);
+            let ty = self.cx.get_real_ty(def_id, def_ctor, &real_name, &generics);
 
             return Some(Item {
                 source: Span::empty(),
                 name: None,
                 attrs: Default::default(),
                 visibility: None,
-                def_id: self.next_def_id(def_id.krate),
+                def_id: self.cx.next_def_id(def_id.krate),
                 stability: None,
                 deprecation: None,
                 inner: ImplItem(Impl {
@@ -859,12 +858,6 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
             }
             _ => false,
         }
-    }
-}
-
-impl<'a, 'tcx: 'a, 'rcx: 'a> Finder<'a, 'tcx, 'rcx> for AutoTraitFinder<'a, 'tcx, 'rcx> {
-    fn get_cx(&self) -> &DocContext<'a, 'tcx, 'rcx> {
-        &self.cx
     }
 }
 
