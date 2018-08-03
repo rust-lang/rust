@@ -26,7 +26,7 @@ use rustc::middle::cstore::{NativeLibrary, LibSource, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
 use {CodegenResults, CrateInfo};
 use rustc::util::common::time;
-use rustc::util::fs::fix_windows_verbatim_for_gcc;
+use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use rustc_target::spec::{PanicStrategy, RelroLevel, LinkerFlavor};

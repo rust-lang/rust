@@ -31,7 +31,7 @@ use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_ext, time_depth, set_time_depth, print_time_passes_entry};
 use rustc::util::common::path2cstr;
-use rustc::util::fs::{link_or_copy};
+use rustc_fs_util::link_or_copy;
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use errors::emitter::{Emitter};
 use syntax::attr;

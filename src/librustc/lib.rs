@@ -99,6 +99,7 @@ extern crate syntax_pos;
 extern crate jobserver;
 extern crate proc_macro;
 extern crate chalk_engine;
+extern crate rustc_fs_util;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -162,7 +163,6 @@ pub mod util {
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;
-    pub mod fs;
     pub mod time_graph;
     pub mod profiling;
 }
