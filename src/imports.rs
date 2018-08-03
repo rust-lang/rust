@@ -597,7 +597,8 @@ impl Ord for UseSegment {
         use self::UseSegment::*;
 
         fn is_upper_snake_case(s: &str) -> bool {
-            s.chars().all(|c| c.is_uppercase() || c == '_')
+            s.chars()
+                .all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
         }
 
         match (self, other) {
