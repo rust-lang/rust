@@ -11,7 +11,7 @@ use rustc::mir::interpret::{EvalResult, Scalar, Value};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn binop_with_overflow(
-        &mut self,
+        &self,
         op: mir::BinOp,
         left: ValTy<'tcx>,
         right: ValTy<'tcx>,

@@ -466,7 +466,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     /// Note that the value does not matter if the type is sized. For unsized types,
     /// the value has to be a fat pointer, and we only care about the "extra" data in it.
     pub fn size_and_align_of_dst(
-        &mut self,
+        &self,
         ty: Ty<'tcx>,
         value: Value,
     ) -> EvalResult<'tcx, (Size, Align)> {
@@ -494,7 +494,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                     // Recurse to get the size of the dynamically sized field (must be
                     // the last field).
-                    let field_ty = layout.field(&self, layout.fields.count() - 1)?.ty;
+                    let field_ty = layout.field(self, layout.fields.count() - 1)?.ty;
                     let (unsized_size, unsized_align) =
                         self.size_and_align_of_dst(field_ty, value)?;
 
@@ -532,7 +532,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
 
                 ty::TySlice(_) | ty::TyStr => {
-                    let (elem_size, align) = layout.field(&self, 0)?.size_and_align();
+                    let (elem_size, align) = layout.field(self, 0)?.size_and_align();
                     let (_, len) = self.into_slice(value)?;
                     Ok((elem_size * len, align))
                 }
