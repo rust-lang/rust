@@ -98,3 +98,6 @@ use c;
 // #2670
 #[macro_use]
 use imports_with_attr;
+
+// #2888
+use std::f64::consts::{SQRT_2, E, PI};
