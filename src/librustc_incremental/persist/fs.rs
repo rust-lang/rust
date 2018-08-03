@@ -114,11 +114,11 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
-use rustc::hir::svh::Svh;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::util::fs as fs_util;
 use rustc_data_structures::{flock, base_n};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::svh::Svh;
 
 use std::fs as std_fs;
 use std::io;

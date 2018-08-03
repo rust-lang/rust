@@ -25,7 +25,7 @@
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::definitions::{DefKey, DefPathTable};
-use hir::svh::Svh;
+use rustc_data_structures::svh::Svh;
 use ty::{self, TyCtxt};
 use session::{Session, CrateDisambiguator};
 use session::search_paths::PathKind;

@@ -19,6 +19,8 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
+use stable_hasher;
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Svh {
     hash: u64,
@@ -67,6 +69,16 @@ impl Decodable for Svh {
     }
 }
 
-impl_stable_hash_for!(struct Svh {
-    hash
-});
+impl<T> stable_hasher::HashStable<T> for Svh {
+    #[inline]
+    fn hash_stable<W: stable_hasher::StableHasherResult>(
+        &self,
+        ctx: &mut T,
+        hasher: &mut stable_hasher::StableHasher<W>
+    ) {
+        let Svh {
+            hash
+        } = *self;
+        hash.hash_stable(ctx, hasher);
+    }
+}

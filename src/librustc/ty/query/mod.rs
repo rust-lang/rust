@@ -13,7 +13,7 @@ use errors::DiagnosticBuilder;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
-use hir::svh::Svh;
+use rustc_data_structures::svh::Svh;
 use infer::canonical::{self, Canonical};
 use lint;
 use middle::borrowck::BorrowCheckResult;

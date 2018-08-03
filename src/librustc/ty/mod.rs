@@ -18,7 +18,7 @@ use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
-use hir::svh::Svh;
+use rustc_data_structures::svh::Svh;
 use ich::Fingerprint;
 use ich::StableHashingContext;
 use infer::canonical::Canonical;

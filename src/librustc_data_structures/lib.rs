@@ -46,6 +46,7 @@ extern crate stable_deref_trait;
 extern crate rustc_rayon as rayon;
 extern crate rustc_rayon_core as rayon_core;
 extern crate rustc_hash;
+extern crate serialize;
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
@@ -53,6 +54,7 @@ extern crate rustc_cratesio_shim;
 
 pub use rustc_serialize::hex::ToHex;
 
+pub mod svh;
 pub mod accumulate_vec;
 pub mod array_vec;
 pub mod base_n;

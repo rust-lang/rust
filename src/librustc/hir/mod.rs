@@ -70,7 +70,6 @@ pub mod lowering;
 pub mod map;
 pub mod pat_util;
 pub mod print;
-pub mod svh;
 
 /// A HirId uniquely identifies a node in the HIR of the current crate. It is
 /// composed of the `owner`, which is the DefIndex of the directly enclosing

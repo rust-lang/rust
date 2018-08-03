@@ -11,7 +11,7 @@
 use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
 use rustc::middle::cstore::LinkMeta;
-use rustc::hir::svh::Svh;
+use rustc_data_structures::svh::Svh;
 use std::path::{Path, PathBuf};
 use syntax::{ast, attr};
 use syntax_pos::Span;
