@@ -247,9 +247,6 @@ declare_features! (
     // rustc internal.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
 
-    // Allows cfg(target_vendor = "...").
-    (active, cfg_target_vendor, "1.5.0", Some(29718), None),
-
     // Allow attributes on expressions and non-item statements
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
 
@@ -624,6 +621,8 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
     // Defining procedural macros in `proc-macro` crates
     (accepted, proc_macro, "1.29.0", Some(38356), None),
+    // Allows cfg(target_vendor = "...").
+    (accepted, cfg_target_vendor, "1.29.0", Some(29718), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1101,7 +1100,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
 // cfg(...)'s that are feature gated
 const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
-    ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
 ];

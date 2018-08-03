@@ -11,7 +11,6 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 
-#![feature(cfg_target_vendor)]
 #![feature(link_cfg)]
 #![feature(staged_api)]
 #![feature(unwind_attributes)]

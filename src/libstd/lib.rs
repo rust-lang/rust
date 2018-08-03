@@ -248,7 +248,6 @@
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
-#![feature(cfg_target_vendor)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
 #![feature(collections_range)]
