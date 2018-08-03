@@ -4630,7 +4630,7 @@ field that requires non-trivial alignment.
 Erroneous code example:
 
 ```compile_fail,E0691
-#![feature(repr_align, attr_literals)]
+#![feature(repr_align)]
 
 #[repr(align(32))]
 struct ForceAlign32;
@@ -4657,7 +4657,7 @@ Alternatively, `PhantomData<T>` has alignment 1 for all `T`, so you can use it
 if you need to keep the field for some reason:
 
 ```
-#![feature(repr_align, attr_literals)]
+#![feature(repr_align)]
 
 use std::marker::PhantomData;
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals, rustc_attrs, const_fn)]
+#![feature(rustc_attrs, const_fn)]
 
 #[rustc_args_required_const(0)]
 fn foo(_a: i32) {

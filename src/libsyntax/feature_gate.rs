@@ -289,9 +289,6 @@ declare_features! (
     // Allows exhaustive pattern matching on types that contain uninhabited types
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
 
-    // Allows all literals in attribute lists and values of key-value pairs
-    (active, attr_literals, "1.13.0", Some(34981), None),
-
     // Allows untagged unions `union U { ... }`
     (active, untagged_unions, "1.13.0", Some(32836), None),
 
@@ -654,6 +651,8 @@ declare_features! (
     (accepted, tool_attributes, "1.30.0", Some(44690), None),
     // Allows multi-segment paths in attributes and derives
     (accepted, proc_macro_path_invoc, "1.30.0", Some(38356), None),
+    // Allows all literals in attribute lists and values of key-value pairs.
+    (accepted, attr_literals, "1.30.0", Some(34981), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1451,22 +1450,6 @@ impl<'a> PostExpansionVisitor<'a> {
     }
 }
 
-fn contains_novel_literal(item: &ast::MetaItem) -> bool {
-    use ast::MetaItemKind::*;
-    use ast::NestedMetaItemKind::*;
-
-    match item.node {
-        Word => false,
-        NameValue(ref lit) => !lit.node.is_str(),
-        List(ref list) => list.iter().any(|li| {
-            match li.node {
-                MetaItem(ref mi) => contains_novel_literal(mi),
-                Literal(_) => true,
-            }
-        }),
-    }
-}
-
 impl<'a> PostExpansionVisitor<'a> {
     fn whole_crate_feature_gates(&mut self, _krate: &ast::Crate) {
         for &(ident, span) in &*self.context.parse_sess.non_modrs_mods.borrow() {
@@ -1526,28 +1509,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         if !self.context.features.unrestricted_attribute_tokens {
-            // Unfortunately, `parse_meta` cannot be called speculatively because it can report
-            // errors by itself, so we have to call it only if the feature is disabled.
-            match attr.parse_meta(self.context.parse_sess) {
-                Ok(meta) => {
-                    // allow attr_literals in #[repr(align(x))] and #[repr(packed(n))]
-                    let mut allow_attr_literal = false;
-                    if attr.path == "repr" {
-                        if let Some(content) = meta.meta_item_list() {
-                            allow_attr_literal = content.iter().any(
-                                |c| c.check_name("align") || c.check_name("packed"));
-                        }
-                    }
-
-                    if !allow_attr_literal && contains_novel_literal(&meta) {
-                        gate_feature_post!(&self, attr_literals, attr.span,
-                                        "non-string literals in attributes, or string \
-                                        literals in top-level positions, are experimental");
-                    }
-                }
-                Err(mut err) => {
-                    err.help("try enabling `#![feature(unrestricted_attribute_tokens)]`").emit()
-                }
+            // Unfortunately, `parse_meta` cannot be called speculatively
+            // because it can report errors by itself, so we have to call it
+            // only if the feature is disabled.
+            if let Err(mut err) = attr.parse_meta(self.context.parse_sess) {
+                err.help("try enabling `#![feature(unrestricted_attribute_tokens)]`").emit()
             }
         }
     }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals)]
-
 #[link(name="foo", cfg("rlib"))] //~ ERROR invalid argument for `cfg(..)`
 extern {}
 

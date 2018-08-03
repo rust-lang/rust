@@ -10,7 +10,6 @@
 
 #![feature(allocator_api)]
 #![feature(alloc_system)]
-#![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(drain_filter)]

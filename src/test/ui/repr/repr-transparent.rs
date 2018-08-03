@@ -13,7 +13,7 @@
 // - repr-transparent-other-reprs.rs
 // - repr-transparent-other-items.rs
 
-#![feature(repr_align, attr_literals)]
+#![feature(repr_align)]
 
 use std::marker::PhantomData;
 

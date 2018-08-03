@@ -1,5 +1,5 @@
 error[E0565]: unsupported literal
-  --> $DIR/E0565-1.rs:14:14
+  --> $DIR/E0565-1.rs:12:14
    |
 LL | #[deprecated("since")] //~ ERROR E0565
    |              ^^^^^^^

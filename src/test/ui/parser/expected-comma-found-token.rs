@@ -20,3 +20,5 @@
 )]
 trait T {}
 //~^^^ ERROR expected one of `)` or `,`, found `label`
+
+fn main() {  }
