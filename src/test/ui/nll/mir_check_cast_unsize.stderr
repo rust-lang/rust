@@ -8,7 +8,9 @@ error: unsatisfied lifetime constraints
   --> $DIR/mir_check_cast_unsize.rs:17:46
    |
 LL |   fn bar<'a>(x: &'a u32) -> &'static dyn Debug {
-   |  ______________________________________________^
+   |  ________--____________________________________^
+   | |        |
+   | |        lifetime `'a` defined here
 LL | |     //~^ ERROR unsatisfied lifetime constraints
 LL | |     x
 LL | |     //~^ WARNING not reporting region error due to nll
