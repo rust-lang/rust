@@ -1888,11 +1888,8 @@ fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &
 fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx hir::Expr, arg: &'tcx hir::Expr) {
     if let Some((Constant::Str(r), _)) = constant(cx, cx.tables, arg) {
         if r.len() == 1 {
-            let c = r.chars().next().unwrap();
             let snip = snippet(cx, arg.span, "..");
-            let hint = snip.replace(
-                &format!("\"{}\"", c.escape_default()),
-                &format!("'{}'", c.escape_default()));
+            let hint = format!("'{}'", &snip[1..snip.len() - 1]);
             span_lint_and_sugg(
                 cx,
                 SINGLE_CHAR_PATTERN,
