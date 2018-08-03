@@ -14,7 +14,7 @@ use comment::{contains_comment, rewrite_doc_comment};
 use config::lists::*;
 use config::IndentStyle;
 use expr::rewrite_literal;
-use lists::{itemize_list, write_list, ListFormatting};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use types::{rewrite_path, PathContext};
@@ -294,8 +294,7 @@ where
         ListTactic::HorizontalVertical
     };
 
-    let tactic =
-        ::lists::definitive_tactic(&item_vec, tactic, ::lists::Separator::Comma, shape.width);
+    let tactic = definitive_tactic(&item_vec, tactic, Separator::Comma, shape.width);
     let fmt = ListFormatting::new(shape, context.config)
         .tactic(tactic)
         .ends_with_newline(false);
