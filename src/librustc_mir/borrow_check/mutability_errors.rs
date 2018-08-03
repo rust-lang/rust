@@ -160,7 +160,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let act;
         let acted_on;
 
-
         let span = match error_access {
             AccessKind::Move => {
                 err = self.tcx
@@ -180,31 +179,23 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 act = "borrow as mutable";
                 acted_on = "borrowed as mutable";
 
-                let closure_span = self.find_closure_span(span, location);
-                if let Some((args, var)) = closure_span {
-                    err = self.tcx.cannot_borrow_path_as_mutable_because(
-                        args,
-                        &item_msg,
-                        &reason,
-                        Origin::Mir,
-                    );
-                    err.span_label(
-                        var,
-                        format!(
-                            "mutable borrow occurs due to use of `{}` in closure",
-                            self.describe_place(access_place).unwrap(),
-                        ),
-                    );
-                    args
-                } else {
-                    err = self.tcx.cannot_borrow_path_as_mutable_because(
-                        span,
-                        &item_msg,
-                        &reason,
-                        Origin::Mir,
-                    );
-                    span
-                }
+                let borrow_spans = self.borrow_spans(span, location);
+                let borrow_span = borrow_spans.args_or_use();
+                err = self.tcx.cannot_borrow_path_as_mutable_because(
+                    borrow_span,
+                    &item_msg,
+                    &reason,
+                    Origin::Mir,
+                );
+                borrow_spans.var_span_label(
+                    &mut err,
+                    format!(
+                        "mutable borrow occurs due to use of `{}` in closure",
+                        // always Some() if the message is printed.
+                        self.describe_place(access_place).unwrap_or(String::new()),
+                    )
+                );
+                borrow_span
             }
         };
 

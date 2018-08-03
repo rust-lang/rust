@@ -13,7 +13,7 @@
 #![allow(unused)]
 #![feature(nll)]
 
-// Should have one error per assigment
+// Should have one error per assignment
 
 fn one_closure(x: i32) {
     ||

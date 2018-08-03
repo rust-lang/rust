@@ -1,0 +1,110 @@
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/closure-access-spans.rs:17:5
+   |
+LL |     let r = &mut x;
+   |             ------ mutable borrow occurs here
+LL |     || x; //~ ERROR
+   |     ^^ - second borrow occurs due to use of `x` in closure
+   |     |
+   |     immutable borrow occurs here
+LL |     r.use_mut();
+   |     - borrow later used here
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/closure-access-spans.rs:23:5
+   |
+LL |     let r = &mut x;
+   |             ------ first mutable borrow occurs here
+LL |     || x = 2; //~ ERROR
+   |     ^^ - second borrow occurs due to use of `x` in closure
+   |     |
+   |     second mutable borrow occurs here
+LL |     r.use_mut();
+   |     - borrow later used here
+
+error[E0500]: closure requires unique access to `x` but it is already borrowed
+  --> $DIR/closure-access-spans.rs:29:5
+   |
+LL |     let r = &mut x;
+   |             ------ borrow occurs here
+LL |     || *x = 2; //~ ERROR
+   |     ^^  - second borrow occurs due to use of `x` in closure
+   |     |
+   |     closure construction occurs here
+LL |     r.use_mut();
+   |     - borrow later used here
+
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/closure-access-spans.rs:35:13
+   |
+LL |     let r = &mut x;
+   |             ------ borrow of `x` occurs here
+LL |     move || x; //~ ERROR
+   |             ^ use of borrowed `x`
+LL |     r.use_ref();
+   |     - borrow later used here
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/closure-access-spans.rs:41:5
+   |
+LL |     let r = &x;
+   |             -- borrow of `x` occurs here
+LL |     || x; //~ ERROR
+   |     ^^ - move occurs due to use in closure
+   |     |
+   |     move out of `x` occurs here
+LL |     r.use_ref();
+   |     - borrow later used here
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/closure-access-spans.rs:47:5
+   |
+LL |     let r = x;
+   |             - value moved here
+LL |     || x.len(); //~ ERROR
+   |     ^^ - borrow occurs due to use in closure
+   |     |
+   |     value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/closure-access-spans.rs:52:5
+   |
+LL |     let r = x;
+   |             - value moved here
+LL |     || x = String::new(); //~ ERROR
+   |     ^^ - borrow occurs due to use in closure
+   |     |
+   |     value borrowed here after move
+   |
+   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/closure-access-spans.rs:57:5
+   |
+LL |     let r = x;
+   |             - value moved here
+LL |     || *x = String::new(); //~ ERROR
+   |     ^^  - borrow occurs due to use in closure
+   |     |
+   |     value borrowed here after move
+   |
+   = note: move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/closure-access-spans.rs:62:5
+   |
+LL |     let r = x;
+   |             - value moved here
+LL |     || x; //~ ERROR
+   |     ^^ - use occurs due to use in closure
+   |     |
+   |     value used here after move
+   |
+   = note: move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to 9 previous errors
+
+Some errors occurred: E0382, E0499, E0500, E0502, E0503, E0505.
+For more information about an error, try `rustc --explain E0382`.

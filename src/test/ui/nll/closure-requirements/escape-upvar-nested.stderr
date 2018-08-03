@@ -1,7 +1,7 @@
 note: External requirements
   --> $DIR/escape-upvar-nested.rs:31:32
    |
-LL |             let mut closure1 = || p = &y;
+LL |             let mut closure1 = || p = &y; //~ ERROR `y` does not live long enough [E0597]
    |                                ^^^^^^^^^
    |
    = note: defining type: DefId(0/1:10 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]::{{closure}}[0]) with closure substs [
@@ -16,9 +16,9 @@ LL |             let mut closure1 = || p = &y;
 note: External requirements
   --> $DIR/escape-upvar-nested.rs:30:27
    |
-LL |           let mut closure = || { //~ ERROR `y` does not live long enough [E0597]
+LL |           let mut closure = || {
    |  ___________________________^
-LL | |             let mut closure1 = || p = &y;
+LL | |             let mut closure1 = || p = &y; //~ ERROR `y` does not live long enough [E0597]
 LL | |             closure1();
 LL | |         };
    | |_________^
@@ -47,20 +47,18 @@ LL | | }
    = note: defining type: DefId(0/0:3 ~ escape_upvar_nested[317d]::test[0]) with substs []
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/escape-upvar-nested.rs:30:27
+  --> $DIR/escape-upvar-nested.rs:31:40
    |
-LL |           let mut closure = || { //~ ERROR `y` does not live long enough [E0597]
-   |  ___________________________^
-LL | |             let mut closure1 = || p = &y;
-LL | |             closure1();
-LL | |         };
-   | |_________^ borrowed value does not live long enough
+LL |         let mut closure = || {
+   |                           -- value captured here
+LL |             let mut closure1 = || p = &y; //~ ERROR `y` does not live long enough [E0597]
+   |                                        ^ borrowed value does not live long enough
 ...
-LL |       }
-   |       - `y` dropped here while still borrowed
+LL |     }
+   |     - `y` dropped here while still borrowed
 LL | 
-LL |       deref(p);
-   |             - borrow later used here
+LL |     deref(p);
+   |           - borrow later used here
 
 error: aborting due to previous error
 

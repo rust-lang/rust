@@ -1,8 +1,10 @@
 error[E0597]: `books` does not live long enough
-  --> $DIR/borrowck-escaping-closure-error-2.rs:21:14
+  --> $DIR/borrowck-escaping-closure-error-2.rs:21:17
    |
 LL |     Box::new(|| books.push(4))
-   |              ^^^^^^^^^^^^^^^^ borrowed value does not live long enough
+   |              -- ^^^^^ borrowed value does not live long enough
+   |              |
+   |              value captured here
 LL |     //~^ ERROR E0373
 LL | }
    | - `books` dropped here while still borrowed
