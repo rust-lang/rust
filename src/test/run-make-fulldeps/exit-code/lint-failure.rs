@@ -11,6 +11,6 @@
 #![deny(intra_doc_link_resolution_failure)]
 
 /// [intradoc::failure]
-fn main() {
+pub fn main() {
     println!("Hello, world!");
 }
