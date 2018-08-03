@@ -14,12 +14,10 @@ use rustc_data_structures::sync::Lock;
 
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
-use std::ffi::CString;
 use std::fmt::Debug;
 use std::hash::{Hash, BuildHasher};
 use std::panic;
 use std::env;
-use std::path::Path;
 use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
@@ -375,19 +373,6 @@ impl<K, V, S> MemoizationMap for RefCell<HashMap<K,V,S>>
         }
     }
 }
-
-#[cfg(unix)]
-pub fn path2cstr(p: &Path) -> CString {
-    use std::os::unix::prelude::*;
-    use std::ffi::OsStr;
-    let p: &OsStr = p.as_ref();
-    CString::new(p.as_bytes()).unwrap()
-}
-#[cfg(windows)]
-pub fn path2cstr(p: &Path) -> CString {
-    CString::new(p.to_str().unwrap()).unwrap()
-}
-
 
 #[test]
 fn test_to_readable_str() {
