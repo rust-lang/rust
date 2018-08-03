@@ -491,20 +491,21 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     this.super_place(place, context, location);
                     match proj.elem {
                         ProjectionElem::Deref => {
-                            this.add(Qualif::NOT_CONST);
-
-                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            if let ty::TyRawPtr(_) = base_ty.sty {
-                                if this.mode != Mode::Fn &&
-                                   !this.tcx.sess.features_untracked().const_raw_ptr_deref {
-                                    emit_feature_err(
-                                        &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
-                                        this.span, GateIssue::Language,
-                                        &format!(
-                                            "dereferencing raw pointers in {}s is unstable",
-                                            this.mode,
-                                        ),
-                                    );
+                            if let Mode::Fn = this.mode {
+                                this.add(Qualif::NOT_CONST);
+                            } else {
+                                let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                                if let ty::TyRawPtr(_) = base_ty.sty {
+                                    if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
+                                        emit_feature_err(
+                                            &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
+                                            this.span, GateIssue::Language,
+                                            &format!(
+                                                "dereferencing raw pointers in {}s is unstable",
+                                                this.mode,
+                                            ),
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -726,9 +727,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) => {
-                        self.add(Qualif::NOT_CONST);
-                        if self.mode != Mode::Fn &&
-                           !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
+                        if let Mode::Fn = self.mode {
+                            self.add(Qualif::NOT_CONST);
+                        } else if !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
                             emit_feature_err(
                                 &self.tcx.sess.parse_sess, "const_raw_ptr_to_usize_cast",
                                 self.span, GateIssue::Language,
@@ -750,8 +751,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             op == BinOp::Ge || op == BinOp::Gt ||
                             op == BinOp::Offset);
 
-                    self.add(Qualif::NOT_CONST);
-                    if self.mode != Mode::Fn {
+                    if let Mode::Fn = self.mode {
+                        self.add(Qualif::NOT_CONST);
+                    } else if !self.tcx.sess.features_untracked().const_compare_raw_pointers {
                         emit_feature_err(
                             &self.tcx.sess.parse_sess,
                             "const_compare_raw_pointers",
