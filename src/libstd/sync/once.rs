@@ -295,6 +295,47 @@ impl Once {
         });
     }
 
+    /// Returns true if some `call_once` call has completed
+    /// successfuly. Specifically, `is_completed` will return false in
+    /// the following situtations:
+    ///   * `call_once` was not called at all,
+    ///   * `call_once` was called, but has not yet completed,
+    ///   * the `Once` instance is poisoned
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_is_completed)]
+    /// use std::sync::Once;
+    ///
+    /// static INIT: Once = Once::new();
+    ///
+    /// assert_eq!(INIT.is_completed(), false);
+    /// INIT.call_once(|| {
+    ///     assert_eq!(INIT.is_completed(), false);
+    /// });
+    /// assert_eq!(INIT.is_completed(), true);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(once_is_completed)]
+    /// use std::sync::Once;
+    /// use std::thread;
+    ///
+    /// static INIT: Once = Once::new();
+    ///
+    /// assert_eq!(INIT.is_completed(), false);
+    /// let handle = thread::spawn(|| {
+    ///     INIT.call_once(|| panic!());
+    /// });
+    /// assert!(handle.join().is_err());
+    /// assert_eq!(INIT.is_completed(), false);
+    /// ```
+    #[unstable(feature = "once_is_completed", issue = "42")]
+    pub fn is_completed(&self) -> bool {
+        self.state.load(Ordering::Acquire) == COMPLETE
+    }
+
     // This is a non-generic function to reduce the monomorphization cost of
     // using `call_once` (this isn't exactly a trivial or small implementation).
     //
