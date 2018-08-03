@@ -317,6 +317,7 @@ impl<T> Vec<T> {
     /// # #![allow(unused_mut)]
     /// let mut vec: Vec<i32> = Vec::new();
     /// ```
+    #[must_use = "newly created vector must be used"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_vec_new")]
