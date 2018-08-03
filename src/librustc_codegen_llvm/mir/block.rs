@@ -520,12 +520,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                 // and we can then extract the value by evaluating the promoted.
                                 mir::Operand::Copy(mir::Place::Promoted(box(index, ty))) |
                                 mir::Operand::Move(mir::Place::Promoted(box(index, ty))) => {
-                                    let param_env = ty::ParamEnv::reveal_all();
                                     let cid = mir::interpret::GlobalId {
                                         instance: self.instance,
                                         promoted: Some(index),
                                     };
-                                    let c = bx.tcx().const_eval(param_env.and(cid));
+                                    let c = bx.tcx().const_eval(self.param_env.and(cid));
                                     let (llval, ty) = self.simd_shuffle_indices(
                                         &bx,
                                         terminator.source_info.span,
