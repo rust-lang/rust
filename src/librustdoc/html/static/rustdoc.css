@@ -615,6 +615,11 @@ a {
 .content .search-results td:first-child a {
 	padding-right: 10px;
 }
+.content .search-results td:first-child a:after {
+    clear: both;
+    content: "";
+    display: block;
+}
 .content .search-results td:first-child a span {
 	float: left;
 }
