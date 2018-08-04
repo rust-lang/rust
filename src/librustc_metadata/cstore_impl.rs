@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cstore;
+use cstore::{self, LoadedMacro};
 use encoder;
 use link_args;
 use native_libs;
@@ -17,8 +17,8 @@ use schema;
 
 use rustc::ty::query::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
-                            MetadataLoader, LinkMeta,
-                            LoadedMacro, EncodedMetadata, NativeLibraryKind};
+                            LinkMeta,
+                            EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
@@ -411,36 +411,8 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
     };
 }
 
-impl CrateStore for cstore::CStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any> {
-        self.get_crate_data(krate)
-    }
-
-    fn metadata_loader(&self) -> &dyn MetadataLoader {
-        &*self.metadata_loader
-    }
-
-    fn visibility_untracked(&self, def: DefId) -> ty::Visibility {
-        self.get_crate_data(def.krate).get_visibility(def.index)
-    }
-
-    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
-        self.get_crate_data(def.krate).get_generics(def.index, sess)
-    }
-
-    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
-    {
-        self.get_crate_data(def.krate).get_associated_item(def.index)
-    }
-
-    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind
-    {
-        let data = self.get_crate_data(cnum);
-        let r = *data.dep_kind.lock();
-        r
-    }
-
-    fn export_macros_untracked(&self, cnum: CrateNum) {
+impl cstore::CStore {
+    pub fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
         let mut dep_kind = data.dep_kind.lock();
         if *dep_kind == DepKind::UnexportedMacrosOnly {
@@ -448,69 +420,28 @@ impl CrateStore for cstore::CStore {
         }
     }
 
-    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
-    {
-        self.get_crate_data(cnum).name
+    pub fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind {
+        let data = self.get_crate_data(cnum);
+        let r = *data.dep_kind.lock();
+        r
     }
 
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
-    {
-        self.get_crate_data(cnum).root.disambiguator
-    }
-
-    fn crate_hash_untracked(&self, cnum: CrateNum) -> hir::svh::Svh
-    {
-        self.get_crate_data(cnum).root.hash
-    }
-
-    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition
-    {
+    pub fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition {
         self.get_crate_data(cnum).root.edition
     }
 
-    /// Returns the `DefKey` for a given `DefId`. This indicates the
-    /// parent `DefId` as well as some idea of what kind of data the
-    /// `DefId` refers to.
-    fn def_key(&self, def: DefId) -> DefKey {
-        // Note: loading the def-key (or def-path) for a def-id is not
-        // a *read* of its metadata. This is because the def-id is
-        // really just an interned shorthand for a def-path, which is the
-        // canonical name for an item.
-        //
-        // self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).def_key(def.index)
-    }
-
-    fn def_path(&self, def: DefId) -> DefPath {
-        // See `Note` above in `def_key()` for why this read is
-        // commented out:
-        //
-        // self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).def_path(def.index)
-    }
-
-    fn def_path_hash(&self, def: DefId) -> DefPathHash {
-        self.get_crate_data(def.krate).def_path_hash(def.index)
-    }
-
-    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable> {
-        self.get_crate_data(cnum).def_path_table.clone()
-    }
-
-    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>
-    {
+    pub fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name> {
         self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
-    fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<def::Export>
-    {
+    pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<def::Export> {
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
             .each_child_of_item(def_id.index, |child| result.push(child), sess);
         result
     }
 
-    fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
+    pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
@@ -557,6 +488,64 @@ impl CrateStore for cstore::CStore {
             vis: codemap::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             tokens: None,
         })
+    }
+
+    pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem {
+        self.get_crate_data(def.krate).get_associated_item(def.index)
+    }
+}
+
+impl CrateStore for cstore::CStore {
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any> {
+        self.get_crate_data(krate)
+    }
+
+    fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
+        self.get_crate_data(def.krate).get_generics(def.index, sess)
+    }
+
+    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
+    {
+        self.get_crate_data(cnum).name
+    }
+
+    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
+    {
+        self.get_crate_data(cnum).root.disambiguator
+    }
+
+    fn crate_hash_untracked(&self, cnum: CrateNum) -> hir::svh::Svh
+    {
+        self.get_crate_data(cnum).root.hash
+    }
+
+    /// Returns the `DefKey` for a given `DefId`. This indicates the
+    /// parent `DefId` as well as some idea of what kind of data the
+    /// `DefId` refers to.
+    fn def_key(&self, def: DefId) -> DefKey {
+        // Note: loading the def-key (or def-path) for a def-id is not
+        // a *read* of its metadata. This is because the def-id is
+        // really just an interned shorthand for a def-path, which is the
+        // canonical name for an item.
+        //
+        // self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).def_key(def.index)
+    }
+
+    fn def_path(&self, def: DefId) -> DefPath {
+        // See `Note` above in `def_key()` for why this read is
+        // commented out:
+        //
+        // self.dep_graph.read(DepNode::MetaData(def));
+        self.get_crate_data(def.krate).def_path(def.index)
+    }
+
+    fn def_path_hash(&self, def: DefId) -> DefPathHash {
+        self.get_crate_data(def.krate).def_path_hash(def.index)
+    }
+
+    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable> {
+        self.get_crate_data(cnum).def_path_table.clone()
     }
 
     fn crates_untracked(&self) -> Vec<CrateNum>

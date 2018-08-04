@@ -37,6 +37,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 extern crate rustc_errors as errors;
 extern crate syntax_ext;
 extern crate proc_macro;
+extern crate rustc_metadata_utils;
 
 #[macro_use]
 extern crate rustc;

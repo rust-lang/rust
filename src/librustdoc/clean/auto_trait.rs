@@ -13,6 +13,7 @@ use rustc::traits::{self, auto_trait as auto};
 use rustc::ty::{self, ToPredicate, TypeFoldable};
 use rustc::ty::subst::Subst;
 use rustc::infer::InferOk;
+use rustc::middle::cstore::CrateStore;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
 
@@ -20,13 +21,13 @@ use core::DocAccessLevels;
 
 use super::*;
 
-pub struct AutoTraitFinder<'a, 'tcx: 'a, 'rcx: 'a> {
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
+pub struct AutoTraitFinder<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
+    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>,
     pub f: auto::AutoTraitFinder<'a, 'tcx>,
 }
 
-impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> Self {
+impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
+    pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx, 'cstore>) -> Self {
         let f = auto::AutoTraitFinder::new(&cx.tcx);
 
         AutoTraitFinder { cx, f }
