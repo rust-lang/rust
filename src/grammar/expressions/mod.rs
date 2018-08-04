@@ -35,13 +35,15 @@ struct Restrictions {
 
 // test expr_binding_power
 // fn foo() {
-//     1 + 2 * 3 == 1 * 2 + 3
+//     1 + 2 * 3 == 1 * 2 + 3;
+//     *x = 1 + 1;
 // }
 fn bp_of(op: SyntaxKind) -> u8 {
     match op {
-        EQEQ | NEQ => 1,
-        MINUS | PLUS => 2,
-        STAR | SLASH => 3,
+        EQ => 1,
+        EQEQ | NEQ => 2,
+        MINUS | PLUS => 3,
+        STAR | SLASH => 4,
         _ => 0
     }
 }
@@ -106,7 +108,7 @@ fn unary_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
             return Some(postfix_expr(p, lhs))
         }
     };
-    expr(p);
+    unary_expr(p, r);
     Some(m.complete(p, kind))
 }
 
@@ -247,7 +249,7 @@ fn struct_lit(p: &mut Parser) {
 
 fn bin_expr(p: &mut Parser, r: Restrictions, lhs: CompletedMarker, bp: u8) -> CompletedMarker {
     assert!(match p.current() {
-        MINUS | PLUS | STAR | SLASH | EQEQ | NEQ => true,
+        MINUS | PLUS | STAR | SLASH | EQEQ | NEQ | EQ => true,
         _ => false,
     });
     let m = lhs.precede(p);

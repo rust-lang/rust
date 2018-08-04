@@ -6,6 +6,7 @@ pub fn preorder<'a>(root: SyntaxNodeRef<'a>) -> impl Iterator<Item = SyntaxNodeR
         WalkEvent::Exit(_) => None,
     })
 }
+
 #[derive(Debug, Copy, Clone)]
 pub enum WalkEvent<'a> {
     Enter(SyntaxNodeRef<'a>),
