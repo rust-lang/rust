@@ -173,17 +173,22 @@ impl Visitor<'tcx> for GatherAssignedLocalsVisitor<'_, '_, 'tcx> {
     ) {
         let local = find_local_in_place(place);
 
-        // Conservatively check a subset of `Rvalue`s we know our
-        // benchmarks track, for example `html5ever`.
+        // Find those cases where there is a `Place` consumed by
+        // `rvalue` and we know that all regions in its type will be
+        // incorporated into `place`, the `Place` we are assigning to.
         match rvalue {
+            // `x = y` is the simplest possible case.
             Rvalue::Use(op) => self.union_locals_if_needed(local, find_local_in_operand(op)),
+
+            // `X = &'r P` -- the type of `X` will be `&'r T_P`, where
+            // `T_P` is the type of `P`.
             Rvalue::Ref(_, _, place) => {
                 // Special case: if you have `X = &*Y` (or `X = &**Y`
                 // etc), then the outlives relationships will ensure
                 // that all regions in `Y` are constrained by regions
                 // in `X` -- this is because the lifetimes of the
                 // references we deref through are required to outlive
-                // the borrow lifetime (which appears in `X`).
+                // the borrow lifetime `'r` (which appears in `X`).
                 //
                 // (We don't actually need to check the type of `Y`:
                 // since `ProjectionElem::Deref` represents a built-in
@@ -204,16 +209,23 @@ impl Visitor<'tcx> for GatherAssignedLocalsVisitor<'_, '_, 'tcx> {
             }
 
             Rvalue::Cast(kind, op, _) => match kind {
-                CastKind::Unsize => self.union_locals_if_needed(local, find_local_in_operand(op)),
+                CastKind::Unsize => {
+                    // Casting a `&[T; N]` to `&[T]` or `&Foo` to `&Trait` --
+                    // in both cases, no regions are "lost".
+                    self.union_locals_if_needed(local, find_local_in_operand(op))
+                }
                 _ => (),
             },
 
+            // Constructing an aggregate like `(x,)` or `Foo { x }`
+            // includes the full type of `x`.
             Rvalue::Aggregate(_, ops) => {
                 for rvalue in ops.iter().map(find_local_in_operand) {
                     self.union_locals_if_needed(local, rvalue);
                 }
             }
 
+            // For other things, be conservative and do not union.
             _ => (),
         };
 
