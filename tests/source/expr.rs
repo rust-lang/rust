@@ -60,6 +60,9 @@ some_ridiculously_loooooooooooooooooooooong_function(10000 * 30000000000 + 40000
         // Check subformatting
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     }
+
+    // #2884
+    let _ = [0; {struct Foo; impl Foo {const fn get(&self) -> usize {5}}; Foo.get()}];
 }
 
 fn bar() {

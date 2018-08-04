@@ -88,6 +88,17 @@ fn foo() -> bool {
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     }
+
+    // #2884
+    let _ = [0; {
+        struct Foo;
+        impl Foo {
+            const fn get(&self) -> usize {
+                5
+            }
+        };
+        Foo.get()
+    }];
 }
 
 fn bar() {
