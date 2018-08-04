@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::fmt::Write;
-use std::hash::{Hash, Hasher};
 use std::mem;
 
 use rustc::hir::def_id::DefId;
@@ -39,6 +38,8 @@ use super::{
     Value, Operand, MemPlace, MPlaceTy, Place,
     Memory, Machine
 };
+
+use super::snapshot::EvalSnapshot;
 
 pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -206,47 +207,6 @@ impl_stable_hash_for!(enum self::LocalValue {
     Dead,
     Live(x),
 });
-
-/// The virtual machine state during const-evaluation at a given point in time.
-#[derive(Eq, PartialEq)]
-struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
-    machine: M,
-    memory: Memory<'a, 'mir, 'tcx, M>,
-    stack: Vec<Frame<'mir, 'tcx>>,
-}
-
-impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-{
-    fn new<'b>(machine: &M, memory: &Memory<'a, 'mir, 'tcx, M>, stack: &[Frame<'mir, 'tcx>]) -> Self {
-        EvalSnapshot {
-            machine: machine.clone(),
-            memory: memory.clone(),
-            stack: stack.into(),
-        }
-    }
-}
-
-impl<'a, 'mir, 'tcx, M> Hash for EvalSnapshot<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-{
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // Implement in terms of hash stable, so that k1 == k2 -> hash(k1) == hash(k2)
-        let mut hcx = self.memory.tcx.get_stable_hashing_context();
-        let mut hasher = StableHasher::<u64>::new();
-        self.hash_stable(&mut hcx, &mut hasher);
-        hasher.finish().hash(state)
-    }
-}
-
-impl<'a, 'b, 'mir, 'tcx, M> HashStable<StableHashingContext<'b>> for EvalSnapshot<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-{
-    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'b>, hasher: &mut StableHasher<W>) {
-        let EvalSnapshot{ machine, memory, stack } = self;
-        (machine, &memory.data, stack).hash_stable(hcx, hasher);
-    }
-}
 
 pub(super) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The set of all `EvalSnapshot` *hashes* observed by this detector.
