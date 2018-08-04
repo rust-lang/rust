@@ -448,6 +448,12 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 ///
+/// Just like in C, whether an operation is volatile has no bearing whatsoever
+/// on questions involving concurrent access from multiple threads. Volatile
+/// accesses behave exactly like non-atomic accesses in that regard. In particular,
+/// a race between a `read_volatile` and any write operation to the same location
+/// is undefined behavior.
+///
 /// # Examples
 ///
 /// Basic usage:
@@ -497,6 +503,12 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
+///
+/// Just like in C, whether an operation is volatile has no bearing whatsoever
+/// on questions involving concurrent access from multiple threads. Volatile
+/// accesses behave exactly like non-atomic accesses in that regard. In particular,
+/// a race between a `write_volatile` and any other operation (reading or writing)
+/// on the same location is undefined behavior.
 ///
 /// # Examples
 ///
@@ -1056,6 +1068,12 @@ impl<T: ?Sized> *const T {
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
     /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
+    ///
+    /// Just like in C, whether an operation is volatile has no bearing whatsoever
+    /// on questions involving concurrent access from multiple threads. Volatile
+    /// accesses behave exactly like non-atomic accesses in that regard. In particular,
+    /// a race between a `read_volatile` and any write operation to the same location
+    /// is undefined behavior.
     ///
     /// # Examples
     ///
@@ -1790,6 +1808,12 @@ impl<T: ?Sized> *mut T {
     /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
+    /// Just like in C, whether an operation is volatile has no bearing whatsoever
+    /// on questions involving concurrent access from multiple threads. Volatile
+    /// accesses behave exactly like non-atomic accesses in that regard. In particular,
+    /// a race between a `read_volatile` and any write operation to the same location
+    /// is undefined behavior.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -2104,6 +2128,12 @@ impl<T: ?Sized> *mut T {
     ///
     /// This is appropriate for initializing uninitialized memory, or overwriting
     /// memory that has previously been `read` from.
+    ///
+    /// Just like in C, whether an operation is volatile has no bearing whatsoever
+    /// on questions involving concurrent access from multiple threads. Volatile
+    /// accesses behave exactly like non-atomic accesses in that regard. In particular,
+    /// a race between a `write_volatile` and any other operation (reading or writing)
+    /// on the same location is undefined behavior.
     ///
     /// # Examples
     ///
