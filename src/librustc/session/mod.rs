@@ -20,7 +20,6 @@ use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::{OutputType, Lto};
-use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
@@ -49,7 +48,6 @@ use std;
 use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
-use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -1300,40 +1298,4 @@ pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
     } else {
         Err(CompileIncomplete::Errored(ErrorReported))
     }
-}
-
-#[cold]
-#[inline(never)]
-pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments) -> ! {
-    // this wrapper mostly exists so I don't have to write a fully
-    // qualified path of None::<Span> inside the bug!() macro definition
-    opt_span_bug_fmt(file, line, None::<Span>, args);
-}
-
-#[cold]
-#[inline(never)]
-pub fn span_bug_fmt<S: Into<MultiSpan>>(
-    file: &'static str,
-    line: u32,
-    span: S,
-    args: fmt::Arguments,
-) -> ! {
-    opt_span_bug_fmt(file, line, Some(span), args);
-}
-
-fn opt_span_bug_fmt<S: Into<MultiSpan>>(
-    file: &'static str,
-    line: u32,
-    span: Option<S>,
-    args: fmt::Arguments,
-) -> ! {
-    tls::with_opt(move |tcx| {
-        let msg = format!("{}:{}: {}", file, line, args);
-        match (tcx, span) {
-            (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, &msg),
-            (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),
-            (None, _) => panic!(msg),
-        }
-    });
-    unreachable!();
 }

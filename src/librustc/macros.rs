@@ -51,14 +51,14 @@ macro_rules! enum_from_u32 {
 macro_rules! bug {
     () => ( bug!("impossible case reached") );
     ($($message:tt)*) => ({
-        $crate::session::bug_fmt(file!(), line!(), format_args!($($message)*))
+        $crate::util::bug::bug_fmt(file!(), line!(), format_args!($($message)*))
     })
 }
 
 #[macro_export]
 macro_rules! span_bug {
     ($span:expr, $($message:tt)*) => ({
-        $crate::session::span_bug_fmt(file!(), line!(), $span, format_args!($($message)*))
+        $crate::util::bug::span_bug_fmt(file!(), line!(), $span, format_args!($($message)*))
     })
 }
 
