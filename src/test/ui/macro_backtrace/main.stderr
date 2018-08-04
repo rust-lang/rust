@@ -1,21 +1,21 @@
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+error: expected one of `!`, `.`, `::`, `;`, `<`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:19:20
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };
-   | |                    ^^^^^ expected one of 8 possible tokens here
+   | |                    ^^^^^ expected one of 9 possible tokens here
 LL | | }
    | |_- in this expansion of `pong!`
 ...
 LL |       pong!();
    |       -------- in this macro invocation
 
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+error: expected one of `!`, `.`, `::`, `;`, `<`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:19:20
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };
-   | |                    ^^^^^ expected one of 8 possible tokens here
+   | |                    ^^^^^ expected one of 9 possible tokens here
 LL | | }
    | |_- in this expansion of `pong!`
 ...
@@ -30,12 +30,12 @@ LL |   (  ) => { pong ! (  ) ; }
    |   |         in this macro invocation
    |   in this expansion of `ping!`
 
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+error: expected one of `!`, `.`, `::`, `;`, `<`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:19:20
    |
 LL | / macro_rules! pong {
 LL | |     () => { syntax error };
-   | |                    ^^^^^ expected one of 8 possible tokens here
+   | |                    ^^^^^ expected one of 9 possible tokens here
 LL | | }
    | |_- in this expansion of `pong!` (#5)
 ...
