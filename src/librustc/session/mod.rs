@@ -14,7 +14,6 @@ use self::code_stats::CodeStats;
 use hir::def_id::CrateNum;
 use rustc_data_structures::fingerprint::Fingerprint;
 
-use ich;
 use lint;
 use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
@@ -34,7 +33,6 @@ use errors::emitter::{Emitter, EmitterWriter};
 use syntax::edition::Edition;
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
-use syntax::symbol::Symbol;
 use syntax::parse;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
@@ -127,9 +125,6 @@ pub struct Session {
     pub imported_macro_spans: OneThread<RefCell<HashMap<Span, (String, Span)>>>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
-
-    /// A cache of attributes ignored by StableHashingContext
-    pub ignored_attr_names: FxHashSet<Symbol>,
 
     /// Used by -Z profile-queries in util::common
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
@@ -1143,7 +1138,6 @@ pub fn build_session_(
         injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
-        ignored_attr_names: ich::compute_ignored_attr_names(),
         self_profiling: Lock::new(SelfProfiler::new()),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
