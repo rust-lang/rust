@@ -6,7 +6,13 @@ pub(super) use self::atom::literal;
 const EXPR_FIRST: TokenSet = UNARY_EXPR_FIRST;
 
 pub(super) fn expr(p: &mut Parser) {
-    expr_bp(p, 1)
+    let r = Restrictions { forbid_structs: false };
+    expr_bp(p, r, 1)
+}
+
+fn expr_no_struct(p: &mut Parser) {
+    let r = Restrictions { forbid_structs: true };
+    expr_bp(p, r, 1)
 }
 
 // test block
@@ -20,6 +26,11 @@ pub(super) fn block(p: &mut Parser) {
         return;
     }
     atom::block_expr(p);
+}
+
+#[derive(Clone, Copy)]
+struct Restrictions {
+    forbid_structs: bool
 }
 
 // test expr_binding_power
@@ -36,8 +47,8 @@ fn bp_of(op: SyntaxKind) -> u8 {
 }
 
 // Parses expression with binding power of at least bp.
-fn expr_bp(p: &mut Parser, bp: u8) {
-    let mut lhs = match unary_expr(p) {
+fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
+    let mut lhs = match unary_expr(p, r) {
         Some(lhs) => lhs,
         None => return,
     };
@@ -47,7 +58,7 @@ fn expr_bp(p: &mut Parser, bp: u8) {
         if op_bp < bp {
             break;
         }
-        lhs = bin_expr(p, lhs, op_bp);
+        lhs = bin_expr(p, r, lhs, op_bp);
     }
 }
 
@@ -57,17 +68,46 @@ const UNARY_EXPR_FIRST: TokenSet =
         atom::ATOM_EXPR_FIRST,
     ];
 
-fn unary_expr(p: &mut Parser) -> Option<CompletedMarker> {
-    let done = match p.current() {
-        AMPERSAND => ref_expr(p),
-        STAR => deref_expr(p),
-        EXCL => not_expr(p),
+fn unary_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
+    let m;
+    let kind = match p.current() {
+        // test ref_expr
+        // fn foo() {
+        //     let _ = &1;
+        //     let _ = &mut &f();
+        // }
+        AMPERSAND => {
+            m = p.start();
+            p.bump();
+            p.eat(MUT_KW);
+            REF_EXPR
+
+        },
+        // test deref_expr
+        // fn foo() {
+        //     **&1;
+        // }
+        STAR => {
+            m = p.start();
+            p.bump();
+            DEREF_EXPR
+        },
+        // test not_expr
+        // fn foo() {
+        //     !!true;
+        // }
+        EXCL => {
+            m = p.start();
+            p.bump();
+            NOT_EXPR
+        },
         _ => {
-            let lhs = atom::atom_expr(p)?;
-            postfix_expr(p, lhs)
+            let lhs = atom::atom_expr(p, r)?;
+            return Some(postfix_expr(p, lhs))
         }
     };
-    Some(done)
+    expr(p);
+    Some(m.complete(p, kind))
 }
 
 fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
@@ -85,44 +125,6 @@ fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
         }
     }
     lhs
-}
-
-// test ref_expr
-// fn foo() {
-//     let _ = &1;
-//     let _ = &mut &f();
-// }
-fn ref_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(AMPERSAND));
-    let m = p.start();
-    p.bump();
-    p.eat(MUT_KW);
-    expr(p);
-    m.complete(p, REF_EXPR)
-}
-
-// test deref_expr
-// fn foo() {
-//     **&1;
-// }
-fn deref_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(STAR));
-    let m = p.start();
-    p.bump();
-    expr(p);
-    m.complete(p, DEREF_EXPR)
-}
-
-// test not_expr
-// fn foo() {
-//     !!true;
-// }
-fn not_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(EXCL));
-    let m = p.start();
-    p.bump();
-    expr(p);
-    m.complete(p, NOT_EXPR)
 }
 
 // test call_expr
@@ -199,11 +201,11 @@ fn arg_list(p: &mut Parser) {
 //     let _ = a::b;
 //     let _ = ::a::<b>;
 // }
-fn path_expr(p: &mut Parser) -> CompletedMarker {
+fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::expr_path(p);
-    if p.at(L_CURLY) {
+    if p.at(L_CURLY) && !r.forbid_structs {
         struct_lit(p);
         m.complete(p, STRUCT_LIT)
     } else {
@@ -243,13 +245,13 @@ fn struct_lit(p: &mut Parser) {
     p.expect(R_CURLY);
 }
 
-fn bin_expr(p: &mut Parser, lhs: CompletedMarker, bp: u8) -> CompletedMarker {
+fn bin_expr(p: &mut Parser, r: Restrictions, lhs: CompletedMarker, bp: u8) -> CompletedMarker {
     assert!(match p.current() {
         MINUS | PLUS | STAR | SLASH | EQEQ | NEQ => true,
         _ => false,
     });
     let m = lhs.precede(p);
     p.bump();
-    expr_bp(p, bp);
+    expr_bp(p, r, bp);
     m.complete(p, BIN_EXPR)
 }

@@ -33,13 +33,13 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
                    IDENT, SELF_KW, SUPER_KW, COLONCOLON ],
     ];
 
-pub(super) fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
+pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
     match literal(p) {
         Some(m) => return Some(m),
         None => (),
     }
     if paths::is_path_start(p) {
-        return Some(path_expr(p));
+        return Some(path_expr(p, r));
     }
     let la = p.nth(1);
     let done = match p.current() {
@@ -91,7 +91,8 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
 // fn foo() {
 //     if true {};
 //     if true {} else {};
-//     if true {} else if false {} else {}
+//     if true {} else if false {} else {};
+//     if S {};
 // }
 fn if_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(IF_KW));
@@ -112,18 +113,19 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
 fn if_head(p: &mut Parser) {
     assert!(p.at(IF_KW));
     p.bump();
-    expr(p);
+    expr_no_struct(p);
 }
 
 // test match_expr
 // fn foo() {
 //     match () { };
+//     match S {};
 // }
 fn match_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(MATCH_KW));
     let m = p.start();
     p.bump();
-    expr(p);
+    expr_no_struct(p);
     p.eat(L_CURLY);
     while !p.at(EOF) && !p.at(R_CURLY) {
         match_arm(p);
