@@ -28,6 +28,7 @@ matrix:
     - env: INTEGRATION=glob
     - env: INTEGRATION=log
     - env: INTEGRATION=mdbook
+    - env: INTEGRATION=packed_simd
     - env: INTEGRATION=rand
     - env: INTEGRATION=rust-clippy
     - env: INTEGRATION=rust-semverver
