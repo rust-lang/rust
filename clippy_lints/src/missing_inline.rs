@@ -87,7 +87,7 @@ fn is_executable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>) -> bool {
 
     cx.tcx.sess.crate_types.get().iter().any(|t: &CrateType| {
         match t {
-            CrateType::CrateTypeExecutable => true,
+            CrateType::Executable => true,
             _ => false,
         }
     })
