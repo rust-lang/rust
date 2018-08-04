@@ -21,22 +21,23 @@ use num::flt2dec::estimator::estimate_scaling_factor;
 use num::bignum::Digit32 as Digit;
 use num::bignum::Big32x40 as Big;
 
-static POW10: [Digit; 10] = [1, 10, 100, 1000, 10000, 100000,
-                             1000000, 10000000, 100000000, 1000000000];
-static TWOPOW10: [Digit; 10] = [2, 20, 200, 2000, 20000, 200000,
-                                2000000, 20000000, 200000000, 2000000000];
+static POW10: [Digit; 10] = [1, 10, 100, 1000, 10000, 100_000, 1_000_000,
+                             10_000_000, 100_000_000, 1_000_000_000];
+static TWOPOW10: [Digit; 10] = [2, 20, 200, 2000, 20000, 200_000, 2_000_000,
+                                20_000_000, 200_000_000, 2_000_000_000];
 
 // precalculated arrays of `Digit`s for 10^(2^n)
-static POW10TO16: [Digit; 2] = [0x6fc10000, 0x2386f2];
-static POW10TO32: [Digit; 4] = [0, 0x85acef81, 0x2d6d415b, 0x4ee];
-static POW10TO64: [Digit; 7] = [0, 0, 0xbf6a1f01, 0x6e38ed64, 0xdaa797ed, 0xe93ff9f4, 0x184f03];
+static POW10TO16: [Digit; 2] = [0x6fc1_0000, 0x0023_86f2];
+static POW10TO32: [Digit; 4] = [0, 0x85ac_ef81, 0x2d6d_415b, 0x4ee];
+static POW10TO64: [Digit; 7] = [0, 0, 0xbf6a_1f01, 0x6e38_ed64,
+                                0xdaa7_97ed, 0xe93f_f9f4, 0x0018_4f03];
 static POW10TO128: [Digit; 14] =
-    [0, 0, 0, 0, 0x2e953e01, 0x3df9909, 0xf1538fd, 0x2374e42f, 0xd3cff5ec, 0xc404dc08,
-     0xbccdb0da, 0xa6337f19, 0xe91f2603, 0x24e];
+    [0, 0, 0, 0, 0x2e95_3e01, 0x03df_9909, 0x0f15_38fd, 0x2374_e42f, 0xd3cf_f5ec, 0xc404_dc08,
+     0xbccd_b0da, 0xa633_7f19, 0xe91f_2603, 0x24e];
 static POW10TO256: [Digit; 27] =
-    [0, 0, 0, 0, 0, 0, 0, 0, 0x982e7c01, 0xbed3875b, 0xd8d99f72, 0x12152f87, 0x6bde50c6,
-     0xcf4a6e70, 0xd595d80f, 0x26b2716e, 0xadc666b0, 0x1d153624, 0x3c42d35a, 0x63ff540e,
-     0xcc5573c0, 0x65f9ef17, 0x55bc28f2, 0x80dcc7f7, 0xf46eeddc, 0x5fdcefce, 0x553f7];
+    [0, 0, 0, 0, 0, 0, 0, 0, 0x982e_7c01, 0xbed3_875b, 0xd8d9_9f72, 0x1215_2f87, 0x6bde_50c6,
+     0xcf4a_6e70, 0xd595_d80f, 0x26b2_716e, 0xadc6_66b0, 0x1d15_3624, 0x3c42_d35a, 0x63ff_540e,
+     0xcc55_73c0, 0x65f9_ef17, 0x55bc_28f2, 0x80dc_c7f7, 0xf46e_eddc, 0x5fdc_efce, 0x553f7];
 
 #[doc(hidden)]
 pub fn mul_pow10(x: &mut Big, n: usize) -> &mut Big {

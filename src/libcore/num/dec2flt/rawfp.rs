@@ -174,9 +174,9 @@ impl RawFloat for f32 {
         let sign: i8 = if bits >> 31 == 0 { 1 } else { -1 };
         let mut exponent: i16 = ((bits >> 23) & 0xff) as i16;
         let mantissa = if exponent == 0 {
-            (bits & 0x7fffff) << 1
+            (bits & 0x007f_ffff) << 1
         } else {
-            (bits & 0x7fffff) | 0x800000
+            (bits & 0x007f_ffff) | 0x0080_0000
         };
         // Exponent bias + mantissa shift
         exponent -= 127 + 23;
@@ -221,9 +221,9 @@ impl RawFloat for f64 {
         let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
         let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
         let mantissa = if exponent == 0 {
-            (bits & 0xfffffffffffff) << 1
+            (bits & 0x000f_ffff_ffff_ffff) << 1
         } else {
-            (bits & 0xfffffffffffff) | 0x10000000000000
+            (bits & 0x000f_ffff_ffff_ffff) | 0x0010_0000_0000_0000
         };
         // Exponent bias + mantissa shift
         exponent -= 1023 + 52;

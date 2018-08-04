@@ -73,7 +73,7 @@ pub(crate) fn is_printable(x: char) -> bool {
         if 0x2fa1e <= x && x < 0xe0100 {
             return false;
         }
-        if 0xe01f0 <= x && x < 0x110000 {
+        if 0xe01f0 <= x && x < 0x0011_0000 {
             return false;
         }
         true
