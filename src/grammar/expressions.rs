@@ -29,11 +29,54 @@ pub(super) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 const EXPR_FIRST: TokenSet = PREFIX_EXPR_FIRST;
 
 pub(super) fn expr(p: &mut Parser) {
-    let mut lhs = match prefix_expr(p) {
+    expr_bp(p, 1)
+}
+
+fn bp_of(op: SyntaxKind) -> u8 {
+    match op {
+        EQEQ | NEQ => 1,
+        MINUS | PLUS => 2,
+        STAR | SLASH => 3,
+        _ => 0
+    }
+}
+
+
+// test expr_binding_power
+// fn foo() {
+//     1 + 2 * 3 == 1 * 2 + 3
+// }
+
+// Parses expression with binding power of at least bp.
+fn expr_bp(p: &mut Parser, bp: u8) {
+    let mut lhs = match unary_expr(p) {
         Some(lhs) => lhs,
         None => return,
     };
 
+    loop {
+        let op_bp = bp_of(p.current());
+        if op_bp < bp {
+            break;
+        }
+        lhs = bin_expr(p, lhs, op_bp);
+    }
+}
+
+fn unary_expr(p: &mut Parser) -> Option<CompletedMarker> {
+    let done = match p.current() {
+        AMPERSAND => ref_expr(p),
+        STAR => deref_expr(p),
+        EXCL => not_expr(p),
+        _ => {
+            let lhs = atom_expr(p)?;
+            postfix_expr(p, lhs)
+        }
+    };
+    Some(done)
+}
+
+fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
     loop {
         lhs = match p.current() {
             L_PAREN => call_expr(p, lhs),
@@ -43,9 +86,11 @@ pub(super) fn expr(p: &mut Parser) {
                 field_expr(p, lhs)
             },
             DOT if p.nth(1) == INT_NUMBER => field_expr(p, lhs),
+            QUESTION => try_expr(p, lhs),
             _ => break,
         }
     }
+    lhs
 }
 
 // test block
@@ -88,16 +133,6 @@ const PREFIX_EXPR_FIRST: TokenSet =
         token_set![AMPERSAND, STAR, EXCL],
         ATOM_EXPR_FIRST,
     ];
-
-fn prefix_expr(p: &mut Parser) -> Option<CompletedMarker> {
-    let done = match p.current() {
-        AMPERSAND => ref_expr(p),
-        STAR => deref_expr(p),
-        EXCL => not_expr(p),
-        _ => return atom_expr(p),
-    };
-    Some(done)
-}
 
 // test ref_expr
 // fn foo() {
@@ -369,6 +404,17 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     m.complete(p, FIELD_EXPR)
 }
 
+// test try_expr
+// fn foo() {
+//     x?;
+// }
+fn try_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
+    assert!(p.at(QUESTION));
+    let m = lhs.precede(p);
+    p.bump();
+    m.complete(p, TRY_EXPR)
+}
+
 fn arg_list(p: &mut Parser) {
     assert!(p.at(L_PAREN));
     let m = p.start();
@@ -431,4 +477,15 @@ fn struct_lit(p: &mut Parser) {
         }
     }
     p.expect(R_CURLY);
+}
+
+fn bin_expr(p: &mut Parser, lhs: CompletedMarker, bp: u8) -> CompletedMarker {
+    assert!(match p.current() {
+        MINUS | PLUS | STAR | SLASH | EQEQ | NEQ => true,
+        _ => false,
+    });
+    let m = lhs.precede(p);
+    p.bump();
+    expr_bp(p, bp);
+    m.complete(p, BIN_EXPR)
 }

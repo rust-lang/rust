@@ -130,23 +130,32 @@ Grammar(
         "STRUCT_PAT",
         "TUPLE_PAT",
 
+        // atoms
         "TUPLE_EXPR",
         "PATH_EXPR",
-        "CALL_EXPR",
-        "METHOD_CALL_EXPR",
-        "FIELD_EXPR",
-        "REF_EXPR",
-        "DEREF_EXPR",
-        "NOT_EXPR",
         "LAMBDA_EXPR",
-        "STRUCT_LIT",
-        "STRUCT_LIT_FIELD",
         "IF_EXPR",
         "BLOCK_EXPR",
         "RETURN_EXPR",
         "MATCH_EXPR",
         "MATCH_ARM",
         "MATCH_GUARD",
+        "STRUCT_LIT",
+        "STRUCT_LIT_FIELD",
+
+        // postfix
+        "CALL_EXPR",
+        "METHOD_CALL_EXPR",
+        "FIELD_EXPR",
+        "TRY_EXPR",
+
+        // unary
+        "REF_EXPR",
+        "DEREF_EXPR",
+        "NOT_EXPR",
+
+        "BIN_EXPR",
+
 
         "EXTERN_BLOCK_EXPR",
         "ENUM_VARIANT",
