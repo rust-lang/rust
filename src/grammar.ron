@@ -126,6 +126,9 @@ Grammar(
         "REF_PAT",
         "BIND_PAT",
         "PLACEHOLDER_PAT",
+        "PATH_PAT",
+        "STRUCT_PAT",
+        "TUPLE_PAT",
 
         "TUPLE_EXPR",
         "PATH_EXPR",
