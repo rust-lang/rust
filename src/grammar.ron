@@ -141,6 +141,9 @@ Grammar(
         "IF_EXPR",
         "BLOCK_EXPR",
         "RETURN_EXPR",
+        "MATCH_EXPR",
+        "MATCH_ARM",
+        "MATCH_GUARD",
 
         "EXTERN_BLOCK_EXPR",
         "ENUM_VARIANT",

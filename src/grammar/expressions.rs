@@ -27,6 +27,7 @@ pub(super) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 }
 
 const EXPR_FIRST: TokenSet = PREFIX_EXPR_FIRST;
+
 pub(super) fn expr(p: &mut Parser) {
     let mut lhs = match prefix_expr(p) {
         Some(lhs) => lhs,
@@ -87,6 +88,7 @@ const PREFIX_EXPR_FIRST: TokenSet =
         token_set![AMPERSAND, STAR, EXCL],
         ATOM_EXPR_FIRST,
     ];
+
 fn prefix_expr(p: &mut Parser) -> Option<CompletedMarker> {
     let done = match p.current() {
         AMPERSAND => ref_expr(p),
@@ -140,6 +142,7 @@ const ATOM_EXPR_FIRST: TokenSet =
         LITERAL_FIRST,
         token_set![L_PAREN, PIPE, MOVE_KW, IF_KW, UNSAFE_KW, L_CURLY, RETURN_KW],
     ];
+
 fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
     match literal(p) {
         Some(m) => return Some(m),
@@ -154,6 +157,7 @@ fn atom_expr(p: &mut Parser) -> Option<CompletedMarker> {
         PIPE => lambda_expr(p),
         MOVE_KW if la == PIPE => lambda_expr(p),
         IF_KW => if_expr(p),
+        MATCH_KW => match_expr(p),
         UNSAFE_KW if la == L_CURLY => block_expr(p),
         L_CURLY => block_expr(p),
         RETURN_KW => return_expr(p),
@@ -202,8 +206,7 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
 fn if_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(IF_KW));
     let m = p.start();
-    p.bump();
-    expr(p);
+    if_head(p);
     block(p);
     if p.at(ELSE_KW) {
         p.bump();
@@ -214,6 +217,55 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
         }
     }
     m.complete(p, IF_EXPR)
+}
+
+fn if_head(p: &mut Parser) {
+    assert!(p.at(IF_KW));
+    p.bump();
+    expr(p);
+}
+
+// test match_expr
+// fn foo() {
+//     match () { };
+// }
+fn match_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(MATCH_KW));
+    let m = p.start();
+    p.bump();
+    expr(p);
+    p.eat(L_CURLY);
+    while !p.at(EOF) && !p.at(R_CURLY) {
+        match_arm(p);
+        if !p.at(R_CURLY) {
+            p.expect(COMMA);
+        }
+    }
+    p.expect(R_CURLY);
+    m.complete(p, MATCH_EXPR)
+}
+
+// test match_arm
+// fn foo() {
+//     match () {
+//         _ => (),
+//         X | Y if Z => (),
+//     };
+// }
+fn match_arm(p: &mut Parser) {
+    let m = p.start();
+    loop {
+        patterns::pattern(p);
+        if !p.eat(PIPE) {
+            break;
+        }
+    }
+    if p.at(IF_KW) {
+        if_head(p)
+    }
+    p.expect(FAT_ARROW);
+    expr(p);
+    m.complete(p, MATCH_ARM);
 }
 
 // test block_expr
