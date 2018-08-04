@@ -9,15 +9,11 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::traits::{self, auto_trait as auto};
-use rustc::ty::{self, ToPredicate, TypeFoldable};
-use rustc::ty::subst::Subst;
-use rustc::infer::InferOk;
-use rustc::middle::cstore::CrateStore;
+use rustc::traits::auto_trait as auto;
+use rustc::ty::{self, TypeFoldable};
 use std::fmt::Debug;
-use syntax_pos::DUMMY_SP;
 
-use core::DocAccessLevels;
+use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
 
 use super::*;
 
@@ -34,186 +30,16 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
     }
 
     pub fn get_with_def_id(&self, def_id: DefId) -> Vec<Item> {
-        let ty = self.cx.tcx.type_of(def_id);
-
-        let def_ctor: fn(DefId) -> Def = match ty.sty {
-            ty::TyAdt(adt, _) => match adt.adt_kind() {
-                AdtKind::Struct => Def::Struct,
-                AdtKind::Enum => Def::Enum,
-                AdtKind::Union => Def::Union,
-            }
-            ty::TyInt(_) |
-            ty::TyUint(_) |
-            ty::TyFloat(_) |
-            ty::TyStr |
-            ty::TyBool |
-            ty::TyChar => return self.get_auto_trait_impls(def_id, &move |_: DefId| {
-                match ty.sty {
-                    ty::TyInt(x) => Def::PrimTy(hir::TyInt(x)),
-                    ty::TyUint(x) => Def::PrimTy(hir::TyUint(x)),
-                    ty::TyFloat(x) => Def::PrimTy(hir::TyFloat(x)),
-                    ty::TyStr => Def::PrimTy(hir::TyStr),
-                    ty::TyBool => Def::PrimTy(hir::TyBool),
-                    ty::TyChar => Def::PrimTy(hir::TyChar),
-                    _ => unreachable!(),
-                }
-            }, None),
-            _ => {
-                debug!("Unexpected type {:?}", def_id);
-                return Vec::new()
-            }
-        };
-
-        self.get_auto_trait_impls(def_id, &def_ctor, None)
+        get_def_from_def_id(&self.cx, def_id, &|def_ctor| {
+            self.get_auto_trait_impls(def_id, &def_ctor, None)
+        })
     }
 
     pub fn get_with_node_id(&self, id: ast::NodeId, name: String) -> Vec<Item> {
-        let item = &self.cx.tcx.hir.expect_item(id).node;
-        let did = self.cx.tcx.hir.local_def_id(id);
-
-        let def_ctor = match *item {
-            hir::ItemKind::Struct(_, _) => Def::Struct,
-            hir::ItemKind::Union(_, _) => Def::Union,
-            hir::ItemKind::Enum(_, _) => Def::Enum,
-            _ => panic!("Unexpected type {:?} {:?}", item, id),
-        };
-
-        self.get_auto_trait_impls(did, &def_ctor, Some(name))
-    }
-
-    fn get_real_ty<F>(&self,
-                      def_id: DefId,
-                      def_ctor: &F,
-                      real_name: &Option<Ident>,
-                      generics: &ty::Generics,
-    ) -> hir::Ty
-    where F: Fn(DefId) -> Def {
-        let path = get_path_for_type(self.cx.tcx, def_id, def_ctor);
-        let mut segments = path.segments.into_vec();
-        let last = segments.pop().unwrap();
-
-        segments.push(hir::PathSegment::new(
-            real_name.unwrap_or(last.ident),
-            self.generics_to_path_params(generics.clone()),
-            false,
-        ));
-
-        let new_path = hir::Path {
-            span: path.span,
-            def: path.def,
-            segments: HirVec::from_vec(segments),
-        };
-
-        hir::Ty {
-            id: ast::DUMMY_NODE_ID,
-            node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
-            span: DUMMY_SP,
-            hir_id: hir::DUMMY_HIR_ID,
-        }
-    }
-
-    pub fn get_blanket_impls<F>(
-        &self,
-        def_id: DefId,
-        def_ctor: &F,
-        name: Option<String>,
-        generics: &ty::Generics,
-    ) -> Vec<Item>
-    where F: Fn(DefId) -> Def {
-        let ty = self.cx.tcx.type_of(def_id);
-        let mut traits = Vec::new();
-        if self.cx.access_levels.borrow().is_doc_reachable(def_id) {
-            let real_name = name.clone().map(|name| Ident::from_str(&name));
-            let param_env = self.cx.tcx.param_env(def_id);
-            for &trait_def_id in self.cx.all_traits.iter() {
-                if !self.cx.access_levels.borrow().is_doc_reachable(trait_def_id) ||
-                   self.cx.generated_synthetics
-                          .borrow_mut()
-                          .get(&(def_id, trait_def_id))
-                          .is_some() {
-                    continue
-                }
-                self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
-                    self.cx.tcx.infer_ctxt().enter(|infcx| {
-                        let t_generics = infcx.tcx.generics_of(impl_def_id);
-                        let trait_ref = infcx.tcx.impl_trait_ref(impl_def_id).unwrap();
-
-                        match infcx.tcx.type_of(impl_def_id).sty {
-                            ::rustc::ty::TypeVariants::TyParam(_) => {},
-                            _ => return,
-                        }
-
-                        let substs = infcx.fresh_substs_for_item(DUMMY_SP, def_id);
-                        let ty = ty.subst(infcx.tcx, substs);
-                        let param_env = param_env.subst(infcx.tcx, substs);
-
-                        let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
-                        let trait_ref = trait_ref.subst(infcx.tcx, impl_substs);
-
-                        // Require the type the impl is implemented on to match
-                        // our type, and ignore the impl if there was a mismatch.
-                        let cause = traits::ObligationCause::dummy();
-                        let eq_result = infcx.at(&cause, param_env)
-                                             .eq(trait_ref.self_ty(), ty);
-                        if let Ok(InferOk { value: (), obligations }) = eq_result {
-                            // FIXME(eddyb) ignoring `obligations` might cause false positives.
-                            drop(obligations);
-
-                            let may_apply = infcx.predicate_may_hold(&traits::Obligation::new(
-                                cause.clone(),
-                                param_env,
-                                trait_ref.to_predicate(),
-                            ));
-                            if !may_apply {
-                                return
-                            }
-                            self.cx.generated_synthetics.borrow_mut()
-                                                        .insert((def_id, trait_def_id));
-                            let trait_ = hir::TraitRef {
-                                path: get_path_for_type(infcx.tcx,
-                                                        trait_def_id,
-                                                        hir::def::Def::Trait),
-                                ref_id: ast::DUMMY_NODE_ID,
-                            };
-                            let provided_trait_methods =
-                                infcx.tcx.provided_trait_methods(trait_def_id)
-                                         .into_iter()
-                                         .map(|meth| meth.ident.to_string())
-                                         .collect();
-
-                            let ty = self.get_real_ty(def_id, def_ctor, &real_name, generics);
-                            let predicates = infcx.tcx.predicates_of(impl_def_id);
-
-                            traits.push(Item {
-                                source: infcx.tcx.def_span(impl_def_id).clean(self.cx),
-                                name: None,
-                                attrs: Default::default(),
-                                visibility: None,
-                                def_id: self.next_def_id(impl_def_id.krate),
-                                stability: None,
-                                deprecation: None,
-                                inner: ImplItem(Impl {
-                                    unsafety: hir::Unsafety::Normal,
-                                    generics: (t_generics, &predicates).clean(self.cx),
-                                    provided_trait_methods,
-                                    trait_: Some(trait_.clean(self.cx)),
-                                    for_: ty.clean(self.cx),
-                                    items: infcx.tcx.associated_items(impl_def_id)
-                                                    .collect::<Vec<_>>()
-                                                    .clean(self.cx),
-                                    polarity: None,
-                                    synthetic: false,
-                                    blanket_impl: Some(infcx.tcx.type_of(impl_def_id)
-                                                                .clean(self.cx)),
-                                }),
-                            });
-                            debug!("{:?} => {}", trait_ref, may_apply);
-                        }
-                    });
-                });
-            }
-        }
-        traits
+        get_def_from_node_id(&self.cx, id, name, &|def_ctor, name| {
+            let did = self.cx.tcx.hir.local_def_id(id);
+            self.get_auto_trait_impls(did, &def_ctor, Some(name))
+        })
     }
 
     pub fn get_auto_trait_impls<F>(
@@ -263,7 +89,6 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                 def_ctor,
                 tcx.require_lang_item(lang_items::SyncTraitLangItem),
             ).into_iter())
-            .chain(self.get_blanket_impls(def_id, def_ctor, name, &generics).into_iter())
             .collect();
 
         debug!(
@@ -339,14 +164,14 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                 _ => unreachable!(),
             };
             let real_name = name.map(|name| Ident::from_str(&name));
-            let ty = self.get_real_ty(def_id, def_ctor, &real_name, &generics);
+            let ty = self.cx.get_real_ty(def_id, def_ctor, &real_name, &generics);
 
             return Some(Item {
                 source: Span::empty(),
                 name: None,
                 attrs: Default::default(),
                 visibility: None,
-                def_id: self.next_def_id(def_id.krate),
+                def_id: self.cx.next_def_id(def_id.krate),
                 stability: None,
                 deprecation: None,
                 inner: ImplItem(Impl {
@@ -363,56 +188,6 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
             });
         }
         None
-    }
-
-    fn generics_to_path_params(&self, generics: ty::Generics) -> hir::GenericArgs {
-        let mut args = vec![];
-
-        for param in generics.params.iter() {
-            match param.kind {
-                ty::GenericParamDefKind::Lifetime => {
-                    let name = if param.name == "" {
-                        hir::ParamName::Plain(keywords::StaticLifetime.ident())
-                    } else {
-                        hir::ParamName::Plain(ast::Ident::from_interned_str(param.name))
-                    };
-
-                    args.push(hir::GenericArg::Lifetime(hir::Lifetime {
-                        id: ast::DUMMY_NODE_ID,
-                        span: DUMMY_SP,
-                        name: hir::LifetimeName::Param(name),
-                    }));
-                }
-                ty::GenericParamDefKind::Type {..} => {
-                    args.push(hir::GenericArg::Type(self.ty_param_to_ty(param.clone())));
-                }
-            }
-        }
-
-        hir::GenericArgs {
-            args: HirVec::from_vec(args),
-            bindings: HirVec::new(),
-            parenthesized: false,
-        }
-    }
-
-    fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
-        debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
-        hir::Ty {
-            id: ast::DUMMY_NODE_ID,
-            node: hir::TyKind::Path(hir::QPath::Resolved(
-                None,
-                P(hir::Path {
-                    span: DUMMY_SP,
-                    def: Def::TyParam(param.def_id),
-                    segments: HirVec::from_vec(vec![
-                        hir::PathSegment::from_ident(Ident::from_interned_str(param.name))
-                    ]),
-                }),
-            )),
-            span: DUMMY_SP,
-            hir_id: hir::DUMMY_HIR_ID,
-        }
     }
 
     fn find_auto_trait_generics(
@@ -531,7 +306,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                     // Desired order is 'larger, smaller', so flip then
                     if self.region_name(r1) != self.region_name(r2) {
                         finished
-                            .entry(self.region_name(r2).unwrap())
+                            .entry(self.region_name(r2).expect("no region_name found"))
                             .or_insert_with(|| Vec::new())
                             .push(r1);
                     }
@@ -566,7 +341,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                         (&RegionTarget::Region(r1), &RegionTarget::Region(r2)) => {
                             if self.region_name(r1) != self.region_name(r2) {
                                 finished
-                                    .entry(self.region_name(r2).unwrap())
+                                    .entry(self.region_name(r2).expect("no region name found"))
                                     .or_insert_with(|| Vec::new())
                                     .push(r1) // Larger, smaller
                             }
@@ -663,7 +438,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
             .flat_map(|(ty, mut bounds)| {
                 if let Some(data) = ty_to_fn.get(&ty) {
                     let (poly_trait, output) =
-                        (data.0.as_ref().unwrap().clone(), data.1.as_ref().cloned());
+                        (data.0.as_ref().expect("as_ref failed").clone(), data.1.as_ref().cloned());
                     let new_ty = match &poly_trait.trait_ {
                         &Type::ResolvedPath {
                             ref path,
@@ -672,7 +447,8 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                             ref is_generic,
                         } => {
                             let mut new_path = path.clone();
-                            let last_segment = new_path.segments.pop().unwrap();
+                            let last_segment = new_path.segments.pop()
+                                                                .expect("segments were empty");
 
                             let (old_input, old_output) = match last_segment.args {
                                 GenericArgs::AngleBracketed { types, .. } => (types, None),
@@ -830,7 +606,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                     let mut for_generics = self.extract_for_generics(tcx, orig_p.clone());
 
                     assert!(bounds.len() == 1);
-                    let mut b = bounds.pop().unwrap();
+                    let mut b = bounds.pop().expect("bounds were empty");
 
                     if b.is_sized_bound(self.cx) {
                         has_sized.insert(ty.clone());
@@ -860,7 +636,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                             _ => false,
                         };
 
-                        let poly_trait = b.get_poly_trait().unwrap();
+                        let poly_trait = b.get_poly_trait().expect("Cannot get poly trait");
 
                         if is_fn {
                             ty_to_fn
@@ -913,7 +689,10 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                                     // FIXME: Remove this scope when NLL lands
                                     {
                                         let args =
-                                            &mut new_trait_path.segments.last_mut().unwrap().args;
+                                            &mut new_trait_path.segments
+                                                .last_mut()
+                                                .expect("segments were empty")
+                                                .args;
 
                                         match args {
                                             // Convert somethiung like '<T as Iterator::Item> = u8'
@@ -1076,61 +855,6 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
             }
             _ => false,
         }
-    }
-
-    // This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    // refactoring either librustdoc or librustc. In particular, allowing new DefIds to be
-    // registered after the AST is constructed would require storing the defid mapping in a
-    // RefCell, decreasing the performance for normal compilation for very little gain.
-    //
-    // Instead, we construct 'fake' def ids, which start immediately after the last DefId in
-    // DefIndexAddressSpace::Low. In the Debug impl for clean::Item, we explicitly check for fake
-    // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
-    fn next_def_id(&self, crate_num: CrateNum) -> DefId {
-        let start_def_id = {
-            let next_id = if crate_num == LOCAL_CRATE {
-                self.cx
-                    .tcx
-                    .hir
-                    .definitions()
-                    .def_path_table()
-                    .next_id(DefIndexAddressSpace::Low)
-            } else {
-                self.cx
-                    .cstore
-                    .def_path_table(crate_num)
-                    .next_id(DefIndexAddressSpace::Low)
-            };
-
-            DefId {
-                krate: crate_num,
-                index: next_id,
-            }
-        };
-
-        let mut fake_ids = self.cx.fake_def_ids.borrow_mut();
-
-        let def_id = fake_ids.entry(crate_num).or_insert(start_def_id).clone();
-        fake_ids.insert(
-            crate_num,
-            DefId {
-                krate: crate_num,
-                index: DefIndex::from_array_index(
-                    def_id.index.as_array_index() + 1,
-                    def_id.index.address_space(),
-                ),
-            },
-        );
-
-        MAX_DEF_ID.with(|m| {
-            m.borrow_mut()
-                .entry(def_id.krate.clone())
-                .or_insert(start_def_id);
-        });
-
-        self.cx.all_fake_def_ids.borrow_mut().insert(def_id);
-
-        def_id.clone()
     }
 }
 

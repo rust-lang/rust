@@ -8,19 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "foo"]
-
-use std::fmt;
-
-// @!has foo/struct.Bar.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for T'
-pub struct Bar;
-
-// @has foo/struct.Foo.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for T'
-pub struct Foo;
-// @has foo/struct.Foo.html '//div[@class="sidebar-links"]/a[@href="#impl-ToString"]' 'ToString'
-
-impl fmt::Display for Foo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Foo")
-    }
-}
+#[doc(primitive = "i32")]
+/// Some useless docs, wouhou!
+mod i32 {}
