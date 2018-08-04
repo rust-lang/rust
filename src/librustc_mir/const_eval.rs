@@ -196,6 +196,8 @@ impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
     }
 }
 
+impl_stable_hash_for!(struct CompileTimeEvaluator {});
+
 #[derive(Clone, Debug)]
 enum ConstEvalError {
     NeedsRfc(String),

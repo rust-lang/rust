@@ -15,6 +15,7 @@ use std::mem;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
+use rustc::ich::{StableHashingContext, StableHashingContextProvider};
 use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
@@ -22,8 +23,9 @@ use rustc::ty::layout::{
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
-use rustc_data_structures::fx::{FxHashSet, FxHasher};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc::mir::interpret::{
     GlobalId, Scalar, FrameInfo,
     EvalResult, EvalErrorKind,
@@ -134,12 +136,12 @@ impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl<'a, 'mir, 'tcx: 'mir> HashStable<StableHashingContext<'a>> for Frame<'mir, 'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher<W>) {
         let Frame {
-            mir: _,
+            mir,
             instance,
-            span: _,
+            span,
             return_to_block,
             return_place,
             locals,
@@ -147,12 +149,8 @@ impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
             stmt,
         } = self;
 
-        instance.hash(state);
-        return_to_block.hash(state);
-        return_place.hash(state);
-        locals.hash(state);
-        block.hash(state);
-        stmt.hash(state);
+        (mir, instance, span, return_to_block).hash_stable(hcx, hasher);
+        (return_place, locals, block, stmt).hash_stable(hcx, hasher);
     }
 }
 
@@ -166,6 +164,15 @@ pub enum StackPopCleanup {
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
     None { cleanup: bool },
+}
+
+impl<'a> HashStable<StableHashingContext<'a>> for StackPopCleanup {
+    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'b>, hasher: &mut StableHasher<W>) {
+        match self {
+            StackPopCleanup::Goto(ref block) => block.hash_stable(hcx, hasher),
+            StackPopCleanup::None { cleanup } => cleanup.hash_stable(hcx, hasher),
+        }
+    }
 }
 
 // State of a local variable
@@ -195,9 +202,14 @@ impl<'tcx> LocalValue {
     }
 }
 
+impl_stable_hash_for!(enum self::LocalValue {
+    Dead,
+    Live(x),
+});
+
 /// The virtual machine state during const-evaluation at a given point in time.
-#[derive(Eq, PartialEq, Hash)]
-pub(crate) struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+#[derive(Eq, PartialEq)]
+struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     machine: M,
     memory: Memory<'a, 'mir, 'tcx, M>,
     stack: Vec<Frame<'mir, 'tcx>>,
@@ -212,6 +224,27 @@ impl<'a, 'mir, 'tcx, M> EvalSnapshot<'a, 'mir, 'tcx, M>
             memory: memory.clone(),
             stack: stack.into(),
         }
+    }
+}
+
+impl<'a, 'mir, 'tcx, M> Hash for EvalSnapshot<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Implement in terms of hash stable, so that k1 == k2 -> hash(k1) == hash(k2)
+        let mut hcx = self.memory.tcx.get_stable_hashing_context();
+        let mut hasher = StableHasher::<u64>::new();
+        self.hash_stable(&mut hcx, &mut hasher);
+        hasher.finish().hash(state)
+    }
+}
+
+impl<'a, 'b, 'mir, 'tcx, M> HashStable<StableHashingContext<'b>> for EvalSnapshot<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+{
+    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'b>, hasher: &mut StableHasher<W>) {
+        let EvalSnapshot{ machine, memory, stack } = self;
+        (machine, &memory.data, stack).hash_stable(hcx, hasher);
     }
 }
 
@@ -258,9 +291,10 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
         stack: &[Frame<'mir, 'tcx>],
     ) -> EvalResult<'tcx, ()> {
 
-        let mut fx = FxHasher::default();
-        (machine, memory, stack).hash(&mut fx);
-        let hash = fx.finish();
+        let mut hcx = memory.tcx.get_stable_hashing_context();
+        let mut hasher = StableHasher::<u64>::new();
+        (machine, stack).hash_stable(&mut hcx, &mut hasher);
+        let hash = hasher.finish();
 
         if self.hashes.insert(hash) {
             // No collision

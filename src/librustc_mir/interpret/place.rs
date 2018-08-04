@@ -14,10 +14,12 @@
 
 use std::convert::TryFrom;
 
+use rustc::ich::StableHashingContext;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
 use rustc::mir::interpret::{
     GlobalId, Scalar, EvalResult, Pointer, ScalarMaybeUndef, PointerArithmetic
@@ -37,6 +39,12 @@ pub struct MemPlace {
     pub extra: Option<Scalar>,
 }
 
+impl_stable_hash_for!(struct ::interpret::MemPlace {
+    ptr,
+    align,
+    extra,
+});
+
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Place {
     /// A place referring to a value allocated in the `Memory` system.
@@ -50,6 +58,18 @@ pub enum Place {
     },
 }
 
+impl<'a> HashStable<StableHashingContext<'a>> for Place {
+    fn hash_stable<W: StableHasherResult>(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher<W>) {
+        match self {
+            Place::Ptr(mem_place) => mem_place.hash_stable(hcx, hasher),
+
+            Place::Local { frame, local } => {
+                frame.hash_stable(hcx, hasher);
+                local.hash_stable(hcx, hasher);
+            },
+        }
+    }
+}
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceTy<'tcx> {
     place: Place,

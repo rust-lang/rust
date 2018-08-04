@@ -281,6 +281,23 @@ impl<T1, T2, T3, CTX> HashStable<CTX> for (T1, T2, T3)
     }
 }
 
+impl<T1, T2, T3, T4, CTX> HashStable<CTX> for (T1, T2, T3, T4)
+     where T1: HashStable<CTX>,
+           T2: HashStable<CTX>,
+           T3: HashStable<CTX>,
+           T4: HashStable<CTX>,
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let (ref _0, ref _1, ref _2, ref _3) = *self;
+        _0.hash_stable(ctx, hasher);
+        _1.hash_stable(ctx, hasher);
+        _2.hash_stable(ctx, hasher);
+        _3.hash_stable(ctx, hasher);
+    }
+}
+
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
     default fn hash_stable<W: StableHasherResult>(&self,
                                                   ctx: &mut CTX,

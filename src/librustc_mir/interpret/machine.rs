@@ -15,17 +15,19 @@
 use std::hash::Hash;
 
 use rustc::hir::def_id::DefId;
+use rustc::ich::StableHashingContext;
 use rustc::mir::interpret::{Allocation, EvalResult, Scalar};
 use rustc::mir;
 use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
+use rustc_data_structures::stable_hasher::HashStable;
 
 use super::{EvalContext, PlaceTy, OpTy};
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
-pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash {
+pub trait Machine<'mir, 'tcx>: Clone + Eq + Hash + for<'a> HashStable<StableHashingContext<'a>> {
     /// Additional data that can be accessed via the Memory
-    type MemoryData: Clone + Eq + Hash;
+    type MemoryData: Clone + Eq + Hash + for<'a> HashStable<StableHashingContext<'a>>;
 
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKinds: ::std::fmt::Debug + Copy + Clone + Eq + Hash;

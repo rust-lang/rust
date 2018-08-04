@@ -81,6 +81,11 @@ impl<'tcx> Value {
     }
 }
 
+impl_stable_hash_for!(enum ::interpret::Value {
+    Scalar(x),
+    ScalarPair(x, y),
+});
+
 // ScalarPair needs a type to interpret, so we often have a value and a type together
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
@@ -125,6 +130,11 @@ impl Operand {
         }
     }
 }
+
+impl_stable_hash_for!(enum ::interpret::Operand {
+    Immediate(x),
+    Indirect(x),
+});
 
 #[derive(Copy, Clone, Debug)]
 pub struct OpTy<'tcx> {
