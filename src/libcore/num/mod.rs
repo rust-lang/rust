@@ -1903,7 +1903,7 @@ $EndFeature, "
         /// let bytes = 0x12345678i32.to_be_bytes();
         /// assert_eq!(bytes, [0x12, 0x34, 0x56, 0x78]);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[unstable(feature = "int_to_from_bytes", issue = "52963")]
         #[inline]
         pub fn to_be_bytes(self) -> [u8; mem::size_of::<Self>()] {
             self.to_be().to_ne_bytes()
@@ -1920,7 +1920,7 @@ $EndFeature, "
         /// let bytes = 0x12345678i32.to_le_bytes();
         /// assert_eq!(bytes, [0x78, 0x56, 0x34, 0x12]);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[unstable(feature = "int_to_from_bytes", issue = "52963")]
         #[inline]
         pub fn to_le_bytes(self) -> [u8; mem::size_of::<Self>()] {
             self.to_le().to_ne_bytes()
@@ -1944,7 +1944,7 @@ $EndFeature, "
         /// let bytes = i32::min_value().to_be().to_ne_bytes();
         /// assert_eq!(bytes, [0x80, 0, 0, 0]);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[unstable(feature = "int_to_from_bytes", issue = "52963")]
         #[inline]
         pub fn to_ne_bytes(self) -> [u8; mem::size_of::<Self>()] {
             unsafe { mem::transmute(self) }
@@ -1961,7 +1961,7 @@ $EndFeature, "
         /// let int = i32::from_be_bytes([0x12, 0x34, 0x56, 0x78]);
         /// assert_eq!(int, 0x12_34_56_78);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[unstable(feature = "int_to_from_bytes", issue = "52963")]
         #[inline]
         pub fn from_be_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             Self::from_be(Self::from_ne_bytes(bytes))
@@ -1978,7 +1978,7 @@ $EndFeature, "
         /// let int = i32::from_le_bytes([0x12, 0x34, 0x56, 0x78]);
         /// assert_eq!(int, 0x78_56_34_12);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[unstable(feature = "int_to_from_bytes", issue = "52963")]
         #[inline]
         pub fn from_le_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             Self::from_le(Self::from_ne_bytes(bytes))
@@ -2002,7 +2002,7 @@ $EndFeature, "
         /// let int = i32::from_be(i32::from_ne_bytes([0x80, 0, 0, 0]));
         /// assert_eq!(int, i32::min_value());
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[unstable(feature = "int_to_from_bytes", issue = "52963")]
         #[inline]
         pub fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             unsafe { mem::transmute(bytes) }
@@ -3589,7 +3589,7 @@ $EndFeature, "
         /// let bytes = 0x1234_5678_u32.to_be().to_bytes();
         /// assert_eq!(bytes, [0x12, 0x34, 0x56, 0x78]);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[unstable(feature = "int_to_from_bytes", issue = "52963")]
         #[inline]
         pub fn to_bytes(self) -> [u8; mem::size_of::<Self>()] {
             unsafe { mem::transmute(self) }
@@ -3611,7 +3611,7 @@ $EndFeature, "
         /// let int = u32::from_be(u32::from_bytes([0x12, 0x34, 0x56, 0x78]));
         /// assert_eq!(int, 0x1234_5678_u32);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[unstable(feature = "int_to_from_bytes", issue = "52963")]
         #[inline]
         pub fn from_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             unsafe { mem::transmute(bytes) }
