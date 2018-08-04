@@ -2117,7 +2117,7 @@ impl str {
     /// This length is in bytes, not [`char`]s or graphemes. In other words,
     /// it may not be what a human considers the length of the string.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -2590,7 +2590,7 @@ impl str {
     /// Value, and may not match your idea of what a 'character' is. Iteration
     /// over grapheme clusters may be what you actually want.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -2643,7 +2643,7 @@ impl str {
     /// The iterator yields tuples. The position is first, the [`char`] is
     /// second.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -2946,7 +2946,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines if
     /// a character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     /// [`None`]: option/enum.Option.html#variant.None
     ///
     /// # Examples
@@ -2994,7 +2994,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines if
     /// a character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     /// [`None`]: option/enum.Option.html#variant.None
     ///
     /// # Examples
@@ -3050,7 +3050,7 @@ impl str {
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rsplit`] method can be used.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     /// [`rsplit`]: #method.rsplit
     ///
     /// # Examples
@@ -3157,7 +3157,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines the
     /// split.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Iterator behavior
     ///
@@ -3224,7 +3224,7 @@ impl str {
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rsplit_terminator`] method can be used.
@@ -3259,7 +3259,7 @@ impl str {
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// Equivalent to [`split`], except that the trailing substring is
     /// skipped if empty.
@@ -3306,7 +3306,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines the
     /// split.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Iterator behavior
     ///
@@ -3361,7 +3361,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that
     /// determines the split.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Iterator behavior
     ///
@@ -3407,7 +3407,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that
     /// determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Iterator behavior
     ///
@@ -3416,7 +3416,7 @@ impl str {
     /// elements. This is true for, eg, [`char`] but not for `&str`.
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rmatches`] method can be used.
@@ -3446,7 +3446,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines if
     /// a character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Iterator behavior
     ///
@@ -3488,7 +3488,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines
     /// if a character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Iterator behavior
     ///
@@ -3532,7 +3532,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines if a
     /// character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Iterator behavior
     ///
@@ -3665,7 +3665,7 @@ impl str {
     /// The pattern can be a [`char`] or a closure that determines if a
     /// character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -3711,7 +3711,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines if
     /// a character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Text directionality
     ///
@@ -3750,7 +3750,7 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that
     /// determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Text directionality
     ///
