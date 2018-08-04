@@ -227,14 +227,17 @@ macro_rules! eprintln {
 macro_rules! await {
     ($e:expr) => { {
         let mut pinned = $e;
-        let mut pinned = unsafe { $crate::mem::PinMut::new_unchecked(&mut pinned) };
         loop {
-            match $crate::future::poll_in_task_cx(&mut pinned) {
-                // FIXME(cramertj) prior to stabilizing await, we have to ensure that this
-                // can't be used to create a generator on stable via `|| await!()`.
-                $crate::task::Poll::Pending => yield,
-                $crate::task::Poll::Ready(x) => break x,
+            if let $crate::task::Poll::Ready(x) =
+                $crate::future::poll_in_task_cx(unsafe {
+                    $crate::mem::PinMut::new_unchecked(&mut pinned)
+                })
+            {
+                break x;
             }
+            // FIXME(cramertj) prior to stabilizing await, we have to ensure that this
+            // can't be used to create a generator on stable via `|| await!()`.
+            yield
         }
     } }
 }
