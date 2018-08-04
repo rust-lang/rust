@@ -11,7 +11,7 @@
 // aux-build:three-equals.rs
 // ignore-stage1
 
-#![feature(use_extern_macros, proc_macro_non_items)]
+#![feature(proc_macro_non_items)]
 
 extern crate three_equals;
 

@@ -11,7 +11,7 @@
 // aux-build:attr_proc_macro.rs
 // ignore-tidy-linelength
 
-#![feature(use_extern_macros, custom_attribute)]
+#![feature(custom_attribute)]
 //~^ ERROR Cannot use `#![feature(use_extern_macros)]` and `#![feature(custom_attribute)] at the same time
 
 extern crate attr_proc_macro;

@@ -83,10 +83,14 @@ macro_rules! declare_features {
             }
 
             pub fn use_extern_macros(&self) -> bool {
-                // The `decl_macro`, `tool_attributes` and `custom_attributes`
-                // features imply `use_extern_macros`.
+                // A number of "advanced" macro features enable
+                // macro modularization (`use_extern_macros`) implicitly.
                 self.use_extern_macros || self.decl_macro ||
-                self.tool_attributes || self.custom_attribute
+                self.tool_attributes || self.custom_attribute ||
+                self.macros_in_extern || self.proc_macro_path_invoc ||
+                self.proc_macro_mod || self.proc_macro_expr ||
+                self.proc_macro_non_items || self.proc_macro_gen ||
+                self.stmt_expr_attributes
             }
         }
     };
@@ -700,7 +704,7 @@ pub fn is_builtin_attr_name(name: ast::Name) -> bool {
 }
 
 pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
-    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.check_name(builtin_name)) ||
+    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.path == builtin_name) ||
     attr.name().as_str().starts_with("rustc_")
 }
 
