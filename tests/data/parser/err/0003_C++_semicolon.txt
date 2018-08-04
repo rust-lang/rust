@@ -1,5 +1,5 @@
 FILE@[0; 40)
-  STRUCT_ITEM@[0; 39)
+  STRUCT_ITEM@[0; 40)
     STRUCT_KW@[0; 6)
     NAME@[6; 9)
       WHITESPACE@[6; 7)
@@ -34,5 +34,5 @@ FILE@[0; 40)
     R_CURLY@[38; 39)
     err: `expected item, found `;`
 consider removing this semicolon`
-  ERROR@[39; 40)
-    SEMI@[39; 40)
+    ERROR@[39; 40)
+      SEMI@[39; 40)

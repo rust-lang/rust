@@ -11,11 +11,10 @@ FILE@[0; 12)
         COLONCOLON@[7; 9)
         err: `expected identifier`
         err: `expected SEMI`
-        err: `expected item`
+        err: `expected an item`
         PATH_SEGMENT@[9; 9)
   ERROR@[9; 11)
     INT_NUMBER@[9; 11) "92"
-    err: `expected item, found `;`
-consider removing this semicolon`
+    err: `expected an item`
   ERROR@[11; 12)
     SEMI@[11; 12)

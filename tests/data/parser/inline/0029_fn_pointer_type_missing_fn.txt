@@ -11,14 +11,13 @@ FILE@[0; 20)
     err: `expected `fn``
     err: `expected SEMI`
     WHITESPACE@[15; 16)
-    err: `expected item`
+    err: `expected an item`
   ERROR@[16; 17)
     L_PAREN@[16; 17)
-    err: `expected item`
+    err: `expected an item`
   ERROR@[17; 18)
     R_PAREN@[17; 18)
-    err: `expected item, found `;`
-consider removing this semicolon`
+    err: `expected an item`
   ERROR@[18; 20)
     SEMI@[18; 19)
     WHITESPACE@[19; 20)

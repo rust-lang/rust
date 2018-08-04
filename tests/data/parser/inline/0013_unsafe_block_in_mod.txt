@@ -11,10 +11,12 @@ FILE@[0; 33)
       L_CURLY@[8; 9)
       R_CURLY@[9; 10)
       WHITESPACE@[10; 11)
-  UNSAFE_KW@[11; 17)
-  err: `expected `trait`, `impl` or `fn``
-  ERROR@[17; 22)
+      err: `expected an item`
+  ERROR@[11; 18)
+    UNSAFE_KW@[11; 17)
     WHITESPACE@[17; 18)
+    err: `expected an item`
+  ERROR@[18; 22)
     L_CURLY@[18; 19)
     WHITESPACE@[19; 20)
     R_CURLY@[20; 21)

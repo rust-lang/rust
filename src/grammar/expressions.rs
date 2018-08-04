@@ -229,18 +229,27 @@ fn block_expr(p: &mut Parser) -> CompletedMarker {
     while !p.at(EOF) && !p.at(R_CURLY) {
         match p.current() {
             LET_KW => let_stmt(p),
-            c => {
+            _ => {
                 // test block_items
                 // fn a() { fn b() {} }
-                if items::ITEM_FIRST.contains(c) {
-                    items::item(p)
-                } else {
-                    let expr_stmt = p.start();
-                    expressions::expr(p);
-                    if p.eat(SEMI) {
-                        expr_stmt.complete(p, EXPR_STMT);
-                    } else {
-                        expr_stmt.abandon(p);
+                let m = p.start();
+                match items::maybe_item(p) {
+                    items::MaybeItem::Item(kind) => {
+                        m.complete(p, kind);
+                    }
+                    items::MaybeItem::Modifiers => {
+                        m.abandon(p);
+                        p.error("expected an item");
+                    }
+                    // test pub_expr
+                    // fn foo() { pub 92; } //FIXME
+                    items::MaybeItem::None => {
+                        expressions::expr(p);
+                        if p.eat(SEMI) {
+                            m.complete(p, EXPR_STMT);
+                        } else {
+                            m.abandon(p);
+                        }
                     }
                 }
             }

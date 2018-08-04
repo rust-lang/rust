@@ -1,9 +1,9 @@
 FILE@[0; 21)
   ERROR@[0; 3)
     IF_KW@[0; 2)
-    err: `expected item`
+    err: `expected an item`
     WHITESPACE@[2; 3)
-    err: `expected item`
+    err: `expected an item`
   ERROR@[3; 10)
     MATCH_KW@[3; 8)
     WHITESPACE@[8; 10)

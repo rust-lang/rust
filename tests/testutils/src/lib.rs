@@ -90,6 +90,7 @@ fn print_difference(expected: &str, actual: &str, path: &Path) {
         return;
     }
     let changeset = Changeset::new(actual, expected, "\n");
+    println!("Expected:\n{}\n\nActual:\n{}\n", expected, actual);
     print!("{}", changeset);
     println!("file: {}\n", path.display());
     panic!("Comparison failed")

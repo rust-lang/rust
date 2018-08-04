@@ -8,173 +8,136 @@ mod use_item;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
     while !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
-        item(p);
+        item(p, stop_on_r_curly)
+    }
+}
+
+pub(super) fn item(p: &mut Parser, stop_on_r_curly: bool) {
+    let m = p.start();
+    match maybe_item(p) {
+        MaybeItem::Item(kind) => {
+            m.complete(p, kind);
+        }
+        MaybeItem::None => {
+            m.abandon(p);
+            if p.at(L_CURLY) {
+                error_block(p, "expected an item");
+            } else if !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
+                p.err_and_bump("expected an item");
+            } else {
+                p.error("expected an item");
+            }
+        }
+        MaybeItem::Modifiers => {
+            p.error("expected fn, trait or impl");
+            m.complete(p, ERROR);
+        }
     }
 }
 
 pub(super) const ITEM_FIRST: TokenSet =
     token_set![EXTERN_KW, MOD_KW, USE_KW, STRUCT_KW, ENUM_KW, FN_KW, PUB_KW, POUND];
 
-pub(super) fn item(p: &mut Parser) {
-    let item = p.start();
+pub(super) enum MaybeItem {
+    None,
+    Item(SyntaxKind),
+    Modifiers,
+}
+
+pub(super) fn maybe_item(p: &mut Parser) -> MaybeItem {
     attributes::outer_attributes(p);
     visibility(p);
-    let la = p.nth(1);
-    let item_kind = match p.current() {
-        USE_KW => {
-            use_item::use_item(p);
-            USE_ITEM
+    if let Some(kind) = items_without_modifiers(p) {
+        return MaybeItem::Item(kind);
+    }
+
+    let mut has_mods = false;
+    // modifiers
+    has_mods |= p.eat(CONST_KW);
+
+    // test unsafe_block_in_mod
+    // fn foo(){} unsafe { } fn bar(){}
+    if p.at(UNSAFE_KW) && p.nth(1) != L_CURLY {
+        p.eat(UNSAFE_KW);
+        has_mods = true;
+    }
+    if p.at(EXTERN_KW) {
+        has_mods = true;
+        abi(p);
+    }
+    if p.at(IDENT) && p.at_contextual_kw("auto") && p.nth(1) == TRAIT_KW {
+        p.bump_remap(AUTO_KW);
+        has_mods = true;
+    }
+    if p.at(IDENT) && p.at_contextual_kw("default") && p.nth(1) == IMPL_KW {
+        p.bump_remap(DEFAULT_KW);
+        has_mods = true;
+    }
+
+    // items
+    let kind = match p.current() {
+        // test extern_fn
+        // extern fn foo() {}
+
+        // test const_fn
+        // const fn foo() {}
+
+        // test const_unsafe_fn
+        // const unsafe fn foo() {}
+
+        // test unsafe_extern_fn
+        // unsafe extern "C" fn foo() {}
+
+        // test unsafe_fn
+        // unsafe fn foo() {}
+        FN_KW => {
+            fn_item(p);
+            FN_ITEM
         }
+
+        // test unsafe_trait
+        // unsafe trait T {}
+
+        // test auto_trait
+        // auto trait T {}
+
+        // test unsafe_auto_trait
+        // unsafe auto trait T {}
+        TRAIT_KW => {
+            traits::trait_item(p);
+            TRAIT_ITEM
+        }
+
+        // test unsafe_impl
+        // unsafe impl Foo {}
+
+        // test default_impl
+        // default impl Foo {}
+
+        // test unsafe_default_impl
+        // unsafe default impl Foo {}
+        IMPL_KW => {
+            traits::impl_item(p);
+            IMPL_ITEM
+        }
+        _ => return if has_mods {
+            MaybeItem::Modifiers
+        } else {
+            MaybeItem::None
+        }
+    };
+
+    MaybeItem::Item(kind)
+}
+
+fn items_without_modifiers(p: &mut Parser) -> Option<SyntaxKind> {
+    let la = p.nth(1);
+    let kind = match p.current() {
         // test extern_crate
         // extern crate foo;
         EXTERN_KW if la == CRATE_KW => {
             extern_crate_item(p);
             EXTERN_CRATE_ITEM
-        }
-        EXTERN_KW => {
-            abi(p);
-            match p.current() {
-                // test extern_fn
-                // extern fn foo() {}
-                FN_KW => {
-                    fn_item(p);
-                    FN_ITEM
-                }
-                // test extern_block
-                // extern {}
-                L_CURLY => {
-                    extern_block(p);
-                    EXTERN_BLOCK_EXPR
-                }
-                // test extern_struct
-                // extern struct Foo;
-                _ => {
-                    item.abandon(p);
-                    p.error("expected `fn` or `{`");
-                    return;
-                }
-            }
-        }
-        STATIC_KW => {
-            consts::static_item(p);
-            STATIC_ITEM
-        }
-        CONST_KW => match p.nth(1) {
-            // test const_fn
-            // const fn foo() {}
-            FN_KW => {
-                p.bump();
-                fn_item(p);
-                FN_ITEM
-            }
-            // test const_unsafe_fn
-            // const unsafe fn foo() {}
-            UNSAFE_KW if p.nth(2) == FN_KW => {
-                p.bump();
-                p.bump();
-                fn_item(p);
-                FN_ITEM
-            }
-            _ => {
-                consts::const_item(p);
-                CONST_ITEM
-            }
-        },
-        UNSAFE_KW => {
-            p.bump();
-            let la = p.nth(1);
-            match p.current() {
-                // test unsafe_trait
-                // unsafe trait T {}
-                TRAIT_KW => {
-                    traits::trait_item(p);
-                    TRAIT_ITEM
-                }
-
-                // test unsafe_auto_trait
-                // unsafe auto trait T {}
-                IDENT if p.at_contextual_kw("auto") && la == TRAIT_KW => {
-                    p.bump_remap(AUTO_KW);
-                    traits::trait_item(p);
-                    TRAIT_ITEM
-                }
-
-                // test unsafe_impl
-                // unsafe impl Foo {}
-                IMPL_KW => {
-                    traits::impl_item(p);
-                    IMPL_ITEM
-                }
-
-                // test unsafe_default_impl
-                // unsafe default impl Foo {}
-                IDENT if p.at_contextual_kw("default") && la == IMPL_KW => {
-                    p.bump_remap(DEFAULT_KW);
-                    traits::impl_item(p);
-                    IMPL_ITEM
-                }
-
-                // test unsafe_extern_fn
-                // unsafe extern "C" fn foo() {}
-                EXTERN_KW => {
-                    abi(p);
-                    if !p.at(FN_KW) {
-                        item.abandon(p);
-                        p.error("expected function");
-                        return;
-                    }
-                    fn_item(p);
-                    FN_ITEM
-                }
-
-                // test unsafe_fn
-                // unsafe fn foo() {}
-                FN_KW => {
-                    fn_item(p);
-                    FN_ITEM
-                }
-
-                t => {
-                    item.abandon(p);
-                    let message = "expected `trait`, `impl` or `fn`";
-
-                    // test unsafe_block_in_mod
-                    // fn foo(){} unsafe { } fn bar(){}
-                    if t == L_CURLY {
-                        error_block(p, message);
-                    } else {
-                        p.error(message);
-                    }
-                    return;
-                }
-            }
-        }
-        TRAIT_KW => {
-            traits::trait_item(p);
-            TRAIT_ITEM
-        }
-        // test auto_trait
-        // auto trait T {}
-        IDENT if p.at_contextual_kw("auto") && la == TRAIT_KW => {
-            p.bump_remap(AUTO_KW);
-            traits::trait_item(p);
-            TRAIT_ITEM
-        }
-        IMPL_KW => {
-            traits::impl_item(p);
-            IMPL_ITEM
-        }
-        // test default_impl
-        // default impl Foo {}
-        IDENT if p.at_contextual_kw("default") && la == IMPL_KW => {
-            p.bump_remap(DEFAULT_KW);
-            traits::impl_item(p);
-            IMPL_ITEM
-        }
-
-        FN_KW => {
-            fn_item(p);
-            FN_ITEM
         }
         TYPE_KW => {
             type_item(p);
@@ -186,31 +149,40 @@ pub(super) fn item(p: &mut Parser) {
         }
         STRUCT_KW => {
             structs::struct_item(p);
+            if p.at(SEMI) {
+                p.err_and_bump(
+                    "expected item, found `;`\n\
+                     consider removing this semicolon"
+                );
+            }
             STRUCT_ITEM
         }
         ENUM_KW => {
             structs::enum_item(p);
             ENUM_ITEM
         }
-        L_CURLY => {
-            item.abandon(p);
-            error_block(p, "expected item");
-            return;
+        USE_KW => {
+            use_item::use_item(p);
+            USE_ITEM
         }
-        err_token => {
-            item.abandon(p);
-            let message = if err_token == SEMI {
-                //TODO: if the item is incomplete, this message is misleading
-                "expected item, found `;`\n\
-                 consider removing this semicolon"
-            } else {
-                "expected item"
-            };
-            p.err_and_bump(message);
-            return;
+        CONST_KW if (la == IDENT || la == MUT_KW) => {
+            consts::const_item(p);
+            CONST_ITEM
         }
+        STATIC_KW => {
+            consts::static_item(p);
+            STATIC_ITEM
+        }
+        // test extern_block
+        // extern {}
+        EXTERN_KW if la == L_CURLY || ((la == STRING || la == RAW_STRING) && p.nth(2) == L_CURLY) => {
+            abi(p);
+            extern_block(p);
+            EXTERN_BLOCK_EXPR
+        }
+        _ => return None,
     };
-    item.complete(p, item_kind);
+    Some(kind)
 }
 
 fn extern_crate_item(p: &mut Parser) {

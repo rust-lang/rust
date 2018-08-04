@@ -1,8 +1,9 @@
 FILE@[0; 19)
-  ABI@[0; 7)
-    EXTERN_KW@[0; 6)
-    WHITESPACE@[6; 7)
-    err: `expected `fn` or `{``
+  ERROR@[0; 7)
+    ABI@[0; 7)
+      EXTERN_KW@[0; 6)
+      WHITESPACE@[6; 7)
+      err: `expected fn, trait or impl`
   STRUCT_ITEM@[7; 19)
     STRUCT_KW@[7; 13)
     NAME@[13; 17)
