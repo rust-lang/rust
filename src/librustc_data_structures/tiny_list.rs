@@ -50,44 +50,22 @@ impl<T: PartialEq> TinyList<T> {
 
     #[inline]
     pub fn insert(&mut self, data: T) {
-        let current_head = mem::replace(&mut self.head, None);
-
-        if let Some(current_head) = current_head {
-            let current_head = Box::new(current_head);
-            self.head = Some(Element {
-                data,
-                next: Some(current_head)
-            });
-        } else {
-            self.head = Some(Element {
-                data,
-                next: None,
-            })
-        }
+        self.head = Some(Element {
+            data,
+            next: mem::replace(&mut self.head, None).map(Box::new),
+        });
     }
 
     #[inline]
     pub fn remove(&mut self, data: &T) -> bool {
-        let remove_head = if let Some(ref mut head) = self.head {
-            if head.data == *data {
-                Some(mem::replace(&mut head.next, None))
-            } else {
-                None
+        self.head = match self.head {
+            Some(ref mut head) if head.data == *data => {
+                mem::replace(&mut head.next, None).map(|x| *x)
             }
-        } else {
-            return false
+            Some(ref mut head) => return head.remove_next(data),
+            None => return false,
         };
-
-        if let Some(remove_head) = remove_head {
-            if let Some(next) = remove_head {
-                self.head = Some(*next);
-            } else {
-                self.head = None;
-            }
-            return true
-        }
-
-        self.head.as_mut().unwrap().remove_next(data)
+        true
     }
 
     #[inline]
@@ -156,6 +134,8 @@ impl<T: PartialEq> Element<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    extern crate test;
+    use self::test::Bencher;
 
     #[test]
     fn test_contains_and_insert() {
@@ -247,5 +227,42 @@ mod test {
         assert!(!list.contains(&1));
 
         assert_eq!(list.len(), 0);
+    }
+
+    #[bench]
+    fn bench_insert_empty(b: &mut Bencher) {
+        b.iter(|| {
+            let mut list = TinyList::new();
+            list.insert(1);
+        })
+    }
+
+    #[bench]
+    fn bench_insert_one(b: &mut Bencher) {
+        b.iter(|| {
+            let mut list = TinyList::new_single(0);
+            list.insert(1);
+        })
+    }
+
+    #[bench]
+    fn bench_remove_empty(b: &mut Bencher) {
+        b.iter(|| {
+            TinyList::new().remove(&1)
+        });
+    }
+
+    #[bench]
+    fn bench_remove_unknown(b: &mut Bencher) {
+        b.iter(|| {
+            TinyList::new_single(0).remove(&1)
+        });
+    }
+
+    #[bench]
+    fn bench_remove_one(b: &mut Bencher) {
+        b.iter(|| {
+            TinyList::new_single(1).remove(&1)
+        });
     }
 }

@@ -203,8 +203,15 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             desc,
             OGN = o
         );
-        err.span_label(old_loan_span, "first closure is constructed here");
-        err.span_label(new_loan_span, "second closure is constructed here");
+        if old_loan_span == new_loan_span {
+            err.span_label(
+                old_loan_span,
+                "closures are constructed here in different iterations of loop"
+            );
+        } else {
+            err.span_label(old_loan_span, "first closure is constructed here");
+            err.span_label(new_loan_span, "second closure is constructed here");
+        }
         if let Some(old_load_end_span) = old_load_end_span {
             err.span_label(old_load_end_span, "borrow from first closure ends here");
         }

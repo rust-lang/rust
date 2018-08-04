@@ -1,8 +1,10 @@
 error[E0597]: `books` does not live long enough
-  --> $DIR/borrowck-escaping-closure-error-1.rs:23:11
+  --> $DIR/borrowck-escaping-closure-error-1.rs:23:14
    |
 LL |     spawn(|| books.push(4));
-   |           ^^^^^^^^^^^^^^^^ borrowed value does not live long enough
+   |           -- ^^^^^ borrowed value does not live long enough
+   |           |
+   |           value captured here
 LL |     //~^ ERROR E0373
 LL | }
    | - `books` dropped here while still borrowed

@@ -2,7 +2,9 @@ error[E0382]: use of moved value: `x`
   --> $DIR/issue-24357.rs:16:12
    |
 LL |    let f = move || { let y = x; };
-   |            ---------------------- value moved here
+   |            -------           - variable moved due to use in closure
+   |            |
+   |            value moved into closure here
 LL |    //~^ NOTE value moved (into closure) here
 LL |    let z = x;
    |            ^ value used here after move

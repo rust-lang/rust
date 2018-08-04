@@ -37,3 +37,4 @@ compiler_builtins = { path = "../compiler_builtins_shim" }
 # outside rustc. See https://github.com/rust-lang/libc/search?l=Rust&q=stdbuild&type=&utf8=%E2%9C%93.
 stdbuild = []
 default = ["stdbuild"]
+align = []
