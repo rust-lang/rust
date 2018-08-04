@@ -44,7 +44,7 @@
 
 use rustc::mir::visit::Visitor;
 use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::TyCtxt;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::unify as ut;
@@ -178,20 +178,29 @@ impl Visitor<'tcx> for GatherAssignedLocalsVisitor<'_, '_, 'tcx> {
         match rvalue {
             Rvalue::Use(op) => self.union_locals_if_needed(local, find_local_in_operand(op)),
             Rvalue::Ref(_, _, place) => {
-                // Special case: if you have `X = &*Y` where `Y` is a
-                // reference, then the outlives relationships should
-                // ensure that all regions in `Y` are constrained by
-                // regions in `X`.
-                if let Place::Projection(proj) = place {
+                // Special case: if you have `X = &*Y` (or `X = &**Y`
+                // etc), then the outlives relationships will ensure
+                // that all regions in `Y` are constrained by regions
+                // in `X` -- this is because the lifetimes of the
+                // references we deref through are required to outlive
+                // the borrow lifetime (which appears in `X`).
+                //
+                // (We don't actually need to check the type of `Y`:
+                // since `ProjectionElem::Deref` represents a built-in
+                // deref and not an overloaded deref, if the thing we
+                // deref through is not a reference, then it must be a
+                // `Box` or `*const`, in which case it contains no
+                // references.)
+                let mut place_ref = place;
+                while let Place::Projection(proj) = place_ref {
                     if let ProjectionElem::Deref = proj.elem {
-                        if let ty::TyRef(..) = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx).sty
-                        {
-                            self.union_locals_if_needed(local, find_local_in_place(&proj.base));
-                        }
+                        place_ref = &proj.base;
+                    } else {
+                        break;
                     }
                 }
 
-                self.union_locals_if_needed(local, find_local_in_place(place))
+                self.union_locals_if_needed(local, find_local_in_place(place_ref))
             }
 
             Rvalue::Cast(kind, op, _) => match kind {
