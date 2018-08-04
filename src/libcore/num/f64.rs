@@ -37,17 +37,17 @@ pub const DIGITS: u32 = 15;
 ///
 /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
+pub const EPSILON: f64 = 2.220_446_049_250_313_1e-16_f64;
 
 /// Smallest finite `f64` value.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MIN: f64 = -1.7976931348623157e+308_f64;
+pub const MIN: f64 = -1.797_693_134_862_315_7e+308_f64;
 /// Smallest positive normal `f64` value.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
+pub const MIN_POSITIVE: f64 = 2.225_073_858_507_201_4e-308_f64;
 /// Largest finite `f64` value.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const MAX: f64 = 1.7976931348623157e+308_f64;
+pub const MAX: f64 = 1.797_693_134_862_315_7e+308_f64;
 
 /// One greater than the minimum possible normal power of 2 exponent.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -80,75 +80,75 @@ pub mod consts {
 
     /// Archimedes' constant (π)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const PI: f64 = 3.14159265358979323846264338327950288_f64;
+    pub const PI: f64 = 3.141_592_653_589_793_238_462_643_383_279_502_88_f64;
 
     /// π/2
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_PI_2: f64 = 1.57079632679489661923132169163975144_f64;
+    pub const FRAC_PI_2: f64 = 1.570_796_326_794_896_619_231_321_691_639_751_44_f64;
 
     /// π/3
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_PI_3: f64 = 1.04719755119659774615421446109316763_f64;
+    pub const FRAC_PI_3: f64 = 1.047_197_551_196_597_746_154_214_461_093_167_63_f64;
 
     /// π/4
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_PI_4: f64 = 0.785398163397448309615660845819875721_f64;
+    pub const FRAC_PI_4: f64 = 0.785_398_163_397_448_309_615_660_845_819_875_721_f64;
 
     /// π/6
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_PI_6: f64 = 0.52359877559829887307710723054658381_f64;
+    pub const FRAC_PI_6: f64 = 0.523_598_775_598_298_873_077_107_230_546_583_81_f64;
 
     /// π/8
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_PI_8: f64 = 0.39269908169872415480783042290993786_f64;
+    pub const FRAC_PI_8: f64 = 0.392_699_081_698_724_154_807_830_422_909_937_86_f64;
 
     /// 1/π
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_1_PI: f64 = 0.318309886183790671537767526745028724_f64;
+    pub const FRAC_1_PI: f64 = 0.318_309_886_183_790_671_537_767_526_745_028_724_f64;
 
     /// 2/π
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_2_PI: f64 = 0.636619772367581343075535053490057448_f64;
+    pub const FRAC_2_PI: f64 = 0.636_619_772_367_581_343_075_535_053_490_057_448_f64;
 
     /// 2/sqrt(π)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_2_SQRT_PI: f64 = 1.12837916709551257389615890312154517_f64;
+    pub const FRAC_2_SQRT_PI: f64 = 1.128_379_167_095_512_573_896_158_903_121_545_17_f64;
 
     /// sqrt(2)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const SQRT_2: f64 = 1.41421356237309504880168872420969808_f64;
+    pub const SQRT_2: f64 = 1.414_213_562_373_095_048_801_688_724_209_698_08_f64;
 
     /// 1/sqrt(2)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const FRAC_1_SQRT_2: f64 = 0.707106781186547524400844362104849039_f64;
+    pub const FRAC_1_SQRT_2: f64 = 0.707_106_781_186_547_524_400_844_362_104_849_039_f64;
 
     /// Euler's number (e)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const E: f64 = 2.71828182845904523536028747135266250_f64;
+    pub const E: f64 = 2.718_281_828_459_045_235_360_287_471_352_662_50_f64;
 
     /// log<sub>2</sub>(10)
     #[unstable(feature = "extra_log_consts", issue = "50540")]
-    pub const LOG2_10: f64 = 3.32192809488736234787031942948939018_f64;
+    pub const LOG2_10: f64 = 3.321_928_094_887_362_347_870_319_429_489_390_18_f64;
 
     /// log<sub>2</sub>(e)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const LOG2_E: f64 = 1.44269504088896340735992468100189214_f64;
+    pub const LOG2_E: f64 = 1.442_695_040_888_963_407_359_924_681_001_892_14_f64;
 
     /// log<sub>10</sub>(2)
     #[unstable(feature = "extra_log_consts", issue = "50540")]
-    pub const LOG10_2: f64 = 0.301029995663981195213738894724493027_f64;
+    pub const LOG10_2: f64 = 0.301_029_995_663_981_195_213_738_894_724_493_027_f64;
 
     /// log<sub>10</sub>(e)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const LOG10_E: f64 = 0.434294481903251827651128918916605082_f64;
+    pub const LOG10_E: f64 = 0.434_294_481_903_251_827_651_128_918_916_605_082_f64;
 
     /// ln(2)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const LN_2: f64 = 0.693147180559945309417232121458176568_f64;
+    pub const LN_2: f64 = 0.693_147_180_559_945_309_417_232_121_458_176_568_f64;
 
     /// ln(10)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
+    pub const LN_10: f64 = 2.302_585_092_994_045_684_017_991_454_684_364_21_f64;
 }
 
 #[lang = "f64"]
@@ -259,8 +259,8 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn classify(self) -> FpCategory {
-        const EXP_MASK: u64 = 0x7ff0000000000000;
-        const MAN_MASK: u64 = 0x000fffffffffffff;
+        const EXP_MASK: u64 = 0x7ff0_0000_0000_0000;
+        const MAN_MASK: u64 = 0x000f_ffff_ffff_ffff;
 
         let bits = self.to_bits();
         match (bits & MAN_MASK, bits & EXP_MASK) {

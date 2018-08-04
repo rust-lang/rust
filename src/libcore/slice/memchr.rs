@@ -14,8 +14,8 @@
 use cmp;
 use mem;
 
-const LO_U64: u64 = 0x0101010101010101;
-const HI_U64: u64 = 0x8080808080808080;
+const LO_U64: u64 = 0x0101_0101_0101_0101;
+const HI_U64: u64 = 0x8080_8080_8080_8080;
 
 // use truncation
 const LO_USIZE: usize = LO_U64 as usize;

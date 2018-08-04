@@ -30,7 +30,7 @@ pub struct Fp {
 impl Fp {
     /// Returns a correctly rounded product of itself and `other`.
     pub fn mul(&self, other: &Fp) -> Fp {
-        const MASK: u64 = 0xffffffff;
+        const MASK: u64 = 0xffff_ffff;
         let a = self.f >> 32;
         let b = self.f & MASK;
         let c = other.f >> 32;
