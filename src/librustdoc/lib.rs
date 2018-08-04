@@ -466,7 +466,8 @@ fn main_args(args: &[String]) -> isize {
 
     let output = matches.opt_str("o").map(|s| PathBuf::from(&s));
     let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
-    let cfgs = matches.opt_strs("cfg");
+    let mut cfgs = matches.opt_strs("cfg");
+    cfgs.push("rustdoc".to_string());
 
     if let Some(ref p) = css_file_extension {
         if !p.is_file() {
@@ -643,7 +644,8 @@ where R: 'static + Send,
     for s in &matches.opt_strs("L") {
         paths.add_path(s, ErrorOutputType::default());
     }
-    let cfgs = matches.opt_strs("cfg");
+    let mut cfgs = matches.opt_strs("cfg");
+    cfgs.push("rustdoc".to_string());
     let triple = matches.opt_str("target").map(|target| {
         if target.ends_with(".json") {
             TargetTriple::TargetPath(PathBuf::from(target))
