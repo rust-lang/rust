@@ -218,6 +218,10 @@ before_install:
       echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json;
       sudo service docker restart;
     fi
+  - date
+  - sudo atq || true
+  - sudo grep -rE 'shutdown|poweroff|halt' /var/spool/cron || true
+  - sudo grep -E 'google-clock-skew|ntpd|startup-script' /var/log/syslog || true
 
 install:
   - case "$TRAVIS_OS_NAME" in
