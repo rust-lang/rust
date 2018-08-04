@@ -9,11 +9,8 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::traits::{self, auto_trait as auto};
-use rustc::ty::{self, ToPredicate, TypeFoldable};
-use rustc::ty::subst::Subst;
-use rustc::infer::InferOk;
-use rustc::middle::cstore::CrateStore;
+use rustc::traits::auto_trait as auto;
+use rustc::ty::{self, TypeFoldable};
 use std::fmt::Debug;
 
 use self::def_ctor::{get_def_from_def_id, get_def_from_node_id};
