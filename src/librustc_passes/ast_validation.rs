@@ -344,8 +344,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                         trait_item.id, span,
                                         "patterns aren't allowed in methods without bodies");
                                 } else {
-                                    struct_span_err!(self.session, span, E0642,
-                                        "patterns aren't allowed in methods without bodies").emit();
+                                    let mut err = struct_span_err!(self.session, span, E0642,
+                                        "patterns aren't allowed in methods without bodies");
+                                    err.span_suggestion(span,
+                                        "use an underscore to ignore the name", "_".to_owned());
+                                    err.emit();
                                 }
                             });
                         }
