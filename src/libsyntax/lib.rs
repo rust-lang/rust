@@ -26,6 +26,7 @@
 #![feature(slice_sort_by_cached_key)]
 #![feature(str_escape)]
 #![feature(unicode_internals)]
+#![feature(catch_expr)]
 
 #![recursion_limit="256"]
 

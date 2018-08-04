@@ -261,6 +261,19 @@ let result = loop { // ok!
 ```
 "##,
 
+E0642: r##"
+Trait methods currently cannot take patterns as arguments.
+
+Example of erroneous code:
+
+```compile_fail,E0642
+trait Foo {
+    fn foo((x, y): (i32, i32)); // error: patterns aren't allowed
+                                // in methods without bodies
+}
+```
+"##,
+
 E0695: r##"
 A `break` statement without a label appeared inside a labeled block.
 
@@ -306,7 +319,6 @@ register_diagnostics! {
     E0561, // patterns aren't allowed in function pointer types
     E0567, // auto traits can not have generic parameters
     E0568, // auto traits can not have super traits
-    E0642, // patterns aren't allowed in methods without bodies
     E0666, // nested `impl Trait` is illegal
     E0667, // `impl Trait` in projections
     E0696, // `continue` pointing to a labeled block
