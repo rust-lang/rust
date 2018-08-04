@@ -20,8 +20,7 @@ use consts;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
-use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePasses,
-                             AllPasses, Sanitizer, Lto};
+use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitizer, Lto};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
@@ -345,7 +344,7 @@ pub struct CodegenContext {
     pub tm_factory: Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
-    debuginfo: config::DebugInfoLevel,
+    debuginfo: config::DebugInfo,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -461,8 +460,8 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
         llvm::diagnostic::Optimization(opt) => {
             let enabled = match cgcx.remark {
-                AllPasses => true,
-                SomePasses(ref v) => v.iter().any(|s| *s == opt.pass_name),
+                Passes::All => true,
+                Passes::Some(ref v) => v.iter().any(|s| *s == opt.pass_name),
             };
 
             if enabled {
@@ -875,7 +874,7 @@ pub(crate) struct CompiledModules {
 }
 
 fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
-    sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
+    sess.crate_types.borrow().contains(&config::CrateType::Rlib) &&
     sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
@@ -1341,7 +1340,7 @@ fn execute_work_item(cgcx: &CodegenContext,
                 // anything about it yet until we've got a final product.
                 Lto::Yes | Lto::Fat | Lto::Thin => {
                     cgcx.crate_types.len() != 1 ||
-                        cgcx.crate_types[0] != config::CrateTypeRlib
+                        cgcx.crate_types[0] != config::CrateType::Rlib
                 }
 
                 // When we're automatically doing ThinLTO for multi-codegen-unit
@@ -2346,7 +2345,7 @@ pub(crate) fn submit_codegened_module_to_llvm(tcx: TyCtxt,
 
 fn msvc_imps_needed(tcx: TyCtxt) -> bool {
     tcx.sess.target.target.options.is_like_msvc &&
-        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib)
+        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib)
 }
 
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.

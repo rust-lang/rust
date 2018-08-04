@@ -17,7 +17,7 @@ use super::command::Command;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, PrintRequest};
+use rustc::session::config::{self, DebugInfo, OutputFilenames, OutputType, PrintRequest};
 use rustc::session::config::{RUST_CGU_EXT, Lto};
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
@@ -151,7 +151,7 @@ pub(crate) fn link_binary(sess: &Session,
         let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
         if (sess.opts.debugging_opts.no_codegen || !sess.opts.output_types.should_codegen()) &&
            !output_metadata &&
-           crate_type == config::CrateTypeExecutable {
+           crate_type == config::CrateType::Executable {
             continue;
         }
 
@@ -200,7 +200,7 @@ pub(crate) fn link_binary(sess: &Session,
 /// split-dwarf like schemes.
 fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     // If the objects don't have debuginfo there's nothing to preserve.
-    if sess.opts.debuginfo == NoDebugInfo {
+    if sess.opts.debuginfo == DebugInfo::None {
         return false
     }
 
@@ -208,7 +208,7 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     // the objects as they're losslessly contained inside the archives.
     let output_linked = sess.crate_types.borrow()
         .iter()
-        .any(|x| *x != config::CrateTypeRlib && *x != config::CrateTypeStaticlib);
+        .any(|x| *x != config::CrateType::Rlib && *x != config::CrateType::Staticlib);
     if !output_linked {
         return false
     }
@@ -255,10 +255,10 @@ pub(crate) fn each_linked_rlib(sess: &Session,
                                f: &mut dyn FnMut(CrateNum, &Path)) -> Result<(), String> {
     let crates = info.used_crates_static.iter();
     let fmts = sess.dependency_formats.borrow();
-    let fmts = fmts.get(&config::CrateTypeExecutable)
-                   .or_else(|| fmts.get(&config::CrateTypeStaticlib))
-                   .or_else(|| fmts.get(&config::CrateTypeCdylib))
-                   .or_else(|| fmts.get(&config::CrateTypeProcMacro));
+    let fmts = fmts.get(&config::CrateType::Executable)
+                   .or_else(|| fmts.get(&config::CrateType::Staticlib))
+                   .or_else(|| fmts.get(&config::CrateType::Cdylib))
+                   .or_else(|| fmts.get(&config::CrateType::ProcMacro));
     let fmts = match fmts {
         Some(f) => f,
         None => return Err("could not find formats for rlibs".to_string())
@@ -344,14 +344,14 @@ fn link_binary_output(sess: &Session,
     if outputs.outputs.should_codegen() {
         let out_filename = out_filename(sess, crate_type, outputs, crate_name);
         match crate_type {
-            config::CrateTypeRlib => {
+            config::CrateType::Rlib => {
                 link_rlib(sess,
                           codegen_results,
                           RlibFlavor::Normal,
                           &out_filename,
                           &tmpdir).build();
             }
-            config::CrateTypeStaticlib => {
+            config::CrateType::Staticlib => {
                 link_staticlib(sess, codegen_results, &out_filename, &tmpdir);
             }
             _ => {
@@ -644,7 +644,7 @@ fn link_natively(sess: &Session,
     }
     cmd.args(&sess.opts.debugging_opts.pre_link_arg);
 
-    let pre_link_objects = if crate_type == config::CrateTypeExecutable {
+    let pre_link_objects = if crate_type == config::CrateType::Executable {
         &sess.target.target.options.pre_link_objects_exe
     } else {
         &sess.target.target.options.pre_link_objects_dll
@@ -653,7 +653,7 @@ fn link_natively(sess: &Session,
         cmd.arg(root.join(obj));
     }
 
-    if crate_type == config::CrateTypeExecutable && sess.crt_static() {
+    if crate_type == config::CrateType::Executable && sess.crt_static() {
         for obj in &sess.target.target.options.pre_link_objects_exe_crt {
             cmd.arg(root.join(obj));
         }
@@ -834,7 +834,7 @@ fn link_natively(sess: &Session,
     // the symbols. Note, though, that if the object files are being preserved
     // for their debug information there's no need for us to run dsymutil.
     if sess.target.target.options.is_like_osx &&
-        sess.opts.debuginfo != NoDebugInfo &&
+        sess.opts.debuginfo != DebugInfo::None &&
         !preserve_objects_for_their_debuginfo(sess)
     {
         match Command::new("dsymutil").arg(out_filename).output() {
@@ -1013,7 +1013,7 @@ fn link_args(cmd: &mut dyn Linker,
     }
     cmd.output_filename(out_filename);
 
-    if crate_type == config::CrateTypeExecutable &&
+    if crate_type == config::CrateType::Executable &&
        sess.target.target.options.is_like_windows {
         if let Some(ref s) = codegen_results.windows_subsystem {
             cmd.subsystem(s);
@@ -1022,7 +1022,7 @@ fn link_args(cmd: &mut dyn Linker,
 
     // If we're building a dynamic library then some platforms need to make sure
     // that all symbols are exported correctly from the dynamic library.
-    if crate_type != config::CrateTypeExecutable ||
+    if crate_type != config::CrateType::Executable ||
        sess.target.target.options.is_like_emscripten {
         cmd.export_symbols(tmpdir, crate_type);
     }
@@ -1030,8 +1030,8 @@ fn link_args(cmd: &mut dyn Linker,
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
-    if crate_type == config::CrateTypeDylib ||
-       crate_type == config::CrateTypeProcMacro {
+    if crate_type == config::CrateType::Dylib ||
+       crate_type == config::CrateType::ProcMacro {
         if let Some(obj) = codegen_results.metadata_module.object.as_ref() {
             cmd.add_object(obj);
         }
@@ -1047,13 +1047,13 @@ fn link_args(cmd: &mut dyn Linker,
     // Try to strip as much out of the generated object by removing unused
     // sections if possible. See more comments in linker.rs
     if !sess.opts.cg.link_dead_code {
-        let keep_metadata = crate_type == config::CrateTypeDylib;
+        let keep_metadata = crate_type == config::CrateType::Dylib;
         cmd.gc_sections(keep_metadata);
     }
 
     let used_link_args = &codegen_results.crate_info.link_args;
 
-    if crate_type == config::CrateTypeExecutable {
+    if crate_type == config::CrateType::Executable {
         let mut position_independent_executable = false;
 
         if t.options.position_independent_executables {
@@ -1145,10 +1145,10 @@ fn link_args(cmd: &mut dyn Linker,
     add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
 
     // Tell the linker what we're doing.
-    if crate_type != config::CrateTypeExecutable {
+    if crate_type != config::CrateType::Executable {
         cmd.build_dylib(out_filename);
     }
-    if crate_type == config::CrateTypeExecutable && sess.crt_static() {
+    if crate_type == config::CrateType::Executable && sess.crt_static() {
         cmd.build_static_executable();
     }
 
@@ -1448,7 +1448,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
 
         if (!is_full_lto_enabled(sess) ||
             ignored_for_lto(sess, &codegen_results.crate_info, cnum)) &&
-           crate_type != config::CrateTypeDylib &&
+           crate_type != config::CrateType::Dylib &&
            !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
             return
@@ -1524,7 +1524,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
             // Note, though, that we don't want to include the whole of a
             // compiler-builtins crate (e.g. compiler-rt) because it'll get
             // repeatedly linked anyway.
-            if crate_type == config::CrateTypeDylib &&
+            if crate_type == config::CrateType::Dylib &&
                 codegen_results.crate_info.compiler_builtins != Some(cnum) {
                 cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
             } else {

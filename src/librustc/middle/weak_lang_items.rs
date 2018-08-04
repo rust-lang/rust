@@ -89,12 +89,12 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // emitting something that's not an rlib.
     let needs_check = tcx.sess.crate_types.borrow().iter().any(|kind| {
         match *kind {
-            config::CrateTypeDylib |
-            config::CrateTypeProcMacro |
-            config::CrateTypeCdylib |
-            config::CrateTypeExecutable |
-            config::CrateTypeStaticlib => true,
-            config::CrateTypeRlib => false,
+            config::CrateType::Dylib |
+            config::CrateType::ProcMacro |
+            config::CrateType::Cdylib |
+            config::CrateType::Executable |
+            config::CrateType::Staticlib => true,
+            config::CrateType::Rlib => false,
         }
     });
     if !needs_check {

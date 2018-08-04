@@ -19,7 +19,7 @@ extern crate rustc_codegen_utils;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
-use rustc::session::config::{basic_options, Input, Options,
+use rustc::session::config::{Input, Options,
                              OutputType, OutputTypes};
 use rustc_driver::driver::{self, compile_input, CompileController};
 use rustc_metadata::cstore::CStore;
@@ -63,7 +63,7 @@ fn basic_sess(opts: Options) -> (Session, Rc<CStore>, Box<CodegenBackend>) {
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     syntax::with_globals(|| {
-        let mut opts = basic_options();
+        let mut opts = Options::default();
         opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
         opts.maybe_sysroot = Some(sysroot);
         if let Ok(linker) = std::env::var("RUSTC_LINKER") {

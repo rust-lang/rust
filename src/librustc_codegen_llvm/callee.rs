@@ -133,7 +133,7 @@ pub fn get_fn(
                 // This is a monomorphization. Its expected visibility depends
                 // on whether we are in share-generics mode.
 
-                if cx.tcx.share_generics() {
+                if cx.tcx.sess.opts.share_generics() {
                     // We are in share_generics mode.
 
                     if instance_def_id.is_local() {

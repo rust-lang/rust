@@ -627,7 +627,7 @@ impl<'a> CrateLoader<'a> {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
         let any_non_rlib = self.sess.crate_types.borrow().iter().any(|ct| {
-            *ct != config::CrateTypeRlib
+            *ct != config::CrateType::Rlib
         });
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
@@ -738,13 +738,13 @@ impl<'a> CrateLoader<'a> {
                 if !self.sess.crate_types.borrow().iter().all(|ct| {
                     match *ct {
                         // Link the runtime
-                        config::CrateTypeStaticlib |
-                        config::CrateTypeExecutable => true,
+                        config::CrateType::Staticlib |
+                        config::CrateType::Executable => true,
                         // This crate will be compiled with the required
                         // instrumentation pass
-                        config::CrateTypeRlib |
-                        config::CrateTypeDylib |
-                        config::CrateTypeCdylib =>
+                        config::CrateType::Rlib |
+                        config::CrateType::Dylib |
+                        config::CrateType::Cdylib =>
                             false,
                         _ => {
                             self.sess.err(&format!("Only executables, staticlibs, \
@@ -760,10 +760,10 @@ impl<'a> CrateLoader<'a> {
                 if !self.sess.crate_types.borrow().iter().all(|ct| {
                     match *ct {
                         // Link the runtime
-                        config::CrateTypeExecutable => true,
+                        config::CrateType::Executable => true,
                         // This crate will be compiled with the required
                         // instrumentation pass
-                        config::CrateTypeRlib => false,
+                        config::CrateType::Rlib => false,
                         _ => {
                             self.sess.err(&format!("Only executables and rlibs can be \
                                                     compiled with `-Z sanitizer`"));
@@ -853,12 +853,12 @@ impl<'a> CrateLoader<'a> {
         let mut need_exe_alloc = false;
         for ct in self.sess.crate_types.borrow().iter() {
             match *ct {
-                config::CrateTypeExecutable => need_exe_alloc = true,
-                config::CrateTypeDylib |
-                config::CrateTypeProcMacro |
-                config::CrateTypeCdylib |
-                config::CrateTypeStaticlib => need_lib_alloc = true,
-                config::CrateTypeRlib => {}
+                config::CrateType::Executable => need_exe_alloc = true,
+                config::CrateType::Dylib |
+                config::CrateType::ProcMacro |
+                config::CrateType::Cdylib |
+                config::CrateType::Staticlib => need_lib_alloc = true,
+                config::CrateType::Rlib => {}
             }
         }
         if !need_lib_alloc && !need_exe_alloc {

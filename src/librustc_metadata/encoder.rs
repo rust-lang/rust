@@ -28,7 +28,7 @@ use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
-use rustc::session::config::{self, CrateTypeProcMacro};
+use rustc::session::config::{self, CrateType};
 use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -478,7 +478,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let attrs = tcx.hir.krate_attrs();
         let link_meta = self.link_meta;
-        let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
+        let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
         let has_default_lib_allocator = attr::contains_name(&attrs, "default_lib_allocator");
         let has_global_allocator = *tcx.sess.has_global_allocator.get();
 
@@ -1542,7 +1542,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {
-        match self.tcx.sess.dependency_formats.borrow().get(&config::CrateTypeDylib) {
+        match self.tcx.sess.dependency_formats.borrow().get(&config::CrateType::Dylib) {
             Some(arr) => {
                 self.lazy_seq(arr.iter().map(|slot| {
                     match *slot {

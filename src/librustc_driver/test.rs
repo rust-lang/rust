@@ -99,7 +99,7 @@ fn test_env<F>(source_string: &str,
     where F: FnOnce(Env)
 {
     syntax::with_globals(|| {
-        let mut options = config::basic_options();
+        let mut options = config::Options::default();
         options.debugging_opts.verbose = true;
         options.unstable_features = UnstableFeatures::Allow;
 

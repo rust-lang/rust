@@ -63,7 +63,7 @@ impl CodegenBackend for TheBackend {
         let crate_name = ongoing_codegen.downcast::<Symbol>()
             .expect("in join_codegen_and_link: ongoing_codegen is not a Symbol");
         for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::CrateTypeRlib {
+            if crate_type != CrateType::Rlib {
                 sess.fatal(&format!("Crate type is {:?}", crate_type));
             }
             let output_name =

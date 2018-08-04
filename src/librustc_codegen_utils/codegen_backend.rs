@@ -114,10 +114,9 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
     fn init(&self, sess: &Session) {
         for cty in sess.opts.crate_types.iter() {
             match *cty {
-                CrateType::CrateTypeRlib | CrateType::CrateTypeDylib |
-                CrateType::CrateTypeExecutable => {},
+                CrateType::Rlib | CrateType::Dylib | CrateType::Executable => {},
                 _ => {
-                    sess.parse_sess.span_diagnostic.warn(
+                    sess.diagnostic().warn(
                         &format!("LLVM unsupported, so output type {} is not supported", cty)
                     );
                 },
@@ -201,13 +200,14 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         let ongoing_codegen = ongoing_codegen.downcast::<OngoingCodegen>()
             .expect("Expected MetadataOnlyCodegenBackend's OngoingCodegen, found Box<dyn Any>");
         for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::CrateTypeRlib && crate_type != CrateType::CrateTypeDylib {
+            if crate_type != CrateType::Rlib &&
+               crate_type != CrateType::Dylib {
                 continue;
             }
             let output_name =
                 out_filename(sess, crate_type, &outputs, &ongoing_codegen.crate_name.as_str());
             let mut compressed = ongoing_codegen.metadata_version.clone();
-            let metadata = if crate_type == CrateType::CrateTypeDylib {
+            let metadata = if crate_type == CrateType::Dylib {
                 DeflateEncoder::new(&mut compressed, Compression::fast())
                     .write_all(&ongoing_codegen.metadata.raw_data)
                     .unwrap();
@@ -220,8 +220,8 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         }
 
         sess.abort_if_errors();
-        if !sess.opts.crate_types.contains(&CrateType::CrateTypeRlib)
-            && !sess.opts.crate_types.contains(&CrateType::CrateTypeDylib)
+        if !sess.opts.crate_types.contains(&CrateType::Rlib)
+            && !sess.opts.crate_types.contains(&CrateType::Dylib)
         {
             sess.fatal("Executables are not supported by the metadata-only backend.");
         }

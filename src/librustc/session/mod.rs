@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
-pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
+pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
+use self::code_stats::CodeStats;
 
 use hir::def_id::CrateNum;
 use ich::Fingerprint;
@@ -965,7 +965,7 @@ impl Session {
     }
 
     pub fn teach(&self, code: &DiagnosticId) -> bool {
-        self.opts.debugging_opts.teach && self.parse_sess.span_diagnostic.must_teach(code)
+        self.opts.debugging_opts.teach && self.diagnostic().must_teach(code)
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?

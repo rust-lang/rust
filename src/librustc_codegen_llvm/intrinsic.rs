@@ -1778,14 +1778,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
     match ty.sty {
         ty::TyInt(t) => Some((match t {
-            ast::IntTy::Isize => {
-                match &cx.tcx.sess.target.target.target_pointer_width[..] {
-                    "16" => 16,
-                    "32" => 32,
-                    "64" => 64,
-                    tws => bug!("Unsupported target word size for isize: {}", tws),
-                }
-            },
+            ast::IntTy::Isize => cx.tcx.sess.target.isize_ty.bit_width().unwrap() as u64,
             ast::IntTy::I8 => 8,
             ast::IntTy::I16 => 16,
             ast::IntTy::I32 => 32,
@@ -1793,14 +1786,7 @@ fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
             ast::IntTy::I128 => 128,
         }, true)),
         ty::TyUint(t) => Some((match t {
-            ast::UintTy::Usize => {
-                match &cx.tcx.sess.target.target.target_pointer_width[..] {
-                    "16" => 16,
-                    "32" => 32,
-                    "64" => 64,
-                    tws => bug!("Unsupported target word size for usize: {}", tws),
-                }
-            },
+            ast::UintTy::Usize => cx.tcx.sess.target.usize_ty.bit_width().unwrap() as u64,
             ast::UintTy::U8 => 8,
             ast::UintTy::U16 => 16,
             ast::UintTy::U32 => 32,
@@ -1813,14 +1799,9 @@ fn int_type_width_signed(ty: Ty, cx: &CodegenCx) -> Option<(u64, bool)> {
 
 // Returns the width of a float TypeVariant
 // Returns None if the type is not a float
-fn float_type_width<'tcx>(sty: &ty::TypeVariants<'tcx>)
-        -> Option<u64> {
-    use rustc::ty::TyFloat;
+fn float_type_width<'tcx>(sty: &ty::TypeVariants<'tcx>) -> Option<u64> {
     match *sty {
-        TyFloat(t) => Some(match t {
-            ast::FloatTy::F32 => 32,
-            ast::FloatTy::F64 => 64,
-        }),
+        ty::TyFloat(t) => Some(t.bit_width() as u64),
         _ => None,
     }
 }

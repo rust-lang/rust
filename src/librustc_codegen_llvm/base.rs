@@ -46,7 +46,7 @@ use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::middle::exported_symbols;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::util::profiling::ProfileCategory;
-use rustc::session::config::{self, NoDebugInfo};
+use rustc::session::config::{self, DebugInfo, EntryFnType};
 use rustc::session::Session;
 use rustc_incremental;
 use allocator;
@@ -560,8 +560,8 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 
     let et = cx.sess().entry_fn.get().map(|e| e.2);
     match et {
-        Some(config::EntryMain) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
-        Some(config::EntryStart) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
+        Some(EntryFnType::Main) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
+        Some(EntryFnType::Start) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
         None => {}    // Do nothing.
     }
 
@@ -645,14 +645,14 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     let kind = tcx.sess.crate_types.borrow().iter().map(|ty| {
         match *ty {
-            config::CrateTypeExecutable |
-            config::CrateTypeStaticlib |
-            config::CrateTypeCdylib => MetadataKind::None,
+            config::CrateType::Executable |
+            config::CrateType::Staticlib |
+            config::CrateType::Cdylib => MetadataKind::None,
 
-            config::CrateTypeRlib => MetadataKind::Uncompressed,
+            config::CrateType::Rlib => MetadataKind::Uncompressed,
 
-            config::CrateTypeDylib |
-            config::CrateTypeProcMacro => MetadataKind::Compressed,
+            config::CrateType::Dylib |
+            config::CrateType::ProcMacro => MetadataKind::Compressed,
         }
     }).max().unwrap_or(MetadataKind::None);
 
@@ -1102,7 +1102,7 @@ impl CrateInfo {
 
         let load_wasm_items = tcx.sess.crate_types.borrow()
             .iter()
-            .any(|c| *c != config::CrateTypeRlib) &&
+            .any(|c| *c != config::CrateType::Rlib) &&
             tcx.sess.opts.target_triple.triple() == "wasm32-unknown-unknown";
 
         if load_wasm_items {
@@ -1249,7 +1249,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             // Finalize debuginfo
-            if cx.sess().opts.debuginfo != NoDebugInfo {
+            if cx.sess().opts.debuginfo != DebugInfo::None {
                 debuginfo::finalize(&cx);
             }
 

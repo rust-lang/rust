@@ -32,7 +32,7 @@ struct AstValidator<'a> {
 
 impl<'a> AstValidator<'a> {
     fn err_handler(&self) -> &errors::Handler {
-        &self.session.parse_sess.span_diagnostic
+        &self.session.diagnostic()
     }
 
     fn check_lifetime(&self, ident: Ident) {

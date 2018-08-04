@@ -408,8 +408,8 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
-        *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||
-        *ty == config::CrateTypeProcMacro
+        *ty == config::CrateType::Rlib || *ty == config::CrateType::Dylib ||
+        *ty == config::CrateType::ProcMacro
     });
     let mut reachable_context = ReachableContext {
         tcx,

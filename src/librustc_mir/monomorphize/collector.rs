@@ -770,7 +770,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
         // If we are not in share generics mode, we don't link to upstream
         // monomorphizations but always instantiate our own internal versions
         // instead.
-        if !tcx.share_generics() {
+        if !tcx.sess.opts.share_generics() {
             return false
         }
 
@@ -1047,7 +1047,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
     fn push_extra_entry_roots(&mut self) {
-        if self.tcx.sess.entry_fn.get().map(|e| e.2) != Some(config::EntryMain) {
+        if self.tcx.sess.entry_fn.get().map(|e| e.2) != Some(config::EntryFnType::Main) {
             return
         }
 
