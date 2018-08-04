@@ -99,61 +99,33 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 // An expression plus trailing `?`s to be formatted together.
 #[derive(Debug)]
 struct ChainItem {
-    // FIXME: we can't use a reference here because to convert `try!` to `?` we
-    // synthesise the AST node. However, I think we could use `Cow` and that
-    // would remove a lot of cloning.
-    expr: ast::Expr,
+    kind: ChainItemKind,
     tries: usize,
 }
 
-impl Rewrite for ChainItem {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let rewrite = self.expr.rewrite(context, shape.sub_width(self.tries)?)?;
-        Some(format!("{}{}", rewrite, "?".repeat(self.tries)))
-    }
+// FIXME: we can't use a reference here because to convert `try!` to `?` we
+// synthesise the AST node. However, I think we could use `Cow` and that
+// would remove a lot of cloning.
+#[derive(Debug)]
+enum ChainItemKind {
+    Parent(ast::Expr),
+    MethodCall(
+        ast::PathSegment,
+        Vec<ast::GenericArg>,
+        Vec<ptr::P<ast::Expr>>,
+        Span,
+    ),
+    StructField(ast::Ident),
+    TupleField(ast::Ident, bool),
 }
 
-impl ChainItem {
-    // Rewrite the last element in the chain `expr`. E.g., given `a.b.c` we rewrite
-    // `.c` and any trailing `?`s.
-    fn rewrite_postfix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let shape = shape.sub_width(self.tries)?;
-        let mut rewrite = match self.expr.node {
-            ast::ExprKind::MethodCall(ref segment, ref expressions) => {
-                let types = match segment.args {
-                    Some(ref params) => match **params {
-                        ast::GenericArgs::AngleBracketed(ref data) => &data.args[..],
-                        _ => &[],
-                    },
-                    _ => &[],
-                };
-                Self::rewrite_method_call(
-                    segment.ident,
-                    types,
-                    expressions,
-                    self.expr.span,
-                    context,
-                    shape,
-                )?
-            }
-            ast::ExprKind::Field(ref nested, ref field) => {
-                let space =
-                    if Self::is_tup_field_access(&self.expr) && Self::is_tup_field_access(nested) {
-                        " "
-                    } else {
-                        ""
-                    };
-                let result = format!("{}.{}", space, field.name);
-                if result.len() <= shape.width {
-                    result
-                } else {
-                    return None;
-                }
-            }
-            _ => unreachable!(),
-        };
-        rewrite.push_str(&"?".repeat(self.tries));
-        Some(rewrite)
+impl ChainItemKind {
+    fn is_block_like(&self, context: &RewriteContext, reps: &str) -> bool {
+        match self {
+            ChainItemKind::Parent(ref expr) => is_block_expr(context, expr, reps),
+            ChainItemKind::MethodCall(..) => reps.contains('\n'),
+            ChainItemKind::StructField(..) | ChainItemKind::TupleField(..) => false,
+        }
     }
 
     fn is_tup_field_access(expr: &ast::Expr) -> bool {
@@ -165,6 +137,50 @@ impl ChainItem {
         }
     }
 
+    fn from_ast(expr: &ast::Expr) -> ChainItemKind {
+        match expr.node {
+            ast::ExprKind::MethodCall(ref segment, ref expressions) => {
+                let types = if let Some(ref generic_args) = segment.args {
+                    if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
+                        data.args.clone()
+                    } else {
+                        vec![]
+                    }
+                } else {
+                    vec![]
+                };
+                ChainItemKind::MethodCall(segment.clone(), types, expressions.clone(), expr.span)
+            }
+            ast::ExprKind::Field(ref nested, field) => {
+                if Self::is_tup_field_access(expr) {
+                    ChainItemKind::TupleField(field, Self::is_tup_field_access(nested))
+                } else {
+                    ChainItemKind::StructField(field)
+                }
+            }
+            _ => ChainItemKind::Parent(expr.clone()),
+        }
+    }
+}
+
+impl Rewrite for ChainItem {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        let shape = shape.sub_width(self.tries)?;
+        let rewrite = match self.kind {
+            ChainItemKind::Parent(ref expr) => expr.rewrite(context, shape)?,
+            ChainItemKind::MethodCall(ref segment, ref types, ref exprs, span) => {
+                Self::rewrite_method_call(segment.ident, types, exprs, span, context, shape)?
+            }
+            ChainItemKind::StructField(ident) => format!(".{}", ident.name),
+            ChainItemKind::TupleField(ident, nested) => {
+                format!("{}.{}", if nested { " " } else { "" }, ident.name)
+            }
+        };
+        Some(format!("{}{}", rewrite, "?".repeat(self.tries)))
+    }
+}
+
+impl ChainItem {
     fn rewrite_method_call(
         method_name: ast::Ident,
         types: &[ast::GenericArg],
@@ -206,12 +222,12 @@ impl Chain {
         // Un-parse the expression tree into ChainItems
         let mut children = vec![];
         let mut sub_tries = 0;
-        for subexpr in subexpr_list {
+        for subexpr in &subexpr_list {
             match subexpr.node {
                 ast::ExprKind::Try(_) => sub_tries += 1,
                 _ => {
                     children.push(ChainItem {
-                        expr: subexpr,
+                        kind: ChainItemKind::from_ast(subexpr),
                         tries: sub_tries,
                     });
                     sub_tries = 0;
@@ -427,7 +443,7 @@ impl<'a> ChainFormatterShared<'a> {
             // First we try to 'overflow' the last child and see if it looks better than using
             // vertical layout.
             if let Some(one_line_shape) = last_shape.offset_left(almost_total) {
-                if let Some(rw) = last.rewrite_postfix(context, one_line_shape) {
+                if let Some(rw) = last.rewrite(context, one_line_shape) {
                     // We allow overflowing here only if both of the following conditions match:
                     // 1. The entire chain fits in a single line except the last child.
                     // 2. `last_child_str.lines().count() >= 5`.
@@ -443,7 +459,7 @@ impl<'a> ChainFormatterShared<'a> {
                         // better.
                         let last_shape = child_shape
                             .sub_width(shape.rhs_overhead(context.config) + last.tries)?;
-                        match last.rewrite_postfix(context, last_shape) {
+                        match last.rewrite(context, last_shape) {
                             Some(ref new_rw) if !could_fit_single_line => {
                                 last_subexpr_str = Some(new_rw.clone());
                             }
@@ -464,7 +480,7 @@ impl<'a> ChainFormatterShared<'a> {
             }
         }
 
-        last_subexpr_str = last_subexpr_str.or_else(|| last.rewrite_postfix(context, last_shape));
+        last_subexpr_str = last_subexpr_str.or_else(|| last.rewrite(context, last_shape));
         self.rewrites.push(last_subexpr_str?);
         Some(())
     }
@@ -525,18 +541,18 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
     ) -> Option<()> {
         let mut root_rewrite: String = parent.rewrite(context, shape)?;
 
-        let mut root_ends_with_block = is_block_expr(context, &parent.expr, &root_rewrite);
+        let mut root_ends_with_block = parent.kind.is_block_like(context, &root_rewrite);
         let tab_width = context.config.tab_spaces().saturating_sub(shape.offset);
 
         while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
             let item = &self.shared.children[self.shared.children.len() - 1];
             let shape = shape.offset_left(root_rewrite.len())?;
-            match &item.rewrite_postfix(context, shape) {
+            match &item.rewrite(context, shape) {
                 Some(rewrite) => root_rewrite.push_str(rewrite),
                 None => break,
             }
 
-            root_ends_with_block = is_block_expr(context, &item.expr, &root_rewrite);
+            root_ends_with_block = item.kind.is_block_like(context, &root_rewrite);
 
             self.shared.children = &self.shared.children[..self.shared.children.len() - 1];
             if self.shared.children.is_empty() {
@@ -560,9 +576,9 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
         for item in self.shared.children[1..].iter().rev() {
-            let rewrite = item.rewrite_postfix(context, child_shape)?;
+            let rewrite = item.rewrite(context, child_shape)?;
             self.is_block_like
-                .push(is_block_expr(context, &item.expr, &rewrite));
+                .push(item.kind.is_block_like(context, &rewrite));
             self.shared.rewrites.push(rewrite);
         }
         Some(())
@@ -620,18 +636,18 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
             trimmed_last_line_width(&root_rewrite)
         };
 
-        if !multiline || is_block_expr(context, &parent.expr, &root_rewrite) {
+        if !multiline || parent.kind.is_block_like(context, &root_rewrite) {
             let item = &self.shared.children[self.shared.children.len() - 1];
             let child_shape = parent_shape
                 .visual_indent(self.offset)
                 .sub_width(self.offset)?;
-            let rewrite = item.rewrite_postfix(context, child_shape)?;
+            let rewrite = item.rewrite(context, child_shape)?;
             match wrap_str(rewrite, context.config.max_width(), shape) {
                 Some(rewrite) => root_rewrite.push_str(&rewrite),
                 None => {
                     // We couldn't fit in at the visual indent, try the last
                     // indent.
-                    let rewrite = item.rewrite_postfix(context, parent_shape)?;
+                    let rewrite = item.rewrite(context, parent_shape)?;
                     root_rewrite.push_str(&rewrite);
                     self.offset = 0;
                 }
@@ -653,7 +669,7 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
         for item in self.shared.children[1..].iter().rev() {
-            let rewrite = item.rewrite_postfix(context, child_shape)?;
+            let rewrite = item.rewrite(context, child_shape)?;
             self.shared.rewrites.push(rewrite);
         }
         Some(())
