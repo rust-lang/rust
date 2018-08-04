@@ -135,6 +135,7 @@ Grammar(
         "PATH_EXPR",
         "LAMBDA_EXPR",
         "IF_EXPR",
+        "WHILE_EXPR",
         "BLOCK_EXPR",
         "RETURN_EXPR",
         "MATCH_EXPR",

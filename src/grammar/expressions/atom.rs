@@ -29,7 +29,7 @@ pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
 pub(super) const ATOM_EXPR_FIRST: TokenSet =
     token_set_union![
         LITERAL_FIRST,
-        token_set![L_PAREN, PIPE, MOVE_KW, IF_KW, MATCH_KW, UNSAFE_KW, L_CURLY, RETURN_KW,
+        token_set![L_PAREN, PIPE, MOVE_KW, IF_KW, WHILE_KW, MATCH_KW, UNSAFE_KW, L_CURLY, RETURN_KW,
                    IDENT, SELF_KW, SUPER_KW, COLONCOLON ],
     ];
 
@@ -47,6 +47,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
         PIPE => lambda_expr(p),
         MOVE_KW if la == PIPE => lambda_expr(p),
         IF_KW => if_expr(p),
+        WHILE_KW => while_expr(p),
         MATCH_KW => match_expr(p),
         UNSAFE_KW if la == L_CURLY => block_expr(p),
         L_CURLY => block_expr(p),
@@ -97,7 +98,8 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
 fn if_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(IF_KW));
     let m = p.start();
-    if_head(p);
+    p.bump();
+    cond(p);
     block(p);
     if p.at(ELSE_KW) {
         p.bump();
@@ -110,10 +112,28 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
     m.complete(p, IF_EXPR)
 }
 
-fn if_head(p: &mut Parser) {
-    assert!(p.at(IF_KW));
+// test while_expr
+// fn foo() {
+//     while true {};
+//     while let Some(x) = it.next() {};
+// }
+fn while_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(WHILE_KW));
+    let m = p.start();
     p.bump();
-    expr_no_struct(p);
+    cond(p);
+    block(p);
+    m.complete(p, WHILE_EXPR)
+}
+
+// test cond
+// fn foo() { if let Some(_) = None {} }
+fn cond(p: &mut Parser) {
+    if p.eat(LET_KW) {
+        patterns::pattern(p);
+        p.expect(EQ);
+    }
+    expr_no_struct(p)
 }
 
 // test match_expr
@@ -152,8 +172,8 @@ fn match_arm(p: &mut Parser) {
             break;
         }
     }
-    if p.at(IF_KW) {
-        if_head(p)
+    if p.eat(IF_KW) {
+        expr_no_struct(p);
     }
     p.expect(FAT_ARROW);
     expr(p);
