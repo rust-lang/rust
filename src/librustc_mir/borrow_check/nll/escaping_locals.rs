@@ -8,8 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A MIR walk gathering a union-crfind of assigned locals, for the purpose of locating the ones
-//! escaping into the output.
+//! Identify those variables whose entire value will eventually be
+//! returned from the fn via the RETURN_PLACE. As an optimization, we
+//! can skip computing liveness results for those variables. The idea
+//! is that the return type of the fn only ever contains free
+//! regions. Therefore, the types of those variables are going to
+//! ultimately be contrained to outlive those free regions -- since
+//! free regions are always live for the entire body, this implies
+//! that the liveness results are not important for those regions.
+//! This is most important in the "fns" that we create to represent static
+//! values, since those are often really quite large, and all regions in them
+//! will ultimately be constrained to be `'static`. Two examples:
+//!
+//! ```
+//! fn foo() -> &'static [u32] { &[] }
+//! static FOO: &[u32] = &[];
+//! ```
+//!
+//! In both these cases, the return value will only have static lifetime.
+//!
+//! NB: The simple logic here relies on the fact that outlives
+//! relations in our analysis don't have locations. Otherwise, we
+//! would have to restrict ourselves to values that are
+//! *unconditionally* returned (which would still cover the "big
+//! static value" case).
+//!
+//! The way that this code works is to use union-find -- we iterate
+//! over the MIR and union together two variables X and Y if all
+//! regions in the value of Y are going to be stored into X -- that
+//! is, if `typeof(X): 'a` requires that `typeof(Y): 'a`. This means
+//! that e.g. we can union together `x` and `y` if we have something
+//! like `x = (y, 22)`, but not something like `x = y.f` (since there
+//! may be regions in the type of `y` that do not appear in the field
+//! `f`).
 
 use rustc::mir::visit::Visitor;
 use rustc::mir::*;
