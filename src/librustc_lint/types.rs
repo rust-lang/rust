@@ -22,6 +22,7 @@ use std::cmp;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::{ast, attr};
+use syntax::errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::Span;
 use syntax::codemap;
@@ -143,9 +144,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                                              OVERFLOWING_LITERALS,
                                                              parent_expr.span,
                                                              "only u8 can be cast into char");
-                                        err.span_suggestion(parent_expr.span,
-                                                            &"use a char literal instead",
-                                                            format!("'\\u{{{:X}}}'", lit_val));
+                                        err.span_suggestion_with_applicability(
+                                            parent_expr.span,
+                                            &"use a char literal instead",
+                                            format!("'\\u{{{:X}}}'", lit_val),
+                                            Applicability::MachineApplicable
+                                        );
                                         err.emit();
                                         return
                                     }
@@ -398,10 +402,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             {
                 if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                     let (sans_suffix, _) = repr_str.split_at(pos);
-                    err.span_suggestion(
+                    err.span_suggestion_with_applicability(
                         expr.span,
                         &format!("consider using `{}` instead", sugg_ty),
                         format!("{}{}", sans_suffix, sugg_ty),
+                        Applicability::MachineApplicable
                     );
                 } else {
                     err.help(&format!("consider using `{}` instead", sugg_ty));
