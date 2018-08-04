@@ -26,13 +26,13 @@ fn main() {
 #[link(name = "rust_test_helpers", kind = "static")]
 extern {
     #[no_output]
-    //~^ ERROR macro and proc-macro invocations in `extern {}` blocks are experimental.
+    //~^ ERROR macro invocations in `extern {}` blocks are experimental
     fn some_definitely_unknown_symbol_which_should_be_removed();
 
     #[nop_attr]
-    //~^ ERROR macro and proc-macro invocations in `extern {}` blocks are experimental.
+    //~^ ERROR macro invocations in `extern {}` blocks are experimental
     fn rust_get_test_int() -> isize;
 
     emit_input!(fn rust_dbg_extern_identity_u32(arg: u32) -> u32;);
-    //~^ ERROR macro and proc-macro invocations in `extern {}` blocks are experimental.
+    //~^ ERROR macro invocations in `extern {}` blocks are experimental
 }

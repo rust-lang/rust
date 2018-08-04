@@ -1354,13 +1354,6 @@ pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
 pub const EXPLAIN_MACRO_AT_MOST_ONCE_REP: &'static str =
     "using the `?` macro Kleene operator for \"at most one\" repetition is unstable";
 
-pub const EXPLAIN_MACROS_IN_EXTERN: &'static str =
-    "macro invocations in `extern {}` blocks are experimental.";
-
-// mention proc-macros when enabled
-pub const EXPLAIN_PROC_MACROS_IN_EXTERN: &'static str =
-    "macro and proc-macro invocations in `extern {}` blocks are experimental.";
-
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
 }
@@ -1969,7 +1962,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                     ).emit();
                 } else {
                     set(&mut features, mi.span);
-                    feature_checker.collect(&features, mi.span);
                     features.declared_lang_features.push((name, mi.span, None));
                 }
                 continue

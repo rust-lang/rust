@@ -329,6 +329,9 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
             self.report_proc_macro_stub(invoc.span());
             return Err(Determinacy::Determined);
         } else if let Def::NonMacroAttr(attr_kind) = def {
+            // Note that not only attributes, but anything in macro namespace can result in a
+            // `Def::NonMacroAttr` definition (e.g. `inline!()`), so we must report the error
+            // below for these cases.
             let is_attr_invoc =
                 if let InvocationKind::Attr { .. } = invoc.kind { true } else { false };
             let path = invoc.path().expect("no path for non-macro attr");
@@ -604,7 +607,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // 3. Builtin attributes (closed, controlled).
 
         assert!(ns == TypeNS  || ns == MacroNS);
-        let force = force || record_used;
+        assert!(force || !record_used); // `record_used` implies `force`
         ident = ident.modern();
 
         // Names from inner scope that can't shadow names from outer scopes, e.g.
@@ -789,7 +792,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         let determinacy = Determinacy::determined(force);
         if determinacy == Determinacy::Determined && is_attr {
-            // For attributes interpret determinate "no solution" as a custom attribute.
+            // For single-segment attributes interpret determinate "no resolution" as a custom
+            // attribute. (Lexical resolution implies the first segment and is_attr should imply
+            // the last segment, so we are certainly working with a single-segment attribute here.)
+            assert!(ns == MacroNS);
             let binding = (Def::NonMacroAttr(NonMacroAttrKind::Custom),
                            ty::Visibility::Public, ident.span, Mark::root())
                            .to_name_binding(self.arenas);

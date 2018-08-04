@@ -516,6 +516,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension) -> Option<AstFragment> {
+        if invoc.fragment_kind == AstFragmentKind::ForeignItems &&
+           !self.cx.ecfg.macros_in_extern_enabled() {
+            if let SyntaxExtension::NonMacroAttr { .. } = *ext {} else {
+                emit_feature_err(&self.cx.parse_sess, "macros_in_extern",
+                                 invoc.span(), GateIssue::Language,
+                                 "macro invocations in `extern {}` blocks are experimental");
+            }
+        }
+
         let result = match invoc.kind {
             InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext)?,
             InvocationKind::Attr { .. } => self.expand_attr_invoc(invoc, ext)?,
@@ -549,6 +558,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         if let NonMacroAttr { mark_used: false } = *ext {} else {
+            // Macro attrs are always used when expanded,
+            // non-macro attrs are considered used when the field says so.
             attr::mark_used(&attr);
         }
         invoc.expansion_data.mark.set_expn_info(ExpnInfo {
@@ -1482,21 +1493,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                          foreign_item: ast::ForeignItem) -> SmallVector<ast::ForeignItem> {
         let (attr, traits, foreign_item) = self.classify_item(foreign_item);
 
-        let explain = if self.cx.ecfg.use_extern_macros_enabled() {
-            feature_gate::EXPLAIN_PROC_MACROS_IN_EXTERN
-        } else {
-            feature_gate::EXPLAIN_MACROS_IN_EXTERN
-        };
-
-        if attr.is_some() || !traits.is_empty()  {
-            if !self.cx.ecfg.macros_in_extern_enabled() &&
-               !self.cx.ecfg.custom_attribute_enabled() {
-                if let Some(ref attr) = attr {
-                    emit_feature_err(&self.cx.parse_sess, "macros_in_extern", attr.span,
-                                     GateIssue::Language, explain);
-                }
-            }
-
+        if attr.is_some() || !traits.is_empty() {
             let item = Annotatable::ForeignItem(P(foreign_item));
             return self.collect_attr(attr, traits, item, AstFragmentKind::ForeignItems)
                 .make_foreign_items();
@@ -1504,12 +1501,6 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         if let ast::ForeignItemKind::Macro(mac) = foreign_item.node {
             self.check_attributes(&foreign_item.attrs);
-
-            if !self.cx.ecfg.macros_in_extern_enabled() {
-                emit_feature_err(&self.cx.parse_sess, "macros_in_extern", foreign_item.span,
-                                 GateIssue::Language, explain);
-            }
-
             return self.collect_bang(mac, foreign_item.span, AstFragmentKind::ForeignItems)
                 .make_foreign_items();
         }
@@ -1671,7 +1662,6 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_custom_derive = custom_derive,
         fn enable_format_args_nl = format_args_nl,
         fn macros_in_extern_enabled = macros_in_extern,
-        fn custom_attribute_enabled = custom_attribute,
         fn proc_macro_mod = proc_macro_mod,
         fn proc_macro_gen = proc_macro_gen,
         fn proc_macro_expr = proc_macro_expr,
