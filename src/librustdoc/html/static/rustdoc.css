@@ -610,10 +610,15 @@ a {
 
 .content .search-results td:first-child {
 	padding-right: 0;
-	width: 75%;
+	width: 50%;
 }
 .content .search-results td:first-child a {
 	padding-right: 10px;
+}
+.content .search-results td:first-child a:after {
+    clear: both;
+    content: "";
+    display: block;
 }
 .content .search-results td:first-child a span {
 	float: left;

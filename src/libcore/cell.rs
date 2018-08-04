@@ -1258,7 +1258,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         let RefMut { value, borrow } = orig;
         RefMut {
             value: f(value),
-            borrow: borrow,
+            borrow,
         }
     }
 
@@ -1324,7 +1324,7 @@ impl<'b> BorrowRefMut<'b> {
         match borrow.get() {
             UNUSED => {
                 borrow.set(UNUSED - 1);
-                Some(BorrowRefMut { borrow: borrow })
+                Some(BorrowRefMut { borrow })
             },
             _ => None,
         }
@@ -1467,7 +1467,7 @@ impl<T> UnsafeCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub const fn new(value: T) -> UnsafeCell<T> {
-        UnsafeCell { value: value }
+        UnsafeCell { value }
     }
 
     /// Unwraps the value.

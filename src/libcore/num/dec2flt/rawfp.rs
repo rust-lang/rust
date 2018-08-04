@@ -45,7 +45,7 @@ pub struct Unpacked {
 
 impl Unpacked {
     pub fn new(sig: u64, k: i16) -> Self {
-        Unpacked { sig: sig, k: k }
+        Unpacked { sig, k }
     }
 }
 
@@ -317,13 +317,13 @@ pub fn big_to_fp(f: &Big) -> Fp {
     // We cut off all bits prior to the index `start`, i.e., we effectively right-shift by
     // an amount of `start`, so this is also the exponent we need.
     let e = start as i16;
-    let rounded_down = Fp { f: leading, e: e }.normalize();
+    let rounded_down = Fp { f: leading, e }.normalize();
     // Round (half-to-even) depending on the truncated bits.
     match num::compare_with_half_ulp(f, start) {
         Less => rounded_down,
         Equal if leading % 2 == 0 => rounded_down,
         Equal | Greater => match leading.checked_add(1) {
-            Some(f) => Fp { f: f, e: e }.normalize(),
+            Some(f) => Fp { f, e }.normalize(),
             None => Fp { f: 1 << 63, e: e + 1 },
         }
     }

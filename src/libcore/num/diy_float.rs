@@ -42,7 +42,7 @@ impl Fp {
         let tmp = (bd >> 32) + (ad & MASK) + (bc & MASK) + (1 << 31) /* round */;
         let f = ac + (ad >> 32) + (bc >> 32) + (tmp >> 32);
         let e = self.e + other.e + 64;
-        Fp { f: f, e: e }
+        Fp { f, e }
     }
 
     /// Normalizes itself so that the resulting mantissa is at least `2^63`.
@@ -74,7 +74,7 @@ impl Fp {
             e -= 1;
         }
         debug_assert!(f >= (1 >> 63));
-        Fp { f: f, e: e }
+        Fp { f, e }
     }
 
     /// Normalizes itself to have the shared exponent.

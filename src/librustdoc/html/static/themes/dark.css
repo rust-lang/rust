@@ -33,7 +33,7 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	background: rgba(0, 0, 0, 0);
 }
 
-.docblock p > code, .docblock-short p > code {
+.docblock code, .docblock-short code {
 	background-color: #2A2A2A;
 }
 pre {

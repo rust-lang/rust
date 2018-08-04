@@ -17,6 +17,7 @@ use lint::{LintPass, EarlyLintPass, LateLintPass};
 
 use syntax::ast;
 use syntax::attr;
+use syntax::errors::Applicability;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
 use syntax::print::pprust;
 use syntax::symbol::keywords;
@@ -303,9 +304,12 @@ impl UnusedParens {
                             _ => false,
                         }
                     }).to_owned();
-                err.span_suggestion_short(value.span,
-                                          "remove these parentheses",
-                                          parens_removed);
+                err.span_suggestion_short_with_applicability(
+                    value.span,
+                    "remove these parentheses",
+                    parens_removed,
+                    Applicability::MachineApplicable
+                );
                 err.emit();
             }
         }

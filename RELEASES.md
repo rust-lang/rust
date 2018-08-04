@@ -144,7 +144,7 @@ Compatibility Notes
 [`alloc::handle_alloc_error`]: https://doc.rust-lang.org/std/alloc/fn.handle_alloc_error.html
 [`btree_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_default
 [`fmt::Alignment`]: https://doc.rust-lang.org/std/fmt/enum.Alignment.html
-[`hash_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_default
+[`hash_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html#method.or_default
 [`iter::repeat_with`]: https://doc.rust-lang.org/std/iter/fn.repeat_with.html
 [`num::NonZeroUsize`]: https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html
 [`num::NonZeroU128`]: https://doc.rust-lang.org/std/num/struct.NonZeroU128.html

@@ -91,7 +91,7 @@ impl Duration {
         let secs = secs.checked_add((nanos / NANOS_PER_SEC) as u64)
             .expect("overflow in Duration::new");
         let nanos = nanos % NANOS_PER_SEC;
-        Duration { secs: secs, nanos: nanos }
+        Duration { secs, nanos }
     }
 
     /// Creates a new `Duration` from the specified number of whole seconds.
@@ -109,7 +109,7 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub const fn from_secs(secs: u64) -> Duration {
-        Duration { secs: secs, nanos: 0 }
+        Duration { secs, nanos: 0 }
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
@@ -387,7 +387,7 @@ impl Duration {
                 }
             };
             debug_assert!(nanos < NANOS_PER_SEC);
-            Some(Duration { secs: secs, nanos: nanos })
+            Some(Duration { secs, nanos })
         } else {
             None
         }
@@ -453,7 +453,7 @@ impl Duration {
             let extra_nanos = carry * (NANOS_PER_SEC as u64) / (rhs as u64);
             let nanos = self.nanos / rhs + (extra_nanos as u32);
             debug_assert!(nanos < NANOS_PER_SEC);
-            Some(Duration { secs: secs, nanos: nanos })
+            Some(Duration { secs, nanos })
         } else {
             None
         }

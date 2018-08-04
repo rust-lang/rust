@@ -507,7 +507,7 @@ pub trait Iterator {
     fn map<B, F>(self, f: F) -> Map<Self, F> where
         Self: Sized, F: FnMut(Self::Item) -> B,
     {
-        Map{iter: self, f: f}
+        Map { iter: self, f }
     }
 
     /// Calls a closure on each element of an iterator.
@@ -618,7 +618,7 @@ pub trait Iterator {
     fn filter<P>(self, predicate: P) -> Filter<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        Filter{iter: self, predicate: predicate}
+        Filter {iter: self, predicate }
     }
 
     /// Creates an iterator that both filters and maps.
@@ -675,7 +675,7 @@ pub trait Iterator {
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F> where
         Self: Sized, F: FnMut(Self::Item) -> Option<B>,
     {
-        FilterMap { iter: self, f: f }
+        FilterMap { iter: self, f }
     }
 
     /// Creates an iterator which gives the current iteration count as well as
@@ -828,7 +828,7 @@ pub trait Iterator {
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        SkipWhile{iter: self, flag: false, predicate: predicate}
+        SkipWhile { iter: self, flag: false, predicate }
     }
 
     /// Creates an iterator that yields elements based on a predicate.
@@ -908,7 +908,7 @@ pub trait Iterator {
     fn take_while<P>(self, predicate: P) -> TakeWhile<Self, P> where
         Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
-        TakeWhile{iter: self, flag: false, predicate: predicate}
+        TakeWhile { iter: self, flag: false, predicate }
     }
 
     /// Creates an iterator that skips the first `n` elements.
@@ -930,7 +930,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn skip(self, n: usize) -> Skip<Self> where Self: Sized {
-        Skip{iter: self, n: n}
+        Skip { iter: self, n }
     }
 
     /// Creates an iterator that yields its first `n` elements.
@@ -962,7 +962,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, n: usize) -> Take<Self> where Self: Sized, {
-        Take{iter: self, n: n}
+        Take { iter: self, n }
     }
 
     /// An iterator adaptor similar to [`fold`] that holds internal state and
@@ -1007,7 +1007,7 @@ pub trait Iterator {
     fn scan<St, B, F>(self, initial_state: St, f: F) -> Scan<Self, St, F>
         where Self: Sized, F: FnMut(&mut St, Self::Item) -> Option<B>,
     {
-        Scan{iter: self, f: f, state: initial_state}
+        Scan { iter: self, f, state: initial_state }
     }
 
     /// Creates an iterator that works like map, but flattens nested structure.
@@ -1256,7 +1256,7 @@ pub trait Iterator {
     fn inspect<F>(self, f: F) -> Inspect<Self, F> where
         Self: Sized, F: FnMut(&Self::Item),
     {
-        Inspect{iter: self, f: f}
+        Inspect { iter: self, f }
     }
 
     /// Borrows an iterator, rather than consuming it.
