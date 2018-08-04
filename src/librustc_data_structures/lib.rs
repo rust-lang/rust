@@ -73,13 +73,14 @@ pub mod small_vec;
 pub mod snapshot_map;
 pub use ena::snapshot_vec;
 pub mod sorted_map;
-pub mod stable_hasher;
+#[macro_use] pub mod stable_hasher;
 pub mod sync;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod tuple_slice;
 pub use ena::unify;
 pub mod work_queue;
+pub mod fingerprint;
 
 pub struct OnDrop<F: Fn()>(pub F);
 

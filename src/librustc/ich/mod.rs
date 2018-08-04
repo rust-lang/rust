@@ -10,11 +10,10 @@
 
 //! ICH - Incremental Compilation Hash
 
-pub use self::fingerprint::Fingerprint;
+crate use rustc_data_structures::fingerprint::Fingerprint;
 pub use self::caching_codemap_view::CachingCodemapView;
 pub use self::hcx::{StableHashingContextProvider, StableHashingContext, NodeIdHashingMode,
                     hash_stable_trait_impls, compute_ignored_attr_names};
-mod fingerprint;
 mod caching_codemap_view;
 mod hcx;
 

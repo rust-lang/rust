@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::mem;
-use rustc_data_structures::stable_hasher;
+use stable_hasher;
 use serialize;
 use serialize::opaque::{EncodeResult, Encoder, Decoder};
 

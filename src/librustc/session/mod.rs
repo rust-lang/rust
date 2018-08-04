@@ -12,7 +12,7 @@ pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
 use hir::def_id::CrateNum;
-use ich::Fingerprint;
+use rustc_data_structures::fingerprint::Fingerprint;
 
 use ich;
 use lint;
