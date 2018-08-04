@@ -2076,7 +2076,7 @@ mod tests {
     use fs::{self, File, OpenOptions};
     use io::{ErrorKind, SeekFrom};
     use path::Path;
-    use rand::{StdRng, Rng};
+    use rand::{StdRng, FromEntropy, RngCore};
     use str;
     use sys_common::io::test::{TempDir, tmpdir};
     use thread;
@@ -3110,7 +3110,7 @@ mod tests {
     #[test]
     fn binary_file() {
         let mut bytes = [0; 1024];
-        StdRng::new().unwrap().fill_bytes(&mut bytes);
+        StdRng::from_entropy().fill_bytes(&mut bytes);
 
         let tmpdir = tmpdir();
 
@@ -3123,7 +3123,7 @@ mod tests {
     #[test]
     fn write_then_read() {
         let mut bytes = [0; 1024];
-        StdRng::new().unwrap().fill_bytes(&mut bytes);
+        StdRng::from_entropy().fill_bytes(&mut bytes);
 
         let tmpdir = tmpdir();
 

@@ -18,7 +18,8 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
 use std::thread;
 
-use rand::{Rng, thread_rng};
+use rand::{Rng, RngCore, thread_rng};
+use rand::distributions::Standard;
 
 fn square(n: usize) -> usize {
     n * n
@@ -405,7 +406,7 @@ fn test_sort() {
     for len in (2..25).chain(500..510) {
         for &modulus in &[5, 10, 100, 1000] {
             for _ in 0..10 {
-                let orig: Vec<_> = rng.gen_iter::<i32>()
+                let orig: Vec<_> = rng.sample_iter::<i32, _>(&Standard)
                     .map(|x| x % modulus)
                     .take(len)
                     .collect();

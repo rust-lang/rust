@@ -93,8 +93,11 @@ cfg_if! {
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
         pub use std::cell::Ref as ReadGuard;
+        pub use std::cell::Ref as MappedReadGuard;
         pub use std::cell::RefMut as WriteGuard;
+        pub use std::cell::RefMut as MappedWriteGuard;
         pub use std::cell::RefMut as LockGuard;
+        pub use std::cell::RefMut as MappedLockGuard;
 
         use std::cell::RefCell as InnerRwLock;
         use std::cell::RefCell as InnerLock;
@@ -213,9 +216,12 @@ cfg_if! {
         pub use std::marker::Sync as Sync;
 
         pub use parking_lot::RwLockReadGuard as ReadGuard;
+        pub use parking_lot::MappedRwLockReadGuard as MappedReadGuard;
         pub use parking_lot::RwLockWriteGuard as WriteGuard;
+        pub use parking_lot::MappedRwLockWriteGuard as MappedWriteGuard;
 
         pub use parking_lot::MutexGuard as LockGuard;
+        pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;

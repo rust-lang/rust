@@ -16,3 +16,4 @@
 
 extern crate bitflags;
 extern crate log;
+extern crate unicode_width;

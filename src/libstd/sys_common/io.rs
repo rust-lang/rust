@@ -14,7 +14,7 @@ pub const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 pub mod test {
     use path::{Path, PathBuf};
     use env;
-    use rand::{self, Rng};
+    use rand::{self, RngCore};
     use fs;
 
     pub struct TempDir(PathBuf);

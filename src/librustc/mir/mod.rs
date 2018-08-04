@@ -25,7 +25,7 @@ use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::sync::ReadGuard;
+use rustc_data_structures::sync::MappedReadGuard;
 use rustc_serialize as serialize;
 use smallvec::SmallVec;
 use std::borrow::Cow;
@@ -194,13 +194,13 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
-    pub fn predecessors(&self) -> ReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self) -> MappedReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
         self.cache.predecessors(self)
     }
 
     #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> ReadGuard<'_, Vec<BasicBlock>> {
-        ReadGuard::map(self.predecessors(), |p| &p[bb])
+    pub fn predecessors_for(&self, bb: BasicBlock) -> MappedReadGuard<'_, Vec<BasicBlock>> {
+        MappedReadGuard::map(self.predecessors(), |p| &p[bb])
     }
 
     #[inline]

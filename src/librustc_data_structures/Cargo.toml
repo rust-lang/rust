@@ -22,5 +22,5 @@ rustc-hash = "1.0.1"
 smallvec = { version = "0.6.5", features = ["union"] }
 
 [dependencies.parking_lot]
-version = "0.5"
+version = "0.6"
 features = ["nightly"]

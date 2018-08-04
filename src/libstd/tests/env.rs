@@ -13,11 +13,12 @@ extern crate rand;
 use std::env::*;
 use std::ffi::{OsString, OsStr};
 
-use rand::Rng;
+use rand::{thread_rng, Rng};
+use rand::distributions::Alphanumeric;
 
 fn make_rand_name() -> OsString {
-    let mut rng = rand::thread_rng();
-    let n = format!("TEST{}", rng.gen_ascii_chars().take(10)
+    let mut rng = thread_rng();
+    let n = format!("TEST{}", rng.sample_iter(&Alphanumeric).take(10)
                                  .collect::<String>());
     let n = OsString::from(n);
     assert!(var_os(&n).is_none());

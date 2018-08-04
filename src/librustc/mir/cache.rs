@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::{RwLock, ReadGuard};
+use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use ich::StableHashingContext;
@@ -55,7 +55,10 @@ impl Cache {
         *self.predecessors.borrow_mut() = None;
     }
 
-    pub fn predecessors(&self, mir: &Mir) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(
+        &self,
+        mir: &Mir
+    ) -> MappedReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
         if self.predecessors.borrow().is_none() {
             *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));
         }
