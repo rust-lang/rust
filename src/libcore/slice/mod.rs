@@ -621,7 +621,7 @@ impl<T> [T] {
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<T> {
         assert!(size != 0);
-        Windows { v: self, size: size }
+        Windows { v: self, size }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a
@@ -652,7 +652,7 @@ impl<T> [T] {
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<T> {
         assert!(chunk_size != 0);
-        Chunks { v: self, chunk_size: chunk_size }
+        Chunks { v: self, chunk_size }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
@@ -687,7 +687,7 @@ impl<T> [T] {
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
         assert!(chunk_size != 0);
-        ChunksMut { v: self, chunk_size: chunk_size }
+        ChunksMut { v: self, chunk_size }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a
@@ -724,7 +724,7 @@ impl<T> [T] {
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
         let (fst, snd) = self.split_at(len);
-        ExactChunks { v: fst, rem: snd, chunk_size: chunk_size}
+        ExactChunks { v: fst, rem: snd, chunk_size }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
@@ -766,7 +766,7 @@ impl<T> [T] {
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
         let (fst, snd) = self.split_at_mut(len);
-        ExactChunksMut { v: fst, rem: snd, chunk_size: chunk_size}
+        ExactChunksMut { v: fst, rem: snd, chunk_size }
     }
 
     /// Divides one slice into two at an index.
@@ -916,7 +916,7 @@ impl<T> [T] {
     pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<T, F>
         where F: FnMut(&T) -> bool
     {
-        SplitMut { v: self, pred: pred, finished: false }
+        SplitMut { v: self, pred, finished: false }
     }
 
     /// Returns an iterator over subslices separated by elements that match

@@ -77,8 +77,8 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
             // neighbors: (mant - 2, exp) -- (mant, exp) -- (mant + 2, exp)
             // Float::integer_decode always preserves the exponent,
             // so the mantissa is scaled for subnormals.
-            FullDecoded::Finite(Decoded { mant: mant, minus: 1, plus: 1,
-                                          exp: exp, inclusive: even })
+            FullDecoded::Finite(Decoded { mant, minus: 1, plus: 1,
+                                          exp, inclusive: even })
         }
         FpCategory::Normal => {
             let minnorm = <T as DecodableFloat>::min_pos_norm_value().integer_decode();

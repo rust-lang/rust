@@ -424,20 +424,20 @@ pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 { // [0.][0000]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(frac_digits);
-                Formatted { sign: sign, parts: &parts[..2] }
+                Formatted { sign, parts: &parts[..2] }
             } else {
                 parts[0] = Part::Copy(b"0");
-                Formatted { sign: sign, parts: &parts[..1] }
+                Formatted { sign, parts: &parts[..1] }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -480,11 +480,11 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
             parts[0] = if dec_bounds.0 <= 0 && 0 < dec_bounds.1 {
@@ -492,7 +492,7 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
             } else {
                 Part::Copy(if upper { b"0E0" } else { b"0e0" })
             };
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Finite(ref decoded) => {
             let (len, exp) = format_shortest(decoded, buf);
@@ -502,7 +502,7 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
             } else {
                 digits_to_exp_str(&buf[..len], exp, 0, upper, parts)
             };
-            Formatted { sign: sign, parts: parts }
+            Formatted { sign, parts }
         }
     }
 }
@@ -558,21 +558,21 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
             if ndigits > 1 { // [0.][0000][e0]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(ndigits - 1);
                 parts[2] = Part::Copy(if upper { b"E0" } else { b"e0" });
-                Formatted { sign: sign, parts: &parts[..3] }
+                Formatted { sign, parts: &parts[..3] }
             } else {
                 parts[0] = Part::Copy(if upper { b"0E0" } else { b"0e0" });
-                Formatted { sign: sign, parts: &parts[..1] }
+                Formatted { sign, parts: &parts[..1] }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -613,20 +613,20 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
     match full_decoded {
         FullDecoded::Nan => {
             parts[0] = Part::Copy(b"NaN");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
             parts[0] = Part::Copy(b"inf");
-            Formatted { sign: sign, parts: &parts[..1] }
+            Formatted { sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
             if frac_digits > 0 { // [0.][0000]
                 parts[0] = Part::Copy(b"0.");
                 parts[1] = Part::Zero(frac_digits);
-                Formatted { sign: sign, parts: &parts[..2] }
+                Formatted { sign, parts: &parts[..2] }
             } else {
                 parts[0] = Part::Copy(b"0");
-                Formatted { sign: sign, parts: &parts[..1] }
+                Formatted { sign, parts: &parts[..1] }
             }
         }
         FullDecoded::Finite(ref decoded) => {
@@ -646,10 +646,10 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
                 if frac_digits > 0 { // [0.][0000]
                     parts[0] = Part::Copy(b"0.");
                     parts[1] = Part::Zero(frac_digits);
-                    Formatted { sign: sign, parts: &parts[..2] }
+                    Formatted { sign, parts: &parts[..2] }
                 } else {
                     parts[0] = Part::Copy(b"0");
-                    Formatted { sign: sign, parts: &parts[..1] }
+                    Formatted { sign, parts: &parts[..1] }
                 }
             } else {
                 Formatted { sign,

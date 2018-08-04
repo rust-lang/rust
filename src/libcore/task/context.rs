@@ -86,7 +86,7 @@ impl<'a> Context<'a> {
     {
         Context {
             local_waker: self.local_waker,
-            executor: executor,
+            executor,
         }
     }
 }

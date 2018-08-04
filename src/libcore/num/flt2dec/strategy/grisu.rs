@@ -129,7 +129,7 @@ pub fn cached_power(alpha: i16, gamma: i16) -> (i16, Fp) {
     let idx = ((gamma as i32) - offset) * range / domain;
     let (f, e, k) = CACHED_POW10[idx as usize];
     debug_assert!(alpha <= e && e <= gamma);
-    (k, Fp { f: f, e: e })
+    (k, Fp { f, e })
 }
 
 /// Given `x > 0`, returns `(k, 10^k)` such that `10^k <= x < 10^(k+1)`.

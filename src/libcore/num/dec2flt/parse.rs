@@ -40,7 +40,7 @@ pub struct Decimal<'a> {
 
 impl<'a> Decimal<'a> {
     pub fn new(integral: &'a [u8], fractional: &'a [u8], exp: i64) -> Decimal<'a> {
-        Decimal { integral: integral, fractional: fractional, exp: exp }
+        Decimal { integral, fractional, exp }
     }
 }
 
