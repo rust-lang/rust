@@ -1727,7 +1727,7 @@ impl<T> [T] {
                     ctz_b = ::intrinsics::cttz_nonzero(b);
                 }
             }
-            return a << k;
+            a << k
         }
         let gcd: usize = gcd(::mem::size_of::<T>(), ::mem::size_of::<U>());
         let ts: usize = ::mem::size_of::<U>() / gcd;
@@ -1737,7 +1737,7 @@ impl<T> [T] {
         let us_len = self.len() / ts * us;
         // And how many `T`s will be in the trailing slice!
         let ts_len = self.len() % ts;
-        return (us_len, ts_len);
+        (us_len, ts_len)
     }
 
     /// Transmute the slice to a slice of another type, ensuring aligment of the types is
@@ -1782,13 +1782,13 @@ impl<T> [T] {
         let ptr = self.as_ptr();
         let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
         if offset > self.len() {
-            return (self, &[], &[]);
+            (self, &[], &[])
         } else {
             let (left, rest) = self.split_at(offset);
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
-            return (left,
-                    from_raw_parts(rest.as_ptr() as *const U, us_len),
-                    from_raw_parts(rest.as_ptr().offset((rest.len() - ts_len) as isize), ts_len))
+            (left,
+             from_raw_parts(rest.as_ptr() as *const U, us_len),
+             from_raw_parts(rest.as_ptr().offset((rest.len() - ts_len) as isize), ts_len))
         }
     }
 
@@ -1834,14 +1834,14 @@ impl<T> [T] {
         let ptr = self.as_ptr();
         let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
         if offset > self.len() {
-            return (self, &mut [], &mut []);
+            (self, &mut [], &mut [])
         } else {
             let (left, rest) = self.split_at_mut(offset);
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             let mut_ptr = rest.as_mut_ptr();
-            return (left,
-                    from_raw_parts_mut(mut_ptr as *mut U, us_len),
-                    from_raw_parts_mut(mut_ptr.offset((rest.len() - ts_len) as isize), ts_len))
+            (left,
+             from_raw_parts_mut(mut_ptr as *mut U, us_len),
+             from_raw_parts_mut(mut_ptr.offset((rest.len() - ts_len) as isize), ts_len))
         }
     }
 }

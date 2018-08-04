@@ -217,7 +217,7 @@ impl Layout {
 
         let len_rounded_up = len.wrapping_add(align).wrapping_sub(1)
             & !align.wrapping_sub(1);
-        return len_rounded_up.wrapping_sub(len);
+        len_rounded_up.wrapping_sub(len)
     }
 
     /// Creates a layout describing the record for `n` instances of
@@ -971,9 +971,9 @@ pub unsafe trait Alloc {
         // _l <= layout.size()                       [guaranteed by usable_size()]
         //       layout.size() <= new_layout.size()  [required by this method]
         if new_size <= u {
-            return Ok(());
+            Ok(())
         } else {
-            return Err(CannotReallocInPlace);
+            Err(CannotReallocInPlace)
         }
     }
 
@@ -1026,9 +1026,9 @@ pub unsafe trait Alloc {
         //                      layout.size() <= _u  [guaranteed by usable_size()]
         // new_layout.size() <= layout.size()        [required by this method]
         if l <= new_size {
-            return Ok(());
+            Ok(())
         } else {
-            return Err(CannotReallocInPlace);
+            Err(CannotReallocInPlace)
         }
     }
 
