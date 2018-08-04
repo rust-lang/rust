@@ -17,9 +17,11 @@ TOOLSTATE_FILE="$(realpath $2)"
 OS="$3"
 COMMIT="$(git rev-parse HEAD)"
 CHANGED_FILES="$(git diff --name-status HEAD HEAD^)"
-SIX_WEEK_CYCLE="$(( ($(date +%s) / 604800 - 3) % 6 ))"
-# ^ 1970 Jan 1st is a Thursday, and our release dates are also on Thursdays,
-#   thus we could divide by 604800 (7 days in seconds) directly.
+SIX_WEEK_CYCLE="$(( ($(date +%s) / 86400 - 20) % 42 ))"
+# ^ Number of days after the last promotion of beta.
+#   Its value is 41 on the Tuesday where "Promote master to beta (T-2)" happens.
+#   The Wednesday after this has value 0.
+#   We track this value to prevent regressing tools in the last week of the 6-week cycle.
 
 touch "$TOOLSTATE_FILE"
 
@@ -98,7 +100,7 @@ change_toolstate() {
     if python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" changed; then
         echo 'Toolstate is not changed. Not updating.'
     else
-        if [ $SIX_WEEK_CYCLE -eq 5 ]; then
+        if [ $SIX_WEEK_CYCLE -ge 35 ]; then
             python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" regressed
         fi
         sed -i "1 a\\
