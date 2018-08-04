@@ -57,7 +57,7 @@ cfg_if! {
 // then later used in the `std::os` module when documenting, for example,
 // Windows when we're compiling for Linux.
 
-#[cfg(dox)]
+#[cfg(rustdoc)]
 cfg_if! {
     if #[cfg(any(unix, target_os = "redox"))] {
         // On unix we'll document what's already available
@@ -77,7 +77,7 @@ cfg_if! {
     }
 }
 
-#[cfg(dox)]
+#[cfg(rustdoc)]
 cfg_if! {
     if #[cfg(windows)] {
         // On windows we'll just be documenting what's already available
