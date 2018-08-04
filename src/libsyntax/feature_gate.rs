@@ -381,7 +381,7 @@ declare_features! (
     (active, crate_in_paths, "1.23.0", Some(45477), Some(Edition::Edition2018)),
 
     // In-band lifetime bindings (e.g. `fn foo(x: &'a u8) -> &'a u8`)
-    (active, in_band_lifetimes, "1.23.0", Some(44524), Some(Edition::Edition2018)),
+    (active, in_band_lifetimes, "1.23.0", Some(44524), None),
 
     // generic associated types (RFC 1598)
     (active, generic_associated_types, "1.23.0", Some(44265), None),
