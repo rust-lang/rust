@@ -3604,8 +3604,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(trim_direction)]
-    ///
     /// let s = " Hello\tworld\t";
     /// assert_eq!("Hello\tworld\t", s.trim_start());
     /// ```
@@ -3613,15 +3611,13 @@ impl str {
     /// Directionality:
     ///
     /// ```
-    /// #![feature(trim_direction)]
-    ///
-    /// let s = "  English";
+    /// let s = "  English  ";
     /// assert!(Some('E') == s.trim_start().chars().next());
     ///
-    /// let s = "  עברית";
+    /// let s = "  עברית  ";
     /// assert!(Some('ע') == s.trim_start().chars().next());
     /// ```
-    #[unstable(feature = "trim_direction", issue = "30459")]
+    #[stable(feature = "trim_direction", since = "1.30.0")]
     pub fn trim_start(&self) -> &str {
         self.trim_start_matches(|c: char| c.is_whitespace())
     }
@@ -3643,8 +3639,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(trim_direction)]
-    ///
     /// let s = " Hello\tworld\t";
     /// assert_eq!(" Hello\tworld", s.trim_end());
     /// ```
@@ -3652,15 +3646,13 @@ impl str {
     /// Directionality:
     ///
     /// ```
-    /// #![feature(trim_direction)]
-    ///
-    /// let s = "English  ";
+    /// let s = "  English  ";
     /// assert!(Some('h') == s.trim_end().chars().rev().next());
     ///
-    /// let s = "עברית  ";
+    /// let s = "  עברית  ";
     /// assert!(Some('ת') == s.trim_end().chars().rev().next());
     /// ```
-    #[unstable(feature = "trim_direction", issue = "30459")]
+    #[stable(feature = "trim_direction", since = "1.30.0")]
     pub fn trim_end(&self) -> &str {
         self.trim_end_matches(|c: char| c.is_whitespace())
     }
@@ -3805,15 +3797,13 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(trim_direction)]
-    ///
     /// assert_eq!("11foo1bar11".trim_start_matches('1'), "foo1bar11");
     /// assert_eq!("123foo1bar123".trim_start_matches(char::is_numeric), "foo1bar123");
     ///
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!("12foo1bar12".trim_start_matches(x), "foo1bar12");
     /// ```
-    #[unstable(feature = "trim_direction", issue = "30459")]
+    #[stable(feature = "trim_direction", since = "1.30.0")]
     pub fn trim_start_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
         let mut i = self.len();
         let mut matcher = pat.into_searcher(self);
@@ -3846,8 +3836,6 @@ impl str {
     /// Simple patterns:
     ///
     /// ```
-    /// #![feature(trim_direction)]
-    ///
     /// assert_eq!("11foo1bar11".trim_end_matches('1'), "11foo1bar");
     /// assert_eq!("123foo1bar123".trim_end_matches(char::is_numeric), "123foo1bar");
     ///
@@ -3858,11 +3846,9 @@ impl str {
     /// A more complex pattern, using a closure:
     ///
     /// ```
-    /// #![feature(trim_direction)]
-    ///
     /// assert_eq!("1fooX".trim_end_matches(|c| c == '1' || c == 'X'), "1foo");
     /// ```
-    #[unstable(feature = "trim_direction", issue = "30459")]
+    #[stable(feature = "trim_direction", since = "1.30.0")]
     pub fn trim_end_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
         where P::Searcher: ReverseSearcher<'a>
     {
