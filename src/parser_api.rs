@@ -58,6 +58,10 @@ impl<'t> Parser<'t> {
         self.current() == kind
     }
 
+    pub(crate) fn at_compound2(&self, c1: SyntaxKind, c2: SyntaxKind) -> bool {
+        self.0.at_compound2(c1, c2)
+    }
+
     /// Checks if the current token is contextual keyword with text `t`.
     pub(crate) fn at_contextual_kw(&self, t: &str) -> bool {
         self.0.at_kw(t)
@@ -83,6 +87,13 @@ impl<'t> Parser<'t> {
     /// final tree.
     pub(crate) fn bump_remap(&mut self, kind: SyntaxKind) {
         self.0.bump_remap(kind);
+    }
+
+    /// Advances the parser by `n` tokens, remapping its kind.
+    /// This is useful to create compound tokens from parts. For
+    /// example, an `<<` token is two consecutive remapped `<` tokens
+    pub(crate) fn bump_compound(&mut self, kind: SyntaxKind, n: u8) {
+        self.0.bump_compound(kind, n);
     }
 
     /// Emit error with the `message`

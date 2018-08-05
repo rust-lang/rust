@@ -36,7 +36,22 @@ impl<'t> ParserInput<'t> {
         self.tokens[idx].kind
     }
 
-    #[allow(unused)]
+    pub fn len(&self, pos: InputPosition) -> TextUnit {
+        let idx = pos.0 as usize;
+        if !(idx < self.tokens.len()) {
+            return 0.into();
+        }
+        self.tokens[idx].len
+    }
+
+    pub fn start(&self, pos: InputPosition) -> TextUnit {
+        let idx = pos.0 as usize;
+        if !(idx < self.tokens.len()) {
+            return 0.into();
+        }
+        self.start_offsets[idx]
+    }
+
     pub fn text(&self, pos: InputPosition) -> &'t str {
         let idx = pos.0 as usize;
         if !(idx < self.tokens.len()) {

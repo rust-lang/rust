@@ -65,6 +65,11 @@ impl<'t> ParserImpl<'t> {
         self.events
     }
 
+    pub(super) fn at_compound2(&self, c1: SyntaxKind, c2: SyntaxKind) -> bool {
+        self.inp.kind(self.pos) == c1 && self.inp.kind(self.pos + 1) == c2
+            && self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos)
+    }
+
     pub(super) fn nth(&self, n: u32) -> SyntaxKind {
         self.inp.kind(self.pos + n)
     }
@@ -87,7 +92,7 @@ impl<'t> ParserImpl<'t> {
         if kind == EOF {
             return;
         }
-        self.do_bump(kind);
+        self.do_bump(kind, 1);
     }
 
     pub(super) fn bump_remap(&mut self, kind: SyntaxKind) {
@@ -95,14 +100,18 @@ impl<'t> ParserImpl<'t> {
             // TODO: panic!?
             return;
         }
-        self.do_bump(kind);
+        self.do_bump(kind, 1);
     }
 
-    fn do_bump(&mut self, kind: SyntaxKind) {
-        self.pos += 1;
+    pub(super) fn bump_compound(&mut self, kind: SyntaxKind, n: u8) {
+        self.do_bump(kind, n);
+    }
+
+    fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
+        self.pos += u32::from(n_raw_tokens);
         self.event(Event::Token {
             kind,
-            n_raw_tokens: 1,
+            n_raw_tokens,
         });
     }
 

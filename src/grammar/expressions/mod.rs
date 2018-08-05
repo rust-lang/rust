@@ -33,19 +33,45 @@ struct Restrictions {
     forbid_structs: bool
 }
 
+enum Op {
+    Simple,
+    Composite(SyntaxKind, u8)
+}
+
 // test expr_binding_power
 // fn foo() {
 //     1 + 2 * 3 == 1 * 2 + 3;
 //     *x = 1 + 1;
 // }
-fn bp_of(op: SyntaxKind) -> u8 {
-    match op {
+
+// test compound_ops
+// fn foo() {
+//     x += 1;
+//     1 + 1 <= 2 * 3;
+//     z -= 3 >= 0;
+// }
+fn current_op(p: &Parser) -> (u8, Op) {
+    if p.at_compound2(L_ANGLE, EQ) {
+        return (2, Op::Composite(LTEQ, 2))
+    }
+    if p.at_compound2(R_ANGLE, EQ) {
+        return (2, Op::Composite(GTEQ, 2))
+    }
+    if p.at_compound2(PLUS, EQ) {
+        return (1, Op::Composite(PLUSEQ, 2))
+    }
+    if p.at_compound2(MINUS, EQ) {
+        return (1, Op::Composite(MINUSEQ, 2))
+    }
+
+    let bp = match p.current() {
         EQ => 1,
         EQEQ | NEQ => 2,
         MINUS | PLUS => 3,
         STAR | SLASH => 4,
-        _ => 0
-    }
+        _ => 0,
+    };
+    (bp, Op::Simple)
 }
 
 // Parses expression with binding power of at least bp.
@@ -56,9 +82,15 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
     };
 
     loop {
-        let op_bp = bp_of(p.current());
+        let (op_bp, op) = current_op(p);
         if op_bp < bp {
             break;
+        }
+        match op {
+            Op::Simple => p.bump(),
+            Op::Composite(kind, n) => {
+                p.bump_compound(kind, n);
+            },
         }
         lhs = bin_expr(p, r, lhs, op_bp);
     }
@@ -254,12 +286,7 @@ fn struct_lit(p: &mut Parser) {
 }
 
 fn bin_expr(p: &mut Parser, r: Restrictions, lhs: CompletedMarker, bp: u8) -> CompletedMarker {
-    assert!(match p.current() {
-        MINUS | PLUS | STAR | SLASH | EQEQ | NEQ | EQ => true,
-        _ => false,
-    });
     let m = lhs.precede(p);
-    p.bump();
     expr_bp(p, r, bp);
     m.complete(p, BIN_EXPR)
 }

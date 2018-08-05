@@ -37,6 +37,10 @@ Grammar(
         ["!=", "NEQ"],
         ["-", "MINUS"],
         ["->", "THIN_ARROW"],
+        ["<=", "LTEQ"],
+        [">=", "GTEQ"],
+        ["+=", "PLUSEQ"],
+        ["-=", "MINUSEQ"],
     ],
     keywords: [
         "use",
