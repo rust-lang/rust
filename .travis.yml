@@ -45,8 +45,6 @@ matrix:
     - env: INTEGRATION=rust-clippy
     # Build failure
     - env: INTEGRATION=rust-semverver
-    # See: https://github.com/rust-lang-nursery/rustfmt/issues/2787
-    - env: INTEGRATION=stdsimd
 
 script:
   - |

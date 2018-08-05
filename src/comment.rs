@@ -500,7 +500,7 @@ fn rewrite_comment_inner(
 const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
 
 fn hide_sharp_behind_comment<'a>(s: &'a str) -> Cow<'a, str> {
-    if s.trim_left().starts_with('#') {
+    if s.trim_left().starts_with("# ") {
         Cow::from(format!("{}{}", RUSTFMT_CUSTOM_COMMENT_PREFIX, s))
     } else {
         Cow::from(s)
