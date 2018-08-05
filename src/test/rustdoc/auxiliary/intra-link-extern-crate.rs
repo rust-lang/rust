@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(intra_doc_link_resolution_failure)]
+#![crate_name="inner"]
 
-/// [intradoc::failure]
-pub fn main() {
-    println!("Hello, world!");
-}
+//! ooh, i'm a rebel just for [kicks]

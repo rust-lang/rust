@@ -8,88 +8,153 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Contains information about "passes", used to modify crate information during the documentation
+//! process.
+
 use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::mem;
+use std::fmt;
 
 use clean::{self, GetDefId, Item};
+use core::DocContext;
 use fold;
 use fold::StripItem;
 
 mod collapse_docs;
-pub use self::collapse_docs::collapse_docs;
+pub use self::collapse_docs::COLLAPSE_DOCS;
 
 mod strip_hidden;
-pub use self::strip_hidden::strip_hidden;
+pub use self::strip_hidden::STRIP_HIDDEN;
 
 mod strip_private;
-pub use self::strip_private::strip_private;
+pub use self::strip_private::STRIP_PRIVATE;
 
 mod strip_priv_imports;
-pub use self::strip_priv_imports::strip_priv_imports;
+pub use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
 
 mod unindent_comments;
-pub use self::unindent_comments::unindent_comments;
+pub use self::unindent_comments::UNINDENT_COMMENTS;
 
 mod propagate_doc_cfg;
-pub use self::propagate_doc_cfg::propagate_doc_cfg;
+pub use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
-type Pass = (
-    &'static str,                     // name
-    fn(clean::Crate) -> clean::Crate, // fn
-    &'static str,
-); // description
+mod collect_intra_doc_links;
+pub use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
+/// Represents a single pass.
+#[derive(Copy, Clone)]
+pub enum Pass {
+    /// An "early pass" is run in the compiler context, and can gather information about types and
+    /// traits and the like.
+    EarlyPass {
+        name: &'static str,
+        pass: fn(clean::Crate, &DocContext) -> clean::Crate,
+        description: &'static str,
+    },
+    /// A "late pass" is run between crate cleaning and page generation.
+    LatePass {
+        name: &'static str,
+        pass: fn(clean::Crate) -> clean::Crate,
+        description: &'static str,
+    },
+}
+
+impl fmt::Debug for Pass {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut dbg = match *self {
+            Pass::EarlyPass { .. } => f.debug_struct("EarlyPass"),
+            Pass::LatePass { .. } => f.debug_struct("LatePass"),
+        };
+
+        dbg.field("name", &self.name())
+           .field("pass", &"...")
+           .field("description", &self.description())
+           .finish()
+    }
+}
+
+impl Pass {
+    /// Constructs a new early pass.
+    pub const fn early(name: &'static str,
+                       pass: fn(clean::Crate, &DocContext) -> clean::Crate,
+                       description: &'static str) -> Pass {
+        Pass::EarlyPass { name, pass, description }
+    }
+
+    /// Constructs a new late pass.
+    pub const fn late(name: &'static str,
+                      pass: fn(clean::Crate) -> clean::Crate,
+                      description: &'static str) -> Pass {
+        Pass::LatePass { name, pass, description }
+    }
+
+    /// Returns the name of this pass.
+    pub fn name(self) -> &'static str {
+        match self {
+            Pass::EarlyPass { name, .. } |
+                Pass::LatePass { name, .. } => name,
+        }
+    }
+
+    /// Returns the description of this pass.
+    pub fn description(self) -> &'static str {
+        match self {
+            Pass::EarlyPass { description, .. } |
+                Pass::LatePass { description, .. } => description,
+        }
+    }
+
+    /// If this pass is an early pass, returns the pointer to its function.
+    pub fn early_fn(self) -> Option<fn(clean::Crate, &DocContext) -> clean::Crate> {
+        match self {
+            Pass::EarlyPass { pass, .. } => Some(pass),
+            _ => None,
+        }
+    }
+
+    /// If this pass is a late pass, returns the pointer to its function.
+    pub fn late_fn(self) -> Option<fn(clean::Crate) -> clean::Crate> {
+        match self {
+            Pass::LatePass { pass, .. } => Some(pass),
+            _ => None,
+        }
+    }
+}
+
+/// The full list of passes.
 pub const PASSES: &'static [Pass] = &[
-    (
-        "strip-hidden",
-        strip_hidden,
-        "strips all doc(hidden) items from the output",
-    ),
-    (
-        "unindent-comments",
-        unindent_comments,
-        "removes excess indentation on comments in order for markdown to like it",
-    ),
-    (
-        "collapse-docs",
-        collapse_docs,
-        "concatenates all document attributes into one document attribute",
-    ),
-    (
-        "strip-private",
-        strip_private,
-        "strips all private items from a crate which cannot be seen externally, \
-         implies strip-priv-imports",
-    ),
-    (
-        "strip-priv-imports",
-        strip_priv_imports,
-        "strips all private import statements (`use`, `extern crate`) from a crate",
-    ),
-    (
-        "propagate-doc-cfg",
-        propagate_doc_cfg,
-        "propagates `#[doc(cfg(...))]` to child items",
-    ),
+    STRIP_HIDDEN,
+    UNINDENT_COMMENTS,
+    COLLAPSE_DOCS,
+    STRIP_PRIVATE,
+    STRIP_PRIV_IMPORTS,
+    PROPAGATE_DOC_CFG,
+    COLLECT_INTRA_DOC_LINKS,
 ];
 
+/// The list of passes run by default.
 pub const DEFAULT_PASSES: &'static [&'static str] = &[
     "strip-hidden",
     "strip-private",
+    "collect-intra-doc-links",
     "collapse-docs",
     "unindent-comments",
     "propagate-doc-cfg",
 ];
 
+/// The list of default passes run with `--document-private-items` is passed to rustdoc.
 pub const DEFAULT_PRIVATE_PASSES: &'static [&'static str] = &[
     "strip-priv-imports",
+    "collect-intra-doc-links",
     "collapse-docs",
     "unindent-comments",
     "propagate-doc-cfg",
 ];
 
+/// A shorthand way to refer to which set of passes to use, based on the presence of
+/// `--no-defaults` or `--document-private-items`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DefaultPassOption {
     Default,
@@ -97,12 +162,18 @@ pub enum DefaultPassOption {
     None,
 }
 
+/// Returns the given default set of passes.
 pub fn defaults(default_set: DefaultPassOption) -> &'static [&'static str] {
     match default_set {
         DefaultPassOption::Default => DEFAULT_PASSES,
         DefaultPassOption::Private => DEFAULT_PRIVATE_PASSES,
         DefaultPassOption::None => &[],
     }
+}
+
+/// If the given name matches a known pass, returns its information.
+pub fn find_pass(pass_name: &str) -> Option<Pass> {
+    PASSES.iter().find(|p| p.name() == pass_name).cloned()
 }
 
 struct Stripper<'a> {

@@ -14,6 +14,11 @@ use std::usize;
 
 use clean::{self, DocFragment, Item};
 use fold::{self, DocFolder};
+use passes::Pass;
+
+pub const UNINDENT_COMMENTS: Pass =
+    Pass::late("unindent-comments", unindent_comments,
+        "removes excess indentation on comments in order for markdown to like it");
 
 pub fn unindent_comments(krate: clean::Crate) -> clean::Crate {
     CommentCleaner.fold_crate(krate)

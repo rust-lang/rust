@@ -26,7 +26,7 @@ use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
-use syntax::ast::{self, Ident, Name, NodeId};
+use syntax::ast::{self, Ident};
 use syntax::codemap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
@@ -45,8 +45,9 @@ use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
 use clean;
-use clean::{get_path_for_type, Clean, MAX_DEF_ID};
+use clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
 use html::render::RenderInfo;
+use passes;
 
 pub use rustc::session::config::{Input, Options, CodegenOptions};
 pub use rustc::session::search_paths::SearchPaths;
@@ -57,7 +58,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub resolver: &'a RefCell<resolve::Resolver<'rcx, 'cstore>>,
     /// The stack of module NodeIds up till this point
-    pub mod_ids: RefCell<Vec<NodeId>>,
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
     pub populated_all_crate_impls: Cell<bool>,
@@ -87,7 +87,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Maps (type_id, trait_id) -> auto trait impl
     pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>,
-    pub current_item_name: RefCell<Option<Name>>,
     pub all_traits: Vec<DefId>,
 }
 
@@ -322,7 +321,10 @@ pub fn run_core(search_paths: SearchPaths,
                 error_format: ErrorOutputType,
                 cmd_lints: Vec<(String, lint::Level)>,
                 lint_cap: Option<lint::Level>,
-                describe_lints: bool) -> (clean::Crate, RenderInfo)
+                describe_lints: bool,
+                mut manual_passes: Vec<String>,
+                mut default_passes: passes::DefaultPassOption)
+    -> (clean::Crate, RenderInfo, Vec<String>)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -517,23 +519,86 @@ pub fn run_core(search_paths: SearchPaths,
                 ty_substs: Default::default(),
                 lt_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
-                mod_ids: Default::default(),
                 send_trait: send_trait,
                 fake_def_ids: RefCell::new(FxHashMap()),
                 all_fake_def_ids: RefCell::new(FxHashSet()),
                 generated_synthetics: RefCell::new(FxHashSet()),
-                current_item_name: RefCell::new(None),
                 all_traits: tcx.all_traits(LOCAL_CRATE).to_vec(),
             };
             debug!("crate: {:?}", tcx.hir.krate());
 
-            let krate = {
+            let mut krate = {
                 let mut v = RustdocVisitor::new(&ctxt);
                 v.visit(tcx.hir.krate());
                 v.clean(&ctxt)
             };
 
-            (krate, ctxt.renderinfo.into_inner())
+            fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
+                let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
+                                                         considered deprecated", name));
+                msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
+
+                if name == "no_default_passes" {
+                    msg.help("you may want to use `#![doc(document_private_items)]`");
+                }
+
+                msg.emit();
+            }
+
+            // Process all of the crate attributes, extracting plugin metadata along
+            // with the passes which we are supposed to run.
+            for attr in krate.module.as_ref().unwrap().attrs.lists("doc") {
+                let diag = ctxt.sess().diagnostic();
+
+                let name = attr.name().map(|s| s.as_str());
+                let name = name.as_ref().map(|s| &s[..]);
+                if attr.is_word() {
+                    if name == Some("no_default_passes") {
+                        report_deprecated_attr("no_default_passes", diag);
+                        if default_passes == passes::DefaultPassOption::Default {
+                            default_passes = passes::DefaultPassOption::None;
+                        }
+                    }
+                } else if let Some(value) = attr.value_str() {
+                    let sink = match name {
+                        Some("passes") => {
+                            report_deprecated_attr("passes = \"...\"", diag);
+                            &mut manual_passes
+                        },
+                        Some("plugins") => {
+                            report_deprecated_attr("plugins = \"...\"", diag);
+                            eprintln!("WARNING: #![doc(plugins = \"...\")] no longer functions; \
+                                      see CVE-2018-1000622");
+                            continue
+                        },
+                        _ => continue,
+                    };
+                    for p in value.as_str().split_whitespace() {
+                        sink.push(p.to_string());
+                    }
+                }
+
+                if attr.is_word() && name == Some("document_private_items") {
+                    if default_passes == passes::DefaultPassOption::Default {
+                        default_passes = passes::DefaultPassOption::Private;
+                    }
+                }
+            }
+
+            let mut passes: Vec<String> =
+                passes::defaults(default_passes).iter().map(|p| p.to_string()).collect();
+            passes.extend(manual_passes);
+
+            for pass in &passes {
+                // the "unknown pass" error will be reported when late passes are run
+                if let Some(pass) = passes::find_pass(pass).and_then(|p| p.early_fn()) {
+                    krate = pass(krate, &ctxt);
+                }
+            }
+
+            ctxt.sess().abort_if_errors();
+
+            (krate, ctxt.renderinfo.into_inner(), passes)
         }), &sess)
     })
 }

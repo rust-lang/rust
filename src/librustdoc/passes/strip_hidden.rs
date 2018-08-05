@@ -13,13 +13,18 @@ use std::mem;
 
 use clean::{self, AttributesExt, NestedAttributesExt};
 use clean::Item;
+use core::DocContext;
 use fold;
 use fold::DocFolder;
 use fold::StripItem;
-use passes::ImplStripper;
+use passes::{ImplStripper, Pass};
+
+pub const STRIP_HIDDEN: Pass =
+    Pass::early("strip-hidden", strip_hidden,
+                "strips all doc(hidden) items from the output");
 
 /// Strip items marked `#[doc(hidden)]`
-pub fn strip_hidden(krate: clean::Crate) -> clean::Crate {
+pub fn strip_hidden(krate: clean::Crate, _: &DocContext) -> clean::Crate {
     let mut retained = DefIdSet();
 
     // strip all #[doc(hidden)] items
