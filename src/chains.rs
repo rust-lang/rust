@@ -101,6 +101,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 struct ChainItem {
     kind: ChainItemKind,
     tries: usize,
+    span: Span,
 }
 
 // FIXME: we can't use a reference here because to convert `try!` to `?` we
@@ -113,7 +114,6 @@ enum ChainItemKind {
         ast::PathSegment,
         Vec<ast::GenericArg>,
         Vec<ptr::P<ast::Expr>>,
-        Span,
     ),
     StructField(ast::Ident),
     TupleField(ast::Ident, bool),
@@ -137,7 +137,7 @@ impl ChainItemKind {
         }
     }
 
-    fn from_ast(expr: &ast::Expr) -> ChainItemKind {
+    fn from_ast(expr: &ast::Expr) -> (ChainItemKind, Span) {
         match expr.node {
             ast::ExprKind::MethodCall(ref segment, ref expressions) => {
                 let types = if let Some(ref generic_args) = segment.args {
@@ -149,16 +149,18 @@ impl ChainItemKind {
                 } else {
                     vec![]
                 };
-                ChainItemKind::MethodCall(segment.clone(), types, expressions.clone(), expr.span)
+                let kind = ChainItemKind::MethodCall(segment.clone(), types, expressions.clone());
+                (kind, expr.span)
             }
             ast::ExprKind::Field(ref nested, field) => {
-                if Self::is_tup_field_access(expr) {
+                let kind = if Self::is_tup_field_access(expr) {
                     ChainItemKind::TupleField(field, Self::is_tup_field_access(nested))
                 } else {
                     ChainItemKind::StructField(field)
-                }
+                };
+                (kind, expr.span)
             }
-            _ => ChainItemKind::Parent(expr.clone()),
+            _ => (ChainItemKind::Parent(expr.clone()), expr.span),
         }
     }
 }
@@ -168,8 +170,8 @@ impl Rewrite for ChainItem {
         let shape = shape.sub_width(self.tries)?;
         let rewrite = match self.kind {
             ChainItemKind::Parent(ref expr) => expr.rewrite(context, shape)?,
-            ChainItemKind::MethodCall(ref segment, ref types, ref exprs, span) => {
-                Self::rewrite_method_call(segment.ident, types, exprs, span, context, shape)?
+            ChainItemKind::MethodCall(ref segment, ref types, ref exprs) => {
+                Self::rewrite_method_call(segment.ident, types, exprs, self.span, context, shape)?
             }
             ChainItemKind::StructField(ident) => format!(".{}", ident.name),
             ChainItemKind::TupleField(ident, nested) => {
@@ -181,6 +183,11 @@ impl Rewrite for ChainItem {
 }
 
 impl ChainItem {
+    fn new(expr: &ast::Expr, tries: usize) -> ChainItem {
+        let (kind, span) = ChainItemKind::from_ast(expr);
+        ChainItem { kind, tries, span }
+    }
+
     fn rewrite_method_call(
         method_name: ast::Ident,
         types: &[ast::GenericArg],
@@ -226,10 +233,7 @@ impl Chain {
             match subexpr.node {
                 ast::ExprKind::Try(_) => sub_tries += 1,
                 _ => {
-                    children.push(ChainItem {
-                        kind: ChainItemKind::from_ast(subexpr),
-                        tries: sub_tries,
-                    });
+                    children.push(ChainItem::new(subexpr, sub_tries));
                     sub_tries = 0;
                 }
             }
