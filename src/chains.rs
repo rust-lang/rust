@@ -546,6 +546,9 @@ impl<'a> ChainFormatterShared<'a> {
         for (rewrite, prev_is_block_like) in rewrite_iter.zip(block_like_iter) {
             if !prev_is_block_like {
                 result.push_str(&connector);
+            } else if rewrite.starts_with('/') {
+                // This is comment, add a space before it.
+                result.push(' ');
             }
             result.push_str(&rewrite);
         }
