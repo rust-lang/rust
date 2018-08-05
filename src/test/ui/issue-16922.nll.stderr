@@ -8,7 +8,7 @@ error[E0621]: explicit lifetime required in the type of `value`
   --> $DIR/issue-16922.rs:14:5
    |
 LL | fn foo<T: Any>(value: &T) -> Box<Any> {
-   |                ----- consider changing the type of `value` to `&'static T`
+   |                       -- help: consider changing the type of `value` to : `&'static T`
 LL |     Box::new(value) as Box<Any>
    |     ^^^^^^^^^^^^^^^ lifetime `'static` required
 

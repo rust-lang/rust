@@ -2,7 +2,7 @@ error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/42701_one_named_and_one_anonymous.rs:20:9
    |
 LL | fn foo2<'a>(a: &'a Foo, x: &i32) -> &'a i32 {
-   |                         - consider changing the type of `x` to `&'a i32`
+   |                            ---- help: consider changing the type of `x` to : `&'a i32`
 ...
 LL |         &*x //~ ERROR explicit lifetime
    |         ^^^ lifetime `'a` required

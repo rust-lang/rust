@@ -38,7 +38,7 @@ error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/issue-40288-2.rs:17:9
    |
 LL | fn lifetime_transmute_slice<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
-   |                                                      - consider changing the type of `y` to `&'a T`
+   |                                                         -- help: consider changing the type of `y` to : `&'a T`
 ...
 LL |         slice[0] = y;
    |         ^^^^^^^^^^^^ lifetime `'a` required
@@ -47,7 +47,7 @@ error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/issue-40288-2.rs:32:9
    |
 LL | fn lifetime_transmute_struct<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
-   |                                                       - consider changing the type of `y` to `&'a T`
+   |                                                          -- help: consider changing the type of `y` to : `&'a T`
 ...
 LL |         dst.head = y;
    |         ^^^^^^^^^^^^ lifetime `'a` required

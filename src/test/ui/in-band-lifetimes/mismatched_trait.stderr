@@ -2,7 +2,7 @@ error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/mismatched_trait.rs:16:9
    |
 LL |     fn baz(&self, x: &'a u32, y: &u32) -> &'a u32 {
-   |                               - consider changing the type of `y` to `&'a u32`
+   |                                  ---- help: consider changing the type of `y` to : `&'a u32`
 LL |         y //~ ERROR explicit lifetime required
    |         ^ lifetime `'a` required
 

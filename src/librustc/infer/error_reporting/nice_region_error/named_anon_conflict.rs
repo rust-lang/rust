@@ -65,9 +65,10 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             region_info
         );
 
-        let (arg, new_ty, br, is_first, scope_def_id, is_impl_item) = (
+        let (arg, new_ty, new_ty_span, br, is_first, scope_def_id, is_impl_item) = (
             anon_arg_info.arg,
             anon_arg_info.arg_ty,
+            anon_arg_info.arg_ty_span,
             anon_arg_info.bound_region,
             anon_arg_info.is_first,
             region_info.def_id,
@@ -110,9 +111,10 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             E0621,
             "explicit lifetime required in {}",
             error_var
-        ).span_label(
-            arg.pat.span,
-            format!("consider changing {} to `{}`", span_label_var, new_ty),
+        ).span_suggestion(
+            new_ty_span,
+            &format!("consider changing {} to ", span_label_var),
+            new_ty.to_string()
         )
             .span_label(span, format!("lifetime `{}` required", named))
             .emit();
