@@ -1362,7 +1362,7 @@ trait RcBoxPtr<T: ?Sized> {
         // We want to abort on overflow instead of dropping the value.
         // The reference count will never be zero when this is called;
         // nevertheless, we insert an abort here to hint LLVM at
-        // an otherwise missied optimization.
+        // an otherwise missed optimization.
         if self.strong() == 0 || self.strong() == usize::max_value() {
             unsafe { abort(); }
         }
@@ -1384,7 +1384,7 @@ trait RcBoxPtr<T: ?Sized> {
         // We want to abort on overflow instead of dropping the value.
         // The reference count will never be zero when this is called;
         // nevertheless, we insert an abort here to hint LLVM at
-        // an otherwise missied optimization.
+        // an otherwise missed optimization.
         if self.weak() == 0 || self.weak() == usize::max_value() {
             unsafe { abort(); }
         }
