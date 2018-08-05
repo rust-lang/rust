@@ -163,6 +163,7 @@ Grammar(
         "DEREF_EXPR",
         "NOT_EXPR",
 
+        "RANGE_EXPR", // just weird
         "BIN_EXPR",
 
 

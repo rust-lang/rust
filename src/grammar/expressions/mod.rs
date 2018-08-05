@@ -44,6 +44,13 @@ enum Op {
 //     *x = 1 + 1;
 // }
 
+// test range_binding_power
+// fn foo() {
+//     .. 1 + 1;
+//     .. z = 2;
+//     x = false .. 1 == 1;
+// }
+
 // test compound_ops
 // fn foo() {
 //     x += 1;
@@ -52,10 +59,10 @@ enum Op {
 // }
 fn current_op(p: &Parser) -> (u8, Op) {
     if p.at_compound2(L_ANGLE, EQ) {
-        return (2, Op::Composite(LTEQ, 2));
+        return (3, Op::Composite(LTEQ, 2));
     }
     if p.at_compound2(R_ANGLE, EQ) {
-        return (2, Op::Composite(GTEQ, 2));
+        return (3, Op::Composite(GTEQ, 2));
     }
     if p.at_compound2(PLUS, EQ) {
         return (1, Op::Composite(PLUSEQ, 2));
@@ -66,9 +73,10 @@ fn current_op(p: &Parser) -> (u8, Op) {
 
     let bp = match p.current() {
         EQ => 1,
-        EQEQ | NEQ => 2,
-        MINUS | PLUS => 3,
-        STAR | SLASH => 4,
+        DOTDOT => 2,
+        EQEQ | NEQ => 3,
+        MINUS | PLUS => 4,
+        STAR | SLASH => 5,
         _ => 0,
     };
     (bp, Op::Simple)
@@ -76,7 +84,7 @@ fn current_op(p: &Parser) -> (u8, Op) {
 
 // Parses expression with binding power of at least bp.
 fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
-    let mut lhs = match unary_expr(p, r) {
+    let mut lhs = match lhs(p, r) {
         Some(lhs) => lhs,
         None => return,
     };
@@ -102,7 +110,7 @@ const UNARY_EXPR_FIRST: TokenSet =
         atom::ATOM_EXPR_FIRST,
     ];
 
-fn unary_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
+fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
     let m;
     let kind = match p.current() {
         // test ref_expr
@@ -134,12 +142,18 @@ fn unary_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
             p.bump();
             NOT_EXPR
         }
+        DOTDOT => {
+            m = p.start();
+            p.bump();
+            expr_bp(p, r, 2);
+            return Some(m.complete(p, RANGE_EXPR));
+        }
         _ => {
             let lhs = atom::atom_expr(p, r)?;
             return Some(postfix_expr(p, lhs));
         }
     };
-    unary_expr(p, r);
+    expr_bp(p, r, 255);
     Some(m.complete(p, kind))
 }
 
@@ -154,6 +168,13 @@ fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
                 field_expr(p, lhs)
             },
             DOT if p.nth(1) == INT_NUMBER => field_expr(p, lhs),
+            // test postfix_range
+            // fn foo() { let x = 1..; }
+            DOTDOT if !EXPR_FIRST.contains(p.nth(1)) => {
+                let m = lhs.precede(p);
+                p.bump();
+                m.complete(p, RANGE_EXPR)
+            }
             QUESTION => try_expr(p, lhs),
             _ => break,
         }
