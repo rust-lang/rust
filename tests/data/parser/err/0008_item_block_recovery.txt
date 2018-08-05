@@ -13,15 +13,15 @@ FILE@[0; 95)
       WHITESPACE@[10; 11)
       R_CURLY@[11; 12)
       WHITESPACE@[12; 14)
-      err: `expected an item`
-  ERROR@[14; 17)
-    IDENT@[14; 17) "bar"
-    err: `expected an item`
-  ERROR@[17; 18)
+  MACRO_CALL@[14; 20)
+    PATH@[14; 17)
+      PATH_SEGMENT@[14; 17)
+        NAME_REF@[14; 17)
+          IDENT@[14; 17) "bar"
+          err: `expected EXCL`
     L_PAREN@[17; 18)
-    err: `expected an item`
-  ERROR@[18; 20)
     R_PAREN@[18; 19)
+    err: `expected SEMI`
     WHITESPACE@[19; 20)
     err: `expected an item`
   ERROR@[20; 82)

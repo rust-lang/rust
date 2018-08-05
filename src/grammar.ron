@@ -109,6 +109,8 @@ Grammar(
         "TRAIT_ITEM",
         "IMPL_ITEM",
         "TYPE_ITEM",
+        "MACRO_CALL",
+        "TOKEN_TREE",
 
         "PAREN_TYPE",
         "TUPLE_TYPE",

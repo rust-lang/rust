@@ -45,7 +45,7 @@ pub(super) fn impl_item(p: &mut Parser) {
     //     fn bar(&self) {}
     // }
     while !p.at(EOF) && !p.at(R_CURLY) {
-        item(p, true);
+        item_or_macro(p, true);
     }
     p.expect(R_CURLY);
 }

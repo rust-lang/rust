@@ -5,27 +5,43 @@ mod structs;
 mod traits;
 mod use_item;
 
+// test mod_contents
+// fn foo() {}
+// macro_rules! foo {}
+// foo::bar!();
+// super::baz! {}
+// struct S;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
     while !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
-        item(p, stop_on_r_curly)
+        item_or_macro(p, stop_on_r_curly)
     }
 }
 
-pub(super) fn item(p: &mut Parser, stop_on_r_curly: bool) {
+pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
     let m = p.start();
     match maybe_item(p) {
         MaybeItem::Item(kind) => {
             m.complete(p, kind);
         }
         MaybeItem::None => {
-            m.abandon(p);
-            if p.at(L_CURLY) {
-                error_block(p, "expected an item");
-            } else if !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
-                p.err_and_bump("expected an item");
+            if paths::is_path_start(p) {
+                match macro_call(p) {
+                    MacroFlavor::Curly => (),
+                    MacroFlavor::NonCurly => {
+                        p.expect(SEMI);
+                    }
+                }
+                m.complete(p, MACRO_CALL);
             } else {
-                p.error("expected an item");
+                m.abandon(p);
+                if p.at(L_CURLY) {
+                    error_block(p, "expected an item");
+                } else if !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
+                    p.err_and_bump("expected an item");
+                } else {
+                    p.error("expected an item");
+                }
             }
         }
         MaybeItem::Modifiers => {
@@ -259,4 +275,50 @@ fn mod_item(p: &mut Parser) {
             p.expect(R_CURLY);
         }
     }
+}
+
+enum MacroFlavor {
+    Curly,
+    NonCurly,
+}
+
+fn macro_call(p: &mut Parser) -> MacroFlavor {
+    assert!(paths::is_path_start(p));
+    paths::use_path(p);
+    p.expect(EXCL);
+    p.eat(IDENT);
+    let flavor = match p.current() {
+        L_CURLY => {
+            token_tree(p);
+            MacroFlavor::Curly
+        }
+        L_PAREN | L_BRACK => {
+            token_tree(p);
+            MacroFlavor::NonCurly
+        }
+        _ => {
+            p.error("expected `{`, `[`, `(`");
+            MacroFlavor::NonCurly
+        },
+    };
+
+    flavor
+}
+
+fn token_tree(p: &mut Parser) {
+    let closing_paren_kind = match p.current() {
+        L_CURLY => R_CURLY,
+        L_PAREN => R_PAREN,
+        L_BRACK => R_BRACK,
+        _ => unreachable!(),
+    };
+    p.bump();
+    while !p.at(EOF) && !p.at(closing_paren_kind) {
+        match p.current() {
+            L_CURLY | L_PAREN | L_BRACK => token_tree(p),
+            R_CURLY | R_PAREN | R_BRACK => p.err_and_bump("unmatched brace"),
+            _ => p.bump()
+        }
+    };
+    p.expect(closing_paren_kind);
 }
