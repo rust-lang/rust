@@ -153,6 +153,7 @@ Grammar(
 
         // postfix
         "CALL_EXPR",
+        "INDEX_EXPR",
         "METHOD_CALL_EXPR",
         "FIELD_EXPR",
         "TRY_EXPR",

@@ -71,7 +71,7 @@ impl RedNode {
         match &self.children.read()[idx] {
             Some(child) => return Some(child.into()),
             None => (),
-        }
+        };
         let green_children = self.green.children();
         let start_offset = self.start_offset()
             + green_children[..idx]

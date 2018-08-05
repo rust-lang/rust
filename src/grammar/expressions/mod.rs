@@ -147,6 +147,7 @@ fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
     loop {
         lhs = match p.current() {
             L_PAREN => call_expr(p, lhs),
+            L_BRACK => index_expr(p, lhs),
             DOT if p.nth(1) == IDENT => if p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON {
                 method_call_expr(p, lhs)
             } else {
@@ -170,6 +171,19 @@ fn call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     arg_list(p);
     m.complete(p, CALL_EXPR)
+}
+
+// test index_expr
+// fn foo() {
+//     x[1][2];
+// }
+fn index_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
+    assert!(p.at(L_BRACK));
+    let m = lhs.precede(p);
+    p.bump();
+    expr(p);
+    p.expect(R_BRACK);
+    m.complete(p, INDEX_EXPR)
 }
 
 // test method_call_expr
