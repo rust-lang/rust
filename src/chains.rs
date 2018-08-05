@@ -262,13 +262,20 @@ impl Chain {
             }
         }
 
+        fn is_tries(s: &str) -> bool {
+            s.chars().all(|c| c == '?')
+        }
+
         let parent = rev_children.pop().unwrap();
         let mut children = vec![];
         let mut prev_hi = parent.span.hi();
         for chain_item in rev_children.into_iter().rev() {
             let comment_span = mk_sp(prev_hi, chain_item.span.lo());
             let comment_snippet = context.snippet(comment_span);
-            if !comment_snippet.trim().is_empty() {
+            if !(context.config.use_try_shorthand()
+                || comment_snippet.trim().is_empty()
+                || is_tries(comment_snippet.trim()))
+            {
                 children.push(ChainItem::comment(comment_span));
             }
             prev_hi = chain_item.span.hi();
