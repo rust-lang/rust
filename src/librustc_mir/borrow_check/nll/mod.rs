@@ -109,7 +109,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let elements = &Rc::new(RegionValueElements::new(mir));
 
     // Run the MIR type-checker.
-    let liveness_map = NllLivenessMap::compute(infcx.tcx, &mir);
+    let liveness_map = NllLivenessMap::compute(&mir);
     let liveness = LivenessResults::compute(mir, &liveness_map);
     let (constraint_sets, universal_region_relations) = type_check::type_check(
         infcx,

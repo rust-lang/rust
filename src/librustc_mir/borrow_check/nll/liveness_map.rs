@@ -18,7 +18,7 @@
 
 use borrow_check::nll::escaping_locals::EscapingLocals;
 use rustc::mir::{Local, Mir};
-use rustc::ty::{TyCtxt, TypeFoldable};
+use rustc::ty::TypeFoldable;
 use rustc_data_structures::indexed_vec::IndexVec;
 use util::liveness::LiveVariableMap;
 
@@ -55,8 +55,8 @@ impl LiveVariableMap for NllLivenessMap {
 impl NllLivenessMap {
     /// Iterates over the variables in Mir and assigns each Local whose type contains
     /// regions a LocalWithRegion index. Returns a map for converting back and forth.
-    crate fn compute(tcx: TyCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) -> Self {
-        let mut escaping_locals = EscapingLocals::compute(tcx, mir);
+    crate fn compute(mir: &Mir<'tcx>) -> Self {
+        let mut escaping_locals = EscapingLocals::compute(mir);
 
         let mut to_local = IndexVec::default();
         let mut escapes_into_return = 0;

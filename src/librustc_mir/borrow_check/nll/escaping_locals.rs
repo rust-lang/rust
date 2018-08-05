@@ -44,7 +44,6 @@
 
 use rustc::mir::visit::Visitor;
 use rustc::mir::*;
-use rustc::ty::TyCtxt;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::unify as ut;
@@ -54,8 +53,8 @@ crate struct EscapingLocals {
 }
 
 impl EscapingLocals {
-    crate fn compute(tcx: TyCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) -> Self {
-        let mut visitor = GatherAssignedLocalsVisitor::new(tcx, mir);
+    crate fn compute(mir: &Mir<'tcx>) -> Self {
+        let mut visitor = GatherAssignedLocalsVisitor::new();
         visitor.visit_mir(mir);
 
         EscapingLocals {
@@ -74,10 +73,8 @@ impl EscapingLocals {
 
 /// The MIR visitor gathering the union-find of the locals used in
 /// assignments.
-struct GatherAssignedLocalsVisitor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+struct GatherAssignedLocalsVisitor {
     unification_table: ut::UnificationTable<ut::InPlace<AssignedLocal>>,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    mir: &'cx Mir<'tcx>,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -107,12 +104,10 @@ impl From<Local> for AssignedLocal {
     }
 }
 
-impl GatherAssignedLocalsVisitor<'cx, 'gcx, 'tcx> {
-    fn new(tcx: TyCtxt<'cx, 'gcx, 'tcx>, mir: &'cx Mir<'tcx>) -> Self {
+impl GatherAssignedLocalsVisitor {
+    fn new() -> Self {
         Self {
             unification_table: ut::UnificationTable::new(),
-            tcx,
-            mir,
         }
     }
 
@@ -154,7 +149,7 @@ fn find_local_in_operand(op: &Operand) -> Option<Local> {
     }
 }
 
-impl Visitor<'tcx> for GatherAssignedLocalsVisitor<'_, '_, 'tcx> {
+impl Visitor<'tcx> for GatherAssignedLocalsVisitor {
     fn visit_mir(&mut self, mir: &Mir<'tcx>) {
         // We need as many union-find keys as there are locals
         for _ in 0..mir.local_decls.len() {
