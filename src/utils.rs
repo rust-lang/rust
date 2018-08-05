@@ -18,6 +18,7 @@ use syntax::ast::{
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 use syntax::ptr;
 
+use comment::filter_normal_code;
 use rewrite::RewriteContext;
 use shape::Shape;
 
@@ -350,7 +351,7 @@ macro_rules! skip_out_of_file_lines_range_visitor {
 // Wraps String in an Option. Returns Some when the string adheres to the
 // Rewrite constraints defined for the Rewrite trait and None otherwise.
 pub fn wrap_str(s: String, max_width: usize, shape: Shape) -> Option<String> {
-    if is_valid_str(&s, max_width, shape) {
+    if is_valid_str(&filter_normal_code(&s), max_width, shape) {
         Some(s)
     } else {
         None
