@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "rlib"]
-#![feature(wasm_custom_section)]
 #![deny(warnings)]
 
 #[link_section = "foo"]

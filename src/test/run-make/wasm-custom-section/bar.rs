@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "cdylib"]
-#![feature(wasm_custom_section)]
 #![deny(warnings)]
 
 extern crate foo;
