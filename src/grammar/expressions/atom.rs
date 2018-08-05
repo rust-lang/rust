@@ -48,6 +48,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
         MOVE_KW if la == PIPE => lambda_expr(p),
         IF_KW => if_expr(p),
         WHILE_KW => while_expr(p),
+        LOOP_KW => loop_expr(p),
         MATCH_KW => match_expr(p),
         UNSAFE_KW if la == L_CURLY => block_expr(p),
         L_CURLY => block_expr(p),
@@ -141,6 +142,18 @@ fn while_expr(p: &mut Parser) -> CompletedMarker {
     cond(p);
     block(p);
     m.complete(p, WHILE_EXPR)
+}
+
+// test loop_expr
+// fn foo() {
+//     loop {};
+// }
+fn loop_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(LOOP_KW));
+    let m = p.start();
+    p.bump();
+    block(p);
+    m.complete(p, LOOP_EXPR)
 }
 
 // test cond

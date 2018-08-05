@@ -41,6 +41,8 @@ Grammar(
         [">=", "GTEQ"],
         ["+=", "PLUSEQ"],
         ["-=", "MINUSEQ"],
+        ["&&", "AMPERSANDAMPERSAND"],
+        ["||", "PIPEPIPE"],
     ],
     keywords: [
         "use",
@@ -143,6 +145,7 @@ Grammar(
         "LAMBDA_EXPR",
         "IF_EXPR",
         "WHILE_EXPR",
+        "LOOP_EXPR",
         "BLOCK_EXPR",
         "RETURN_EXPR",
         "MATCH_EXPR",

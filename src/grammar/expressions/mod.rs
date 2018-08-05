@@ -56,27 +56,34 @@ enum Op {
 //     x += 1;
 //     1 + 1 <= 2 * 3;
 //     z -= 3 >= 0;
+//     true || true && false;
 // }
 fn current_op(p: &Parser) -> (u8, Op) {
-    if p.at_compound2(L_ANGLE, EQ) {
-        return (3, Op::Composite(LTEQ, 2));
-    }
-    if p.at_compound2(R_ANGLE, EQ) {
-        return (3, Op::Composite(GTEQ, 2));
-    }
     if p.at_compound2(PLUS, EQ) {
         return (1, Op::Composite(PLUSEQ, 2));
     }
     if p.at_compound2(MINUS, EQ) {
         return (1, Op::Composite(MINUSEQ, 2));
     }
+    if p.at_compound2(PIPE, PIPE) {
+        return (3, Op::Composite(PIPEPIPE, 2));
+    }
+    if p.at_compound2(AMPERSAND, AMPERSAND) {
+        return (4, Op::Composite(AMPERSANDAMPERSAND, 2));
+    }
+    if p.at_compound2(L_ANGLE, EQ) {
+        return (5, Op::Composite(LTEQ, 2));
+    }
+    if p.at_compound2(R_ANGLE, EQ) {
+        return (5, Op::Composite(GTEQ, 2));
+    }
 
     let bp = match p.current() {
         EQ => 1,
         DOTDOT => 2,
-        EQEQ | NEQ => 3,
-        MINUS | PLUS => 4,
-        STAR | SLASH => 5,
+        EQEQ | NEQ => 5,
+        MINUS | PLUS => 6,
+        STAR | SLASH => 7,
         _ => 0,
     };
     (bp, Op::Simple)
