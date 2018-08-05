@@ -1857,19 +1857,40 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
         // empty, but the loop in extend_desugared() is not going to see the
         // vector being full in the few subsequent loop iterations.
         // So we get better branch prediction.
-        let mut vector = match iterator.next() {
-            None => return Vec::new(),
-            Some(element) => {
-                let (lower, _) = iterator.size_hint();
-                let mut vector = Vec::with_capacity(lower.saturating_add(1));
-                unsafe {
-                    ptr::write(vector.get_unchecked_mut(0), element);
-                    vector.set_len(1);
+        let element =
+            if let Some(x) = iterator.next() { x }
+            else { return Vec::new() };
+        let (lower, upper) = iterator.size_hint();
+        let upper = upper.unwrap_or(lower);
+        let mut vector =
+            if lower >= upper / 2 {
+                // This branch covers three main cases:
+                // - There was no upper bound, so we just use the lower.
+                // - The hint turned out to be exact, so we use it.
+                // - Picking the upper won't waste more that the doubling
+                //   strategy might anyway, so go directly there.
+                Vec::with_capacity(upper.saturating_add(1))
+            } else {
+                // Try to start near the geometric mean of the range.  That's
+                // never all that high -- even 0B..1GB will only allocate 32kB --
+                // but it's much more useful than the lower bound, especially
+                // for iterator adapters like filter that have lower == 0.
+                let mut v = Vec::new();
+                let mag_diff = lower.leading_zeros() - upper.leading_zeros();
+                let guess = upper >> (mag_diff / 2);
+                match v.try_reserve(guess.saturating_add(1)) {
+                    Ok(_) => v,
+                    Err(_) => Vec::with_capacity(lower.saturating_add(1)),
                 }
-                vector
-            }
-        };
+            };
+        unsafe {
+            ptr::write(vector.get_unchecked_mut(0), element);
+            vector.set_len(1);
+        }
         <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
+        if vector.len() < vector.capacity() / 2 {
+            vector.shrink_to_fit();
+        }
         vector
     }
 
