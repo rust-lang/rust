@@ -22,8 +22,9 @@ use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
 use ptr::P;
+use OneVector;
 use symbol::{keywords, Ident, Symbol};
-use util::small_vector::SmallVector;
+use ThinVec;
 
 use std::collections::HashMap;
 use std::iter;
@@ -315,7 +316,7 @@ impl<F> IdentMacroExpander for F
 // Use a macro because forwarding to a simple function has type system issues
 macro_rules! make_stmts_default {
     ($me:expr) => {
-        $me.make_expr().map(|e| SmallVector::one(ast::Stmt {
+        $me.make_expr().map(|e| OneVector::one(ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             span: e.span,
             node: ast::StmtKind::Expr(e),
@@ -331,22 +332,22 @@ pub trait MacResult {
         None
     }
     /// Create zero or more items.
-    fn make_items(self: Box<Self>) -> Option<SmallVector<P<ast::Item>>> {
+    fn make_items(self: Box<Self>) -> Option<OneVector<P<ast::Item>>> {
         None
     }
 
     /// Create zero or more impl items.
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
+    fn make_impl_items(self: Box<Self>) -> Option<OneVector<ast::ImplItem>> {
         None
     }
 
     /// Create zero or more trait items.
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
+    fn make_trait_items(self: Box<Self>) -> Option<OneVector<ast::TraitItem>> {
         None
     }
 
     /// Create zero or more items in an `extern {}` block
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVector<ast::ForeignItem>> { None }
+    fn make_foreign_items(self: Box<Self>) -> Option<OneVector<ast::ForeignItem>> { None }
 
     /// Create a pattern.
     fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
@@ -357,7 +358,7 @@ pub trait MacResult {
     ///
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
-    fn make_stmts(self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
+    fn make_stmts(self: Box<Self>) -> Option<OneVector<ast::Stmt>> {
         make_stmts_default!(self)
     }
 
@@ -393,11 +394,11 @@ macro_rules! make_MacEager {
 make_MacEager! {
     expr: P<ast::Expr>,
     pat: P<ast::Pat>,
-    items: SmallVector<P<ast::Item>>,
-    impl_items: SmallVector<ast::ImplItem>,
-    trait_items: SmallVector<ast::TraitItem>,
-    foreign_items: SmallVector<ast::ForeignItem>,
-    stmts: SmallVector<ast::Stmt>,
+    items: OneVector<P<ast::Item>>,
+    impl_items: OneVector<ast::ImplItem>,
+    trait_items: OneVector<ast::TraitItem>,
+    foreign_items: OneVector<ast::ForeignItem>,
+    stmts: OneVector<ast::Stmt>,
     ty: P<ast::Ty>,
 }
 
@@ -406,23 +407,23 @@ impl MacResult for MacEager {
         self.expr
     }
 
-    fn make_items(self: Box<Self>) -> Option<SmallVector<P<ast::Item>>> {
+    fn make_items(self: Box<Self>) -> Option<OneVector<P<ast::Item>>> {
         self.items
     }
 
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
+    fn make_impl_items(self: Box<Self>) -> Option<OneVector<ast::ImplItem>> {
         self.impl_items
     }
 
-    fn make_trait_items(self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
+    fn make_trait_items(self: Box<Self>) -> Option<OneVector<ast::TraitItem>> {
         self.trait_items
     }
 
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVector<ast::ForeignItem>> {
+    fn make_foreign_items(self: Box<Self>) -> Option<OneVector<ast::ForeignItem>> {
         self.foreign_items
     }
 
-    fn make_stmts(self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
+    fn make_stmts(self: Box<Self>) -> Option<OneVector<ast::Stmt>> {
         match self.stmts.as_ref().map_or(0, |s| s.len()) {
             0 => make_stmts_default!(self),
             _ => self.stmts,
@@ -482,7 +483,7 @@ impl DummyResult {
             id: ast::DUMMY_NODE_ID,
             node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitKind::Bool(false)))),
             span: sp,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         })
     }
 
@@ -513,41 +514,41 @@ impl MacResult for DummyResult {
         Some(P(DummyResult::raw_pat(self.span)))
     }
 
-    fn make_items(self: Box<DummyResult>) -> Option<SmallVector<P<ast::Item>>> {
+    fn make_items(self: Box<DummyResult>) -> Option<OneVector<P<ast::Item>>> {
         // this code needs a comment... why not always just return the Some() ?
         if self.expr_only {
             None
         } else {
-            Some(SmallVector::new())
+            Some(OneVector::new())
         }
     }
 
-    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVector<ast::ImplItem>> {
+    fn make_impl_items(self: Box<DummyResult>) -> Option<OneVector<ast::ImplItem>> {
         if self.expr_only {
             None
         } else {
-            Some(SmallVector::new())
+            Some(OneVector::new())
         }
     }
 
-    fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVector<ast::TraitItem>> {
+    fn make_trait_items(self: Box<DummyResult>) -> Option<OneVector<ast::TraitItem>> {
         if self.expr_only {
             None
         } else {
-            Some(SmallVector::new())
+            Some(OneVector::new())
         }
     }
 
-    fn make_foreign_items(self: Box<Self>) -> Option<SmallVector<ast::ForeignItem>> {
+    fn make_foreign_items(self: Box<Self>) -> Option<OneVector<ast::ForeignItem>> {
         if self.expr_only {
             None
         } else {
-            Some(SmallVector::new())
+            Some(OneVector::new())
         }
     }
 
-    fn make_stmts(self: Box<DummyResult>) -> Option<SmallVector<ast::Stmt>> {
-        Some(SmallVector::one(ast::Stmt {
+    fn make_stmts(self: Box<DummyResult>) -> Option<OneVector<ast::Stmt>> {
+        Some(OneVector::one(ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             node: ast::StmtKind::Expr(DummyResult::raw_expr(self.span)),
             span: self.span,

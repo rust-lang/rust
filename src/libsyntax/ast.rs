@@ -13,7 +13,6 @@
 pub use self::UnsafeSource::*;
 pub use self::GenericArgs::*;
 pub use symbol::{Ident, Symbol as Name};
-pub use util::ThinVec;
 pub use util::parser::ExprPrecedence;
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -25,6 +24,7 @@ use ptr::P;
 use rustc_data_structures::indexed_vec;
 use rustc_data_structures::indexed_vec::Idx;
 use symbol::{Symbol, keywords};
+use ThinVec;
 use tokenstream::{ThinTokenStream, TokenStream};
 
 use serialize::{self, Encoder, Decoder};

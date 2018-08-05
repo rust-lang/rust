@@ -16,9 +16,10 @@ use ext::hygiene::Mark;
 use tokenstream::TokenStream;
 use fold::*;
 use ptr::P;
+use OneVector;
 use symbol::keywords;
+use ThinVec;
 use util::move_map::MoveMap;
-use util::small_vector::SmallVector;
 
 use std::collections::HashMap;
 
@@ -38,31 +39,31 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     let span = DUMMY_SP;
     let expr_placeholder = || P(ast::Expr {
         id, span,
-        attrs: ast::ThinVec::new(),
+        attrs: ThinVec::new(),
         node: ast::ExprKind::Mac(mac_placeholder()),
     });
 
     match kind {
         AstFragmentKind::Expr => AstFragment::Expr(expr_placeholder()),
         AstFragmentKind::OptExpr => AstFragment::OptExpr(Some(expr_placeholder())),
-        AstFragmentKind::Items => AstFragment::Items(SmallVector::one(P(ast::Item {
+        AstFragmentKind::Items => AstFragment::Items(OneVector::one(P(ast::Item {
             id, span, ident, vis, attrs,
             node: ast::ItemKind::Mac(mac_placeholder()),
             tokens: None,
         }))),
-        AstFragmentKind::TraitItems => AstFragment::TraitItems(SmallVector::one(ast::TraitItem {
+        AstFragmentKind::TraitItems => AstFragment::TraitItems(OneVector::one(ast::TraitItem {
             id, span, ident, attrs, generics,
             node: ast::TraitItemKind::Macro(mac_placeholder()),
             tokens: None,
         })),
-        AstFragmentKind::ImplItems => AstFragment::ImplItems(SmallVector::one(ast::ImplItem {
+        AstFragmentKind::ImplItems => AstFragment::ImplItems(OneVector::one(ast::ImplItem {
             id, span, ident, vis, attrs, generics,
             node: ast::ImplItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
         })),
         AstFragmentKind::ForeignItems =>
-            AstFragment::ForeignItems(SmallVector::one(ast::ForeignItem {
+            AstFragment::ForeignItems(OneVector::one(ast::ForeignItem {
                 id, span, ident, vis, attrs,
                 node: ast::ForeignItemKind::Macro(mac_placeholder()),
             })),
@@ -72,8 +73,8 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
         AstFragmentKind::Ty => AstFragment::Ty(P(ast::Ty {
             id, span, node: ast::TyKind::Mac(mac_placeholder()),
         })),
-        AstFragmentKind::Stmts => AstFragment::Stmts(SmallVector::one({
-            let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ast::ThinVec::new()));
+        AstFragmentKind::Stmts => AstFragment::Stmts(OneVector::one({
+            let mac = P((mac_placeholder(), ast::MacStmtStyle::Braces, ThinVec::new()));
             ast::Stmt { id, span, node: ast::StmtKind::Mac(mac) }
         })),
     }
@@ -114,31 +115,31 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
 }
 
 impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
-    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+    fn fold_item(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
         match item.node {
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
-            ast::ItemKind::MacroDef(_) => return SmallVector::one(item),
+            ast::ItemKind::MacroDef(_) => return OneVector::one(item),
             _ => {}
         }
 
         noop_fold_item(item, self)
     }
 
-    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+    fn fold_trait_item(&mut self, item: ast::TraitItem) -> OneVector<ast::TraitItem> {
         match item.node {
             ast::TraitItemKind::Macro(_) => self.remove(item.id).make_trait_items(),
             _ => noop_fold_trait_item(item, self),
         }
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+    fn fold_impl_item(&mut self, item: ast::ImplItem) -> OneVector<ast::ImplItem> {
         match item.node {
             ast::ImplItemKind::Macro(_) => self.remove(item.id).make_impl_items(),
             _ => noop_fold_impl_item(item, self),
         }
     }
 
-    fn fold_foreign_item(&mut self, item: ast::ForeignItem) -> SmallVector<ast::ForeignItem> {
+    fn fold_foreign_item(&mut self, item: ast::ForeignItem) -> OneVector<ast::ForeignItem> {
         match item.node {
             ast::ForeignItemKind::Macro(_) => self.remove(item.id).make_foreign_items(),
             _ => noop_fold_foreign_item(item, self),
@@ -159,7 +160,7 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
         }
     }
 
-    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
+    fn fold_stmt(&mut self, stmt: ast::Stmt) -> OneVector<ast::Stmt> {
         let (style, mut stmts) = match stmt.node {
             ast::StmtKind::Mac(mac) => (mac.1, self.remove(stmt.id).make_stmts()),
             _ => return noop_fold_stmt(stmt, self),
