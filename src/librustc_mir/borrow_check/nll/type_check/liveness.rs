@@ -37,6 +37,7 @@ pub(super) fn generate<'gcx, 'tcx>(
     cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
+    liveness_map: &NllLivenessMap,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
@@ -44,10 +45,10 @@ pub(super) fn generate<'gcx, 'tcx>(
         cx,
         mir,
         liveness,
+        liveness_map,
         flow_inits,
         move_data,
         drop_data: FxHashMap(),
-        map: &NllLivenessMap::compute(mir),
     };
 
     for bb in mir.basic_blocks().indices() {
@@ -65,10 +66,10 @@ where
     cx: &'gen mut TypeChecker<'typeck, 'gcx, 'tcx>,
     mir: &'gen Mir<'tcx>,
     liveness: &'gen LivenessResults<LocalWithRegion>,
+    liveness_map: &'gen NllLivenessMap,
     flow_inits: &'gen mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
     move_data: &'gen MoveData<'tcx>,
     drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,
-    map: &'gen NllLivenessMap,
 }
 
 struct DropData<'tcx> {
@@ -86,9 +87,9 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
 
         self.liveness
             .regular
-            .simulate_block(self.mir, bb, self.map, |location, live_locals| {
+            .simulate_block(self.mir, bb, self.liveness_map, |location, live_locals| {
                 for live_local in live_locals.iter() {
-                    let local = self.map.from_live_var(live_local);
+                    let local = self.liveness_map.from_live_var(live_local);
                     let live_local_ty = self.mir.local_decls[local].ty;
                     Self::push_type_live_constraint(&mut self.cx, live_local_ty, location);
                 }
@@ -97,7 +98,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         let mut all_live_locals: Vec<(Location, Vec<LocalWithRegion>)> = vec![];
         self.liveness
             .drop
-            .simulate_block(self.mir, bb, self.map, |location, live_locals| {
+            .simulate_block(self.mir, bb, self.liveness_map, |location, live_locals| {
                 all_live_locals.push((location, live_locals.iter().collect()));
             });
         debug!(
@@ -124,7 +125,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                     });
                 }
 
-                let local = self.map.from_live_var(live_local);
+                let local = self.liveness_map.from_live_var(live_local);
                 let mpi = self.move_data.rev_lookup.find_local(local);
                 if let Some(initialized_child) = self.flow_inits.has_any_child_of(mpi) {
                     debug!(
@@ -133,7 +134,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                         self.move_data.move_paths[initialized_child]
                     );
 
-                    let local = self.map.from_live_var(live_local);
+                    let local = self.liveness_map.from_live_var(live_local);
                     let live_local_ty = self.mir.local_decls[local].ty;
                     self.add_drop_live_constraint(live_local, live_local_ty, location);
                 }

@@ -39,7 +39,9 @@ use polonius_engine::{Algorithm, Output};
 use util as mir_util;
 use util::pretty::{self, ALIGN};
 
+mod constraints;
 mod constraint_generation;
+mod escaping_locals;
 pub mod explain_borrow;
 mod facts;
 mod invalidation;
@@ -48,8 +50,6 @@ mod renumber;
 crate mod type_check;
 mod universal_regions;
 crate mod liveness_map;
-
-mod constraints;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;
@@ -120,6 +120,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         location_table,
         borrow_set,
         &liveness,
+        &liveness_map,
         &mut all_facts,
         flow_inits,
         move_data,
@@ -205,6 +206,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     dump_mir_results(
         infcx,
         &liveness,
+        &liveness_map,
         MirSource::item(def_id),
         &mir,
         &regioncx,
@@ -221,6 +223,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
+    liveness_map: &NllLivenessMap,
     source: MirSource,
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext,
@@ -230,8 +233,6 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         return;
     }
 
-    let map = &NllLivenessMap::compute(mir);
-
     let regular_liveness_per_location: FxHashMap<_, _> = mir
         .basic_blocks()
         .indices()
@@ -239,7 +240,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             let mut results = vec![];
             liveness
                 .regular
-                .simulate_block(&mir, bb, map, |location, local_set| {
+                .simulate_block(&mir, bb, liveness_map, |location, local_set| {
                     results.push((location, local_set.clone()));
                 });
             results
@@ -253,7 +254,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             let mut results = vec![];
             liveness
                 .drop
-                .simulate_block(&mir, bb, map, |location, local_set| {
+                .simulate_block(&mir, bb, liveness_map, |location, local_set| {
                     results.push((location, local_set.clone()));
                 });
             results

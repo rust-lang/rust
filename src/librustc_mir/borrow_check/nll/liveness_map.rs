@@ -16,9 +16,10 @@
 //! liveness code so that it only operates over variables with regions in their
 //! types, instead of all variables.
 
+use borrow_check::nll::escaping_locals::EscapingLocals;
+use rustc::mir::{Local, Mir};
 use rustc::ty::TypeFoldable;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::mir::{Mir, Local};
 use util::liveness::LiveVariableMap;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -29,14 +30,13 @@ use rustc_data_structures::indexed_vec::Idx;
 crate struct NllLivenessMap {
     /// For each local variable, contains either None (if the type has no regions)
     /// or Some(i) with a suitable index.
-    pub from_local: IndexVec<Local, Option<LocalWithRegion>>,
-    /// For each LocalWithRegion, maps back to the original Local index.
-    pub to_local: IndexVec<LocalWithRegion, Local>,
+    from_local: IndexVec<Local, Option<LocalWithRegion>>,
 
+    /// For each LocalWithRegion, maps back to the original Local index.
+    to_local: IndexVec<LocalWithRegion, Local>,
 }
 
 impl LiveVariableMap for NllLivenessMap {
-
     fn from_local(&self, local: Local) -> Option<Self::LiveVar> {
         self.from_local[local]
     }
@@ -55,21 +55,43 @@ impl LiveVariableMap for NllLivenessMap {
 impl NllLivenessMap {
     /// Iterates over the variables in Mir and assigns each Local whose type contains
     /// regions a LocalWithRegion index. Returns a map for converting back and forth.
-    pub fn compute(mir: &Mir) -> Self {
+    crate fn compute(mir: &Mir<'tcx>) -> Self {
+        let mut escaping_locals = EscapingLocals::compute(mir);
+
         let mut to_local = IndexVec::default();
-        let from_local: IndexVec<Local,Option<_>> = mir
+        let mut escapes_into_return = 0;
+        let mut no_regions = 0;
+        let from_local: IndexVec<Local, Option<_>> = mir
             .local_decls
             .iter_enumerated()
             .map(|(local, local_decl)| {
-                if local_decl.ty.has_free_regions() {
-                    Some(to_local.push(local))
+                if escaping_locals.escapes_into_return(local) {
+                    // If the local escapes into the return value,
+                    // then the return value will force all of the
+                    // regions in its type to outlive free regions
+                    // (e.g., `'static`) and hence liveness is not
+                    // needed. This is particularly important for big
+                    // statics.
+                    escapes_into_return += 1;
+                    None
+                } else if local_decl.ty.has_free_regions() {
+                    let l = to_local.push(local);
+                    debug!("liveness_map: {:?} = {:?}", local, l);
+                    Some(l)
+                } else {
+                    no_regions += 1;
+                    None
                 }
-                    else {
-                        None
-                    }
             }).collect();
 
-        Self { from_local, to_local }
+        debug!("liveness_map: {} variables need liveness", to_local.len());
+        debug!("liveness_map: {} escapes into return", escapes_into_return);
+        debug!("liveness_map: {} no regions", no_regions);
+
+        Self {
+            from_local,
+            to_local,
+        }
     }
 }
 
