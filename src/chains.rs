@@ -66,6 +66,7 @@
 //! ```
 
 use codemap::SpanUtils;
+use comment::rewrite_comment;
 use config::IndentStyle;
 use expr::rewrite_call;
 use macros::convert_try_mac;
@@ -117,6 +118,7 @@ enum ChainItemKind {
     ),
     StructField(ast::Ident),
     TupleField(ast::Ident, bool),
+    Comment,
 }
 
 impl ChainItemKind {
@@ -124,7 +126,9 @@ impl ChainItemKind {
         match self {
             ChainItemKind::Parent(ref expr) => is_block_expr(context, expr, reps),
             ChainItemKind::MethodCall(..) => reps.contains('\n'),
-            ChainItemKind::StructField(..) | ChainItemKind::TupleField(..) => false,
+            ChainItemKind::StructField(..)
+            | ChainItemKind::TupleField(..)
+            | ChainItemKind::Comment => false,
         }
     }
 
@@ -182,6 +186,9 @@ impl Rewrite for ChainItem {
             ChainItemKind::StructField(ident) => format!(".{}", ident.name),
             ChainItemKind::TupleField(ident, nested) => {
                 format!("{}.{}", if nested { " " } else { "" }, ident.name)
+            }
+            ChainItemKind::Comment => {
+                rewrite_comment(context.snippet(self.span).trim(), false, shape, context.config)?
             }
         };
         Some(format!("{}{}", rewrite, "?".repeat(self.tries)))
