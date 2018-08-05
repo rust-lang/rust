@@ -39,7 +39,6 @@
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(unwind_attributes)]
-#![cfg_attr(target_env = "msvc", feature(raw))]
 
 #![panic_runtime]
 #![feature(panic_runtime)]
