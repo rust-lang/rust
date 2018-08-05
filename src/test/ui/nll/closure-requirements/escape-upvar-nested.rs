@@ -27,8 +27,8 @@ fn test() {
     {
         let y = 22;
 
-        let mut closure = || { //~ ERROR `y` does not live long enough [E0597]
-            let mut closure1 = || p = &y;
+        let mut closure = || {
+            let mut closure1 = || p = &y; //~ ERROR `y` does not live long enough [E0597]
             closure1();
         };
 

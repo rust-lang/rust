@@ -1,13 +1,14 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/regions-nested-fns-2.rs:16:9
+  --> $DIR/regions-nested-fns-2.rs:18:25
    |
-LL | /         |z| {
-LL | |             //~^ ERROR E0373
-LL | |             if false { &y } else { z }
-LL | |         });
-   | |_________^ borrowed value does not live long enough
-LL |   }
-   |   - `y` dropped here while still borrowed
+LL |         |z| {
+   |         --- value captured here
+LL |             //~^ ERROR E0373
+LL |             if false { &y } else { z }
+   |                         ^ borrowed value does not live long enough
+LL |         });
+LL | }
+   | - `y` dropped here while still borrowed
    |
    = note: borrowed value must be valid for the static lifetime...
 

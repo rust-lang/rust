@@ -62,18 +62,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
-            Some(Cause::LiveVar(_local, location)) => {
-                if self.is_borrow_location_in_loop(context.loc) {
-                    err.span_label(
-                        mir.source_info(location).span,
-                        "borrow used here in later iteration of loop".to_string(),
-                    );
+            Some(Cause::LiveVar(local, location)) => {
+                let span = mir.source_info(location).span;
+                let spans = self.move_spans(&Place::Local(local), location)
+                    .or_else(|| self.borrow_spans(span, location));
+                let message = if self.is_borrow_location_in_loop(context.loc) {
+                    if spans.for_closure() {
+                        "borrow captured here by closure in later iteration of loop"
+                    } else {
+                        "borrow used here in later iteration of loop"
+                    }
                 } else {
-                    err.span_label(
-                        mir.source_info(location).span,
-                        "borrow later used here".to_string(),
-                    );
-                }
+                    if spans.for_closure() {
+                        "borrow later captured here by closure"
+                    } else {
+                        "borrow later used here"
+                    }
+                };
+                err.span_label(spans.var_or_use(), message);
             }
 
             Some(Cause::DropVar(local, location)) => match &mir.local_decls[local].name {

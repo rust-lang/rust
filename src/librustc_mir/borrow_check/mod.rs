@@ -1542,7 +1542,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if borrow_of_local_data(&borrow.borrowed_place) {
             let err = self.tcx
                 .cannot_borrow_across_generator_yield(
-                    self.retrieve_borrow_span(borrow),
+                    self.retrieve_borrow_spans(borrow).var_or_use(),
                     yield_span,
                     Origin::Mir,
                 );
