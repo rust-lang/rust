@@ -71,7 +71,6 @@ use expr::rewrite_call;
 use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
-use spanned::Spanned;
 use utils::{
     first_line_width, last_line_extendable, last_line_width, mk_sp, trimmed_last_line_width,
     wrap_str,
@@ -243,7 +242,7 @@ impl Chain {
 
         Chain {
             parent: children.pop().unwrap(),
-            children,
+            children: children.into_iter().rev().collect(),
         }
     }
 
@@ -417,10 +416,9 @@ impl<'a> ChainFormatterShared<'a> {
         shape: Shape,
         child_shape: Shape,
     ) -> Option<()> {
-        let last = &self.children[0];
-        let extendable =
-            may_extend && last_line_extendable(&self.rewrites[self.rewrites.len() - 1]);
-        let prev_last_line_width = last_line_width(&self.rewrites[self.rewrites.len() - 1]);
+        let last = self.children.last()?;
+        let extendable = may_extend && last_line_extendable(&self.rewrites[0]);
+        let prev_last_line_width = last_line_width(&self.rewrites[0]);
 
         // Total of all items excluding the last.
         let almost_total = if extendable {
@@ -551,7 +549,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
         let tab_width = context.config.tab_spaces().saturating_sub(shape.offset);
 
         while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
-            let item = &self.shared.children[self.shared.children.len() - 1];
+            let item = &self.shared.children[0];
             let shape = shape.offset_left(root_rewrite.len())?;
             match &item.rewrite(context, shape) {
                 Some(rewrite) => root_rewrite.push_str(rewrite),
@@ -560,7 +558,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
 
             root_ends_with_block = item.kind.is_block_like(context, &root_rewrite);
 
-            self.shared.children = &self.shared.children[..self.shared.children.len() - 1];
+            self.shared.children = &self.shared.children[1..];
             if self.shared.children.is_empty() {
                 break;
             }
@@ -581,7 +579,7 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
     }
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
-        for item in self.shared.children[1..].iter().rev() {
+        for item in &self.shared.children[..self.shared.children.len() - 1] {
             let rewrite = item.rewrite(context, child_shape)?;
             self.is_block_like
                 .push(item.kind.is_block_like(context, &rewrite));
@@ -643,7 +641,7 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
         };
 
         if !multiline || parent.kind.is_block_like(context, &root_rewrite) {
-            let item = &self.shared.children[self.shared.children.len() - 1];
+            let item = &self.shared.children[0];
             let child_shape = parent_shape
                 .visual_indent(self.offset)
                 .sub_width(self.offset)?;
@@ -659,7 +657,7 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
                 }
             }
 
-            self.shared.children = &self.shared.children[..self.shared.children.len() - 1];
+            self.shared.children = &self.shared.children[1..];
         }
 
         self.shared.rewrites.push(root_rewrite);
@@ -674,7 +672,7 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
     }
 
     fn format_children(&mut self, context: &RewriteContext, child_shape: Shape) -> Option<()> {
-        for item in self.shared.children[1..].iter().rev() {
+        for item in &self.shared.children[..self.shared.children.len() - 1] {
             let rewrite = item.rewrite(context, child_shape)?;
             self.shared.rewrites.push(rewrite);
         }
