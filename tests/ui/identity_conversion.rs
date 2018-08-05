@@ -32,9 +32,12 @@ fn main() {
     {
         let _: String = "foo".into();
         let _ = String::from("foo");
+        let _ = "".lines().into_iter();
     }
 
     let _: String = "foo".to_string().into();
     let _: String = From::from("foo".to_string());
     let _ = String::from("foo".to_string());
+    let _ = "".lines().into_iter();
+    let _ = vec![1, 2, 3].into_iter().into_iter();
 }
