@@ -68,8 +68,8 @@ fn current_op(p: &Parser) -> (u8, Op) {
     if p.at_compound2(PIPE, PIPE) {
         return (3, Op::Composite(PIPEPIPE, 2));
     }
-    if p.at_compound2(AMPERSAND, AMPERSAND) {
-        return (4, Op::Composite(AMPERSANDAMPERSAND, 2));
+    if p.at_compound2(AMP, AMP) {
+        return (4, Op::Composite(AMPAMP, 2));
     }
     if p.at_compound2(L_ANGLE, EQ) {
         return (5, Op::Composite(LTEQ, 2));
@@ -113,7 +113,7 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
 
 const UNARY_EXPR_FIRST: TokenSet =
     token_set_union![
-        token_set![AMPERSAND, STAR, EXCL],
+        token_set![AMP, STAR, EXCL],
         atom::ATOM_EXPR_FIRST,
     ];
 
@@ -125,7 +125,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
         //     let _ = &1;
         //     let _ = &mut &f();
         // }
-        AMPERSAND => {
+        AMP => {
             m = p.start();
             p.bump();
             p.eat(MUT_KW);

@@ -15,7 +15,7 @@ pub(super) fn pattern(p: &mut Parser) {
 
     match la0 {
         UNDERSCORE => placeholder_pat(p),
-        AMPERSAND => ref_pat(p),
+        AMP => ref_pat(p),
         _ => p.err_and_bump("expected pattern"),
     }
 }
@@ -108,7 +108,7 @@ fn placeholder_pat(p: &mut Parser) {
 //     let &mut b = ();
 // }
 fn ref_pat(p: &mut Parser) {
-    assert!(p.at(AMPERSAND));
+    assert!(p.at(AMP));
     let m = p.start();
     p.bump();
     p.eat(MUT_KW);

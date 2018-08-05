@@ -6,7 +6,7 @@ pub(super) fn type_(p: &mut Parser) {
         EXCL => never_type(p),
         STAR => pointer_type(p),
         L_BRACK => array_or_slice_type(p),
-        AMPERSAND => reference_type(p),
+        AMP => reference_type(p),
         UNDERSCORE => placeholder_type(p),
         FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
         FOR_KW => for_type(p),
@@ -130,7 +130,7 @@ fn array_or_slice_type(p: &mut Parser) {
 // type B = &'static ();
 // type C = &mut ();
 fn reference_type(p: &mut Parser) {
-    assert!(p.at(AMPERSAND));
+    assert!(p.at(AMP));
     let m = p.start();
     p.bump();
     p.eat(LIFETIME);

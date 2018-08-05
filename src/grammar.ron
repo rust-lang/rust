@@ -15,7 +15,7 @@ Grammar(
         ["~", "TILDE"],
         ["?", "QUESTION"],
         ["$", "DOLLAR"],
-        ["&", "AMPERSAND"],
+        ["&", "AMP"],
         ["|", "PIPE"],
         ["+", "PLUS"],
         ["*", "STAR"],
@@ -41,7 +41,7 @@ Grammar(
         [">=", "GTEQ"],
         ["+=", "PLUSEQ"],
         ["-=", "MINUSEQ"],
-        ["&&", "AMPERSANDAMPERSAND"],
+        ["&&", "AMPAMP"],
         ["||", "PIPEPIPE"],
     ],
     keywords: [

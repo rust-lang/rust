@@ -53,10 +53,10 @@ fn self_param(p: &mut Parser) {
     let la3 = p.nth(3);
     let n_toks = match (p.current(), la1, la2, la3) {
         (SELF_KW, _, _, _) => 1,
-        (AMPERSAND, SELF_KW, _, _) => 2,
-        (AMPERSAND, MUT_KW, SELF_KW, _) => 3,
-        (AMPERSAND, LIFETIME, SELF_KW, _) => 3,
-        (AMPERSAND, LIFETIME, MUT_KW, SELF_KW) => 4,
+        (AMP, SELF_KW, _, _) => 2,
+        (AMP, MUT_KW, SELF_KW, _) => 3,
+        (AMP, LIFETIME, SELF_KW, _) => 3,
+        (AMP, LIFETIME, MUT_KW, SELF_KW) => 4,
         _ => return,
     };
     let m = p.start();
