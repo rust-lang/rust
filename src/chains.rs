@@ -575,6 +575,9 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
 
         while root_rewrite.len() <= tab_width && !root_rewrite.contains('\n') {
             let item = &self.shared.children[0];
+            if let ChainItemKind::Comment = item.kind {
+                break;
+            }
             let shape = shape.offset_left(root_rewrite.len())?;
             match &item.rewrite(context, shape) {
                 Some(rewrite) => root_rewrite.push_str(rewrite),
@@ -667,6 +670,10 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
 
         if !multiline || parent.kind.is_block_like(context, &root_rewrite) {
             let item = &self.shared.children[0];
+            if let ChainItemKind::Comment = item.kind {
+                self.shared.rewrites.push(root_rewrite);
+                return Some(());
+            }
             let child_shape = parent_shape
                 .visual_indent(self.offset)
                 .sub_width(self.offset)?;
