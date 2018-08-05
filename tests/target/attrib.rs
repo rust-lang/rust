@@ -76,14 +76,12 @@ struct Foo {
 // #1668
 
 /// Default path (*nix)
-#[cfg(
-    all(
-        unix,
-        not(target_os = "macos"),
-        not(target_os = "ios"),
-        not(target_os = "android")
-    )
-)]
+#[cfg(all(
+    unix,
+    not(target_os = "macos"),
+    not(target_os = "ios"),
+    not(target_os = "android")
+))]
 fn foo() {
     #[cfg(target_os = "freertos")]
     match port_id {
