@@ -140,12 +140,14 @@ Grammar(
 
         // atoms
         "TUPLE_EXPR",
+        "ARRAY_EXPR",
         "PAREN_EXPR",
         "PATH_EXPR",
         "LAMBDA_EXPR",
         "IF_EXPR",
         "WHILE_EXPR",
         "LOOP_EXPR",
+        "FOR_EXPR",
         "BLOCK_EXPR",
         "RETURN_EXPR",
         "MATCH_EXPR",

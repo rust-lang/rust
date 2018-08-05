@@ -44,11 +44,13 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
     let la = p.nth(1);
     let done = match p.current() {
         L_PAREN => tuple_expr(p),
+        L_BRACK => array_expr(p),
         PIPE => lambda_expr(p),
         MOVE_KW if la == PIPE => lambda_expr(p),
         IF_KW => if_expr(p),
         WHILE_KW => while_expr(p),
         LOOP_KW => loop_expr(p),
+        FOR_KW => for_expr(p),
         MATCH_KW => match_expr(p),
         UNSAFE_KW if la == L_CURLY => block_expr(p),
         L_CURLY => block_expr(p),
@@ -84,6 +86,36 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
     }
     p.expect(R_PAREN);
     m.complete(p, if saw_expr && !saw_comma { PAREN_EXPR } else { TUPLE_EXPR })
+}
+
+// test array_expr
+// fn foo() {
+//     [];
+//     [1];
+//     [1, 2,];
+//     [1; 2];
+// }
+fn array_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(L_BRACK));
+    let m = p.start();
+    p.bump();
+    if p.eat(R_BRACK) {
+        return m.complete(p, ARRAY_EXPR);
+    }
+    expr(p);
+    if p.eat(SEMI) {
+        expr(p);
+        p.expect(R_BRACK);
+        return m.complete(p, ARRAY_EXPR);
+    }
+    while !p.at(EOF) && !p.at(R_BRACK) {
+        p.expect(COMMA);
+        if !p.at(R_BRACK) {
+            expr(p);
+        }
+    }
+    p.expect(R_BRACK);
+    m.complete(p, ARRAY_EXPR)
 }
 
 // test lambda_expr
@@ -154,6 +186,21 @@ fn loop_expr(p: &mut Parser) -> CompletedMarker {
     p.bump();
     block(p);
     m.complete(p, LOOP_EXPR)
+}
+
+// test for_expr
+// fn foo() {
+//     for x in [] {};
+// }
+fn for_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(FOR_KW));
+    let m = p.start();
+    p.bump();
+    patterns::pattern(p);
+    p.expect(IN_KW);
+    expr_no_struct(p);
+    block(p);
+    m.complete(p, FOR_EXPR)
 }
 
 // test cond
