@@ -875,6 +875,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[inline]
     fn check_ident(&mut self) -> bool {
         if self.token.is_ident() {
             true
@@ -893,6 +894,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[inline]
     fn check_type(&mut self) -> bool {
         if self.token.can_begin_type() {
             true
@@ -2057,6 +2059,7 @@ impl<'a> Parser<'a> {
         })
     }
 
+    #[inline]
     crate fn check_lifetime(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Lifetime);
         self.token.is_lifetime()
@@ -5060,51 +5063,76 @@ impl<'a> Parser<'a> {
 
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
-    fn parse_generic_args(&mut self)
-                          -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
-        let mut args = Vec::new();
-        let mut bindings = Vec::new();
+    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+        let mut args: Option<Vec<GenericArg>> = None;
+        let mut bindings: Option<Vec<TypeBinding>> = None;
         let mut seen_type = false;
         let mut seen_binding = false;
         loop {
-            if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
+            let mut arg = None;
+            let mut binding = None;
+
+            let (is_not_like_plus, is_eq) = if let Some(TokenTree::Token(_, tok)) =
+                self.token_cursor.frame.tree_cursor.look_ahead(0) {
+                    (!tok.is_like_plus(), tok == token::Eq)
+            } else {
+                (false, false)
+            };
+
+            if is_not_like_plus && self.check_lifetime() {
                 // Parse lifetime argument.
-                args.push(GenericArg::Lifetime(self.expect_lifetime()));
                 if seen_type || seen_binding {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
                 }
-            } else if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
+                arg = Some(GenericArg::Lifetime(self.expect_lifetime()));
+            } else if is_eq && self.check_ident() {
                 // Parse associated type binding.
                 let lo = self.span;
                 let ident = self.parse_ident()?;
                 self.bump();
                 let ty = self.parse_ty()?;
-                bindings.push(TypeBinding {
+                seen_binding = true;
+                binding = Some(TypeBinding {
                     id: ast::DUMMY_NODE_ID,
                     ident,
                     ty,
                     span: lo.to(self.prev_span),
                 });
-                seen_binding = true;
             } else if self.check_type() {
                 // Parse type argument.
-                let ty_param = self.parse_ty()?;
+                let ty = self.parse_ty()?;
                 if seen_binding {
-                    self.span_err(ty_param.span,
+                    self.span_err(ty.span,
                         "type parameters must be declared prior to associated type bindings");
                 }
-                args.push(GenericArg::Type(ty_param));
                 seen_type = true;
+                arg = Some(GenericArg::Type(ty));
             } else {
-                break
+                break;
+            }
+
+            if let Some(arg) = arg {
+                if let Some(ref mut args) = args {
+                    args.push(arg);
+                } else {
+                    args = Some(vec![arg]);
+                }
+            }
+
+            if let Some(binding) = binding {
+                if let Some(ref mut bindings) = bindings {
+                    bindings.push(binding);
+                } else {
+                    bindings = Some(vec![binding]);
+                }
             }
 
             if !self.eat(&token::Comma) {
-                break
+                break;
             }
         }
-        Ok((args, bindings))
+        Ok((args.unwrap_or_default(), bindings.unwrap_or_default()))
     }
 
     /// Parses an optional `where` clause and places it in `generics`.

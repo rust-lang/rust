@@ -124,6 +124,7 @@ pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
     ].contains(&ident.name)
 }
 
+#[inline]
 fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
     let ident_token: Token = Ident(ident, is_raw);
 
@@ -218,6 +219,7 @@ impl Token {
         Ident(ident, ident.is_raw_guess())
     }
 
+    #[inline]
     crate fn is_like_plus(&self) -> bool {
         match *self {
             BinOp(Plus) | BinOpEq(Plus) => true,
@@ -307,6 +309,7 @@ impl Token {
     }
 
     /// Returns an identifier if this token is an identifier.
+    #[inline]
     pub fn ident(&self) -> Option<(ast::Ident, /* is_raw */ bool)> {
         match *self {
             Ident(ident, is_raw) => Some((ident, is_raw)),
@@ -318,6 +321,7 @@ impl Token {
         }
     }
     /// Returns a lifetime identifier if this token is a lifetime.
+    #[inline]
     pub fn lifetime(&self) -> Option<ast::Ident> {
         match *self {
             Lifetime(ident) => Some(ident),
@@ -329,10 +333,12 @@ impl Token {
         }
     }
     /// Returns `true` if the token is an identifier.
+    #[inline]
     pub fn is_ident(&self) -> bool {
         self.ident().is_some()
     }
     /// Returns `true` if the token is a lifetime.
+    #[inline]
     crate fn is_lifetime(&self) -> bool {
         self.lifetime().is_some()
     }
@@ -376,6 +382,7 @@ impl Token {
         self.ident().map(|(ident, is_raw)| ident.name == kw.name() && !is_raw).unwrap_or(false)
     }
 
+    #[inline]
     pub fn is_path_segment_keyword(&self) -> bool {
         match self.ident() {
             Some((id, false)) => id.is_path_segment_keyword(),
@@ -409,6 +416,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
+    #[inline]
     pub fn is_reserved_ident(&self) -> bool {
         match self.ident() {
             Some((id, false)) => id.is_reserved(),
