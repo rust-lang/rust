@@ -60,12 +60,29 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMark
     Some(done)
 }
 
+// test tuple_expr
+// fn foo() {
+//     ();
+//     (1);
+//     (1,);
+// }
 fn tuple_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(L_PAREN));
     let m = p.start();
     p.expect(L_PAREN);
+
+    let mut saw_comma = false;
+    let mut saw_expr = false;
+    while !p.at(EOF) && !p.at(R_PAREN) {
+        saw_expr = true;
+        expr(p);
+        if !p.at(R_PAREN) {
+            saw_comma = true;
+            p.expect(COMMA);
+        }
+    }
     p.expect(R_PAREN);
-    m.complete(p, TUPLE_EXPR)
+    m.complete(p, if saw_expr && !saw_comma { PAREN_EXPR } else { TUPLE_EXPR })
 }
 
 // test lambda_expr

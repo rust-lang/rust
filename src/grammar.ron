@@ -138,6 +138,7 @@ Grammar(
 
         // atoms
         "TUPLE_EXPR",
+        "PAREN_EXPR",
         "PATH_EXPR",
         "LAMBDA_EXPR",
         "IF_EXPR",
