@@ -35,7 +35,7 @@ struct Restrictions {
 
 enum Op {
     Simple,
-    Composite(SyntaxKind, u8)
+    Composite(SyntaxKind, u8),
 }
 
 // test expr_binding_power
@@ -52,16 +52,16 @@ enum Op {
 // }
 fn current_op(p: &Parser) -> (u8, Op) {
     if p.at_compound2(L_ANGLE, EQ) {
-        return (2, Op::Composite(LTEQ, 2))
+        return (2, Op::Composite(LTEQ, 2));
     }
     if p.at_compound2(R_ANGLE, EQ) {
-        return (2, Op::Composite(GTEQ, 2))
+        return (2, Op::Composite(GTEQ, 2));
     }
     if p.at_compound2(PLUS, EQ) {
-        return (1, Op::Composite(PLUSEQ, 2))
+        return (1, Op::Composite(PLUSEQ, 2));
     }
     if p.at_compound2(MINUS, EQ) {
-        return (1, Op::Composite(MINUSEQ, 2))
+        return (1, Op::Composite(MINUSEQ, 2));
     }
 
     let bp = match p.current() {
@@ -90,7 +90,7 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
             Op::Simple => p.bump(),
             Op::Composite(kind, n) => {
                 p.bump_compound(kind, n);
-            },
+            }
         }
         lhs = bin_expr(p, r, lhs, op_bp);
     }
@@ -115,8 +115,7 @@ fn unary_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
             p.bump();
             p.eat(MUT_KW);
             REF_EXPR
-
-        },
+        }
         // test deref_expr
         // fn foo() {
         //     **&1;
@@ -125,7 +124,7 @@ fn unary_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
             m = p.start();
             p.bump();
             DEREF_EXPR
-        },
+        }
         // test not_expr
         // fn foo() {
         //     !!true;
@@ -134,10 +133,10 @@ fn unary_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
             m = p.start();
             p.bump();
             NOT_EXPR
-        },
+        }
         _ => {
             let lhs = atom::atom_expr(p, r)?;
-            return Some(postfix_expr(p, lhs))
+            return Some(postfix_expr(p, lhs));
         }
     };
     unary_expr(p, r);
@@ -148,7 +147,7 @@ fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
     loop {
         lhs = match p.current() {
             L_PAREN => call_expr(p, lhs),
-            DOT if p.nth(1) == IDENT => if p.nth(2) == L_PAREN {
+            DOT if p.nth(1) == IDENT => if p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON {
                 method_call_expr(p, lhs)
             } else {
                 field_expr(p, lhs)
@@ -176,13 +175,17 @@ fn call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 // test method_call_expr
 // fn foo() {
 //     x.foo();
-//     y.bar(1, 2,);
+//     y.bar::<T>(1, 2,);
 // }
 fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(DOT) && p.nth(1) == IDENT && p.nth(2) == L_PAREN);
+    assert!(
+        p.at(DOT) && p.nth(1) == IDENT
+            && (p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON)
+    );
     let m = lhs.precede(p);
     p.bump();
     name_ref(p);
+    type_args::type_arg_list(p, true);
     arg_list(p);
     m.complete(p, METHOD_CALL_EXPR)
 }
