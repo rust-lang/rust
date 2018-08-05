@@ -53,9 +53,9 @@ use util::parser::{AssocOp, Fixity};
 use print::pprust;
 use ptr::P;
 use parse::PResult;
+use ThinVec;
 use tokenstream::{self, Delimited, ThinTokenStream, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
-use util::ThinVec;
 
 use std::borrow::Cow;
 use std::cmp;
