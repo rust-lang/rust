@@ -10,6 +10,7 @@
 
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
+use borrow_check::nll::universal_regions::DefiningTy;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
@@ -72,7 +73,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_output(
-                    infcx.tcx, mir, fr, counter, diag)
+                    infcx.tcx, mir, mir_def_id, fr, counter, diag)
             })
             .unwrap_or_else(|| span_bug!(mir.span, "can't make a name for free region {:?}", fr))
     }
@@ -107,13 +108,46 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 },
 
                 ty::BoundRegion::BrEnv => {
-                    let closure_span = tcx.hir.span_if_local(mir_def_id).unwrap();
-                    let region_name = self.synthesize_region_name(counter);
-                    diag.span_label(
-                        closure_span,
-                        format!("lifetime `{}` represents the closure body", region_name),
-                    );
-                    Some(region_name)
+                    let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
+                    let def_ty = self.universal_regions.defining_ty;
+
+                    if let DefiningTy::Closure(def_id, substs) = def_ty {
+                        let args_span = if let hir::ExprKind::Closure(_, _, _, span, _)
+                            = tcx.hir.expect_expr(mir_node_id).node
+                        {
+                            span
+                        } else {
+                            bug!("Closure is not defined by a closure expr");
+                        };
+                        let region_name = self.synthesize_region_name(counter);
+                        diag.span_label(
+                            args_span,
+                            format!("lifetime `{}` represents this closure's body", region_name),
+                        );
+
+                        let closure_kind_ty = substs.closure_kind_ty(def_id, tcx);
+                        let note = match closure_kind_ty.to_opt_closure_kind() {
+                            Some(ty::ClosureKind::Fn) => {
+                                "closure implements `Fn`, so references to captured variables \
+                                 can't escape the closure"
+                            }
+                            Some(ty::ClosureKind::FnMut) => {
+                                "closure implements `FnMut`, so references to captured variables \
+                                 can't escape the closure"
+                            }
+                            Some(ty::ClosureKind::FnOnce) => {
+                                bug!("BrEnv in a `FnOnce` closure");
+                            }
+                            None => bug!("Closure kind not inferred in borrow check"),
+                        };
+
+                        diag.note(note);
+
+                        Some(region_name)
+                    } else {
+                        // Can't have BrEnv in functions, constants or generators.
+                        bug!("BrEnv outside of closure.");
+                    }
                 }
 
                 ty::BoundRegion::BrAnon(_) | ty::BoundRegion::BrFresh(_) => None,
@@ -545,6 +579,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
+        mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
@@ -558,9 +593,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
+        let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
+        let args_span = if let hir::ExprKind::Closure(_, _, _, span, _)
+            = tcx.hir.expect_expr(mir_node_id).node
+        {
+            span
+        } else {
+            mir.span
+        };
+
         let region_name = self.synthesize_region_name(counter);
         diag.span_label(
-            mir.span,
+            args_span,
             format!("lifetime `{}` appears in return type", region_name),
         );
 

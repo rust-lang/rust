@@ -1,20 +1,17 @@
 error: unsatisfied lifetime constraints
   --> $DIR/issue-40510-3.rs:18:9
    |
-LL |         || {
-   |    _____-
-   |   |_____|
-   |  ||
-LL |  ||         || {
-   |  ||_________^
-LL | |||             x.push(())
-LL | |||         }
-   | |||_________^ requires that `'1` must outlive `'2`
-LL |  ||     };
-   |  ||     -
-   |  ||_____|
-   |  |______lifetime `'1` represents the closure body
-   |         lifetime `'2` appears in return type
+LL |       || {
+   |       --
+   |       |
+   |       lifetime `'1` represents this closure's body
+   |       lifetime `'2` appears in return type
+LL | /         || {
+LL | |             x.push(())
+LL | |         }
+   | |_________^ requires that `'1` must outlive `'2`
+   |
+   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
 
 error: aborting due to previous error
 
