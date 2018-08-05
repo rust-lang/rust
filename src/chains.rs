@@ -335,6 +335,7 @@ impl Chain {
             if handle_comment {
                 let pre_comment_span = mk_sp(prev_span_end, chain_item.span.lo());
                 let pre_comment_snippet = context.snippet(pre_comment_span);
+                let pre_comment_snippet = pre_comment_snippet.trim().trim_matches('?');
                 let (pre_comment, _) = extract_pre_comment(pre_comment_snippet);
                 match pre_comment {
                     Some(ref comment) if !comment.is_empty() => {
