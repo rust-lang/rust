@@ -201,6 +201,14 @@ impl ChainItem {
         ChainItem { kind, tries, span }
     }
 
+    fn comment(span: Span) -> ChainItem {
+        ChainItem {
+            kind: ChainItemKind::Comment,
+            tries: 0,
+            span,
+        }
+    }
+
     fn rewrite_method_call(
         method_name: ast::Ident,
         types: &[ast::GenericArg],
@@ -235,22 +243,32 @@ impl Chain {
         let subexpr_list = Self::make_subexpr_list(expr, context);
 
         // Un-parse the expression tree into ChainItems
-        let mut children = vec![];
+        let mut rev_children = vec![];
         let mut sub_tries = 0;
         for subexpr in &subexpr_list {
             match subexpr.node {
                 ast::ExprKind::Try(_) => sub_tries += 1,
                 _ => {
-                    children.push(ChainItem::new(context, subexpr, sub_tries));
+                    rev_children.push(ChainItem::new(context, subexpr, sub_tries));
                     sub_tries = 0;
                 }
             }
         }
 
-        Chain {
-            parent: children.pop().unwrap(),
-            children: children.into_iter().rev().collect(),
+        let parent = rev_children.pop().unwrap();
+        let mut children = vec![];
+        let mut prev_hi = parent.span.hi();
+        for chain_item in rev_children.into_iter().rev() {
+            let comment_span = mk_sp(prev_hi, chain_item.span.lo());
+            let comment_snippet = context.snippet(comment_span);
+            if !comment_snippet.trim().is_empty() {
+                children.push(ChainItem::comment(comment_span));
+            }
+            prev_hi = chain_item.span.hi();
+            children.push(chain_item);
         }
+
+        Chain { parent, children }
     }
 
     // Returns a Vec of the prefixes of the chain.
