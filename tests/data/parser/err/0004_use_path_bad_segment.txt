@@ -1,12 +1,12 @@
 FILE@[0; 12)
   USE_ITEM@[0; 9)
     USE_KW@[0; 3)
-    USE_TREE@[3; 9)
-      PATH@[3; 9)
-        PATH@[3; 7)
-          PATH_SEGMENT@[3; 7)
-            NAME_REF@[3; 7)
-              WHITESPACE@[3; 4)
+    WHITESPACE@[3; 4)
+    USE_TREE@[4; 9)
+      PATH@[4; 9)
+        PATH@[4; 7)
+          PATH_SEGMENT@[4; 7)
+            NAME_REF@[4; 7)
               IDENT@[4; 7) "foo"
         COLONCOLON@[7; 9)
         err: `expected identifier`

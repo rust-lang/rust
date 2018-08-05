@@ -1,23 +1,23 @@
 FILE@[0; 20)
-  TYPE_ITEM@[0; 16)
+  TYPE_ITEM@[0; 15)
     TYPE_KW@[0; 4)
-    NAME@[4; 7)
-      WHITESPACE@[4; 5)
+    WHITESPACE@[4; 5)
+    NAME@[5; 6)
       IDENT@[5; 6) "F"
-      WHITESPACE@[6; 7)
+    WHITESPACE@[6; 7)
     EQ@[7; 8)
     WHITESPACE@[8; 9)
     UNSAFE_KW@[9; 15)
     err: `expected `fn``
     err: `expected SEMI`
-    WHITESPACE@[15; 16)
-    err: `expected an item`
+  WHITESPACE@[15; 16)
+  err: `expected an item`
   ERROR@[16; 17)
     L_PAREN@[16; 17)
     err: `expected an item`
   ERROR@[17; 18)
     R_PAREN@[17; 18)
     err: `expected an item`
-  ERROR@[18; 20)
+  ERROR@[18; 19)
     SEMI@[18; 19)
-    WHITESPACE@[19; 20)
+  WHITESPACE@[19; 20)

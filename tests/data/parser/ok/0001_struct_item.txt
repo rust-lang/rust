@@ -1,10 +1,10 @@
 FILE@[0; 13)
   STRUCT_ITEM@[0; 13)
     STRUCT_KW@[0; 6)
-    NAME@[6; 9)
-      WHITESPACE@[6; 7)
+    WHITESPACE@[6; 7)
+    NAME@[7; 8)
       IDENT@[7; 8) "S"
-      WHITESPACE@[8; 9)
+    WHITESPACE@[8; 9)
     L_CURLY@[9; 10)
     WHITESPACE@[10; 12)
     R_CURLY@[12; 13)

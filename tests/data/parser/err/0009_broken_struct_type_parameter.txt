@@ -1,31 +1,31 @@
 FILE@[0; 43)
-  STRUCT_ITEM@[0; 12)
+  STRUCT_ITEM@[0; 11)
     STRUCT_KW@[0; 6)
-    NAME@[6; 8)
-      WHITESPACE@[6; 7)
+    WHITESPACE@[6; 7)
+    NAME@[7; 8)
       IDENT@[7; 8) "S"
-    TYPE_PARAM_LIST@[8; 12)
+    TYPE_PARAM_LIST@[8; 11)
       L_ANGLE@[8; 9)
       err: `expected type parameter`
-      ERROR@[9; 12)
+      ERROR@[9; 11)
         INT_NUMBER@[9; 11) "90"
-        WHITESPACE@[11; 12)
         err: `expected COMMA`
         err: `expected R_ANGLE`
         err: `expected `;`, `{`, or `(``
-        err: `expected an item`
-  ERROR@[12; 14)
+  WHITESPACE@[11; 12)
+  err: `expected an item`
+  ERROR@[12; 13)
     PLUS@[12; 13)
-    WHITESPACE@[13; 14)
-    err: `expected an item`
+  WHITESPACE@[13; 14)
+  err: `expected an item`
   ERROR@[14; 15)
     INT_NUMBER@[14; 15) "2"
     err: `expected an item`
-  ERROR@[15; 17)
+  ERROR@[15; 16)
     R_ANGLE@[15; 16)
-    WHITESPACE@[16; 17)
-    err: `expected an item`
-  ERROR@[17; 33)
+  WHITESPACE@[16; 17)
+  err: `expected an item`
+  ERROR@[17; 31)
     L_CURLY@[17; 18)
     WHITESPACE@[18; 23)
     IDENT@[23; 24) "f"
@@ -34,11 +34,11 @@ FILE@[0; 43)
     IDENT@[26; 29) "u32"
     WHITESPACE@[29; 30)
     R_CURLY@[30; 31)
-    WHITESPACE@[31; 33)
-  STRUCT_ITEM@[33; 43)
+  WHITESPACE@[31; 33)
+  STRUCT_ITEM@[33; 42)
     STRUCT_KW@[33; 39)
-    NAME@[39; 41)
-      WHITESPACE@[39; 40)
+    WHITESPACE@[39; 40)
+    NAME@[40; 41)
       IDENT@[40; 41) "T"
     SEMI@[41; 42)
-    WHITESPACE@[42; 43)
+  WHITESPACE@[42; 43)

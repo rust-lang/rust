@@ -1,17 +1,17 @@
 FILE@[0; 21)
-  ERROR@[0; 3)
+  ERROR@[0; 2)
     IF_KW@[0; 2)
     err: `expected an item`
-    WHITESPACE@[2; 3)
-    err: `expected an item`
-  ERROR@[3; 10)
+  WHITESPACE@[2; 3)
+  err: `expected an item`
+  ERROR@[3; 8)
     MATCH_KW@[3; 8)
-    WHITESPACE@[8; 10)
+  WHITESPACE@[8; 10)
   STRUCT_ITEM@[10; 21)
     STRUCT_KW@[10; 16)
-    NAME@[16; 19)
-      WHITESPACE@[16; 17)
+    WHITESPACE@[16; 17)
+    NAME@[17; 18)
       IDENT@[17; 18) "S"
-      WHITESPACE@[18; 19)
+    WHITESPACE@[18; 19)
     L_CURLY@[19; 20)
     R_CURLY@[20; 21)

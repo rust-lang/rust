@@ -76,9 +76,19 @@ pub(crate) enum Event {
     },
 }
 
-pub(super) fn process<'a>(builder: &mut impl Sink<'a>, tokens: &[Token], events: Vec<Event>) {
-    let mut idx = 0;
+pub(super) fn process<'a, S: Sink<'a>>(builder: &mut S, tokens: &[Token], events: Vec<Event>) {
+    let mut next_tok_idx = 0;
+    let eat_ws = |idx: &mut usize, builder: &mut S| {
+        while let Some(token) = tokens.get(*idx) {
+            if !token.kind.is_trivia() {
+                break;
+            }
+            builder.leaf(token.kind, token.len);
+            *idx += 1
+        }
+    };
 
+    let mut depth = 0;
     let mut holes = Vec::new();
     let mut forward_parents = Vec::new();
 
@@ -112,41 +122,32 @@ pub(super) fn process<'a>(builder: &mut impl Sink<'a>, tokens: &[Token], events:
                     }
                 }
                 for &(idx, kind) in forward_parents.iter().into_iter().rev() {
+                    if depth > 0 {
+                        eat_ws(&mut next_tok_idx, builder);
+                    }
+                    depth += 1;
                     builder.start_internal(kind);
                     holes.push(idx);
                 }
                 holes.pop();
             }
             &Event::Finish => {
-                while idx < tokens.len() {
-                    let token = tokens[idx];
-                    if token.kind.is_trivia() {
-                        idx += 1;
-                        builder.leaf(token.kind, token.len);
-                    } else {
-                        break;
-                    }
+                depth -= 1;
+                if depth == 0 {
+                    eat_ws(&mut next_tok_idx, builder);
                 }
-                builder.finish_internal()
+
+                builder.finish_internal();
             }
             &Event::Token {
                 kind,
                 mut n_raw_tokens,
             } => {
-                // FIXME: currently, we attach whitespace to some random node
-                // this should be done in a sensible manner instead
-                loop {
-                    let token = tokens[idx];
-                    if !token.kind.is_trivia() {
-                        break;
-                    }
-                    builder.leaf(token.kind, token.len);
-                    idx += 1
-                }
+                eat_ws(&mut next_tok_idx, builder);
                 let mut len = 0.into();
                 for _ in 0..n_raw_tokens {
-                    len += tokens[idx].len;
-                    idx += 1;
+                    len += tokens[next_tok_idx].len;
+                    next_tok_idx += 1;
                 }
                 builder.leaf(kind, len);
             }
