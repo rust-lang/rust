@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_data_structures::thin_vec::ThinVec;
+
 use syntax::ast;
 use syntax::ext::base::*;
 use syntax::ext::base;
@@ -68,7 +70,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
                 id: ast::DUMMY_NODE_ID,
                 node: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
                 span: self.ident.span,
-                attrs: ast::ThinVec::new(),
+                attrs: ThinVec::new(),
             }))
         }
 

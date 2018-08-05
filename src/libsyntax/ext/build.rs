@@ -16,6 +16,7 @@ use codemap::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use ptr::P;
 use symbol::{Symbol, keywords};
+use ThinVec;
 
 // Transitional re-exports so qquote can find the paths it is looking for
 mod syntax {
@@ -519,7 +520,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -547,7 +548,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -564,7 +565,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             init: None,
             id: ast::DUMMY_NODE_ID,
             span,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -603,7 +604,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             node,
             span,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         })
     }
 
@@ -678,7 +679,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             expr: e,
             span,
             is_shorthand: false,
-            attrs: ast::ThinVec::new(),
+            attrs: ThinVec::new(),
         }
     }
     fn expr_struct(&self, span: Span, path: ast::Path, fields: Vec<ast::Field>) -> P<ast::Expr> {

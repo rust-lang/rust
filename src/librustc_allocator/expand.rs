@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc::middle::allocator::AllocatorKind;
+use rustc_data_structures::small_vec::OneVector;
 use rustc_errors;
 use syntax::{
     ast::{
@@ -28,8 +29,7 @@ use syntax::{
     fold::{self, Folder},
     parse::ParseSess,
     ptr::P,
-    symbol::Symbol,
-    util::small_vector::SmallVector,
+    symbol::Symbol
 };
 use syntax_pos::Span;
 
@@ -65,7 +65,7 @@ struct ExpandAllocatorDirectives<'a> {
 }
 
 impl<'a> Folder for ExpandAllocatorDirectives<'a> {
-    fn fold_item(&mut self, item: P<Item>) -> SmallVector<P<Item>> {
+    fn fold_item(&mut self, item: P<Item>) -> OneVector<P<Item>> {
         debug!("in submodule {}", self.in_submod);
 
         let name = if attr::contains_name(&item.attrs, "global_allocator") {
@@ -78,20 +78,20 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             _ => {
                 self.handler
                     .span_err(item.span, "allocators must be statics");
-                return SmallVector::one(item);
+                return OneVector::one(item);
             }
         }
 
         if self.in_submod > 0 {
             self.handler
                 .span_err(item.span, "`global_allocator` cannot be used in submodules");
-            return SmallVector::one(item);
+            return OneVector::one(item);
         }
 
         if self.found {
             self.handler
                 .span_err(item.span, "cannot define more than one #[global_allocator]");
-            return SmallVector::one(item);
+            return OneVector::one(item);
         }
         self.found = true;
 
@@ -152,7 +152,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         let module = f.cx.monotonic_expander().fold_item(module).pop().unwrap();
 
         // Return the item and new submodule
-        let mut ret = SmallVector::with_capacity(2);
+        let mut ret = OneVector::with_capacity(2);
         ret.push(item);
         ret.push(module);
 

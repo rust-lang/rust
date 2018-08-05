@@ -29,6 +29,8 @@ use array_vec::Array;
 
 pub struct SmallVec<A: Array>(AccumulateVec<A>);
 
+pub type OneVector<T> = SmallVec<[T; 1]>;
+
 impl<A> Clone for SmallVec<A>
     where A: Array,
           A::Element: Clone {
@@ -226,6 +228,69 @@ mod tests {
     use self::test::Bencher;
 
     use super::*;
+
+    #[test]
+    fn test_len() {
+        let v: OneVector<isize> = OneVector::new();
+        assert_eq!(0, v.len());
+
+        assert_eq!(1, OneVector::one(1).len());
+        assert_eq!(5, OneVector::many(vec![1, 2, 3, 4, 5]).len());
+    }
+
+    #[test]
+    fn test_push_get() {
+        let mut v = OneVector::new();
+        v.push(1);
+        assert_eq!(1, v.len());
+        assert_eq!(1, v[0]);
+        v.push(2);
+        assert_eq!(2, v.len());
+        assert_eq!(2, v[1]);
+        v.push(3);
+        assert_eq!(3, v.len());
+        assert_eq!(3, v[2]);
+    }
+
+    #[test]
+    fn test_from_iter() {
+        let v: OneVector<isize> = (vec![1, 2, 3]).into_iter().collect();
+        assert_eq!(3, v.len());
+        assert_eq!(1, v[0]);
+        assert_eq!(2, v[1]);
+        assert_eq!(3, v[2]);
+    }
+
+    #[test]
+    fn test_move_iter() {
+        let v = OneVector::new();
+        let v: Vec<isize> = v.into_iter().collect();
+        assert_eq!(v, Vec::new());
+
+        let v = OneVector::one(1);
+        assert_eq!(v.into_iter().collect::<Vec<_>>(), [1]);
+
+        let v = OneVector::many(vec![1, 2, 3]);
+        assert_eq!(v.into_iter().collect::<Vec<_>>(), [1, 2, 3]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_expect_one_zero() {
+        let _: isize = OneVector::new().expect_one("");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_expect_one_many() {
+        OneVector::many(vec![1, 2]).expect_one("");
+    }
+
+    #[test]
+    fn test_expect_one_one() {
+        assert_eq!(1, OneVector::one(1).expect_one(""));
+        assert_eq!(1, OneVector::many(vec![1]).expect_one(""));
+    }
 
     #[bench]
     fn fill_small_vec_1_10_with_cap(b: &mut Bencher) {

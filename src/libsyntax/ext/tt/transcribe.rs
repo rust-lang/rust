@@ -15,9 +15,9 @@ use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::quoted;
 use fold::noop_fold_tt;
 use parse::token::{self, Token, NtTT};
+use OneVector;
 use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::{TokenStream, TokenTree, Delimited};
-use util::small_vector::SmallVector;
 
 use std::rc::Rc;
 use rustc_data_structures::sync::Lrc;
@@ -70,7 +70,7 @@ pub fn transcribe(cx: &ExtCtxt,
                   interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                   src: Vec<quoted::TokenTree>)
                   -> TokenStream {
-    let mut stack = SmallVector::one(Frame::new(src));
+    let mut stack = OneVector::one(Frame::new(src));
     let interpolations = interp.unwrap_or_else(HashMap::new); /* just a convenience */
     let mut repeats = Vec::new();
     let mut result: Vec<TokenStream> = Vec::new();
