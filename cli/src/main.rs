@@ -1,13 +1,16 @@
 extern crate clap;
 #[macro_use]
 extern crate failure;
-extern crate libsyntax2;
+extern crate libeditor;
 extern crate tools;
 
+use std::{
+    fs, io::Read, path::Path,
+    time::Instant
+};
 use clap::{App, Arg, SubCommand};
-use std::time::Instant;
-use std::{fs, io::Read, path::Path};
 use tools::collect_tests;
+use libeditor::File;
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -30,11 +33,21 @@ fn main() -> Result<()> {
                 ),
         )
         .subcommand(SubCommand::with_name("parse"))
+        .subcommand(SubCommand::with_name("symbols"))
         .get_matches();
     match matches.subcommand() {
         ("parse", _) => {
-            let tree = parse()?;
-            println!("{}", tree);
+            let start = Instant::now();
+            let file = file()?;
+            let elapsed = start.elapsed();
+            println!("{}", file.syntax_tree());
+            eprintln!("parsing: {:?}", elapsed);
+        }
+        ("symbols", _) => {
+            let file = file()?;
+            for s in file.symbols() {
+                println!("{:?}", s);
+            }
         }
         ("render-test", Some(matches)) => {
             let file = matches.value_of("file").unwrap();
@@ -49,13 +62,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn parse() -> Result<String> {
+fn file() -> Result<File> {
     let text = read_stdin()?;
-    let start = Instant::now();
-    let file = libsyntax2::parse(&text);
-    eprintln!("elapsed {:?}", start.elapsed());
-    let tree = libsyntax2::utils::dump_tree(&file);
-    Ok(tree)
+    Ok(File::new(&text))
 }
 
 fn read_stdin() -> Result<String> {
@@ -74,7 +83,7 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
         None => bail!("No test found at line {} at {}", line, file.display()),
         Some((_start_line, test)) => test,
     };
-    let file = libsyntax2::parse(&test.text);
-    let tree = libsyntax2::utils::dump_tree(&file);
+    let file = File::new(&test.text);
+    let tree = file.syntax_tree();
     Ok((test.text, tree))
 }

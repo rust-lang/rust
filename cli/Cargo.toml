@@ -7,5 +7,5 @@ publish = false
 [dependencies]
 clap = "2.32.0"
 failure = "0.1.1"
-libsyntax2 = { path = "../" }
+libeditor = { path = "../libeditor" }
 tools = { path = "../tools" }
