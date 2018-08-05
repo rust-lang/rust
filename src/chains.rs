@@ -65,6 +65,7 @@
 //!            .qux
 //! ```
 
+use codemap::SpanUtils;
 use config::IndentStyle;
 use expr::rewrite_call;
 use macros::convert_try_mac;
@@ -137,8 +138,8 @@ impl ChainItemKind {
         }
     }
 
-    fn from_ast(expr: &ast::Expr) -> (ChainItemKind, Span) {
-        match expr.node {
+    fn from_ast(context: &RewriteContext, expr: &ast::Expr) -> (ChainItemKind, Span) {
+        let (kind, span) = match expr.node {
             ast::ExprKind::MethodCall(ref segment, ref expressions) => {
                 let types = if let Some(ref generic_args) = segment.args {
                     if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
@@ -149,8 +150,9 @@ impl ChainItemKind {
                 } else {
                     vec![]
                 };
+                let span = mk_sp(expressions[0].span.hi(), expr.span.hi());
                 let kind = ChainItemKind::MethodCall(segment.clone(), types, expressions.clone());
-                (kind, expr.span)
+                (kind, span)
             }
             ast::ExprKind::Field(ref nested, field) => {
                 let kind = if Self::is_tup_field_access(expr) {
@@ -158,10 +160,15 @@ impl ChainItemKind {
                 } else {
                     ChainItemKind::StructField(field)
                 };
-                (kind, expr.span)
+                let span = mk_sp(nested.span.hi(), field.span.hi());
+                (kind, span)
             }
-            _ => (ChainItemKind::Parent(expr.clone()), expr.span),
-        }
+            _ => return (ChainItemKind::Parent(expr.clone()), expr.span),
+        };
+
+        // Remove comments from the span.
+        let lo = context.snippet_provider.span_before(span, ".");
+        (kind, mk_sp(lo, span.hi()))
     }
 }
 
@@ -183,8 +190,8 @@ impl Rewrite for ChainItem {
 }
 
 impl ChainItem {
-    fn new(expr: &ast::Expr, tries: usize) -> ChainItem {
-        let (kind, span) = ChainItemKind::from_ast(expr);
+    fn new(context: &RewriteContext, expr: &ast::Expr, tries: usize) -> ChainItem {
+        let (kind, span) = ChainItemKind::from_ast(context, expr);
         ChainItem { kind, tries, span }
     }
 
@@ -196,22 +203,17 @@ impl ChainItem {
         context: &RewriteContext,
         shape: Shape,
     ) -> Option<String> {
-        let (lo, type_str) = if types.is_empty() {
-            (args[0].span.hi(), String::new())
+        let type_str = if types.is_empty() {
+            String::new()
         } else {
             let type_list = types
                 .iter()
                 .map(|ty| ty.rewrite(context, shape))
                 .collect::<Option<Vec<_>>>()?;
 
-            let type_str = format!("::<{}>", type_list.join(", "));
-
-            (types.last().unwrap().span().hi(), type_str)
+            format!("::<{}>", type_list.join(", "))
         };
-
         let callee_str = format!(".{}{}", method_name, type_str);
-        let span = mk_sp(lo, span.hi());
-
         rewrite_call(context, &callee_str, &args[1..], span, shape)
     }
 }
@@ -233,7 +235,7 @@ impl Chain {
             match subexpr.node {
                 ast::ExprKind::Try(_) => sub_tries += 1,
                 _ => {
-                    children.push(ChainItem::new(subexpr, sub_tries));
+                    children.push(ChainItem::new(context, subexpr, sub_tries));
                     sub_tries = 0;
                 }
             }
