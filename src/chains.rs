@@ -275,6 +275,7 @@ impl Chain {
         for chain_item in rev_children.into_iter().rev() {
             let comment_span = mk_sp(prev_hi, chain_item.span.lo());
             let comment_snippet = context.snippet(comment_span);
+            // FIXME: Figure out the way to get a correct span when converting `try!` to `?`.
             if !(context.config.use_try_shorthand()
                 || comment_snippet.trim().is_empty()
                 || is_tries(comment_snippet.trim()))
