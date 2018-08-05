@@ -209,6 +209,13 @@ impl ChainItem {
         }
     }
 
+    fn is_comment(&self) -> bool {
+        match self.kind {
+            ChainItemKind::Comment => true,
+            _ => false,
+        }
+    }
+
     fn rewrite_method_call(
         method_name: ast::Ident,
         types: &[ast::GenericArg],
@@ -458,7 +465,9 @@ impl<'a> ChainFormatterShared<'a> {
         }.saturating_sub(almost_total);
 
         let all_in_one_line =
-            self.rewrites.iter().all(|s| !s.contains('\n')) && one_line_budget > 0;
+            !self.children.iter().any(ChainItem::is_comment)
+            && self.rewrites.iter().all(|s| !s.contains('\n'))
+            && one_line_budget > 0;
         let last_shape = if all_in_one_line {
             shape.sub_width(last.tries)?
         } else if extendable {
