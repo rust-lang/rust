@@ -61,15 +61,22 @@ fn get_derive_spans<'a>(attr: &ast::Attribute) -> Option<Vec<Span>> {
 fn argument_shape(
     left: usize,
     right: usize,
+    combine: bool,
     shape: Shape,
     context: &RewriteContext,
 ) -> Option<Shape> {
     match context.config.indent_style() {
-        IndentStyle::Block => Some(
-            shape
-                .block_indent(context.config.tab_spaces())
-                .with_max_width(context.config),
-        ),
+        IndentStyle::Block => {
+            if combine {
+                shape.offset_left(left)
+            } else {
+                Some(
+                    shape
+                        .block_indent(context.config.tab_spaces())
+                        .with_max_width(context.config),
+                )
+            }
+        }
         IndentStyle::Visual => shape
             .visual_indent(0)
             .shrink_left(left)
@@ -87,7 +94,7 @@ fn format_derive(
     result.push_str(prefix);
     result.push_str("[derive(");
 
-    let argument_shape = argument_shape(10 + prefix.len(), 2, shape, context)?;
+    let argument_shape = argument_shape(10 + prefix.len(), 2, false, shape, context)?;
     let item_str = format_arg_list(
         derive_args.iter(),
         |_| DUMMY_SP.lo(),
@@ -99,6 +106,7 @@ fn format_derive(
         // 10 = "[derive()]", 3 = "()" and "]"
         shape.offset_left(10 + prefix.len())?.sub_width(3)?,
         None,
+        false,
     )?;
 
     result.push_str(&item_str);
@@ -214,9 +222,29 @@ impl Rewrite for ast::MetaItem {
                 // it's close enough).
                 let snippet = snippet[..snippet.len() - 2].trim();
                 let trailing_comma = if snippet.ends_with(',') { "," } else { "" };
+                let combine = list.len() == 1 && match list[0].node {
+                    ast::NestedMetaItemKind::Literal(..) => false,
+                    ast::NestedMetaItemKind::MetaItem(ref inner_meta_item) => {
+                        match inner_meta_item.node {
+                            ast::MetaItemKind::List(..) => rewrite_path(
+                                context,
+                                PathContext::Type,
+                                None,
+                                &inner_meta_item.ident,
+                                shape,
+                            ).map_or(false, |s| s.len() + path.len() + 2 <= shape.width),
+                            _ => false,
+                        }
+                    }
+                };
 
-                let argument_shape =
-                    argument_shape(path.len() + 1, 2 + trailing_comma.len(), shape, context)?;
+                let argument_shape = argument_shape(
+                    path.len() + 1,
+                    2 + trailing_comma.len(),
+                    combine,
+                    shape,
+                    context,
+                )?;
                 let item_str = format_arg_list(
                     list.iter(),
                     |nested_meta_item| nested_meta_item.span.lo(),
@@ -230,6 +258,7 @@ impl Rewrite for ast::MetaItem {
                         .offset_left(path.len())?
                         .sub_width(3 + trailing_comma.len())?,
                     Some(context.config.width_heuristics().fn_call_width),
+                    combine,
                 )?;
 
                 let indent = if item_str.starts_with('\n') {
@@ -268,6 +297,7 @@ fn format_arg_list<I, T, F1, F2, F3>(
     shape: Shape,
     one_line_shape: Shape,
     one_line_limit: Option<usize>,
+    combine: bool,
 ) -> Option<String>
 where
     I: Iterator<Item = T>,
@@ -311,6 +341,7 @@ where
 
     let one_line_budget = one_line_shape.width;
     if context.config.indent_style() == IndentStyle::Visual
+        || combine
         || (!item_str.contains('\n') && item_str.len() <= one_line_budget)
     {
         Some(item_str)
