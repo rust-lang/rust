@@ -187,9 +187,12 @@ impl Rewrite for ChainItem {
             ChainItemKind::TupleField(ident, nested) => {
                 format!("{}.{}", if nested { " " } else { "" }, ident.name)
             }
-            ChainItemKind::Comment => {
-                rewrite_comment(context.snippet(self.span).trim(), false, shape, context.config)?
-            }
+            ChainItemKind::Comment => rewrite_comment(
+                context.snippet(self.span).trim(),
+                false,
+                shape,
+                context.config,
+            )?,
         };
         Some(format!("{}{}", rewrite, "?".repeat(self.tries)))
     }
@@ -471,8 +474,7 @@ impl<'a> ChainFormatterShared<'a> {
             min(shape.width, context.config.width_heuristics().chain_width)
         }.saturating_sub(almost_total);
 
-        let all_in_one_line =
-            !self.children.iter().any(ChainItem::is_comment)
+        let all_in_one_line = !self.children.iter().any(ChainItem::is_comment)
             && self.rewrites.iter().all(|s| !s.contains('\n'))
             && one_line_budget > 0;
         let last_shape = if all_in_one_line {
