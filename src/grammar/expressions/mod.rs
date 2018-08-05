@@ -202,16 +202,22 @@ fn arg_list(p: &mut Parser) {
 //     let _ = a;
 //     let _ = a::b;
 //     let _ = ::a::<b>;
+//     let _ = format!();
 // }
 fn path_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::expr_path(p);
-    if p.at(L_CURLY) && !r.forbid_structs {
-        struct_lit(p);
-        m.complete(p, STRUCT_LIT)
-    } else {
-        m.complete(p, PATH_EXPR)
+    match p.current() {
+        L_CURLY if !r.forbid_structs => {
+            struct_lit(p);
+            m.complete(p, STRUCT_LIT)
+        }
+        EXCL => {
+            items::macro_call_after_excl(p);
+            m.complete(p, MACRO_CALL)
+        }
+        _ => m.complete(p, PATH_EXPR)
     }
 }
 

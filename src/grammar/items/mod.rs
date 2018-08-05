@@ -277,7 +277,7 @@ fn mod_item(p: &mut Parser) {
     }
 }
 
-enum MacroFlavor {
+pub(super) enum MacroFlavor {
     Curly,
     NonCurly,
 }
@@ -285,6 +285,10 @@ enum MacroFlavor {
 fn macro_call(p: &mut Parser) -> MacroFlavor {
     assert!(paths::is_path_start(p));
     paths::use_path(p);
+    macro_call_after_excl(p)
+}
+
+pub(super) fn macro_call_after_excl(p: &mut Parser) -> MacroFlavor {
     p.expect(EXCL);
     p.eat(IDENT);
     let flavor = match p.current() {
