@@ -12,6 +12,8 @@
 //
 use self::State::*;
 
+use rustc_data_structures::thin_vec::ThinVec;
+
 use syntax::ast;
 use syntax::ext::base;
 use syntax::ext::base::*;
@@ -263,6 +265,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
             ctxt: cx.backtrace(),
         })),
         span: sp,
-        attrs: ast::ThinVec::new(),
+        attrs: ThinVec::new(),
     }))
 }
