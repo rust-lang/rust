@@ -790,21 +790,18 @@ impl LintPass for ImproperCTypes {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
-    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+    fn check_foreign_item(&mut self, cx: &LateContext, it: &hir::ForeignItem) {
         let mut vis = ImproperCTypesVisitor { cx: cx };
-        if let hir::ItemKind::ForeignMod(ref nmod) = it.node {
-            if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
-                for ni in &nmod.items {
-                    match ni.node {
-                        hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                            vis.check_foreign_fn(ni.id, decl);
-                        }
-                        hir::ForeignItemKind::Static(ref ty, _) => {
-                            vis.check_foreign_static(ni.id, ty.span);
-                        }
-                        hir::ForeignItemKind::Type => ()
-                    }
+        let abi = cx.tcx.hir.get_foreign_abi(it.id);
+        if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
+            match it.node {
+                hir::ForeignItemKind::Fn(ref decl, _, _) => {
+                    vis.check_foreign_fn(it.id, decl);
                 }
+                hir::ForeignItemKind::Static(ref ty, _) => {
+                    vis.check_foreign_static(it.id, ty.span);
+                }
+                hir::ForeignItemKind::Type => ()
             }
         }
     }
