@@ -615,12 +615,14 @@ impl Config {
                     common::DebugInfoLldb => name == "lldb",
                     common::Pretty => name == "pretty",
                     _ => false,
-                } || (self.target != self.host && name == "cross-compile") ||
+                } ||
+                (self.target != self.host && name == "cross-compile") ||
                 match self.compare_mode {
                     Some(CompareMode::Nll) => name == "compare-mode-nll",
                     Some(CompareMode::Polonius) => name == "compare-mode-polonius",
                     None => false,
-                }
+                } ||
+                (cfg!(debug_assertions) && name == "debug")
         } else {
             false
         }
