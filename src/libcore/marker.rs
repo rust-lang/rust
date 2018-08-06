@@ -603,15 +603,99 @@ unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 
-/// Types which can be moved out of a `PinMut`.
+/// A trait that indicates that it is safe to move an object of a type implementing it.
+/// Since that is true for most types, it is automatically implemented in most cases.
+/// This trait is mainly used to build self referencial structs,
+/// since moving an object with pointers to itself will invalidate them,
+/// causing undefined behavior.
 ///
-/// The `Unpin` trait is used to control the behavior of the [`PinMut`] type. If a
-/// type implements `Unpin`, it is safe to move a value of that type out of the
-/// `PinMut` pointer.
+/// # The Pin API
 ///
-/// This trait is automatically implemented for almost every type.
+/// The `Unpin` trait doesn't actually change the behavior of the compiler around moves,
+/// so code like this will compile just fine:
+///
+/// ```rust
+/// #![feature(pin)]
+/// use std::marker::Pinned;
+///
+/// struct Unmovable {
+///     _pin: Pinned, // this marker type prevents Unpin from being implemented for this type
+/// }
+///
+/// let unmoved = Unmovable { _pin: Pinned };
+/// let moved = unmoved;
+/// ```
+///
+/// In order to actually prevent the pinned objects from moving,
+/// it has to be wrapped in special pointer types,
+/// which currently include [`PinMut`] and [`PinBox`].
+///
+/// The way they work is by implementing [`DerefMut`] for all types that implement Unpin,
+/// but only [`Deref`] otherwise.
+///
+/// This is done because, while modifying an object can be done in-place,
+/// it might also relocate a buffer when its at full capacity,
+/// or it might replace one object with another without logically "moving" them with [`swap`].
 ///
 /// [`PinMut`]: ../mem/struct.PinMut.html
+/// [`PinBox`]: ../../alloc/boxed/struct.PinMut.html
+/// [`DerefMut`]: ../ops/trait.DerefMut.html
+/// [`Deref`]: ../ops/trait.Deref.html
+/// [`swap`]: ../mem/fn.swap.html
+///
+/// # example
+///
+/// ```rust
+/// #![feature(pin)]
+///
+/// use std::boxed::PinBox;
+/// use std::marker::Pinned;
+/// use std::ptr::NonNull;
+///
+/// // this is a self referencial struct since the slice field points to the data field.
+/// // we cannot inform the compiler about that with a normal reference,
+/// // since moving the data with it that would violate borrowing rules.
+/// // instead we use a raw pointer, though one which is known to not be null,
+/// // since we know its pointing at the string.
+/// struct Unmovable {
+///     data: String,
+///     slice: NonNull<String>,
+///     _pin: Pinned,
+/// }
+///
+/// impl Unmovable {
+///     // to ensure the data doesn't move when the function returns,
+///     // we place it in the heap where it will stay for the lifetime of the object,
+///     // and the only way to access it would be through a pointer to it
+///     fn new(data: String) -> PinBox<Self> {
+///         let res = Unmovable {
+///             data,
+///             // we only create the pointer once the data is in place
+///             // otherwise it will have already moved before we even started
+///             slice: NonNull::dangling(),
+///             _pin: Pinned,
+///         };
+///         let mut boxed = PinBox::new(res);
+///
+///         let slice = NonNull::from(&boxed.data);
+///         // we know this is safe because modifying a field doesn't move the whole struct
+///         unsafe { PinBox::get_mut(&mut boxed).slice = slice };
+///         boxed
+///     }
+/// }
+///
+/// let unmoved = Unmovable::new("hello".to_string());
+/// // the pointer should point to the correct location,
+/// // so long as the struct hasn't moved.
+/// // meanwhile, we are free to move the pointer around
+/// let mut still_unmoved = unmoved;
+/// assert_eq!(still_unmoved.slice, NonNull::from(&still_unmoved.data));
+///
+/// // now the only way to access to data (safely) is immutably,
+/// // so this will fail to compile:
+/// // still_unmoved.data.push_str(" world");
+///
+/// ```
 #[unstable(feature = "pin", issue = "49150")]
 pub auto trait Unpin {}
 
