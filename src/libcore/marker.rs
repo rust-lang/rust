@@ -654,7 +654,7 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 ///
 /// // this is a self referencial struct since the slice field points to the data field.
 /// // we cannot inform the compiler about that with a normal reference,
-/// // since moving the data with it that would violate borrowing rules.
+/// // since this pattern cannot be described with the usual borrowing rules.
 /// // instead we use a raw pointer, though one which is known to not be null,
 /// // since we know its pointing at the string.
 /// struct Unmovable {
