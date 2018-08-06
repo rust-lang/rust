@@ -838,8 +838,12 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
     // `stdbuild` has special handling for `libc`, so we need to
     // recognise the feature when building std.
+    // Likewise, libtest is handled specially, so `test` isn't
+    // available as we'd like it to be.
     // FIXME: only remove `libc` when `stdbuild` is active.
+    // FIXME: remove special casing for `test`.
     remaining_lib_features.remove(&Symbol::intern("libc"));
+    remaining_lib_features.remove(&Symbol::intern("test"));
 
     for (feature, stable) in tcx.lib_features().to_vec() {
         if let Some(since) = stable {
