@@ -27,6 +27,9 @@ unsafe impl<T> Sync for Lazy<T> {}
 
 impl<T: Send + Sync + 'static> Lazy<T> {
     pub const fn new(init: fn() -> Arc<T>) -> Lazy<T> {
+        // `lock` is never initialized fully, so this mutex is reentrant!
+        // Do not use it in a way that might be reentrant, that could lead to
+        // aliasing `&mut`.
         Lazy {
             lock: Mutex::new(),
             ptr: Cell::new(ptr::null_mut()),
@@ -48,6 +51,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
         }
     }
 
+    // Must only be called with `lock` held
     unsafe fn init(&'static self) -> Arc<T> {
         // If we successfully register an at exit handler, then we cache the
         // `Arc` allocation in our own internal box (it will get deallocated by
@@ -60,6 +64,9 @@ impl<T: Send + Sync + 'static> Lazy<T> {
             };
             drop(Box::from_raw(ptr))
         });
+        // This could reentrantly call `init` again, which is a problem
+        // because our `lock` allows reentrancy!
+        // FIXME: Add argument why this is okay.
         let ret = (self.init)();
         if registered.is_ok() {
             self.ptr.set(Box::into_raw(Box::new(ret.clone())));

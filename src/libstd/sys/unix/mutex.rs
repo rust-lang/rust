@@ -25,8 +25,10 @@ unsafe impl Sync for Mutex {}
 #[allow(dead_code)] // sys isn't exported yet
 impl Mutex {
     pub const fn new() -> Mutex {
-        // Might be moved and address is changing it is better to avoid
-        // initialization of potentially opaque OS data before it landed
+        // Might be moved to a different address, so it is better to avoid
+        // initialization of potentially opaque OS data before it landed.
+        // Be very careful using this newly constructed `Mutex`, it should
+        // be initialized by calling `init()` first!
         Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
     }
     #[inline]

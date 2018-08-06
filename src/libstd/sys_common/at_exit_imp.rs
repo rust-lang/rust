@@ -23,6 +23,9 @@ type Queue = Vec<Box<dyn FnBox()>>;
 // on poisoning and this module needs to operate at a lower level than requiring
 // the thread infrastructure to be in place (useful on the borders of
 // initialization/destruction).
+// `LOCK` is never initialized fully, so this mutex is reentrant!
+// Do not use it in a way that might be reentrant, that could lead to
+// aliasing `&mut`.
 static LOCK: Mutex = Mutex::new();
 static mut QUEUE: *mut Queue = ptr::null_mut();
 
@@ -72,6 +75,9 @@ pub fn push(f: Box<dyn FnBox()>) -> bool {
     unsafe {
         let _guard = LOCK.lock();
         if init() {
+            // This could reentrantly call `push` again, which is a problem because
+            // `LOCK` allows reentrancy!
+            // FIXME: Add argument why this is okay.
             (*QUEUE).push(f);
             true
         } else {

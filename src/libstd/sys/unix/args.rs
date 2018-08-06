@@ -80,6 +80,9 @@ mod imp {
 
     static mut ARGC: isize = 0;
     static mut ARGV: *const *const u8 = ptr::null();
+    // `ENV_LOCK` is never initialized fully, so this mutex is reentrant!
+    // Do not use it in a way that might be reentrant, that could lead to
+    // aliasing `&mut`.
     static LOCK: Mutex = Mutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {

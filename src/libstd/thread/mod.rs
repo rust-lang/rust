@@ -940,6 +940,9 @@ pub struct ThreadId(u64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
+        // `GUARD` is never initialized fully, so this mutex is reentrant!
+        // Do not use it in a way that might be reentrant, that could lead to
+        // aliasing `&mut`.
         static GUARD: mutex::Mutex = mutex::Mutex::new();
         static mut COUNTER: u64 = 0;
 
