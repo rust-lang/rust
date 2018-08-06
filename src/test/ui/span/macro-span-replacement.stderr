@@ -1,7 +1,7 @@
-warning: struct is never used: `S`
+warning: struct is never constructed: `S`
   --> $DIR/macro-span-replacement.rs:17:14
    |
-LL |         $b $a; //~ WARN struct is never used
+LL |         $b $a; //~ WARN struct is never constructed
    |              ^
 ...
 LL |     m!(S struct);

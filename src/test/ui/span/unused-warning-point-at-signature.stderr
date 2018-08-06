@@ -11,10 +11,10 @@ LL | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(dead_code)] implied by #[warn(unused)]
 
-warning: struct is never used: `Struct`
+warning: struct is never constructed: `Struct`
   --> $DIR/unused-warning-point-at-signature.rs:22:1
    |
-LL | struct Struct { //~ WARN struct is never used
+LL | struct Struct { //~ WARN struct is never constructed
    | ^^^^^^^^^^^^^
 
 warning: function is never used: `func`

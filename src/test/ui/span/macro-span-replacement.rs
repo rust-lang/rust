@@ -14,7 +14,7 @@
 
 macro_rules! m {
     ($a:tt $b:tt) => {
-        $b $a; //~ WARN struct is never used
+        $b $a; //~ WARN struct is never constructed
     }
 }
 
