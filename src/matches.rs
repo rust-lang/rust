@@ -215,18 +215,10 @@ fn rewrite_match_arms(
         false,
     );
     let arms_vec: Vec<_> = items.collect();
-    let fmt = ListFormatting {
-        tactic: DefinitiveListTactic::Vertical,
-        // We will add/remove commas inside `arm.rewrite()`, and hence no separator here.
-        separator: "",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: SeparatorPlace::Back,
-        shape: arm_shape,
-        ends_with_newline: true,
-        preserve_newline: true,
-        nested: false,
-        config: context.config,
-    };
+    // We will add/remove commas inside `arm.rewrite()`, and hence no separator here.
+    let fmt = ListFormatting::new(arm_shape, context.config)
+        .separator("")
+        .preserve_newline(true);
 
     write_list(&arms_vec, &fmt)
 }

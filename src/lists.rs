@@ -24,22 +24,71 @@ use utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_wit
 use visitor::SnippetProvider;
 
 pub struct ListFormatting<'a> {
-    pub tactic: DefinitiveListTactic,
-    pub separator: &'a str,
-    pub trailing_separator: SeparatorTactic,
-    pub separator_place: SeparatorPlace,
-    pub shape: Shape,
+    tactic: DefinitiveListTactic,
+    separator: &'a str,
+    trailing_separator: SeparatorTactic,
+    separator_place: SeparatorPlace,
+    shape: Shape,
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
-    pub ends_with_newline: bool,
+    ends_with_newline: bool,
     // Remove newlines between list elements for expressions.
-    pub preserve_newline: bool,
+    preserve_newline: bool,
     // Nested import lists get some special handling for the "Mixed" list type
-    pub nested: bool,
-    pub config: &'a Config,
+    nested: bool,
+    config: &'a Config,
 }
 
 impl<'a> ListFormatting<'a> {
+    pub fn new(shape: Shape, config: &'a Config) -> Self {
+        ListFormatting {
+            tactic: DefinitiveListTactic::Vertical,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            separator_place: SeparatorPlace::Back,
+            shape,
+            ends_with_newline: true,
+            preserve_newline: false,
+            nested: false,
+            config: config,
+        }
+    }
+
+    pub fn tactic(mut self, tactic: DefinitiveListTactic) -> Self {
+        self.tactic = tactic;
+        self
+    }
+
+    pub fn separator(mut self, separator: &'a str) -> Self {
+        self.separator = separator;
+        self
+    }
+
+    pub fn trailing_separator(mut self, trailing_separator: SeparatorTactic) -> Self {
+        self.trailing_separator = trailing_separator;
+        self
+    }
+
+    pub fn separator_place(mut self, separator_place: SeparatorPlace) -> Self {
+        self.separator_place = separator_place;
+        self
+    }
+
+    pub fn ends_with_newline(mut self, ends_with_newline: bool) -> Self {
+        self.ends_with_newline = ends_with_newline;
+        self
+    }
+
+    pub fn preserve_newline(mut self, preserve_newline: bool) -> Self {
+        self.preserve_newline = preserve_newline;
+        self
+    }
+
+    pub fn nested(mut self, nested: bool) -> Self {
+        self.nested = nested;
+        self
+    }
+
     pub fn needs_trailing_separator(&self) -> bool {
         match self.trailing_separator {
             // We always put separator in front.

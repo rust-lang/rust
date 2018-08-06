@@ -1197,17 +1197,11 @@ pub fn rewrite_multiple_patterns(
             shape.width,
         )
     };
-    let fmt = ListFormatting {
-        tactic,
-        separator: " |",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: context.config.binop_separator(),
-        shape,
-        ends_with_newline: false,
-        preserve_newline: false,
-        nested: false,
-        config: context.config,
-    };
+    let fmt = ListFormatting::new(shape, context.config)
+        .tactic(tactic)
+        .separator(" |")
+        .separator_place(context.config.binop_separator())
+        .ends_with_newline(false);
     write_list(&items, &fmt)
 }
 
@@ -1760,17 +1754,9 @@ where
         Separator::Comma,
         nested_shape.width,
     );
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: SeparatorPlace::Back,
-        shape,
-        ends_with_newline: false,
-        preserve_newline: false,
-        nested: false,
-        config: context.config,
-    };
+    let fmt = ListFormatting::new(shape, context.config)
+        .tactic(tactic)
+        .ends_with_newline(false);
     let list_str = write_list(&item_vec, &fmt)?;
 
     Some(format!("({})", list_str))

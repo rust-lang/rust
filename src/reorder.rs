@@ -16,7 +16,7 @@
 
 // FIXME(#2455): Reorder trait items.
 
-use config::{lists::*, Config};
+use config::Config;
 use syntax::{ast, attr, codemap::Span};
 
 use attr::filter_inline_attrs;
@@ -69,18 +69,7 @@ fn wrap_reorderable_items(
     list_items: &[ListItem],
     shape: Shape,
 ) -> Option<String> {
-    let fmt = ListFormatting {
-        tactic: DefinitiveListTactic::Vertical,
-        separator: "",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: SeparatorPlace::Back,
-        shape,
-        ends_with_newline: true,
-        preserve_newline: false,
-        nested: false,
-        config: context.config,
-    };
-
+    let fmt = ListFormatting::new(shape, context.config).separator("");
     write_list(list_items, &fmt)
 }
 

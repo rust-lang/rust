@@ -270,17 +270,9 @@ fn rewrite_closure_fn_decl(
         _ => arg_shape,
     };
 
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        separator_place: SeparatorPlace::Back,
-        shape: arg_shape,
-        ends_with_newline: false,
-        preserve_newline: true,
-        nested: false,
-        config: context.config,
-    };
+    let fmt = ListFormatting::new(arg_shape, context.config)
+        .tactic(tactic)
+        .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
     let mut prefix = format!("{}{}{}|{}|", is_async, immovable, mover, list_str);
 

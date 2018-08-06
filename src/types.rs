@@ -360,23 +360,17 @@ where
         Separator::Comma,
         budget,
     );
-
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: if !context.use_block_indent() || variadic {
-            SeparatorTactic::Never
-        } else {
-            context.config.trailing_comma()
-        },
-        separator_place: SeparatorPlace::Back,
-        shape: list_shape,
-        ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
-        preserve_newline: true,
-        nested: false,
-        config: context.config,
+    let trailing_separator = if !context.use_block_indent() || variadic {
+        SeparatorTactic::Never
+    } else {
+        context.config.trailing_comma()
     };
 
+    let fmt = ListFormatting::new(list_shape, context.config)
+        .tactic(tactic)
+        .trailing_separator(trailing_separator)
+        .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
+        .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
 
     let ty_shape = match context.config.indent_style() {

@@ -529,17 +529,9 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let shape = self.shape().sub_width(2)?;
-        let fmt = ListFormatting {
-            tactic: DefinitiveListTactic::Vertical,
-            separator: ",",
-            trailing_separator: self.config.trailing_comma(),
-            separator_place: SeparatorPlace::Back,
-            shape,
-            ends_with_newline: true,
-            preserve_newline: true,
-            nested: false,
-            config: self.config,
-        };
+        let fmt = ListFormatting::new(shape, self.config)
+            .trailing_separator(self.config.trailing_comma())
+            .preserve_newline(true);
 
         let list = write_list(&items, &fmt)?;
         result.push_str(&list);
@@ -2360,22 +2352,16 @@ fn rewrite_args(
 
     debug!("rewrite_args: budget: {}, tactic: {:?}", budget, tactic);
 
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: if variadic {
-            SeparatorTactic::Never
-        } else {
-            trailing_comma
-        },
-        separator_place: SeparatorPlace::Back,
-        shape: Shape::legacy(budget, indent),
-        ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
-        preserve_newline: true,
-        nested: false,
-        config: context.config,
+    let trailing_separator = if variadic {
+        SeparatorTactic::Never
+    } else {
+        trailing_comma
     };
-
+    let fmt = ListFormatting::new(Shape::legacy(budget, indent), context.config)
+        .tactic(tactic)
+        .trailing_separator(trailing_separator)
+        .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
+        .preserve_newline(true);
     write_list(&arg_items, &fmt)
 }
 
@@ -2551,17 +2537,10 @@ fn rewrite_where_clause_rfc_style(
         DefinitiveListTactic::Vertical
     };
 
-    let fmt = ListFormatting {
-        tactic: shape_tactic,
-        separator: ",",
-        trailing_separator: comma_tactic,
-        separator_place: SeparatorPlace::Back,
-        shape: clause_shape,
-        ends_with_newline: true,
-        preserve_newline: true,
-        nested: false,
-        config: context.config,
-    };
+    let fmt = ListFormatting::new(clause_shape, context.config)
+        .tactic(shape_tactic)
+        .trailing_separator(comma_tactic)
+        .preserve_newline(true);
     let preds_str = write_list(&items.collect::<Vec<_>>(), &fmt)?;
 
     let comment_separator = |comment: &str, shape: Shape| {
@@ -2666,17 +2645,11 @@ fn rewrite_where_clause(
         comma_tactic = SeparatorTactic::Never;
     }
 
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: comma_tactic,
-        separator_place: SeparatorPlace::Back,
-        shape: Shape::legacy(budget, offset),
-        ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
-        preserve_newline: true,
-        nested: false,
-        config: context.config,
-    };
+    let fmt = ListFormatting::new(Shape::legacy(budget, offset), context.config)
+        .tactic(tactic)
+        .trailing_separator(comma_tactic)
+        .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
+        .preserve_newline(true);
     let preds_str = write_list(&item_vec, &fmt)?;
 
     let end_length = if terminator == "{" {
