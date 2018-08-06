@@ -348,7 +348,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                 let mut err = struct_span_err!(self.session, span, E0642,
                                     "patterns aren't allowed in trait methods");
                                 let suggestion = "give this argument a name or use an \
-                                                  underscore to ignore it, instead of a \
+                                                  underscore to ignore it instead of using a \
                                                   tuple pattern";
                                 err.span_suggestion(span, suggestion, "_".to_owned());
                                 err.emit();

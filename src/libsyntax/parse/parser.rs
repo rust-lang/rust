@@ -1744,7 +1744,7 @@ impl<'a> Parser<'a> {
     fn parse_arg_general(&mut self, require_name: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
 
-        // If we see `ident :`, then we know that the argument is just of the
+        // If we see `ident :`, then we know that the argument is not just of the
         // form `type`, which means we won't need to recover from parsing a
         // pattern and so we don't need to store a parser snapshot.
         let parser_snapshot_before_pat = if
