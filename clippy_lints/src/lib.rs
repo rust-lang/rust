@@ -178,6 +178,7 @@ mod reexport {
 
 pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore) {
     store.register_pre_expansion_pass(Some(session), box write::Pass);
+    store.register_pre_expansion_pass(Some(session), box redundant_field_names::RedundantFieldNames);
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -390,7 +391,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>) {
     reg.register_late_lint_pass(box double_comparison::DoubleComparisonPass);
     reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
-    reg.register_late_lint_pass(box redundant_field_names::RedundantFieldNames);
     reg.register_early_lint_pass(box multiple_crate_versions::Pass);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
     reg.register_late_lint_pass(box infallible_destructuring_match::Pass);
