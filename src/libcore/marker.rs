@@ -638,7 +638,7 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 /// or it might replace one object with another without logically "moving" them with [`swap`].
 ///
 /// [`PinMut`]: ../mem/struct.PinMut.html
-/// [`PinBox`]: ../../alloc/boxed/struct.PinMut.html
+/// [`PinBox`]: ../../alloc/boxed/struct.PinBox.html
 /// [`DerefMut`]: ../ops/trait.DerefMut.html
 /// [`Deref`]: ../ops/trait.Deref.html
 /// [`swap`]: ../mem/fn.swap.html
