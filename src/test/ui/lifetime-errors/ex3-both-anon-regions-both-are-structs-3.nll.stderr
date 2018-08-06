@@ -4,16 +4,16 @@ warning: not reporting region error due to nll
 LL |     x.a = x.b; //~ ERROR lifetime mismatch
    |           ^^^
 
-error[E0623]: lifetime mismatch
+error: unsatisfied lifetime constraints
   --> $DIR/ex3-both-anon-regions-both-are-structs-3.rs:16:5
    |
 LL | fn foo(mut x: Ref) {
    |               ---
    |               |
-   |               this type is declared with multiple lifetimes...
+   |               lifetime `'1` appears in this type
+   |               lifetime `'2` appears in this type
 LL |     x.a = x.b; //~ ERROR lifetime mismatch
-   |     ^^^^^^^^^ ...but data with one lifetime flows into the other here
+   |     ^^^^^^^^^ requires that `'1` must outlive `'2`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.

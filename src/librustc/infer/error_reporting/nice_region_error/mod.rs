@@ -64,6 +64,12 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
         Self { tcx, error: None, regions: Some((span, sub, sup)), tables }
     }
 
+    pub fn try_report_from_nll(&self) -> Option<ErrorReported> {
+        // Due to the improved diagnostics returned by the MIR borrow checker, only a subset of
+        // the nice region errors are required when running under the MIR borrow checker.
+        self.try_report_named_anon_conflict()
+    }
+
     pub fn try_report(&self) -> Option<ErrorReported> {
         self.try_report_named_anon_conflict()
             .or_else(|| self.try_report_anon_anon_conflict())
