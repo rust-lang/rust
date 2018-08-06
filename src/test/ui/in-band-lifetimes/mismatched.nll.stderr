@@ -18,15 +18,15 @@ LL | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y } //~ ERROR explicit lifetime re
    |                    |
    |                    consider changing the type of `y` to `&'a u32`
 
-error[E0623]: lifetime mismatch
+error: unsatisfied lifetime constraints
   --> $DIR/mismatched.rs:16:46
    |
 LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y } //~ ERROR lifetime mismatch
-   |                        -------     -------   ^ ...but data from `y` is returned here
-   |                        |
-   |                        this parameter and the return type are declared with different lifetimes...
+   |             --          --                   ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |             |           |
+   |             |           lifetime `'b` defined here
+   |             lifetime `'a` defined here
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0621, E0623.
-For more information about an error, try `rustc --explain E0621`.
+For more information about this error, try `rustc --explain E0621`.

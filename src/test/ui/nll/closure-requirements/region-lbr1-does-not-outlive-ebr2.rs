@@ -18,7 +18,7 @@
 fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
     &*x
         //~^ WARN not reporting region error due to nll
-        //~| ERROR lifetime mismatch
+        //~| ERROR unsatisfied lifetime constraints
 }
 
 fn main() { }

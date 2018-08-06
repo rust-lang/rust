@@ -4,17 +4,16 @@ warning: not reporting region error due to nll
 LL |         if true { x } else { self } //~ ERROR lifetime mismatch
    |                              ^^^^
 
-error[E0623]: lifetime mismatch
+error: unsatisfied lifetime constraints
   --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:18:9
    |
 LL |     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
-   |                -----                 -------
-   |                |
-   |                this parameter and the return type are declared with different lifetimes...
+   |            --  - let's call the lifetime of this reference `'1`
+   |            |
+   |            lifetime `'a` defined here
 LL | 
 LL |         if true { x } else { self } //~ ERROR lifetime mismatch
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...but data from `self` is returned here
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'1` must outlive `'a`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.
