@@ -16,7 +16,6 @@
 use cmp::Ordering;
 use fmt;
 use hash;
-use mem;
 use sys::net::netc as c;
 use sys_common::{AsInner, FromInner};
 
@@ -1429,8 +1428,7 @@ impl From<u128> for Ipv6Addr {
 #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
 impl From<[u8; 16]> for Ipv6Addr {
     fn from(octets: [u8; 16]) -> Ipv6Addr {
-        let mut inner: c::in6_addr = unsafe { mem::zeroed() };
-        inner.s6_addr = octets;
+        let inner = c::in6_addr { s6_addr: octets };
         Ipv6Addr::from_inner(inner)
     }
 }
