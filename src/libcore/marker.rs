@@ -603,8 +603,10 @@ unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 
-/// A trait that indicates that it is safe to move an object of a type implementing it.
-/// Since that is true for most types, it is automatically implemented in most cases.
+/// Types that are safe to move.
+///
+/// Since moving objects is almost always safe, it is automatically implemented in most cases.
+///
 /// This trait is mainly used to build self referencial structs,
 /// since moving an object with pointers to itself will invalidate them,
 /// causing undefined behavior.
@@ -643,7 +645,7 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 /// [`Deref`]: ../ops/trait.Deref.html
 /// [`swap`]: ../mem/fn.swap.html
 ///
-/// # example
+/// # Examples
 ///
 /// ```rust
 /// #![feature(pin)]
@@ -652,11 +654,11 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 /// use std::marker::Pinned;
 /// use std::ptr::NonNull;
 ///
-/// // this is a self referencial struct since the slice field points to the data field.
-/// // we cannot inform the compiler about that with a normal reference,
+/// // This is a self referencial struct since the slice field points to the data field.
+/// // We cannot inform the compiler about that with a normal reference,
 /// // since this pattern cannot be described with the usual borrowing rules.
-/// // instead we use a raw pointer, though one which is known to not be null,
-/// // since we know its pointing at the string.
+/// // Instead we use a raw pointer, though one which is known to not be null,
+/// // since we know it's pointing at the string.
 /// struct Unmovable {
 ///     data: String,
 ///     slice: NonNull<String>,
@@ -664,9 +666,9 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 /// }
 ///
 /// impl Unmovable {
-///     // to ensure the data doesn't move when the function returns,
+///     // To ensure the data doesn't move when the function returns,
 ///     // we place it in the heap where it will stay for the lifetime of the object,
-///     // and the only way to access it would be through a pointer to it
+///     // and the only way to access it would be through a pointer to it.
 ///     fn new(data: String) -> PinBox<Self> {
 ///         let res = Unmovable {
 ///             data,
@@ -685,13 +687,13 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 /// }
 ///
 /// let unmoved = Unmovable::new("hello".to_string());
-/// // the pointer should point to the correct location,
+/// // The pointer should point to the correct location,
 /// // so long as the struct hasn't moved.
-/// // meanwhile, we are free to move the pointer around
+/// // Meanwhile, we are free to move the pointer around.
 /// let mut still_unmoved = unmoved;
 /// assert_eq!(still_unmoved.slice, NonNull::from(&still_unmoved.data));
 ///
-/// // now the only way to access to data (safely) is immutably,
+/// // Now the only way to access to data (safely) is immutably,
 /// // so this will fail to compile:
 /// // still_unmoved.data.push_str(" world");
 ///
