@@ -33,6 +33,7 @@ pub fn target() -> TargetResult {
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: "static".to_string(),
+            emit_debug_gdb_scripts: false,
             abi_blacklist: vec![
                 Abi::Cdecl,
                 Abi::Stdcall,
