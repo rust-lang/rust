@@ -3,9 +3,9 @@ error: unsatisfied lifetime constraints
    |
 LL |       || {
    |       --
-   |       |
+   |       ||
+   |       |return type of closure is [closure@$DIR/issue-49824.rs:22:9: 24:10 x:&'2 mut i32]
    |       lifetime `'1` represents this closure's body
-   |       lifetime `'2` appears in return type
 LL | /         || {
 LL | |             let _y = &mut x;
 LL | |         }

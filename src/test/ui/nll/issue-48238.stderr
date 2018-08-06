@@ -3,9 +3,9 @@ error: unsatisfied lifetime constraints
    |
 LL |     move || use_val(&orig); //~ ERROR
    |     ------- ^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
-   |     |
+   |     |     |
+   |     |     return type of closure is &'2 u8
    |     lifetime `'1` represents this closure's body
-   |     lifetime `'2` appears in return type
    |
    = note: closure implements `Fn`, so references to captured variables can't escape the closure
 

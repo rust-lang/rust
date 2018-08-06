@@ -73,7 +73,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_output(
-                    infcx.tcx, mir, mir_def_id, fr, counter, diag)
+                    infcx, mir, mir_def_id, fr, counter, diag)
             })
             .unwrap_or_else(|| span_bug!(mir.span, "can't make a name for free region {:?}", fr))
     }
@@ -577,38 +577,51 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// or be early bound (named, not in argument).
     fn give_name_if_anonymous_region_appears_in_output(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> Option<InternedString> {
+        let tcx = infcx.tcx;
+
         let return_ty = self.universal_regions.unnormalized_output_ty;
         debug!(
             "give_name_if_anonymous_region_appears_in_output: return_ty = {:?}",
             return_ty
         );
-        if !tcx.any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr) {
+        if !infcx.tcx.any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr) {
             return None;
         }
 
-        let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
-        let args_span = if let hir::ExprKind::Closure(_, _, _, span, _)
+        let type_name = with_highlight_region(fr, *counter, || {
+            infcx.extract_type_name(&return_ty)
+        });
+
+                let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
+
+        let (return_span, mir_description) = if let hir::ExprKind::Closure(_, _, _, span, gen_move)
             = tcx.hir.expect_expr(mir_node_id).node
         {
-            span
+            (
+                tcx.sess.codemap().end_point(span),
+                if gen_move.is_some() { " of generator" } else { " of closure" }
+            )
         } else {
-            mir.span
+            // unreachable?
+            (mir.span, "")
         };
 
-        let region_name = self.synthesize_region_name(counter);
         diag.span_label(
-            args_span,
-            format!("lifetime `{}` appears in return type", region_name),
+            return_span,
+            format!("return type{} is {}", mir_description, type_name),
         );
 
-        Some(region_name)
+        // This counter value will already have been used, so this function will increment it
+        // so the next value will be used next and return the region name that would have been
+        // used.
+        Some(self.synthesize_region_name(counter))
     }
 
     /// Create a synthetic region named `'1`, incrementing the

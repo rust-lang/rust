@@ -3,9 +3,9 @@ error: unsatisfied lifetime constraints
    |
 LL |     || {
    |     --
-   |     |
+   |     ||
+   |     |return type of closure is &'2 mut std::boxed::Box<()>
    |     lifetime `'1` represents this closure's body
-   |     lifetime `'2` appears in return type
 LL |         &mut x
    |         ^^^^^^ return requires that `'1` must outlive `'2`
    |
