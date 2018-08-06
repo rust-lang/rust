@@ -1487,15 +1487,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // FIXME: allow thread-locals to borrow other thread locals?
         let (might_be_alive, will_be_dropped) = match root_place {
             Place::Promoted(_) => (true, false),
-            Place::Static(statik) => {
+            Place::Static(_) => {
                 // Thread-locals might be dropped after the function exits, but
                 // "true" statics will never be.
-                let is_thread_local = self
-                    .tcx
-                    .get_attrs(statik.def_id)
-                    .iter()
-                    .any(|attr| attr.check_name("thread_local"));
-
+                let is_thread_local = self.is_place_thread_local(&root_place);
                 (true, is_thread_local)
             }
             Place::Local(_) => {

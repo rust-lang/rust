@@ -412,6 +412,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .insert((root_place.clone(), borrow_span));
 
         let mut err = match &self.describe_place(&borrow.borrowed_place) {
+            Some(_) if self.is_place_thread_local(root_place) => {
+                self.report_thread_local_value_does_not_live_long_enough(
+                    drop_span,
+                    borrow_span,
+                )
+            }
             Some(name) => self.report_local_value_does_not_live_long_enough(
                 context,
                 name,
@@ -455,9 +461,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             context, name, scope_tree, borrow, drop_span, borrow_span
         );
 
-        let tcx = self.tcx;
-        let mut err =
-            tcx.path_does_not_live_long_enough(borrow_span, &format!("`{}`", name), Origin::Mir);
+        let mut err = self.tcx.path_does_not_live_long_enough(
+            borrow_span, &format!("`{}`", name), Origin::Mir);
+
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(
             drop_span,
@@ -465,6 +471,27 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         self.explain_why_borrow_contains_point(context, borrow, kind_place, &mut err);
+        err
+    }
+
+    fn report_thread_local_value_does_not_live_long_enough(
+        &mut self,
+        drop_span: Span,
+        borrow_span: Span,
+    ) -> DiagnosticBuilder<'cx> {
+        debug!(
+            "report_thread_local_value_does_not_live_long_enough(\
+             {:?}, {:?}\
+             )",
+            drop_span, borrow_span
+        );
+
+        let mut err = self.tcx.thread_local_value_does_not_live_long_enough(
+            borrow_span, Origin::Mir);
+
+        err.span_label(borrow_span,
+                       "thread-local variables cannot be borrowed beyond the end of the function");
+        err.span_label(drop_span, "end of enclosing function is here");
         err
     }
 
@@ -854,6 +881,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ProjectionElem::Field(_, ty) => Some(ty),
                 _ => None,
             },
+        }
+    }
+
+    /// Check if a place is a thread-local static.
+    pub fn is_place_thread_local(&self, place: &Place<'tcx>) -> bool {
+        if let Place::Static(statik) = place {
+            let attrs = self.tcx.get_attrs(statik.def_id);
+            let is_thread_local = attrs.iter().any(|attr| attr.check_name("thread_local"));
+
+            debug!("is_place_thread_local: attrs={:?} is_thread_local={:?}",
+                   attrs, is_thread_local);
+            is_thread_local
+        } else {
+            debug!("is_place_thread_local: no");
+            false
         }
     }
 }
