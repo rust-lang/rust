@@ -42,4 +42,5 @@ fn main() {
     h.contains("X"); // should not warn
 
     x.replace(";", ",").split(","); // issue #2978
+    x.starts_with("\x03"); // issue #2996
 }

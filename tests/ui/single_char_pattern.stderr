@@ -114,5 +114,11 @@ error: single-character string constant used as pattern
 44 |     x.replace(";", ",").split(","); // issue #2978
    |                               ^^^ help: try using a char instead: `','`
 
-error: aborting due to 19 previous errors
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:45:19
+   |
+45 |     x.starts_with("/x03"); // issue #2996
+   |                   ^^^^^^ help: try using a char instead: `'/x03'`
+
+error: aborting due to 20 previous errors
 
