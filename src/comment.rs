@@ -1139,6 +1139,21 @@ pub fn recover_comment_removed(
     }
 }
 
+pub fn filter_normal_code(code: &str) -> String {
+    let mut buffer = String::with_capacity(code.len());
+    LineClasses::new(code).for_each(|(kind, line)| match kind {
+        FullCodeCharKind::Normal | FullCodeCharKind::InString => {
+            buffer.push_str(&line);
+            buffer.push('\n');
+        }
+        _ => (),
+    });
+    if !code.ends_with("\n") && buffer.ends_with("\n") {
+        buffer.pop();
+    }
+    buffer
+}
+
 /// Return true if the two strings of code have the same payload of comments.
 /// The payload of comments is everything in the string except:
 ///     - actual code (not comments)
@@ -1391,5 +1406,22 @@ mod test {
     fn test_remove_trailing_white_spaces() {
         let s = format!("    r#\"\n        test\n    \"#");
         assert_eq!(remove_trailing_white_spaces(&s), s);
+    }
+
+    #[test]
+    fn test_filter_normal_code() {
+        let s = r#"
+fn main() {
+    println!("hello, world");
+}
+"#;
+        assert_eq!(s, filter_normal_code(s));
+        let s_with_comment = r#"
+fn main() {
+    // hello, world
+    println!("hello, world");
+}
+"#;
+        assert_eq!(s, filter_normal_code(s_with_comment));
     }
 }
