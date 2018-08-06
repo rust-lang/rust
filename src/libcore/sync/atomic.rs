@@ -193,32 +193,67 @@ pub enum Ordering {
     /// [`Monotonic`]: http://llvm.org/docs/Atomics.html#monotonic
     #[stable(feature = "rust1", since = "1.0.0")]
     Relaxed,
-    /// When coupled with a store, all previous writes become visible
-    /// to the other threads that perform a load with [`Acquire`] ordering
-    /// on the same value.
+    /// When coupled with a store, all previous operations become ordered
+    /// before any load of this value with [`Acquire`] (or stronger) ordering.
+    /// In particular, all previous writes become visible to all threads
+    /// that perform an [`Acquire`] (or stronger) load of this value.
     ///
-    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Release,
-    /// When coupled with a load, all subsequent loads will see data
-    /// written before a store with [`Release`] ordering on the same value
-    /// in other threads.
+    /// Notice that using this ordering for an operation that combines loads
+    /// and stores leads to a [`Relaxed`] load operation!
+    ///
+    /// This ordering is only applicable for operations that can perform a store.
+    ///
+    /// Corresponds to LLVM's [`Release`] ordering.
     ///
     /// [`Release`]: http://llvm.org/docs/Atomics.html#release
+    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
+    /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Release,
+    /// When coupled with a load, if the loaded value was written by a store operation with
+    /// [`Release`] (or stronger) ordering, then all subsequent operations
+    /// become ordered after that store. In particular, all subsequent loads will see data
+    /// written before the store.
+    ///
+    /// Notice that using this ordering for an operation that combines loads
+    /// and stores leads to a [`Relaxed`] store operation!
+    ///
+    /// This ordering is only applicable for operations that can perform a load.
+    ///
+    /// Corresponds to LLVM's [`Acquire`] ordering.
+    ///
+    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
+    /// [`Release`]: http://llvm.org/docs/Atomics.html#release
+    /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
     #[stable(feature = "rust1", since = "1.0.0")]
     Acquire,
-    /// Has the effects of both [`Acquire`] and [`Release`] together.
+    /// Has the effects of both [`Acquire`] and [`Release`] together:
+    /// For loads it uses [`Acquire`] ordering. For stores it uses the [`Release`] ordering.
+    ///
+    /// Notice that in the case of `compare_and_swap`, it is possible that the operation ends up
+    /// not performing any store and hence it has just `Acquire` ordering. However,
+    /// `AcqRel` will never perform [`Relaxed`] accesses.
     ///
     /// This ordering is only applicable for operations that combine both loads and stores.
     ///
-    /// For loads it uses [`Acquire`] ordering. For stores it uses the [`Release`] ordering.
+    /// Corresponds to LLVM's [`AcquireRelease`] ordering.
     ///
+    /// [`AcquireRelease`]: http://llvm.org/docs/Atomics.html#acquirerelease
     /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
     /// [`Release`]: http://llvm.org/docs/Atomics.html#release
+    /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
     #[stable(feature = "rust1", since = "1.0.0")]
     AcqRel,
-    /// Like `AcqRel` with the additional guarantee that all threads see all
+    /// Like [`Acquire`]/[`Release`]/[`AcqRel`] (for load, store, and load-with-store
+    /// operations, respectively) with the additional guarantee that all threads see all
     /// sequentially consistent operations in the same order.
+    ///
+    /// Corresponds to LLVM's [`SequentiallyConsistent`] ordering.
+    ///
+    /// [`SequentiallyConsistent`]: http://llvm.org/docs/Atomics.html#sequentiallyconsistent
+    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
+    /// [`Release`]: http://llvm.org/docs/Atomics.html#release
+    /// [`AcqRel`]: https://llvm.org/docs/Atomics.html#acquirerelease
     #[stable(feature = "rust1", since = "1.0.0")]
     SeqCst,
     // Prevent exhaustive matching to allow for future extension
@@ -384,9 +419,11 @@ impl AtomicBool {
     /// was updated.
     ///
     /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation.
+    /// ordering of this operation. Notice that even when using [`AcqRel`], the operation
+    /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Ordering`]: enum.Ordering.html#variant.AcqRel
     /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
@@ -421,7 +458,7 @@ impl AtomicBool {
     /// ordering of this operation. The first describes the required ordering if the
     /// operation succeeds while the second describes the required ordering when the
     /// operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and must
-    /// be equivalent or weaker than the success ordering.
+    /// be equivalent to or weaker than the success ordering.
     ///
     /// [`bool`]: ../../../std/primitive.bool.html
     /// [`Ordering`]: enum.Ordering.html
