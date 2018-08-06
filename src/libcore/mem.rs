@@ -1024,9 +1024,6 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     }
 }
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: CoerceUnsized<U>, U> CoerceUnsized<ManuallyDrop<U>> for ManuallyDrop<T> {}
-
 /// A pinned reference.
 ///
 /// A pinned reference is a lot like a mutable reference, except that it is not
