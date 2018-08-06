@@ -113,7 +113,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             error_var
         ).span_suggestion(
             new_ty_span,
-            &format!("consider changing {} to ", span_label_var),
+            &format!("add explicit lifetime `{}` to {}", named, span_label_var),
             new_ty.to_string()
         )
             .span_label(span, format!("lifetime `{}` required", named))

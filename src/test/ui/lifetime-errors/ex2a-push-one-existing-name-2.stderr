@@ -2,7 +2,7 @@ error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/ex2a-push-one-existing-name-2.rs:16:12
    |
 LL | fn foo<'a>(x: Ref<i32>, y: &mut Vec<Ref<'a, i32>>) {
-   |               -------- help: consider changing the type of `x` to : `Ref<'a, i32>`
+   |               -------- help: add explicit lifetime `'a` to the type of `x`: `Ref<'a, i32>`
 LL |     y.push(x); //~ ERROR explicit lifetime
    |            ^ lifetime `'a` required
 

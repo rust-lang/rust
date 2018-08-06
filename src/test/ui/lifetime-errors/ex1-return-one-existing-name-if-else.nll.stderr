@@ -8,7 +8,7 @@ error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/ex1-return-one-existing-name-if-else.rs:12:8
    |
 LL | fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
-   |                           ---- help: consider changing the type of `y` to : `&'a i32`
+   |                           ---- help: add explicit lifetime `'a` to the type of `y`: `&'a i32`
 LL |     if x > y { x } else { y } //~ ERROR explicit lifetime
    |        ^^^^^ lifetime `'a` required
 

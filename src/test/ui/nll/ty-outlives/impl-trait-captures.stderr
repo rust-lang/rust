@@ -7,10 +7,12 @@ LL |     x
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/impl-trait-captures.rs:21:5
    |
-LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
-   |                  -- help: consider changing the type of `x` to : `&ReEarlyBound(0, 'a) T`
 LL |     x
    |     ^ lifetime `ReEarlyBound(0, 'a)` required
+help: add explicit lifetime `ReEarlyBound(0, 'a)` to the type of `x`
+   |
+LL | fn foo<'a, T>(x: &ReEarlyBound(0, 'a) T) -> impl Foo<'a> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
