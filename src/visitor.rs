@@ -90,6 +90,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         match stmt.node {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
+                // Handle potential `;` after the item.
+                self.format_missing(stmt.span.hi());
             }
             ast::StmtKind::Local(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
                 if contains_skip(get_attrs_from_stmt(stmt)) {
