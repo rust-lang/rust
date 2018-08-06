@@ -13,7 +13,7 @@ all:
 	-cd $(TMP_DIR) && rm -rf $(CRATE)
 	cd $(TMP_DIR) && $(CARGO) clone $(CRATE) --vers 0.5.0
 	pwd
-	cd $(TMP_DIR) && cd $(CRATE) && $(CARGO) build --target $(TARGET)
+	cd $(TMP_DIR) && cd $(CRATE) && $(CARGO) build --target $(TARGET) -vv
 else
 
 all:
