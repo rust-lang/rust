@@ -1,4 +1,4 @@
-#![allow(many_single_char_names, blacklisted_name)]
+#![allow(many_single_char_names, blacklisted_name, redundant_field_names)]
 
 #[derive(Copy, Clone)]
 struct Foo(u32);

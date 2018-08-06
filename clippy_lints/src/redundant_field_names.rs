@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::{declare_lint, lint_array};
-use rustc::hir::*;
-use crate::utils::{in_macro, match_var, span_lint_and_sugg};
+use syntax::ast::*;
+use crate::utils::{span_lint_and_sugg};
 
 /// **What it does:** Checks for fields in struct literals where shorthands
 /// could be used.
@@ -35,28 +35,24 @@ impl LintPass for RedundantFieldNames {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        // Ignore all macros including range expressions.
-        // They can have redundant field names when expanded.
-        // e.g. range expression `start..end` is desugared to `Range { start: start, end: end }`
-        if in_macro(expr.span) {
-            return;
-        }
-
+impl EarlyLintPass for RedundantFieldNames {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Struct(_, ref fields, _) = expr.node {
             for field in fields {
-                let name = field.ident.name;
-
-                if match_var(&field.expr, name) && !field.is_shorthand {
-                    span_lint_and_sugg (
-                        cx,
-                        REDUNDANT_FIELD_NAMES,
-                        field.span,
-                        "redundant field names in struct initialization",
-                        "replace it with",
-                        name.to_string()
-                    );
+                if field.is_shorthand {
+                    continue;
+                }
+                if let ExprKind::Path(None, path) = &field.expr.node {
+                    if path.segments.len() == 1 && path.segments[0].ident == field.ident {
+                        span_lint_and_sugg (
+                            cx,
+                            REDUNDANT_FIELD_NAMES,
+                            field.span,
+                            "redundant field names in struct initialization",
+                            "replace it with",
+                            field.ident.to_string()
+                        );
+                    }
                 }
             }
         }
