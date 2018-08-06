@@ -26,7 +26,9 @@ const fn done<T>() -> *mut Arc<T> { 1_usize as *mut _ }
 unsafe impl<T> Sync for Lazy<T> {}
 
 impl<T: Send + Sync + 'static> Lazy<T> {
-    pub const fn new(init: fn() -> Arc<T>) -> Lazy<T> {
+    /// Safety: `init` must not call `get` on the variable that is being
+    /// initialized.
+    pub const unsafe fn new(init: fn() -> Arc<T>) -> Lazy<T> {
         // `lock` is never initialized fully, so this mutex is reentrant!
         // Do not use it in a way that might be reentrant, that could lead to
         // aliasing `&mut`.
@@ -66,7 +68,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
         });
         // This could reentrantly call `init` again, which is a problem
         // because our `lock` allows reentrancy!
-        // FIXME: Add argument why this is okay.
+        // That's why `new` is unsafe and requires the caller to ensure no reentrancy happens.
         let ret = (self.init)();
         if registered.is_ok() {
             self.ptr.set(Box::into_raw(Box::new(ret.clone())));
