@@ -127,7 +127,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 ty::BrNamed(..) => true,
                 _ => false,
             },
-            ty::ReEarlyBound(_) => true,
+            ty::ReEarlyBound(ebr) => ebr.has_name(),
             _ => false,
         }
     }

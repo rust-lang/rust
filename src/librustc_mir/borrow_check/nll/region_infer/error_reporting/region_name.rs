@@ -94,8 +94,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match error_region {
             ty::ReEarlyBound(ebr) => {
-                self.highlight_named_span(tcx, error_region, &ebr.name, diag);
-                Some(ebr.name)
+                if ebr.has_name() {
+                    self.highlight_named_span(tcx, error_region, &ebr.name, diag);
+                    Some(ebr.name)
+                } else {
+                    None
+                }
             },
 
             ty::ReStatic => Some(keywords::StaticLifetime.name().as_interned_str()),
