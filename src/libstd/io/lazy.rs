@@ -29,9 +29,8 @@ impl<T: Send + Sync + 'static> Lazy<T> {
     /// Safety: `init` must not call `get` on the variable that is being
     /// initialized.
     pub const unsafe fn new(init: fn() -> Arc<T>) -> Lazy<T> {
-        // `lock` is never initialized fully, so this mutex is reentrant!
-        // Do not use it in a way that might be reentrant, that could lead to
-        // aliasing `&mut`.
+        // `lock` is never initialized fully, so it is UB to attempt to
+        // acquire this mutex reentrantly!
         Lazy {
             lock: Mutex::new(),
             ptr: Cell::new(ptr::null_mut()),

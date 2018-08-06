@@ -24,9 +24,9 @@ impl Mutex {
     ///
     /// Behavior is undefined if the mutex is moved after it is
     /// first used with any of the functions below.
-    /// Also, the mutex might not be fully functional without calling
-    /// `init`!  For example, on unix, the mutex is reentrant
-    /// until `init` reconfigures it appropriately.
+    /// Also, until `init` is called, behavior is undefined if this
+    /// mutex is ever used reentrantly, i.e., `raw_lock` or `try_lock`
+    /// are called by the thread currently holding the lock.
     pub const fn new() -> Mutex { Mutex(imp::Mutex::new()) }
 
     /// Prepare the mutex for use.

@@ -33,9 +33,8 @@ use sys::fd;
 use vec;
 
 const TMPBUF_SZ: usize = 128;
-// `ENV_LOCK` is never initialized fully, so this mutex is reentrant!
-// Do not use it in a way that might be reentrant, that could lead to
-// aliasing `&mut`.
+// `ENV_LOCK` is never initialized fully, so it is UB to attempt to
+// acquire this mutex reentrantly!
 static ENV_LOCK: Mutex = Mutex::new();
 
 
