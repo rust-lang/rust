@@ -4,7 +4,7 @@ error: unsatisfied lifetime constraints
 LL |     fn take_bar(&mut self, b: Bar<'_>) {
    |                 ---------         -- let's call this `'1`
    |                 |
-   |                 lifetime `'2` appears in this type
+   |                 has type `&mut Foo<'_, '2>`
 LL |         self.y = b.z
    |         ^^^^^^^^^^^^ requires that `'1` must outlive `'2`
 
