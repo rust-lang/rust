@@ -242,17 +242,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return Some(region_name);
         }
 
-        let (_argument_name, argument_span) = self.get_argument_name_and_span_for_region(
-            mir, argument_index);
-
-        let region_name = self.synthesize_region_name(counter);
-
-        diag.span_label(
-            argument_span,
-            format!("lifetime `{}` appears in this argument", region_name,),
-        );
-
-        Some(region_name)
+        self.give_name_if_we_cannot_match_hir_ty(
+            infcx,
+            mir,
+            fr,
+            arg_ty,
+            counter,
+            diag,
+        )
     }
 
     fn give_name_if_we_can_match_hir_ty_from_argument(
@@ -370,14 +367,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         search_stack.push((argument_ty, argument_hir_ty));
 
-        let mut closest_match: &hir::Ty = argument_hir_ty;
-
         while let Some((ty, hir_ty)) = search_stack.pop() {
-            // While we search, also track the closet match.
-            if tcx.any_free_region_meets(&ty, |r| r.to_region_vid() == needle_fr) {
-                closest_match = hir_ty;
-            }
-
             match (&ty.sty, &hir_ty.node) {
                 // Check if the `argument_ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
@@ -452,13 +442,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        let region_name = self.synthesize_region_name(counter);
-        diag.span_label(
-            closest_match.span,
-            format!("lifetime `{}` appears in this type", region_name),
-        );
-
-        return Some(region_name);
+        return None;
     }
 
     /// We've found an enum/struct/union type with the substitutions
