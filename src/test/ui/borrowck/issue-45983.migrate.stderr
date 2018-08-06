@@ -1,0 +1,12 @@
+error: borrowed data cannot be stored outside of its closure
+  --> $DIR/issue-45983.rs:36:27
+   |
+LL |     let x = None;
+   |         - borrowed data cannot be stored into here...
+LL |     give_any(|y| x = Some(y));
+   |              ---          ^ cannot be stored outside of its closure
+   |              |
+   |              ...because it cannot outlive this closure
+
+error: aborting due to previous error
+
