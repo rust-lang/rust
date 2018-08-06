@@ -9,7 +9,11 @@
 // except according to those terms.
 
 trait Foo {
-    fn foo((x, y): (i32, i32)); //~ ERROR patterns aren't allowed in methods without bodies
+    fn foo((x, y): (i32, i32)); //~ ERROR patterns aren't allowed in trait methods
+}
+
+trait Bar {
+    fn bar((x, y): (i32, i32)) {} //~ ERROR patterns aren't allowed in trait methods
 }
 
 fn main() {}

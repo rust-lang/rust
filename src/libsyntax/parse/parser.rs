@@ -1744,7 +1744,16 @@ impl<'a> Parser<'a> {
     fn parse_arg_general(&mut self, require_name: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
 
-        let parser_snapshot_before_pat = self.clone();
+        // If we see `ident :`, then we know that the argument is just of the
+        // form `type`, which means we won't need to recover from parsing a
+        // pattern and so we don't need to store a parser snapshot.
+        let parser_snapshot_before_pat = if
+            self.look_ahead(1, |t| t.is_ident()) &&
+            self.look_ahead(2, |t| t == &token::Colon) {
+                None
+            } else {
+                Some(self.clone())
+            };
 
         // We're going to try parsing the argument as a pattern (even if it's not
         // allowed, such as for trait methods without bodies). This way we can provide
@@ -1755,29 +1764,31 @@ impl<'a> Parser<'a> {
             (pat, self.parse_ty()?)
         };
 
-        let is_named_argument = self.is_named_argument();
         match pat_arg {
             Ok((pat, ty)) => {
                 Ok(Arg { ty, pat, id: ast::DUMMY_NODE_ID })
             }
             Err(mut err) => {
-                if require_name || is_named_argument {
-                    Err(err)
-                } else {
-                    err.cancel();
-                    // Recover from attempting to parse the argument as a pattern. This means
-                    // the type is alone, with no name, e.g. `fn foo(u32)`.
-                    mem::replace(self, parser_snapshot_before_pat);
-                    debug!("parse_arg_general ident_to_pat");
-                    let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
-                    let ty = self.parse_ty()?;
-                    let pat = P(Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        node: PatKind::Ident(
-                            BindingMode::ByValue(Mutability::Immutable), ident, None),
-                        span: ty.span,
-                    });
-                    Ok(Arg { ty, pat, id: ast::DUMMY_NODE_ID })
+                match (require_name || self.is_named_argument(), parser_snapshot_before_pat) {
+                    (true, _) | (_, None) => {
+                        Err(err)
+                    }
+                    (false, Some(parser_snapshot_before_pat)) => {
+                        err.cancel();
+                        // Recover from attempting to parse the argument as a pattern. This means
+                        // the type is alone, with no name, e.g. `fn foo(u32)`.
+                        mem::replace(self, parser_snapshot_before_pat);
+                        debug!("parse_arg_general ident_to_pat");
+                        let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
+                        let ty = self.parse_ty()?;
+                        let pat = P(Pat {
+                            id: ast::DUMMY_NODE_ID,
+                            node: PatKind::Ident(
+                                BindingMode::ByValue(Mutability::Immutable), ident, None),
+                            span: ty.span,
+                        });
+                        Ok(Arg { ty, pat, id: ast::DUMMY_NODE_ID })
+                    }
                 }
             }
         }
