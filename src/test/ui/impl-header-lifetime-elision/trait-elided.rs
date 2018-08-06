@@ -7,31 +7,14 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-// Test that we do not yet support elision in associated types, even
-// when there is just one name we could take from the impl header.
-
 #![allow(warnings)]
 
-#![feature(in_band_lifetimes)]
+#![feature(impl_header_lifetime_elision)]
 
-trait MyTrait {
-    type Output;
-}
+trait MyTrait<'a> { }
 
-impl MyTrait for &i32 {
-    type Output = &i32;
+impl MyTrait for u32 {
     //~^ ERROR missing lifetime specifier
 }
 
-impl MyTrait for &u32 {
-    type Output = &'_ i32;
-    //~^ ERROR missing lifetime specifier
-}
-
-// This is what you have to do:
-impl MyTrait for &'a f32 {
-    type Output = &'a f32;
-}
-
-fn main() { }
+fn main() {}

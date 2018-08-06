@@ -68,6 +68,7 @@
 #![feature(step_trait)]
 #![feature(integer_atomics)]
 #![feature(test)]
+#![cfg_attr(not(stage0), feature(impl_header_lifetime_elision))]
 #![feature(in_band_lifetimes)]
 #![feature(macro_at_most_once_rep)]
 #![feature(crate_in_paths)]
