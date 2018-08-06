@@ -1202,6 +1202,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.err("can't perform LTO when compiling incrementally");
     }
 
+    // Since we don't know if code in an rlib will be linked to statically or
+    // dynamically downstream, rustc generates `__imp_` symbols that help the
+    // MSVC linker deal with this lack of knowledge (#27438). Unfortunately,
+    // these manually generated symbols confuse LLD when it tries to merge
+    // bitcode during ThinLTO. Therefore we disallow dynamic linking on MSVC
+    // when compiling for LLD ThinLTO. This way we can validly just not generate
+    // the `dllimport` attributes and `__imp_` symbols in that case.
     if sess.opts.debugging_opts.cross_lang_lto.enabled() &&
        sess.opts.cg.prefer_dynamic &&
        sess.target.target.options.is_like_msvc {

@@ -2385,7 +2385,7 @@ fn msvc_imps_needed(tcx: TyCtxt) -> bool {
               tcx.sess.opts.cg.prefer_dynamic));
 
     tcx.sess.target.target.options.is_like_msvc &&
-        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) &&
+        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
     // dynamic linking when cross-language LTO is enabled.

@@ -11,7 +11,7 @@ all: staticlib.rs upstream.rs
 	$(RUSTC) staticlib.rs -Z cross-lang-lto -Ccodegen-units=1 -L. -o $(TMPDIR)/staticlib.a
 	(cd $(TMPDIR); llvm-ar x ./staticlib.a)
 	# Make sure the upstream object file was included
-	ls upstream.*.rcgu.o
+	ls $(TMPDIR)/upstream.*.rcgu.o
 
 	# Cleanup
 	rm $(TMPDIR)/*
@@ -20,4 +20,4 @@ all: staticlib.rs upstream.rs
 	$(RUSTC) upstream.rs -Z cross-lang-lto -Ccodegen-units=1 -Clto=thin
 	$(RUSTC) staticlib.rs -Z cross-lang-lto -Ccodegen-units=1 -Clto=thin -L. -o $(TMPDIR)/staticlib.a
 	(cd $(TMPDIR); llvm-ar x ./staticlib.a)
-	ls upstream.*.rcgu.o
+	ls $(TMPDIR)/upstream.*.rcgu.o

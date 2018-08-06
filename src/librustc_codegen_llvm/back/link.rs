@@ -563,7 +563,7 @@ fn link_staticlib(sess: &Session,
         });
         ab.add_rlib(path,
                     &name.as_str(),
-                    is_full_lto_enabled(sess) &&
+                    are_upstream_rust_objects_already_included(sess) &&
                         !ignored_for_lto(sess, &codegen_results.crate_info, cnum),
                     skip_object_files).unwrap();
 
@@ -1446,7 +1446,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
-        if (!is_full_lto_enabled(sess) ||
+        if (!are_upstream_rust_objects_already_included(sess) ||
             ignored_for_lto(sess, &codegen_results.crate_info, cnum)) &&
            crate_type != config::CrateType::Dylib &&
            !skip_native {
@@ -1500,7 +1500,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                let skip_because_lto = is_full_lto_enabled(sess) &&
+                let skip_because_lto = are_upstream_rust_objects_already_included(sess) &&
                     is_rust_object &&
                     (sess.target.target.options.no_builtins ||
                      !codegen_results.crate_info.is_no_builtins.contains(&cnum));
@@ -1537,7 +1537,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
-        assert!(!is_full_lto_enabled(sess));
+        assert!(!are_upstream_rust_objects_already_included(sess));
 
         // Just need to tell the linker about where the library lives and
         // what its name is
@@ -1623,7 +1623,7 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     }
 }
 
-fn is_full_lto_enabled(sess: &Session) -> bool {
+fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
     match sess.lto() {
         Lto::Yes |
         Lto::Fat => true,

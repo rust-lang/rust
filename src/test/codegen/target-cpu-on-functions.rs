@@ -11,8 +11,10 @@
 // This test makes sure that functions get annotated with the proper
 // "target-cpu" attribute in LLVM.
 
+// no-prefer-dynamic
+// ignore-tidy-linelength
 // only-x86_64
-// compile-flags: -C no-prepopulate-passes -C panic=abort
+// compile-flags: -C no-prepopulate-passes -C panic=abort -Z cross-lang-lto -Cpasses=name-anon-globals
 
 #![crate_type = "staticlib"]
 

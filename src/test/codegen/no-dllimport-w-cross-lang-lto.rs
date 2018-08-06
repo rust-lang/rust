@@ -13,7 +13,7 @@
 
 // no-prefer-dynamic
 // only-msvc
-// compile-flags: -C no-prepopulate-passes -Z cross-lang-lto
+// compile-flags: -Z cross-lang-lto
 
 #![crate_type = "rlib"]
 
