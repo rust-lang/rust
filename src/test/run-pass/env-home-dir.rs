@@ -11,8 +11,6 @@
 // ignore-cloudabi no environment variables present
 // ignore-emscripten env vars don't work?
 
-#![feature(path)]
-
 use std::env::*;
 use std::path::PathBuf;
 

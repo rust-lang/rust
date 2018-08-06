@@ -19,8 +19,6 @@
 // codegen the call as `Foo::foo(&x)` and let the specific impl get
 // chosen later.
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 trait Foo {

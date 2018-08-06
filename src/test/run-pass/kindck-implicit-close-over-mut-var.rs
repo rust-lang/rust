@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc)]
-
 use std::thread;
 
 fn user(_i: isize) {}

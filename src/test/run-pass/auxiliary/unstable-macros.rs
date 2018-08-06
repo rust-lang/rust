@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(staged_api)]
-#![stable(feature = "unit_test", since = "0.0.0")]
+#![stable(feature = "unit_test", since = "1.0.0")]
 
 #[unstable(feature = "unstable_macros", issue = "0")]
 #[macro_export]

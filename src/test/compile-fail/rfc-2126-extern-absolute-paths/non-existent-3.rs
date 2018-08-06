@@ -10,8 +10,6 @@
 
 // edition:2018
 
-#![feature(extern_absolute_paths)]
-
 use ycrate; //~ ERROR can't find crate for `ycrate`
 
 fn main() {}

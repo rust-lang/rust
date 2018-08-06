@@ -10,7 +10,6 @@
 
 #![crate_name = "compiletest"]
 #![feature(test)]
-#![feature(slice_rotate)]
 #![deny(warnings)]
 
 extern crate diff;

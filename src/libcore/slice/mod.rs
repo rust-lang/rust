@@ -2007,7 +2007,7 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
+#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 impl<T> SliceIndex<[T]> for usize {
     type Output = T;
 
@@ -2056,7 +2056,7 @@ impl<T> SliceIndex<[T]> for usize {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
+#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 impl<T> SliceIndex<[T]> for  ops::Range<usize> {
     type Output = [T];
 
@@ -2117,7 +2117,7 @@ impl<T> SliceIndex<[T]> for  ops::Range<usize> {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
+#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     type Output = [T];
 
@@ -2152,7 +2152,7 @@ impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
+#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     type Output = [T];
 
@@ -2187,7 +2187,7 @@ impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
+#[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 impl<T> SliceIndex<[T]> for ops::RangeFull {
     type Output = [T];
 

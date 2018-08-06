@@ -1,0 +1,6 @@
+warning[E0705]: the feature `raw_identifiers` is included in the Rust 2018 edition
+  --> $DIR/E0705.rs:14:12
+   |
+LL | #![feature(raw_identifiers)]
+   |            ^^^^^^^^^^^^^^^
+

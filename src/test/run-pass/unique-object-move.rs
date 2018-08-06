@@ -12,7 +12,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 pub trait EventLoop { fn foo(&self) {} }

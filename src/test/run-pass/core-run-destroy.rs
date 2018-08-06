@@ -16,7 +16,7 @@
 // memory, which makes for some *confusing* logs. That's why these are here
 // instead of in std.
 
-#![feature(libc, std_misc, duration)]
+#![feature(libc, duration)]
 
 extern crate libc;
 

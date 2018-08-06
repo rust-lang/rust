@@ -14,7 +14,6 @@
 //! (#14132).
 
 #![crate_name = "a"]
-#![feature(core)]
 
 macro_rules! three {
     () => { 3 }

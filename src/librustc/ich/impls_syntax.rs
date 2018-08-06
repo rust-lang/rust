@@ -511,7 +511,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for feature_gate::Features {
                                           hasher: &mut StableHasher<W>) {
         // Unfortunately we cannot exhaustively list fields here, since the
         // struct is macro generated.
-        self.declared_stable_lang_features.hash_stable(hcx, hasher);
+        self.declared_lang_features.hash_stable(hcx, hasher);
         self.declared_lib_features.hash_stable(hcx, hasher);
 
         self.walk_feature_fields(|feature_name, value| {

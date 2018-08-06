@@ -1,4 +1,4 @@
-#![allow(unknown_features)]
-#![feature(bogus)]
+#![allow(stable_features)]
+#![feature(rust1)]
 pub fn main() { }
 // ignore-license

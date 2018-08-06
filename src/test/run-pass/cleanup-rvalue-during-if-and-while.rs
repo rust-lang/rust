@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // This test verifies that temporaries created for `while`'s and `if`
 // conditions are dropped after the condition is evaluated.
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 struct Temporary;

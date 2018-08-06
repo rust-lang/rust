@@ -10,8 +10,6 @@
 
 // ignore-emscripten no threads support
 
-#![feature(std_misc)]
-
 use std::thread;
 
 pub fn main() {

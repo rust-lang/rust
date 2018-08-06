@@ -12,8 +12,7 @@
 
 // ignore-cross-compile
 
-#![feature(rustc_private, path)]
-#![feature(core)]
+#![feature(rustc_private)]
 
 extern crate getopts;
 extern crate rustc;

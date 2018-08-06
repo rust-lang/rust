@@ -10,9 +10,6 @@
 
 // ignore-emscripten No support for threads
 
-#![allow(unknown_features)]
-#![feature(std_misc)]
-
 /**
    A somewhat reduced test case to expose some Valgrind issues.
 

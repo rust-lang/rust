@@ -9,11 +9,11 @@
 // except according to those terms.
 
 #![feature(staged_api)]
-#![stable(feature = "foo", since = "1.2.0")]
+#![stable(feature = "stable_test_feature", since = "1.2.0")]
 
 
-#[unstable(feature = "foo", issue = "1")]
+#[unstable(feature = "unstable_test_feature", issue = "1")]
 pub fn unstable() {}
 
-#[unstable(feature = "foo", reason = "message", issue = "2")]
+#[unstable(feature = "unstable_test_feature", reason = "message", issue = "2")]
 pub fn unstable_msg() {}

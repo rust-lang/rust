@@ -10,8 +10,6 @@
 
 // ignore-emscripten no threads support
 
-#![feature(std_misc)]
-
 use std::thread;
 use std::sync::mpsc::{channel, Sender};
 

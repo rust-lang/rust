@@ -11,8 +11,6 @@
 // ignore-emscripten no threads support
 // pretty-expanded FIXME #23616
 
-#![feature(std_misc)]
-
 // Issue #922
 
 // This test is specifically about spawning temporary closures.

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(warnings)]
-#![feature(drain, collections_bound, btree_range, vecmap)]
+#![feature(drain, collections_bound, btree_range)]
 
 use std::collections::BinaryHeap;
 use std::collections::{BTreeMap, BTreeSet};

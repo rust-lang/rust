@@ -10,10 +10,7 @@
 
 // aux-build:lint_output_format.rs
 
-// FIXME(#44232) we should warn that this isn't used.
-#![feature(foo)]
-
-#![feature(test_feature)]
+#![feature(unstable_test_feature)]
 #![feature(rustc_attrs)]
 
 extern crate lint_output_format;

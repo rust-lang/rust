@@ -11,8 +11,6 @@
 // aux-build:xcrate.rs
 // edition:2018
 
-#![feature(extern_absolute_paths)]
-
 use xcrate::Z;
 
 fn f() {

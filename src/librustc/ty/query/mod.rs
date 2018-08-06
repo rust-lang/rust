@@ -24,6 +24,7 @@ use middle::reachable::ReachableSet;
 use middle::region;
 use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
+use middle::lib_features::LibFeatures;
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
 use mir::interpret::ConstEvalResult;
@@ -492,6 +493,9 @@ define_queries! { <'tcx>
         [] fn item_children: ItemChildren(DefId) -> Lrc<Vec<Export>>,
         [] fn extern_mod_stmt_cnum: ExternModStmtCnum(DefId) -> Option<CrateNum>,
 
+        [] fn get_lib_features: get_lib_features_node(CrateNum) -> Lrc<LibFeatures>,
+        [] fn defined_lib_features: DefinedLibFeatures(CrateNum)
+            -> Lrc<Vec<(Symbol, Option<Symbol>)>>,
         [] fn get_lang_items: get_lang_items_node(CrateNum) -> Lrc<LanguageItems>,
         [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Lrc<Vec<(DefId, usize)>>,
         [] fn missing_lang_items: MissingLangItems(CrateNum) -> Lrc<Vec<LangItem>>,
@@ -798,6 +802,10 @@ fn implementations_of_trait_node<'tcx>((krate, trait_id): (CrateNum, DefId))
 
 fn link_args_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::LinkArgs
+}
+
+fn get_lib_features_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::GetLibFeatures
 }
 
 fn get_lang_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {

@@ -1918,6 +1918,30 @@ fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
 ```
 "##,
 
+E0635: r##"
+The `#![feature]` attribute specified an unknown feature.
+
+Erroneous code example:
+
+```compile_fail,E0635
+#![feature(nonexistent_rust_feature)] // error: unknown feature
+```
+
+"##,
+
+E0636: r##"
+A `#![feature]` attribute was declared multiple times.
+
+Erroneous code example:
+
+```compile_fail,E0636
+#![allow(stable_features)]
+#![feature(rust1)]
+#![feature(rust1)] // error: the feature `rust1` has already been declared
+```
+
+"##,
+
 E0644: r##"
 A closure or generator was constructed that references its own type.
 
@@ -2138,4 +2162,5 @@ register_diagnostics! {
     E0708, // `async` non-`move` closures with arguments are not currently supported
     E0709, // multiple different lifetimes used in arguments of `async fn`
     E0710, // an unknown tool name found in scoped lint
+    E0711, // a feature has been declared with conflicting stability attributes
 }

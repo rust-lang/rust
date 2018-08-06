@@ -10,8 +10,6 @@
 
 // error-pattern:greetings from the panic handler
 
-#![feature(panic_handler)]
-
 use std::panic;
 
 fn main() {

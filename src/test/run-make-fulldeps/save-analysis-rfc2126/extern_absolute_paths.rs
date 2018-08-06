@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(extern_absolute_paths)]
-
 use krate2::hello;
 
 fn main() {

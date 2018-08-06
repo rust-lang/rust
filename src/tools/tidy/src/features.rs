@@ -50,34 +50,6 @@ pub struct Feature {
     pub tracking_issue: Option<u32>,
 }
 
-impl Feature {
-    fn check_match(&self, other: &Feature)-> Result<(), Vec<&'static str>> {
-        let mut mismatches = Vec::new();
-        if self.level != other.level {
-            mismatches.push("stability level");
-        }
-        if self.level == Status::Stable || other.level == Status::Stable {
-            // As long as a feature is unstable, the since field tracks
-            // when the given part of the feature has been implemented.
-            // Mismatches are tolerable as features evolve and functionality
-            // gets added.
-            // Once a feature is stable, the since field tracks the first version
-            // it was part of the stable distribution, and mismatches are disallowed.
-            if self.since != other.since {
-                mismatches.push("since");
-            }
-        }
-        if self.tracking_issue != other.tracking_issue {
-            mismatches.push("tracking issue");
-        }
-        if mismatches.is_empty() {
-            Ok(())
-        } else {
-            Err(mismatches)
-        }
-    }
-}
-
 pub type Features = HashMap<String, Feature>;
 
 pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
@@ -310,13 +282,12 @@ fn get_and_check_lib_features(base_src_path: &Path,
                 Ok((name, f)) => {
                     let mut check_features = |f: &Feature, list: &Features, display: &str| {
                         if let Some(ref s) = list.get(name) {
-                            if let Err(m) = (&f).check_match(s) {
+                            if f.tracking_issue != s.tracking_issue {
                                 tidy_error!(bad,
-                                            "{}:{}: mismatches to {} in: {:?}",
+                                            "{}:{}: mismatches the `issue` in {}",
                                             file.display(),
                                             line,
-                                            display,
-                                            &m);
+                                            display);
                             }
                         }
                     };

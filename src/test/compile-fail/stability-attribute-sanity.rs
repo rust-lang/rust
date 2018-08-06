@@ -15,7 +15,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod bogus_attribute_types_1 {
-    #[stable(feature = "a", since = "a", reason)] //~ ERROR unknown meta item 'reason' [E0541]
+    #[stable(feature = "a", since = "b", reason)] //~ ERROR unknown meta item 'reason' [E0541]
     fn f1() { }
 
     #[stable(feature = "a", since)] //~ ERROR incorrect meta item [E0539]
@@ -35,7 +35,7 @@ mod bogus_attribute_types_2 {
     #[unstable] //~ ERROR incorrect stability attribute type [E0548]
     fn f1() { }
 
-    #[unstable = "a"] //~ ERROR incorrect stability attribute type [E0548]
+    #[unstable = "b"] //~ ERROR incorrect stability attribute type [E0548]
     fn f2() { }
 
     #[stable] //~ ERROR incorrect stability attribute type [E0548]
@@ -57,7 +57,7 @@ mod missing_feature_names {
     #[unstable(issue = "0")] //~ ERROR missing 'feature' [E0546]
     fn f1() { }
 
-    #[unstable(feature = "a")] //~ ERROR missing 'issue' [E0547]
+    #[unstable(feature = "b")] //~ ERROR missing 'issue' [E0547]
     fn f2() { }
 
     #[stable(since = "a")] //~ ERROR missing 'feature' [E0546]
@@ -73,12 +73,12 @@ mod missing_version {
     fn f2() { }
 }
 
-#[unstable(feature = "a", issue = "0")]
+#[unstable(feature = "b", issue = "0")]
 #[stable(feature = "a", since = "b")] //~ ERROR multiple stability levels [E0544]
 fn multiple1() { }
 
-#[unstable(feature = "a", issue = "0")]
-#[unstable(feature = "a", issue = "0")] //~ ERROR multiple stability levels [E0544]
+#[unstable(feature = "b", issue = "0")]
+#[unstable(feature = "b", issue = "0")] //~ ERROR multiple stability levels [E0544]
 fn multiple2() { }
 
 #[stable(feature = "a", since = "b")]
@@ -88,8 +88,8 @@ fn multiple3() { }
 #[stable(feature = "a", since = "b")]
 #[rustc_deprecated(since = "b", reason = "text")]
 #[rustc_deprecated(since = "b", reason = "text")]
-#[rustc_const_unstable(feature = "a")]
-#[rustc_const_unstable(feature = "b")]
+#[rustc_const_unstable(feature = "c")]
+#[rustc_const_unstable(feature = "d")]
 pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
 //~^ ERROR Invalid stability or deprecation version found
 //~| ERROR multiple rustc_const_unstable attributes

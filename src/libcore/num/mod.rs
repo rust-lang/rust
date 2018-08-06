@@ -3761,8 +3761,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -3799,8 +3797,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -3837,8 +3833,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -3878,8 +3872,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -3916,8 +3908,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -3957,8 +3947,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -3999,8 +3987,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -4037,8 +4023,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -4092,8 +4076,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';
@@ -4132,8 +4114,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii_ctype)]
-    ///
     /// let uppercase_a = b'A';
     /// let uppercase_g = b'G';
     /// let a = b'a';

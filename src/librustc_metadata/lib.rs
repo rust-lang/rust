@@ -13,7 +13,6 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
-#![feature(fs_read_write)]
 #![feature(libc)]
 #![feature(macro_at_most_once_rep)]
 #![feature(proc_macro_internals)]

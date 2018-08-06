@@ -102,7 +102,7 @@ declare_lint! {
 declare_lint! {
     pub UNUSED_FEATURES,
     Warn,
-    "unused or unknown features found in crate-level #[feature] directives"
+    "unused features found in crate-level #[feature] directives"
 }
 
 declare_lint! {

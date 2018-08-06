@@ -10,9 +10,6 @@
 
 // Test slicing sugar.
 
-
-#![feature(core)]
-
 extern crate core;
 use core::ops::{Index, IndexMut, Range, RangeTo, RangeFrom, RangeFull};
 

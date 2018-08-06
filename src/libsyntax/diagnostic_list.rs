@@ -374,6 +374,20 @@ and likely to change in the future.
 
 "##,
 
+E0705: r##"
+A `#![feature]` attribute was declared for a feature that is stable in
+the current edition.
+
+Erroneous code example:
+
+```ignore (limited to a warning during 2018 edition development)
+#![feature(rust_2018_preview)]
+#![feature(raw_identifiers)] // error: the feature `raw_identifiers` is
+                             // included in the Rust 2018 edition
+```
+
+"##,
+
 }
 
 register_diagnostics! {

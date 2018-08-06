@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unknown_features)]
-
 // Test that `Fn(isize) -> isize + 'static` parses as `(Fn(isize) -> isize) +
 // 'static` and not `Fn(isize) -> (isize + 'static)`. The latter would
 // cause a compilation error. Issue #18772.

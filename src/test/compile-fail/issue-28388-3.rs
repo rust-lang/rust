@@ -14,7 +14,8 @@
 
 extern crate lint_stability;
 
-use lint_stability::UnstableEnum::{}; //~ ERROR use of unstable library feature 'test_feature'
+use lint_stability::UnstableEnum::{};
+//~^ ERROR use of unstable library feature 'unstable_test_feature'
 use lint_stability::StableEnum::{}; // OK
 
 fn main() {}

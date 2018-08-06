@@ -10,7 +10,7 @@
 
 // ignore-wasm32-bare no libc to test ffi with
 
-#![feature(std_misc, libc)]
+#![feature(libc)]
 
 extern crate libc;
 use std::ffi::CString;

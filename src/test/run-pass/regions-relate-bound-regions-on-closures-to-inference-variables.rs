@@ -17,8 +17,6 @@
 // changes were caught. However, those uses in the compiler could
 // easily get changed or refactored away in the future.
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 struct Ctxt<'tcx> {

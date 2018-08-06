@@ -10,9 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(static_mutex, static_rwlock, static_condvar)]
-#![feature(semaphore)]
-
 use std::sync;
 
 fn assert_both<T: Sync + Send>() {}

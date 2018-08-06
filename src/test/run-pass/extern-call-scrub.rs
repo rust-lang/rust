@@ -14,7 +14,7 @@
 
 // ignore-emscripten no threads support
 
-#![feature(libc, std_misc)]
+#![feature(libc)]
 
 extern crate libc;
 use std::thread;

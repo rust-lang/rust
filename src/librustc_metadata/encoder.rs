@@ -394,6 +394,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ());
         let dep_bytes = self.position() - i;
 
+        // Encode the lib features.
+        i = self.position();
+        let lib_features = self.tracked(IsolatedEncoder::encode_lib_features, ());
+        let lib_feature_bytes = self.position() - i;
+
         // Encode the language items.
         i = self.position();
         let lang_items = self.tracked(IsolatedEncoder::encode_lang_items, ());
@@ -513,6 +518,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             crate_deps,
             dylib_dependency_formats,
+            lib_features,
             lang_items,
             lang_items_missing,
             native_libraries,
@@ -537,6 +543,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             println!("metadata stats:");
             println!("             dep bytes: {}", dep_bytes);
+            println!("     lib feature bytes: {}", lib_feature_bytes);
             println!("       lang item bytes: {}", lang_item_bytes);
             println!("          native bytes: {}", native_lib_bytes);
             println!("         codemap bytes: {}", codemap_bytes);
@@ -1454,6 +1461,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         // FIXME (#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
         self.lazy_seq_ref(deps.iter().map(|&(_, ref dep)| dep))
+    }
+
+    fn encode_lib_features(&mut self, _: ()) -> LazySeq<(ast::Name, Option<ast::Name>)> {
+        let tcx = self.tcx;
+        let lib_features = tcx.lib_features();
+        self.lazy_seq(lib_features.to_vec())
     }
 
     fn encode_lang_items(&mut self, _: ()) -> LazySeq<(DefIndex, usize)> {

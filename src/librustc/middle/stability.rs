@@ -18,12 +18,12 @@ use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
-use session::DiagnosticMessageId;
+use session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
-use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
+use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::attr::{self, Stability, Deprecation};
 use util::nodemap::{FxHashSet, FxHashMap};
 
@@ -813,37 +813,70 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
 
-    let ref declared_lib_features = tcx.features().declared_lib_features;
-    let mut remaining_lib_features: FxHashMap<Symbol, Span>
-        = declared_lib_features.clone().into_iter().collect();
-    remaining_lib_features.remove(&Symbol::intern("proc_macro"));
-
-    for &(ref stable_lang_feature, span) in &tcx.features().declared_stable_lang_features {
-        let version = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
-            .expect("unexpectedly couldn't find version feature was stabilized");
-        tcx.lint_node(lint::builtin::STABLE_FEATURES,
-                      ast::CRATE_NODE_ID,
-                      span,
-                      &format_stable_since_msg(version));
+    let declared_lang_features = &tcx.features().declared_lang_features;
+    let mut lang_features = FxHashSet();
+    for &(feature, span, since) in declared_lang_features {
+        if let Some(since) = since {
+            // Warn if the user has enabled an already-stable lang feature.
+            unnecessary_stable_feature_lint(tcx, span, feature, since);
+        }
+        if lang_features.contains(&feature) {
+            // Warn if the user enables a lang feature multiple times.
+            duplicate_feature_err(tcx.sess, span, feature);
+        }
+        lang_features.insert(feature);
     }
 
-    // FIXME(#44232) the `used_features` table no longer exists, so we don't
-    //               lint about unknown or unused features. We should reenable
-    //               this one day!
-    //
-    // let index = tcx.stability();
-    // for (used_lib_feature, level) in &index.used_features {
-    //     remaining_lib_features.remove(used_lib_feature);
-    // }
-    //
-    // for &span in remaining_lib_features.values() {
-    //     tcx.lint_node(lint::builtin::UNUSED_FEATURES,
-    //                   ast::CRATE_NODE_ID,
-    //                   span,
-    //                   "unused or unknown feature");
-    // }
+    let declared_lib_features = &tcx.features().declared_lib_features;
+    let mut remaining_lib_features = FxHashMap();
+    for (feature, span) in declared_lib_features {
+        if remaining_lib_features.contains_key(&feature) {
+            // Warn if the user enables a lib feature multiple times.
+            duplicate_feature_err(tcx.sess, *span, *feature);
+        }
+        remaining_lib_features.insert(feature, span.clone());
+    }
+    // `stdbuild` has special handling for `libc`, so we need to
+    // recognise the feature when building std.
+    // Likewise, libtest is handled specially, so `test` isn't
+    // available as we'd like it to be.
+    // FIXME: only remove `libc` when `stdbuild` is active.
+    // FIXME: remove special casing for `test`.
+    remaining_lib_features.remove(&Symbol::intern("libc"));
+    remaining_lib_features.remove(&Symbol::intern("test"));
+
+    for (feature, stable) in tcx.lib_features().to_vec() {
+        if let Some(since) = stable {
+            if let Some(span) = remaining_lib_features.get(&feature) {
+                // Warn if the user has enabled an already-stable lib feature.
+                unnecessary_stable_feature_lint(tcx, *span, feature, since);
+            }
+        }
+        remaining_lib_features.remove(&feature);
+    }
+
+    for (feature, span) in remaining_lib_features {
+        struct_span_err!(tcx.sess, span, E0635, "unknown feature `{}`", feature).emit();
+    }
+
+    // FIXME(#44232): the `used_features` table no longer exists, so we
+    // don't lint about unused features. We should reenable this one day!
 }
 
-fn format_stable_since_msg(version: &str) -> String {
-    format!("this feature has been stable since {}. Attribute no longer needed", version)
+fn unnecessary_stable_feature_lint<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    span: Span,
+    feature: Symbol,
+    since: Symbol
+) {
+    tcx.lint_node(lint::builtin::STABLE_FEATURES,
+        ast::CRATE_NODE_ID,
+        span,
+        &format!("the feature `{}` has been stable since {} and no longer requires \
+                  an attribute to enable", feature, since));
+}
+
+fn duplicate_feature_err(sess: &Session, span: Span, feature: Symbol) {
+    struct_span_err!(sess, span, E0636, "the feature `{}` has already been declared", feature)
+        .emit();
 }

@@ -1218,6 +1218,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CrateName => { force!(crate_name, krate!()); }
         DepKind::ItemChildren => { force!(item_children, def_id!()); }
         DepKind::ExternModStmtCnum => { force!(extern_mod_stmt_cnum, def_id!()); }
+        DepKind::GetLibFeatures => { force!(get_lib_features, LOCAL_CRATE); }
+        DepKind::DefinedLibFeatures => { force!(defined_lib_features, krate!()); }
         DepKind::GetLangItems => { force!(get_lang_items, LOCAL_CRATE); }
         DepKind::DefinedLangItems => { force!(defined_lang_items, krate!()); }
         DepKind::MissingLangItems => { force!(missing_lang_items, krate!()); }

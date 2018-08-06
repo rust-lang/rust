@@ -11,8 +11,6 @@
 // Test that destructor on a struct runs successfully after the struct
 // is boxed and converted to an object.
 
-
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 static mut value: usize = 0;

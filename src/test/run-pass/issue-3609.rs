@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
-#![feature(std_misc)]
-
 use std::thread;
 use std::sync::mpsc::Sender;
 

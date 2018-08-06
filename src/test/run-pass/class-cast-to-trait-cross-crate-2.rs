@@ -10,7 +10,6 @@
 
 // aux-build:cci_class_cast.rs
 
-#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 extern crate cci_class_cast;

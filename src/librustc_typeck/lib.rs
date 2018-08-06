@@ -74,7 +74,6 @@ This API is completely unstable and subject to change.
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![feature(from_ref)]
 #![feature(exhaustive_patterns)]
 #![feature(iterator_find_map)]
 #![feature(quote)]
