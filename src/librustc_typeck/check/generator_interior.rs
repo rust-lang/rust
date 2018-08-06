@@ -167,7 +167,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
 
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
-        let ty = self.fcx.tables.borrow().expr_ty_adjusted(expr);
+        // Record the unadjusted type
+        let ty = self.fcx.tables.borrow().expr_ty(expr);
         self.record(ty, scope, Some(expr), expr.span);
+
+        // Also include the adjusted types, since these can result in MIR locals
+        for adjustment in self.fcx.tables.borrow().expr_adjustments(expr) {
+            self.record(adjustment.target, scope, Some(expr), expr.span);
+        }
     }
 }
