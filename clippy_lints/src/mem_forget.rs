@@ -37,10 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemForget {
                     if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
                         let forgot_ty = cx.tables.expr_ty(&args[0]);
 
-                        if match forgot_ty.ty_adt_def() {
-                            Some(def) => def.has_dtor(cx.tcx),
-                            _ => false,
-                        } {
+                        if forgot_ty.ty_adt_def().map_or(false, |def| def.has_dtor(cx.tcx)) {
                             span_lint(cx, MEM_FORGET, e.span, "usage of mem::forget on Drop type");
                         }
                     }
