@@ -716,10 +716,6 @@ impl<'a> LoweringContext<'a> {
     /// the vector of names to define later. In that case, it will get
     /// added to the appropriate generics.
     fn maybe_collect_in_band_lifetime(&mut self, ident: Ident) {
-        if !self.is_collecting_in_band_lifetimes {
-            return;
-        }
-
         if !self.sess.features_untracked().in_band_lifetimes {
             return;
         }
