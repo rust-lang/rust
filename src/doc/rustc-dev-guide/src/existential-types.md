@@ -7,7 +7,7 @@ type.
 
 In the language they are expressed via
 
-```
+```rust,ignore
 existential type Foo: Bar;
 ```
 
@@ -17,7 +17,7 @@ the `Bar` trait's interface.
 Since there needs to be a concrete background type, you can currently
 express that type by using the existential type in a "defining use site".
 
-```
+```rust,ignore
 struct Struct;
 impl Bar for Struct { /* stuff */ }
 fn foo() -> Foo {
