@@ -16,6 +16,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
 use borrow_check::MirBorrowckCtxt;
+use borrow_check::prefixes::PrefixSet;
 use dataflow::move_paths::{IllegalMoveOrigin, IllegalMoveOriginKind};
 use dataflow::move_paths::{LookupResult, MoveError, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
@@ -254,15 +255,16 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         // borrow to provide feedback about why this
                         // was a move rather than a copy.
                         let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                        let is_upvar_field_projection =
+                            self.prefixes(&original_path, PrefixSet::All)
+                            .any(|p| p.is_upvar_field_projection(self.mir, &self.tcx)
+                                 .is_some());
                         match ty.sty {
                             ty::TyArray(..) | ty::TySlice(..) => self
                                 .tcx
                                 .cannot_move_out_of_interior_noncopy(span, ty, None, origin),
                             ty::TyClosure(def_id, closure_substs)
-                                if !self.mir.upvar_decls.is_empty() &&
-                                    original_path.strip_deref_projections()
-                                        .is_upvar_field_projection(self.mir, &self.tcx)
-                                        .is_some()
+                                if !self.mir.upvar_decls.is_empty() && is_upvar_field_projection
                             => {
                                 let closure_kind_ty =
                                     closure_substs.closure_kind_ty(def_id, self.tcx);
@@ -286,13 +288,18 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 let mut diag = self.tcx.cannot_move_out_of(
                                     span, place_description, origin);
 
-                                if let Some(field) = original_path.is_upvar_field_projection(
-                                        self.mir, &self.tcx) {
-                                    let upvar_decl = &self.mir.upvar_decls[field.index()];
-                                    let upvar_hir_id = upvar_decl.var_hir_id.assert_crate_local();
-                                    let upvar_node_id = self.tcx.hir.hir_to_node_id(upvar_hir_id);
-                                    let upvar_span = self.tcx.hir.span(upvar_node_id);
-                                    diag.span_label(upvar_span, "captured outer variable");
+                                for prefix in self.prefixes(&original_path, PrefixSet::All) {
+                                    if let Some(field) = prefix.is_upvar_field_projection(
+                                            self.mir, &self.tcx) {
+                                        let upvar_decl = &self.mir.upvar_decls[field.index()];
+                                        let upvar_hir_id =
+                                            upvar_decl.var_hir_id.assert_crate_local();
+                                        let upvar_node_id =
+                                            self.tcx.hir.hir_to_node_id(upvar_hir_id);
+                                        let upvar_span = self.tcx.hir.span(upvar_node_id);
+                                        diag.span_label(upvar_span, "captured outer variable");
+                                        break;
+                                    }
                                 }
 
                                 diag

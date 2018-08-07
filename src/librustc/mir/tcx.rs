@@ -151,24 +151,9 @@ impl<'tcx> Place<'tcx> {
                     }
                 },
                 _ => None,
-            },
+            }
             _ => None,
         }
-    }
-
-    /// Strip the deref projections from a `Place`. For example, given `(*(*((*_1).0: &&T)))`, this
-    /// will return `((*_1).0)`. Once stripped of any deref projections, places can then be
-    /// checked as upvar field projections using `is_upvar_field_projection`.
-    pub fn strip_deref_projections(&self) -> &Place<'tcx> {
-        let mut current = self;
-        while let Place::Projection(ref proj) = current {
-            if let ProjectionElem::Deref = proj.elem {
-                current = &proj.base;
-            } else {
-                break;
-            }
-        }
-        current
     }
 }
 
