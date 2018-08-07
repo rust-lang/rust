@@ -31,12 +31,10 @@
 // initialization closure panics, the Once enters a "poisoned" state which means
 // that all future calls will immediately panic as well.
 //
-// So to implement this, one might first reach for a `StaticMutex`, but those
-// unfortunately need to be deallocated (e.g. call `destroy()`) to free memory
-// on all OSes (some of the BSDs allocate memory for mutexes). It also gets a
-// lot harder with poisoning to figure out when the mutex needs to be
-// deallocated because it's not after the closure finishes, but after the first
-// successful closure finishes.
+// So to implement this, one might first reach for a `Mutex`, but those cannot
+// be put into a `static`. It also gets a lot harder with poisoning to figure
+// out when the mutex needs to be deallocated because it's not after the closure
+// finishes, but after the first successful closure finishes.
 //
 // All in all, this is instead implemented with atomics and lock-free
 // operations! Whee! Each `Once` has one word of atomic state, and this state is

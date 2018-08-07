@@ -49,9 +49,6 @@ impl Mutex {
         // references, we instead create the mutex with type
         // PTHREAD_MUTEX_NORMAL which is guaranteed to deadlock if we try to
         // re-lock it from the same thread, thus avoiding undefined behavior.
-        //
-        // We can't do anything for StaticMutex, but that type is deprecated
-        // anyways.
         let mut attr: libc::pthread_mutexattr_t = mem::uninitialized();
         let r = libc::pthread_mutexattr_init(&mut attr);
         debug_assert_eq!(r, 0);
