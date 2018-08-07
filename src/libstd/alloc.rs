@@ -10,14 +10,29 @@
 
 //! Memory allocation APIs
 //!
-//! In a given program, the standard library has one “global” memory allocator
-//! that is used for example by `Box<T>` and `Vec<T>`.
+//! In a given program, the standard library has one global memory allocator
+//! that allocates space on the heap for types like `Box<T>` and `Vec<T>`.
+//! It is similar in function to `malloc` in C.
 //!
-//! Currently the default global allocator is unspecified.
-//! The compiler may link to a version of [jemalloc] on some platforms,
-//! but this is not guaranteed.
-//! Libraries, however, like `cdylib`s and `staticlib`s are guaranteed
-//! to use the [`System`] by default.
+//! The global memory allocator is typically provided either by the operating
+//! system's default allocator (the [`System`] allocator), or by [jemalloc], a
+//! high-performance allocator tuned for parallel workloads.
+//!
+//! On Mac OS X, Linux and most Unixes (but not Windows), jemalloc is the
+//! default allocator for executables. `cdylib`s and `staticlib`s however always
+//! use the system allocator for compatibility with their host programs.
+//!
+//! The following overrides the default jemalloc-based allocator and
+//! instead uses the system allocator for global allocations.
+//!
+//! ```rust
+//! #[global_allocator]
+//! static GLOBAL: std::alloc::System = std::alloc::System;
+//! ```
+//!
+//! Note: in the future the default allocator for all platforms
+//! will be the system allocator, and external crates will
+//! provide alternative allocators, including jemalloc.
 //!
 //! [jemalloc]: https://github.com/jemalloc/jemalloc
 //! [`System`]: struct.System.html
