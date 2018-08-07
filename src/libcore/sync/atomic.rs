@@ -397,9 +397,14 @@ impl AtomicBool {
     /// Stores a value into the bool, returning the previous value.
     ///
     /// `swap` takes an [`Ordering`] argument which describes the memory ordering
-    /// of this operation.
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
     /// # Examples
     ///
@@ -426,8 +431,13 @@ impl AtomicBool {
     /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. Notice that even when using [`AcqRel`], the operation
     /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
+    /// Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
+    /// happens, and using [`Release`] makes the load part [`Relaxed`].
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     /// [`bool`]: ../../../std/primitive.bool.html
     ///
@@ -462,13 +472,18 @@ impl AtomicBool {
     /// `compare_exchange` takes two [`Ordering`] arguments to describe the memory
     /// ordering of this operation. The first describes the required ordering if the
     /// operation succeeds while the second describes the required ordering when the
-    /// operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and must
-    /// be equivalent to or weaker than the success ordering.
+    /// operation fails. Using [`Acquire`] as success ordering makes the store part
+    /// of this operation [`Relaxed`], and using [`Release`] makes the successful load
+    /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+    /// and must be equivalent to or weaker than the success ordering.
+    ///
     ///
     /// [`bool`]: ../../../std/primitive.bool.html
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`AcqRel`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -515,16 +530,20 @@ impl AtomicBool {
     /// previous value.
     ///
     /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
-    /// ordering of this operation. The first describes the required ordering if the operation
-    /// succeeds while the second describes the required ordering when the operation fails. The
-    /// failure ordering can't be [`Release`] or [`AcqRel`] and must be equivalent or
-    /// weaker than the success ordering.
+    /// ordering of this operation. The first describes the required ordering if the
+    /// operation succeeds while the second describes the required ordering when the
+    /// operation fails. Using [`Acquire`] as success ordering makes the store part
+    /// of this operation [`Relaxed`], and using [`Release`] makes the successful load
+    /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+    /// and must be equivalent to or weaker than the success ordering.
     ///
     /// [`bool`]: ../../../std/primitive.bool.html
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`AcqRel`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -565,6 +584,16 @@ impl AtomicBool {
     ///
     /// Returns the previous value.
     ///
+    /// `fetch_and` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    ///
     /// # Examples
     ///
     /// ```
@@ -595,6 +624,16 @@ impl AtomicBool {
     /// the new value to the result.
     ///
     /// Returns the previous value.
+    ///
+    /// `fetch_nand` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
     /// # Examples
     ///
@@ -640,6 +679,16 @@ impl AtomicBool {
     ///
     /// Returns the previous value.
     ///
+    /// `fetch_or` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    ///
     /// # Examples
     ///
     /// ```
@@ -670,6 +719,16 @@ impl AtomicBool {
     /// the new value to the result.
     ///
     /// Returns the previous value.
+    ///
+    /// `fetch_xor` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
     /// # Examples
     ///
@@ -824,9 +883,14 @@ impl<T> AtomicPtr<T> {
     /// Stores a value into the pointer, returning the previous value.
     ///
     /// `swap` takes an [`Ordering`] argument which describes the memory ordering
-    /// of this operation.
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     ///
     /// # Examples
     ///
@@ -855,8 +919,14 @@ impl<T> AtomicPtr<T> {
     /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. Notice that even when using [`AcqRel`], the operation
     /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
+    /// Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
+    /// happens, and using [`Release`] makes the load part [`Relaxed`].
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     ///
     /// # Examples
     ///
@@ -887,14 +957,18 @@ impl<T> AtomicPtr<T> {
     /// the previous value. On success this value is guaranteed to be equal to `current`.
     ///
     /// `compare_exchange` takes two [`Ordering`] arguments to describe the memory
-    /// ordering of this operation. The first describes the required ordering if
-    /// the operation succeeds while the second describes the required ordering when
-    /// the operation fails. The failure ordering can't be [`Release`] or [`AcqRel`]
-    /// and must be equivalent or weaker than the success ordering.
+    /// ordering of this operation. The first describes the required ordering if the
+    /// operation succeeds while the second describes the required ordering when the
+    /// operation fails. Using [`Acquire`] as success ordering makes the store part
+    /// of this operation [`Relaxed`], and using [`Release`] makes the successful load
+    /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+    /// and must be equivalent to or weaker than the success ordering.
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -940,15 +1014,19 @@ impl<T> AtomicPtr<T> {
     /// previous value.
     ///
     /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
-    /// ordering of this operation. The first describes the required ordering if the operation
-    /// succeeds while the second describes the required ordering when the operation fails. The
-    /// failure ordering can't be [`Release`] or [`AcqRel`] and must be equivalent or
-    /// weaker than the success ordering.
+    /// ordering of this operation. The first describes the required ordering if the
+    /// operation succeeds while the second describes the required ordering when the
+    /// operation fails. Using [`Acquire`] as success ordering makes the store part
+    /// of this operation [`Relaxed`], and using [`Release`] makes the successful load
+    /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+    /// and must be equivalent to or weaker than the success ordering.
     ///
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -1191,9 +1269,15 @@ assert_eq!(some_var.load(Ordering::Relaxed), 10);
             doc_comment! {
                 concat!("Stores a value into the atomic integer, returning the previous value.
 
-`swap` takes an [`Ordering`] argument which describes the memory ordering of this operation.
+`swap` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
 
 [`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
@@ -1222,8 +1306,14 @@ value was updated.
 `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
 ordering of this operation. Notice that even when using [`AcqRel`], the operation
 might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
+Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
+happens, and using [`Release`] makes the load part [`Relaxed`].
 
 [`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+[`AcqRel`]: enum.Ordering.html#variant.AcqRel
 
 # Examples
 
@@ -1264,14 +1354,18 @@ containing the previous value. On success this value is guaranteed to be equal t
 `current`.
 
 `compare_exchange` takes two [`Ordering`] arguments to describe the memory
-ordering of this operation. The first describes the required ordering if
-the operation succeeds while the second describes the required ordering when
-the operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and
-must be equivalent or weaker than the success ordering.
+ordering of this operation. The first describes the required ordering if the
+operation succeeds while the second describes the required ordering when the
+operation fails. Using [`Acquire`] as success ordering makes the store part
+of this operation [`Relaxed`], and using [`Release`] makes the successful load
+[`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+and must be equivalent to or weaker than the success ordering.
 
 [`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
-[`AcqRel`]: enum.Ordering.html#variant.AcqRel
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+[`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
 # Examples
 
@@ -1316,13 +1410,17 @@ written and containing the previous value.
 `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
 ordering of this operation. The first describes the required ordering if the
 operation succeeds while the second describes the required ordering when the
-operation fails. The failure ordering can't be [`Release`] or [`AcqRel`] and
-must be equivalent or weaker than the success ordering.
+operation fails. Using [`Acquire`] as success ordering makes the store part
+of this operation [`Relaxed`], and using [`Release`] makes the successful load
+[`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+and must be equivalent to or weaker than the success ordering.
 
 [`compare_exchange`]: #method.compare_exchange
 [`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
-[`AcqRel`]: enum.Ordering.html#variant.AcqRel
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+[`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
 # Examples
 
@@ -1358,6 +1456,16 @@ loop {
 
 This operation wraps around on overflow.
 
+`fetch_add` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+
 # Examples
 
 ```
@@ -1378,6 +1486,16 @@ assert_eq!(foo.load(Ordering::SeqCst), 10);
                 concat!("Subtracts from the current value, returning the previous value.
 
 This operation wraps around on overflow.
+
+`fetch_sub` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
@@ -1403,6 +1521,16 @@ sets the new value to the result.
 
 Returns the previous value.
 
+`fetch_and` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+
 # Examples
 
 ```
@@ -1426,6 +1554,16 @@ Performs a bitwise \"nand\" operation on the current value and the argument `val
 sets the new value to the result.
 
 Returns the previous value.
+
+`fetch_nand` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
@@ -1452,6 +1590,16 @@ sets the new value to the result.
 
 Returns the previous value.
 
+`fetch_or` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+
 # Examples
 
 ```
@@ -1475,6 +1623,16 @@ Performs a bitwise \"xor\" operation on the current value and the argument `val`
 sets the new value to the result.
 
 Returns the previous value.
+
+`fetch_xor` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
@@ -1500,6 +1658,25 @@ new value. Returns a `Result` of `Ok(previous_value)` if the function returned `
 Note: This may call the function multiple times if the value has been changed from other threads in
 the meantime, as long as the function returns `Some(_)`, but the function will have been applied
 but once to the stored value.
+
+`fetch_update` takes two [`Ordering`] arguments to describe the memory
+ordering of this operation. The first describes the required ordering for loads
+and failed updates while the second describes the required ordering when the
+operation finally succeeds. Beware that this is different from the two
+modes in [`compare_exchange`]!
+
+Using [`Acquire`] as success ordering makes the store part
+of this operation [`Relaxed`], and using [`Release`] makes the final successful load
+[`Relaxed`]. The (failed) load ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+and must be equivalent to or weaker than the success ordering.
+
+[`bool`]: ../../../std/primitive.bool.html
+[`compare_exchange`]: #method.compare_exchange
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+[`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
 # Examples
 
@@ -1541,6 +1718,16 @@ sets the new value to the result.
 
 Returns the previous value.
 
+`fetch_max` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+
 # Examples
 
 ```
@@ -1579,6 +1766,16 @@ Finds the minimum of the current value and the argument `val`, and
 sets the new value to the result.
 
 Returns the previous value.
+
+`fetch_min` takes an [`Ordering`] argument which describes the memory ordering
+of this operation. All ordering modes are possible. Note that using
+[`Acquire`] makes the store part of this operation [`Relaxed`], and
+using [`Release`] makes the load part [`Relaxed`].
+
+[`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
 
 # Examples
 
