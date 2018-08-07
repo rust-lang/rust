@@ -73,7 +73,7 @@ fn current_op(p: &Parser) -> (u8, Op) {
     let bp = match p.current() {
         EQ => 1,
         DOTDOT => 2,
-        EQEQ | NEQ => 5,
+        EQEQ | NEQ | L_ANGLE | R_ANGLE => 5,
         PIPE => 6,
         CARET => 7,
         AMP => 8,
