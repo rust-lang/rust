@@ -147,7 +147,7 @@ fn parse_args(ecx: &mut ExtCtxt,
     let mut named = false;
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
-            ecx.span_err(sp, "expected token: `,`");
+            ecx.span_err(p.span, "expected token: `,`");
             return None;
         }
         if p.token == token::Eof {

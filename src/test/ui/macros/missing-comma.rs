@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+macro_rules! foo {
+    ($a:ident, $b:ident) => ()
+}
+
 fn main() {
     println!("{}" a);
-    //~^ ERROR no rules expected the token `a`
+    //~^ ERROR expected token: `,`
+    foo!(a b);
+    //~^ ERROR no rules expected the token `b`
 }
