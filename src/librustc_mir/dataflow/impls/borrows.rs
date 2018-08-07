@@ -233,7 +233,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 // propagate_call_return method.
 
                 if let mir::Rvalue::Ref(region, _, ref place) = *rhs {
-                    if place.is_unsafe_place(self.tcx, self.mir) { return; }
+                    if place.ignore_borrow(self.tcx, self.mir) { return; }
                     let index = self.borrow_set.location_map.get(&location).unwrap_or_else(|| {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });
