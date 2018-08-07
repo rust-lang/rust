@@ -1247,7 +1247,7 @@ impl<T> Receiver<T> {
     /// [`SyncSender`]: struct.SyncSender.html
     /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
     ///
-    /// # Panics
+    /// # Known Issues
     ///
     /// There is currently a known issue (see [`#39364`]) that causes `recv_timeout`
     /// to panic unexpectedly with the following example:
@@ -1256,7 +1256,7 @@ impl<T> Receiver<T> {
     /// use std::sync::mpsc::channel;
     /// use std::thread;
     /// use std::time::Duration;
-    /// 
+    ///
     /// let (tx, rx) = channel::<String>();
     ///
     /// thread::spawn(move || {
