@@ -171,9 +171,7 @@ Grammar(
 
         // unary
         "REF_EXPR",
-        "DEREF_EXPR",
-        "NOT_EXPR",
-        "NEG_EXPR",
+        "PREFIX_EXPR",
 
         "RANGE_EXPR", // just weird
         "BIN_EXPR",

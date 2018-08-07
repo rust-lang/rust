@@ -130,28 +130,18 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
         // fn foo() {
         //     **&1;
         // }
-        STAR => {
-            m = p.start();
-            p.bump();
-            DEREF_EXPR
-        }
         // test not_expr
         // fn foo() {
         //     !!true;
         // }
-        EXCL => {
-            m = p.start();
-            p.bump();
-            NOT_EXPR
-        }
         // test neg_expr
         // fn foo() {
         //     --1;
         // }
-        MINUS => {
+        STAR | EXCL | MINUS => {
             m = p.start();
             p.bump();
-            NEG_EXPR
+            PREFIX_EXPR
         }
         DOTDOT => {
             m = p.start();
