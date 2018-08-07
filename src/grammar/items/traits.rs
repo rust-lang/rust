@@ -12,6 +12,16 @@ pub(super) fn trait_item(p: &mut Parser) {
     }
     type_params::where_clause(p);
     p.expect(L_CURLY);
+    // test trait_item_items
+    // impl F {
+    //     type A: Clone;
+    //     const B: i32;
+    //     fn foo() {}
+    //     fn bar(&self);
+    // }
+    while !p.at(EOF) && !p.at(R_CURLY) {
+        item_or_macro(p, true);
+    }
     p.expect(R_CURLY);
 }
 

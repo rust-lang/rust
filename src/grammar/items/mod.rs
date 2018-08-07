@@ -240,7 +240,11 @@ fn fn_item(p: &mut Parser) {
     // fn foo<T>() where T: Copy {}
     type_params::where_clause(p);
 
-    expressions::block(p);
+    // test fn_decl
+    // trait T { fn foo(); }
+    if !p.eat(SEMI) {
+        expressions::block(p);
+    }
 }
 
 // test type_item
@@ -255,12 +259,17 @@ fn type_item(p: &mut Parser) {
     // type Result<T> = ();
     type_params::type_param_list(p);
 
+    if p.at(COLON) {
+        type_params::bounds(p);
+    }
+
     // test type_item_where_clause
     // type Foo where Foo: Copy = ();
     type_params::where_clause(p);
 
-    p.expect(EQ);
-    types::type_(p);
+    if p.eat(EQ) {
+        types::type_(p);
+    }
     p.expect(SEMI);
 }
 

@@ -14,7 +14,8 @@ fn const_or_static(p: &mut Parser, kw: SyntaxKind) {
     p.eat(MUT_KW); // TODO: validator to forbid const mut
     name(p);
     types::ascription(p);
-    p.expect(EQ);
-    expressions::expr(p);
+    if p.eat(EQ) {
+        expressions::expr(p);
+    }
     p.expect(SEMI);
 }
