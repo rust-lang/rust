@@ -29,7 +29,7 @@
 //!
 //! [`Ordering`]: enum.Ordering.html
 //!
-//! [1]: http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations
+//! [1]: https://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations
 //! [2]: ../../../nomicon/atomics.html
 //!
 //! Atomic variables are safe to share between threads (they implement [`Sync`])
@@ -178,7 +178,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// "relaxed" atomics allow all reorderings.
 ///
 /// Rust's memory orderings are [the same as
-/// LLVM's](http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
+/// LLVM's](https://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
 ///
 /// For more information see the [nomicon].
 ///
@@ -190,7 +190,7 @@ pub enum Ordering {
     ///
     /// Corresponds to LLVM's [`Monotonic`] ordering.
     ///
-    /// [`Monotonic`]: http://llvm.org/docs/Atomics.html#monotonic
+    /// [`Monotonic`]: https://llvm.org/docs/Atomics.html#monotonic
     #[stable(feature = "rust1", since = "1.0.0")]
     Relaxed,
     /// When coupled with a store, all previous operations become ordered
@@ -205,8 +205,8 @@ pub enum Ordering {
     ///
     /// Corresponds to LLVM's [`Release`] ordering.
     ///
-    /// [`Release`]: http://llvm.org/docs/Atomics.html#release
-    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
+    /// [`Release`]: https://llvm.org/docs/Atomics.html#release
+    /// [`Acquire`]: https://llvm.org/docs/Atomics.html#acquire
     /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
     #[stable(feature = "rust1", since = "1.0.0")]
     Release,
@@ -222,8 +222,8 @@ pub enum Ordering {
     ///
     /// Corresponds to LLVM's [`Acquire`] ordering.
     ///
-    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
-    /// [`Release`]: http://llvm.org/docs/Atomics.html#release
+    /// [`Acquire`]: https://llvm.org/docs/Atomics.html#acquire
+    /// [`Release`]: https://llvm.org/docs/Atomics.html#release
     /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
     #[stable(feature = "rust1", since = "1.0.0")]
     Acquire,
@@ -238,9 +238,9 @@ pub enum Ordering {
     ///
     /// Corresponds to LLVM's [`AcquireRelease`] ordering.
     ///
-    /// [`AcquireRelease`]: http://llvm.org/docs/Atomics.html#acquirerelease
-    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
-    /// [`Release`]: http://llvm.org/docs/Atomics.html#release
+    /// [`AcquireRelease`]: https://llvm.org/docs/Atomics.html#acquirerelease
+    /// [`Acquire`]: https://llvm.org/docs/Atomics.html#acquire
+    /// [`Release`]: https://llvm.org/docs/Atomics.html#release
     /// [`Relaxed`]: https://llvm.org/docs/Atomics.html#monotonic
     #[stable(feature = "rust1", since = "1.0.0")]
     AcqRel,
@@ -250,9 +250,9 @@ pub enum Ordering {
     ///
     /// Corresponds to LLVM's [`SequentiallyConsistent`] ordering.
     ///
-    /// [`SequentiallyConsistent`]: http://llvm.org/docs/Atomics.html#sequentiallyconsistent
-    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
-    /// [`Release`]: http://llvm.org/docs/Atomics.html#release
+    /// [`SequentiallyConsistent`]: https://llvm.org/docs/Atomics.html#sequentiallyconsistent
+    /// [`Acquire`]: https://llvm.org/docs/Atomics.html#acquire
+    /// [`Release`]: https://llvm.org/docs/Atomics.html#release
     /// [`AcqRel`]: https://llvm.org/docs/Atomics.html#acquirerelease
     #[stable(feature = "rust1", since = "1.0.0")]
     SeqCst,
@@ -423,7 +423,7 @@ impl AtomicBool {
     /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
     ///
     /// [`Ordering`]: enum.Ordering.html
-    /// [`Ordering`]: enum.Ordering.html#variant.AcqRel
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
