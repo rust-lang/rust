@@ -269,7 +269,6 @@ mod c {
                         &[
                             "x86_64/floatdixf.c",
                             "x86_64/floatundidf.S",
-                            "x86_64/floatundisf.S",
                             "x86_64/floatundixf.S",
                         ],
                     );
