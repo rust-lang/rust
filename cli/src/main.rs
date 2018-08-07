@@ -32,15 +32,20 @@ fn main() -> Result<()> {
                         .takes_value(true),
                 ),
         )
-        .subcommand(SubCommand::with_name("parse"))
+        .subcommand(
+            SubCommand::with_name("parse")
+                .arg(Arg::with_name("no-dump").long("--no-dump"))
+        )
         .subcommand(SubCommand::with_name("symbols"))
         .get_matches();
     match matches.subcommand() {
-        ("parse", _) => {
+        ("parse", Some(matches)) => {
             let start = Instant::now();
             let file = file()?;
             let elapsed = start.elapsed();
-            println!("{}", file.syntax_tree());
+            if !matches.is_present("no-dump") {
+                println!("{}", file.syntax_tree());
+            }
             eprintln!("parsing: {:?}", elapsed);
         }
         ("symbols", _) => {
