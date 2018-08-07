@@ -151,7 +151,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let location_table = &LocationTable::new(mir);
 
     let mut errors_buffer = Vec::new();
-    let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<MoveError<'tcx>>>) =
+    let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<(Place<'tcx>, MoveError<'tcx>)>>) =
         match MoveData::gather_moves(mir, tcx) {
             Ok(move_data) => (move_data, None),
             Err((move_data, move_errors)) => (move_data, Some(move_errors)),

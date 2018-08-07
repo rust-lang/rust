@@ -127,14 +127,14 @@ impl<'tcx> Place<'tcx> {
     /// of a closure type.
     pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
                                                 tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
-        let place = if let Place::Projection(ref proj) = self {
+        let (place, by_ref) = if let Place::Projection(ref proj) = self {
             if let ProjectionElem::Deref = proj.elem {
-                &proj.base
+                (&proj.base, true)
             } else {
-                self
+                (self, false)
             }
         } else {
-            self
+            (self, false)
         };
 
         match place {
@@ -142,7 +142,9 @@ impl<'tcx> Place<'tcx> {
                 ProjectionElem::Field(field, _ty) => {
                     let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
 
-                    if  base_ty.is_closure() || base_ty.is_generator() {
+                    if (base_ty.is_closure() || base_ty.is_generator()) &&
+                        (!by_ref || mir.upvar_decls[field.index()].by_ref)
+                    {
                         Some(field)
                     } else {
                         None
@@ -152,6 +154,21 @@ impl<'tcx> Place<'tcx> {
             },
             _ => None,
         }
+    }
+
+    /// Strip the deref projections from a `Place`. For example, given `(*(*((*_1).0: &&T)))`, this
+    /// will return `((*_1).0)`. Once stripped of any deref projections, places can then be
+    /// checked as upvar field projections using `is_upvar_field_projection`.
+    pub fn strip_deref_projections(&self) -> &Place<'tcx> {
+        let mut current = self;
+        while let Place::Projection(ref proj) = current {
+            if let ProjectionElem::Deref = proj.elem {
+                current = &proj.base;
+            } else {
+                break;
+            }
+        }
+        current
     }
 }
 

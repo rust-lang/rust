@@ -11,8 +11,8 @@
 use rustc::hir;
 use rustc::mir::*;
 use rustc::ty;
-use rustc_data_structures::indexed_vec::Idx;
 use rustc_errors::DiagnosticBuilder;
+use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
 use borrow_check::MirBorrowckCtxt;
@@ -38,6 +38,7 @@ enum GroupedMoveError<'tcx> {
     // Match place can't be moved from
     // e.g. match x[0] { s => (), } where x: &[String]
     MovesFromMatchPlace {
+        original_path: Place<'tcx>,
         span: Span,
         move_from: Place<'tcx>,
         kind: IllegalMoveOriginKind<'tcx>,
@@ -46,6 +47,7 @@ enum GroupedMoveError<'tcx> {
     // Part of a pattern can't be moved from,
     // e.g. match &String::new() { &x => (), }
     MovesFromPattern {
+        original_path: Place<'tcx>,
         span: Span,
         move_from: MovePathIndex,
         kind: IllegalMoveOriginKind<'tcx>,
@@ -53,23 +55,27 @@ enum GroupedMoveError<'tcx> {
     },
     // Everything that isn't from pattern matching.
     OtherIllegalMove {
+        original_path: Place<'tcx>,
         span: Span,
         kind: IllegalMoveOriginKind<'tcx>,
     },
 }
 
 impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
-    pub(crate) fn report_move_errors(&mut self, move_errors: Vec<MoveError<'tcx>>) {
+    pub(crate) fn report_move_errors(&mut self, move_errors: Vec<(Place<'tcx>, MoveError<'tcx>)>) {
         let grouped_errors = self.group_move_errors(move_errors);
         for error in grouped_errors {
             self.report(error);
         }
     }
 
-    fn group_move_errors(&self, errors: Vec<MoveError<'tcx>>) -> Vec<GroupedMoveError<'tcx>> {
+    fn group_move_errors(
+        &self,
+        errors: Vec<(Place<'tcx>, MoveError<'tcx>)>
+    ) -> Vec<GroupedMoveError<'tcx>> {
         let mut grouped_errors = Vec::new();
-        for error in errors {
-            self.append_to_grouped_errors(&mut grouped_errors, error);
+        for (original_path, error) in errors {
+            self.append_to_grouped_errors(&mut grouped_errors, original_path, error);
         }
         grouped_errors
     }
@@ -77,6 +83,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
     fn append_to_grouped_errors(
         &self,
         grouped_errors: &mut Vec<GroupedMoveError<'tcx>>,
+        original_path: Place<'tcx>,
         error: MoveError<'tcx>,
     ) {
         match error {
@@ -116,6 +123,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         self.append_binding_error(
                             grouped_errors,
                             kind,
+                            original_path,
                             move_from,
                             *local,
                             opt_match_place,
@@ -127,6 +135,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 }
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {
                     span: stmt_source_info.span,
+                    original_path,
                     kind,
                 });
             }
@@ -137,6 +146,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         &self,
         grouped_errors: &mut Vec<GroupedMoveError<'tcx>>,
         kind: IllegalMoveOriginKind<'tcx>,
+        original_path: Place<'tcx>,
         move_from: &Place<'tcx>,
         bind_to: Local,
         match_place: &Option<Place<'tcx>>,
@@ -176,6 +186,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 grouped_errors.push(GroupedMoveError::MovesFromMatchPlace {
                     span,
                     move_from: match_place.clone(),
+                    original_path,
                     kind,
                     binds_to,
                 });
@@ -206,6 +217,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 grouped_errors.push(GroupedMoveError::MovesFromPattern {
                     span: match_span,
                     move_from: mpi,
+                    original_path,
                     kind,
                     binds_to: vec![bind_to],
                 });
@@ -215,13 +227,23 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
     fn report(&mut self, error: GroupedMoveError<'tcx>) {
         let (mut err, err_span) = {
-            let (span, kind): (Span, &IllegalMoveOriginKind) = match error {
-                GroupedMoveError::MovesFromMatchPlace { span, ref kind, .. }
-                | GroupedMoveError::MovesFromPattern { span, ref kind, .. }
-                | GroupedMoveError::OtherIllegalMove { span, ref kind } => (span, kind),
-            };
+            let (span, original_path, kind): (Span, &Place<'tcx>, &IllegalMoveOriginKind) =
+                match error {
+                    GroupedMoveError::MovesFromMatchPlace {
+                        span,
+                        ref original_path,
+                        ref kind,
+                        ..
+                    } |
+                    GroupedMoveError::MovesFromPattern { span, ref original_path, ref kind, .. } |
+                    GroupedMoveError::OtherIllegalMove { span, ref original_path, ref kind } => {
+                        (span, original_path, kind)
+                    },
+                };
             let origin = Origin::Mir;
-            debug!("report: span={:?}, kind={:?}", span, kind);
+            debug!("report: original_path={:?} span={:?}, kind={:?} \
+                   original_path.is_upvar_field_projection={:?}", original_path, span, kind,
+                   original_path.is_upvar_field_projection(self.mir, &self.tcx));
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
@@ -237,17 +259,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                 .tcx
                                 .cannot_move_out_of_interior_noncopy(span, ty, None, origin),
                             ty::TyClosure(def_id, closure_substs)
-                                if !self.mir.upvar_decls.is_empty()
-                                    && {
-                                        match place {
-                                            Place::Projection(ref proj) => {
-                                                proj.base == Place::Local(Local::new(1))
-                                            }
-                                            Place::Promoted(_) |
-                                            Place::Local(_) | Place::Static(_) => unreachable!(),
-                                        }
-                                    } =>
-                            {
+                                if !self.mir.upvar_decls.is_empty() &&
+                                    original_path.strip_deref_projections()
+                                        .is_upvar_field_projection(self.mir, &self.tcx)
+                                        .is_some()
+                            => {
                                 let closure_kind_ty =
                                     closure_substs.closure_kind_ty(def_id, self.tcx);
                                 let closure_kind = closure_kind_ty.to_opt_closure_kind();
@@ -267,7 +283,19 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                        place_description={:?}", closure_kind_ty, closure_kind,
                                        place_description);
 
-                                self.tcx.cannot_move_out_of(span, place_description, origin)
+                                let mut diag = self.tcx.cannot_move_out_of(
+                                    span, place_description, origin);
+
+                                if let Some(field) = original_path.is_upvar_field_projection(
+                                        self.mir, &self.tcx) {
+                                    let upvar_decl = &self.mir.upvar_decls[field.index()];
+                                    let upvar_hir_id = upvar_decl.var_hir_id.assert_crate_local();
+                                    let upvar_node_id = self.tcx.hir.hir_to_node_id(upvar_hir_id);
+                                    let upvar_span = self.tcx.hir.span(upvar_node_id);
+                                    diag.span_label(upvar_span, "captured outer variable");
+                                }
+
+                                diag
                             }
                             _ => self
                                 .tcx
