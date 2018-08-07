@@ -2,7 +2,7 @@ error[E0621]: explicit lifetime required in the type of `other`
   --> $DIR/ex1-return-one-existing-name-early-bound-in-struct.rs:21:21
    |
 LL |     fn bar(&self, other: Foo) -> Foo<'a> {
-   |                   ----- consider changing the type of `other` to `Foo<'a>`
+   |                          --- help: add explicit lifetime `'a` to the type of `other`: `Foo<'a>`
 ...
 LL |                     other //~ ERROR explicit lifetime
    |                     ^^^^^ lifetime `'a` required
