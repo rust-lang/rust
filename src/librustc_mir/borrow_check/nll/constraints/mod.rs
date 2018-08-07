@@ -37,9 +37,11 @@ impl ConstraintSet {
     }
 
     /// Constructs a graph from the constraint set; the graph makes it
-    /// easy to find the constraints affecting a particular region
-    /// (you should not mutate the set once this graph is
-    /// constructed).
+    /// easy to find the constraints affecting a particular region.
+    ///
+    /// NB: This graph contains a "frozen" view of the current
+    /// constraints.  any new constraints added to the `ConstraintSet`
+    /// after the graph is built will not be present in the graph.
     crate fn graph(&self, num_region_vars: usize) -> graph::ConstraintGraph {
         graph::ConstraintGraph::new(self, num_region_vars)
     }
