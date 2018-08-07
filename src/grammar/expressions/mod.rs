@@ -92,17 +92,20 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
     };
 
     loop {
+        let is_range = p.current() == DOTDOT;
         let (op_bp, op) = current_op(p);
         if op_bp < bp {
             break;
         }
+        let m = lhs.precede(p);
         match op {
             Op::Simple => p.bump(),
             Op::Composite(kind, n) => {
                 p.bump_compound(kind, n);
             }
         }
-        lhs = bin_expr(p, r, lhs, op_bp + 1);
+        expr_bp(p, r, op_bp + 1);
+        lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
 }
 
@@ -329,10 +332,4 @@ fn struct_lit(p: &mut Parser) {
         }
     }
     p.expect(R_CURLY);
-}
-
-fn bin_expr(p: &mut Parser, r: Restrictions, lhs: CompletedMarker, bp: u8) -> CompletedMarker {
-    let m = lhs.precede(p);
-    expr_bp(p, r, bp);
-    m.complete(p, BIN_EXPR)
 }
