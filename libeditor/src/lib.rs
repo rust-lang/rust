@@ -1,12 +1,13 @@
 extern crate libsyntax2;
-extern crate text_unit;
+
+mod extend_selection;
 
 use libsyntax2::{
     SyntaxNodeRef,
     algo::walk,
     SyntaxKind::*,
 };
-use text_unit::TextRange;
+pub use libsyntax2::{TextRange, TextUnit};
 
 pub struct File {
     inner: libsyntax2::File
@@ -71,6 +72,11 @@ impl File {
             .collect();
         res // NLL :-(
     }
+
+    pub fn extend_selection(&self, range: TextRange) -> Option<TextRange> {
+        let syntax = self.inner.syntax();
+        extend_selection::extend_selection(syntax.as_ref(), range)
+    }
 }
 
 
@@ -94,5 +100,24 @@ impl<'f> Declaration<'f> {
 
     fn range(&self) -> TextRange {
         self.0.range()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extend_selection() {
+        let text = r#"fn foo() {
+    1 + 1
+}
+"#;
+        let file = File::new(text);
+        let range = TextRange::offset_len(18.into(), 0.into());
+        let range = file.extend_selection(range).unwrap();
+        assert_eq!(range, TextRange::from_to(17.into(), 18.into()));
+        let range = file.extend_selection(range).unwrap();
+        assert_eq!(range, TextRange::from_to(15.into(), 20.into()));
     }
 }

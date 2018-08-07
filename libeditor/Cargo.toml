@@ -6,4 +6,3 @@ publish = false
 
 [dependencies]
 libsyntax2 = { path = "../" }
-text_unit = "0.1.2"

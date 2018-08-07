@@ -34,6 +34,16 @@ export function activate(context: vscode.ExtensionContext) {
     ))
 
     registerCommand('libsyntax-rust.syntaxTree', () => openDoc(uris.syntaxTree))
+    registerCommand('libsyntax-rust.extendSelection', () => {
+        let editor = vscode.window.activeTextEditor
+        let file = activeSyntax()
+        if (editor == null || file == null) return
+        editor.selections = editor.selections.map((s) => {
+            let range = file.extendSelection(s)
+            if (range == null) return null
+            return new vscode.Selection(range.start, range.end)
+        })
+    })
 }
 
 export function deactivate() { }
@@ -49,6 +59,11 @@ export class Syntax {
 
     syntaxTree(): string { return this.imp.syntaxTree() }
     highlight(): Array<[number, number, string]> { return this.imp.highlight() }
+    extendSelection(range: vscode.Range): vscode.Range {
+        let range_ = fromVsRange(this.doc, range);
+        let extRange = this.imp.extendSelection(range_[0], range_[1]);
+        return toVsRange(this.doc, extRange);
+    }
 }
 
 

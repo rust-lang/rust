@@ -115,6 +115,10 @@ impl<R: TreeRoot> SyntaxNode<R> {
         })
     }
 
+    pub fn is_leaf(&self) -> bool {
+        self.first_child().is_none()
+    }
+
     fn red(&self) -> &RedNode {
         unsafe { self.red.as_ref() }
     }

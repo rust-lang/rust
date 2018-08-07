@@ -36,11 +36,15 @@
             {
                 "command": "libsyntax-rust.syntaxTree",
                 "title": "Show Rust syntax tree"
+            },
+            {
+                "command": "libsyntax-rust.extendSelection",
+                "title": "Rust Extend Selection"
             }
         ],
         "keybindings": [
             {
-                "command": "libsyntax-rust.semanticSelection",
+                "command": "libsyntax-rust.extendSelection",
                 "key": "ctrl+w",
                 "when": "editorTextFocus && editorLangId == rust"
             }
