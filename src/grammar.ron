@@ -162,6 +162,7 @@ Grammar(
         "METHOD_CALL_EXPR",
         "FIELD_EXPR",
         "TRY_EXPR",
+        "CAST_EXPR",
 
         // unary
         "REF_EXPR",

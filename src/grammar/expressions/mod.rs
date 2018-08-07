@@ -183,6 +183,7 @@ fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
                 m.complete(p, RANGE_EXPR)
             }
             QUESTION => try_expr(p, lhs),
+            AS_KW => cast_expr(p, lhs),
             _ => break,
         }
     }
@@ -258,6 +259,18 @@ fn try_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     p.bump();
     m.complete(p, TRY_EXPR)
+}
+
+// test cast_expr
+// fn foo() {
+//     82 as i32;
+// }
+fn cast_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
+    assert!(p.at(AS_KW));
+    let m = lhs.precede(p);
+    p.bump();
+    types::type_(p);
+    m.complete(p, CAST_EXPR)
 }
 
 fn arg_list(p: &mut Parser) {
