@@ -6,12 +6,17 @@ pub(super) use self::atom::literal;
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
 pub(super) fn expr(p: &mut Parser) -> BlockLike {
-    let r = Restrictions { forbid_structs: false };
+    let r = Restrictions { forbid_structs: false, prefer_stmt: false };
+    expr_bp(p, r, 1)
+}
+
+pub(super) fn expr_stmt(p: &mut Parser) -> BlockLike {
+    let r = Restrictions { forbid_structs: false, prefer_stmt: true };
     expr_bp(p, r, 1)
 }
 
 fn expr_no_struct(p: &mut Parser) {
-    let r = Restrictions { forbid_structs: true };
+    let r = Restrictions { forbid_structs: true, prefer_stmt: false };
     expr_bp(p, r, 1);
 }
 
@@ -30,7 +35,8 @@ pub(super) fn block(p: &mut Parser) {
 
 #[derive(Clone, Copy)]
 struct Restrictions {
-    forbid_structs: bool
+    forbid_structs: bool,
+    prefer_stmt: bool,
 }
 
 enum Op {
@@ -86,12 +92,18 @@ fn current_op(p: &Parser) -> (u8, Op) {
 
 // Parses expression with binding power of at least bp.
 fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
-    let mut block: bool;
     let mut lhs = match lhs(p, r) {
         Some(lhs) => {
-            block = is_block(lhs.kind());
+            // test stmt_bin_expr_ambiguity
+            // fn foo() {
+            //     let _ = {1} & 2;
+            //     {1} &2;
+            // }
+            if r.prefer_stmt && is_block(lhs.kind()) {
+                return BlockLike::Block;
+            }
             lhs
-        },
+        }
         None => return BlockLike::NotBlock,
     };
 
@@ -101,7 +113,6 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
         if op_bp < bp {
             break;
         }
-        block = false;
         let m = lhs.precede(p);
         match op {
             Op::Simple => p.bump(),
@@ -112,7 +123,7 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
         expr_bp(p, r, op_bp + 1);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
-    if block { BlockLike::Block } else { BlockLike::NotBlock }
+    BlockLike::NotBlock
 }
 
 // test no_semi_after_block
@@ -171,18 +182,27 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
         }
         _ => {
             let lhs = atom::atom_expr(p, r)?;
-            return Some(postfix_expr(p, lhs));
+            return Some(postfix_expr(p, r, lhs));
         }
     };
     expr_bp(p, r, 255);
     Some(m.complete(p, kind))
 }
 
-fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
+fn postfix_expr(p: &mut Parser, r: Restrictions, mut lhs: CompletedMarker) -> CompletedMarker {
+    let mut allow_calls = !r.prefer_stmt || !is_block(lhs.kind());
     loop {
         lhs = match p.current() {
-            L_PAREN => call_expr(p, lhs),
-            L_BRACK => index_expr(p, lhs),
+            // test stmt_postfix_expr_ambiguity
+            // fn foo() {
+            //     match () {
+            //         _ => {}
+            //         () => {}
+            //         [] => {}
+            //     }
+            // }
+            L_PAREN if allow_calls => call_expr(p, lhs),
+            L_BRACK if allow_calls => index_expr(p, lhs),
             DOT if p.nth(1) == IDENT => if p.nth(2) == L_PAREN || p.nth(2) == COLONCOLON {
                 method_call_expr(p, lhs)
             } else {
@@ -199,7 +219,8 @@ fn postfix_expr(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
             QUESTION => try_expr(p, lhs),
             AS_KW => cast_expr(p, lhs),
             _ => break,
-        }
+        };
+        allow_calls = true
     }
     lhs
 }

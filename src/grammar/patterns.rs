@@ -17,6 +17,7 @@ pub(super) fn pattern(p: &mut Parser) {
         UNDERSCORE => placeholder_pat(p),
         AMP => ref_pat(p),
         L_PAREN => tuple_pat(p),
+        L_BRACK => slice_pat(p),
         _ => p.err_and_bump("expected pattern"),
     }
 }
@@ -126,6 +127,28 @@ fn tuple_pat(p: &mut Parser) {
     let m = p.start();
     tuple_pat_fields(p);
     m.complete(p, TUPLE_PAT);
+}
+
+// test slice_pat
+// fn main() {
+//     let [a, b, ..] = [];
+// }
+fn slice_pat(p: &mut Parser) {
+    assert!(p.at(L_BRACK));
+    let m = p.start();
+    p.bump();
+    while !p.at(EOF) && !p.at(R_BRACK) {
+        match p.current() {
+            DOTDOT => p.bump(),
+            _ => pattern(p),
+        }
+        if !p.at(R_BRACK) {
+            p.expect(COMMA);
+        }
+    }
+    p.expect(R_BRACK);
+
+    m.complete(p, SLICE_PAT);
 }
 
 // test bind_pat

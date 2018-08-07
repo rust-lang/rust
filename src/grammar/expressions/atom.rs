@@ -262,7 +262,7 @@ fn match_arm(p: &mut Parser) -> BlockLike {
         expr_no_struct(p);
     }
     p.expect(FAT_ARROW);
-    let ret = expr(p);
+    let ret = expr_stmt(p);
     m.complete(p, MATCH_ARM);
     ret
 }
@@ -295,7 +295,7 @@ pub(super) fn block_expr(p: &mut Parser) -> CompletedMarker {
                     // test pub_expr
                     // fn foo() { pub 92; } //FIXME
                     items::MaybeItem::None => {
-                        let is_blocklike = expressions::expr(p) == BlockLike::Block;
+                        let is_blocklike = expressions::expr_stmt(p) == BlockLike::Block;
                         if p.eat(SEMI) || (is_blocklike && !p.at(R_CURLY)) {
                             m.complete(p, EXPR_STMT);
                         } else {
