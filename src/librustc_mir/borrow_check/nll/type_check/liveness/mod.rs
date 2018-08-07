@@ -25,6 +25,8 @@ use util::liveness::{LivenessResults, LiveVariableMap };
 
 use super::TypeChecker;
 
+crate mod liveness_map;
+
 /// Combines liveness analysis with initialization analysis to
 /// determine which variables are live at which points, both due to
 /// ordinary uses and drops. Returns a set of (ty, location) pairs

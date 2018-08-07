@@ -15,10 +15,10 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::liveness_map::NllLivenessMap;
 use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
+use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::LocalWithRegion;
 use borrow_check::nll::ToRegionVid;
@@ -75,7 +75,7 @@ macro_rules! span_mirbug_and_err {
 mod constraint_conversion;
 pub mod free_region_relations;
 mod input_output;
-mod liveness;
+crate mod liveness;
 mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference

@@ -12,8 +12,8 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::{LocationIndex, LocationTable};
 use borrow_check::nll::facts::AllFactsExt;
 use borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
+use borrow_check::nll::type_check::liveness::liveness_map::{NllLivenessMap, LocalWithRegion};
 use borrow_check::nll::region_infer::values::RegionValueElements;
-use borrow_check::nll::liveness_map::{NllLivenessMap, LocalWithRegion};
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
@@ -47,7 +47,6 @@ crate mod region_infer;
 mod renumber;
 crate mod type_check;
 mod universal_regions;
-crate mod liveness_map;
 
 mod constraints;
 
