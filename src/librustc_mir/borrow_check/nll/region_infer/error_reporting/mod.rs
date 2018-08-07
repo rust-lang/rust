@@ -124,13 +124,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let constraint = &self.constraints[path[i]];
 
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
-            if constraint_sup_scc == target_scc {
-                return false;
-            }
 
             match categorized_path[i].0 {
                 ConstraintCategory::Boring => false,
-                _ => true,
+                ConstraintCategory::Other => {
+                    // other isn't interesting when the two lifetimes
+                    // are unified.
+                    constraint_sup_scc != self.constraint_sccs.scc(constraint.sub)
+                }
+                _ => constraint_sup_scc != target_scc,
             }
         });
         if let Some(i) = best_choice {
