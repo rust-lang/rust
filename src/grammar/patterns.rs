@@ -16,6 +16,7 @@ pub(super) fn pattern(p: &mut Parser) {
     match la0 {
         UNDERSCORE => placeholder_pat(p),
         AMP => ref_pat(p),
+        L_PAREN => tuple_pat(p),
         _ => p.err_and_bump("expected pattern"),
     }
 }
@@ -33,7 +34,7 @@ fn path_pat(p: &mut Parser) {
     let kind = match p.current() {
         L_PAREN => {
             tuple_pat_fields(p);
-            TUPLE_PAT
+            TUPLE_STRUCT_PAT
         }
         L_CURLY => {
             struct_pat_fields(p);
@@ -114,6 +115,17 @@ fn ref_pat(p: &mut Parser) {
     p.eat(MUT_KW);
     pattern(p);
     m.complete(p, REF_PAT);
+}
+
+// test tuple_pat
+// fn main() {
+//     let (a, b, ..) = ();
+// }
+fn tuple_pat(p: &mut Parser) {
+    assert!(p.at(L_PAREN));
+    let m = p.start();
+    tuple_pat_fields(p);
+    m.complete(p, TUPLE_PAT);
 }
 
 // test bind_pat

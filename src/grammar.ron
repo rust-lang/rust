@@ -140,6 +140,7 @@ Grammar(
         "PLACEHOLDER_PAT",
         "PATH_PAT",
         "STRUCT_PAT",
+        "TUPLE_STRUCT_PAT",
         "TUPLE_PAT",
 
         // atoms
