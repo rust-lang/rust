@@ -43,6 +43,12 @@ pub(crate) fn file(p: &mut Parser) {
     file.complete(p, FILE);
 }
 
+
+enum BlockLike {
+    Block,
+    NotBlock,
+}
+
 fn visibility(p: &mut Parser) {
     if p.at(PUB_KW) {
         let vis = p.start();

@@ -27,8 +27,8 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
         MaybeItem::None => {
             if paths::is_path_start(p) {
                 match macro_call(p) {
-                    MacroFlavor::Curly => (),
-                    MacroFlavor::NonCurly => {
+                    BlockLike::Block => (),
+                    BlockLike::NotBlock => {
                         p.expect(SEMI);
                     }
                 }
@@ -277,32 +277,27 @@ fn mod_item(p: &mut Parser) {
     }
 }
 
-pub(super) enum MacroFlavor {
-    Curly,
-    NonCurly,
-}
-
-fn macro_call(p: &mut Parser) -> MacroFlavor {
+fn macro_call(p: &mut Parser) -> BlockLike {
     assert!(paths::is_path_start(p));
     paths::use_path(p);
     macro_call_after_excl(p)
 }
 
-pub(super) fn macro_call_after_excl(p: &mut Parser) -> MacroFlavor {
+pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
     p.expect(EXCL);
     p.eat(IDENT);
     let flavor = match p.current() {
         L_CURLY => {
             token_tree(p);
-            MacroFlavor::Curly
+            BlockLike::Block
         }
         L_PAREN | L_BRACK => {
             token_tree(p);
-            MacroFlavor::NonCurly
+            BlockLike::NotBlock
         }
         _ => {
             p.error("expected `{`, `[`, `(`");
-            MacroFlavor::NonCurly
+            BlockLike::NotBlock
         },
     };
 
