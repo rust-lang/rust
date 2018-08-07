@@ -16,9 +16,9 @@
 //! liveness code so that it only operates over variables with regions in their
 //! types, instead of all variables.
 
+use rustc::mir::{Local, Mir};
 use rustc::ty::TypeFoldable;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::mir::{Mir, Local};
 use util::liveness::LiveVariableMap;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -32,11 +32,9 @@ crate struct NllLivenessMap {
     pub from_local: IndexVec<Local, Option<LocalWithRegion>>,
     /// For each LocalWithRegion, maps back to the original Local index.
     pub to_local: IndexVec<LocalWithRegion, Local>,
-
 }
 
 impl LiveVariableMap for NllLivenessMap {
-
     fn from_local(&self, local: Local) -> Option<Self::LiveVar> {
         self.from_local[local]
     }
@@ -57,19 +55,21 @@ impl NllLivenessMap {
     /// regions a LocalWithRegion index. Returns a map for converting back and forth.
     pub fn compute(mir: &Mir) -> Self {
         let mut to_local = IndexVec::default();
-        let from_local: IndexVec<Local,Option<_>> = mir
-            .local_decls
+        let from_local: IndexVec<Local, Option<_>> = mir.local_decls
             .iter_enumerated()
             .map(|(local, local_decl)| {
                 if local_decl.ty.has_free_regions() {
                     Some(to_local.push(local))
+                } else {
+                    None
                 }
-                    else {
-                        None
-                    }
-            }).collect();
+            })
+            .collect();
 
-        Self { from_local, to_local }
+        Self {
+            from_local,
+            to_local,
+        }
     }
 }
 
