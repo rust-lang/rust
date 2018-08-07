@@ -15,12 +15,9 @@ use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::liveness_map::NllLivenessMap;
-use borrow_check::nll::region_infer::values::{LivenessValues, RegionValueElements};
+use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
-use borrow_check::nll::type_check::free_region_relations::{
-    CreateResult, UniversalRegionRelations,
-};
+use borrow_check::nll::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::LocalWithRegion;
 use borrow_check::nll::ToRegionVid;
@@ -119,7 +116,6 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
-    liveness_map: &NllLivenessMap,
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -170,7 +166,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
             Some(&mut borrowck_context),
             Some(errors_buffer),
             |cx| {
-                liveness::generate(cx, mir, liveness, liveness_map, flow_inits, move_data);
+                liveness::generate(cx, mir, liveness, flow_inits, move_data);
                 cx.equate_inputs_and_outputs(
                     mir,
                     mir_def_id,
