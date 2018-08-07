@@ -843,7 +843,8 @@ impl<T> AtomicPtr<T> {
     /// was updated.
     ///
     /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation.
+    /// ordering of this operation. Notice that even when using [`AcqRel`], the operation
+    /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
     ///
     /// [`Ordering`]: enum.Ordering.html
     ///
@@ -1202,7 +1203,8 @@ The return value is always the previous value. If it is equal to `current`, then
 value was updated.
 
 `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
-ordering of this operation.
+ordering of this operation. Notice that even when using [`AcqRel`], the operation
+might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
 
 [`Ordering`]: enum.Ordering.html
 
