@@ -877,8 +877,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
-                let is_temp = if let Place::Local(l) = place {
-                    !mir.local_decls[*l].is_user_variable.is_some()
+                let is_temp = if let Place::Local(l) = *place {
+                    l != RETURN_PLACE &&
+                    !mir.local_decls[l].is_user_variable.is_some()
                 } else {
                     false
                 };
@@ -1119,7 +1120,19 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match *destination {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
-                let locations = term_location.interesting();
+                let is_temp = if let Place::Local(l) = *dest {
+                    l != RETURN_PLACE &&
+                    !mir.local_decls[l].is_user_variable.is_some()
+                } else {
+                    false
+                };
+
+                let locations = if is_temp {
+                    term_location.boring()
+                } else {
+                    term_location.interesting()
+                };
+
                 if let Err(terr) = self.sub_types(sig.output(), dest_ty, locations) {
                     span_mirbug!(
                         self,
