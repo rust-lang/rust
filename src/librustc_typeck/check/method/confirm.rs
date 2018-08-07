@@ -325,8 +325,6 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         AstConv::create_substs_for_generic_args(
             self.tcx,
-            self.span,
-            false,
             pick.item.def_id,
             parent_substs,
             false,

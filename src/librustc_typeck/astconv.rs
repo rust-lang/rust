@@ -196,8 +196,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     /// corresponding to a set of generic parameters.
     pub fn create_substs_for_generic_args<'a, 'b, A, P, I>(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        span: Span,
-        err_if_invalid: bool,
         def_id: DefId,
         parent_substs: &[Kind<'tcx>],
         has_self: bool,
@@ -279,37 +277,29 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 let mut progress_arg = true;
                 match (next_arg, next_param) {
                     (Some(arg), Some(param)) => {
-                        match (&param.kind, arg) {
-                            (GenericParamDefKind::Lifetime, GenericArg::Lifetime(_)) => {
+                        match (arg, &param.kind) {
+                            (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime) => {
                                 push_kind(&mut substs, provided_kind(param, arg));
                                 next_param = params.next();
                             }
-                            (GenericParamDefKind::Lifetime, GenericArg::Type(_)) => {
-                                // We expected a lifetime argument, but got a type
-                                // argument. That means we're inferring the lifetimes.
-                                push_kind(&mut substs, inferred_kind(None, param, infer_types));
-                                next_param = params.next();
-                                progress_arg = false;
-                            }
-                            (GenericParamDefKind::Type { .. }, GenericArg::Type(_)) => {
-                                push_kind(&mut substs, provided_kind(param, arg));
-                                next_param = params.next();
-                            }
-                            (GenericParamDefKind::Type { .. }, GenericArg::Lifetime(_)) => {
+                            (GenericArg::Lifetime(_), GenericParamDefKind::Type { .. }) => {
                                 // We expected a type argument, but got a lifetime
                                 // argument. This is an error, but we need to handle it
                                 // gracefully so we can report sensible errors. In this
                                 // case, we're simply going to infer the remaining
                                 // arguments.
-                                if err_if_invalid {
-                                    tcx.sess.delay_span_bug(span,
-                                        "found a GenericArg::Lifetime where a \
-                                            GenericArg::Type was expected");
-                                }
-                                // Exhaust the iterator.
-                                while next_arg.is_some() {
-                                    next_arg = args.next();
-                                }
+                                args.by_ref().for_each(drop); // Exhaust the iterator.
+                            }
+                            (GenericArg::Type(_), GenericParamDefKind::Type { .. }) => {
+                                push_kind(&mut substs, provided_kind(param, arg));
+                                next_param = params.next();
+                            }
+                            (GenericArg::Type(_), GenericParamDefKind::Lifetime) => {
+                                // We expected a lifetime argument, but got a type
+                                // argument. That means we're inferring the lifetimes.
+                                push_kind(&mut substs, inferred_kind(None, param, infer_types));
+                                next_param = params.next();
+                                progress_arg = false;
                             }
                         }
                     }
@@ -317,10 +307,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                         // We should never be able to reach this point with well-formed input.
                         // Getting to this point means the user supplied more arguments than
                         // there are parameters.
-                        if err_if_invalid {
-                            tcx.sess.delay_span_bug(span,
-                                "GenericArg did not have matching GenericParamDef");
-                        }
                     }
                     (None, Some(param)) => {
                         // If there are fewer arguments than parameters, it means
@@ -428,8 +414,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
         let substs = Self::create_substs_for_generic_args(
             self.tcx(),
-            span,
-            false,
             def_id,
             &[][..],
             self_ty.is_some(),

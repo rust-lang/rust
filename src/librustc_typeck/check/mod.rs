@@ -4957,8 +4957,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let substs = AstConv::create_substs_for_generic_args(
             self.tcx,
-            span,
-            true,
             def_id,
             &[][..],
             has_self,
