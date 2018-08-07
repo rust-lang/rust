@@ -6,24 +6,10 @@ If you'd like to help out (and you should, it's a fun project!), see
 [Contributing.md](Contributing.md) and our [Code of
 Conduct](CODE_OF_CONDUCT.md).
 
-We are changing the default style used by rustfmt. There is an ongoing [RFC
-process][fmt rfcs]. The last version using the old style was 0.8.6. From 0.9
-onwards, the RFC style is the default. If you want the old style back, you can
-use [legacy-rustfmt.toml](legacy-rustfmt.toml) as your rustfmt.toml.
-
-The current `master` branch uses libsyntax (part of the compiler). It is
-published as `rustfmt-nightly`. The `syntex` branch uses Syntex instead of
-libsyntax, it is published (for now) as `rustfmt`. Most development happens on
-the `master` branch, however, this only supports nightly toolchains. If you use
-stable or beta Rust toolchains, you must use the Syntex version (which is likely
-to be a bit out of date). Version 0.1 of rustfmt-nightly is forked from version
-0.9 of the syntex branch.
-
 You can use rustfmt in Travis CI builds. We provide a minimal Travis CI
 configuration (see [here](#checking-style-on-a-ci-server)) and verify its status
 using another repository. The status of that repository's build is reported by
 the "travis example" badge above.
-
 
 ## Quick start
 
