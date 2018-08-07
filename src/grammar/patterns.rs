@@ -13,6 +13,18 @@ pub(super) fn pattern(p: &mut Parser) {
         return;
     }
 
+    // test literal_pattern
+    // fn main() {
+    //     match () {
+    //         92 => (),
+    //         'c' => (),
+    //         "hello" => (),
+    //     }
+    // }
+    if expressions::literal(p).is_some() {
+        return;
+    }
+
     match la0 {
         UNDERSCORE => placeholder_pat(p),
         AMP => ref_pat(p),
