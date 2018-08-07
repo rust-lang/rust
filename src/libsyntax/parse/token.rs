@@ -302,6 +302,10 @@ impl Token {
             BinOp(Minus) => true,
             Ident(ident, false) if ident.name == keywords::True.name() => true,
             Ident(ident, false) if ident.name == keywords::False.name() => true,
+            Interpolated(ref nt) => match nt.0 {
+                NtLiteral(..) => true,
+                _             => false,
+            },
             _            => false,
         }
     }
