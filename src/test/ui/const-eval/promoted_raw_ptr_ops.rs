@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(const_raw_ptr_to_usize_cast, const_compare_raw_pointers, const_raw_ptr_deref)]
+
 fn main() {
-    let _ = [0; (&0 as *const i32) as usize]; //~ ERROR casting pointers to integers in constants
+    let x: &'static bool = &(42 as *const i32 == 43 as *const i32);
+    //~^ ERROR does not live long enough
+    let y: &'static usize = &(&1 as *const i32 as usize + 1); //~ ERROR does not live long enough
+    let z: &'static i32 = &(unsafe { *(42 as *const i32) }); //~ ERROR does not live long enough
 }

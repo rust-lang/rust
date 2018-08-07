@@ -491,41 +491,46 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     this.super_place(place, context, location);
                     match proj.elem {
                         ProjectionElem::Deref => {
-                            this.add(Qualif::NOT_CONST);
-
-                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            if let ty::TyRawPtr(_) = base_ty.sty {
-                                if this.mode != Mode::Fn {
-                                    let mut err = struct_span_err!(
-                                        this.tcx.sess,
-                                        this.span,
-                                        E0396,
-                                        "raw pointers cannot be dereferenced in {}s",
-                                        this.mode
-                                    );
-                                    err.span_label(this.span,
-                                                   "dereference of raw pointer in constant");
-                                    if this.tcx.sess.teach(&err.get_code().unwrap()) {
-                                        err.note(
-                                            "The value behind a raw pointer can't be determined \
-                                             at compile-time (or even link-time), which means it \
-                                             can't be used in a constant expression."
+                            if let Mode::Fn = this.mode {
+                                this.add(Qualif::NOT_CONST);
+                            } else {
+                                let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                                if let ty::TyRawPtr(_) = base_ty.sty {
+                                    if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
+                                        emit_feature_err(
+                                            &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
+                                            this.span, GateIssue::Language,
+                                            &format!(
+                                                "dereferencing raw pointers in {}s is unstable",
+                                                this.mode,
+                                            ),
                                         );
-                                        err.help("A possible fix is to dereference your pointer \
-                                                  at some point in run-time.");
                                     }
-                                    err.emit();
                                 }
                             }
                         }
 
                         ProjectionElem::Field(..) |
                         ProjectionElem::Index(_) => {
-                            if this.mode == Mode::Fn {
-                                let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
-                                if let Some(def) = base_ty.ty_adt_def() {
-                                    if def.is_union() {
-                                        this.not_const();
+                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            if let Some(def) = base_ty.ty_adt_def() {
+                                if def.is_union() {
+                                    match this.mode {
+                                        Mode::Fn => this.not_const(),
+                                        Mode::ConstFn => {
+                                            if !this.tcx.sess.features_untracked().const_fn_union {
+                                                emit_feature_err(
+                                                    &this.tcx.sess.parse_sess, "const_fn_union",
+                                                    this.span, GateIssue::Language,
+                                                    "unions in const fn are unstable",
+                                                );
+                                            }
+                                        },
+
+                                        | Mode::Static
+                                        | Mode::StaticMut
+                                        | Mode::Const
+                                        => {},
                                     }
                                 }
                             }
@@ -722,44 +727,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) => {
-                        self.add(Qualif::NOT_CONST);
-                        if self.mode != Mode::Fn {
-                            let mut err = struct_span_err!(
-                                self.tcx.sess,
-                                self.span,
-                                E0018,
-                                "raw pointers cannot be cast to integers in {}s",
-                                self.mode
+                        if let Mode::Fn = self.mode {
+                            self.add(Qualif::NOT_CONST);
+                        } else if !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
+                            emit_feature_err(
+                                &self.tcx.sess.parse_sess, "const_raw_ptr_to_usize_cast",
+                                self.span, GateIssue::Language,
+                                &format!(
+                                    "casting pointers to integers in {}s is unstable",
+                                    self.mode,
+                                ),
                             );
-                            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                                err.note("\
-The value of static and constant integers must be known at compile time. You can't cast a pointer \
-to an integer because the address of a pointer can vary.
-
-For example, if you write:
-
-```
-static MY_STATIC: u32 = 42;
-static MY_STATIC_ADDR: usize = &MY_STATIC as *const _ as usize;
-static WHAT: usize = (MY_STATIC_ADDR^17) + MY_STATIC_ADDR;
-```
-
-Then `MY_STATIC_ADDR` would contain the address of `MY_STATIC`. However, the address can change \
-when the program is linked, as well as change between different executions due to ASLR, and many \
-linkers would not be able to calculate the value of `WHAT`.
-
-On the other hand, static and constant pointers can point either to a known numeric address or to \
-the address of a symbol.
-
-```
-static MY_STATIC: u32 = 42;
-static MY_STATIC_ADDR: &'static u32 = &MY_STATIC;
-const CONST_ADDR: *const u8 = 0x5f3759df as *const u8;
-```
-
-This does not pose a problem by itself because they can't be accessed directly.");
-                            }
-                            err.emit();
                         }
                     }
                     _ => {}
@@ -773,16 +751,16 @@ This does not pose a problem by itself because they can't be accessed directly."
                             op == BinOp::Ge || op == BinOp::Gt ||
                             op == BinOp::Offset);
 
-                    self.add(Qualif::NOT_CONST);
-                    if self.mode != Mode::Fn {
-                        struct_span_err!(
-                            self.tcx.sess, self.span, E0395,
-                            "raw pointers cannot be compared in {}s",
-                            self.mode)
-                        .span_label(
+                    if let Mode::Fn = self.mode {
+                        self.add(Qualif::NOT_CONST);
+                    } else if !self.tcx.sess.features_untracked().const_compare_raw_pointers {
+                        emit_feature_err(
+                            &self.tcx.sess.parse_sess,
+                            "const_compare_raw_pointers",
                             self.span,
-                            "comparing raw pointers in static")
-                        .emit();
+                            GateIssue::Language,
+                            &format!("comparing raw pointers inside {}", self.mode),
+                        );
                     }
                 }
             }

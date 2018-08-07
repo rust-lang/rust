@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(const_raw_ptr_deref)]
+
+const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
+
+const VALUE: u8 = unsafe { *REG_ADDR };
+//~^ ERROR this constant cannot be used
+
 fn main() {
-    let _ = [0; (&0 as *const i32) as usize]; //~ ERROR casting pointers to integers in constants
 }

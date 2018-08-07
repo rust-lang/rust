@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-pass
+#![feature(const_fn_union)]
 
 union U {
     a: usize,

@@ -13,7 +13,7 @@ fn main() {
     // that pointer comparison is disallowed, not that parts of a pointer are accessed as raw
     // bytes.
     let _: [u8; 0] = [4; { //~ ERROR could not evaluate repeat length
-        match &1 as *const i32 as usize { //~ ERROR raw pointers cannot be cast to integers
+        match &1 as *const i32 as usize { //~ ERROR casting pointers to integers in constants
             0 => 42, //~ ERROR constant contains unimplemented expression type
             //~^ NOTE "pointer arithmetic or comparison" needs an rfc before being allowed
             n => n,

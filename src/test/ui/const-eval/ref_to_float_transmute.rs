@@ -10,6 +10,8 @@
 
 //compile-pass
 
+#![feature(const_fn_union)]
+
 fn main() {}
 
 static FOO: u32 = 42;

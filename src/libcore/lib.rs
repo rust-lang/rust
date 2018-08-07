@@ -82,6 +82,7 @@
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(const_int_ops)]
+#![feature(const_fn_union)]
 #![feature(custom_attribute)]
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]

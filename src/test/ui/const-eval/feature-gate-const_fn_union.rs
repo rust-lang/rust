@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let _ = [0; (&0 as *const i32) as usize]; //~ ERROR casting pointers to integers in constants
+#![feature(const_fn)]
+
+fn main() {}
+
+union Foo {
+    u: u32,
+    i: i32,
+}
+
+const unsafe fn foo(u: u32) -> i32 {
+    Foo { u }.i //~ ERROR unions in const fn are unstable
 }
