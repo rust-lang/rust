@@ -1526,7 +1526,6 @@ impl TypeAliasBounds {
 
         // We use a HIR visitor to walk the type.
         use rustc::hir::intravisit::{self, Visitor};
-        use syntax::ast::NodeId;
         struct WalkAssocTypes<'a, 'db> where 'db: 'a {
             err: &'a mut DiagnosticBuilder<'db>
         }
@@ -1536,7 +1535,7 @@ impl TypeAliasBounds {
                 intravisit::NestedVisitorMap::None
             }
 
-            fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: NodeId, span: Span) {
+            fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(span,
                         "use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to \

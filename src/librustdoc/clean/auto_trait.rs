@@ -126,6 +126,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
             let trait_ = hir::TraitRef {
                 path: get_path_for_type(self.cx.tcx, trait_def_id, hir::def::Def::Trait),
                 ref_id: ast::DUMMY_NODE_ID,
+                hir_ref_id: hir::DUMMY_HIR_ID,
             };
 
             let polarity;

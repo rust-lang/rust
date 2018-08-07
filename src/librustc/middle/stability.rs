@@ -780,7 +780,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         intravisit::walk_item(self, item);
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, id: ast::NodeId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path, id: hir::HirId) {
+        let id = self.tcx.hir.hir_to_node_id(id);
         match path.def {
             Def::Local(..) | Def::Upvar(..) |
             Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => {}

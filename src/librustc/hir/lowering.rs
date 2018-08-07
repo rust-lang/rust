@@ -2155,12 +2155,14 @@ impl<'a> LoweringContext<'a> {
             let future_path =
                 this.std_path(span, &["future", "Future"], Some(future_params), false);
 
+            let LoweredNodeId { node_id, hir_id } = this.next_id();
             let mut bounds = vec![
                 hir::GenericBound::Trait(
                     hir::PolyTraitRef {
                         trait_ref: hir::TraitRef {
                             path: future_path,
-                            ref_id: this.next_id().node_id,
+                            ref_id: node_id,
+                            hir_ref_id: hir_id,
                         },
                         bound_generic_params: hir_vec![],
                         span,
@@ -2482,9 +2484,11 @@ impl<'a> LoweringContext<'a> {
             hir::QPath::Resolved(None, path) => path.and_then(|path| path),
             qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
         };
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(p.ref_id);
         hir::TraitRef {
             path,
-            ref_id: self.lower_node_id(p.ref_id).node_id,
+            ref_id: node_id,
+            hir_ref_id: hir_id,
         }
     }
 
@@ -2843,11 +2847,13 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Public => hir::VisibilityKind::Public,
                             hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
-                            hir::VisibilityKind::Restricted { ref path, id: _ } => {
+                            hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
+                                let id = this.next_id();
                                 hir::VisibilityKind::Restricted {
                                     path: path.clone(),
                                     // We are allocating a new NodeId here
-                                    id: this.next_id().node_id,
+                                    id: id.node_id,
+                                    hir_id: id.hir_id,
                                 }
                             }
                         };
@@ -2916,11 +2922,13 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Public => hir::VisibilityKind::Public,
                             hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
-                            hir::VisibilityKind::Restricted { ref path, id: _ } => {
+                            hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
+                                let id = this.next_id();
                                 hir::VisibilityKind::Restricted {
                                     path: path.clone(),
                                     // We are allocating a new NodeId here
-                                    id: this.next_id().node_id,
+                                    id: id.node_id,
+                                    hir_id: id.hir_id,
                                 }
                             }
                         };
@@ -4350,13 +4358,17 @@ impl<'a> LoweringContext<'a> {
         let node = match v.node {
             VisibilityKind::Public => hir::VisibilityKind::Public,
             VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
-            VisibilityKind::Restricted { ref path, id } => hir::VisibilityKind::Restricted {
-                path: P(self.lower_path(id, path, ParamMode::Explicit)),
-                id: if let Some(owner) = explicit_owner {
-                    self.lower_node_id_with_owner(id, owner).node_id
+            VisibilityKind::Restricted { ref path, id } => {
+                let lowered_id = if let Some(owner) = explicit_owner {
+                    self.lower_node_id_with_owner(id, owner)
                 } else {
-                    self.lower_node_id(id).node_id
-                },
+                    self.lower_node_id(id)
+                };
+                hir::VisibilityKind::Restricted {
+                    path: P(self.lower_path(id, path, ParamMode::Explicit)),
+                    id: lowered_id.node_id,
+                    hir_id: lowered_id.hir_id,
+                }
             },
             VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
         };
@@ -4675,6 +4687,7 @@ impl<'a> LoweringContext<'a> {
                         trait_ref: hir::TraitRef {
                             path: path.and_then(|path| path),
                             ref_id: id.node_id,
+                            hir_ref_id: id.hir_id,
                         },
                         span,
                     };
