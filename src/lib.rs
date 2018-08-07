@@ -156,9 +156,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
         for cty in sess.opts.crate_types.iter() {
             match *cty {
-                CrateType::Rlib
-                | CrateType::Dylib
-                | CrateType::Executable => {}
+                CrateType::Rlib | CrateType::Dylib | CrateType::Executable => {}
                 _ => {
                     sess.parse_sess.span_diagnostic.warn(&format!(
                         "LLVM unsupported, so output type {} is not supported",
