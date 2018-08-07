@@ -5,14 +5,14 @@ pub(super) use self::atom::literal;
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
-pub(super) fn expr(p: &mut Parser) {
+pub(super) fn expr(p: &mut Parser) -> BlockLike {
     let r = Restrictions { forbid_structs: false };
     expr_bp(p, r, 1)
 }
 
 fn expr_no_struct(p: &mut Parser) {
     let r = Restrictions { forbid_structs: true };
-    expr_bp(p, r, 1)
+    expr_bp(p, r, 1);
 }
 
 // test block
@@ -85,10 +85,14 @@ fn current_op(p: &Parser) -> (u8, Op) {
 }
 
 // Parses expression with binding power of at least bp.
-fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
+fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> BlockLike {
+    let mut block: bool;
     let mut lhs = match lhs(p, r) {
-        Some(lhs) => lhs,
-        None => return,
+        Some(lhs) => {
+            block = is_block(lhs.kind());
+            lhs
+        },
+        None => return BlockLike::NotBlock,
     };
 
     loop {
@@ -97,6 +101,7 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
         if op_bp < bp {
             break;
         }
+        block = false;
         let m = lhs.precede(p);
         match op {
             Op::Simple => p.bump(),
@@ -106,6 +111,24 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
         }
         expr_bp(p, r, op_bp + 1);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
+    }
+    if block { BlockLike::Block } else { BlockLike::NotBlock }
+}
+
+// test no_semi_after_block
+// fn foo() {
+//     if true {}
+//     loop {}
+//     match () {}
+//     while true {}
+//     for _ in () {}
+//     {}
+//     {}
+// }
+fn is_block(kind: SyntaxKind) -> bool {
+    match kind {
+        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR => true,
+        _ => false,
     }
 }
 

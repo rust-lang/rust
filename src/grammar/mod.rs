@@ -44,9 +44,14 @@ pub(crate) fn file(p: &mut Parser) {
 }
 
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum BlockLike {
     Block,
     NotBlock,
+}
+
+impl BlockLike {
+    fn is_block(self) -> bool { self == BlockLike::Block }
 }
 
 fn visibility(p: &mut Parser) {

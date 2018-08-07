@@ -6,6 +6,7 @@ use {
 
 #[derive(Clone, Copy)]
 pub(crate) struct TokenSet(pub(crate) u128);
+
 fn mask(kind: SyntaxKind) -> u128 {
     1u128 << (kind as usize)
 }
@@ -154,7 +155,7 @@ impl Marker {
     pub(crate) fn complete(mut self, p: &mut Parser, kind: SyntaxKind) -> CompletedMarker {
         self.bomb.defuse();
         p.0.complete(self.pos, kind);
-        CompletedMarker(self.pos)
+        CompletedMarker(self.pos, kind)
     }
 
     /// Abandons the syntax tree node. All its children
@@ -165,7 +166,7 @@ impl Marker {
     }
 }
 
-pub(crate) struct CompletedMarker(u32);
+pub(crate) struct CompletedMarker(u32, SyntaxKind);
 
 impl CompletedMarker {
     /// This one is tricky :-)
@@ -177,5 +178,9 @@ impl CompletedMarker {
     /// that. See also docs about `forward_parent` in `Event::Start`.
     pub(crate) fn precede(self, p: &mut Parser) -> Marker {
         Marker::new(p.0.precede(self.0))
+    }
+
+    pub(crate) fn kind(&self) -> SyntaxKind {
+        self.1
     }
 }

@@ -133,7 +133,7 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     if fn_ret_type(p) {
         block(p);
     } else {
-        expr(p)
+        expr(p);
     }
     m.complete(p, LAMBDA_EXPR)
 }
@@ -225,8 +225,17 @@ fn match_expr(p: &mut Parser) -> CompletedMarker {
     expr_no_struct(p);
     p.eat(L_CURLY);
     while !p.at(EOF) && !p.at(R_CURLY) {
-        match_arm(p);
-        if !p.at(R_CURLY) {
+        // test match_arms_commas
+        // fn foo() {
+        //     match () {
+        //         _ => (),
+        //         _ => {}
+        //         _ => ()
+        //     }
+        // }
+        if match_arm(p).is_block() {
+            p.eat(COMMA);
+        } else if !p.at(R_CURLY) {
             p.expect(COMMA);
         }
     }
@@ -241,7 +250,7 @@ fn match_expr(p: &mut Parser) -> CompletedMarker {
 //         X | Y if Z => (),
 //     };
 // }
-fn match_arm(p: &mut Parser) {
+fn match_arm(p: &mut Parser) -> BlockLike {
     let m = p.start();
     loop {
         patterns::pattern(p);
@@ -253,8 +262,9 @@ fn match_arm(p: &mut Parser) {
         expr_no_struct(p);
     }
     p.expect(FAT_ARROW);
-    expr(p);
+    let ret = expr(p);
     m.complete(p, MATCH_ARM);
+    ret
 }
 
 // test block_expr
@@ -285,8 +295,8 @@ pub(super) fn block_expr(p: &mut Parser) -> CompletedMarker {
                     // test pub_expr
                     // fn foo() { pub 92; } //FIXME
                     items::MaybeItem::None => {
-                        expressions::expr(p);
-                        if p.eat(SEMI) {
+                        let is_blocklike = expressions::expr(p) == BlockLike::Block;
+                        if p.eat(SEMI) || (is_blocklike && !p.at(R_CURLY)) {
                             m.complete(p, EXPR_STMT);
                         } else {
                             m.abandon(p);
