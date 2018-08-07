@@ -1249,8 +1249,8 @@ impl<T> Receiver<T> {
     ///
     /// # Panics
     ///
-    /// There is currently a known issue with this function ([`#39364`]) that
-    /// causes `recv_timeout` to panic unexpectedly with the following example:
+    /// There is currently a known issue with this `recv_timeout` (see [`#39364`])
+    /// that causes it to panic unexpectedly with the following example:
     ///
     /// ```no_run
     /// use std::sync::mpsc::channel;
