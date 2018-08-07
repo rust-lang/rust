@@ -11,11 +11,10 @@
 //prior to fixing `everybody_loops` to preserve items, rustdoc would crash on this file, as it
 //didn't see that `SomeStruct` implemented `Clone`
 
-//FIXME(misdreavus): whenever rustdoc shows traits impl'd inside bodies, make sure this test
-//reflects that
-
 pub struct Bounded<T: Clone>(T);
 
+// @has traits_in_bodies/struct.SomeStruct.html
+// @has - '//code' 'impl Clone for SomeStruct'
 pub struct SomeStruct;
 
 fn asdf() -> Bounded<SomeStruct> {
@@ -27,3 +26,16 @@ fn asdf() -> Bounded<SomeStruct> {
 
     Bounded(SomeStruct)
 }
+
+// @has traits_in_bodies/struct.Point.html
+// @has - '//code' 'impl Copy for Point'
+#[derive(Clone)]
+pub struct Point {
+    x: i32,
+    y: i32,
+}
+
+const _FOO: () = {
+    impl Copy for Point {}
+    ()
+};

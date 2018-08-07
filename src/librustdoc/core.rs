@@ -37,7 +37,7 @@ use syntax_pos::DUMMY_SP;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 
-use std::cell::{RefCell, Cell};
+use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
@@ -60,7 +60,6 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx> {
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Rc<CStore>,
-    pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
     // the access levels from crateanalysis.
@@ -511,7 +510,6 @@ pub fn run_core(search_paths: SearchPaths,
                 resolver: &resolver,
                 crate_name,
                 cstore: cstore.clone(),
-                populated_all_crate_impls: Cell::new(false),
                 access_levels: RefCell::new(access_levels),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),

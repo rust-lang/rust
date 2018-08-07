@@ -43,6 +43,9 @@ pub use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 mod collect_intra_doc_links;
 pub use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
+mod collect_trait_impls;
+pub use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
+
 /// Represents a single pass.
 #[derive(Copy, Clone)]
 pub enum Pass {
@@ -132,10 +135,12 @@ pub const PASSES: &'static [Pass] = &[
     STRIP_PRIV_IMPORTS,
     PROPAGATE_DOC_CFG,
     COLLECT_INTRA_DOC_LINKS,
+    COLLECT_TRAIT_IMPLS,
 ];
 
 /// The list of passes run by default.
 pub const DEFAULT_PASSES: &'static [&'static str] = &[
+    "collect-trait-impls",
     "strip-hidden",
     "strip-private",
     "collect-intra-doc-links",
@@ -146,6 +151,7 @@ pub const DEFAULT_PASSES: &'static [&'static str] = &[
 
 /// The list of default passes run with `--document-private-items` is passed to rustdoc.
 pub const DEFAULT_PRIVATE_PASSES: &'static [&'static str] = &[
+    "collect-trait-impls",
     "strip-priv-imports",
     "collect-intra-doc-links",
     "collapse-docs",
