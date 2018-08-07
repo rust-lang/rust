@@ -51,7 +51,11 @@ impl<'a> SpanUtils for SnippetProvider<'a> {
     }
 
     fn span_before(&self, original: Span, needle: &str) -> BytePos {
-        self.opt_span_before(original, needle).expect("bad span")
+        self.opt_span_before(original, needle).expect(&format!(
+            "bad span: {}: {}",
+            needle,
+            self.span_to_snippet(original).unwrap()
+        ))
     }
 
     fn opt_span_after(&self, original: Span, needle: &str) -> Option<BytePos> {

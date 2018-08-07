@@ -564,6 +564,139 @@ where
     leave_last: bool,
 }
 
+pub fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommentStyle) {
+    let trimmed_pre_snippet = pre_snippet.trim();
+    let has_single_line_comment = trimmed_pre_snippet.starts_with("//");
+    let has_block_comment = trimmed_pre_snippet.starts_with("/*");
+    if has_single_line_comment {
+        (
+            Some(trimmed_pre_snippet.to_owned()),
+            ListItemCommentStyle::DifferentLine,
+        )
+    } else if has_block_comment {
+        let comment_end = pre_snippet.chars().rev().position(|c| c == '/').unwrap();
+        if pre_snippet
+            .chars()
+            .rev()
+            .take(comment_end + 1)
+            .any(|c| c == '\n')
+        {
+            (
+                Some(trimmed_pre_snippet.to_owned()),
+                ListItemCommentStyle::DifferentLine,
+            )
+        } else {
+            (
+                Some(trimmed_pre_snippet.to_owned()),
+                ListItemCommentStyle::SameLine,
+            )
+        }
+    } else {
+        (None, ListItemCommentStyle::None)
+    }
+}
+
+pub fn extract_post_comment(
+    post_snippet: &str,
+    comment_end: usize,
+    separator: &str,
+) -> Option<String> {
+    let white_space: &[_] = &[' ', '\t'];
+
+    // Cleanup post-comment: strip separators and whitespace.
+    let post_snippet = post_snippet[..comment_end].trim();
+    let post_snippet_trimmed = if post_snippet.starts_with(|c| c == ',' || c == ':') {
+        post_snippet[1..].trim_matches(white_space)
+    } else if post_snippet.starts_with(separator) {
+        post_snippet[separator.len()..].trim_matches(white_space)
+    } else if post_snippet.ends_with(',') {
+        post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
+    } else {
+        post_snippet
+    };
+
+    if !post_snippet_trimmed.is_empty() {
+        Some(post_snippet_trimmed.to_owned())
+    } else {
+        None
+    }
+}
+
+pub fn get_comment_end(
+    post_snippet: &str,
+    separator: &str,
+    terminator: &str,
+    is_last: bool,
+) -> usize {
+    if is_last {
+        return post_snippet
+            .find_uncommented(terminator)
+            .unwrap_or_else(|| post_snippet.len());
+    }
+
+    let mut block_open_index = post_snippet.find("/*");
+    // check if it really is a block comment (and not `//*` or a nested comment)
+    if let Some(i) = block_open_index {
+        match post_snippet.find('/') {
+            Some(j) if j < i => block_open_index = None,
+            _ if i > 0 && &post_snippet[i - 1..i] == "/" => block_open_index = None,
+            _ => (),
+        }
+    }
+    let newline_index = post_snippet.find('\n');
+    if let Some(separator_index) = post_snippet.find_uncommented(separator) {
+        match (block_open_index, newline_index) {
+            // Separator before comment, with the next item on same line.
+            // Comment belongs to next item.
+            (Some(i), None) if i > separator_index => separator_index + 1,
+            // Block-style post-comment before the separator.
+            (Some(i), None) => cmp::max(
+                find_comment_end(&post_snippet[i..]).unwrap() + i,
+                separator_index + 1,
+            ),
+            // Block-style post-comment. Either before or after the separator.
+            (Some(i), Some(j)) if i < j => cmp::max(
+                find_comment_end(&post_snippet[i..]).unwrap() + i,
+                separator_index + 1,
+            ),
+            // Potential *single* line comment.
+            (_, Some(j)) if j > separator_index => j + 1,
+            _ => post_snippet.len(),
+        }
+    } else if let Some(newline_index) = newline_index {
+        // Match arms may not have trailing comma. In any case, for match arms,
+        // we will assume that the post comment belongs to the next arm if they
+        // do not end with trailing comma.
+        newline_index + 1
+    } else {
+        0
+    }
+}
+
+// Account for extra whitespace between items. This is fiddly
+// because of the way we divide pre- and post- comments.
+fn has_extra_newline(post_snippet: &str, comment_end: usize) -> bool {
+    if post_snippet.is_empty() || comment_end == 0 {
+        return false;
+    }
+
+    // Everything from the separator to the next item.
+    let test_snippet = &post_snippet[comment_end - 1..];
+    let first_newline = test_snippet
+        .find('\n')
+        .unwrap_or_else(|| test_snippet.len());
+    // From the end of the first line of comments.
+    let test_snippet = &test_snippet[first_newline..];
+    let first = test_snippet
+        .find(|c: char| !c.is_whitespace())
+        .unwrap_or_else(|| test_snippet.len());
+    // From the end of the first line of comments to the next non-whitespace char.
+    let test_snippet = &test_snippet[..first];
+
+    // There were multiple line breaks which got trimmed to nothing.
+    count_newlines(test_snippet) > 1
+}
+
 impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
 where
     I: Iterator<Item = T>,
@@ -574,44 +707,13 @@ where
     type Item = ListItem;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let white_space: &[_] = &[' ', '\t'];
-
         self.inner.next().map(|item| {
-            let mut new_lines = false;
             // Pre-comment
             let pre_snippet = self
                 .snippet_provider
                 .span_to_snippet(mk_sp(self.prev_span_end, (self.get_lo)(&item)))
                 .unwrap_or("");
-            let trimmed_pre_snippet = pre_snippet.trim();
-            let has_single_line_comment = trimmed_pre_snippet.starts_with("//");
-            let has_block_comment = trimmed_pre_snippet.starts_with("/*");
-            let (pre_comment, pre_comment_style) = if has_single_line_comment {
-                (
-                    Some(trimmed_pre_snippet.to_owned()),
-                    ListItemCommentStyle::DifferentLine,
-                )
-            } else if has_block_comment {
-                let comment_end = pre_snippet.chars().rev().position(|c| c == '/').unwrap();
-                if pre_snippet
-                    .chars()
-                    .rev()
-                    .take(comment_end + 1)
-                    .any(|c| c == '\n')
-                {
-                    (
-                        Some(trimmed_pre_snippet.to_owned()),
-                        ListItemCommentStyle::DifferentLine,
-                    )
-                } else {
-                    (
-                        Some(trimmed_pre_snippet.to_owned()),
-                        ListItemCommentStyle::SameLine,
-                    )
-                }
-            } else {
-                (None, ListItemCommentStyle::None)
-            };
+            let (pre_comment, pre_comment_style) = extract_pre_comment(pre_snippet);
 
             // Post-comment
             let next_start = match self.inner.peek() {
@@ -622,94 +724,16 @@ where
                 .snippet_provider
                 .span_to_snippet(mk_sp((self.get_hi)(&item), next_start))
                 .unwrap_or("");
+            let comment_end = get_comment_end(
+                post_snippet,
+                self.separator,
+                self.terminator,
+                self.inner.peek().is_none(),
+            );
+            let new_lines = has_extra_newline(post_snippet, comment_end);
+            let post_comment = extract_post_comment(post_snippet, comment_end, self.separator);
 
-            let comment_end = match self.inner.peek() {
-                Some(..) => {
-                    let mut block_open_index = post_snippet.find("/*");
-                    // check if it really is a block comment (and not `//*` or a nested comment)
-                    if let Some(i) = block_open_index {
-                        match post_snippet.find('/') {
-                            Some(j) if j < i => block_open_index = None,
-                            _ if i > 0 && &post_snippet[i - 1..i] == "/" => block_open_index = None,
-                            _ => (),
-                        }
-                    }
-                    let newline_index = post_snippet.find('\n');
-                    if let Some(separator_index) = post_snippet.find_uncommented(self.separator) {
-                        match (block_open_index, newline_index) {
-                            // Separator before comment, with the next item on same line.
-                            // Comment belongs to next item.
-                            (Some(i), None) if i > separator_index => separator_index + 1,
-                            // Block-style post-comment before the separator.
-                            (Some(i), None) => cmp::max(
-                                find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                separator_index + 1,
-                            ),
-                            // Block-style post-comment. Either before or after the separator.
-                            (Some(i), Some(j)) if i < j => cmp::max(
-                                find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                separator_index + 1,
-                            ),
-                            // Potential *single* line comment.
-                            (_, Some(j)) if j > separator_index => j + 1,
-                            _ => post_snippet.len(),
-                        }
-                    } else if let Some(newline_index) = newline_index {
-                        // Match arms may not have trailing comma. In any case, for match arms,
-                        // we will assume that the post comment belongs to the next arm if they
-                        // do not end with trailing comma.
-                        newline_index + 1
-                    } else {
-                        0
-                    }
-                }
-                None => post_snippet
-                    .find_uncommented(self.terminator)
-                    .unwrap_or_else(|| post_snippet.len()),
-            };
-
-            if !post_snippet.is_empty() && comment_end > 0 {
-                // Account for extra whitespace between items. This is fiddly
-                // because of the way we divide pre- and post- comments.
-
-                // Everything from the separator to the next item.
-                let test_snippet = &post_snippet[comment_end - 1..];
-                let first_newline = test_snippet
-                    .find('\n')
-                    .unwrap_or_else(|| test_snippet.len());
-                // From the end of the first line of comments.
-                let test_snippet = &test_snippet[first_newline..];
-                let first = test_snippet
-                    .find(|c: char| !c.is_whitespace())
-                    .unwrap_or_else(|| test_snippet.len());
-                // From the end of the first line of comments to the next non-whitespace char.
-                let test_snippet = &test_snippet[..first];
-
-                if count_newlines(test_snippet) > 1 {
-                    // There were multiple line breaks which got trimmed to nothing.
-                    new_lines = true;
-                }
-            }
-
-            // Cleanup post-comment: strip separators and whitespace.
             self.prev_span_end = (self.get_hi)(&item) + BytePos(comment_end as u32);
-            let post_snippet = post_snippet[..comment_end].trim();
-
-            let post_snippet_trimmed = if post_snippet.starts_with(|c| c == ',' || c == ':') {
-                post_snippet[1..].trim_matches(white_space)
-            } else if post_snippet.starts_with(self.separator) {
-                post_snippet[self.separator.len()..].trim_matches(white_space)
-            } else if post_snippet.ends_with(',') {
-                post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
-            } else {
-                post_snippet
-            };
-
-            let post_comment = if !post_snippet_trimmed.is_empty() {
-                Some(post_snippet_trimmed.to_owned())
-            } else {
-                None
-            };
 
             ListItem {
                 pre_comment,
