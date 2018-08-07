@@ -323,7 +323,7 @@ declare_features! (
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
 
     // Allows the `catch {...}` expression
-    (active, catch_expr, "1.17.0", Some(31436), Some(Edition::Edition2018)),
+    (active, catch_expr, "1.17.0", Some(31436), None),
 
     // Used to preserve symbols (see llvm.used)
     (active, used, "1.18.0", Some(40289), None),
