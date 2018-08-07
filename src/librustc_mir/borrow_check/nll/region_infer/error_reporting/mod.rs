@@ -42,7 +42,7 @@ impl fmt::Display for ConstraintCategory {
         // Must end with a space. Allows for empty names to be provided.
         match self {
             ConstraintCategory::Assignment => write!(f, "assignment "),
-            ConstraintCategory::Return => write!(f, "return "),
+            ConstraintCategory::Return => write!(f, "returning this value "),
             ConstraintCategory::Cast => write!(f, "cast "),
             ConstraintCategory::CallArgument => write!(f, "argument "),
             _ => write!(f, ""),
