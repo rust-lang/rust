@@ -117,7 +117,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             Deref => Deref,
             Field(f, _) => Field(f, ()),
             Index(v) => {
-                let value = self.frame().get_local(v)?;
+                let value = self.frame().locals[v].access()?;
                 let ty = self.tcx.tcx.types.usize;
                 let n = self.value_to_scalar(ValTy { value, ty })?.to_usize(self)?;
                 Index(n)
@@ -480,7 +480,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
     ) -> EvalResult<'tcx> {
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
-        let ptr = self.into_ptr(val)?;
+        let ptr = self.into_ptr(val)?.unwrap_or_err()?;
         self.memory.check_align(ptr, align)?;
 
         // Recurse
@@ -562,7 +562,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             };
             // Handle locking
             if len > 0 {
-                let ptr = ptr.to_ptr()?;
+                let ptr = ptr.unwrap_or_err()?.to_ptr()?;
                 match query.mutbl {
                     MutImmutable => {
                         if mode.acquiring() {
@@ -651,7 +651,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 TyFnPtr(_sig) => {
                     let ptr = self.read_place(query.place.1)?;
-                    let ptr = self.into_ptr(ptr)?.to_ptr()?;
+                    let ptr = self.into_ptr(ptr)?.unwrap_or_err()?.to_ptr()?;
                     self.memory.get_fn(ptr)?;
                     // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
                 }

@@ -11,7 +11,7 @@ pub trait MemoryExt<'tcx> {
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
-    ) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Scalar, TlsKey)>>;
+    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey)>;
 }
 
 pub trait EvalContextExt<'tcx> {
@@ -22,10 +22,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
     fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.data.next_thread_local;
         self.data.next_thread_local += 1;
+        let ptr_size = self.pointer_size();
         self.data.thread_local.insert(
             new_key,
             TlsEntry {
-                data: Scalar::null(),
+                data: Scalar::null(ptr_size).into(),
                 dtor,
             },
         );
@@ -85,9 +86,10 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
-    ) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Scalar, TlsKey)>> {
+    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey)> {
         use std::collections::Bound::*;
 
+        let ptr_size = self.pointer_size();
         let thread_local = &mut self.data.thread_local;
         let start = match key {
             Some(key) => Excluded(key),
@@ -96,21 +98,21 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
         for (&key, &mut TlsEntry { ref mut data, dtor }) in
             thread_local.range_mut((start, Unbounded))
         {
-            if !data.is_null()? {
+            if !data.is_null() {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
-                    *data = Scalar::null();
-                    return Ok(ret);
+                    *data = Scalar::null(ptr_size);
+                    return ret;
                 }
             }
         }
-        Ok(None)
+        None
     }
 }
 
 impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
-        let mut dtor = self.memory.fetch_tls_dtor(None)?;
+        let mut dtor = self.memory.fetch_tls_dtor(None);
         // FIXME: replace loop by some structure that works with stepping
         while let Some((instance, ptr, key)) = dtor {
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
@@ -134,9 +136,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             // step until out of stackframes
             while self.step()? {}
 
-            dtor = match self.memory.fetch_tls_dtor(Some(key))? {
+            dtor = match self.memory.fetch_tls_dtor(Some(key)) {
                 dtor @ Some(_) => dtor,
-                None => self.memory.fetch_tls_dtor(None)?,
+                None => self.memory.fetch_tls_dtor(None),
             };
         }
         // FIXME: On a windows target, call `unsafe extern "system" fn on_tls_callback`.

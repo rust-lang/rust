@@ -56,16 +56,14 @@ use range_map::RangeMap;
 use validation::{ValidationQuery, AbsPlace};
 
 pub trait ScalarExt {
-    fn null() -> Self;
+    fn null(size: Size) -> Self;
     fn from_i32(i: i32) -> Self;
-    fn from_u128(i: u128) -> Self;
-    fn from_i128(i: i128) -> Self;
-    fn from_usize(i: u64, ptr_size: Size) -> Self;
-    fn from_isize(i: i64, ptr_size: Size) -> Self;
+    fn from_uint(i: impl Into<u128>, ptr_size: Size) -> Self;
+    fn from_int(i: impl Into<i128>, ptr_size: Size) -> Self;
     fn from_f32(f: f32) -> Self;
     fn from_f64(f: f64) -> Self;
     fn to_usize<'a, 'mir, 'tcx>(self, ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>) -> EvalResult<'static, u64>;
-    fn is_null(self) -> EvalResult<'static, bool>;
+    fn is_null(self) -> bool;
     /// HACK: this function just extracts all bits if `defined != 0`
     /// Mainly used for args of C-functions and we should totally correctly fetch the size
     /// of their arguments
@@ -73,36 +71,28 @@ pub trait ScalarExt {
 }
 
 impl ScalarExt for Scalar {
-    fn null() -> Self {
-        Scalar::Bits { bits: 0, defined: 128 }
+    fn null(size: Size) -> Self {
+        Scalar::Bits { bits: 0, size: size.bytes() as u8 }
     }
 
     fn from_i32(i: i32) -> Self {
-        Scalar::Bits { bits: i as u32 as u128, defined: 32 }
+        Scalar::Bits { bits: i as u32 as u128, size: 4 }
     }
 
-    fn from_u128(i: u128) -> Self {
-        Scalar::Bits { bits: i, defined: 128 }
+    fn from_uint(i: impl Into<u128>, ptr_size: Size) -> Self {
+        Scalar::Bits { bits: i.into(), size: ptr_size.bytes() as u8 }
     }
 
-    fn from_i128(i: i128) -> Self {
-        Scalar::Bits { bits: i as u128, defined: 128 }
-    }
-
-    fn from_usize(i: u64, ptr_size: Size) -> Self {
-        Scalar::Bits { bits: i as u128, defined: ptr_size.bits() as u8 }
-    }
-
-    fn from_isize(i: i64, ptr_size: Size) -> Self {
-        Scalar::Bits { bits: i as i128 as u128, defined: ptr_size.bits() as u8 }
+    fn from_int(i: impl Into<i128>, ptr_size: Size) -> Self {
+        Scalar::Bits { bits: i.into() as u128, size: ptr_size.bytes() as u8 }
     }
 
     fn from_f32(f: f32) -> Self {
-        Scalar::Bits { bits: f.to_bits() as u128, defined: 32 }
+        Scalar::Bits { bits: f.to_bits() as u128, size: 4 }
     }
 
     fn from_f64(f: f64) -> Self {
-        Scalar::Bits { bits: f.to_bits() as u128, defined: 64 }
+        Scalar::Bits { bits: f.to_bits() as u128, size: 8 }
     }
 
     fn to_usize<'a, 'mir, 'tcx>(self, ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>) -> EvalResult<'static, u64> {
@@ -111,23 +101,19 @@ impl ScalarExt for Scalar {
         Ok(b as u64)
     }
 
-    fn is_null(self) -> EvalResult<'static, bool> {
+    fn is_null(self) -> bool {
         match self {
-            Scalar::Bits { bits, defined } => {
-                if defined > 0 {
-                    Ok(bits == 0)
-                } else {
-                    err!(ReadUndefBytes)
-                }
-            }
-            Scalar::Ptr(_) => Ok(false)
+            Scalar::Bits { bits, .. } => bits == 0,
+            Scalar::Ptr(_) => false
         }
     }
 
     fn to_bytes(self) -> EvalResult<'static, u128> {
         match self {
-            Scalar::Bits { defined: 0, .. } => err!(ReadUndefBytes),
-            Scalar::Bits { bits, .. } => Ok(bits),
+            Scalar::Bits { bits, size } => {
+                assert_ne!(size, 0);
+                Ok(bits)
+            },
             Scalar::Ptr(_) => err!(ReadPointerAsBytes),
         }
     }
@@ -155,6 +141,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
                 .to_owned(),
         ));
     }
+    let ptr_size = ecx.memory.pointer_size();
 
     if let Some(start_id) = start_wrapper {
         let main_ret_ty = ecx.tcx.fn_sig(main_id).output();
@@ -199,7 +186,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx.tcx));
         ecx.write_value(
             ValTy {
-                value: Value::Scalar(Scalar::Ptr(main_ptr)),
+                value: Value::Scalar(Scalar::Ptr(main_ptr).into()),
                 ty: main_ptr_ty,
             },
             dest,
@@ -208,17 +195,16 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // Second argument (argc): 1
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         let ty = ecx.tcx.types.isize;
-        ecx.write_scalar(dest, Scalar::from_u128(1), ty)?;
+        ecx.write_scalar(dest, Scalar::from_int(1, ptr_size), ty)?;
 
         // FIXME: extract main source file path
         // Third argument (argv): &[b"foo"]
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
         let foo = ecx.memory.allocate_bytes(b"foo\0");
-        let ptr_size = ecx.memory.pointer_size();
         let ptr_align = ecx.tcx.data_layout.pointer_align;
         let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, MemoryKind::Stack)?;
-        ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo), ptr_size, false)?;
+        ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo).into(), ptr_size, ptr_align, false)?;
         ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
         ecx.write_ptr(dest, foo_ptr.into(), ty)?;
 
@@ -228,7 +214,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
             main_instance,
             main_mir.span,
             main_mir,
-            Place::from_scalar_ptr(Scalar::from_u128(1), ty::layout::Align::from_bytes(1, 1).unwrap()),
+            Place::from_scalar_ptr(Scalar::from_int(1, ptr_size).into(), ty::layout::Align::from_bytes(1, 1).unwrap()),
             StackPopCleanup::None,
         )?;
 
@@ -294,7 +280,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 trace!("Frame {}", i);
                 trace!("    return: {:#?}", frame.return_place);
                 for (i, local) in frame.locals.iter().enumerate() {
-                    if let Some(local) = local {
+                    if let Ok(local) = local.access() {
                         trace!("    local {}: {:?}", i, local);
                     }
                 }
@@ -519,15 +505,16 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
         let mut args = ecx.frame().mir.args_iter();
         let usize = ecx.tcx.types.usize;
+        let ptr_size = ecx.memory.pointer_size();
 
         // First argument: size
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_value(
             ValTy {
-                value: Value::Scalar(Scalar::from_u128(match layout.size.bytes() {
-                    0 => 1 as u128,
-                    size => size as u128,
-                })),
+                value: Value::Scalar(Scalar::from_uint(match layout.size.bytes() {
+                    0 => 1,
+                    size => size,
+                }, ptr_size).into()),
                 ty: usize,
             },
             dest,
@@ -537,7 +524,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_value(
             ValTy {
-                value: Value::Scalar(Scalar::from_u128(layout.align.abi().into())),
+                value: Value::Scalar(Scalar::from_uint(layout.align.abi(), ptr_size).into()),
                 ty: usize,
             },
             dest,
