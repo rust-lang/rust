@@ -404,7 +404,11 @@ fn build_module(cx: &DocContext, did: DefId, visited: &mut FxHashSet<DefId>) -> 
 }
 
 pub fn print_inlined_const(cx: &DocContext, did: DefId) -> String {
-    cx.tcx.rendered_const(did)
+    if let Some(node_id) = cx.tcx.hir.as_local_node_id(did) {
+        cx.tcx.hir.node_to_pretty_string(node_id)
+    } else {
+        cx.tcx.rendered_const(did)
+    }
 }
 
 fn build_const(cx: &DocContext, did: DefId) -> clean::Constant {
