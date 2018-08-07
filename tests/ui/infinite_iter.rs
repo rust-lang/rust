@@ -1,4 +1,4 @@
-#![feature(iterator_for_each)]
+
 
 use std::iter::repeat;
 #[allow(trivially_copy_pass_by_ref)]
