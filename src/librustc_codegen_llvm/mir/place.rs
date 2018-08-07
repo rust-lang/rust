@@ -23,6 +23,8 @@ use value::Value;
 use glue;
 use mir::constant::const_alloc_to_llvm;
 
+use traits::BuilderMethods;
+
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 
@@ -279,7 +281,11 @@ impl PlaceRef<'tcx, &'ll Value> {
     }
 
     /// Obtain the actual discriminant of a value.
-    pub fn codegen_get_discr(self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, cast_to: Ty<'tcx>) -> &'ll Value {
+    pub fn codegen_get_discr(
+        self,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        cast_to: Ty<'tcx>
+    ) -> &'ll Value {
         let cast_to = bx.cx.layout_of(cast_to).immediate_llvm_type(bx.cx);
         if self.layout.abi.is_uninhabited() {
             return C_undef(cast_to);

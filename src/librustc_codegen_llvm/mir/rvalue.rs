@@ -28,6 +28,8 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 
+use traits::BuilderMethods;
+
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -179,10 +181,10 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
     }
 
     pub fn codegen_rvalue_unsized(&mut self,
-                        bx: Builder<'a, 'll, 'tcx>,
-                        indirect_dest: PlaceRef<'ll, 'tcx>,
+                        bx: Builder<'a, 'll, 'tcx, &'ll Value>,
+                        indirect_dest: PlaceRef<'tcx, &'ll Value>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'll, 'tcx>
+                        -> Builder<'a, 'll, 'tcx, &'ll Value>
     {
         debug!("codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
                indirect_dest.llval, rvalue);
@@ -198,11 +200,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         }
     }
 
-    pub fn codegen_rvalue_operand(&mut self,
-                                bx: Builder<'a, 'll, 'tcx, &'ll Value>,
-                                rvalue: &mir::Rvalue<'tcx>)
-                                -> (Builder<'a, 'll, 'tcx, &'ll Value>, OperandRef<'tcx, &'ll Value>)
-    {
+    pub fn codegen_rvalue_operand(
+        &mut self,
+        bx: Builder<'a, 'll, 'tcx, &'ll Value>,
+        rvalue: &mir::Rvalue<'tcx>
+    ) -> (Builder<'a, 'll, 'tcx, &'ll Value>, OperandRef<'tcx, &'ll Value>) {
         assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
 
         match *rvalue {
@@ -750,7 +752,11 @@ enum OverflowOp {
     Add, Sub, Mul
 }
 
-fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder<'_, 'll, '_, &'ll Value>, ty: Ty) -> &'ll Value {
+fn get_overflow_intrinsic(
+    oop: OverflowOp,
+    bx: &Builder<'_, 'll, '_, &'ll Value>,
+    ty: Ty
+) -> &'ll Value {
     use syntax::ast::IntTy::*;
     use syntax::ast::UintTy::*;
     use rustc::ty::{Int, Uint};

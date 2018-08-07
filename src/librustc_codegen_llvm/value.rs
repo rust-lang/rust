@@ -15,7 +15,10 @@ use llvm;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-pub trait ValueTrait : fmt::Debug {}
+pub trait ValueTrait : fmt::Debug {
+    fn to_llvm(&self) -> &llvm::Value;
+    fn of_llvm(&llvm::Value) -> &Self;
+}
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
@@ -23,7 +26,14 @@ impl PartialEq for Value {
     }
 }
 
-impl ValueTrait for Value {}
+impl ValueTrait for Value {
+    fn to_llvm(&self) -> &llvm::Value {
+        &self
+    }
+    fn of_llvm(v: &llvm::Value) -> &Self {
+        &v
+    }
+}
 
 impl Eq for Value {}
 

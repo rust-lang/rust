@@ -25,6 +25,7 @@ use monomorphize::Instance;
 use abi::{ArgTypeExt, FnType, FnTypeExt, PassMode};
 use type_::Type;
 use value::Value;
+use traits::BuilderMethods;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -118,7 +119,11 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         )
     }
 
-    pub fn set_debug_loc(&mut self, bx: &Builder<'_, 'll, '_, &'ll Value>, source_info: mir::SourceInfo) {
+    pub fn set_debug_loc(
+        &mut self,
+        bx: &Builder<'_, 'll, '_, &'ll Value>,
+        source_info: mir::SourceInfo
+    ) {
         let (scope, span) = self.debug_loc(source_info);
         debuginfo::set_source_location(&self.debug_context, bx, scope, span);
     }

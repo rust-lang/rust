@@ -41,7 +41,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
                 return Type::x86_mmx(cx)
             } else {
                 let element = layout.scalar_llvm_type_at(cx, element, Size::ZERO);
-                return Type::vector(element, count);
+                return Type::vector::<Value>(element, count);
             }
         }
         layout::Abi::ScalarPair(..) => {
@@ -94,7 +94,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx, &'a Value>,
             }
         }
         layout::FieldPlacement::Array { count, .. } => {
-            Type::array(layout.field(cx, 0).llvm_type(cx), count)
+            Type::array::<Value>(layout.field(cx, 0).llvm_type(cx), count)
         }
         layout::FieldPlacement::Arbitrary { .. } => {
             match name {

@@ -75,6 +75,8 @@ use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
+use traits::BuilderMethods;
+
 use std::any::Any;
 use std::ffi::CString;
 use std::sync::Arc;
@@ -87,7 +89,7 @@ use syntax_pos::symbol::InternedString;
 use syntax::attr;
 use rustc::hir::{self, CodegenFnAttrs};
 
-use value::Value;
+use value::{Value, ValueTrait};
 
 use mir::operand::OperandValue;
 
@@ -388,9 +390,14 @@ pub fn call_assume(bx: &Builder<'_, 'll, '_, &'ll Value>, val: &'ll Value) {
     bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate(bx: &Builder<'_, 'll, '_, &'ll Value>, val: &'ll Value) -> &'ll Value {
-    if val_ty(val) == Type::i1(bx.cx) {
-        bx.zext(val, Type::i8(bx.cx))
+pub fn from_immediate<'a, 'll: 'a, 'tcx: 'll,
+    Value : ?Sized,
+    Builder: BuilderMethods<'a, 'll, 'tcx, Value>>(
+    bx: &Builder,
+    val: &'ll Value
+) -> &'ll Value where Value : ValueTrait {
+    if val_ty(val) == Type::i1(bx.cx()) {
+        bx.zext(val, Type::i8(bx.cx()))
     } else {
         val
     }
@@ -418,14 +425,16 @@ pub fn to_immediate_scalar(
     val
 }
 
-pub fn call_memcpy(
-    bx: &Builder<'_, 'll, '_, &'ll Value>,
+pub fn call_memcpy<'a, 'll: 'a, 'tcx: 'll,
+    Value : ?Sized,
+    Builder: BuilderMethods<'a, 'll, 'tcx, Value>>(
+    bx: &Builder,
     dst: &'ll Value,
     src: &'ll Value,
     n_bytes: &'ll Value,
     align: Align,
     flags: MemFlags,
-) {
+) where Value : ValueTrait {
     if flags.contains(MemFlags::NONTEMPORAL) {
         // HACK(nox): This is inefficient but there is no nontemporal memcpy.
         let val = bx.load(src, align);
@@ -433,7 +442,7 @@ pub fn call_memcpy(
         bx.store_with_flags(val, ptr, align, flags);
         return;
     }
-    let cx = bx.cx;
+    let cx = bx.cx();
     let ptr_width = &cx.sess().target.target.target_pointer_width;
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
     let memcpy = cx.get_intrinsic(&key);
@@ -445,20 +454,22 @@ pub fn call_memcpy(
     bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty(
-    bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
+pub fn memcpy_ty<'a, 'll: 'a, 'tcx: 'll,
+    Value : ?Sized,
+    Builder: BuilderMethods<'a, 'll, 'tcx, Value>>(
+    bx: &Builder,
     dst: &'ll Value,
     src: &'ll Value,
     layout: TyLayout<'tcx>,
     align: Align,
     flags: MemFlags,
-) {
+) where Value : ValueTrait {
     let size = layout.size.bytes();
     if size == 0 {
         return;
     }
 
-    call_memcpy(bx, dst, src, C_usize(bx.cx, size), align, flags);
+    call_memcpy(bx, dst, src, C_usize(bx.cx(), size), align, flags);
 }
 
 pub fn call_memset(
@@ -549,7 +560,8 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx<'ll, '_, &'ll Value>) {
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) {
-        let llfty = Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], Type::c_int(cx));
+        let llfty =
+            Type::func::<Value>(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], Type::c_int(cx));
 
         let main_ret_ty = cx.tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,

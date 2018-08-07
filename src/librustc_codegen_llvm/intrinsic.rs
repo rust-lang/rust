@@ -30,6 +30,8 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
+use traits::BuilderMethods;
+
 use rustc::session::Session;
 use syntax_pos::Span;
 
@@ -571,7 +573,7 @@ pub fn codegen_intrinsic_call(
                     Vector(ref t, ref llvm_elem, length) => {
                         let t = llvm_elem.as_ref().unwrap_or(t);
                         let elem = one(ty_to_type(cx, t));
-                        vec![Type::vector(elem, length as u64)]
+                        vec![Type::vector::<Value>(elem, length as u64)]
                     }
                     Aggregate(false, ref contents) => {
                         let elems = contents.iter()
@@ -620,7 +622,10 @@ pub fn codegen_intrinsic_call(
                     }
                     intrinsics::Type::Vector(_, Some(ref llvm_elem), length) => {
                         let llvm_elem = one(ty_to_type(bx.cx, llvm_elem));
-                        vec![bx.bitcast(arg.immediate(), Type::vector(llvm_elem, length as u64))]
+                        vec![
+                            bx.bitcast(arg.immediate(),
+                            Type::vector::<Value>(llvm_elem, length as u64))
+                        ]
                     }
                     intrinsics::Type::Integer(_, width, llvm_width) if width != llvm_width => {
                         // the LLVM intrinsic uses a smaller integer
@@ -648,7 +653,7 @@ pub fn codegen_intrinsic_call(
                 intrinsics::IntrinsicDef::Named(name) => {
                     let f = declare::declare_cfn(cx,
                                                  name,
-                                                 Type::func(&inputs, outputs));
+                                                 Type::func::<Value>(&inputs, outputs));
                     bx.call(f, &llargs, None)
                 }
             };
@@ -1149,7 +1154,7 @@ fn generic_simd_intrinsic(
         }
         // truncate the mask to a vector of i1s
         let i1 = Type::i1(bx.cx);
-        let i1xn = Type::vector(i1, m_len as u64);
+        let i1xn = Type::vector::<Value>(i1, m_len as u64);
         let m_i1s = bx.trunc(args[0].immediate(), i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
@@ -1290,7 +1295,7 @@ fn generic_simd_intrinsic(
             elem_ty = elem_ty.ptr_to();
             no_pointers -= 1;
         }
-        Type::vector(elem_ty, vec_len as u64)
+        Type::vector::<Value>(elem_ty, vec_len as u64)
     }
 
 
@@ -1373,7 +1378,7 @@ fn generic_simd_intrinsic(
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
             let i1 = Type::i1(bx.cx);
-            let i1xn = Type::vector(i1, in_len as u64);
+            let i1xn = Type::vector::<Value>(i1, in_len as u64);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
@@ -1388,8 +1393,11 @@ fn generic_simd_intrinsic(
         let llvm_intrinsic = format!("llvm.masked.gather.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = declare::declare_cfn(bx.cx, &llvm_intrinsic,
-                                     Type::func(&[llvm_pointer_vec_ty, alignment_ty, mask_ty,
-                                                  llvm_elem_vec_ty], llvm_elem_vec_ty));
+                                     Type::func::<Value>(&[
+                                         llvm_pointer_vec_ty,
+                                         alignment_ty,
+                                         mask_ty,
+                                         llvm_elem_vec_ty], llvm_elem_vec_ty));
         llvm::SetUnnamedAddr(f, false);
         let v = bx.call(f, &[args[1].immediate(), alignment, mask, args[0].immediate()],
                         None);
@@ -1470,7 +1478,7 @@ fn generic_simd_intrinsic(
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
             let i1 = Type::i1(bx.cx);
-            let i1xn = Type::vector(i1, in_len as u64);
+            let i1xn = Type::vector::<Value>(i1, in_len as u64);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
@@ -1487,7 +1495,7 @@ fn generic_simd_intrinsic(
         let llvm_intrinsic = format!("llvm.masked.scatter.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = declare::declare_cfn(bx.cx, &llvm_intrinsic,
-                                     Type::func(&[llvm_elem_vec_ty,
+                                     Type::func::<Value>(&[llvm_elem_vec_ty,
                                                   llvm_pointer_vec_ty,
                                                   alignment_ty,
                                                   mask_ty], ret_t));
@@ -1622,7 +1630,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 
                     // boolean reductions operate on vectors of i1s:
                     let i1 = Type::i1(bx.cx);
-                    let i1xn = Type::vector(i1, in_len as u64);
+                    let i1xn = Type::vector::<Value>(i1, in_len as u64);
                     bx.trunc(args[0].immediate(), i1xn)
                 };
                 return match in_elem.sty {

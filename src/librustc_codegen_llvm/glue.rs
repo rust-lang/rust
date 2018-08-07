@@ -21,9 +21,13 @@ use meth;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use value::Value;
+use traits::BuilderMethods;
 
-pub fn size_and_align_of_dst(bx: &Builder<'_, 'll, 'tcx, &'ll Value>, t: Ty<'tcx>, info: Option<&'ll Value>)
-                                       -> (&'ll Value, &'ll Value) {
+pub fn size_and_align_of_dst(
+    bx: &Builder<'_, 'll, 'tcx, &'ll Value>,
+    t: Ty<'tcx>,
+    info: Option<&'ll Value>
+) -> (&'ll Value, &'ll Value) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, info);
     if bx.cx.type_is_sized(t) {

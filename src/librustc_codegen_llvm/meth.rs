@@ -17,6 +17,8 @@ use monomorphize;
 use type_::Type;
 use value::Value;
 
+use traits::BuilderMethods;
+
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::HasDataLayout;
 use debuginfo;
@@ -48,7 +50,11 @@ impl<'a, 'tcx> VirtualIndex {
         ptr
     }
 
-    pub fn get_usize(self, bx: &Builder<'a, 'll, 'tcx, &'ll Value>, llvtable: &'ll Value) -> &'ll Value {
+    pub fn get_usize(
+        self,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        llvtable: &'ll Value
+    ) -> &'ll Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 

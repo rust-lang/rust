@@ -16,6 +16,7 @@ use builder::Builder;
 use value::Value;
 
 use rustc::hir;
+use traits::BuilderMethods;
 
 use mir::place::PlaceRef;
 use mir::operand::OperandValue;
