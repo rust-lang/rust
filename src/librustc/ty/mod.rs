@@ -919,7 +919,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         for param in &self.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
-                GenericParamDefKind::Type {..} => own_counts.types += 1,
+                GenericParamDefKind::Type { .. } => own_counts.types += 1,
             };
         }
 

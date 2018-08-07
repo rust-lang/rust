@@ -29,7 +29,7 @@ use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
 use util::nodemap::{FxHashSet, FxHashMap};
-use errors::FatalError;
+use errors::{FatalError, DiagnosticId};
 
 use std::iter;
 use syntax::ast;
@@ -87,11 +87,6 @@ struct ConvertedBinding<'tcx> {
     item_name: ast::Ident,
     ty: Ty<'tcx>,
     span: Span,
-}
-
-struct ParamRange {
-    required: usize,
-    accepted: usize
 }
 
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
@@ -346,56 +341,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         self_ty: Option<Ty<'tcx>>)
         -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>)
     {
-        let tcx = self.tcx();
-
+        // If the type is parameterized by this region, then replace this
+        // region with the current anon region binding (in other words,
+        // whatever & would get replaced with).
         debug!("create_substs_for_ast_path(def_id={:?}, self_ty={:?}, \
                generic_args={:?})",
                def_id, self_ty, generic_args);
 
-        // If the type is parameterized by this region, then replace this
-        // region with the current anon region binding (in other words,
-        // whatever & would get replaced with).
-        let mut lt_provided = 0;
-        let mut ty_provided = 0;
-        for arg in &generic_args.args {
-            match arg {
-                GenericArg::Lifetime(_) => lt_provided += 1,
-                GenericArg::Type(_) => ty_provided += 1,
-            }
-        }
-
-        let decl_generics = tcx.generics_of(def_id);
-        let mut lt_accepted = 0;
-        let mut ty_params = ParamRange { required: 0, accepted: 0 };
-        for param in &decl_generics.params {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    lt_accepted += 1;
-                }
-                GenericParamDefKind::Type { has_default, .. } => {
-                    ty_params.accepted += 1;
-                    if !has_default {
-                        ty_params.required += 1;
-                    }
-                }
-            };
-        }
-        if self_ty.is_some() {
-            ty_params.required -= 1;
-            ty_params.accepted -= 1;
-        }
-
-        if lt_accepted != lt_provided {
-            report_lifetime_number_error(tcx, span, lt_provided, lt_accepted);
-        }
+        let tcx = self.tcx();
+        let generic_params = tcx.generics_of(def_id);
 
         // If a self-type was declared, one should be provided.
-        assert_eq!(decl_generics.has_self, self_ty.is_some());
+        assert_eq!(generic_params.has_self, self_ty.is_some());
 
-        // Check the number of type parameters supplied by the user.
-        if !infer_types || ty_provided > ty_params.required {
-            check_type_argument_count(tcx, span, ty_provided, ty_params);
-        }
+        let has_self = generic_params.has_self;
+        check_generic_arg_count(tcx, span, &generic_params, &generic_args, has_self, infer_types);
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |param: &ty::GenericParamDef| {
@@ -492,8 +452,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
         }).collect();
 
-        debug!("create_substs_for_ast_path(decl_generics={:?}, self_ty={:?}) -> {:?}",
-               decl_generics, self_ty, substs);
+        debug!("create_substs_for_ast_path(generic_params={:?}, self_ty={:?}) -> {:?}",
+               generic_params, self_ty, substs);
 
         (substs, assoc_bindings)
     }
@@ -1537,70 +1497,107 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     (auto_traits, trait_bounds)
 }
 
-fn check_type_argument_count(tcx: TyCtxt,
-                             span: Span,
-                             supplied: usize,
-                             ty_params: ParamRange)
-{
-    let (required, accepted) = (ty_params.required, ty_params.accepted);
-    if supplied < required {
-        let expected = if required < accepted {
-            "expected at least"
-        } else {
-            "expected"
-        };
-        let arguments_plural = if required == 1 { "" } else { "s" };
+pub fn check_generic_arg_count(
+    tcx: TyCtxt,
+    span: Span,
+    def: &ty::Generics,
+    args: &hir::GenericArgs,
+    has_self: bool,
+    infer_types: bool,
+) {
+    // At this stage we are guaranteed that the generic arguments are in the correct order, e.g.
+    // that lifetimes will proceed types. So it suffices to check the number of each generic
+    // arguments in order to validate them with respect to the generic parameters.
+    let param_counts = def.own_counts();
+    let arg_counts = args.own_counts();
 
-        struct_span_err!(tcx.sess, span, E0243,
-                "wrong number of type arguments: {} {}, found {}",
-                expected, required, supplied)
-            .span_label(span,
-                format!("{} {} type argument{}",
-                    expected,
-                    required,
-                    arguments_plural))
-            .emit();
-    } else if supplied > accepted {
-        let expected = if required < accepted {
-            format!("expected at most {}", accepted)
-        } else {
-            format!("expected {}", accepted)
+    let mut defaults: ty::GenericParamCount = Default::default();
+    for param in &def.params {
+        match param.kind {
+            GenericParamDefKind::Lifetime => {}
+            GenericParamDefKind::Type { has_default, .. } => defaults.types += has_default as usize,
         };
-        let arguments_plural = if accepted == 1 { "" } else { "s" };
-
-        struct_span_err!(tcx.sess, span, E0244,
-                "wrong number of type arguments: {}, found {}",
-                expected, supplied)
-            .span_label(
-                span,
-                format!("{} type argument{}",
-                    if accepted == 0 { "expected no" } else { &expected },
-                    arguments_plural)
-            )
-            .emit();
     }
-}
 
-fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected: usize) {
-    let label = if number < expected {
-        if expected == 1 {
-            format!("expected {} lifetime parameter", expected)
-        } else {
-            format!("expected {} lifetime parameters", expected)
+    let check_kind_count = |error_code_less: &str,
+                            error_code_more: &str,
+                            kind,
+                            required,
+                            permitted,
+                            provided| {
+        // We enforce the following: `required` <= `provided` <= `permitted`.
+        // For kinds without defaults (i.e. lifetimes), `required == permitted`.
+        // For other kinds (i.e. types), `permitted` may be greater than `required`.
+        if required <= provided && provided <= permitted {
+            return;
         }
-    } else {
-        let additional = number - expected;
-        if additional == 1 {
-            "unexpected lifetime parameter".to_string()
+
+        // Unfortunately lifetime and type parameter mismatches are typically styled
+        // differently in diagnostics, which means we have a few cases to consider here.
+        let (bound, quantifier) = if required != permitted {
+            if provided < required {
+                (required, "at least ")
+            } else { // provided > permitted
+                (permitted, "at most ")
+            }
         } else {
-            format!("{} unexpected lifetime parameters", additional)
-        }
+            (required, "")
+        };
+        let label = if required == permitted && provided > permitted {
+            let diff = provided - permitted;
+            format!(
+                "{}unexpected {} argument{}",
+                if diff != 1 { format!("{} ", diff) } else { String::new() },
+                kind,
+                if diff != 1 { "s" } else { "" },
+            )
+        } else {
+            format!(
+                "expected {}{} {} argument{}",
+                quantifier,
+                bound,
+                kind,
+                if required != 1 { "s" } else { "" },
+            )
+        };
+
+        tcx.sess.struct_span_err_with_code(
+            span,
+            &format!(
+                "wrong number of {} arguments: expected {}{}, found {}",
+                kind,
+                quantifier,
+                bound,
+                provided,
+            ),
+            DiagnosticId::Error({
+                if provided <= permitted {
+                    error_code_less
+                } else {
+                    error_code_more
+                }
+            }.into())
+        ).span_label(span, label).emit();
     };
-    struct_span_err!(tcx.sess, span, E0107,
-                     "wrong number of lifetime parameters: expected {}, found {}",
-                     expected, number)
-        .span_label(span, label)
-        .emit();
+
+    check_kind_count(
+        "E0107",
+        "E0107",
+        "lifetime",
+        param_counts.lifetimes,
+        param_counts.lifetimes,
+        arg_counts.lifetimes,
+    );
+    if !infer_types || arg_counts.types > param_counts.types - defaults.types - has_self as usize {
+        check_kind_count(
+            "E0243",
+            "E0244", // FIXME: E0243 and E0244 should be unified.
+            "type",
+            param_counts.types - defaults.types - has_self as usize,
+            param_counts.types - has_self as usize,
+            arg_counts.types,
+        );
+    }
 }
 
 // A helper struct for conveniently grouping a set of bounds which we pass to

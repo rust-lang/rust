@@ -13,7 +13,7 @@ error[E0244]: wrong number of type arguments: expected 0, found 1
   --> $DIR/issue-3214.rs:16:22
    |
 LL |     impl<T> Drop for foo<T> {
-   |                      ^^^^^^ expected no type arguments
+   |                      ^^^^^^ unexpected type argument
 
 error: aborting due to 2 previous errors
 

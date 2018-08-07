@@ -41,7 +41,7 @@ fn foo<'a>() {
     //~^ ERROR too many type parameters provided
 
     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
-    //~^ ERROR wrong number of lifetime parameters
+    //~^ ERROR wrong number of lifetime arguments
 
     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
     //~^ ERROR too many type parameters provided
