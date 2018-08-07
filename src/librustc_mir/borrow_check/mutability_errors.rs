@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 ));
 
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if self.is_upvar(access_place) {
+                if access_place.is_upvar_field_projection(self.mir, &self.tcx).is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.mir.upvar_decls[upvar_index.index()].debug_name;
@@ -90,7 +90,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         the_place_err.ty(self.mir, self.tcx).to_ty(self.tcx)
                     ));
 
-                    reason = if self.is_upvar(access_place) {
+                    reason = if access_place.is_upvar_field_projection(self.mir,
+                                                                       &self.tcx).is_some() {
                         ", as it is a captured variable in a `Fn` closure".to_string()
                     } else {
                         ", as `Fn` closures cannot mutate their captured variables".to_string()
@@ -393,31 +394,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
 
         err.buffer(&mut self.errors_buffer);
-    }
-
-    // Does this place refer to what the user sees as an upvar
-    fn is_upvar(&self, place: &Place<'tcx>) -> bool {
-        match *place {
-            Place::Projection(box Projection {
-                ref base,
-                elem: ProjectionElem::Field(_, _),
-            }) => {
-                let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                is_closure_or_generator(base_ty)
-            }
-            Place::Projection(box Projection {
-                base:
-                    Place::Projection(box Projection {
-                        ref base,
-                        elem: ProjectionElem::Field(upvar_index, _),
-                    }),
-                elem: ProjectionElem::Deref,
-            }) => {
-                let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                is_closure_or_generator(base_ty) && self.mir.upvar_decls[upvar_index.index()].by_ref
-            }
-            _ => false,
-        }
     }
 }
 
