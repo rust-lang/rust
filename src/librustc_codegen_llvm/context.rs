@@ -26,6 +26,7 @@ use type_::Type;
 use type_of::PointeeInfo;
 
 use rustc_data_structures::base_n;
+use rustc_data_structures::small_c_str::SmallCStr;
 use rustc::mir::mono::Stats;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
@@ -34,7 +35,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::cell::{Cell, RefCell};
 use std::iter;
 use std::str;
@@ -161,7 +162,7 @@ pub unsafe fn create_module(
     llcx: &'ll llvm::Context,
     mod_name: &str,
 ) -> &'ll llvm::Module {
-    let mod_name = CString::new(mod_name).unwrap();
+    let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
     // Ensure the data-layout values hardcoded remain the defaults.
@@ -201,11 +202,10 @@ pub unsafe fn create_module(
         }
     }
 
-    let data_layout = CString::new(&sess.target.target.data_layout[..]).unwrap();
+    let data_layout = SmallCStr::new(&sess.target.target.data_layout);
     llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
 
-    let llvm_target = sess.target.target.llvm_target.as_bytes();
-    let llvm_target = CString::new(llvm_target).unwrap();
+    let llvm_target = SmallCStr::new(&sess.target.target.llvm_target);
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
 
     if is_pie_binary(sess) {

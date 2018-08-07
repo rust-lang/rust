@@ -21,7 +21,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use common::CodegenCx;
 
-use std::ffi::CString;
+use rustc_data_structures::small_c_str::SmallCStr;
 
 pub fn mangled_name_of_instance<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
@@ -49,7 +49,7 @@ pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
         data => data.as_interned_str().as_str()
     };
 
-    let namespace_name = CString::new(namespace_name.as_bytes()).unwrap();
+    let namespace_name = SmallCStr::new(&namespace_name);
 
     let scope = unsafe {
         llvm::LLVMRustDIBuilderCreateNameSpace(

@@ -34,6 +34,7 @@ use rustc::ty::{self, ParamEnv, Ty, InstanceDef};
 use rustc::mir;
 use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
+use rustc_data_structures::small_c_str::SmallCStr;
 use value::Value;
 
 use libc::c_uint;
@@ -265,7 +266,7 @@ pub fn create_function_debug_context(
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
 
     let function_name = CString::new(name).unwrap();
-    let linkage_name = CString::new(linkage_name.to_string()).unwrap();
+    let linkage_name = SmallCStr::new(&linkage_name.as_str());
 
     let mut flags = DIFlags::FlagPrototyped;
 
@@ -407,7 +408,7 @@ pub fn create_function_debug_context(
                     let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                     let actual_type_metadata =
                         type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
-                    let name = CString::new(name.as_str().as_bytes()).unwrap();
+                    let name = SmallCStr::new(&name.as_str());
                     Some(unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
@@ -510,7 +511,7 @@ pub fn declare_local(
     };
     let align = cx.align_of(variable_type);
 
-    let name = CString::new(variable_name.as_str().as_bytes()).unwrap();
+    let name = SmallCStr::new(&variable_name.as_str());
     match (variable_access, &[][..]) {
         (DirectVariable { alloca }, address_operations) |
         (IndirectVariable {alloca, address_operations}, _) => {

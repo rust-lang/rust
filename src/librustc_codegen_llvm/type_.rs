@@ -19,8 +19,8 @@ use context::CodegenCx;
 
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
+use rustc_data_structures::small_c_str::SmallCStr;
 
-use std::ffi::CString;
 use std::fmt;
 
 use libc::c_uint;
@@ -201,7 +201,7 @@ impl Type {
     }
 
     pub fn named_struct(cx: &CodegenCx<'ll, '_>, name: &str) -> &'ll Type {
-        let name = CString::new(name).unwrap();
+        let name = SmallCStr::new(name);
         unsafe {
             llvm::LLVMStructCreateNamed(cx.llcx, name.as_ptr())
         }

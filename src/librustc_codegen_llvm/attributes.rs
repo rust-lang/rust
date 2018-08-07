@@ -128,7 +128,7 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            cstr("target-cpu\0"),
+            const_cstr!("target-cpu"),
             target_cpu.as_c_str());
 }
 

@@ -73,6 +73,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
+use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
 use std::any::Any;
@@ -533,7 +534,7 @@ pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
         None => return,
     };
     unsafe {
-        let buf = CString::new(sect.as_str().as_bytes()).unwrap();
+        let buf = SmallCStr::new(&sect.as_str());
         llvm::LLVMSetSection(llval, buf.as_ptr());
     }
 }
@@ -681,7 +682,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let section_name = metadata::metadata_section_name(&tcx.sess.target.target);
-        let name = CString::new(section_name).unwrap();
+        let name = SmallCStr::new(section_name);
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 
         // Also generate a .section directive to force no

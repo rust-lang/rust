@@ -18,9 +18,9 @@ use libc::{c_uint, c_char};
 use rustc::ty::TyCtxt;
 use rustc::ty::layout::{Align, Size};
 use rustc::session::{config, Session};
+use rustc_data_structures::small_c_str::SmallCStr;
 
 use std::borrow::Cow;
-use std::ffi::CString;
 use std::ops::Range;
 use std::ptr;
 
@@ -58,7 +58,7 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn new_block<'b>(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &'b str) -> Self {
         let bx = Builder::with_cx(cx);
         let llbb = unsafe {
-            let name = CString::new(name).unwrap();
+            let name = SmallCStr::new(name);
             llvm::LLVMAppendBasicBlockInContext(
                 cx.llcx,
                 llfn,
@@ -118,7 +118,7 @@ impl Builder<'a, 'll, 'tcx> {
     }
 
     pub fn set_value_name(&self, value: &'ll Value, name: &str) {
-        let cname = CString::new(name.as_bytes()).unwrap();
+        let cname = SmallCStr::new(name);
         unsafe {
             llvm::LLVMSetValueName(value, cname.as_ptr());
         }
@@ -436,7 +436,7 @@ impl Builder<'a, 'll, 'tcx> {
             let alloca = if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty, noname())
             } else {
-                let name = CString::new(name).unwrap();
+                let name = SmallCStr::new(name);
                 llvm::LLVMBuildAlloca(self.llbuilder, ty,
                                       name.as_ptr())
             };
