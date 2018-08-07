@@ -126,16 +126,10 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
             p.eat(MUT_KW);
             REF_EXPR
         }
-        // test deref_expr
+        // test unary_expr
         // fn foo() {
         //     **&1;
-        // }
-        // test not_expr
-        // fn foo() {
         //     !!true;
-        // }
-        // test neg_expr
-        // fn foo() {
         //     --1;
         // }
         STAR | EXCL | MINUS => {
