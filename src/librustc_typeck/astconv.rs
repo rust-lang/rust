@@ -267,29 +267,33 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
             // Check whether this segment takes generic arguments and the user has provided any.
             let (generic_args, infer_types) = args_for_def_id(def_id);
-            if let Some(ref generic_args) = generic_args {
+
+            let mut args = generic_args.iter().flat_map(|generic_args| generic_args.args.iter());
+            let mut next_arg = args.next();
+
+            loop {
                 // We're going to iterate through the generic arguments that the user
                 // provided, matching them with the generic parameters we expect.
                 // Mismatches can occur as a result of elided lifetimes, or for malformed
                 // input. We try to handle both sensibly.
-                'args: for arg in &generic_args.args {
-                    while let Some(param) = next_param {
+                let mut progress_arg = true;
+                match (next_arg, next_param) {
+                    (Some(arg), Some(param)) => {
                         match (&param.kind, arg) {
                             (GenericParamDefKind::Lifetime, GenericArg::Lifetime(_)) => {
                                 push_kind(&mut substs, provided_kind(param, arg));
                                 next_param = params.next();
-                                continue 'args;
                             }
                             (GenericParamDefKind::Lifetime, GenericArg::Type(_)) => {
                                 // We expected a lifetime argument, but got a type
                                 // argument. That means we're inferring the lifetimes.
                                 push_kind(&mut substs, inferred_kind(None, param, infer_types));
                                 next_param = params.next();
+                                progress_arg = false;
                             }
                             (GenericParamDefKind::Type { .. }, GenericArg::Type(_)) => {
                                 push_kind(&mut substs, provided_kind(param, arg));
                                 next_param = params.next();
-                                continue 'args;
                             }
                             (GenericParamDefKind::Type { .. }, GenericArg::Lifetime(_)) => {
                                 // We expected a type argument, but got a lifetime
@@ -300,35 +304,43 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                                 if err_if_invalid {
                                     tcx.sess.delay_span_bug(span,
                                         "found a GenericArg::Lifetime where a \
-                                        GenericArg::Type was expected");
+                                            GenericArg::Type was expected");
                                 }
-                                break 'args;
+                                // Exhaust the iterator.
+                                while next_arg.is_some() {
+                                    next_arg = args.next();
+                                }
                             }
                         }
                     }
-                    // We should never be able to reach this point with well-formed input.
-                    // Getting to this point means the user supplied more arguments than
-                    // there are parameters.
-                    if err_if_invalid {
-                        tcx.sess.delay_span_bug(span,
-                            "GenericArg did not have matching GenericParamDef");
+                    (Some(_), None) => {
+                        // We should never be able to reach this point with well-formed input.
+                        // Getting to this point means the user supplied more arguments than
+                        // there are parameters.
+                        if err_if_invalid {
+                            tcx.sess.delay_span_bug(span,
+                                "GenericArg did not have matching GenericParamDef");
+                        }
                     }
+                    (None, Some(param)) => {
+                        // If there are fewer arguments than parameters, it means
+                        // we're inferring the remaining arguments.
+                        match param.kind {
+                            GenericParamDefKind::Lifetime => {
+                                push_kind(&mut substs, inferred_kind(None, param, infer_types));
+                            }
+                            GenericParamDefKind::Type { .. } => {
+                                let kind = inferred_kind(Some(&substs), param, infer_types);
+                                push_kind(&mut substs, kind);
+                            }
+                        }
+                        next_param = params.next();
+                    }
+                    (None, None) => break,
                 }
-            }
-
-            // If there are fewer arguments than parameters, it means
-            // we're inferring the remaining arguments.
-            while let Some(param) = next_param {
-                match param.kind {
-                    GenericParamDefKind::Lifetime => {
-                        push_kind(&mut substs, inferred_kind(None, param, infer_types));
-                    }
-                    GenericParamDefKind::Type { .. } => {
-                        let kind = inferred_kind(Some(&substs), param, infer_types);
-                        push_kind(&mut substs, kind);
-                    }
+                if progress_arg {
+                    next_arg = args.next();
                 }
-                next_param = params.next();
             }
         }
 
