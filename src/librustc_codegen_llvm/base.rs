@@ -1255,8 +1255,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Create the llvm.used variable
             // This variable has type [N x i8*] and is stored in the llvm.metadata section
             if !cx.used_statics.borrow().is_empty() {
-                let name = CString::new("llvm.used").unwrap();
-                let section = CString::new("llvm.metadata").unwrap();
+                let name = const_cstr!("llvm.used");
+                let section = const_cstr!("llvm.metadata");
                 let array = C_array(Type::i8(&cx).ptr_to(), &*cx.used_statics.borrow());
 
                 unsafe {

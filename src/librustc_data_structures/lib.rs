@@ -60,6 +60,7 @@ pub mod array_vec;
 pub mod base_n;
 pub mod bitslice;
 pub mod bitvec;
+pub mod const_cstr;
 pub mod flock;
 pub mod fx;
 pub mod graph;

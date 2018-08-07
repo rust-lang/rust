@@ -975,7 +975,7 @@ impl Builder<'a, 'll, 'tcx> {
                        parent: Option<&'ll Value>,
                        args: &[&'ll Value]) -> &'ll Value {
         self.count_insn("cleanuppad");
-        let name = CString::new("cleanuppad").unwrap();
+        let name = const_cstr!("cleanuppad");
         let ret = unsafe {
             llvm::LLVMRustBuildCleanupPad(self.llbuilder,
                                           parent,
@@ -1001,7 +1001,7 @@ impl Builder<'a, 'll, 'tcx> {
                      parent: &'ll Value,
                      args: &[&'ll Value]) -> &'ll Value {
         self.count_insn("catchpad");
-        let name = CString::new("catchpad").unwrap();
+        let name = const_cstr!("catchpad");
         let ret = unsafe {
             llvm::LLVMRustBuildCatchPad(self.llbuilder, parent,
                                         args.len() as c_uint, args.as_ptr(),
@@ -1025,7 +1025,7 @@ impl Builder<'a, 'll, 'tcx> {
         num_handlers: usize,
     ) -> &'ll Value {
         self.count_insn("catchswitch");
-        let name = CString::new("catchswitch").unwrap();
+        let name = const_cstr!("catchswitch");
         let ret = unsafe {
             llvm::LLVMRustBuildCatchSwitch(self.llbuilder, parent, unwind,
                                            num_handlers as c_uint,

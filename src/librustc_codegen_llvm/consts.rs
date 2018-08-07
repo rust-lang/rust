@@ -328,7 +328,7 @@ pub fn codegen_static<'a, 'tcx>(
         } else {
             // If we created the global with the wrong type,
             // correct the type.
-            let empty_string = CString::new("").unwrap();
+            let empty_string = const_cstr!("");
             let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(g));
             let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
             llvm::LLVMSetValueName(g, empty_string.as_ptr());

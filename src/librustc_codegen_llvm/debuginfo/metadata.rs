@@ -883,7 +883,7 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
                                                           gcov_cu_info.as_ptr(),
                                                           gcov_cu_info.len() as c_uint);
 
-            let llvm_gcov_ident = CString::new("llvm.gcov").unwrap();
+            let llvm_gcov_ident = const_cstr!("llvm.gcov");
             llvm::LLVMAddNamedMetadataOperand(debug_context.llmod,
                                               llvm_gcov_ident.as_ptr(),
                                               gcov_metadata);
@@ -1780,7 +1780,7 @@ pub fn create_vtable_metadata(
         // later on in llvm/lib/IR/Value.cpp.
         let empty_array = create_DIArray(DIB(cx), &[]);
 
-        let name = CString::new("vtable").unwrap();
+        let name = const_cstr!("vtable");
 
         // Create a new one each time.  We don't want metadata caching
         // here, because each vtable will refer to a unique containing
