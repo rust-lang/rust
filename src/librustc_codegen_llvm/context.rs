@@ -18,7 +18,7 @@ use callee;
 use base;
 use declare;
 use monomorphize::Instance;
-use value::Value;
+use value::{Value, ValueTrait};
 
 use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
@@ -283,7 +283,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
             None
         };
 
-        let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
+        let isize_ty = Type::ix_llcx::<Value>(llcx, tcx.data_layout.pointer_size.bits());
 
         CodegenCx {
             tcx,
@@ -315,7 +315,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     }
 }
 
-impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
+impl<'b, 'tcx, Value : ?Sized> CodegenCx<'b, 'tcx, &'b Value> where Value : ValueTrait {
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.tcx.sess
     }
@@ -327,7 +327,9 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
 
         declare_intrinsic(self, key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
+}
 
+impl<'b, 'tcx> CodegenCx<'b, 'tcx, &'b Value> {
     /// Generate a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
     pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
@@ -377,7 +379,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
                 } else {
                     "rust_eh_personality"
                 };
-                let fty = Type::variadic_func(&[], Type::i32(self));
+                let fty = Type::variadic_func::<Value>(&[], Type::i32(self));
                 declare::declare_cfn(self, name, fty)
             }
         };
@@ -478,28 +480,31 @@ impl LayoutOf for CodegenCx<'ll, 'tcx> {
 }
 
 /// Declare any llvm intrinsics that you might need
-fn declare_intrinsic(cx: &CodegenCx<'ll, '_>, key: &str) -> Option<&'ll Value> {
+fn declare_intrinsic<Value : ?Sized>(
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
+    key: &str
+) -> Option<&'ll Value> where Value : ValueTrait {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::func(&[], $ret));
-                llvm::SetUnnamedAddr(f, false);
+                let f = declare::declare_cfn(cx, $name, Type::func::<Value>(&[], $ret));
+                llvm::SetUnnamedAddr(f.to_llvm(), false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
         ($name:expr, fn(...) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::variadic_func(&[], $ret));
-                llvm::SetUnnamedAddr(f, false);
+                let f = declare::declare_cfn(cx, $name, Type::variadic_func::<Value>(&[], $ret));
+                llvm::SetUnnamedAddr(f.to_llvm(), false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::func(&[$($arg),*], $ret));
-                llvm::SetUnnamedAddr(f, false);
+                let f = declare::declare_cfn(cx, $name, Type::func::<Value>(&[$($arg),*], $ret));
+                llvm::SetUnnamedAddr(f.to_llvm(), false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
@@ -520,14 +525,14 @@ fn declare_intrinsic(cx: &CodegenCx<'ll, '_>, key: &str) -> Option<&'ll Value> {
     let t_f32 = Type::f32(cx);
     let t_f64 = Type::f64(cx);
 
-    let t_v2f32 = Type::vector(t_f32, 2);
-    let t_v4f32 = Type::vector(t_f32, 4);
-    let t_v8f32 = Type::vector(t_f32, 8);
-    let t_v16f32 = Type::vector(t_f32, 16);
+    let t_v2f32 = Type::vector::<Value>(t_f32, 2);
+    let t_v4f32 = Type::vector::<Value>(t_f32, 4);
+    let t_v8f32 = Type::vector::<Value>(t_f32, 8);
+    let t_v16f32 = Type::vector::<Value>(t_f32, 16);
 
-    let t_v2f64 = Type::vector(t_f64, 2);
-    let t_v4f64 = Type::vector(t_f64, 4);
-    let t_v8f64 = Type::vector(t_f64, 8);
+    let t_v2f64 = Type::vector::<Value>(t_f64, 2);
+    let t_v4f64 = Type::vector::<Value>(t_f64, 4);
+    let t_v8f64 = Type::vector::<Value>(t_f64, 8);
 
     ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);

@@ -12,6 +12,7 @@ use rustc::mir;
 
 use asm;
 use builder::Builder;
+use traits::BuilderMethods;
 
 use super::FunctionCx;
 use super::LocalRef;

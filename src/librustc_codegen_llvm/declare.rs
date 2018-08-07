@@ -31,7 +31,7 @@ use abi::{Abi, FnType, FnTypeExt};
 use attributes;
 use context::CodegenCx;
 use type_::Type;
-use value::Value;
+use value::{Value, ValueTrait};
 
 
 /// Declare a global value.
@@ -51,12 +51,12 @@ pub fn declare_global(cx: &CodegenCx<'ll, '_>, name: &str, ty: &'ll Type) -> &'l
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-fn declare_raw_fn(
-    cx: &CodegenCx<'ll, '_>,
+fn declare_raw_fn<Value : ?Sized>(
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
     name: &str,
     callconv: llvm::CallConv,
     ty: &'ll Type,
-) -> &'ll Value {
+) -> &'ll Value where Value : ValueTrait {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let namebuf = SmallCStr::new(name);
     let llfn = unsafe {
@@ -105,7 +105,7 @@ fn declare_raw_fn(
 
     attributes::non_lazy_bind(cx.sess(), llfn);
 
-    llfn
+    Value::of_llvm(llfn)
 }
 
 
@@ -116,7 +116,11 @@ fn declare_raw_fn(
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-pub fn declare_cfn(cx: &CodegenCx<'ll, '_>, name: &str, fn_type: &'ll Type) -> &'ll Value {
+pub fn declare_cfn<Value : ?Sized>(
+    cx: &CodegenCx<'ll, '_, &'ll Value>,
+    name: &str,
+    fn_type: &'ll Type
+) -> &'ll Value where Value : ValueTrait {
     declare_raw_fn(cx, name, llvm::CCallConv, fn_type)
 }
 
@@ -168,7 +172,7 @@ pub fn define_global(cx: &CodegenCx<'ll, '_>, name: &str, ty: &'ll Type) -> Opti
 /// Declare a private global
 ///
 /// Use this function when you intend to define a global without a name.
-pub fn define_private_global(cx: &CodegenCx<'ll, '_>, ty: &'ll Type) -> &'ll Value {
+pub fn define_private_global(cx: &CodegenCx<'ll, '_, &'ll Value>, ty: &'ll Type) -> &'ll Value {
     unsafe {
         llvm::LLVMRustInsertPrivateGlobal(cx.llmod, ty)
     }

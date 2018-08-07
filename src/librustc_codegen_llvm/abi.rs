@@ -19,6 +19,8 @@ use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
 
+use traits::BuilderMethods;
+
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout;
@@ -119,7 +121,7 @@ impl LlvmType for Reg {
                 }
             }
             RegKind::Vector => {
-                Type::vector(Type::i8(cx), self.size.bytes())
+                Type::vector::<Value>(Type::i8(cx), self.size.bytes())
             }
         }
     }
@@ -143,7 +145,7 @@ impl LlvmType for CastTarget {
 
             // Simplify to array when all chunks are the same size and type
             if rem_bytes == 0 {
-                return Type::array(rest_ll_unit, rest_count);
+                return Type::array::<Value>(rest_ll_unit, rest_count);
             }
         }
 
@@ -167,7 +169,12 @@ impl LlvmType for CastTarget {
 
 pub trait ArgTypeExt<'ll, 'tcx> {
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'tcx, &'ll Value>);
+    fn store(
+        &self,
+        bx: &Builder<'_, 'll, 'tcx>,
+        val: &'ll Value,
+        dst: PlaceRef<'tcx, &'ll Value>,
+    );
     fn store_fn_arg(
         &self,
         bx: &Builder<'_, 'll, 'tcx>,
@@ -187,7 +194,12 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'tcx, &'ll Value>) {
+    fn store(
+        &self,
+        bx: &Builder<'_, 'll, 'tcx>,
+        val: &'ll Value,
+        dst: PlaceRef<'tcx, &'ll Value>,
+    ) {
         if self.is_ignore() {
             return;
         }
@@ -663,9 +675,9 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
 
         if self.variadic {
-            Type::variadic_func(&llargument_tys, llreturn_ty)
+            Type::variadic_func::<Value>(&llargument_tys, llreturn_ty)
         } else {
-            Type::func(&llargument_tys, llreturn_ty)
+            Type::func::<Value>(&llargument_tys, llreturn_ty)
         }
     }
 

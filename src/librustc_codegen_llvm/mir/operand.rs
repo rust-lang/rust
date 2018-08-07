@@ -21,6 +21,8 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use glue;
 
+use traits::BuilderMethods;
+
 use std::fmt;
 
 use super::{FunctionCx, LocalRef};
@@ -260,7 +262,11 @@ impl OperandValue<&'ll Value> {
         self.store_with_flags(bx, dest, MemFlags::empty());
     }
 
-    pub fn volatile_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx, &'ll Value>) {
+    pub fn volatile_store(
+        self,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        dest: PlaceRef<'tcx, &'ll Value>
+    ) {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
     }
 
@@ -271,14 +277,23 @@ impl OperandValue<&'ll Value> {
     ) {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
     }
+}
 
-    pub fn nontemporal_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx, &'ll Value>) {
+impl<'a, 'll: 'a, 'tcx: 'll, Value : ?Sized> OperandValue<&'ll Value> where
+    Value : ValueTrait,
+    Builder<'a, 'll, 'tcx, &'ll Value>: BuilderMethods<'a, 'll, 'tcx, Value>
+{
+    pub fn nontemporal_store(
+        self,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        dest: PlaceRef<'tcx, &'ll Value>
+    ) {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
 
-    fn store_with_flags(
+    fn store_with_flags<Builder: BuilderMethods<'a, 'll, 'tcx, Value>>(
         self,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Builder,
         dest: PlaceRef<'tcx, &'ll Value>,
         flags: MemFlags,
     ) {
@@ -309,11 +324,13 @@ impl OperandValue<&'ll Value> {
             }
         }
     }
+}
 
+impl OperandValue<&'ll Value> {
     pub fn store_unsized(
         self,
-        bx: &Builder<'a, 'll, 'tcx>,
-        indirect_dest: PlaceRef<'tcx, &'ll Value>,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>,
+        indirect_dest: PlaceRef<'tcx, &'ll Value>
     ) {
         debug!("OperandRef::store_unsized: operand={:?}, indirect_dest={:?}", self, indirect_dest);
         let flags = MemFlags::empty();
@@ -334,13 +351,13 @@ impl OperandValue<&'ll Value> {
         let min_align = Align::from_bits(8, 8).unwrap();
 
         // Allocate an appropriate region on the stack, and copy the value into it
-        let (llsize, _) = glue::size_and_align_of_dst(&bx, unsized_ty, Some(llextra));
+        let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
         let lldst = bx.array_alloca(Type::i8(bx.cx), llsize, "unsized_tmp", max_align);
-        base::call_memcpy(&bx, lldst, max_align, llptr, min_align, llsize, flags);
+        base::call_memcpy(bx, lldst, max_align, llptr, min_align, llsize, flags);
 
         // Store the allocated region and the extra to the indirect place.
         let indirect_operand = OperandValue::Pair(lldst, llextra);
-        indirect_operand.store(&bx, indirect_dest);
+        indirect_operand.store(bx, indirect_dest);
     }
 }
 

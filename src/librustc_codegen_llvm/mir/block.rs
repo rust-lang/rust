@@ -26,6 +26,8 @@ use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
+use traits::BuilderMethods;
+
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
 
@@ -98,16 +100,17 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
             }
         };
 
-        let funclet_br = |this: &mut Self, bx: Builder<'_, 'll, '_>, target: mir::BasicBlock| {
-            let (lltarget, is_cleanupret) = lltarget(this, target);
-            if is_cleanupret {
-                // micro-optimization: generate a `ret` rather than a jump
-                // to a trampoline.
-                bx.cleanup_ret(cleanup_pad.unwrap(), Some(lltarget));
-            } else {
-                bx.br(lltarget);
-            }
-        };
+        let funclet_br =
+            |this: &mut Self, bx: Builder<'_, 'll, '_, &'ll Value>, target: mir::BasicBlock| {
+                let (lltarget, is_cleanupret) = lltarget(this, target);
+                if is_cleanupret {
+                    // micro-optimization: generate a `ret` rather than a jump
+                    // to a trampoline.
+                    bx.cleanup_ret(cleanup_pad.unwrap(), Some(lltarget));
+                } else {
+                    bx.br(lltarget);
+                }
+            };
 
         let do_call = |
             this: &mut Self,
@@ -843,7 +846,10 @@ impl FunctionCx<'a, 'll, 'tcx, &'ll Value> {
         }
     }
 
-    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx>) -> PlaceRef<'tcx, &'ll Value> {
+    fn get_personality_slot(
+        &mut self,
+        bx: &Builder<'a, 'll, 'tcx, &'ll Value>
+    ) -> PlaceRef<'tcx, &'ll Value> {
         let cx = bx.cx;
         if let Some(slot) = self.personality_slot {
             slot

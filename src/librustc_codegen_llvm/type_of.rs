@@ -16,6 +16,7 @@ use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
+use value::Value;
 
 use std::fmt::Write;
 
@@ -40,7 +41,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 return Type::x86_mmx(cx)
             } else {
                 let element = layout.scalar_llvm_type_at(cx, element, Size::ZERO);
-                return Type::vector(element, count);
+                return Type::vector::<Value>(element, count);
             }
         }
         layout::Abi::ScalarPair(..) => {
@@ -93,7 +94,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
         }
         layout::FieldPlacement::Array { count, .. } => {
-            Type::array(layout.field(cx, 0).llvm_type(cx), count)
+            Type::array::<Value>(layout.field(cx, 0).llvm_type(cx), count)
         }
         layout::FieldPlacement::Arbitrary { .. } => {
             match name {
