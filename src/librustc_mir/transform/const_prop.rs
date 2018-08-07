@@ -333,11 +333,6 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
         match *rvalue {
-            // This branch exists for the sanity type check
-            Rvalue::Use(Operand::Constant(ref c)) => {
-                assert_eq!(c.ty, place_layout.ty);
-                self.eval_constant(c, source_info)
-            },
             Rvalue::Use(ref op) => {
                 self.eval_operand(op, source_info)
             },
