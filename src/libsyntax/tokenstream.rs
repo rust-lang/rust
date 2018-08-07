@@ -186,7 +186,7 @@ impl TokenStream {
     /// Given a `TokenStream` with a `Stream` of only two arguments, return a new `TokenStream`
     /// separating the two arguments with a comma for diagnostic suggestions.
     pub(crate) fn add_comma(&self) -> Option<(TokenStream, Span)> {
-        // Used ot suggest if a user writes `println!("{}" a);`
+        // Used to suggest if a user writes `println!("{}" a);`
         if let TokenStreamKind::Stream(ref slice) = self.kind {
             if slice.len() == 2 {
                 let comma_span = match slice[0] {
