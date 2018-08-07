@@ -36,23 +36,29 @@ use super::TypeChecker;
 pub(super) fn generate<'gcx, 'tcx>(
     cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    liveness: &LivenessResults<LocalWithRegion>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
-) {
-    let mut generator = TypeLivenessGenerator {
-        cx,
-        mir,
-        liveness,
-        flow_inits,
-        move_data,
-        drop_data: FxHashMap(),
-        map: &NllLivenessMap::compute(mir),
-    };
+) -> (LivenessResults<LocalWithRegion>, NllLivenessMap) {
+    let liveness_map = NllLivenessMap::compute(&mir);
+    let liveness = LivenessResults::compute(mir, &liveness_map);
 
-    for bb in mir.basic_blocks().indices() {
-        generator.add_liveness_constraints(bb);
+    {
+        let mut generator = TypeLivenessGenerator {
+            cx,
+            mir,
+            liveness: &liveness,
+            flow_inits,
+            move_data,
+            drop_data: FxHashMap(),
+            map: &liveness_map,
+        };
+
+        for bb in mir.basic_blocks().indices() {
+            generator.add_liveness_constraints(bb);
+        }
     }
+
+    (liveness, liveness_map)
 }
 
 struct TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx>

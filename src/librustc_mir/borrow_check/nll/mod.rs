@@ -11,7 +11,7 @@
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::{LocationIndex, LocationTable};
 use borrow_check::nll::facts::AllFactsExt;
-use borrow_check::nll::type_check::MirTypeckRegionConstraints;
+use borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
 use borrow_check::nll::region_infer::values::RegionValueElements;
 use borrow_check::nll::liveness_map::{NllLivenessMap, LocalWithRegion};
 use dataflow::indexes::BorrowIndex;
@@ -109,9 +109,12 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let elements = &Rc::new(RegionValueElements::new(mir));
 
     // Run the MIR type-checker.
-    let liveness_map = NllLivenessMap::compute(&mir);
-    let liveness = LivenessResults::compute(mir, &liveness_map);
-    let (constraint_sets, universal_region_relations) = type_check::type_check(
+    let MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        liveness,
+        liveness_map,
+    } = type_check::type_check(
         infcx,
         param_env,
         mir,
@@ -119,7 +122,6 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         &universal_regions,
         location_table,
         borrow_set,
-        &liveness,
         &mut all_facts,
         flow_inits,
         move_data,
@@ -141,7 +143,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         mut liveness_constraints,
         outlives_constraints,
         type_tests,
-    } = constraint_sets;
+    } = constraints;
 
     constraint_generation::generate_constraints(
         infcx,
@@ -205,6 +207,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     dump_mir_results(
         infcx,
         &liveness,
+        &liveness_map,
         MirSource::item(def_id),
         &mir,
         &regioncx,
@@ -221,6 +224,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     liveness: &LivenessResults<LocalWithRegion>,
+    liveness_map: &NllLivenessMap,
     source: MirSource,
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext,
@@ -230,8 +234,6 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         return;
     }
 
-    let map = &NllLivenessMap::compute(mir);
-
     let regular_liveness_per_location: FxHashMap<_, _> = mir
         .basic_blocks()
         .indices()
@@ -239,7 +241,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             let mut results = vec![];
             liveness
                 .regular
-                .simulate_block(&mir, bb, map, |location, local_set| {
+                .simulate_block(&mir, bb, liveness_map, |location, local_set| {
                     results.push((location, local_set.clone()));
                 });
             results
@@ -253,7 +255,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             let mut results = vec![];
             liveness
                 .drop
-                .simulate_block(&mir, bb, map, |location, local_set| {
+                .simulate_block(&mir, bb, liveness_map, |location, local_set| {
                     results.push((location, local_set.clone()));
                 });
             results
