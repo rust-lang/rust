@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::codemap;
 use syntax::parse::{parser, DirectoryOwnership};
+use syntax_pos::symbol::Symbol;
 
 use config::FileName;
 use utils::contains_skip;
@@ -38,6 +39,21 @@ pub fn list_files<'a>(
     Ok(result)
 }
 
+fn path_value(attr: &ast::Attribute) -> Option<Symbol> {
+    if attr.name() == "path" {
+        attr.value_str()
+    } else {
+        None
+    }
+}
+
+// N.B. Even when there are multiple `#[path = ...]` attributes, we just need to
+// examine the first one, since rustc ignores the second and the subsequent ones
+// as unused attributes.
+fn find_path_value(attrs: &[ast::Attribute]) -> Option<Symbol> {
+    attrs.iter().flat_map(path_value).next()
+}
+
 /// Recursively list all external modules included in a module.
 fn list_submodules<'a>(
     module: &'a ast::Mod,
@@ -53,7 +69,11 @@ fn list_submodules<'a>(
                 let is_internal =
                     codemap.span_to_filename(item.span) == codemap.span_to_filename(sub_mod.inner);
                 let (dir_path, relative) = if is_internal {
-                    (search_dir.join(&item.ident.to_string()), None)
+                    if let Some(path) = find_path_value(&item.attrs) {
+                        (search_dir.join(&path.as_str()), None)
+                    } else {
+                        (search_dir.join(&item.ident.to_string()), None)
+                    }
                 } else {
                     let (mod_path, relative) =
                         module_file(item.ident, &item.attrs, search_dir, relative, codemap)?;
