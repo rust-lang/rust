@@ -57,9 +57,9 @@ pub fn main() {
         //~^ ERROR cannot move
         //~| HELP consider removing this dereference operator
         //~| SUGGESTION r
-        // (invalid but acceptable)
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
+        // TODO: should suggest removing `ref` too
     }
 
     let X(_t) = *sm;
@@ -85,17 +85,17 @@ pub fn main() {
         //~^ ERROR cannot move
         //~| HELP consider removing this dereference operator
         //~| SUGGESTION rm
-        // (invalid but acceptable)
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
+        // TODO: should suggest removing `ref` too
     }
     match *rm {
         //~^ ERROR cannot move
         //~| HELP consider removing this dereference operator
         //~| SUGGESTION rm
-        // (invalid but acceptable)
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
+        // TODO: should suggest removing `ref mut` too
     }
 
     // --------
