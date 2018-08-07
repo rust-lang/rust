@@ -404,7 +404,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     .span_to_snippet(pat_span)
                     .unwrap();
                 if pat_snippet.starts_with('&') {
-                    let pat_snippet = &pat_snippet[1..];
+                    let pat_snippet = pat_snippet[1..].trim_left();
                     let suggestion;
                     if pat_snippet.starts_with("mut")
                         && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
