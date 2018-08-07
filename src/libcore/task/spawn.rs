@@ -15,16 +15,13 @@
 use fmt;
 use future::{FutureObj, LocalFutureObj};
 
-/// A task executor.
+/// Spawns tasks that poll futures to completion onto its associated task
+/// executor.
 ///
-/// Futures are polled until completion by tasks, a kind of lightweight
-/// "thread". A *task executor* is responsible for the creation of these tasks
-/// and the coordination of their execution on real operating system threads. In
-/// particular, whenever a task signals that it can make further progress via a
-/// wake-up notification, it is the responsibility of the task executor to put
-/// the task into a queue to continue executing it, i.e. polling the future in
-/// it, later.
-pub trait Executor {
+/// The term "task" refers to a kind of lightweight "thread". Task executors
+/// are responsible for scheduling the execution of tasks on operating system
+/// threads.
+pub trait Spawn {
     /// Spawns a new task with the given future. The future will be polled until
     /// completion.
     ///

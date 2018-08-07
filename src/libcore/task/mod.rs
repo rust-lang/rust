@@ -17,10 +17,8 @@
 mod context;
 pub use self::context::Context;
 
-mod executor;
-pub use self::executor::{
-  Executor, SpawnErrorKind, SpawnObjError, SpawnLocalObjError
-};
+mod spawn;
+pub use self::spawn::{Spawn, SpawnErrorKind, SpawnObjError, SpawnLocalObjError};
 
 mod poll;
 pub use self::poll::Poll;

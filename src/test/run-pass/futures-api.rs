@@ -23,7 +23,7 @@ use std::future::FutureObj;
 use std::task::{
     Context, Poll,
     Wake, Waker, LocalWaker,
-    Executor, SpawnObjError,
+    Spawn, SpawnObjError,
     local_waker, local_waker_from_nonlocal,
 };
 
@@ -42,9 +42,9 @@ impl Wake for Counter {
     }
 }
 
-struct NoopExecutor;
+struct NoopSpawner;
 
-impl Executor for NoopExecutor {
+impl Spawn for NoopSpawner {
     fn spawn_obj(&mut self, _: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
         Ok(())
     }
@@ -59,7 +59,7 @@ impl Future for MyFuture {
         cx.waker().wake();
         cx.waker().wake();
         cx.local_waker().wake();
-        cx.executor().spawn_obj(PinBox::new(MyFuture).into()).unwrap();
+        cx.spawner().spawn_obj(PinBox::new(MyFuture).into()).unwrap();
         Poll::Ready(())
     }
 }
@@ -70,8 +70,8 @@ fn test_local_waker() {
         nonlocal_wakes: AtomicUsize::new(0),
     });
     let waker = unsafe { local_waker(counter.clone()) };
-    let executor = &mut NoopExecutor;
-    let cx = &mut Context::new(&waker, executor);
+    let spawner = &mut NoopSpawner;
+    let cx = &mut Context::new(&waker, spawner);
     assert_eq!(Poll::Ready(()), PinMut::new(&mut MyFuture).poll(cx));
     assert_eq!(1, counter.local_wakes.load(atomic::Ordering::SeqCst));
     assert_eq!(2, counter.nonlocal_wakes.load(atomic::Ordering::SeqCst));
@@ -83,8 +83,8 @@ fn test_local_as_nonlocal_waker() {
         nonlocal_wakes: AtomicUsize::new(0),
     });
     let waker: LocalWaker = local_waker_from_nonlocal(counter.clone());
-    let executor = &mut NoopExecutor;
-    let cx = &mut Context::new(&waker, executor);
+    let spawner = &mut NoopSpawner;
+    let cx = &mut Context::new(&waker, spawner);
     assert_eq!(Poll::Ready(()), PinMut::new(&mut MyFuture).poll(cx));
     assert_eq!(0, counter.local_wakes.load(atomic::Ordering::SeqCst));
     assert_eq!(3, counter.nonlocal_wakes.load(atomic::Ordering::SeqCst));
