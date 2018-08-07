@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::{NllLivenessMap, LocalWithRegion};
+use borrow_check::nll::constraints::ConstraintSet;
 use borrow_check::nll::type_check::AtLocation;
+use borrow_check::nll::{LocalWithRegion, NllLivenessMap};
+use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
@@ -18,10 +20,10 @@ use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
-use rustc::ty::{Ty, TypeFoldable};
-use rustc_data_structures::fx::FxHashMap;
+use rustc::ty::{RegionVid, Ty, TypeFoldable};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::rc::Rc;
-use util::liveness::{LivenessResults, LiveVariableMap };
+use util::liveness::{LiveVariableMap, LivenessResults};
 
 use super::TypeChecker;
 
@@ -41,9 +43,18 @@ pub(super) fn generate<'gcx, 'tcx>(
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> (LivenessResults<LocalWithRegion>, NllLivenessMap) {
-    let liveness_map = NllLivenessMap::compute(&mir);
+    let free_regions = {
+        let borrowck_context = cx.borrowck_context.as_ref().unwrap();
+        regions_that_outlive_free_regions(
+            cx.infcx.num_region_vars(),
+            &borrowck_context.universal_regions,
+            &borrowck_context.constraints.outlives_constraints,
+        )
+    };
+    let liveness_map = NllLivenessMap::compute(cx.tcx(), &free_regions, mir);
     let liveness = LivenessResults::compute(mir, &liveness_map);
 
+    // For everything else, it is only live where it is actually used.
     {
         let mut generator = TypeLivenessGenerator {
             cx,
@@ -61,6 +72,45 @@ pub(super) fn generate<'gcx, 'tcx>(
     }
 
     (liveness, liveness_map)
+}
+
+/// Compute all regions that are (currently) known to outlive free
+/// regions. For these regions, we do not need to compute
+/// liveness, since the outlives constraints will ensure that they
+/// are live over the whole fn body anyhow.
+fn regions_that_outlive_free_regions(
+    num_region_vars: usize,
+    universal_regions: &UniversalRegions<'tcx>,
+    constraint_set: &ConstraintSet,
+) -> FxHashSet<RegionVid> {
+    // Build a graph of the outlives constraints thus far. This is
+    // a reverse graph, so for each constraint `R1: R2` we have an
+    // edge `R2 -> R1`. Therefore, if we find all regions
+    // reachable from each free region, we will have all the
+    // regions that are forced to outlive some free region.
+    let rev_constraint_graph = constraint_set.reverse_graph(num_region_vars);
+    let rev_region_graph = rev_constraint_graph.region_graph(constraint_set);
+
+    // Stack for the depth-first search. Start out with all the free regions.
+    let mut stack: Vec<_> = universal_regions.universal_regions().collect();
+
+    // Set of all free regions, plus anything that outlives them. Initially
+    // just contains the free regions.
+    let mut outlives_free_region: FxHashSet<_> = stack.iter().cloned().collect();
+
+    // Do the DFS -- for each thing in the stack, find all things
+    // that outlive it and add them to the set. If they are not,
+    // push them onto the stack for later.
+    while let Some(sub_region) = stack.pop() {
+        stack.extend(
+            rev_region_graph
+                .outgoing_regions(sub_region)
+                .filter(|&r| outlives_free_region.insert(r)),
+        );
+    }
+
+    // Return the final set of things we visited.
+    outlives_free_region
 }
 
 struct TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx>
@@ -182,8 +232,13 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
 
         cx.tcx().for_each_free_region(&value, |live_region| {
             if let Some(ref mut borrowck_context) = cx.borrowck_context {
-                let region_vid = borrowck_context.universal_regions.to_region_vid(live_region);
-                borrowck_context.constraints.liveness_constraints.add_element(region_vid, location);
+                let region_vid = borrowck_context
+                    .universal_regions
+                    .to_region_vid(live_region);
+                borrowck_context
+                    .constraints
+                    .liveness_constraints
+                    .add_element(region_vid, location);
 
                 if let Some(all_facts) = borrowck_context.all_facts {
                     let start_index = borrowck_context.location_table.start_index(location);

@@ -16,21 +16,25 @@
 //! liveness code so that it only operates over variables with regions in their
 //! types, instead of all variables.
 
+use borrow_check::nll::ToRegionVid;
 use rustc::mir::{Local, Mir};
-use rustc::ty::TypeFoldable;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc::ty::{RegionVid, TyCtxt};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use util::liveness::LiveVariableMap;
 
-use rustc_data_structures::indexed_vec::Idx;
-
-/// Map between Local and LocalWithRegion indices: this map is supplied to the
-/// liveness code so that it will only analyze those variables whose types
-/// contain regions.
+/// Map between Local and LocalWithRegion indices: the purpose of this
+/// map is to define the subset of local variables for which we need
+/// to do a liveness computation. We only need to compute whether a
+/// variable `X` is live if that variable contains some region `R` in
+/// its type where `R` is not known to outlive a free region (i.e.,
+/// where `R` may be valid for just a subset of the fn body).
 crate struct NllLivenessMap {
-    /// For each local variable, contains either None (if the type has no regions)
-    /// or Some(i) with a suitable index.
+    /// For each local variable, contains `Some(i)` if liveness is
+    /// needed for this variable.
     pub from_local: IndexVec<Local, Option<LocalWithRegion>>,
-    /// For each LocalWithRegion, maps back to the original Local index.
+
+    /// For each `LocalWithRegion`, maps back to the original `Local` index.
     pub to_local: IndexVec<LocalWithRegion, Local>,
 }
 
@@ -51,20 +55,31 @@ impl LiveVariableMap for NllLivenessMap {
 }
 
 impl NllLivenessMap {
-    /// Iterates over the variables in Mir and assigns each Local whose type contains
-    /// regions a LocalWithRegion index. Returns a map for converting back and forth.
-    pub fn compute(mir: &Mir) -> Self {
+    crate fn compute(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        free_regions: &FxHashSet<RegionVid>,
+        mir: &Mir<'tcx>,
+    ) -> Self {
         let mut to_local = IndexVec::default();
         let from_local: IndexVec<Local, Option<_>> = mir.local_decls
             .iter_enumerated()
             .map(|(local, local_decl)| {
-                if local_decl.ty.has_free_regions() {
-                    Some(to_local.push(local))
-                } else {
+                if tcx.all_free_regions_meet(&local_decl.ty, |r| {
+                    free_regions.contains(&r.to_region_vid())
+                }) {
+                    // If all the regions in the type are free regions
+                    // (or there are no regions), then we don't need
+                    // to track liveness for this variable.
                     None
+                } else {
+                    Some(to_local.push(local))
                 }
             })
             .collect();
+
+        debug!("{} total variables", mir.local_decls.len());
+        debug!("{} variables need liveness", to_local.len());
+        debug!("{} regions outlive free regions", free_regions.len());
 
         Self {
             from_local,

@@ -24,6 +24,8 @@ crate struct ConstraintGraph<D: ConstraintGraphDirecton> {
 
 crate type NormalConstraintGraph = ConstraintGraph<Normal>;
 
+crate type ReverseConstraintGraph = ConstraintGraph<Reverse>;
+
 /// Marker trait that controls whether a `R1: R2` constraint
 /// represents an edge `R1 -> R2` or `R2 -> R1`.
 crate trait ConstraintGraphDirecton: Copy + 'static {

@@ -46,6 +46,12 @@ impl ConstraintSet {
         graph::ConstraintGraph::new(graph::Normal, self, num_region_vars)
     }
 
+    /// Like `graph`, but constraints a reverse graph where `R1: R2`
+    /// represents an edge `R2 -> R1`.
+    crate fn reverse_graph(&self, num_region_vars: usize) -> graph::ReverseConstraintGraph {
+        graph::ConstraintGraph::new(graph::Reverse, self, num_region_vars)
+    }
+
     /// Compute cycles (SCCs) in the graph of regions. In particular,
     /// find all regions R1, R2 such that R1: R2 and R2: R1 and group
     /// them into an SCC, and find the relationships between SCCs.
