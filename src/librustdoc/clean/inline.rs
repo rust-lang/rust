@@ -291,78 +291,12 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
         impls.extend(get_blanket_impls_with_def_id(cx, did));
     }
 
-    // If this is the first time we've inlined something from another crate, then
-    // we inline *all* impls from all the crates into this crate. Note that there's
-    // currently no way for us to filter this based on type, and we likely need
-    // many impls for a variety of reasons.
-    //
-    // Primarily, the impls will be used to populate the documentation for this
-    // type being inlined, but impls can also be used when generating
-    // documentation for primitives (no way to find those specifically).
-    if cx.populated_all_crate_impls.get() {
-        return impls;
-    }
-
-    cx.populated_all_crate_impls.set(true);
-
-    for &cnum in tcx.crates().iter() {
-        for did in tcx.all_trait_implementations(cnum).iter() {
-            build_impl(cx, *did, &mut impls);
-        }
-    }
-
-    // Also try to inline primitive impls from other crates.
-    let lang_items = tcx.lang_items();
-    let primitive_impls = [
-        lang_items.isize_impl(),
-        lang_items.i8_impl(),
-        lang_items.i16_impl(),
-        lang_items.i32_impl(),
-        lang_items.i64_impl(),
-        lang_items.i128_impl(),
-        lang_items.usize_impl(),
-        lang_items.u8_impl(),
-        lang_items.u16_impl(),
-        lang_items.u32_impl(),
-        lang_items.u64_impl(),
-        lang_items.u128_impl(),
-        lang_items.f32_impl(),
-        lang_items.f64_impl(),
-        lang_items.f32_runtime_impl(),
-        lang_items.f64_runtime_impl(),
-        lang_items.char_impl(),
-        lang_items.str_impl(),
-        lang_items.slice_impl(),
-        lang_items.slice_u8_impl(),
-        lang_items.str_alloc_impl(),
-        lang_items.slice_alloc_impl(),
-        lang_items.slice_u8_alloc_impl(),
-        lang_items.const_ptr_impl(),
-        lang_items.mut_ptr_impl(),
-    ];
-
-    for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
-        if !def_id.is_local() {
-            build_impl(cx, def_id, &mut impls);
-
-            let auto_impls = get_auto_traits_with_def_id(cx, def_id);
-            let blanket_impls = get_blanket_impls_with_def_id(cx, def_id);
-            let mut renderinfo = cx.renderinfo.borrow_mut();
-
-            let new_impls: Vec<clean::Item> = auto_impls.into_iter()
-                .chain(blanket_impls.into_iter())
-                .filter(|i| renderinfo.inlined.insert(i.def_id))
-                .collect();
-
-            impls.extend(new_impls);
-        }
-    }
-
     impls
 }
 
 pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     if !cx.renderinfo.borrow_mut().inlined.insert(did) {
+        debug!("already inlined, bailing: {:?}", did);
         return
     }
 
@@ -372,9 +306,12 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
-    if let Some(traitref) = associated_trait {
-        if !cx.access_levels.borrow().is_doc_reachable(traitref.def_id) {
-            return
+    if !did.is_local() {
+        if let Some(traitref) = associated_trait {
+            if !cx.access_levels.borrow().is_doc_reachable(traitref.def_id) {
+                debug!("trait {:?} not reachable, bailing: {:?}", traitref.def_id, did);
+                return
+            }
         }
     }
 
@@ -382,9 +319,12 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
-    if let Some(did) = for_.def_id() {
-        if !cx.access_levels.borrow().is_doc_reachable(did) {
-            return
+    if !did.is_local() {
+        if let Some(did) = for_.def_id() {
+            if !cx.access_levels.borrow().is_doc_reachable(did) {
+                debug!("impl type {:?} not accessible, bailing", did);
+                return
+            }
         }
     }
 

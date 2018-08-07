@@ -510,9 +510,9 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                           ref tr,
                           ref ty,
                           ref item_ids) => {
-                // Don't duplicate impls when inlining, we'll pick them up
-                // regardless of where they're located.
-                if !self.inlining {
+                // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
+                // them up regardless of where they're located.
+                if !self.inlining && tr.is_none() {
                     let items = item_ids.iter()
                                         .map(|ii| self.cx.tcx.hir.impl_item(ii.id).clone())
                                         .collect();
