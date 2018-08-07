@@ -41,21 +41,19 @@ struct Checker<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn check<F>(&self, trait_def_id: Option<DefId>, mut f: F) -> &Self
-        where F: FnMut(TyCtxt<'a, 'tcx, 'tcx>, DefId, DefId)
+        where F: FnMut(TyCtxt<'a, 'tcx, 'tcx>, DefId)
     {
         if Some(self.trait_def_id) == trait_def_id {
             for &impl_id in self.tcx.hir.trait_impls(self.trait_def_id) {
                 let impl_def_id = self.tcx.hir.local_def_id(impl_id);
-                f(self.tcx, self.trait_def_id, impl_def_id);
+                f(self.tcx, impl_def_id);
             }
         }
         self
     }
 }
 
-fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                          _drop_did: DefId,
-                                          impl_did: DefId) {
+fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
     match tcx.type_of(impl_did).sty {
         ty::TyAdt(..) => {}
         _ => {
@@ -87,9 +85,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                          _copy_did: DefId,
-                                          impl_did: DefId) {
+fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let impl_node_id = if let Some(n) = tcx.hir.as_local_node_id(impl_did) {
@@ -157,9 +153,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                    _: DefId,
-                                                    impl_did: DefId) {
+fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}",
            impl_did);
 

@@ -68,9 +68,7 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if let Err(ErrorReported) = compare_synthetic_generics(tcx,
                                                            impl_m,
-                                                           impl_m_span,
-                                                           trait_m,
-                                                           trait_item_span) {
+                                                           trait_m) {
         return;
     }
 
@@ -729,14 +727,11 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         impl_m: &ty::AssociatedItem,
-                                        _impl_m_span: Span, // FIXME necessary?
-                                        trait_m: &ty::AssociatedItem,
-                                        _trait_item_span: Option<Span>) // FIXME necessary?
+                                        trait_m: &ty::AssociatedItem)
                                         -> Result<(), ErrorReported> {
     // FIXME(chrisvittal) Clean up this function, list of FIXME items:
     //     1. Better messages for the span labels
     //     2. Explanation as to what is going on
-    //     3. Correct the function signature for what we actually use
     // If we get here, we already have the same number of generics, so the zip will
     // be okay.
     let mut error_found = false;
