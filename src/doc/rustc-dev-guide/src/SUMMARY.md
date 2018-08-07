@@ -17,7 +17,7 @@
     - [Incremental compilation](./incremental-compilation.md)
     - [Debugging and Testing](./incrcomp-debugging.md)
 - [The parser](./the-parser.md)
-- [Testing](./testing.md)
+- [`#[test]` Implementation](./test-implementation.md)
 - [Macro expansion](./macro-expansion.md)
 - [Name resolution](./name-resolution.md)
 - [The HIR (High-level IR)](./hir.md)
