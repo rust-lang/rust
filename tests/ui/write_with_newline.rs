@@ -9,7 +9,7 @@ fn main() {
     // These should fail
     write!(&mut v, "Hello\n");
     write!(&mut v, "Hello {}\n", "world");
-    write!(&mut v, "Hello {} {}\n\n", "world", "#2");
+    write!(&mut v, "Hello {} {}\n", "world", "#2");
     write!(&mut v, "{}\n", 1265);
 
     // These should be fine
@@ -21,5 +21,7 @@ fn main() {
     write!(&mut v, "Issue\n{}", 1265);
     write!(&mut v, "{}", 1265);
     write!(&mut v, "\n{}", 1275);
-
+    write!(&mut v, "\n\n");
+    write!(&mut v, "like eof\n\n");
+    write!(&mut v, "Hello {} {}\n\n", "world", "#2");
 }
