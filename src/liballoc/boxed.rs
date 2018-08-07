@@ -67,7 +67,7 @@ use core::marker::{Unpin, Unsize};
 use core::mem::{self, PinMut};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
-use core::task::{Context, Poll, Executor, SpawnErrorKind, SpawnObjError};
+use core::task::{Context, Poll, Spawn, SpawnErrorKind, SpawnObjError};
 
 use raw_vec::RawVec;
 use str::from_boxed_utf8_unchecked;
@@ -973,11 +973,14 @@ unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for PinBox<F>
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<E> Executor for Box<E>
-    where E: Executor + ?Sized
+impl<Sp> Spawn for Box<Sp>
+    where Sp: Spawn + ?Sized
 {
-    fn spawn_obj(&mut self, task: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
-        (**self).spawn_obj(task)
+    fn spawn_obj(
+        &mut self,
+        future: FutureObj<'static, ()>,
+    ) -> Result<(), SpawnObjError> {
+        (**self).spawn_obj(future)
     }
 
     fn status(&self) -> Result<(), SpawnErrorKind> {

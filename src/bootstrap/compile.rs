@@ -670,16 +670,17 @@ impl Step for CodegenBackend {
             return;
         }
 
+        let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
+        builder.clear_if_dirty(&out_dir, &librustc_stamp(builder, compiler, target));
+
         let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "build");
-        let mut features = builder.rustc_features().to_string();
         cargo.arg("--manifest-path")
             .arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
-        features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
+        let features = build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
 
-        let tmp_stamp = builder.cargo_out(compiler, Mode::Codegen, target)
-            .join(".tmp.stamp");
+        let tmp_stamp = out_dir.join(".tmp.stamp");
 
         let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         let files = run_cargo(builder,

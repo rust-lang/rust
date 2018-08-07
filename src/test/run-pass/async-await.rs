@@ -22,7 +22,7 @@ use std::sync::{
 use std::future::FutureObj;
 use std::task::{
     Context, Poll, Wake,
-    Executor, SpawnObjError,
+    Spawn, SpawnObjError,
     local_waker_from_nonlocal,
 };
 
@@ -36,8 +36,8 @@ impl Wake for Counter {
     }
 }
 
-struct NoopExecutor;
-impl Executor for NoopExecutor {
+struct NoopSpawner;
+impl Spawn for NoopSpawner {
     fn spawn_obj(&mut self, _: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
         Ok(())
     }
@@ -127,8 +127,8 @@ where
     let mut fut = PinBox::new(f(9));
     let counter = Arc::new(Counter { wakes: AtomicUsize::new(0) });
     let waker = local_waker_from_nonlocal(counter.clone());
-    let executor = &mut NoopExecutor;
-    let cx = &mut Context::new(&waker, executor);
+    let spawner = &mut NoopSpawner;
+    let cx = &mut Context::new(&waker, spawner);
 
     assert_eq!(0, counter.wakes.load(atomic::Ordering::SeqCst));
     assert_eq!(Poll::Pending, fut.as_pin_mut().poll(cx));

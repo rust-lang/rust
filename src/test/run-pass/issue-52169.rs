@@ -8,20 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "futures_api",
-            reason = "futures in libcore are unstable",
-            issue = "50547")]
+#![feature(macro_literal_matcher)]
 
-//! Types and Traits for working with asynchronous tasks.
+macro_rules! a {
+    ($i:literal) => { "right" };
+    ($i:tt) => { "wrong" };
+}
 
-mod context;
-pub use self::context::Context;
+macro_rules! b {
+    ($i:literal) => { a!($i) };
+}
 
-mod spawn;
-pub use self::spawn::{Spawn, SpawnErrorKind, SpawnObjError, SpawnLocalObjError};
-
-mod poll;
-pub use self::poll::Poll;
-
-mod wake;
-pub use self::wake::{Waker, LocalWaker, UnsafeWake};
+fn main() {
+    assert_eq!(b!(0), "right");
+}

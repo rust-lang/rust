@@ -1613,7 +1613,6 @@ impl fmt::Display for AllTypes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
 "<h1 class='fqn'>\
-     <span class='in-band'>List of all items</span>\
      <span class='out-of-band'>\
          <span id='render-detail'>\
              <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" title=\"collapse all docs\">\
@@ -1621,6 +1620,7 @@ impl fmt::Display for AllTypes {
              </a>\
          </span>
      </span>
+     <span class='in-band'>List of all items</span>\
 </h1>")?;
         print_entries(f, &self.structs, "Structs", "structs")?;
         print_entries(f, &self.enums, "Enums", "enums")?;
@@ -2068,7 +2068,34 @@ impl<'a> fmt::Display for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         debug_assert!(!self.item.is_stripped());
         // Write the breadcrumb trail header for the top
-        write!(fmt, "<h1 class='fqn'><span class='in-band'>")?;
+        write!(fmt, "<h1 class='fqn'><span class='out-of-band'>")?;
+        if let Some(version) = self.item.stable_since() {
+            write!(fmt, "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
+                   version)?;
+        }
+        write!(fmt,
+               "<span id='render-detail'>\
+                   <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
+                      title=\"collapse all docs\">\
+                       [<span class='inner'>&#x2212;</span>]\
+                   </a>\
+               </span>")?;
+
+        // Write `src` tag
+        //
+        // When this item is part of a `pub use` in a downstream crate, the
+        // [src] link in the downstream documentation will actually come back to
+        // this page, and this link will be auto-clicked. The `id` attribute is
+        // used to find the link to auto-click.
+        if self.cx.shared.include_sources && !self.item.is_primitive() {
+            if let Some(l) = self.src_href() {
+                write!(fmt, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                       l, "goto source code")?;
+            }
+        }
+
+        write!(fmt, "</span>")?; // out-of-band
+        write!(fmt, "<span class='in-band'>")?;
         match self.item.inner {
             clean::ModuleItem(ref m) => if m.is_crate {
                     write!(fmt, "Crate ")?;
@@ -2105,34 +2132,7 @@ impl<'a> fmt::Display for Item<'a> {
         write!(fmt, "<a class=\"{}\" href=''>{}</a>",
                self.item.type_(), self.item.name.as_ref().unwrap())?;
 
-        write!(fmt, "</span>")?; // in-band
-        write!(fmt, "<span class='out-of-band'>")?;
-        if let Some(version) = self.item.stable_since() {
-            write!(fmt, "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
-                   version)?;
-        }
-        write!(fmt,
-               "<span id='render-detail'>\
-                   <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
-                      title=\"collapse all docs\">\
-                       [<span class='inner'>&#x2212;</span>]\
-                   </a>\
-               </span>")?;
-
-        // Write `src` tag
-        //
-        // When this item is part of a `pub use` in a downstream crate, the
-        // [src] link in the downstream documentation will actually come back to
-        // this page, and this link will be auto-clicked. The `id` attribute is
-        // used to find the link to auto-click.
-        if self.cx.shared.include_sources && !self.item.is_primitive() {
-            if let Some(l) = self.src_href() {
-                write!(fmt, "<a class='srclink' href='{}' title='{}'>[src]</a>",
-                       l, "goto source code")?;
-            }
-        }
-
-        write!(fmt, "</span></h1>")?; // out-of-band
+        write!(fmt, "</span></h1>")?; // in-band
 
         match self.item.inner {
             clean::ModuleItem(ref m) =>
