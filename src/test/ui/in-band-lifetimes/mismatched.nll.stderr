@@ -22,7 +22,7 @@ error: unsatisfied lifetime constraints
   --> $DIR/mismatched.rs:16:46
    |
 LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y } //~ ERROR lifetime mismatch
-   |             --          --                   ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |             --          --                   ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |             |           |
    |             |           lifetime `'b` defined here
    |             lifetime `'a` defined here
