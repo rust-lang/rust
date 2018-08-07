@@ -332,15 +332,18 @@ impl AtomicBool {
     /// Loads a value from the bool.
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory ordering
-    /// of this operation.
+    /// of this operation. Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
     ///
     /// # Panics
     ///
     /// Panics if `order` is [`Release`] or [`AcqRel`].
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -360,9 +363,18 @@ impl AtomicBool {
     /// Stores a value into the bool.
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory ordering
-    /// of this operation.
+    /// of this operation. Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -374,13 +386,6 @@ impl AtomicBool {
     /// some_bool.store(false, Ordering::Relaxed);
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
-    ///
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, val: bool, order: Ordering) {
@@ -751,15 +756,18 @@ impl<T> AtomicPtr<T> {
     /// Loads a value from the pointer.
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory ordering
-    /// of this operation.
+    /// of this operation. Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
     ///
     /// # Panics
     ///
     /// Panics if `order` is [`Release`] or [`AcqRel`].
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -780,9 +788,18 @@ impl<T> AtomicPtr<T> {
     /// Stores a value into the pointer.
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory ordering
-    /// of this operation.
+    /// of this operation. Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
     ///
     /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+    /// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
     ///
     /// # Examples
     ///
@@ -796,13 +813,6 @@ impl<T> AtomicPtr<T> {
     ///
     /// some_ptr.store(other_ptr, Ordering::Relaxed);
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
-    ///
-    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
-    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, ptr: *mut T, order: Ordering) {
@@ -1115,14 +1125,18 @@ assert_eq!(some_var.into_inner(), 5);
                 concat!("Loads a value from the atomic integer.
 
 `load` takes an [`Ordering`] argument which describes the memory ordering of this operation.
+Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
 
 # Panics
 
 Panics if `order` is [`Release`] or [`AcqRel`].
 
 [`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
 [`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
 [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+[`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
 # Examples
 
@@ -1144,8 +1158,18 @@ assert_eq!(some_var.load(Ordering::Relaxed), 5);
                 concat!("Stores a value into the atomic integer.
 
 `store` takes an [`Ordering`] argument which describes the memory ordering of this operation.
+ Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
+
+# Panics
+
+Panics if `order` is [`Acquire`] or [`AcqRel`].
 
 [`Ordering`]: enum.Ordering.html
+[`Relaxed`]: enum.Ordering.html#variant.Relaxed
+[`Release`]: enum.Ordering.html#variant.Release
+[`Acquire`]: enum.Ordering.html#variant.Acquire
+[`AcqRel`]: enum.Ordering.html#variant.AcqRel
+[`SeqCst`]: enum.Ordering.html#variant.SeqCst
 
 # Examples
 
@@ -1156,14 +1180,7 @@ let some_var = ", stringify!($atomic_type), "::new(5);
 
 some_var.store(10, Ordering::Relaxed);
 assert_eq!(some_var.load(Ordering::Relaxed), 10);
-```
-
-# Panics
-
-Panics if `order` is [`Acquire`] or [`AcqRel`].
-
-[`Acquire`]: enum.Ordering.html#variant.Acquire
-[`AcqRel`]: enum.Ordering.html#variant.AcqRel"),
+```"),
                 #[inline]
                 #[$stable]
                 pub fn store(&self, val: $int_type, order: Ordering) {
