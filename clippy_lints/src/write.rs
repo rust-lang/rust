@@ -217,7 +217,7 @@ impl EarlyLintPass for Pass {
     }
 }
 
-fn check_tts(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> Option<String> {
+fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> Option<String> {
     let tts = TokenStream::from(tts.clone());
     let mut parser = parser::Parser::new(
         &cx.sess.parse_sess,
