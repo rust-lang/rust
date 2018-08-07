@@ -156,9 +156,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
         for cty in sess.opts.crate_types.iter() {
             match *cty {
-                CrateType::CrateTypeRlib
-                | CrateType::CrateTypeDylib
-                | CrateType::CrateTypeExecutable => {}
+                CrateType::Rlib
+                | CrateType::Dylib
+                | CrateType::Executable => {}
                 _ => {
                     sess.parse_sess.span_diagnostic.warn(&format!(
                         "LLVM unsupported, so output type {} is not supported",
@@ -332,8 +332,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
             ).unwrap();
 
         for &crate_type in sess.opts.crate_types.iter() {
-            if crate_type != CrateType::CrateTypeRlib
-            /*&& crate_type != CrateType::CrateTypeDylib*/
+            if crate_type != CrateType::Rlib
+            /*&& crate_type != CrateType::Dylib*/
             {
                 sess.fatal(&format!("Unsupported crate type: {:?}", crate_type));
             }
@@ -354,8 +354,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
 
         sess.abort_if_errors();
-        if !sess.opts.crate_types.contains(&CrateType::CrateTypeRlib)
-            && !sess.opts.crate_types.contains(&CrateType::CrateTypeDylib)
+        if !sess.opts.crate_types.contains(&CrateType::Rlib)
+            && !sess.opts.crate_types.contains(&CrateType::Dylib)
         {
             sess.fatal("Executables are not supported by the metadata-only backend.");
         }
