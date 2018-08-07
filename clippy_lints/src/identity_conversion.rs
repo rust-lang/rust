@@ -85,7 +85,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                         let a = cx.tables.expr_ty(e);
                         let b = cx.tables.expr_ty(&args[0]);
                         if same_tys(cx, a, b) {
-                            let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
+                            let sugg = snippet(cx, args[0].span.source_callsite(), "<expr>").into_owned();
                             let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
                             span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
                                 db.span_suggestion(e.span, &sugg_msg, sugg);
