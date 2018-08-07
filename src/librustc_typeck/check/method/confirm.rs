@@ -14,6 +14,7 @@ use astconv::AstConv;
 use check::{FnCtxt, PlaceOp, callee, Needs};
 use hir::GenericArg;
 use hir::def_id::DefId;
+use hir::HirVec;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, GenericParamDefKind};
@@ -22,8 +23,9 @@ use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
-use syntax_pos::Span;
 use rustc::hir;
+use syntax_pos::Span;
+use syntax::ptr::P;
 
 use std::ops::Deref;
 
@@ -315,9 +317,21 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let method_generics = self.tcx.generics_of(pick.item.def_id);
-        let supress_mismatch = self.fcx.check_impl_trait(self.span, segment, &method_generics);
-        self.fcx.check_generic_arg_count(self.span, &segment, &method_generics, true,
-                                         supress_mismatch);
+        let suppress_mismatch = self.fcx.check_impl_trait(self.span, segment, &method_generics);
+        AstConv::check_generic_arg_count(
+            self.tcx,
+            self.span,
+            &method_generics,
+            &segment.args.clone().unwrap_or_else(|| P(hir::GenericArgs {
+                args: HirVec::new(), bindings: HirVec::new(), parenthesized: false,
+            })),
+            false, // `is_declaration`
+            true, // `is_method_call`
+            method_generics.parent.is_none() && method_generics.has_self,
+            segment.infer_types || suppress_mismatch,
+        );
+        // self.fcx.check_generic_arg_count(self.span, &segment, &method_generics, true,
+                                        //  supress_mismatch);
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.

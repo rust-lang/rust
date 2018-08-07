@@ -5168,7 +5168,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         if !bindings.is_empty() {
-            AstConv::prohibit_projection(self, bindings[0].span);
+            AstConv::prohibit_assoc_ty_binding(self.tcx, bindings[0].span);
         }
 
         let infer_lifetimes = lifetimes.len() == 0;

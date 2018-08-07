@@ -401,6 +401,13 @@ impl GenericArg {
             GenericArg::Type(t) => t.span,
         }
     }
+
+    pub fn id(&self) -> NodeId {
+        match self {
+            GenericArg::Lifetime(l) => l.id,
+            GenericArg::Type(t) => t.id,
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
