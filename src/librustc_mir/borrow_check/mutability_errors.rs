@@ -36,10 +36,18 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         error_access: AccessKind,
         location: Location,
     ) {
+        debug!(
+            "report_mutability_error(\
+                access_place={:?}, span={:?}, the_place_err={:?}, error_access={:?}, location={:?},\
+            )",
+            access_place, span, the_place_err, error_access, location,
+        );
+
         let mut err;
         let item_msg;
         let reason;
         let access_place_desc = self.describe_place(access_place);
+        debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
         match the_place_err {
             Place::Local(local) => {
@@ -155,6 +163,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }) => bug!("Unexpected immutable place."),
         }
 
+        debug!("report_mutability_error: item_msg={:?}, reason={:?}", item_msg, reason);
+
         // `act` and `acted_on` are strings that let us abstract over
         // the verbs used in some diagnostic messages.
         let act;
@@ -198,6 +208,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 borrow_span
             }
         };
+
+        debug!("report_mutability_error: act={:?}, acted_on={:?}", act, acted_on);
 
         match the_place_err {
             // We want to suggest users use `let mut` for local (user
