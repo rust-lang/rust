@@ -90,6 +90,11 @@ struct ConvertedBinding<'tcx> {
     span: Span,
 }
 
+pub struct GenericArgMismatchErrorCode {
+    pub lifetimes: (&'static str, &'static str),
+    pub types: (&'static str, &'static str),
+}
+
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
 /// a trait object, and which gets removed in `ExistentialTraitRef`.
 /// This type must not appear anywhere in other converted types.
@@ -199,6 +204,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         is_method_call: bool,
         has_self: bool,
         infer_types: bool,
+        error_codes: GenericArgMismatchErrorCode,
     ) -> bool {
         // At this stage we are guaranteed that the generic arguments are in the correct order, e.g.
         // that lifetimes will proceed types. So it suffices to check the number of each generic
@@ -243,8 +249,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
         }
 
-        let check_kind_count = |error_code_less: &str,
-                                error_code_more: &str,
+        let check_kind_count = |error_code: (&str, &str),
                                 kind,
                                 required,
                                 permitted,
@@ -296,9 +301,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 ),
                 DiagnosticId::Error({
                     if provided <= permitted {
-                        error_code_less
+                        error_code.0
                     } else {
-                        error_code_more
+                        error_code.1
                     }
                 }.into())
             ).span_label(span, label).emit();
@@ -308,8 +313,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
         if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
             check_kind_count(
-                "E0107",
-                "E0107",
+                error_codes.lifetimes,
                 "lifetime",
                 param_counts.lifetimes,
                 param_counts.lifetimes,
@@ -319,8 +323,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         if !infer_types
             || arg_counts.types > param_counts.types - defaults.types - has_self as usize {
             check_kind_count(
-                "E0243",
-                "E0244", // FIXME: E0243 and E0244 should be unified.
+                error_codes.types,
                 "type",
                 param_counts.types - defaults.types - has_self as usize,
                 param_counts.types - has_self as usize,
@@ -508,6 +511,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             false, // `is_method_call` (irrelevant here)
             has_self,
             infer_types,
+            GenericArgMismatchErrorCode {
+                lifetimes: ("E0107", "E0107"),
+                types: ("E0243", "E0244"), // FIXME: E0243 and E0244 should be unified.
+            },
         );
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);

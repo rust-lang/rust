@@ -84,9 +84,10 @@ pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::method::MethodCallee;
 use self::TupleArgumentsFlag::*;
 
-use astconv::AstConv;
+use astconv::{AstConv, GenericArgMismatchErrorCode};
 use hir::GenericArg;
 use hir::def::Def;
+use hir::HirVec;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use std::slice;
 use namespace::Namespace;
@@ -4937,16 +4938,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
 
-        let mut supress_errors = FxHashMap();
+        let mut suppress_errors = FxHashMap();
         for &PathSeg(def_id, index) in &path_segs {
             let seg = &segments[index];
             let generics = self.tcx.generics_of(def_id);
             // `impl Trait` is treated as a normal generic parameter internally,
             // but we don't allow users to specify the parameter's value
             // explicitly, so we have to do some error-checking here.
-            let supress_mismatch = self.check_impl_trait(span, seg, &generics);
-            supress_errors.insert(index,
-                self.check_generic_arg_count(span, seg, &generics, false, supress_mismatch));
+            let suppress_mismatch = self.check_impl_trait(span, seg, &generics);
+            suppress_errors.insert(index, AstConv::check_generic_arg_count(
+                self.tcx,
+                span,
+                &generics,
+                &seg.args.clone().unwrap_or_else(|| P(hir::GenericArgs {
+                    args: HirVec::new(), bindings: HirVec::new(), parenthesized: false,
+                })),
+                false, // `is_declaration`
+                false, // `is_method_call`
+                generics.parent.is_none() && generics.has_self,
+                seg.infer_types || suppress_mismatch,
+                GenericArgMismatchErrorCode {
+                    lifetimes: ("E0090", "E0088"), // FIXME: E0090 and E0088 should be unified.
+                    types: ("E0089", "E0087"), // FIXME: E0089 and E0087 should be unified.
+                },
+            ));
         }
 
         let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
@@ -4968,7 +4983,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }) {
                     // If we've encountered an `impl Trait`-related error, we're just
                     // going to infer the arguments for better error messages.
-                    if !supress_errors[&index] {
+                    if !suppress_errors[&index] {
                         // Check whether the user has provided generic arguments.
                         if let Some(ref data) = segments[index].args {
                             return (Some(data), segments[index].infer_types);
@@ -5095,128 +5110,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.sess.span_err(span, "this function can only be invoked \
                                       directly, not through a function pointer");
-    }
-
-    /// Report errors if the provided parameters are too few or too many.
-    fn check_generic_arg_count(&self,
-                               span: Span,
-                               segment: &hir::PathSegment,
-                               generics: &ty::Generics,
-                               is_method_call: bool,
-                               supress_mismatch_error: bool)
-                               -> bool {
-        let mut supress_errors = false;
-        let (mut lifetimes, mut types) = (vec![], vec![]);
-        let infer_types = segment.infer_types;
-        let mut bindings = vec![];
-        if let Some(ref data) = segment.args {
-            data.args.iter().for_each(|arg| match arg {
-                GenericArg::Lifetime(lt) => lifetimes.push(lt.clone()),
-                GenericArg::Type(ty) => types.push(ty.clone()),
-            });
-            bindings = data.bindings.clone().to_vec();
-        }
-
-        struct ParamRange {
-            required: usize,
-            accepted: usize
-        };
-
-        let mut lt_accepted = 0;
-        let mut ty_params = ParamRange { required: 0, accepted: 0 };
-        for param in &generics.params {
-            match param.kind {
-                GenericParamDefKind::Lifetime => lt_accepted += 1,
-                GenericParamDefKind::Type { has_default, .. } => {
-                    ty_params.accepted += 1;
-                    if !has_default {
-                        ty_params.required += 1;
-                    }
-                }
-            };
-        }
-        if generics.parent.is_none() && generics.has_self {
-            ty_params.required -= 1;
-            ty_params.accepted -= 1;
-        }
-        let ty_accepted = ty_params.accepted;
-        let ty_required = ty_params.required;
-
-        let count_ty_params = |n| format!("{} type parameter{}", n, if n == 1 { "" } else { "s" });
-        let expected_text = count_ty_params(ty_accepted);
-        let actual_text = count_ty_params(types.len());
-        if let Some((mut err, span)) = if types.len() > ty_accepted {
-            // To prevent derived errors to accumulate due to extra
-            // type parameters, we force instantiate_value_path to
-            // use inference variables instead of the provided types.
-            supress_errors = true;
-            let span = types[ty_accepted].span;
-            Some((struct_span_err!(self.tcx.sess, span, E0087,
-                                  "too many type parameters provided: \
-                                  expected at most {}, found {}",
-                                  expected_text, actual_text), span))
-        } else if types.len() < ty_required && !infer_types && !supress_mismatch_error {
-            Some((struct_span_err!(self.tcx.sess, span, E0089,
-                                  "too few type parameters provided: \
-                                  expected {}, found {}",
-                                  expected_text, actual_text), span))
-        } else {
-            None
-        } {
-            self.set_tainted_by_errors(); // #53251
-            err.span_label(span, format!("expected {}", expected_text)).emit();
-        }
-
-        if !bindings.is_empty() {
-            AstConv::prohibit_assoc_ty_binding(self.tcx, bindings[0].span);
-        }
-
-        let infer_lifetimes = lifetimes.len() == 0;
-        // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
-        let has_late_bound_lifetime_defs = generics.has_late_bound_regions;
-        if let (Some(span_late), false) = (has_late_bound_lifetime_defs, lifetimes.is_empty()) {
-            // Report this as a lint only if no error was reported previously.
-            let primary_msg = "cannot specify lifetime arguments explicitly \
-                               if late bound lifetime parameters are present";
-            let note_msg = "the late bound lifetime parameter is introduced here";
-            if !is_method_call && (lifetimes.len() > lt_accepted ||
-                                   lifetimes.len() < lt_accepted && !infer_lifetimes) {
-                supress_errors = true;
-                let mut err = self.tcx.sess.struct_span_err(lifetimes[0].span, primary_msg);
-                err.span_note(span_late, note_msg);
-                err.emit();
-            } else {
-                let mut multispan = MultiSpan::from_span(lifetimes[0].span);
-                multispan.push_span_label(span_late, note_msg.to_string());
-                self.tcx.lint_node(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
-                                   lifetimes[0].id, multispan, primary_msg);
-            }
-            return supress_errors;
-        }
-
-        let count_lifetime_params = |n| {
-            format!("{} lifetime parameter{}", n, if n == 1 { "" } else { "s" })
-        };
-        let expected_text = count_lifetime_params(lt_accepted);
-        let actual_text = count_lifetime_params(lifetimes.len());
-        if let Some((mut err, span)) = if lifetimes.len() > lt_accepted {
-            let span = lifetimes[lt_accepted].span;
-            Some((struct_span_err!(self.tcx.sess, span, E0088,
-                                  "too many lifetime parameters provided: \
-                                  expected at most {}, found {}",
-                                  expected_text, actual_text), span))
-        } else if lifetimes.len() < lt_accepted && !infer_lifetimes {
-            Some((struct_span_err!(self.tcx.sess, span, E0090,
-                                  "too few lifetime parameters provided: \
-                                  expected {}, found {}",
-                                  expected_text, actual_text), span))
-        } else {
-            None
-        } {
-            err.span_label(span, format!("expected {}", expected_text)).emit();
-        }
-
-        supress_errors
     }
 
     /// Report error if there is an explicit type parameter when using `impl Trait`.

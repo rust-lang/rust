@@ -10,7 +10,7 @@
 
 use super::{probe, MethodCallee};
 
-use astconv::AstConv;
+use astconv::{AstConv, GenericArgMismatchErrorCode};
 use check::{FnCtxt, PlaceOp, callee, Needs};
 use hir::GenericArg;
 use hir::def_id::DefId;
@@ -329,9 +329,11 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             true, // `is_method_call`
             method_generics.parent.is_none() && method_generics.has_self,
             segment.infer_types || suppress_mismatch,
+            GenericArgMismatchErrorCode {
+                lifetimes: ("E0090", "E0088"),
+                types: ("E0089", "E0087"),
+            },
         );
-        // self.fcx.check_generic_arg_count(self.span, &segment, &method_generics, true,
-                                        //  supress_mismatch);
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
