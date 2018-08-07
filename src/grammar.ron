@@ -43,6 +43,10 @@ Grammar(
         ["-=", "MINUSEQ"],
         ["&&", "AMPAMP"],
         ["||", "PIPEPIPE"],
+        ["<<", "SHL"],
+        [">>", "SHR"],
+        ["<<=", "SHLEQ"],
+        [">>=", "SHREQ"],
     ],
     keywords: [
         "use",
@@ -168,6 +172,7 @@ Grammar(
         "REF_EXPR",
         "DEREF_EXPR",
         "NOT_EXPR",
+        "NEG_EXPR",
 
         "RANGE_EXPR", // just weird
         "BIN_EXPR",

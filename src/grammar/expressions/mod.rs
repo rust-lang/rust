@@ -3,7 +3,7 @@ mod atom;
 use super::*;
 pub(super) use self::atom::literal;
 
-const EXPR_FIRST: TokenSet = UNARY_EXPR_FIRST;
+const EXPR_FIRST: TokenSet = LHS_FIRST;
 
 pub(super) fn expr(p: &mut Parser) {
     let r = Restrictions { forbid_structs: false };
@@ -38,32 +38,18 @@ enum Op {
     Composite(SyntaxKind, u8),
 }
 
-// test expr_binding_power
-// fn foo() {
-//     1 + 2 * 3 == 1 * 2 + 3;
-//     *x = 1 + 1;
-// }
-
-// test range_binding_power
-// fn foo() {
-//     .. 1 + 1;
-//     .. z = 2;
-//     x = false .. 1 == 1;
-// }
-
-// test compound_ops
-// fn foo() {
-//     x += 1;
-//     1 + 1 <= 2 * 3;
-//     z -= 3 >= 0;
-//     true || true && false;
-// }
 fn current_op(p: &Parser) -> (u8, Op) {
     if p.at_compound2(PLUS, EQ) {
         return (1, Op::Composite(PLUSEQ, 2));
     }
     if p.at_compound2(MINUS, EQ) {
         return (1, Op::Composite(MINUSEQ, 2));
+    }
+    if p.at_compound3(L_ANGLE, L_ANGLE, EQ) {
+        return (1, Op::Composite(SHLEQ, 3));
+    }
+    if p.at_compound3(R_ANGLE, R_ANGLE, EQ) {
+        return (1, Op::Composite(SHREQ, 3));
     }
     if p.at_compound2(PIPE, PIPE) {
         return (3, Op::Composite(PIPEPIPE, 2));
@@ -77,13 +63,22 @@ fn current_op(p: &Parser) -> (u8, Op) {
     if p.at_compound2(R_ANGLE, EQ) {
         return (5, Op::Composite(GTEQ, 2));
     }
+    if p.at_compound2(L_ANGLE, L_ANGLE) {
+        return (9, Op::Composite(SHL, 2));
+    }
+    if p.at_compound2(R_ANGLE, R_ANGLE) {
+        return (9, Op::Composite(SHR, 2));
+    }
 
     let bp = match p.current() {
         EQ => 1,
         DOTDOT => 2,
         EQEQ | NEQ => 5,
-        MINUS | PLUS => 6,
-        STAR | SLASH => 7,
+        PIPE => 6,
+        CARET => 7,
+        AMP => 8,
+        MINUS | PLUS => 10,
+        STAR | SLASH | PERCENT => 11,
         _ => 0,
     };
     (bp, Op::Simple)
@@ -107,13 +102,13 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) {
                 p.bump_compound(kind, n);
             }
         }
-        lhs = bin_expr(p, r, lhs, op_bp);
+        lhs = bin_expr(p, r, lhs, op_bp + 1);
     }
 }
 
-const UNARY_EXPR_FIRST: TokenSet =
+const LHS_FIRST: TokenSet =
     token_set_union![
-        token_set![AMP, STAR, EXCL],
+        token_set![AMP, STAR, EXCL, DOTDOT, MINUS],
         atom::ATOM_EXPR_FIRST,
     ];
 
@@ -148,6 +143,15 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
             m = p.start();
             p.bump();
             NOT_EXPR
+        }
+        // test neg_expr
+        // fn foo() {
+        //     --1;
+        // }
+        MINUS => {
+            m = p.start();
+            p.bump();
+            NEG_EXPR
         }
         DOTDOT => {
             m = p.start();

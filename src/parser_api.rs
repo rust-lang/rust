@@ -62,6 +62,10 @@ impl<'t> Parser<'t> {
         self.0.at_compound2(c1, c2)
     }
 
+    pub(crate) fn at_compound3(&self, c1: SyntaxKind, c2: SyntaxKind, c3: SyntaxKind) -> bool {
+        self.0.at_compound3(c1, c2, c3)
+    }
+
     /// Checks if the current token is contextual keyword with text `t`.
     pub(crate) fn at_contextual_kw(&self, t: &str) -> bool {
         self.0.at_kw(t)

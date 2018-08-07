@@ -70,6 +70,12 @@ impl<'t> ParserImpl<'t> {
             && self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos)
     }
 
+    pub(super) fn at_compound3(&self, c1: SyntaxKind, c2: SyntaxKind, c3: SyntaxKind) -> bool {
+        self.inp.kind(self.pos) == c1 && self.inp.kind(self.pos + 1) == c2 && self.inp.kind(self.pos + 2) == c3
+            && self.inp.start(self.pos + 1) == self.inp.start(self.pos) + self.inp.len(self.pos)
+            && self.inp.start(self.pos + 2) == self.inp.start(self.pos + 1) + self.inp.len(self.pos + 1)
+    }
+
     pub(super) fn nth(&self, n: u32) -> SyntaxKind {
         self.inp.kind(self.pos + n)
     }
