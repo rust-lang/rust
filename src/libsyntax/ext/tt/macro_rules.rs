@@ -174,7 +174,32 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     }
 
     let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
-    cx.span_err(best_fail_spot.substitute_dummy(sp), &best_fail_msg);
+    let mut err = cx.struct_span_err(best_fail_spot.substitute_dummy(sp), &best_fail_msg);
+
+    // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
+    if let Some((arg, comma_span)) = arg.add_comma() {
+        for lhs in lhses { // try each arm's matchers
+            let lhs_tt = match *lhs {
+                quoted::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
+                _ => cx.span_bug(sp, "malformed macro lhs")
+            };
+            match TokenTree::parse(cx, lhs_tt, arg.clone()) {
+                Success(_) => {
+                    if comma_span == DUMMY_SP {
+                        err.note("you might be missing a comma");
+                    } else {
+                        err.span_suggestion_short(
+                            comma_span,
+                            "missing comma here",
+                            ",".to_string(),
+                        );
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    err.emit();
     cx.trace_macros_diag();
     DummyResult::any(sp)
 }

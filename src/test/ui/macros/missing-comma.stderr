@@ -1,0 +1,16 @@
+error: expected token: `,`
+  --> $DIR/missing-comma.rs:16:19
+   |
+LL |     println!("{}" a);
+   |                   ^
+
+error: no rules expected the token `b`
+  --> $DIR/missing-comma.rs:18:12
+   |
+LL |     foo!(a b);
+   |           -^
+   |           |
+   |           help: missing comma here
+
+error: aborting due to 2 previous errors
+
