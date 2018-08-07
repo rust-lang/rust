@@ -1,0 +1,44 @@
+[package]
+name = "rustc-workspace-hack"
+version = "1.0.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+license = 'MIT/Apache-2.0'
+description = """
+Hack for the compiler's own build system
+"""
+
+[lib]
+path = "lib.rs"
+
+# For documentation about what this is and why in the world these dependencies
+# are appearing, see `README.md`.
+
+[build-dependencies]
+# Currently Cargo/RLS depend on `failure` which depends on `synstructure` which
+# enables this feature. Clippy, however, does not depend on anything that
+# enables this feature. Enable it unconditionally.
+syn = { version = "0.14", features = ['extra-traits'] }
+
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3"
+features = [
+  "profileapi",
+  "memoryapi",
+  "minschannel",
+  "securitybaseapi",
+  "jobapi2",
+  "schannel",
+  "sysinfoapi",
+  "jobapi",
+  "synchapi",
+  "wincrypt",
+  "winbase",
+  "minwinbase",
+  "ntsecapi",
+  "basetsd",
+  "ntstatus",
+  "psapi",
+  "timezoneapi",
+  "lmcons",
+  "wincon",
+]
