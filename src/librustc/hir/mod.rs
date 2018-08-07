@@ -445,6 +445,22 @@ impl GenericArgs {
         }
         bug!("GenericArgs::inputs: not a `Fn(T) -> U`");
     }
+
+    pub fn own_counts(&self) -> GenericParamCount {
+        // We could cache this as a property of `GenericParamCount`, but
+        // the aim is to refactor this away entirely eventually and the
+        // presence of this method will be a constant reminder.
+        let mut own_counts: GenericParamCount = Default::default();
+
+        for arg in &self.args {
+            match arg {
+                GenericArg::Lifetime(_) => own_counts.lifetimes += 1,
+                GenericArg::Type(_) => own_counts.types += 1,
+            };
+        }
+
+        own_counts
+    }
 }
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
@@ -503,6 +519,7 @@ pub struct GenericParam {
     pub kind: GenericParamKind,
 }
 
+#[derive(Default)]
 pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
@@ -533,10 +550,7 @@ impl Generics {
         // We could cache this as a property of `GenericParamCount`, but
         // the aim is to refactor this away entirely eventually and the
         // presence of this method will be a constant reminder.
-        let mut own_counts = GenericParamCount {
-            lifetimes: 0,
-            types: 0,
-        };
+        let mut own_counts: GenericParamCount = Default::default();
 
         for param in &self.params {
             match param.kind {

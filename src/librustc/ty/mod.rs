@@ -881,6 +881,7 @@ impl GenericParamDef {
     }
 }
 
+#[derive(Default)]
 pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
@@ -913,10 +914,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         // We could cache this as a property of `GenericParamCount`, but
         // the aim is to refactor this away entirely eventually and the
         // presence of this method will be a constant reminder.
-        let mut own_counts = GenericParamCount {
-            lifetimes: 0,
-            types: 0,
-        };
+        let mut own_counts: GenericParamCount = Default::default();
 
         for param in &self.params {
             match param.kind {

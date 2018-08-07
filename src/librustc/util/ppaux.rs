@@ -262,10 +262,7 @@ impl PrintContext {
         let verbose = self.is_verbose;
         let mut num_supplied_defaults = 0;
         let mut has_self = false;
-        let mut own_counts = GenericParamCount {
-            lifetimes: 0,
-            types: 0,
-        };
+        let mut own_counts: GenericParamCount = Default::default();
         let mut is_value_path = false;
         let fn_trait_kind = ty::tls::with(|tcx| {
             // Unfortunately, some kinds of items (e.g., closures) don't have
