@@ -221,6 +221,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 | GroupedMoveError::OtherIllegalMove { span, ref kind } => (span, kind),
             };
             let origin = Origin::Mir;
+            debug!("report: span={:?}, kind={:?}", span, kind);
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
@@ -262,6 +263,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                     }
                                     None => bug!("closure kind not inferred by borrowck"),
                                 };
+                                debug!("report: closure_kind_ty={:?} closure_kind={:?} \
+                                       place_description={:?}", closure_kind_ty, closure_kind,
+                                       place_description);
+
                                 self.tcx.cannot_move_out_of(span, place_description, origin)
                             }
                             _ => self
