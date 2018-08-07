@@ -541,11 +541,23 @@ unsafe fn optimize(cgcx: &CodegenContext,
             };
 
             if config.verify_llvm_ir { assert!(addpass("verify")); }
+
+            // Some options cause LLVM bitcode to be emitted, which uses ThinLTOBuffers, so we need
+            // to make sure we run LLVM's NameAnonGlobals pass when emitting bitcode; otherwise
+            // we'll get errors in LLVM.
+            let using_thin_buffers = llvm::LLVMRustThinLTOAvailable() && (config.emit_bc
+                || config.obj_is_bitcode || config.emit_bc_compressed || config.embed_bitcode);
+            let mut have_name_anon_globals_pass = false;
             if !config.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
                 let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
                 let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal;
+                have_name_anon_globals_pass = have_name_anon_globals_pass || prepare_for_thin_lto;
+                if using_thin_buffers && !prepare_for_thin_lto {
+                    assert!(addpass("name-anon-globals"));
+                    have_name_anon_globals_pass = true;
+                }
                 with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
                     llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
                     llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
@@ -557,6 +569,9 @@ unsafe fn optimize(cgcx: &CodegenContext,
                     diag_handler.warn(&format!("unknown pass `{}`, ignoring",
                                             pass));
                 }
+                if pass == "name-anon-globals" {
+                    have_name_anon_globals_pass = true;
+                }
             }
 
             for pass in &cgcx.plugin_passes {
@@ -564,6 +579,22 @@ unsafe fn optimize(cgcx: &CodegenContext,
                     diag_handler.err(&format!("a plugin asked for LLVM pass \
                                             `{}` but LLVM does not \
                                             recognize it", pass));
+                }
+                if pass == "name-anon-globals" {
+                    have_name_anon_globals_pass = true;
+                }
+            }
+
+            if using_thin_buffers && !have_name_anon_globals_pass {
+                // As described above, this will probably cause an error in LLVM
+                if config.no_prepopulate_passes {
+                    diag_handler.err("The current compilation is going to use thin LTO buffers \
+                                     without running LLVM's NameAnonGlobals pass. \
+                                     This will likely cause errors in LLVM. Consider adding \
+                                     -C passes=name-anon-globals to the compiler command line.");
+                } else {
+                    bug!("We are using thin LTO buffers without running the NameAnonGlobals pass. \
+                         This will likely cause errors in LLVM and shoud never happen.");
                 }
             }
         }

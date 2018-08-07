@@ -35,7 +35,6 @@ use value::Value;
 
 use std::ffi::CString;
 
-
 /// Declare a global value.
 ///
 /// If there’s a value with the same name already declared, the function will
@@ -167,6 +166,15 @@ pub fn define_global(cx: &CodegenCx<'ll, '_>, name: &str, ty: &'ll Type) -> Opti
         None
     } else {
         Some(declare_global(cx, name, ty))
+    }
+}
+
+/// Declare a private global
+///
+/// Use this function when you intend to define a global without a name.
+pub fn define_private_global(cx: &CodegenCx<'ll, '_>, ty: &'ll Type) -> &'ll Value {
+    unsafe {
+        llvm::LLVMRustInsertPrivateGlobal(cx.llmod, ty)
     }
 }
 
