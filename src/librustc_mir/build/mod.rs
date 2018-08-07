@@ -763,6 +763,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                     binding_mode,
                                     opt_ty_info,
                                     opt_match_place: Some((Some(place.clone()), span)),
+                                    pat_span: span,
                                 })))
                             };
                         self.var_indices.insert(var, LocalsForNode::One(local));

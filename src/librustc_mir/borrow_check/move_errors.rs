@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir;
+use core::unicode::property::Pattern_White_Space;
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::DiagnosticBuilder;
@@ -36,18 +36,18 @@ use util::borrowck_errors::{BorrowckErrors, Origin};
 // let (&x, &y) = (&String::new(), &String::new());
 #[derive(Debug)]
 enum GroupedMoveError<'tcx> {
-    // Match place can't be moved from
+    // Place expression can't be moved from,
     // e.g. match x[0] { s => (), } where x: &[String]
-    MovesFromMatchPlace {
+    MovesFromPlace {
         original_path: Place<'tcx>,
         span: Span,
         move_from: Place<'tcx>,
         kind: IllegalMoveOriginKind<'tcx>,
         binds_to: Vec<Local>,
     },
-    // Part of a pattern can't be moved from,
+    // Part of a value expression can't be moved from,
     // e.g. match &String::new() { &x => (), }
-    MovesFromPattern {
+    MovesFromValue {
         original_path: Place<'tcx>,
         span: Span,
         move_from: MovePathIndex,
@@ -55,6 +55,8 @@ enum GroupedMoveError<'tcx> {
         binds_to: Vec<Local>,
     },
     // Everything that isn't from pattern matching.
+    // FIXME(ashtneoi): I think this is only for moves into temporaries, as
+    // when returning a value. Clarification needed.
     OtherIllegalMove {
         original_path: Place<'tcx>,
         span: Span,
@@ -119,6 +121,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         opt_match_place: Some((ref opt_match_place, match_span)),
                         binding_mode: _,
                         opt_ty_info: _,
+                        pat_span: _,
                     }))) = local_decl.is_user_variable
                     {
                         self.append_binding_error(
@@ -166,7 +169,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             // Error with the match place
             LookupResult::Parent(_) => {
                 for ge in &mut *grouped_errors {
-                    if let GroupedMoveError::MovesFromMatchPlace { span, binds_to, .. } = ge {
+                    if let GroupedMoveError::MovesFromPlace { span, binds_to, .. } = ge {
                         if match_span == *span {
                             debug!("appending local({:?}) to list", bind_to);
                             if !binds_to.is_empty() {
@@ -184,7 +187,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     (vec![bind_to], match_span)
                 };
-                grouped_errors.push(GroupedMoveError::MovesFromMatchPlace {
+                grouped_errors.push(GroupedMoveError::MovesFromPlace {
                     span,
                     move_from: match_place.clone(),
                     original_path,
@@ -200,7 +203,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     _ => unreachable!("Probably not unreachable..."),
                 };
                 for ge in &mut *grouped_errors {
-                    if let GroupedMoveError::MovesFromPattern {
+                    if let GroupedMoveError::MovesFromValue {
                         span,
                         move_from: other_mpi,
                         binds_to,
@@ -215,7 +218,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 debug!("found a new move error location");
-                grouped_errors.push(GroupedMoveError::MovesFromPattern {
+                grouped_errors.push(GroupedMoveError::MovesFromValue {
                     span: match_span,
                     move_from: mpi,
                     original_path,
@@ -230,13 +233,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let (mut err, err_span) = {
             let (span, original_path, kind): (Span, &Place<'tcx>, &IllegalMoveOriginKind) =
                 match error {
-                    GroupedMoveError::MovesFromMatchPlace {
+                    GroupedMoveError::MovesFromPlace {
                         span,
                         ref original_path,
                         ref kind,
                         ..
                     } |
-                    GroupedMoveError::MovesFromPattern { span, ref original_path, ref kind, .. } |
+                    GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } |
                     GroupedMoveError::OtherIllegalMove { span, ref original_path, ref kind } => {
                         (span, original_path, kind)
                     },
@@ -331,111 +334,119 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
     ) {
+        let snippet = self.tcx.sess.codemap().span_to_snippet(span).unwrap();
         match error {
-            GroupedMoveError::MovesFromMatchPlace {
+            GroupedMoveError::MovesFromPlace {
                 mut binds_to,
                 move_from,
                 ..
             } => {
-                // Ok to suggest a borrow, since the target can't be moved from
-                // anyway.
-                if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                    match move_from {
-                        Place::Projection(ref proj)
-                            if self.suitable_to_remove_deref(proj, &snippet) =>
-                        {
+                let mut suggest_change_head_expr = false;
+                match move_from {
+                    Place::Projection(box PlaceProjection {
+                        elem: ProjectionElem::Deref,
+                        ..
+                    }) => {
+                        // This is false for (e.g.) index expressions `a[b]`,
+                        // which roughly desugar to `*Index::index(&a, b)` or
+                        // `*IndexMut::index_mut(&mut a, b)`.
+                        if snippet.starts_with('*') {
                             err.span_suggestion(
                                 span,
                                 "consider removing this dereference operator",
                                 (&snippet[1..]).to_owned(),
                             );
-                        }
-                        _ => {
-                            err.span_suggestion(
-                                span,
-                                "consider using a reference instead",
-                                format!("&{}", snippet),
-                            );
+                            suggest_change_head_expr = true;
                         }
                     }
-
-                    binds_to.sort();
-                    binds_to.dedup();
-                    for local in binds_to {
-                        let bind_to = &self.mir.local_decls[local];
-                        let binding_span = bind_to.source_info.span;
-                        err.span_label(
-                            binding_span,
-                            format!(
-                                "move occurs because {} has type `{}`, \
-                                 which does not implement the `Copy` trait",
-                                bind_to.name.unwrap(),
-                                bind_to.ty
-                            ),
+                    _ => {
+                        err.span_suggestion(
+                            span,
+                            "consider using a reference instead",
+                            format!("&{}", snippet),
                         );
+                        suggest_change_head_expr = true;
                     }
                 }
-            }
-            GroupedMoveError::MovesFromPattern { mut binds_to, .. } => {
-                // Suggest ref, since there might be a move in
-                // another match arm
                 binds_to.sort();
                 binds_to.dedup();
-                let mut multipart_suggestion = Vec::with_capacity(binds_to.len());
-                for (j, local) in binds_to.into_iter().enumerate() {
-                    let bind_to = &self.mir.local_decls[local];
-                    let binding_span = bind_to.source_info.span;
-
-                    // Suggest ref mut when the user has already written mut.
-                    let ref_kind = match bind_to.mutability {
-                        Mutability::Not => "ref",
-                        Mutability::Mut => "ref mut",
-                    };
-                    if j == 0 {
-                        err.span_label(binding_span, format!("data moved here"));
-                    } else {
-                        err.span_label(binding_span, format!("... and here"));
-                    }
-                    match bind_to.name {
-                        Some(name) => {
-                            multipart_suggestion.push((binding_span,
-                                                       format!("{} {}", ref_kind, name)));
-                        }
-                        None => {
-                            err.span_label(
-                                span,
-                                format!("Local {:?} is not suitable for ref", bind_to),
-                            );
-                        }
-                    }
+                if !suggest_change_head_expr {
+                    self.add_move_error_suggestions(err, &binds_to);
                 }
-                err.multipart_suggestion("to prevent move, use ref or ref mut",
-                                         multipart_suggestion);
+                self.add_move_error_labels(err, &binds_to);
             }
-            // Nothing to suggest.
+            GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
+                binds_to.sort();
+                binds_to.dedup();
+                self.add_move_error_suggestions(err, &binds_to);
+                self.add_move_error_labels(err, &binds_to);
+            }
+            // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { .. } => (),
         }
     }
 
-    fn suitable_to_remove_deref(&self, proj: &PlaceProjection<'tcx>, snippet: &str) -> bool {
-        let is_shared_ref = |ty: ty::Ty| match ty.sty {
-            ty::TypeVariants::TyRef(.., hir::Mutability::MutImmutable) => true,
-            _ => false,
-        };
-
-        proj.elem == ProjectionElem::Deref && snippet.starts_with('*') && match proj.base {
-            Place::Local(local) => {
-                let local_decl = &self.mir.local_decls[local];
-                // If this is a temporary, then this could be from an
-                // overloaded * operator.
-                local_decl.is_user_variable.is_some() && is_shared_ref(local_decl.ty)
+    fn add_move_error_suggestions(
+        &self,
+        err: &mut DiagnosticBuilder<'a>,
+        binds_to: &[Local],
+    ) {
+        for local in binds_to {
+            let bind_to = &self.mir.local_decls[*local];
+            if let Some(
+                ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                    pat_span,
+                    ..
+                }))
+            ) = bind_to.is_user_variable {
+                let pat_snippet = self
+                    .tcx.sess.codemap()
+                    .span_to_snippet(pat_span)
+                    .unwrap();
+                if pat_snippet.starts_with('&') {
+                    let pat_snippet = &pat_snippet[1..];
+                    let suggestion;
+                    if pat_snippet.starts_with("mut")
+                        && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
+                    {
+                        suggestion = pat_snippet["mut".len()..].trim_left();
+                    } else {
+                        suggestion = pat_snippet;
+                    }
+                    err.span_suggestion(
+                        pat_span,
+                        "consider removing this borrow operator",
+                        suggestion.to_owned(),
+                    );
+                }
             }
-            Place::Promoted(_) => true,
-            Place::Static(ref st) => is_shared_ref(st.ty),
-            Place::Projection(ref proj) => match proj.elem {
-                ProjectionElem::Field(_, ty) => is_shared_ref(ty),
-                _ => false,
-            },
+        }
+    }
+
+    fn add_move_error_labels(
+        &self,
+        err: &mut DiagnosticBuilder<'a>,
+        binds_to: &[Local],
+    ) {
+        for (j, local) in binds_to.into_iter().enumerate() {
+            let bind_to = &self.mir.local_decls[*local];
+            let binding_span = bind_to.source_info.span;
+
+            if j == 0 {
+                err.span_label(binding_span, format!("data moved here"));
+            } else {
+                err.span_label(binding_span, format!("... and here"));
+            }
+
+            err.span_note(
+                binding_span,
+                &format!(
+                    "move occurs because {} has type `{}`, \
+                        which does not implement the `Copy` trait",
+                    bind_to.name.unwrap(),
+                    bind_to.ty
+                ),
+            );
         }
     }
 }

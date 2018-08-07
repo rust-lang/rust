@@ -357,7 +357,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let visibility_scope = visibility_scope.unwrap();
             this.declare_binding(source_info, visibility_scope, mutability, name, mode,
                                  num_patterns, var, ty, has_guard,
-                                 opt_match_place.map(|(x, y)| (x.cloned(), y)));
+                                 opt_match_place.map(|(x, y)| (x.cloned(), y)),
+                                 patterns[0].span);
         });
         visibility_scope
     }
@@ -1182,7 +1183,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        var_id: NodeId,
                        var_ty: Ty<'tcx>,
                        has_guard: ArmHasGuard,
-                       opt_match_place: Option<(Option<Place<'tcx>>, Span)>)
+                       opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
+                       pat_span: Span)
     {
         debug!("declare_binding(var_id={:?}, name={:?}, mode={:?}, var_ty={:?}, \
                 visibility_scope={:?}, source_info={:?})",
@@ -1208,6 +1210,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Instead, just abandon providing diagnostic info.
                 opt_ty_info: None,
                 opt_match_place,
+                pat_span,
             }))),
         };
         let for_arm_body = self.local_decls.push(local.clone());

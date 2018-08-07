@@ -523,6 +523,8 @@ pub struct VarBindingForm<'tcx> {
     /// (b) it gives a way to separate this case from the remaining cases
     ///     for diagnostics.
     pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
+    /// Span of the pattern in which this variable was bound.
+    pub pat_span: Span,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -540,7 +542,8 @@ CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
 impl_stable_hash_for!(struct self::VarBindingForm<'tcx> {
     binding_mode,
     opt_ty_info,
-    opt_match_place
+    opt_match_place,
+    pat_span
 });
 
 mod binding_form_impl {
@@ -710,6 +713,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
+                pat_span: _,
             }))) => true,
 
             // FIXME: might be able to thread the distinction between
@@ -729,6 +733,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
+                pat_span: _,
             }))) => true,
 
             Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf)) => true,
