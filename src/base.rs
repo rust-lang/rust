@@ -313,10 +313,10 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             trans_bool_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
                         TypeVariants::TyUint(_) => {
-                            trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false, false)
+                            trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
                         }
                         TypeVariants::TyInt(_) => {
-                            trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true, false)
+                            trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true)
                         }
                         TypeVariants::TyFloat(_) => {
                             trans_float_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
@@ -325,9 +325,9 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             trans_char_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
                         TypeVariants::TyRawPtr(..) => {
-                            trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
+                            trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
-                        _ => unimplemented!("bin op {:?} for {:?}", bin_op, ty),
+                        _ => unimplemented!("binop {:?} for {:?}", bin_op, ty),
                     };
                     lval.write_cvalue(fx, res);
                 }
@@ -338,14 +338,13 @@ fn trans_stmt<'a, 'tcx: 'a>(
 
                     let res = match ty.sty {
                         TypeVariants::TyUint(_) => {
-                            trans_int_binop(fx, *bin_op, lhs, rhs, ty, false, true)
+                            trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
                         }
                         TypeVariants::TyInt(_) => {
-                            trans_int_binop(fx, *bin_op, lhs, rhs, ty, true, true)
+                            trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true)
                         }
-                        _ => unimplemented!("checked bin op {:?} for {:?}", bin_op, ty),
+                        _ => unimplemented!("checked binop {:?} for {:?}", bin_op, ty),
                     };
-                    return Err(format!("checked bin op {:?}", bin_op));
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::UnaryOp(un_op, operand) => {
@@ -510,7 +509,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
 
 macro_rules! binop_match {
     (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, bug) => {
-        bug!("bin op {} on {} lhs: {:?} rhs: {:?}", stringify!($var), $bug_fmt, $lhs, $rhs)
+        bug!("binop {} on {} lhs: {:?} rhs: {:?}", stringify!($var), $bug_fmt, $lhs, $rhs)
     };
     (@single $fx:expr, $bug_fmt:expr, $var:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, icmp($cc:ident)) => {{
         assert_eq!($fx.tcx.types.bool, $ret_ty);
@@ -585,12 +584,14 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
     bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
-    ty: Ty<'tcx>,
+    out_ty: Ty<'tcx>,
     signed: bool,
-    _checked: bool,
 ) -> CValue<'tcx> {
-    let res = binop_match! {
-        fx, bin_op, signed, lhs, rhs, ty, "int/uint";
+    if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
+        assert_eq!(lhs.layout().ty, rhs.layout().ty, "int binop requires lhs and rhs of same type");
+    }
+    binop_match! {
+        fx, bin_op, signed, lhs, rhs, out_ty, "int/uint";
         Add (_) iadd;
         Sub (_) isub;
         Mul (_) imul;
@@ -617,10 +618,57 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
         Gt (true) icmp(SignedGreaterThan);
 
         Offset (_) bug;
+    }
+}
+
+fn trans_checked_int_binop<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx>,
+    bin_op: BinOp,
+    lhs: CValue<'tcx>,
+    rhs: CValue<'tcx>,
+    out_ty: Ty<'tcx>,
+    signed: bool,
+) -> CValue<'tcx> {
+    if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
+        assert_eq!(lhs.layout().ty, rhs.layout().ty, "checked int binop requires lhs and rhs of same type");
+    }
+    let res_ty = match out_ty.sty {
+        TypeVariants::TyTuple(tys) => tys[0],
+        _ => bug!("Checked int binop requires tuple as output, but got {:?}", out_ty),
     };
 
-    // TODO: return correct value for checked binops
-    res
+    let res = binop_match! {
+        fx, bin_op, signed, lhs, rhs, res_ty, "checked int/uint";
+        Add (_) iadd;
+        Sub (_) isub;
+        Mul (_) imul;
+        Div (_) bug;
+        Rem (_) bug;
+        BitXor (_) bug;
+        BitAnd (_) bug;
+        BitOr (_) bug;
+        Shl (_) ishl;
+        Shr (false) ushr;
+        Shr (true) sshr;
+
+        Eq (_) bug;
+        Lt (_) bug;
+        Le (_) bug;
+        Ne (_) bug;
+        Ge (_) bug;
+        Gt (_) bug;
+
+        Offset (_) bug;
+    };
+
+    let has_overflow = CValue::const_val(fx, fx.tcx.types.bool, 0);
+
+    let out_place = CPlace::temp(fx, out_ty);
+    out_place.place_field(fx, mir::Field::new(0)).write_cvalue(fx, res);
+    println!("abc");
+    out_place.place_field(fx, mir::Field::new(1)).write_cvalue(fx, has_overflow);
+
+    out_place.to_cvalue(fx)
 }
 
 fn trans_float_binop<'a, 'tcx: 'a>(
@@ -703,7 +751,6 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
     ty: Ty<'tcx>,
-    _checked: bool,
 ) -> CValue<'tcx> {
     binop_match! {
         fx, bin_op, false, lhs, rhs, ty, "ptr";

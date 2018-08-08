@@ -398,7 +398,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                             args[1],
                             ret.layout().ty,
                             false,
-                            false,
                         ),
                         TypeVariants::TyInt(_) => crate::base::trans_int_binop(
                             fx,
@@ -407,7 +406,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                             args[1],
                             ret.layout().ty,
                             true,
-                            false,
                         ),
                         _ => panic!(),
                     };

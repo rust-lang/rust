@@ -133,8 +133,8 @@ impl<'tcx> CValue<'tcx> {
     pub fn expect_byref(self) -> (Value, TyLayout<'tcx>) {
         match self {
             CValue::ByRef(value, layout) => (value, layout),
-            CValue::ByVal(_, _) => bug!("Expected CValue::ByRef, found CValue::ByVal"),
-            CValue::Func(_, _) => bug!("Expected CValue::ByRef, found CValue::Func"),
+            CValue::ByVal(_, _) => bug!("Expected CValue::ByRef, found CValue::ByVal: {:?}", self),
+            CValue::Func(_, _) => bug!("Expected CValue::ByRef, found CValue::Func: {:?}", self),
         }
     }
 
@@ -185,6 +185,16 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         match *self {
             CPlace::Var(_, layout) | CPlace::Addr(_, layout) => layout,
         }
+    }
+
+    pub fn temp(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>) -> CPlace<'tcx> {
+        let layout = fx.layout_of(ty);
+        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+            kind: StackSlotKind::ExplicitSlot,
+            size: layout.size.bytes() as u32,
+            offset: None,
+        });
+        CPlace::Addr(fx.bcx.ins().stack_addr(types::I64, stack_slot, 0), layout)
     }
 
     pub fn from_stack_slot(

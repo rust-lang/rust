@@ -2,7 +2,7 @@ cargo build || exit 1
 
 cd examples/
 
-RUSTC="rustc -Zcodegen-backend=$(pwd)/../target/debug/librustc_codegen_cranelift.so -Og -L crate=. --crate-type lib"
+RUSTC="rustc -Zcodegen-backend=$(pwd)/../target/debug/librustc_codegen_cranelift.so -L crate=. --crate-type lib"
 
 $RUSTC mini_core.rs --crate-name mini_core &&
 $RUSTC example.rs &&

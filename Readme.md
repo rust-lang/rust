@@ -18,8 +18,6 @@ $ cargo build
 $ rustc -Zcodegen-backend=$(pwd)/target/debug/librustc_codegen_cranelift.so my_crate.rs --crate-type lib -Og
 ```
 
-> You must compile with `-Og`, because checked binops are not yet supported.
-
 ## Building libcore
 
 ```bash
