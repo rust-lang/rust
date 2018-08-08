@@ -24,13 +24,8 @@ pub(super) fn type_param_list(p: &mut Parser) {
         assert!(p.at(LIFETIME));
         let m = p.start();
         p.bump();
-        if p.eat(COLON) {
-            while p.at(LIFETIME) {
-                p.bump();
-                if !p.eat(PLUS) {
-                    break;
-                }
-            }
+        if p.at(COLON) {
+            lifetime_bounds(p);
         }
         m.complete(p, LIFETIME_PARAM);
     }
@@ -60,6 +55,17 @@ pub(super) fn bounds(p: &mut Parser) {
     bounds_without_colon(p);
 }
 
+fn lifetime_bounds(p: &mut Parser) {
+    assert!(p.at(COLON));
+    p.bump();
+    while p.at(LIFETIME) {
+        p.bump();
+        if !p.eat(PLUS) {
+            break;
+        }
+    }
+}
+
 pub(super) fn bounds_without_colon(p: &mut Parser) {
     loop {
         let has_paren = p.eat(L_PAREN);
@@ -83,13 +89,39 @@ pub(super) fn bounds_without_colon(p: &mut Parser) {
     }
 }
 
+// test where_clause
+// fn foo()
+// where
+//    'a: 'b + 'c,
+//    T: Clone + Copy + 'static,
+//    Iterator::Item: 'a,
+// {}
 pub(super) fn where_clause(p: &mut Parser) {
-    if p.at(WHERE_KW) {
-        let m = p.start();
-        p.bump();
-        p.expect(IDENT);
-        p.expect(COLON);
-        p.expect(IDENT);
-        m.complete(p, WHERE_CLAUSE);
+    if !p.at(WHERE_KW) {
+        return;
     }
+    let m = p.start();
+    p.bump();
+    loop {
+        if !(paths::is_path_start(p) || p.current() == LIFETIME) {
+            break
+        }
+        where_predicate(p);
+        if p.current() != L_CURLY && p.current() != SEMI {
+            p.expect(COMMA);
+        }
+    }
+    m.complete(p, WHERE_CLAUSE);
+}
+
+fn where_predicate(p: &mut Parser) {
+    let m = p.start();
+    if p.at(LIFETIME) {
+        p.eat(LIFETIME);
+        lifetime_bounds(p)
+    } else {
+        types::path_type(p);
+        bounds(p);
+    }
+    m.complete(p, WHERE_PRED);
 }

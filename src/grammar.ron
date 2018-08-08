@@ -192,6 +192,7 @@ Grammar(
         "ALIAS",
         "VISIBILITY",
         "WHERE_CLAUSE",
+        "WHERE_PRED",
         "ABI",
         "NAME",
         "NAME_REF",

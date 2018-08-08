@@ -27,10 +27,18 @@ FILE@[0; 42)
     WHERE_CLAUSE@[25; 38)
       WHERE_KW@[25; 30)
       WHITESPACE@[30; 31)
-      IDENT@[31; 32) "U"
-      COLON@[32; 33)
-      WHITESPACE@[33; 34)
-      IDENT@[34; 38) "Copy"
+      WHERE_PRED@[31; 38)
+        PATH_TYPE@[31; 32)
+          PATH@[31; 32)
+            PATH_SEGMENT@[31; 32)
+              NAME_REF@[31; 32)
+                IDENT@[31; 32) "U"
+        COLON@[32; 33)
+        WHITESPACE@[33; 34)
+        PATH@[34; 38)
+          PATH_SEGMENT@[34; 38)
+            NAME_REF@[34; 38)
+              IDENT@[34; 38) "Copy"
     WHITESPACE@[38; 39)
     L_CURLY@[39; 40)
     R_CURLY@[40; 41)

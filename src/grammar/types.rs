@@ -199,7 +199,7 @@ fn impl_trait_type(p: &mut Parser) {
 // type B = ::Foo;
 // type C = self::Foo;
 // type D = super::Foo;
-fn path_type(p: &mut Parser) {
+pub(super) fn path_type(p: &mut Parser) {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::type_path(p);
