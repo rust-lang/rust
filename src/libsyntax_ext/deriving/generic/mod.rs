@@ -191,6 +191,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
@@ -1624,7 +1625,7 @@ impl<'a> TraitDef<'a> {
                                 ident: ident.unwrap(),
                                 pat,
                                 is_shorthand: false,
-                                attrs: ast::ThinVec::new(),
+                                attrs: ThinVec::new(),
                             },
                         }
                     })
