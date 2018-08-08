@@ -331,6 +331,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "likely" | "unlikely" | "forget" => {}
 
             "init" => {
+                // we don't want to force an allocation in case the destination is a simple value
                 match dest {
                     Place::Local { frame, local } => {
                         match self.stack()[frame].locals[local].access()? {
@@ -618,6 +619,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "uninit" => {
+                // we don't want to force an allocation in case the destination is a simple value
                 match dest {
                     Place::Local { frame, local } => {
                         match self.stack()[frame].locals[local].access()? {
