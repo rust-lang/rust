@@ -79,6 +79,36 @@ fn assert_send_sync() {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) struct GreenBranch {
+    text_len: TextUnit,
+    kind: SyntaxKind,
+    children: Vec<GreenNode>,
+}
+
+impl GreenBranch {
+    fn new(kind: SyntaxKind, children: Vec<GreenNode>) -> GreenBranch {
+        let text_len = children.iter().map(|x| x.text_len()).sum::<TextUnit>();
+        GreenBranch {
+            text_len,
+            kind,
+            children,
+        }
+    }
+
+    pub fn kind(&self) -> SyntaxKind {
+        self.kind
+    }
+
+    pub fn text_len(&self) -> TextUnit {
+        self.text_len
+    }
+
+    pub fn children(&self) -> &[GreenNode] {
+        self.children.as_slice()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) enum GreenLeaf {
     Whitespace {
         newlines: u8,
@@ -143,33 +173,3 @@ const N_NEWLINES: usize = 16;
 const N_SPACES: usize = 64;
 const WS: &str =
     "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                ";
-
-#[derive(Clone, Debug)]
-pub(crate) struct GreenBranch {
-    text_len: TextUnit,
-    kind: SyntaxKind,
-    children: Vec<GreenNode>,
-}
-
-impl GreenBranch {
-    fn new(kind: SyntaxKind, children: Vec<GreenNode>) -> GreenBranch {
-        let text_len = children.iter().map(|x| x.text_len()).sum::<TextUnit>();
-        GreenBranch {
-            text_len,
-            kind,
-            children,
-        }
-    }
-
-    pub fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
-    pub fn text_len(&self) -> TextUnit {
-        self.text_len
-    }
-
-    pub fn children(&self) -> &[GreenNode] {
-        self.children.as_slice()
-    }
-}

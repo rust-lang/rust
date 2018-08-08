@@ -35,9 +35,9 @@ mod grammar;
 mod parser_impl;
 
 mod syntax_kinds;
+mod yellow;
 /// Utilities for simple uses of the parser.
 pub mod utils;
-mod yellow;
 
 pub use {
     ast::File,
