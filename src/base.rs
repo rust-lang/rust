@@ -421,7 +421,12 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 }
                 Rvalue::Len(lval) => return Err(format!("rval len {:?}", lval)),
                 Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),
-                Rvalue::NullaryOp(NullOp::SizeOf, ty) => unimplemented!("rval size_of {:?}", ty),
+                Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
+                    assert!(lval.layout().ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()));
+                    let ty_size = fx.layout_of(ty).size.bytes();
+                    let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size as i64);
+                    lval.write_cvalue(fx, val);
+                },
                 Rvalue::Aggregate(_, _) => bug!("shouldn't exist at trans {:?}", rval),
             }
         }
