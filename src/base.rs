@@ -412,7 +412,12 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     lval.write_cvalue(fx, discr);
                 }
                 Rvalue::Repeat(operand, times) => {
-                    unimplemented!("rval repeat {:?} {:?}", operand, times)
+                    let operand = trans_operand(fx, operand);
+                    for i in 0..*times {
+                        let index = fx.bcx.ins().iconst(types::I64, i as i64);
+                        let to = lval.place_index(fx, index);
+                        to.write_cvalue(fx, operand);
+                    }
                 }
                 Rvalue::Len(lval) => return Err(format!("rval len {:?}", lval)),
                 Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),

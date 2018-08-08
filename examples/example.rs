@@ -146,3 +146,7 @@ unsafe fn call_uninit() -> u8 {
 fn use_array(arr: [u8; 3]) -> u8 {
     arr[1]
 }
+
+fn repeat_array() -> [u8; 3] {
+    [0; 3]
+}
