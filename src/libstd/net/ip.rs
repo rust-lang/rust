@@ -16,8 +16,6 @@
 use cmp::Ordering;
 use fmt;
 use hash;
-use mem;
-use net::{hton, ntoh};
 use sys::net::netc as c;
 use sys_common::{AsInner, FromInner};
 
@@ -340,18 +338,21 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
+    #[rustc_const_unstable(feature = "const_ip")]
+    pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         Ipv4Addr {
             inner: c::in_addr {
-                s_addr: hton(((a as u32) << 24) |
-                             ((b as u32) << 16) |
-                             ((c as u32) <<  8) |
-                              (d as u32)),
+                s_addr: u32::to_be(
+                    ((a as u32) << 24) |
+                    ((b as u32) << 16) |
+                    ((c as u32) <<  8) |
+                    (d as u32)
+                ),
             }
         }
     }
 
-    /// Creates a new IPv4 address with the address pointing to localhost: 127.0.0.1.
+    /// An IPv4 address with the address pointing to localhost: 127.0.0.1.
     ///
     /// # Examples
     ///
@@ -359,17 +360,15 @@ impl Ipv4Addr {
     /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::localhost();
+    /// let addr = Ipv4Addr::LOCALHOST;
     /// assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
     /// ```
     #[unstable(feature = "ip_constructors",
                reason = "requires greater scrutiny before stabilization",
                issue = "44582")]
-    pub fn localhost() -> Ipv4Addr {
-        Ipv4Addr::new(127, 0, 0, 1)
-    }
+    pub const LOCALHOST: Self = Ipv4Addr::new(127, 0, 0, 1);
 
-    /// Creates a new IPv4 address representing an unspecified address: 0.0.0.0
+    /// An IPv4 address representing an unspecified address: 0.0.0.0
     ///
     /// # Examples
     ///
@@ -377,15 +376,29 @@ impl Ipv4Addr {
     /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::unspecified();
+    /// let addr = Ipv4Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
     /// ```
     #[unstable(feature = "ip_constructors",
                reason = "requires greater scrutiny before stabilization",
                issue = "44582")]
-    pub fn unspecified() -> Ipv4Addr {
-        Ipv4Addr::new(0, 0, 0, 0)
-    }
+    pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
+
+    /// An IPv4 address representing the broadcast address: 255.255.255.255
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_constructors)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::BROADCAST;
+    /// assert_eq!(addr, Ipv4Addr::new(255, 255, 255, 255));
+    /// ```
+    #[unstable(feature = "ip_constructors",
+               reason = "requires greater scrutiny before stabilization",
+               issue = "44582")]
+    pub const BROADCAST: Self = Ipv4Addr::new(255, 255, 255, 255);
 
     /// Returns the four eight-bit integers that make up this address.
     ///
@@ -399,7 +412,7 @@ impl Ipv4Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn octets(&self) -> [u8; 4] {
-        let bits = ntoh(self.inner.s_addr);
+        let bits = u32::from_be(self.inner.s_addr);
         [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
     }
 
@@ -573,8 +586,7 @@ impl Ipv4Addr {
     /// ```
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_broadcast(&self) -> bool {
-        self.octets()[0] == 255 && self.octets()[1] == 255 &&
-        self.octets()[2] == 255 && self.octets()[3] == 255
+        self == &Self::BROADCAST
     }
 
     /// Returns [`true`] if this address is in a range designated for documentation.
@@ -763,7 +775,7 @@ impl PartialOrd<IpAddr> for Ipv4Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
-        ntoh(self.inner.s_addr).cmp(&ntoh(other.inner.s_addr))
+        u32::from_be(self.inner.s_addr).cmp(&u32::from_be(other.inner.s_addr))
     }
 }
 
@@ -856,21 +868,27 @@ impl Ipv6Addr {
     /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
-               h: u16) -> Ipv6Addr {
-        let mut addr: c::in6_addr = unsafe { mem::zeroed() };
-        addr.s6_addr = [(a >> 8) as u8, a as u8,
-                        (b >> 8) as u8, b as u8,
-                        (c >> 8) as u8, c as u8,
-                        (d >> 8) as u8, d as u8,
-                        (e >> 8) as u8, e as u8,
-                        (f >> 8) as u8, f as u8,
-                        (g >> 8) as u8, g as u8,
-                        (h >> 8) as u8, h as u8];
-        Ipv6Addr { inner: addr }
+    #[rustc_const_unstable(feature = "const_ip")]
+    pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16,
+                     g: u16, h: u16) -> Ipv6Addr {
+        Ipv6Addr {
+            inner: c::in6_addr {
+                s6_addr: [
+                    (a >> 8) as u8, a as u8,
+                    (b >> 8) as u8, b as u8,
+                    (c >> 8) as u8, c as u8,
+                    (d >> 8) as u8, d as u8,
+                    (e >> 8) as u8, e as u8,
+                    (f >> 8) as u8, f as u8,
+                    (g >> 8) as u8, g as u8,
+                    (h >> 8) as u8, h as u8
+                ],
+            }
+        }
+
     }
 
-    /// Creates a new IPv6 address representing localhost: `::1`.
+    /// An IPv6 address representing localhost: `::1`.
     ///
     /// # Examples
     ///
@@ -878,17 +896,15 @@ impl Ipv6Addr {
     /// #![feature(ip_constructors)]
     /// use std::net::Ipv6Addr;
     ///
-    /// let addr = Ipv6Addr::localhost();
+    /// let addr = Ipv6Addr::LOCALHOST;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// ```
     #[unstable(feature = "ip_constructors",
                reason = "requires greater scrutiny before stabilization",
                issue = "44582")]
-    pub fn localhost() -> Ipv6Addr {
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)
-    }
+    pub const LOCALHOST: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
 
-    /// Creates a new IPv6 address representing the unspecified address: `::`
+    /// An IPv6 address representing the unspecified address: `::`
     ///
     /// # Examples
     ///
@@ -896,15 +912,13 @@ impl Ipv6Addr {
     /// #![feature(ip_constructors)]
     /// use std::net::Ipv6Addr;
     ///
-    /// let addr = Ipv6Addr::unspecified();
+    /// let addr = Ipv6Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
     /// ```
     #[unstable(feature = "ip_constructors",
                reason = "requires greater scrutiny before stabilization",
                issue = "44582")]
-    pub fn unspecified() -> Ipv6Addr {
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)
-    }
+    pub const UNSPECIFIED: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
 
     /// Returns the eight 16-bit segments that make up this address.
     ///
@@ -1414,8 +1428,7 @@ impl From<u128> for Ipv6Addr {
 #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
 impl From<[u8; 16]> for Ipv6Addr {
     fn from(octets: [u8; 16]) -> Ipv6Addr {
-        let mut inner: c::in6_addr = unsafe { mem::zeroed() };
-        inner.s6_addr = octets;
+        let inner = c::in6_addr { s6_addr: octets };
         Ipv6Addr::from_inner(inner)
     }
 }
@@ -1846,18 +1859,20 @@ mod tests {
 
     #[test]
     fn ipv4_from_constructors() {
-        assert_eq!(Ipv4Addr::localhost(), Ipv4Addr::new(127, 0, 0, 1));
-        assert!(Ipv4Addr::localhost().is_loopback());
-        assert_eq!(Ipv4Addr::unspecified(), Ipv4Addr::new(0, 0, 0, 0));
-        assert!(Ipv4Addr::unspecified().is_unspecified());
+        assert_eq!(Ipv4Addr::LOCALHOST, Ipv4Addr::new(127, 0, 0, 1));
+        assert!(Ipv4Addr::LOCALHOST.is_loopback());
+        assert_eq!(Ipv4Addr::UNSPECIFIED, Ipv4Addr::new(0, 0, 0, 0));
+        assert!(Ipv4Addr::UNSPECIFIED.is_unspecified());
+        assert_eq!(Ipv4Addr::BROADCAST, Ipv4Addr::new(255, 255, 255, 255));
+        assert!(Ipv4Addr::BROADCAST.is_broadcast());
     }
 
     #[test]
     fn ipv6_from_contructors() {
-        assert_eq!(Ipv6Addr::localhost(), Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
-        assert!(Ipv6Addr::localhost().is_loopback());
-        assert_eq!(Ipv6Addr::unspecified(), Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
-        assert!(Ipv6Addr::unspecified().is_unspecified());
+        assert_eq!(Ipv6Addr::LOCALHOST, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+        assert!(Ipv6Addr::LOCALHOST.is_loopback());
+        assert_eq!(Ipv6Addr::UNSPECIFIED, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
+        assert!(Ipv6Addr::UNSPECIFIED.is_unspecified());
     }
 
     #[test]
