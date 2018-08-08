@@ -32,6 +32,16 @@ pub fn main() {
     let s = &x;
     let sm = &mut X(Y);
 
+    let ve = vec![Either::One(X(Y))];
+
+    let vr = &ve;
+    let vrm = &mut vec![Either::One(X(Y))];
+
+    let vx = vec![X(Y)];
+
+    let vs_ = &vx;
+    let vsm = &mut vec![X(Y)];
+
     // --------
 
     let X(_t) = *s;
@@ -93,6 +103,70 @@ pub fn main() {
         //~^ ERROR cannot move
         //~| HELP consider removing this dereference operator
         //~| SUGGESTION rm
+        Either::One(_t) => (),
+        Either::Two(ref mut _t) => (),
+        // TODO: should suggest removing `ref mut` too
+    }
+
+    let X(_t) = vs_[0];
+    //~^ ERROR cannot move
+    //~| HELP consider using a reference instead
+    //~| SUGGESTION &vs_[0]
+    if let Either::One(_t) = vr[0] { }
+    //~^ ERROR cannot move
+    //~| HELP consider using a reference instead
+    //~| SUGGESTION &vr[0]
+    while let Either::One(_t) = vr[0] { }
+    //~^ ERROR cannot move
+    //~| HELP consider using a reference instead
+    //~| SUGGESTION &vr[0]
+    match vr[0] {
+        //~^ ERROR cannot move
+        //~| HELP consider using a reference instead
+        //~| SUGGESTION &vr[0]
+        Either::One(_t)
+        | Either::Two(_t) => (),
+    }
+    match vr[0] {
+        //~^ ERROR cannot move
+        //~| HELP consider using a reference instead
+        //~| SUGGESTION &vr[0]
+        Either::One(_t) => (),
+        Either::Two(ref _t) => (),
+        // TODO: should suggest removing `ref` too
+    }
+
+    let X(_t) = vsm[0];
+    //~^ ERROR cannot move
+    //~| HELP consider using a reference instead
+    //~| SUGGESTION &vsm[0]
+    if let Either::One(_t) = vrm[0] { }
+    //~^ ERROR cannot move
+    //~| HELP consider using a reference instead
+    //~| SUGGESTION &vrm[0]
+    while let Either::One(_t) = vrm[0] { }
+    //~^ ERROR cannot move
+    //~| HELP consider using a reference instead
+    //~| SUGGESTION &vrm[0]
+    match vrm[0] {
+        //~^ ERROR cannot move
+        //~| HELP consider using a reference instead
+        //~| SUGGESTION &vrm[0]
+        Either::One(_t)
+        | Either::Two(_t) => (),
+    }
+    match vrm[0] {
+        //~^ ERROR cannot move
+        //~| HELP consider using a reference instead
+        //~| SUGGESTION &vrm[0]
+        Either::One(_t) => (),
+        Either::Two(ref _t) => (),
+        // TODO: should suggest removing `ref` too
+    }
+    match vrm[0] {
+        //~^ ERROR cannot move
+        //~| HELP consider using a reference instead
+        //~| SUGGESTION &vrm[0]
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
         // TODO: should suggest removing `ref mut` too

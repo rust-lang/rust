@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:37:17
+  --> $DIR/dont-suggest-ref.rs:47:17
    |
 LL |     let X(_t) = *s;
    |           --    ^^
@@ -9,13 +9,13 @@ LL |     let X(_t) = *s;
    |           data moved here
    |
 note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:37:11
+  --> $DIR/dont-suggest-ref.rs:47:11
    |
 LL |     let X(_t) = *s;
    |           ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:41:30
+  --> $DIR/dont-suggest-ref.rs:51:30
    |
 LL |     if let Either::One(_t) = *r { }
    |                        --    ^^
@@ -25,13 +25,13 @@ LL |     if let Either::One(_t) = *r { }
    |                        data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:41:24
+  --> $DIR/dont-suggest-ref.rs:51:24
    |
 LL |     if let Either::One(_t) = *r { }
    |                        ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:45:33
+  --> $DIR/dont-suggest-ref.rs:55:33
    |
 LL |     while let Either::One(_t) = *r { }
    |                           --    ^^
@@ -41,13 +41,13 @@ LL |     while let Either::One(_t) = *r { }
    |                           data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:45:27
+  --> $DIR/dont-suggest-ref.rs:55:27
    |
 LL |     while let Either::One(_t) = *r { }
    |                           ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:49:11
+  --> $DIR/dont-suggest-ref.rs:59:11
    |
 LL |     match *r {
    |           ^^
@@ -59,13 +59,13 @@ LL |         Either::One(_t)
    |                     -- data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:53:21
+  --> $DIR/dont-suggest-ref.rs:63:21
    |
 LL |         Either::One(_t)
    |                     ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:56:11
+  --> $DIR/dont-suggest-ref.rs:66:11
    |
 LL |     match *r {
    |           ^^
@@ -77,13 +77,13 @@ LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:61:21
+  --> $DIR/dont-suggest-ref.rs:70:21
    |
 LL |         Either::One(_t) => (),
    |                     ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:65:17
+  --> $DIR/dont-suggest-ref.rs:75:17
    |
 LL |     let X(_t) = *sm;
    |           --    ^^^
@@ -93,13 +93,13 @@ LL |     let X(_t) = *sm;
    |           data moved here
    |
 note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:65:11
+  --> $DIR/dont-suggest-ref.rs:75:11
    |
 LL |     let X(_t) = *sm;
    |           ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:69:30
+  --> $DIR/dont-suggest-ref.rs:79:30
    |
 LL |     if let Either::One(_t) = *rm { }
    |                        --    ^^^
@@ -109,13 +109,13 @@ LL |     if let Either::One(_t) = *rm { }
    |                        data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:69:24
+  --> $DIR/dont-suggest-ref.rs:79:24
    |
 LL |     if let Either::One(_t) = *rm { }
    |                        ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:73:33
+  --> $DIR/dont-suggest-ref.rs:83:33
    |
 LL |     while let Either::One(_t) = *rm { }
    |                           --    ^^^
@@ -125,13 +125,13 @@ LL |     while let Either::One(_t) = *rm { }
    |                           data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:73:27
+  --> $DIR/dont-suggest-ref.rs:83:27
    |
 LL |     while let Either::One(_t) = *rm { }
    |                           ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:77:11
+  --> $DIR/dont-suggest-ref.rs:87:11
    |
 LL |     match *rm {
    |           ^^^
@@ -143,13 +143,13 @@ LL |         Either::One(_t)
    |                     -- data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:81:21
+  --> $DIR/dont-suggest-ref.rs:91:21
    |
 LL |         Either::One(_t)
    |                     ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:84:11
+  --> $DIR/dont-suggest-ref.rs:94:11
    |
 LL |     match *rm {
    |           ^^^
@@ -161,13 +161,13 @@ LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:89:21
+  --> $DIR/dont-suggest-ref.rs:98:21
    |
 LL |         Either::One(_t) => (),
    |                     ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:92:11
+  --> $DIR/dont-suggest-ref.rs:102:11
    |
 LL |     match *rm {
    |           ^^^
@@ -179,13 +179,172 @@ LL |         Either::One(_t) => (),
    |                     -- data moved here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:97:21
+  --> $DIR/dont-suggest-ref.rs:106:21
    |
 LL |         Either::One(_t) => (),
    |                     ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:103:18
+  --> $DIR/dont-suggest-ref.rs:111:17
+   |
+LL |     let X(_t) = vs_[0];
+   |           --    ^^^^^^ cannot move out of borrowed content
+   |           |
+   |           data moved here
+   |
+note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:111:11
+   |
+LL |     let X(_t) = vs_[0];
+   |           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:115:30
+   |
+LL |     if let Either::One(_t) = vr[0] { }
+   |                        --    ^^^^^ cannot move out of borrowed content
+   |                        |
+   |                        data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:115:24
+   |
+LL |     if let Either::One(_t) = vr[0] { }
+   |                        ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:119:33
+   |
+LL |     while let Either::One(_t) = vr[0] { }
+   |                           --    ^^^^^ cannot move out of borrowed content
+   |                           |
+   |                           data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:119:27
+   |
+LL |     while let Either::One(_t) = vr[0] { }
+   |                           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:123:11
+   |
+LL |     match vr[0] {
+   |           ^^^^^ cannot move out of borrowed content
+...
+LL |         Either::One(_t)
+   |                     -- data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:127:21
+   |
+LL |         Either::One(_t)
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:130:11
+   |
+LL |     match vr[0] {
+   |           ^^^^^ cannot move out of borrowed content
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:134:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:139:17
+   |
+LL |     let X(_t) = vsm[0];
+   |           --    ^^^^^^ cannot move out of borrowed content
+   |           |
+   |           data moved here
+   |
+note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:139:11
+   |
+LL |     let X(_t) = vsm[0];
+   |           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:143:30
+   |
+LL |     if let Either::One(_t) = vrm[0] { }
+   |                        --    ^^^^^^ cannot move out of borrowed content
+   |                        |
+   |                        data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:143:24
+   |
+LL |     if let Either::One(_t) = vrm[0] { }
+   |                        ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:147:33
+   |
+LL |     while let Either::One(_t) = vrm[0] { }
+   |                           --    ^^^^^^ cannot move out of borrowed content
+   |                           |
+   |                           data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:147:27
+   |
+LL |     while let Either::One(_t) = vrm[0] { }
+   |                           ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:151:11
+   |
+LL |     match vrm[0] {
+   |           ^^^^^^ cannot move out of borrowed content
+...
+LL |         Either::One(_t)
+   |                     -- data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:155:21
+   |
+LL |         Either::One(_t)
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:158:11
+   |
+LL |     match vrm[0] {
+   |           ^^^^^^ cannot move out of borrowed content
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:162:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:166:11
+   |
+LL |     match vrm[0] {
+   |           ^^^^^^ cannot move out of borrowed content
+...
+LL |         Either::One(_t) => (),
+   |                     -- data moved here
+   |
+note: move occurs because _t has type `X`, which does not implement the `Copy` trait
+  --> $DIR/dont-suggest-ref.rs:170:21
+   |
+LL |         Either::One(_t) => (),
+   |                     ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/dont-suggest-ref.rs:177:18
    |
 LL |     let &X(_t) = s;
    |         ------   ^ cannot move out of borrowed content
@@ -194,13 +353,13 @@ LL |     let &X(_t) = s;
    |         help: consider removing this borrow operator: `X(_t)`
    |
 note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:103:12
+  --> $DIR/dont-suggest-ref.rs:177:12
    |
 LL |     let &X(_t) = s;
    |            ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:107:31
+  --> $DIR/dont-suggest-ref.rs:181:31
    |
 LL |     if let &Either::One(_t) = r { }
    |            ----------------   ^ cannot move out of borrowed content
@@ -209,13 +368,13 @@ LL |     if let &Either::One(_t) = r { }
    |            help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:107:25
+  --> $DIR/dont-suggest-ref.rs:181:25
    |
 LL |     if let &Either::One(_t) = r { }
    |                         ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:111:34
+  --> $DIR/dont-suggest-ref.rs:185:34
    |
 LL |     while let &Either::One(_t) = r { }
    |               ----------------   ^ cannot move out of borrowed content
@@ -224,13 +383,13 @@ LL |     while let &Either::One(_t) = r { }
    |               help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:111:28
+  --> $DIR/dont-suggest-ref.rs:185:28
    |
 LL |     while let &Either::One(_t) = r { }
    |                            ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:115:11
+  --> $DIR/dont-suggest-ref.rs:189:11
    |
 LL |     match r {
    |           ^ cannot move out of borrowed content
@@ -242,13 +401,13 @@ LL |         &Either::One(_t)
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:117:22
+  --> $DIR/dont-suggest-ref.rs:191:22
    |
 LL |         &Either::One(_t)
    |                      ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:123:11
+  --> $DIR/dont-suggest-ref.rs:197:11
    |
 LL |     match r {
    |           ^ cannot move out of borrowed content
@@ -260,13 +419,13 @@ LL |         &Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:125:22
+  --> $DIR/dont-suggest-ref.rs:199:22
    |
 LL |         &Either::One(_t) => (),
    |                      ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:130:11
+  --> $DIR/dont-suggest-ref.rs:204:11
    |
 LL |     match r {
    |           ^ cannot move out of borrowed content
@@ -278,13 +437,13 @@ LL |         &Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:132:22
+  --> $DIR/dont-suggest-ref.rs:206:22
    |
 LL |         &Either::One(_t) => (),
    |                      ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:142:22
+  --> $DIR/dont-suggest-ref.rs:216:22
    |
 LL |     let &mut X(_t) = sm;
    |         ----------   ^^ cannot move out of borrowed content
@@ -293,13 +452,13 @@ LL |     let &mut X(_t) = sm;
    |         help: consider removing this borrow operator: `X(_t)`
    |
 note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:142:16
+  --> $DIR/dont-suggest-ref.rs:216:16
    |
 LL |     let &mut X(_t) = sm;
    |                ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:146:35
+  --> $DIR/dont-suggest-ref.rs:220:35
    |
 LL |     if let &mut Either::One(_t) = rm { }
    |            --------------------   ^^ cannot move out of borrowed content
@@ -308,13 +467,13 @@ LL |     if let &mut Either::One(_t) = rm { }
    |            help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:146:29
+  --> $DIR/dont-suggest-ref.rs:220:29
    |
 LL |     if let &mut Either::One(_t) = rm { }
    |                             ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:150:38
+  --> $DIR/dont-suggest-ref.rs:224:38
    |
 LL |     while let &mut Either::One(_t) = rm { }
    |               --------------------   ^^ cannot move out of borrowed content
@@ -323,13 +482,13 @@ LL |     while let &mut Either::One(_t) = rm { }
    |               help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:150:32
+  --> $DIR/dont-suggest-ref.rs:224:32
    |
 LL |     while let &mut Either::One(_t) = rm { }
    |                                ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:154:11
+  --> $DIR/dont-suggest-ref.rs:228:11
    |
 LL |     match rm {
    |           ^^ cannot move out of borrowed content
@@ -341,12 +500,12 @@ LL |         &mut Either::Two(_t) => (),
    |                          -- ... and here
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:156:26
+  --> $DIR/dont-suggest-ref.rs:230:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:159:26
+  --> $DIR/dont-suggest-ref.rs:233:26
    |
 LL |         &mut Either::Two(_t) => (),
    |                          ^^
@@ -360,7 +519,7 @@ LL |         Either::Two(_t) => (),
    |         ^^^^^^^^^^^^^^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:163:11
+  --> $DIR/dont-suggest-ref.rs:237:11
    |
 LL |     match rm {
    |           ^^ cannot move out of borrowed content
@@ -372,13 +531,13 @@ LL |         &mut Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:165:26
+  --> $DIR/dont-suggest-ref.rs:239:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:170:11
+  --> $DIR/dont-suggest-ref.rs:244:11
    |
 LL |     match rm {
    |           ^^ cannot move out of borrowed content
@@ -390,13 +549,13 @@ LL |         &mut Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:172:26
+  --> $DIR/dont-suggest-ref.rs:246:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:177:11
+  --> $DIR/dont-suggest-ref.rs:251:11
    |
 LL |     match rm {
    |           ^^ cannot move out of borrowed content
@@ -408,13 +567,13 @@ LL |         &mut Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:179:26
+  --> $DIR/dont-suggest-ref.rs:253:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:191:18
+  --> $DIR/dont-suggest-ref.rs:265:18
    |
 LL |     let &X(_t) = &x;
    |         ------   ^^ cannot move out of borrowed content
@@ -423,13 +582,13 @@ LL |     let &X(_t) = &x;
    |         help: consider removing this borrow operator: `X(_t)`
    |
 note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:191:12
+  --> $DIR/dont-suggest-ref.rs:265:12
    |
 LL |     let &X(_t) = &x;
    |            ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:195:31
+  --> $DIR/dont-suggest-ref.rs:269:31
    |
 LL |     if let &Either::One(_t) = &e { }
    |            ----------------   ^^ cannot move out of borrowed content
@@ -438,13 +597,13 @@ LL |     if let &Either::One(_t) = &e { }
    |            help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:195:25
+  --> $DIR/dont-suggest-ref.rs:269:25
    |
 LL |     if let &Either::One(_t) = &e { }
    |                         ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:199:34
+  --> $DIR/dont-suggest-ref.rs:273:34
    |
 LL |     while let &Either::One(_t) = &e { }
    |               ----------------   ^^ cannot move out of borrowed content
@@ -453,13 +612,13 @@ LL |     while let &Either::One(_t) = &e { }
    |               help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:199:28
+  --> $DIR/dont-suggest-ref.rs:273:28
    |
 LL |     while let &Either::One(_t) = &e { }
    |                            ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:203:11
+  --> $DIR/dont-suggest-ref.rs:277:11
    |
 LL |     match &e {
    |           ^^ cannot move out of borrowed content
@@ -471,13 +630,13 @@ LL |         &Either::One(_t)
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:205:22
+  --> $DIR/dont-suggest-ref.rs:279:22
    |
 LL |         &Either::One(_t)
    |                      ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:211:11
+  --> $DIR/dont-suggest-ref.rs:285:11
    |
 LL |     match &e {
    |           ^^ cannot move out of borrowed content
@@ -489,13 +648,13 @@ LL |         &Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:213:22
+  --> $DIR/dont-suggest-ref.rs:287:22
    |
 LL |         &Either::One(_t) => (),
    |                      ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:218:11
+  --> $DIR/dont-suggest-ref.rs:292:11
    |
 LL |     match &e {
    |           ^^ cannot move out of borrowed content
@@ -507,13 +666,13 @@ LL |         &Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:220:22
+  --> $DIR/dont-suggest-ref.rs:294:22
    |
 LL |         &Either::One(_t) => (),
    |                      ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:226:22
+  --> $DIR/dont-suggest-ref.rs:300:22
    |
 LL |     let &mut X(_t) = &mut xm;
    |         ----------   ^^^^^^^ cannot move out of borrowed content
@@ -522,13 +681,13 @@ LL |     let &mut X(_t) = &mut xm;
    |         help: consider removing this borrow operator: `X(_t)`
    |
 note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:226:16
+  --> $DIR/dont-suggest-ref.rs:300:16
    |
 LL |     let &mut X(_t) = &mut xm;
    |                ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:230:35
+  --> $DIR/dont-suggest-ref.rs:304:35
    |
 LL |     if let &mut Either::One(_t) = &mut em { }
    |            --------------------   ^^^^^^^ cannot move out of borrowed content
@@ -537,13 +696,13 @@ LL |     if let &mut Either::One(_t) = &mut em { }
    |            help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:230:29
+  --> $DIR/dont-suggest-ref.rs:304:29
    |
 LL |     if let &mut Either::One(_t) = &mut em { }
    |                             ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:234:38
+  --> $DIR/dont-suggest-ref.rs:308:38
    |
 LL |     while let &mut Either::One(_t) = &mut em { }
    |               --------------------   ^^^^^^^ cannot move out of borrowed content
@@ -552,13 +711,13 @@ LL |     while let &mut Either::One(_t) = &mut em { }
    |               help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:234:32
+  --> $DIR/dont-suggest-ref.rs:308:32
    |
 LL |     while let &mut Either::One(_t) = &mut em { }
    |                                ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:238:11
+  --> $DIR/dont-suggest-ref.rs:312:11
    |
 LL |     match &mut em {
    |           ^^^^^^^ cannot move out of borrowed content
@@ -570,13 +729,13 @@ LL |         &mut Either::One(_t)
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:240:26
+  --> $DIR/dont-suggest-ref.rs:314:26
    |
 LL |         &mut Either::One(_t)
    |                          ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:246:11
+  --> $DIR/dont-suggest-ref.rs:320:11
    |
 LL |     match &mut em {
    |           ^^^^^^^ cannot move out of borrowed content
@@ -588,13 +747,13 @@ LL |         &mut Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:248:26
+  --> $DIR/dont-suggest-ref.rs:322:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:253:11
+  --> $DIR/dont-suggest-ref.rs:327:11
    |
 LL |     match &mut em {
    |           ^^^^^^^ cannot move out of borrowed content
@@ -606,13 +765,13 @@ LL |         &mut Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:255:26
+  --> $DIR/dont-suggest-ref.rs:329:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:260:11
+  --> $DIR/dont-suggest-ref.rs:334:11
    |
 LL |     match &mut em {
    |           ^^^^^^^ cannot move out of borrowed content
@@ -624,13 +783,13 @@ LL |         &mut Either::One(_t) => (),
    |         help: consider removing this borrow operator: `Either::One(_t)`
    |
 note: move occurs because _t has type `X`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:262:26
+  --> $DIR/dont-suggest-ref.rs:336:26
    |
 LL |         &mut Either::One(_t) => (),
    |                          ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:137:11
+  --> $DIR/dont-suggest-ref.rs:211:11
    |
 LL |     fn f1(&X(_t): &X) { }
    |           ^^^--^
@@ -640,13 +799,13 @@ LL |     fn f1(&X(_t): &X) { }
    |           help: consider removing this borrow operator: `X(_t)`
    |
 note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:137:14
+  --> $DIR/dont-suggest-ref.rs:211:14
    |
 LL |     fn f1(&X(_t): &X) { }
    |              ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/dont-suggest-ref.rs:184:11
+  --> $DIR/dont-suggest-ref.rs:258:11
    |
 LL |     fn f2(&mut X(_t): &mut X) { }
    |           ^^^^^^^--^
@@ -656,11 +815,11 @@ LL |     fn f2(&mut X(_t): &mut X) { }
    |           help: consider removing this borrow operator: `X(_t)`
    |
 note: move occurs because _t has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/dont-suggest-ref.rs:184:18
+  --> $DIR/dont-suggest-ref.rs:258:18
    |
 LL |     fn f2(&mut X(_t): &mut X) { }
    |                  ^^
 
-error: aborting due to 39 previous errors
+error: aborting due to 50 previous errors
 
 For more information about this error, try `rustc --explain E0507`.
