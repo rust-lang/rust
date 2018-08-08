@@ -2866,7 +2866,7 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Acquires the underlying `*mut` pointer.
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_unstable(feature = "non_null_as_ptr")]
+    #[rustc_const_unstable(feature = "const_non_zero_get")]
     pub const fn as_ptr(self) -> *mut T {
         self.pointer.0 as *mut T
     }
