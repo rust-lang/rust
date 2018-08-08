@@ -75,7 +75,7 @@ fn path_generic_args(p: &mut Parser, mode: Mode) {
             // test path_fn_trait_args
             // type F = Box<Fn(x: i32) -> ()>;
             if p.at(L_PAREN) {
-                params::param_list(p);
+                params::param_list_opt_patterns(p);
                 fn_ret_type(p);
             } else {
                 type_args::type_arg_list(p, false)

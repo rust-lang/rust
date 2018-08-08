@@ -33,12 +33,6 @@ impl Flavor {
             _ => true,
         }
     }
-    fn pattern_required(self) -> bool {
-        match self {
-            Flavor::OptionalPattern => false,
-            _ => true,
-        }
-    }
 }
 
 fn list_(p: &mut Parser, flavor: Flavor) {
@@ -65,9 +59,29 @@ fn list_(p: &mut Parser, flavor: Flavor) {
 
 fn value_parameter(p: &mut Parser, flavor: Flavor) {
     let m = p.start();
-    patterns::pattern(p);
-    if p.at(COLON) || flavor.type_required() {
-        types::ascription(p)
+    match flavor {
+        Flavor::OptionalType | Flavor::Normal => {
+            patterns::pattern(p);
+            if p.at(COLON) || flavor.type_required() {
+                types::ascription(p)
+            }
+        },
+        // test value_parameters_no_patterns
+        // type F = Box<Fn(a: i32, &b: &i32, &mut c: &i32, ())>;
+        Flavor::OptionalPattern => {
+            let la0 = p.current();
+            let la1 = p.nth(1);
+            let la2 = p.nth(2);
+            let la3 = p.nth(3);
+            if la0 == IDENT && la1 == COLON
+                || la0 == AMP && la1 == IDENT && la2 == COLON
+                || la0 == AMP && la1 == MUT_KW && la2 == IDENT && la3 == COLON {
+                patterns::pattern(p);
+                types::ascription(p);
+            } else {
+                types::type_(p);
+            }
+        },
     }
     m.complete(p, PARAM);
 }
