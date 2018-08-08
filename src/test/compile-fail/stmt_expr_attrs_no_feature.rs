@@ -20,7 +20,7 @@ fn main() {
     #[attr]
     fn a() {}
 
-    #[attr]
+    #[attr] //~ ERROR attributes on expressions are experimental
     {
 
     }

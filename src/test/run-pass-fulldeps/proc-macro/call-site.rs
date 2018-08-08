@@ -11,7 +11,7 @@
 // aux-build:call-site.rs
 // ignore-stage1
 
-#![feature(proc_macro_non_items, use_extern_macros)]
+#![feature(proc_macro_non_items)]
 
 extern crate call_site;
 use call_site::*;

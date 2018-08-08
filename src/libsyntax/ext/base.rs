@@ -589,7 +589,7 @@ impl MacroKind {
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
     /// A trivial "extension" that does nothing, only keeps the attribute and marks it as known.
-    NonMacroAttr,
+    NonMacroAttr { mark_used: bool },
 
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
@@ -670,7 +670,7 @@ impl SyntaxExtension {
             SyntaxExtension::IdentTT(..) |
             SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
-            SyntaxExtension::NonMacroAttr |
+            SyntaxExtension::NonMacroAttr { .. } |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
             SyntaxExtension::AttrProcMacro(..) =>
@@ -700,7 +700,7 @@ impl SyntaxExtension {
             SyntaxExtension::AttrProcMacro(.., edition) |
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,
             // Unstable legacy stuff
-            SyntaxExtension::NonMacroAttr |
+            SyntaxExtension::NonMacroAttr { .. } |
             SyntaxExtension::IdentTT(..) |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
@@ -726,7 +726,7 @@ pub trait Resolver {
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>, allow_derive: bool)
                               -> Option<Attribute>;
 
-    fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
+    fn resolve_invoc(&mut self, invoc: &Invocation, scope: Mark, force: bool)
                      -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                      -> Result<Lrc<SyntaxExtension>, Determinacy>;
@@ -737,6 +737,12 @@ pub trait Resolver {
 pub enum Determinacy {
     Determined,
     Undetermined,
+}
+
+impl Determinacy {
+    pub fn determined(determined: bool) -> Determinacy {
+        if determined { Determinacy::Determined } else { Determinacy::Undetermined }
+    }
 }
 
 pub struct DummyResolver;
@@ -754,7 +760,7 @@ impl Resolver for DummyResolver {
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>, _allow_derive: bool)
                               -> Option<Attribute> { None }
-    fn resolve_invoc(&mut self, _invoc: &mut Invocation, _scope: Mark, _force: bool)
+    fn resolve_invoc(&mut self, _invoc: &Invocation, _scope: Mark, _force: bool)
                      -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         Err(Determinacy::Determined)
     }

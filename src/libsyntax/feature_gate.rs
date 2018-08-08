@@ -32,7 +32,7 @@ use attr;
 use codemap::Spanned;
 use edition::{ALL_EDITIONS, Edition};
 use syntax_pos::{Span, DUMMY_SP};
-use errors::{DiagnosticBuilder, Handler, FatalError};
+use errors::{DiagnosticBuilder, Handler};
 use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use symbol::{keywords, Symbol};
@@ -83,8 +83,14 @@ macro_rules! declare_features {
             }
 
             pub fn use_extern_macros(&self) -> bool {
-                // The `decl_macro` and `tool_attributes` features imply `use_extern_macros`.
-                self.use_extern_macros || self.decl_macro || self.tool_attributes
+                // A number of "advanced" macro features enable
+                // macro modularization (`use_extern_macros`) implicitly.
+                self.use_extern_macros || self.decl_macro ||
+                self.tool_attributes || self.custom_attribute ||
+                self.macros_in_extern || self.proc_macro_path_invoc ||
+                self.proc_macro_mod || self.proc_macro_expr ||
+                self.proc_macro_non_items || self.proc_macro_gen ||
+                self.stmt_expr_attributes
             }
         }
     };
@@ -714,7 +720,7 @@ pub fn is_builtin_attr_name(name: ast::Name) -> bool {
 }
 
 pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
-    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.check_name(builtin_name)) ||
+    BUILTIN_ATTRIBUTES.iter().any(|&(builtin_name, _, _)| attr.path == builtin_name) ||
     attr.name().as_str().starts_with("rustc_")
 }
 
@@ -1364,13 +1370,6 @@ pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
 pub const EXPLAIN_MACRO_AT_MOST_ONCE_REP: &'static str =
     "using the `?` macro Kleene operator for \"at most one\" repetition is unstable";
 
-pub const EXPLAIN_MACROS_IN_EXTERN: &'static str =
-    "macro invocations in `extern {}` blocks are experimental.";
-
-// mention proc-macros when enabled
-pub const EXPLAIN_PROC_MACROS_IN_EXTERN: &'static str =
-    "macro and proc-macro invocations in `extern {}` blocks are experimental.";
-
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
 }
@@ -1914,9 +1913,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     }
 
     let mut features = Features::new();
-
-    let mut feature_checker = FeatureChecker::default();
-
     let mut edition_enabled_features = FxHashMap();
 
     for &(name, .., f_edition, set) in ACTIVE_FEATURES.iter() {
@@ -1982,7 +1978,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                     ).emit();
                 } else {
                     set(&mut features, mi.span);
-                    feature_checker.collect(&features, mi.span);
                     features.declared_lang_features.push((name, mi.span, None));
                 }
                 continue
@@ -2005,43 +2000,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         }
     }
 
-    feature_checker.check(span_handler);
-
     features
-}
-
-/// A collector for mutually exclusive and interdependent features and their flag spans.
-#[derive(Default)]
-struct FeatureChecker {
-    use_extern_macros: Option<Span>,
-    custom_attribute: Option<Span>,
-}
-
-impl FeatureChecker {
-    // If this method turns out to be a hotspot due to branching,
-    // the branching can be eliminated by modifying `set!()` to set these spans
-    // only for the features that need to be checked for mutual exclusion.
-    fn collect(&mut self, features: &Features, span: Span) {
-        if features.use_extern_macros() {
-            // If self.use_extern_macros is None, set to Some(span)
-            self.use_extern_macros = self.use_extern_macros.or(Some(span));
-        }
-
-        if features.custom_attribute {
-            self.custom_attribute = self.custom_attribute.or(Some(span));
-        }
-    }
-
-    fn check(self, handler: &Handler) {
-        if let (Some(pm_span), Some(ca_span)) = (self.use_extern_macros, self.custom_attribute) {
-            handler.struct_span_err(pm_span, "Cannot use `#![feature(use_extern_macros)]` and \
-                                              `#![feature(custom_attribute)] at the same time")
-                .span_note(ca_span, "`#![feature(custom_attribute)]` declared here")
-                .emit();
-
-            FatalError.raise();
-        }
-    }
 }
 
 pub fn check_crate(krate: &ast::Crate,

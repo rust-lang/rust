@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:attr_proc_macro.rs
-// ignore-tidy-linelength
+// Unresolved multi-segment attributes are not treated as custom.
 
-#![feature(use_extern_macros, custom_attribute)]
-//~^ ERROR Cannot use `#![feature(use_extern_macros)]` and `#![feature(custom_attribute)] at the same time
+#![feature(custom_attribute, proc_macro_path_invoc)]
 
-extern crate attr_proc_macro;
-use attr_proc_macro::attr_proc_macro;
+mod existent {}
 
-#[attr_proc_macro]
-fn foo() {}
-
-fn main() {
-    foo();
-}
+#[existent::nonexistent] //~ ERROR failed to resolve. Could not find `nonexistent` in `existent`
+fn main() {}

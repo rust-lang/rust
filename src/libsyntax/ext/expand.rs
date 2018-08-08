@@ -244,19 +244,12 @@ impl Invocation {
         }
     }
 
-    pub fn path_span(&self) -> Span {
+    pub fn path(&self) -> Option<&Path> {
         match self.kind {
-            InvocationKind::Bang { ref mac, .. } => mac.node.path.span,
-            InvocationKind::Attr { attr: Some(ref attr), .. } => attr.path.span,
-            InvocationKind::Attr { attr: None, .. } => DUMMY_SP,
-            InvocationKind::Derive { ref path, .. } => path.span,
-        }
-    }
-
-    pub fn attr_id(&self) -> Option<ast::AttrId> {
-        match self.kind {
-            InvocationKind::Attr { attr: Some(ref attr), .. } => Some(attr.id),
-            _ => None,
+            InvocationKind::Bang { ref mac, .. } => Some(&mac.node.path),
+            InvocationKind::Attr { attr: Some(ref attr), .. } => Some(&attr.path),
+            InvocationKind::Attr { attr: None, .. } => None,
+            InvocationKind::Derive { ref path, .. } => Some(path),
         }
     }
 }
@@ -338,7 +331,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
-            let mut invoc = if let Some(invoc) = invocations.pop() {
+            let invoc = if let Some(invoc) = invocations.pop() {
                 invoc
             } else {
                 self.resolve_imports();
@@ -350,20 +343,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
-            let attr_id_before = invoc.attr_id();
-            let ext = match self.cx.resolver.resolve_invoc(&mut invoc, scope, force) {
+            let ext = match self.cx.resolver.resolve_invoc(&invoc, scope, force) {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
                 Err(Determinacy::Undetermined) => {
-                    // Sometimes attributes which we thought were invocations
-                    // end up being custom attributes for custom derives. If
-                    // that's the case our `invoc` will have changed out from
-                    // under us. If this is the case we're making progress so we
-                    // want to flag it as such, and we test this by looking if
-                    // the `attr_id()` method has been changing over time.
-                    if invoc.attr_id() != attr_id_before {
-                        progress = true;
-                    }
                     undetermined_invocations.push(invoc);
                     continue
                 }
@@ -533,6 +516,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension) -> Option<AstFragment> {
+        if invoc.fragment_kind == AstFragmentKind::ForeignItems &&
+           !self.cx.ecfg.macros_in_extern_enabled() {
+            if let SyntaxExtension::NonMacroAttr { .. } = *ext {} else {
+                emit_feature_err(&self.cx.parse_sess, "macros_in_extern",
+                                 invoc.span(), GateIssue::Language,
+                                 "macro invocations in `extern {}` blocks are experimental");
+            }
+        }
+
         let result = match invoc.kind {
             InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext)?,
             InvocationKind::Attr { .. } => self.expand_attr_invoc(invoc, ext)?,
@@ -565,7 +557,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             _ => unreachable!(),
         };
 
-        attr::mark_used(&attr);
+        if let NonMacroAttr { mark_used: false } = *ext {} else {
+            // Macro attrs are always used when expanded,
+            // non-macro attrs are considered used when the field says so.
+            attr::mark_used(&attr);
+        }
         invoc.expansion_data.mark.set_expn_info(ExpnInfo {
             call_site: attr.span,
             def_site: None,
@@ -577,7 +573,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         });
 
         match *ext {
-            NonMacroAttr => {
+            NonMacroAttr { .. } => {
                 attr::mark_known(&attr);
                 let item = item.map_attrs(|mut attrs| { attrs.push(attr); attrs });
                 Some(invoc.fragment_kind.expect_from_annotatables(iter::once(item)))
@@ -827,7 +823,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
 
             MultiDecorator(..) | MultiModifier(..) |
-            AttrProcMacro(..) | SyntaxExtension::NonMacroAttr => {
+            AttrProcMacro(..) | SyntaxExtension::NonMacroAttr { .. } => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", path));
                 self.cx.trace_macros_diag();
@@ -1497,20 +1493,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                          foreign_item: ast::ForeignItem) -> SmallVector<ast::ForeignItem> {
         let (attr, traits, foreign_item) = self.classify_item(foreign_item);
 
-        let explain = if self.cx.ecfg.use_extern_macros_enabled() {
-            feature_gate::EXPLAIN_PROC_MACROS_IN_EXTERN
-        } else {
-            feature_gate::EXPLAIN_MACROS_IN_EXTERN
-        };
-
-        if attr.is_some() || !traits.is_empty()  {
-            if !self.cx.ecfg.macros_in_extern_enabled() {
-                if let Some(ref attr) = attr {
-                    emit_feature_err(&self.cx.parse_sess, "macros_in_extern", attr.span,
-                                     GateIssue::Language, explain);
-                }
-            }
-
+        if attr.is_some() || !traits.is_empty() {
             let item = Annotatable::ForeignItem(P(foreign_item));
             return self.collect_attr(attr, traits, item, AstFragmentKind::ForeignItems)
                 .make_foreign_items();
@@ -1518,12 +1501,6 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         if let ast::ForeignItemKind::Macro(mac) = foreign_item.node {
             self.check_attributes(&foreign_item.attrs);
-
-            if !self.cx.ecfg.macros_in_extern_enabled() {
-                emit_feature_err(&self.cx.parse_sess, "macros_in_extern", foreign_item.span,
-                                 GateIssue::Language, explain);
-            }
-
             return self.collect_bang(mac, foreign_item.span, AstFragmentKind::ForeignItems)
                 .make_foreign_items();
         }

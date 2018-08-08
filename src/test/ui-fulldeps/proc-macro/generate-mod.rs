@@ -12,7 +12,7 @@
 
 // aux-build:generate-mod.rs
 
-#![feature(use_extern_macros, proc_macro_gen, proc_macro_path_invoc)]
+#![feature(proc_macro_gen, proc_macro_path_invoc)]
 
 extern crate generate_mod;
 

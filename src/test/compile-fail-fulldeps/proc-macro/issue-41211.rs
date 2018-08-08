@@ -15,7 +15,7 @@
 
 #![feature(use_extern_macros)]
 #![emit_unchanged]
-//~^ ERROR: cannot find attribute macro `emit_unchanged` in this scope
+//~^ ERROR attribute `emit_unchanged` is currently unknown to the compiler
 extern crate issue_41211;
 use issue_41211::emit_unchanged;
 

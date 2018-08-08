@@ -10,9 +10,9 @@
 
 #![feature(use_extern_macros)]
 
-#[derive(inline)] //~ ERROR expected a macro, found non-macro attribute
+#[derive(inline)] //~ ERROR expected a macro, found built-in attribute
 struct S;
 
 fn main() {
-    inline!(); //~ ERROR expected a macro, found non-macro attribute
+    inline!(); //~ ERROR expected a macro, found built-in attribute
 }

@@ -10,9 +10,9 @@
 
 #![feature(tool_attributes)]
 
-#[derive(rustfmt::skip)] //~ ERROR expected a macro, found non-macro attribute
+#[derive(rustfmt::skip)] //~ ERROR expected a macro, found tool attribute
 struct S;
 
 fn main() {
-    rustfmt::skip!(); //~ ERROR expected a macro, found non-macro attribute
+    rustfmt::skip!(); //~ ERROR expected a macro, found tool attribute
 }
