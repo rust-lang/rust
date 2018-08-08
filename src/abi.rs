@@ -204,7 +204,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
     }
 
     let func_params = fx.mir.args_iter().map(|local| {
-        let arg_ty = fx.mir.local_decls[local].ty;
+        let arg_ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
 
         // Adapted from https://github.com/rust-lang/rust/blob/145155dc96757002c7b2e9de8489416e2fdbbd57/src/librustc_codegen_llvm/mir/mod.rs#L442-L482
         if Some(local) == fx.mir.spread_arg {
@@ -215,7 +215,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, start_ebb
 
             let tupled_arg_tys = match arg_ty.sty {
                 ty::TyTuple(ref tys) => tys,
-                _ => bug!("spread argument isn't a tuple?!")
+                _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
             };
 
             let mut ebb_params = Vec::new();
@@ -290,11 +290,7 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     let fn_ty = func.layout().ty;
     let sig = ty_fn_sig(fx.tcx, fn_ty);
 
-    let return_place = if let Some((place, _)) = destination {
-        Some(trans_place(fx, place))
-    } else {
-        None
-    };
+    let return_place = destination.as_ref().map(|(place, _)| trans_place(fx, place));
 
     // Unpack arguments tuple for closures
     let args = if sig.abi == Abi::RustCall {
@@ -331,11 +327,25 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             let nil_ty = fx.tcx.mk_nil();
             let u64_layout = fx.layout_of(fx.tcx.types.u64);
             let usize_layout = fx.layout_of(fx.tcx.types.usize);
-            let ret = return_place.expect("return place");
-            match intrinsic {
-                "abort" => {
-                    fx.bcx.ins().trap(TrapCode::User(!0 - 1));
+
+            let ret = match return_place {
+                Some(ret) => ret,
+                None => {
+                    println!("codegen_call(fx, {:?}, {:?}, {:?})", func, args, destination);
+                    // Insert non returning intrinsics here
+                    match intrinsic {
+                        "abort" => {
+                            fx.bcx.ins().trap(TrapCode::User(!0 - 1));
+                        }
+                        "unreachable" => {
+                            fx.bcx.ins().trap(TrapCode::User(!0 - 1));
+                        }
+                        _ => unimplemented!("unsupported instrinsic {}", intrinsic),
+                    }
+                    return;
                 }
+            };
+            match intrinsic {
                 "assume" => {
                     assert_eq!(args.len(), 1);
                 }
