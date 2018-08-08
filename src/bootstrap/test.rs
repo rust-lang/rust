@@ -983,7 +983,7 @@ impl Step for Compiletest {
         }
 
         if builder.no_std(target) == Some(true) {
-            // for no_std run-make (e.g. thumb*), 
+            // for no_std run-make (e.g. thumb*),
             // we need a host compiler which is called by cargo.
             builder.ensure(compile::Std { compiler, target: compiler.host });
         }
