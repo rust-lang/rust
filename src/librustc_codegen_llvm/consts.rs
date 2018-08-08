@@ -189,7 +189,20 @@ pub fn get_static(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll Value {
             llvm::set_thread_local_mode(g, cx.tls_model);
         }
 
-        if cx.use_dll_storage_attrs && !cx.tcx.is_foreign_item(def_id) {
+        let needs_dll_storage_attr =
+            cx.use_dll_storage_attrs && !cx.tcx.is_foreign_item(def_id) &&
+            // ThinLTO can't handle this workaround in all cases, so we don't
+            // emit the attrs. Instead we make them unnecessary by disallowing
+            // dynamic linking when cross-language LTO is enabled.
+            !cx.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled();
+
+        // If this assertion triggers, there's something wrong with commandline
+        // argument validation.
+        debug_assert!(!(cx.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+                        cx.tcx.sess.target.target.options.is_like_msvc &&
+                        cx.tcx.sess.opts.cg.prefer_dynamic));
+
+        if needs_dll_storage_attr {
             // This item is external but not foreign, i.e. it originates from an external Rust
             // crate. Since we don't know whether this crate will be linked dynamically or
             // statically in the final application, we always mark such symbols as 'dllimport'.
@@ -351,7 +364,7 @@ pub fn codegen_static<'a, 'tcx>(
         if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
             llvm::set_thread_local_mode(g, cx.tls_model);
 
-            // Do not allow LLVM to change the alignment of a TLS on macOS.
+            // Do not allow LLVM to change the alignment of a TLS on macOS and Fuchsia.
             //
             // By default a global's alignment can be freely increased.
             // This allows LLVM to generate more performant instructions
@@ -360,6 +373,10 @@ pub fn codegen_static<'a, 'tcx>(
             // However, on macOS 10.10 or below, the dynamic linker does not
             // respect any alignment given on the TLS (radar 24221680).
             // This will violate the alignment assumption, and causing segfault at runtime.
+            //
+            // Fuchsia's libc currently does not support greater than 16-byte alignment
+            // of TLS segments, so this hack is also enabled temporarily for Fuchsia targets
+            // until libc is fixed.
             //
             // This bug is very easy to trigger. In `println!` and `panic!`,
             // the `LOCAL_STDOUT`/`LOCAL_STDERR` handles are stored in a TLS,
@@ -380,7 +397,9 @@ pub fn codegen_static<'a, 'tcx>(
             // will use load-unaligned instructions instead, and thus avoiding the crash.
             //
             // We could remove this hack whenever we decide to drop macOS 10.10 support.
-            if cx.tcx.sess.target.target.options.is_like_osx {
+            if cx.tcx.sess.target.target.options.is_like_osx ||
+                (cx.tcx.sess.target.target.target_os == "fuchsia")
+            {
                 let sect_name = if alloc.bytes.iter().all(|b| *b == 0) {
                     CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_bss\0")
                 } else {

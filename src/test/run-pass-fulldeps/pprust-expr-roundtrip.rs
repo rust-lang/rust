@@ -30,8 +30,10 @@
 
 #![feature(rustc_private)]
 
+extern crate rustc_data_structures;
 extern crate syntax;
 
+use rustc_data_structures::thin_vec::ThinVec;
 use syntax::ast::*;
 use syntax::codemap::{Spanned, DUMMY_SP, FileName};
 use syntax::codemap::FilePathMapping;
@@ -39,7 +41,6 @@ use syntax::fold::{self, Folder};
 use syntax::parse::{self, ParseSess};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::util::ThinVec;
 
 
 fn parse_expr(ps: &ParseSess, src: &str) -> P<Expr> {

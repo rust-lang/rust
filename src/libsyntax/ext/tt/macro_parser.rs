@@ -92,9 +92,9 @@ use parse::{Directory, ParseSess};
 use parse::parser::{Parser, PathStyle};
 use parse::token::{self, DocComment, Nonterminal, Token};
 use print::pprust;
+use OneVector;
 use symbol::keywords;
 use tokenstream::TokenStream;
-use util::small_vector::SmallVector;
 
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -440,10 +440,10 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 /// A `ParseResult`. Note that matches are kept track of through the items generated.
 fn inner_parse_loop<'a>(
     sess: &ParseSess,
-    cur_items: &mut SmallVector<MatcherPosHandle<'a>>,
+    cur_items: &mut OneVector<MatcherPosHandle<'a>>,
     next_items: &mut Vec<MatcherPosHandle<'a>>,
-    eof_items: &mut SmallVector<MatcherPosHandle<'a>>,
-    bb_items: &mut SmallVector<MatcherPosHandle<'a>>,
+    eof_items: &mut OneVector<MatcherPosHandle<'a>>,
+    bb_items: &mut OneVector<MatcherPosHandle<'a>>,
     token: &Token,
     span: syntax_pos::Span,
 ) -> ParseResult<()> {
@@ -644,15 +644,15 @@ pub fn parse(
     // This MatcherPos instance is allocated on the stack. All others -- and
     // there are frequently *no* others! -- are allocated on the heap.
     let mut initial = initial_matcher_pos(ms, parser.span.lo());
-    let mut cur_items = SmallVector::one(MatcherPosHandle::Ref(&mut initial));
+    let mut cur_items = OneVector::one(MatcherPosHandle::Ref(&mut initial));
     let mut next_items = Vec::new();
 
     loop {
         // Matcher positions black-box parsed by parser.rs (`parser`)
-        let mut bb_items = SmallVector::new();
+        let mut bb_items = OneVector::new();
 
         // Matcher positions that would be valid if the macro invocation was over now
-        let mut eof_items = SmallVector::new();
+        let mut eof_items = OneVector::new();
         assert!(next_items.is_empty());
 
         // Process `cur_items` until either we have finished the input or we need to get some

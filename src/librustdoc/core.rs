@@ -486,7 +486,7 @@ pub fn run_core(search_paths: SearchPaths,
                                                         &name,
                                                         &output_filenames,
                                                         |tcx, analysis, _, result| {
-            if let Err(_) = result {
+            if result.is_err() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 

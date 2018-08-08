@@ -23,6 +23,7 @@
 // gate-test-hexagon_target_feature
 // gate-test-mips_target_feature
 // gate-test-mmx_target_feature
+// gate-test-wasm_target_feature
 // min-llvm-version 6.0
 
 #[target_feature(enable = "avx512bw")]

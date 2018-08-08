@@ -1,4 +1,3 @@
-# ignore-msvc
 
 -include ../tools.mk
 

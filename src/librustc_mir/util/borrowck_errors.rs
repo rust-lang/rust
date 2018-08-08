@@ -675,6 +675,22 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
 
         self.cancel_if_wrong_origin(err, o)
     }
+
+    fn thread_local_value_does_not_live_long_enough(
+        self,
+        span: Span,
+        o: Origin,
+    ) -> DiagnosticBuilder<'cx> {
+        let err = struct_span_err!(
+            self,
+            span,
+            E0712,
+            "thread-local variable borrowed past end of function{OGN}",
+            OGN = o
+        );
+
+        self.cancel_if_wrong_origin(err, o)
+    }
 }
 
 impl<'cx, 'gcx, 'tcx> BorrowckErrors<'cx> for TyCtxt<'cx, 'gcx, 'tcx> {

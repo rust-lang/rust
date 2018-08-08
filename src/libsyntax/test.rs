@@ -38,8 +38,9 @@ use parse::{token, ParseSess};
 use print::pprust;
 use ast::{self, Ident};
 use ptr::P;
+use OneVector;
 use symbol::{self, Symbol, keywords};
-use util::small_vector::SmallVector;
+use ThinVec;
 
 enum ShouldPanic {
     No,
@@ -115,7 +116,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         folded
     }
 
-    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+    fn fold_item(&mut self, i: P<ast::Item>) -> OneVector<P<ast::Item>> {
         let ident = i.ident;
         if ident.name != keywords::Invalid.name() {
             self.cx.path.push(ident);
@@ -182,7 +183,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         if ident.name != keywords::Invalid.name() {
             self.cx.path.pop();
         }
-        SmallVector::one(P(item))
+        OneVector::one(P(item))
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
@@ -194,7 +195,7 @@ struct EntryPointCleaner {
 }
 
 impl fold::Folder for EntryPointCleaner {
-    fn fold_item(&mut self, i: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+    fn fold_item(&mut self, i: P<ast::Item>) -> OneVector<P<ast::Item>> {
         self.depth += 1;
         let folded = fold::noop_fold_item(i, self).expect_one("noop did something");
         self.depth -= 1;
@@ -234,7 +235,7 @@ impl fold::Folder for EntryPointCleaner {
             EntryPointType::OtherMain => folded,
         };
 
-        SmallVector::one(folded)
+        OneVector::one(folded)
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac { mac }
@@ -631,7 +632,7 @@ fn path_name_i(idents: &[Ident]) -> String {
     let mut idents_iter = idents.iter().peekable();
     while let Some(ident) = idents_iter.next() {
         path_name.push_str(&ident.as_str());
-        if let Some(_) = idents_iter.peek() {
+        if idents_iter.peek().is_some() {
             path_name.push_str("::")
         }
     }
@@ -675,10 +676,10 @@ fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {
                     mk_test_desc_and_fn_rec(cx, test)
                 }).collect()),
                 span: DUMMY_SP,
-                attrs: ast::ThinVec::new(),
+                attrs: ThinVec::new(),
             })),
         span: DUMMY_SP,
-        attrs: ast::ThinVec::new(),
+        attrs: ThinVec::new(),
     })
 }
 

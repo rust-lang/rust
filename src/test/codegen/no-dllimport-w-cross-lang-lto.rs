@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
+// This test makes sure that functions get annotated with the proper
+// "target-cpu" attribute in LLVM.
 
-#![feature(thread_local)]
+// no-prefer-dynamic
+// only-msvc
+// compile-flags: -Z cross-lang-lto
 
-#[thread_local]
-static FOO: u8 = 3;
+#![crate_type = "rlib"]
 
-fn assert_static(_t: &'static u8) {}
-fn main() {
-     assert_static(&FOO); //[ast]~ ERROR [E0597]
-                          //[mir]~^ ERROR [E0712]
-}
+// CHECK-NOT: @{{.*}}__imp_{{.*}}GLOBAL{{.*}} = global i8*
+
+pub static GLOBAL: u32 = 0;
+pub static mut GLOBAL2: u32 = 0;
