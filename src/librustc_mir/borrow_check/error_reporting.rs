@@ -138,7 +138,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         let tables = self.tcx.typeck_tables_of(id);
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
-                        if let Some(_) = tables.closure_kind_origins().get(hir_id) {
+                        if tables.closure_kind_origins().get(hir_id).is_some() {
                             false
                         } else {
                             true
@@ -735,7 +735,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             &including_downcast,
                         )?;
                         buf.push_str("[");
-                        if let Err(_) = self.append_local_to_string(index, buf) {
+                        if self.append_local_to_string(index, buf).is_err() {
                             buf.push_str("..");
                         }
                         buf.push_str("]");
