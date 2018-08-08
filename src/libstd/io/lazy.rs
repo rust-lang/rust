@@ -15,6 +15,7 @@ use sys_common;
 use sys_common::mutex::Mutex;
 
 pub struct Lazy<T> {
+    // We never call `lock.init()`, so it is UB to attempt to acquire this mutex reentrantly!
     lock: Mutex,
     ptr: Cell<*mut Arc<T>>,
     init: fn() -> Arc<T>,
@@ -29,8 +30,6 @@ impl<T: Send + Sync + 'static> Lazy<T> {
     /// Safety: `init` must not call `get` on the variable that is being
     /// initialized.
     pub const unsafe fn new(init: fn() -> Arc<T>) -> Lazy<T> {
-        // `lock` is never initialized fully, so it is UB to attempt to
-        // acquire this mutex reentrantly!
         Lazy {
             lock: Mutex::new(),
             ptr: Cell::new(ptr::null_mut()),

@@ -80,7 +80,7 @@ mod imp {
 
     static mut ARGC: isize = 0;
     static mut ARGV: *const *const u8 = ptr::null();
-    // `ENV_LOCK` is never initialized fully, so it is UB to attempt to
+    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
     // acquire this mutex reentrantly!
     static LOCK: Mutex = Mutex::new();
 

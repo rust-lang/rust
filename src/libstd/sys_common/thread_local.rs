@@ -161,7 +161,7 @@ impl StaticKey {
         // Additionally a 0-index of a tls key hasn't been seen on windows, so
         // we just simplify the whole branch.
         if imp::requires_synchronized_create() {
-            // `INIT_LOCK` is never initialized fully, so it is UB to attempt to
+            // We never call `INIT_LOCK.init()`, so it is UB to attempt to
             // acquire this mutex reentrantly!
             static INIT_LOCK: Mutex = Mutex::new();
             let _guard = INIT_LOCK.lock();

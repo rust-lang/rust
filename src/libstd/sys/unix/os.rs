@@ -33,7 +33,7 @@ use sys::fd;
 use vec;
 
 const TMPBUF_SZ: usize = 128;
-// `ENV_LOCK` is never initialized fully, so it is UB to attempt to
+// We never call `ENV_LOCK.init()`, so it is UB to attempt to
 // acquire this mutex reentrantly!
 static ENV_LOCK: Mutex = Mutex::new();
 

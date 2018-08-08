@@ -32,7 +32,9 @@ impl Mutex {
     /// Prepare the mutex for use.
     ///
     /// This should be called once the mutex is at a stable memory address.
-    /// Behavior is undefined unless this is called before any other operation.
+    /// If called, this must be the very first thing that happens to the mutex.
+    /// Calling it in parallel with or after any operation (including another
+    /// `init()`) is undefined behavior.
     #[inline]
     pub unsafe fn init(&mut self) { self.0.init() }
 
