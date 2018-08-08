@@ -645,6 +645,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
+    /// Invoked when we have some type-test (e.g., `T: 'X`) that we cannot
+    /// prove to be satisfied. If this is a closure, we will attempt to
+    /// "promote" this type-test into our `ClosureRegionRequirements` and
+    /// hence pass it up the creator. To do this, we have to phrase the
+    /// type-test in terms of external free regions, as local free
+    /// regions are not nameable by the closure's creator.
+    ///
+    /// Promotion works as follows: we first check that the type `T`
+    /// contains only regions that the creator knows about. If this is
+    /// true, then -- as a consequence -- we know that all regions in
+    /// the type `T` are free regions that outlive the closure body. If
+    /// false, then promotion fails.
+    ///
+    /// Once we've promoted T, we have to "promote" `'X` to some region
+    /// that is "external" to the closure. Generally speaking, a region
+    /// may be the union of some points in the closure body as well as
+    /// various free lifetimes. We can ignore the points in the closure
+    /// body: if the type T can be expressed in terms of external regions,
+    /// we know it outlives the points in the closure body. That
+    /// just leaves the free regions.
+    ///
+    /// The idea then is to lower the `T: 'X` constraint into multiple
+    /// bounds -- e.g., if `'X` is the union of two free lifetimes,
+    /// `'1` and `'2`, then we would create `T: '1` and `T: '2`.
     fn try_promote_type_test<'gcx>(
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
