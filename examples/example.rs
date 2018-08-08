@@ -150,3 +150,7 @@ fn use_array(arr: [u8; 3]) -> u8 {
 fn repeat_array() -> [u8; 3] {
     [0; 3]
 }
+
+unsafe fn use_ctlz_nonzero(a: u16) -> u16 {
+    intrinsics::ctlz_nonzero(a)
+}

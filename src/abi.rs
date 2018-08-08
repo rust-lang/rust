@@ -500,6 +500,24 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     let uninit_val = uninit_place.to_cvalue(fx);
                     ret.write_cvalue(fx, uninit_val);
                 }
+                "ctlz" | "ctlz_nonzero" => {
+                    assert_eq!(args.len(), 1);
+                    let arg = args[0].load_value(fx);
+                    let res = CValue::ByVal(fx.bcx.ins().clz(arg), args[0].layout());
+                    ret.write_cvalue(fx, res);
+                }
+                "cttz" | "cttz_nonzero" => {
+                    assert_eq!(args.len(), 1);
+                    let arg = args[0].load_value(fx);
+                    let res = CValue::ByVal(fx.bcx.ins().clz(arg), args[0].layout());
+                    ret.write_cvalue(fx, res);
+                }
+                "ctpop" => {
+                    assert_eq!(args.len(), 1);
+                    let arg = args[0].load_value(fx);
+                    let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), args[0].layout());
+                    ret.write_cvalue(fx, res);
+                }
                 _ => fx
                     .tcx
                     .sess

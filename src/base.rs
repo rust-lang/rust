@@ -359,7 +359,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         UnOp::Not => fx.bcx.ins().bnot(val),
                         UnOp::Neg => match ty.sty {
                             TypeVariants::TyInt(_) => {
-                                let zero = fx.bcx.ins().iconst(types::I64, 0);
+                                let clif_ty = fx.cton_type(ty).unwrap();
+                                let zero = fx.bcx.ins().iconst(clif_ty, 0);
                                 fx.bcx.ins().isub(zero, val)
                             }
                             TypeVariants::TyFloat(_) => fx.bcx.ins().fneg(val),
