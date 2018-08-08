@@ -31,6 +31,9 @@ LL |     f.f.call_mut(())
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
    |
+LL |     let mut f = move |g: Box<FnMut(isize)>, b: isize| {
+   |         ----- captured outer variable
+...
 LL |         foo(f);
    |             ^ cannot move out of captured variable in an `FnMut` closure
 

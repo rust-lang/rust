@@ -452,6 +452,7 @@ declare_features! (
     (active, mmx_target_feature, "1.27.0", Some(44839), None),
     (active, sse4a_target_feature, "1.27.0", Some(44839), None),
     (active, tbm_target_feature, "1.27.0", Some(44839), None),
+    (active, wasm_target_feature, "1.30.0", Some(44839), None),
 
     // Allows macro invocations of the form `#[foo::bar]`
     (active, proc_macro_path_invoc, "1.27.0", Some(38356), None),
