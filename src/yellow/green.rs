@@ -6,13 +6,16 @@ use {
 
 #[derive(Clone, Debug)]
 pub(crate) enum GreenNode {
-    Leaf(GreenLeaf),
+    Leaf {
+        kind: SyntaxKind,
+        text: SmolStr,
+    },
     Branch(Arc<GreenBranch>),
 }
 
 impl GreenNode {
     pub(crate) fn new_leaf(kind: SyntaxKind, text: &str) -> GreenNode {
-        GreenNode::Leaf(GreenLeaf::new(kind, text))
+        GreenNode::Leaf { kind, text: SmolStr::new(text) }
     }
 
     pub(crate) fn new_branch(kind: SyntaxKind, children: Box<[GreenNode]>) -> GreenNode {
@@ -21,21 +24,21 @@ impl GreenNode {
 
     pub fn kind(&self) -> SyntaxKind {
         match self {
-            GreenNode::Leaf(l) => l.kind(),
+            GreenNode::Leaf { kind, .. } => *kind,
             GreenNode::Branch(b) => b.kind(),
         }
     }
 
     pub fn text_len(&self) -> TextUnit {
         match self {
-            GreenNode::Leaf(l) => l.text_len(),
+            GreenNode::Leaf { text, ..} => TextUnit::of_str(text.as_str()),
             GreenNode::Branch(b) => b.text_len(),
         }
     }
 
     pub fn children(&self) -> &[GreenNode] {
         match self {
-            GreenNode::Leaf(_) => &[],
+            GreenNode::Leaf { .. } => &[],
             GreenNode::Branch(b) => b.children(),
         }
     }
@@ -46,7 +49,7 @@ impl GreenNode {
         return buff;
         fn go(node: &GreenNode, buff: &mut String) {
             match node {
-                GreenNode::Leaf(l) => buff.push_str(&l.text()),
+                GreenNode::Leaf { text, .. } => buff.push_str(text.as_str()),
                 GreenNode::Branch(b) => b.children().iter().for_each(|child| go(child, buff)),
             }
         }
@@ -89,38 +92,10 @@ impl GreenBranch {
     }
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct GreenLeaf {
-    kind: SyntaxKind,
-    text: SmolStr,
-}
-
-impl GreenLeaf {
-    fn new(kind: SyntaxKind, text: &str) -> Self {
-        let text = SmolStr::new(text);
-        GreenLeaf { kind, text }
-    }
-
-    pub(crate) fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
-    pub(crate) fn text(&self) -> &str {
-        self.text.as_str()
-    }
-
-    pub(crate) fn text_len(&self) -> TextUnit {
-        TextUnit::of_str(self.text())
-    }
-}
-
-
 #[test]
 fn test_sizes() {
     use std::mem::size_of;
-
-    println!("GreenNode = {}", size_of::<GreenNode>());
-    println!("GreenLeaf = {}", size_of::<GreenLeaf>());
-    println!("SyntaxKind = {}", size_of::<SyntaxKind>());
-    println!("SmolStr = {}", size_of::<SmolStr>());
+    println!("GreenBranch = {}", size_of::<GreenBranch>());
+    println!("GreenNode   = {}", size_of::<GreenNode>());
+    println!("SmolStr     = {}", size_of::<SmolStr>());
 }
