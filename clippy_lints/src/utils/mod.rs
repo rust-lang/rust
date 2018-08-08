@@ -942,7 +942,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         => Some(id),
 
         Def::Upvar(..) | Def::Local(_) | Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) |
-        Def::ToolMod | Def::NonMacroAttr | Def::Err => None,
+        Def::ToolMod | Def::NonMacroAttr{..} | Def::Err => None,
     }
 }
 
