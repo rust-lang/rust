@@ -26,7 +26,9 @@ $ ./prepare_libcore.sh
 $ ./build.sh
 ```
 
-> ⚠⚠⚠ You will get a panic because of unimplemented stuff ⚠⚠⚠
+> This should stop with `error: aborting due to <...> previous errors`
+>
+> Please submit a bug if not
 
 ## Not yet supported
 
