@@ -5,6 +5,13 @@ use super::SyntaxInfo;
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SyntaxKind {
+    // Technical SyntaxKinds: they appear temporally during parsing,
+    // but never end up in the final tree
+    #[doc(hidden)]
+    TOMBSTONE,
+    #[doc(hidden)]
+    EOF,
+
 {%- for t in concat(a=single_byte_tokens, b=multi_byte_tokens) %}
     {{t.1}},
 {%- endfor -%}
@@ -14,12 +21,6 @@ pub enum SyntaxKind {
 {% for t in concat(a=tokens, b=nodes) %}
     {{t}},
 {%- endfor %}
-    // Technical SyntaxKinds: they appear temporally during parsing,
-    // but never end up in the final tree
-    #[doc(hidden)]
-    TOMBSTONE,
-    #[doc(hidden)]
-    EOF,
 }
 use self::SyntaxKind::*;
 

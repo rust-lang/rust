@@ -5,6 +5,12 @@ use super::SyntaxInfo;
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SyntaxKind {
+    // Technical SyntaxKinds: they appear temporally during parsing,
+    // but never end up in the final tree
+    #[doc(hidden)]
+    TOMBSTONE,
+    #[doc(hidden)]
+    EOF,
     SEMI,
     COMMA,
     L_PAREN,
@@ -192,12 +198,6 @@ pub enum SyntaxKind {
     PARAM,
     SELF_PARAM,
     ARG_LIST,
-    // Technical SyntaxKinds: they appear temporally during parsing,
-    // but never end up in the final tree
-    #[doc(hidden)]
-    TOMBSTONE,
-    #[doc(hidden)]
-    EOF,
 }
 use self::SyntaxKind::*;
 

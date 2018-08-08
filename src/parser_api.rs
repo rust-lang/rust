@@ -29,6 +29,15 @@ macro_rules! token_set_union {
     ($($ts:expr),* ,) => { token_set_union!($($ts),*) };
 }
 
+#[test]
+fn token_set_works_for_tokens() {
+    use SyntaxKind::*;
+    let ts = token_set! { EOF, SHEBANG };
+    assert!(ts.contains(EOF));
+    assert!(ts.contains(SHEBANG));
+    assert!(!ts.contains(PLUS));
+}
+
 /// `Parser` struct provides the low-level API for
 /// navigating through the stream of tokens and
 /// constructing the parse tree. The actual parsing
