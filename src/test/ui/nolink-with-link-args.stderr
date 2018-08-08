@@ -1,0 +1,9 @@
+error: linking with `ld` failed: exit code: 1
+   |
+   = note: "ld" "-L" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/nolink-with-link-args/a.nolink_with_link_args0-317d481089b8c8fe83113de504472633.rs.rcgu.o" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/nolink-with-link-args/a.nolink_with_link_args1-317d481089b8c8fe83113de504472633.rs.rcgu.o" "-o" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/nolink-with-link-args/a" "--gc-sections" "-pie" "-zrelro" "-znow" "-O1" "-L" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/native/rust-test-helpers" "-L" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/nolink-with-link-args/auxiliary" "-L" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib" "--start-group" "-L" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib" "-lstd-41f43a30bc296e4f" "--end-group" "-Bstatic" "/home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcompiler_builtins-ce73107aecc35a63.rlib" "-Bdynamic" "-ldl" "-lrt" "-lpthread" "-lpthread" "-lgcc_s" "-lc" "-lm" "-lrt" "-lpthread" "-lutil" "-lutil" "-Wl,-rpath,$ORIGIN/../../../stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib" "-Wl,-rpath,/home/david/projects/rust/workdirs/rust1/lib/rustlib/x86_64-unknown-linux-gnu/lib" "-Wl,--enable-new-dtags" "aFdEfSeVEEE"
+   = note: ld: unrecognized option '-Wl,-rpath,$ORIGIN/../../../stage2/lib/rustlib/x86_64-unknown-linux-gnu/lib'
+           ld: use the --help option for usage information
+           
+
+error: aborting due to previous error
+

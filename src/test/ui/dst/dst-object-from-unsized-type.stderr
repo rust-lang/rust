@@ -1,0 +1,45 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/dst-object-from-unsized-type.rs:18:19
+   |
+LL |     let u: &Foo = t;
+   |                   ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where T: std::marker::Sized` bound
+   = note: required for the cast to the object type `dyn Foo`
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/dst-object-from-unsized-type.rs:23:19
+   |
+LL |     let v: &Foo = t as &Foo;
+   |                   ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = help: consider adding a `where T: std::marker::Sized` bound
+   = note: required for the cast to the object type `dyn Foo`
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/dst-object-from-unsized-type.rs:28:24
+   |
+LL |     let _: &[&Foo] = &["hi"];
+   |                        ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required for the cast to the object type `dyn Foo`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/dst-object-from-unsized-type.rs:33:19
+   |
+LL |     let _: &Foo = x as &Foo;
+   |                   ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required for the cast to the object type `dyn Foo`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

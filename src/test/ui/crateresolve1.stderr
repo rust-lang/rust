@@ -1,0 +1,21 @@
+error[E0464]: multiple matching crates for `crateresolve1`
+  --> $DIR/crateresolve1.rs:16:1
+   |
+LL | extern crate crateresolve1;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: candidates:
+           crate `crateresolve1`: /home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/crateresolve1/auxiliary/libcrateresolve1-3.so
+           crate `crateresolve1`: /home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/crateresolve1/auxiliary/libcrateresolve1-1.so
+           crate `crateresolve1`: /home/david/projects/rust/workdirs/rust1/build/x86_64-unknown-linux-gnu/test/ui/crateresolve1/auxiliary/libcrateresolve1-2.so
+
+error[E0463]: can't find crate for `crateresolve1`
+  --> $DIR/crateresolve1.rs:16:1
+   |
+LL | extern crate crateresolve1;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0463, E0464.
+For more information about an error, try `rustc --explain E0463`.

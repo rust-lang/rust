@@ -1,0 +1,11 @@
+error[E0658]: non-ident macro paths are experimental (see issue #35896)
+  --> $DIR/macro-with-seps-err-msg.rs:14:5
+   |
+LL |     globnar::brotz!(); //~ ERROR non-ident macro paths are experimental
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(use_extern_macros)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

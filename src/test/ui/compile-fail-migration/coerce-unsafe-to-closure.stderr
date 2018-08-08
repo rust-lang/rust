@@ -1,9 +1,0 @@
-error[E0277]: the trait bound `unsafe extern "rust-intrinsic" fn(_) -> _ {std::intrinsics::transmute::<_, _>}: std::ops::FnOnce<(&str,)>` is not satisfied
-  --> $DIR/coerce-unsafe-to-closure.rs:12:40
-   |
-LL |     let x: Option<&[u8]> = Some("foo").map(std::mem::transmute);
-   |                                        ^^^ the trait `std::ops::FnOnce<(&str,)>` is not implemented for `unsafe extern "rust-intrinsic" fn(_) -> _ {std::intrinsics::transmute::<_, _>}`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0277`.
