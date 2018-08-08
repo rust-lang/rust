@@ -1587,8 +1587,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         -> bool
     {
         assert!(!skol_trait_ref.has_escaping_regions());
-        if let Err(_) = self.infcx.at(&obligation.cause, obligation.param_env)
-                                  .sup(ty::Binder::dummy(skol_trait_ref), trait_bound) {
+        if self.infcx.at(&obligation.cause, obligation.param_env)
+                     .sup(ty::Binder::dummy(skol_trait_ref), trait_bound).is_err() {
             return false;
         }
 
