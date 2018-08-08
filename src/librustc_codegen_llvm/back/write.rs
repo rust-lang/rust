@@ -552,7 +552,8 @@ unsafe fn optimize(cgcx: &CodegenContext,
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
                 let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
-                let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal;
+                let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal ||
+                    (cgcx.lto != Lto::Fat && cgcx.opts.debugging_opts.cross_lang_lto.enabled());
                 have_name_anon_globals_pass = have_name_anon_globals_pass || prepare_for_thin_lto;
                 if using_thin_buffers && !prepare_for_thin_lto {
                     assert!(addpass("name-anon-globals"));
@@ -1351,6 +1352,8 @@ fn execute_work_item(cgcx: &CodegenContext,
         unsafe {
             optimize(cgcx, &diag_handler, &module, config, timeline)?;
 
+            let linker_does_lto = cgcx.opts.debugging_opts.cross_lang_lto.enabled();
+
             // After we've done the initial round of optimizations we need to
             // decide whether to synchronously codegen this module or ship it
             // back to the coordinator thread for further LTO processing (which
@@ -1360,6 +1363,11 @@ fn execute_work_item(cgcx: &CodegenContext,
             // codegenning...
             let needs_lto = match cgcx.lto {
                 Lto::No => false,
+
+                // If the linker does LTO, we don't have to do it. Note that we
+                // keep doing full LTO, if it is requested, as not to break the
+                // assumption that the output will be a single module.
+                Lto::Thin | Lto::ThinLocal if linker_does_lto => false,
 
                 // Here we've got a full crate graph LTO requested. We ignore
                 // this, however, if the crate type is only an rlib as there's
@@ -1390,11 +1398,6 @@ fn execute_work_item(cgcx: &CodegenContext,
             // Metadata modules never participate in LTO regardless of the lto
             // settings.
             let needs_lto = needs_lto && module.kind != ModuleKind::Metadata;
-
-            // Don't run LTO passes when cross-lang LTO is enabled. The linker
-            // will do that for us in this case.
-            let needs_lto = needs_lto &&
-                !cgcx.opts.debugging_opts.cross_lang_lto.enabled();
 
             if needs_lto {
                 Ok(WorkItemResult::NeedsLTO(module))
@@ -2375,8 +2378,18 @@ pub(crate) fn submit_codegened_module_to_llvm(tcx: TyCtxt,
 }
 
 fn msvc_imps_needed(tcx: TyCtxt) -> bool {
+    // This should never be true (because it's not supported). If it is true,
+    // something is wrong with commandline arg validation.
+    assert!(!(tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+              tcx.sess.target.target.options.is_like_msvc &&
+              tcx.sess.opts.cg.prefer_dynamic));
+
     tcx.sess.target.target.options.is_like_msvc &&
-        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib)
+        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib) &&
+    // ThinLTO can't handle this workaround in all cases, so we don't
+    // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
+    // dynamic linking when cross-language LTO is enabled.
+    !tcx.sess.opts.debugging_opts.cross_lang_lto.enabled()
 }
 
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.

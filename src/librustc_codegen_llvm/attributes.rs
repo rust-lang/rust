@@ -123,6 +123,15 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
         .filter(|l| !l.is_empty())
 }
 
+pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+    let target_cpu = CString::new(cx.tcx.sess.target_cpu().to_string()).unwrap();
+    llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            cstr("target-cpu\0"),
+            target_cpu.as_c_str());
+}
+
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value, id: DefId) {
@@ -165,6 +174,15 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value, id: DefId) {
             attributes::unwind(llfn, true);
         }
         Some(true) | None => {}
+    }
+
+    // Always annotate functions with the target-cpu they are compiled for.
+    // Without this, ThinLTO won't inline Rust functions into Clang generated
+    // functions (because Clang annotates functions this way too).
+    // NOTE: For now we just apply this if -Zcross-lang-lto is specified, since
+    //       it introduce a little overhead and isn't really necessary otherwise.
+    if cx.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() {
+        apply_target_cpu_attr(cx, llfn);
     }
 
     let features = llvm_target_features(cx.tcx.sess)

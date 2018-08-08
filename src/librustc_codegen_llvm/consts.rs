@@ -189,7 +189,20 @@ pub fn get_static(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll Value {
             llvm::set_thread_local_mode(g, cx.tls_model);
         }
 
-        if cx.use_dll_storage_attrs && !cx.tcx.is_foreign_item(def_id) {
+        let needs_dll_storage_attr =
+            cx.use_dll_storage_attrs && !cx.tcx.is_foreign_item(def_id) &&
+            // ThinLTO can't handle this workaround in all cases, so we don't
+            // emit the attrs. Instead we make them unnecessary by disallowing
+            // dynamic linking when cross-language LTO is enabled.
+            !cx.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled();
+
+        // If this assertion triggers, there's something wrong with commandline
+        // argument validation.
+        debug_assert!(!(cx.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled() &&
+                        cx.tcx.sess.target.target.options.is_like_msvc &&
+                        cx.tcx.sess.opts.cg.prefer_dynamic));
+
+        if needs_dll_storage_attr {
             // This item is external but not foreign, i.e. it originates from an external Rust
             // crate. Since we don't know whether this crate will be linked dynamically or
             // statically in the final application, we always mark such symbols as 'dllimport'.
