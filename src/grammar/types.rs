@@ -203,5 +203,10 @@ fn path_type(p: &mut Parser) {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::type_path(p);
+    // test path_type_with_bounds
+    // fn foo() -> Box<T + 'f> {}
+    if p.eat(PLUS) {
+        type_params::bounds_without_colon(p);
+    }
     m.complete(p, PATH_TYPE);
 }
