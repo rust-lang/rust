@@ -35,6 +35,7 @@ mod grammar;
 mod parser_impl;
 
 mod syntax_kinds;
+mod smol_str;
 mod yellow;
 /// Utilities for simple uses of the parser.
 pub mod utils;

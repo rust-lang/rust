@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use {
+    smol_str::SmolStr,
     SyntaxKind::{self, *},
     TextUnit,
 };
@@ -116,7 +117,7 @@ pub(crate) enum GreenLeaf {
     },
     Token {
         kind: SyntaxKind,
-        text: Option<Arc<str>>,
+        text: Option<SmolStr>,
     },
 }
 
@@ -137,7 +138,7 @@ impl GreenLeaf {
                 debug_assert_eq!(t, text);
                 None
             }
-            None => Some(text.to_owned().into_boxed_str().into()),
+            None => Some(SmolStr::new(text)),
         };
         GreenLeaf::Token { kind, text }
     }
@@ -159,7 +160,7 @@ impl GreenLeaf {
             }
             GreenLeaf::Token { kind, text } => match text {
                 None => kind.static_text().unwrap(),
-                Some(t) => t,
+                Some(t) => t.as_str(),
             },
         }
     }
