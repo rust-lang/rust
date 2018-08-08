@@ -88,6 +88,13 @@ extern {
     pub fn good15(p: TransparentLifetime);
     pub fn good16(p: TransparentUnit<ZeroSize>);
     pub fn good17(p: TransparentCustomZst);
+    #[allow(improper_ctypes)]
+    pub fn good18(_: &String);
+}
+
+#[allow(improper_ctypes)]
+extern {
+    pub fn good19(_: &String);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
