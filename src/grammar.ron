@@ -143,6 +143,7 @@ Grammar(
         "TUPLE_STRUCT_PAT",
         "TUPLE_PAT",
         "SLICE_PAT",
+        "RANGE_PAT",
 
         // atoms
         "TUPLE_EXPR",

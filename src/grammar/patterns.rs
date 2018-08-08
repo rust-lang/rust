@@ -1,16 +1,29 @@
 use super::*;
 
 pub(super) fn pattern(p: &mut Parser) {
+    if let Some(lhs) = atom_pat(p) {
+        // test range_pat
+        // fn main() {
+        //     match 92 { 0 ... 100 => () }
+        // }
+        if p.at(DOTDOTDOT) {
+            let m = lhs.precede(p);
+            p.bump();
+            atom_pat(p);
+            m.complete(p, RANGE_PAT);
+        }
+    }
+}
+
+fn atom_pat(p: &mut Parser) -> Option<CompletedMarker> {
     let la0 = p.nth(0);
     let la1 = p.nth(1);
     if la0 == REF_KW || la0 == MUT_KW
         || (la0 == IDENT && !(la1 == COLONCOLON || la1 == L_PAREN || la1 == L_CURLY)) {
-        bind_pat(p, true);
-        return;
+        return Some(bind_pat(p, true));
     }
     if paths::is_path_start(p) {
-        path_pat(p);
-        return;
+        return Some(path_pat(p));
     }
 
     // test literal_pattern
@@ -21,17 +34,22 @@ pub(super) fn pattern(p: &mut Parser) {
     //         "hello" => (),
     //     }
     // }
-    if expressions::literal(p).is_some() {
-        return;
+    match expressions::literal(p) {
+        Some(m) => return Some(m),
+        None => (),
     }
 
-    match la0 {
+    let m = match la0 {
         UNDERSCORE => placeholder_pat(p),
         AMP => ref_pat(p),
         L_PAREN => tuple_pat(p),
         L_BRACK => slice_pat(p),
-        _ => p.err_and_bump("expected pattern"),
-    }
+        _ => {
+            p.err_and_bump("expected pattern");
+            return None;
+        }
+    };
+    Some(m)
 }
 
 // test path_part
@@ -41,7 +59,7 @@ pub(super) fn pattern(p: &mut Parser) {
 //     let Bar { .. } = ();
 //     let Bar(..) = ();
 // }
-fn path_pat(p: &mut Parser) {
+fn path_pat(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
     paths::expr_path(p);
     let kind = match p.current() {
@@ -55,7 +73,7 @@ fn path_pat(p: &mut Parser) {
         }
         _ => PATH_PAT
     };
-    m.complete(p, kind);
+    m.complete(p, kind)
 }
 
 // test tuple_pat_fields
@@ -98,7 +116,9 @@ fn struct_pat_fields(p: &mut Parser) {
                 p.bump();
                 pattern(p);
             }
-            _ => bind_pat(p, false),
+            _ => {
+                bind_pat(p, false);
+            }
         }
         if !p.at(R_CURLY) {
             p.expect(COMMA);
@@ -109,11 +129,11 @@ fn struct_pat_fields(p: &mut Parser) {
 
 // test placeholder_pat
 // fn main() { let _ = (); }
-fn placeholder_pat(p: &mut Parser) {
+fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(UNDERSCORE));
     let m = p.start();
     p.bump();
-    m.complete(p, PLACEHOLDER_PAT);
+    m.complete(p, PLACEHOLDER_PAT)
 }
 
 // test ref_pat
@@ -121,31 +141,31 @@ fn placeholder_pat(p: &mut Parser) {
 //     let &a = ();
 //     let &mut b = ();
 // }
-fn ref_pat(p: &mut Parser) {
+fn ref_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(AMP));
     let m = p.start();
     p.bump();
     p.eat(MUT_KW);
     pattern(p);
-    m.complete(p, REF_PAT);
+    m.complete(p, REF_PAT)
 }
 
 // test tuple_pat
 // fn main() {
 //     let (a, b, ..) = ();
 // }
-fn tuple_pat(p: &mut Parser) {
+fn tuple_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(L_PAREN));
     let m = p.start();
     tuple_pat_fields(p);
-    m.complete(p, TUPLE_PAT);
+    m.complete(p, TUPLE_PAT)
 }
 
 // test slice_pat
 // fn main() {
 //     let [a, b, ..] = [];
 // }
-fn slice_pat(p: &mut Parser) {
+fn slice_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(L_BRACK));
     let m = p.start();
     p.bump();
@@ -160,7 +180,7 @@ fn slice_pat(p: &mut Parser) {
     }
     p.expect(R_BRACK);
 
-    m.complete(p, SLICE_PAT);
+    m.complete(p, SLICE_PAT)
 }
 
 // test bind_pat
@@ -172,7 +192,7 @@ fn slice_pat(p: &mut Parser) {
 //     let e @ _ = ();
 //     let ref mut f @ g @ _ = ();
 // }
-fn bind_pat(p: &mut Parser, with_at: bool) {
+fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
     let m = p.start();
     p.eat(REF_KW);
     p.eat(MUT_KW);
@@ -180,5 +200,5 @@ fn bind_pat(p: &mut Parser, with_at: bool) {
     if with_at && p.eat(AT) {
         pattern(p);
     }
-    m.complete(p, BIND_PAT);
+    m.complete(p, BIND_PAT)
 }
