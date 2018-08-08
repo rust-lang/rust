@@ -41,11 +41,11 @@ impl<'a> Sink<'a> for GreenBuilder<'a> {
 
     fn finish_internal(&mut self) {
         let (kind, first_child) = self.parents.pop().unwrap();
-        let children = self.children
+        let children: Vec<_> = self.children
             .drain(first_child..)
             .collect();
         self.children.push(
-            GreenNode::new_branch(kind, children)
+            GreenNode::new_branch(kind, children.into_boxed_slice())
         );
     }
 

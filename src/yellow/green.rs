@@ -16,7 +16,7 @@ impl GreenNode {
         GreenNode::Leaf(GreenLeaf::new(kind, text))
     }
 
-    pub(crate) fn new_branch(kind: SyntaxKind, children: Vec<GreenNode>) -> GreenNode {
+    pub(crate) fn new_branch(kind: SyntaxKind, children: Box<[GreenNode]>) -> GreenNode {
         GreenNode::Branch(Arc::new(GreenBranch::new(kind, children)))
     }
 
@@ -64,11 +64,11 @@ fn assert_send_sync() {
 pub(crate) struct GreenBranch {
     text_len: TextUnit,
     kind: SyntaxKind,
-    children: Vec<GreenNode>,
+    children: Box<[GreenNode]>,
 }
 
 impl GreenBranch {
-    fn new(kind: SyntaxKind, children: Vec<GreenNode>) -> GreenBranch {
+    fn new(kind: SyntaxKind, children: Box<[GreenNode]>) -> GreenBranch {
         let text_len = children.iter().map(|x| x.text_len()).sum::<TextUnit>();
         GreenBranch {
             text_len,
@@ -86,7 +86,7 @@ impl GreenBranch {
     }
 
     pub fn children(&self) -> &[GreenNode] {
-        self.children.as_slice()
+        &*self.children
     }
 }
 
