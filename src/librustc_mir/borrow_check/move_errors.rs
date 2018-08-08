@@ -341,38 +341,32 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 move_from,
                 ..
             } => {
-                let mut suggest_change_head_expr = false;
-                match move_from {
+                let try_remove_deref = match move_from {
                     Place::Projection(box PlaceProjection {
                         elem: ProjectionElem::Deref,
                         ..
-                    }) => {
-                        // This is false for (e.g.) index expressions `a[b]`,
-                        // which roughly desugar to `*Index::index(&a, b)` or
-                        // `*IndexMut::index_mut(&mut a, b)`.
-                        if snippet.starts_with('*') {
-                            err.span_suggestion(
-                                span,
-                                "consider removing this dereference operator",
-                                (&snippet[1..]).to_owned(),
-                            );
-                            suggest_change_head_expr = true;
-                        }
-                    }
-                    _ => {
-                        err.span_suggestion(
-                            span,
-                            "consider using a reference instead",
-                            format!("&{}", snippet),
-                        );
-                        suggest_change_head_expr = true;
-                    }
+                    }) => true,
+                    _ => false,
+                };
+                if try_remove_deref && snippet.starts_with('*') {
+                    // This is false for (e.g.) index expressions `a[b]`,
+                    // which roughly desugar to `*Index::index(&a, b)` or
+                    // `*IndexMut::index_mut(&mut a, b)`.
+                    err.span_suggestion(
+                        span,
+                        "consider removing this dereference operator",
+                        snippet[1..].to_owned(),
+                    );
+                } else {
+                    err.span_suggestion(
+                        span,
+                        "consider using a reference instead",
+                        format!("&{}", snippet),
+                    );
                 }
+
                 binds_to.sort();
                 binds_to.dedup();
-                if !suggest_change_head_expr {
-                    self.add_move_error_suggestions(err, &binds_to);
-                }
                 self.add_move_error_labels(err, &binds_to);
             }
             GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
