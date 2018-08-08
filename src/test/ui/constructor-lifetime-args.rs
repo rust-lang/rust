@@ -25,12 +25,12 @@ enum E<'a, 'b> {
 fn main() {
     S(&0, &0); // OK
     S::<'static>(&0, &0);
-    //~^ ERROR expected 2 lifetime parameters, found 1 lifetime parameter
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
     S::<'static, 'static, 'static>(&0, &0);
-    //~^ ERROR expected at most 2 lifetime parameters, found 3 lifetime parameters
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
     E::V(&0); // OK
     E::V::<'static>(&0);
-    //~^ ERROR expected 2 lifetime parameters, found 1 lifetime parameter
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 1
     E::V::<'static, 'static, 'static>(&0);
-    //~^ ERROR expected at most 2 lifetime parameters, found 3 lifetime parameters
+    //~^ ERROR wrong number of lifetime arguments: expected 2, found 3
 }

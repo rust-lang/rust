@@ -38,16 +38,16 @@ impl Trait<isize> for S2 {
 
 fn foo<'a>() {
     let _ = S::new::<isize,f64>(1, 1.0);
-    //~^ ERROR too many type parameters provided
+    //~^ ERROR wrong number of type arguments
 
     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
     //~^ ERROR wrong number of lifetime arguments
 
     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
-    //~^ ERROR too many type parameters provided
+    //~^ ERROR wrong number of type arguments
 
     let _: S2 = Trait::<'a,isize>::new::<f64>(1, 1.0);
-    //~^ ERROR too many lifetime parameters provided
+    //~^ ERROR wrong number of lifetime arguments
 }
 
 fn main() {}

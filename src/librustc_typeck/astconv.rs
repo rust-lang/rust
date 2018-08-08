@@ -92,6 +92,13 @@ struct ConvertedBinding<'tcx> {
     span: Span,
 }
 
+#[derive(PartialEq)]
+enum GenericArgPosition {
+    Datatype,
+    Function,
+    Method,
+}
+
 struct GenericArgMismatchErrorCode {
     lifetimes: (&'static str, &'static str),
     types: (&'static str, &'static str),
@@ -247,8 +254,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             } else {
                 &empty_args
             },
-            false, // `is_declaration`
-            is_method_call,
+            if is_method_call {
+                GenericArgPosition::Method
+            } else {
+                GenericArgPosition::Function
+            },
             def.parent.is_none() && def.has_self, // `has_self`
             seg.infer_types || suppress_mismatch, // `infer_types`
             GenericArgMismatchErrorCode {
@@ -259,14 +269,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     }
 
     /// Check that the correct number of generic arguments have been provided.
-    /// This is used both for type declarations and function calls.
+    /// This is used both for datatypes and function calls.
     fn check_generic_arg_count(
         tcx: TyCtxt,
         span: Span,
         def: &ty::Generics,
         args: &hir::GenericArgs,
-        is_declaration: bool,
-        is_method_call: bool,
+        position: GenericArgPosition,
         has_self: bool,
         infer_types: bool,
         error_codes: GenericArgMismatchErrorCode,
@@ -276,7 +285,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         // arguments in order to validate them with respect to the generic parameters.
         let param_counts = def.own_counts();
         let arg_counts = args.own_counts();
-        let infer_lifetimes = !is_declaration && arg_counts.lifetimes == 0;
+        let infer_lifetimes = position != GenericArgPosition::Datatype && arg_counts.lifetimes == 0;
 
         let mut defaults: ty::GenericParamCount = Default::default();
         for param in &def.params {
@@ -288,7 +297,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             };
         }
 
-        if !is_declaration && !args.bindings.is_empty() {
+        if position != GenericArgPosition::Datatype && !args.bindings.is_empty() {
             AstConv::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
         }
 
@@ -299,7 +308,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                            if late bound lifetime parameters are present";
                 let note = "the late bound lifetime parameter is introduced here";
                 let span = args.args[0].span();
-                if !is_method_call && arg_counts.lifetimes != param_counts.lifetimes {
+                if position == GenericArgPosition::Function
+                    && arg_counts.lifetimes != param_counts.lifetimes {
                     let mut err = tcx.sess.struct_span_err(span, msg);
                     err.span_note(span_late, note);
                     err.emit();
@@ -328,15 +338,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
             // Unfortunately lifetime and type parameter mismatches are typically styled
             // differently in diagnostics, which means we have a few cases to consider here.
-            let (bound, quantifier, suppress_error) = if required != permitted {
+            let (bound, quantifier) = if required != permitted {
                 if provided < required {
-                    (required, "at least ", false)
+                    (required, "at least ")
                 } else { // provided > permitted
-                    (permitted, "at most ", true)
+                    (permitted, "at most ")
                 }
             } else {
-                (required, "", false)
+                (required, "")
             };
+
             let label = if required == permitted && provided > permitted {
                 let diff = provided - permitted;
                 format!(
@@ -373,7 +384,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 }.into())
             ).span_label(span, label).emit();
 
-            suppress_error
+            provided > required // `suppress_error`
         };
 
         if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
@@ -572,8 +583,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             span,
             &generic_params,
             &generic_args,
-            true, // `is_declaration`
-            false, // `is_method_call` (irrelevant here)
+            GenericArgPosition::Datatype,
             has_self,
             infer_types,
             GenericArgMismatchErrorCode {
