@@ -21,6 +21,7 @@ use mir::interpret::{EvalErrorKind, Scalar, Value, ScalarMaybeUndef};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -39,7 +40,7 @@ use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::subst::{Subst, Substs};
-use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
+use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Slice, Ty, TyCtxt};
 use util::ppaux;
 
 pub use mir::interpret::AssertMessage;
@@ -1693,8 +1694,16 @@ impl<'tcx> Debug for Statement<'tcx> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct Place<'tcx> {
+    pub base: PlaceBase<'tcx>,
+    pub elems: &'tcx Slice<PlaceElem<'tcx>>,
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Slice<PlaceElem<'tcx>> {}
+
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub enum Place<'tcx> {
+pub enum PlaceBase<'tcx> {
     /// local variable
     Local(Local),
 
@@ -1703,9 +1712,6 @@ pub enum Place<'tcx> {
 
     /// Constant code promoted to an injected static
     Promoted(Box<(Promoted, Ty<'tcx>)>),
-
-    /// projection out of a place (access a field, deref a pointer, etc)
-    Projection(Box<PlaceProjection<'tcx>>),
 }
 
 /// The def-id of a static, along with its normalized type (which is
@@ -1731,7 +1737,7 @@ pub struct Projection<'tcx, B, V, T> {
     pub elem: ProjectionElem<'tcx, V, T>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum ProjectionElem<'tcx, V, T> {
     Deref,
     Field(Field, T),
@@ -1779,31 +1785,52 @@ pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
 newtype_index!(Field { DEBUG_FORMAT = "field[{}]" });
 
-impl<'tcx> Place<'tcx> {
-    pub fn field(self, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
-        self.elem(ProjectionElem::Field(f, ty))
+impl<'a, 'tcx> Place<'tcx> {
+    // projection lives in the last elem.
+    pub fn projection(&self) -> Option<&PlaceElem> {
+        self.elems.last()
     }
 
-    pub fn deref(self) -> Place<'tcx> {
-        self.elem(ProjectionElem::Deref)
+    pub fn field(
+        self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        f: Field,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        self.elem(tcx, ProjectionElem::Field(f, ty))
     }
 
-    pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: usize) -> Place<'tcx> {
-        self.elem(ProjectionElem::Downcast(adt_def, variant_index))
+    pub fn deref(self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+        self.elem(tcx, ProjectionElem::Deref)
     }
 
-    pub fn index(self, index: Local) -> Place<'tcx> {
-        self.elem(ProjectionElem::Index(index))
+    pub fn downcast(
+        self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        adt_def: &'tcx AdtDef, variant_index: usize,
+    ) -> Self {
+        self.elem(tcx, ProjectionElem::Downcast(adt_def, variant_index))
     }
 
-    pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
-        Place::Projection(Box::new(PlaceProjection { base: self, elem }))
+    pub fn index(self, tcx: TyCtxt<'a, 'tcx, 'tcx>, index: Local) -> Self {
+        self.elem(tcx, ProjectionElem::Index(index))
+    }
+
+    pub fn elem(
+        self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        elem: PlaceElem<'tcx>,
+    ) -> Self {
+        Place {
+            base: self.base,
+            elems: tcx.intern_place_elems(&[elem]),
+        }
     }
 }
 
-impl<'tcx> Debug for Place<'tcx> {
+impl<'tcx> Debug for PlaceBase<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        use self::Place::*;
+        use self::PlaceBase::*;
 
         match *self {
             Local(id) => write!(fmt, "{:?}", id),
@@ -1814,35 +1841,6 @@ impl<'tcx> Debug for Place<'tcx> {
                 ty
             ),
             Promoted(ref promoted) => write!(fmt, "({:?}: {:?})", promoted.0, promoted.1),
-            Projection(ref data) => match data.elem {
-                ProjectionElem::Downcast(ref adt_def, index) => {
-                    write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].name)
-                }
-                ProjectionElem::Deref => write!(fmt, "(*{:?})", data.base),
-                ProjectionElem::Field(field, ty) => {
-                    write!(fmt, "({:?}.{:?}: {:?})", data.base, field.index(), ty)
-                }
-                ProjectionElem::Index(ref index) => write!(fmt, "{:?}[{:?}]", data.base, index),
-                ProjectionElem::ConstantIndex {
-                    offset,
-                    min_length,
-                    from_end: false,
-                } => write!(fmt, "{:?}[{:?} of {:?}]", data.base, offset, min_length),
-                ProjectionElem::ConstantIndex {
-                    offset,
-                    min_length,
-                    from_end: true,
-                } => write!(fmt, "{:?}[-{:?} of {:?}]", data.base, offset, min_length),
-                ProjectionElem::Subslice { from, to } if to == 0 => {
-                    write!(fmt, "{:?}[{:?}:]", data.base, from)
-                }
-                ProjectionElem::Subslice { from, to } if from == 0 => {
-                    write!(fmt, "{:?}[:-{:?}]", data.base, to)
-                }
-                ProjectionElem::Subslice { from, to } => {
-                    write!(fmt, "{:?}[{:?}:-{:?}]", data.base, from, to)
-                }
-            },
         }
     }
 }
@@ -2760,18 +2758,36 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match self {
-            &Place::Projection(ref p) => Place::Projection(p.fold_with(folder)),
-            _ => self.clone(),
+        Place {
+            base: self.base.fold_with(folder),
+            elems: self.elems.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        if let &Place::Projection(ref p) = self {
-            p.visit_with(visitor)
-        } else {
-            false
-        }
+        self.base.visit_with(visitor) ||
+            self.elems.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for PlaceBase<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
+        self.clone()
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
+        false
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for &'tcx Slice<PlaceElem<'tcx>> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let v = self.iter().map(|p| p.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        folder.tcx().intern_place_elems(&v)
+    }
+
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+        self.iter().any(|p| p.visit_with(visitor))
     }
 }
 
@@ -2858,6 +2874,32 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
     }
 }
 
+impl<'tcx, V, T> TypeFoldable<'tcx> for ProjectionElem<'tcx, V, T>
+    where V: TypeFoldable<'tcx>,
+          T: TypeFoldable<'tcx>
+{
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use mir::ProjectionElem::*;
+
+        match *self {
+            Deref => Deref,
+            Field(f, ref ty) => Field(f, ty.fold_with(folder)),
+            Index(ref v) => Index(v.fold_with(folder)),
+            ref elem => elem.clone(),
+        }
+    }
+
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+        use mir::ProjectionElem::*;
+
+        match *self {
+            Field(_, ref ty) => ty.visit_with(visitor),
+            Index(ref v) => v.visit_with(visitor),
+            _ => false,
+        }
+    }
+}
+
 impl<'tcx, B, V, T> TypeFoldable<'tcx> for Projection<'tcx, B, V, T>
 where
     B: TypeFoldable<'tcx>,
@@ -2865,27 +2907,16 @@ where
     T: TypeFoldable<'tcx>,
 {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::ProjectionElem::*;
 
         let base = self.base.fold_with(folder);
-        let elem = match self.elem {
-            Deref => Deref,
-            Field(f, ref ty) => Field(f, ty.fold_with(folder)),
-            Index(ref v) => Index(v.fold_with(folder)),
-            ref elem => elem.clone(),
-        };
-
+        let elem = self.elem.fold_with(folder);
         Projection { base, elem }
     }
 
     fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
-        use mir::ProjectionElem::*;
 
-        self.base.visit_with(visitor) || match self.elem {
-            Field(_, ref ty) => ty.visit_with(visitor),
-            Index(ref v) => v.visit_with(visitor),
-            _ => false,
-        }
+        self.base.visit_with(visitor) ||
+            self.elem.visit_with(visitor)
     }
 }
 

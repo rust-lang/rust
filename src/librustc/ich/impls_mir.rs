@@ -290,25 +290,35 @@ impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
 
 impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(region_scope) });
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Place<'gcx> {
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::PlaceBase<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            mir::Place::Local(ref local) => {
+            mir::PlaceBase::Local(ref local) => {
                 local.hash_stable(hcx, hasher);
             }
-            mir::Place::Static(ref statik) => {
+            mir::PlaceBase::Static(ref statik) => {
                 statik.hash_stable(hcx, hasher);
             }
-            mir::Place::Promoted(ref promoted) => {
+            mir::PlaceBase::Promoted(ref promoted) => {
                 promoted.hash_stable(hcx, hasher);
             }
-            mir::Place::Projection(ref place_projection) => {
-                place_projection.hash_stable(hcx, hasher);
-            }
         }
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>>
+for mir::Place<'tcx>
+{
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
+        self.base.hash_stable(hcx, hasher);
+        self.elems.hash_stable(hcx, hasher);
     }
 }
 

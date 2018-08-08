@@ -165,13 +165,6 @@ macro_rules! make_mir_visitor {
                 self.super_static(static_, context, location);
             }
 
-            fn visit_projection(&mut self,
-                                place: & $($mutability)* PlaceProjection<'tcx>,
-                                context: PlaceContext<'tcx>,
-                                location: Location) {
-                self.super_projection(place, context, location);
-            }
-
             fn visit_projection_elem(&mut self,
                                      place: & $($mutability)* PlaceElem<'tcx>,
                                      context: PlaceContext<'tcx>,
@@ -634,20 +627,31 @@ macro_rules! make_mir_visitor {
             fn super_place(&mut self,
                             place: & $($mutability)* Place<'tcx>,
                             context: PlaceContext<'tcx>,
-                            location: Location) {
-                match *place {
-                    Place::Local(ref $($mutability)* local) => {
+                            location: Location
+            ) {
+                let Place {
+                    ref $($mutability)* base,
+                    ref $($mutability)* elems,
+                } = *place;
+
+                match base {
+                    PlaceBase::Local(ref $($mutability)* local) => {
                         self.visit_local(local, context, location);
                     }
-                    Place::Static(ref $($mutability)* static_) => {
+                    PlaceBase::Static(ref $($mutability)* static_) => {
                         self.visit_static(static_, context, location);
                     }
-                    Place::Promoted(ref $($mutability)* promoted) => {
+                    PlaceBase::Promoted(ref $($mutability)* promoted) => {
                         self.visit_ty(& $($mutability)* promoted.1, TyContext::Location(location));
                     },
-                    Place::Projection(ref $($mutability)* proj) => {
-                        self.visit_projection(proj, context, location);
-                    }
+                }
+
+                for elem in elems.iter() {
+                    self.visit_projection_elem(
+                        &$($mutability)* (*elem).clone(),
+                        context,
+                        location
+                    )
                 }
             }
 
@@ -661,23 +665,6 @@ macro_rules! make_mir_visitor {
                 } = *static_;
                 self.visit_def_id(def_id, location);
                 self.visit_ty(ty, TyContext::Location(location));
-            }
-
-            fn super_projection(&mut self,
-                                proj: & $($mutability)* PlaceProjection<'tcx>,
-                                context: PlaceContext<'tcx>,
-                                location: Location) {
-                let Projection {
-                    ref $($mutability)* base,
-                    ref $($mutability)* elem,
-                } = *proj;
-                let context = if context.is_mutating_use() {
-                    PlaceContext::Projection(Mutability::Mut)
-                } else {
-                    PlaceContext::Projection(Mutability::Not)
-                };
-                self.visit_place(base, context, location);
-                self.visit_projection_elem(elem, context, location);
             }
 
             fn super_projection_elem(&mut self,
