@@ -188,16 +188,20 @@ pub fn trans_fn<'a, 'tcx: 'a>(
                 values,
                 targets,
             } => {
-                let discr = trans_operand(fx, discr).load_value(fx);
-                let mut jt_data = JumpTableData::new();
-                for (i, value) in values.iter().enumerate() {
-                    let ebb = fx.get_ebb(targets[i]);
-                    jt_data.set_entry(*value as usize, ebb);
+                fx.bcx.ins().trap(TrapCode::User(0));
+                // TODO: prevent panics on large and negative disciminants
+                if false {
+                    let discr = trans_operand(fx, discr).load_value(fx);
+                    let mut jt_data = JumpTableData::new();
+                    for (i, value) in values.iter().enumerate() {
+                        let ebb = fx.get_ebb(targets[i]);
+                        jt_data.set_entry(*value as usize, ebb);
+                    }
+                    let jump_table = fx.bcx.create_jump_table(jt_data);
+                    fx.bcx.ins().br_table(discr, jump_table);
+                    let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
+                    fx.bcx.ins().jump(otherwise_ebb, &[]);
                 }
-                let jump_table = fx.bcx.create_jump_table(jt_data);
-                fx.bcx.ins().br_table(discr, jump_table);
-                let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
-                fx.bcx.ins().jump(otherwise_ebb, &[]);
             }
             TerminatorKind::Call {
                 func,
@@ -431,7 +435,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size as i64);
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::Aggregate(_, _) => bug!("shouldn't exist at trans {:?}", rval),
+                Rvalue::Aggregate(_, _) => return Err(format!("shouldn't exist at trans {:?}", rval)),
             }
         }
         StatementKind::StorageLive(_)
