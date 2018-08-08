@@ -84,10 +84,9 @@ pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::method::MethodCallee;
 use self::TupleArgumentsFlag::*;
 
-use astconv::{AstConv, GenericArgMismatchErrorCode};
+use astconv::AstConv;
 use hir::GenericArg;
 use hir::def::Def;
-use hir::HirVec;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use std::slice;
 use namespace::Namespace;
@@ -4945,22 +4944,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // `impl Trait` is treated as a normal generic parameter internally,
             // but we don't allow users to specify the parameter's value
             // explicitly, so we have to do some error-checking here.
-            let suppress_mismatch = self.check_impl_trait(span, seg, &generics);
-            suppress_errors.insert(index, AstConv::check_generic_arg_count(
+            suppress_errors.insert(index, AstConv::check_generic_arg_count_for_call(
                 self.tcx,
                 span,
                 &generics,
-                &seg.args.clone().unwrap_or_else(|| P(hir::GenericArgs {
-                    args: HirVec::new(), bindings: HirVec::new(), parenthesized: false,
-                })),
-                false, // `is_declaration`
+                &seg,
                 false, // `is_method_call`
-                generics.parent.is_none() && generics.has_self,
-                seg.infer_types || suppress_mismatch,
-                GenericArgMismatchErrorCode {
-                    lifetimes: ("E0090", "E0088"), // FIXME: E0090 and E0088 should be unified.
-                    types: ("E0089", "E0087"), // FIXME: E0089 and E0087 should be unified.
-                },
             ));
         }
 
@@ -5110,35 +5099,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.sess.span_err(span, "this function can only be invoked \
                                       directly, not through a function pointer");
-    }
-
-    /// Report error if there is an explicit type parameter when using `impl Trait`.
-    fn check_impl_trait(&self,
-                        span: Span,
-                        seg: &hir::PathSegment,
-                        generics: &ty::Generics)
-                        -> bool {
-        let explicit = !seg.infer_types;
-        let impl_trait = generics.params.iter().any(|param| match param.kind {
-            ty::GenericParamDefKind::Type {
-                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
-            } => true,
-            _ => false,
-        });
-
-        if explicit && impl_trait {
-            let mut err = struct_span_err! {
-                self.tcx.sess,
-                span,
-                E0632,
-                "cannot provide explicit type parameters when `impl Trait` is \
-                used in argument position."
-            };
-
-            err.emit();
-        }
-
-        impl_trait
     }
 
     // Resolves `typ` by a single level if `typ` is a type variable.

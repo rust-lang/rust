@@ -17,6 +17,7 @@ use rustc_data_structures::array_vec::ArrayVec;
 use hir::{self, GenericArg, GenericArgs};
 use hir::def::Def;
 use hir::def_id::DefId;
+use hir::HirVec;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -34,6 +35,7 @@ use lint;
 
 use std::iter;
 use syntax::ast;
+use syntax::ptr::P;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax_pos::{Span, MultiSpan};
 
@@ -90,9 +92,9 @@ struct ConvertedBinding<'tcx> {
     span: Span,
 }
 
-pub struct GenericArgMismatchErrorCode {
-    pub lifetimes: (&'static str, &'static str),
-    pub types: (&'static str, &'static str),
+struct GenericArgMismatchErrorCode {
+    lifetimes: (&'static str, &'static str),
+    types: (&'static str, &'static str),
 }
 
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
@@ -193,9 +195,72 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         substs
     }
 
+    /// Report error if there is an explicit type parameter when using `impl Trait`.
+    fn check_impl_trait(
+        tcx: TyCtxt,
+        span: Span,
+        seg: &hir::PathSegment,
+        generics: &ty::Generics,
+    ) -> bool {
+        let explicit = !seg.infer_types;
+        let impl_trait = generics.params.iter().any(|param| match param.kind {
+            ty::GenericParamDefKind::Type {
+                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+            } => true,
+            _ => false,
+        });
+
+        if explicit && impl_trait {
+            let mut err = struct_span_err! {
+                tcx.sess,
+                span,
+                E0632,
+                "cannot provide explicit type parameters when `impl Trait` is \
+                used in argument position."
+            };
+
+            err.emit();
+        }
+
+        impl_trait
+    }
+
+    /// Check that the correct number of generic arguments have been provided.
+    /// Used specifically for function calls.
+    pub fn check_generic_arg_count_for_call(
+        tcx: TyCtxt,
+        span: Span,
+        def: &ty::Generics,
+        seg: &hir::PathSegment,
+        is_method_call: bool,
+    ) -> bool {
+        let empty_args = P(hir::GenericArgs {
+            args: HirVec::new(), bindings: HirVec::new(), parenthesized: false,
+        });
+        let suppress_mismatch = Self::check_impl_trait(tcx, span, seg, &def);
+        Self::check_generic_arg_count(
+            tcx,
+            span,
+            def,
+            if let Some(ref args) = seg.args {
+                args
+            } else {
+                &empty_args
+            },
+            false, // `is_declaration`
+            is_method_call,
+            def.parent.is_none() && def.has_self, // `has_self`
+            seg.infer_types || suppress_mismatch, // `infer_types`
+            GenericArgMismatchErrorCode {
+                lifetimes: ("E0090", "E0088"),
+                types: ("E0089", "E0087"),
+            },
+        )
+    }
+
     /// Check that the correct number of generic arguments have been provided.
     /// This is used both for type declarations and function calls.
-    pub fn check_generic_arg_count(
+    fn check_generic_arg_count(
         tcx: TyCtxt,
         span: Span,
         def: &ty::Generics,

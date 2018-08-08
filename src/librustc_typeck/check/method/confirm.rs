@@ -10,11 +10,10 @@
 
 use super::{probe, MethodCallee};
 
-use astconv::{AstConv, GenericArgMismatchErrorCode};
+use astconv::AstConv;
 use check::{FnCtxt, PlaceOp, callee, Needs};
 use hir::GenericArg;
 use hir::def_id::DefId;
-use hir::HirVec;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, GenericParamDefKind};
@@ -25,7 +24,6 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
 use rustc::hir;
 use syntax_pos::Span;
-use syntax::ptr::P;
 
 use std::ops::Deref;
 
@@ -310,34 +308,24 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn instantiate_method_substs(
         &mut self,
         pick: &probe::Pick<'tcx>,
-        segment: &hir::PathSegment,
+        seg: &hir::PathSegment,
         parent_substs: &Substs<'tcx>,
     ) -> &'tcx Substs<'tcx> {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
-        let method_generics = self.tcx.generics_of(pick.item.def_id);
-        let suppress_mismatch = self.fcx.check_impl_trait(self.span, segment, &method_generics);
-        AstConv::check_generic_arg_count(
+        let generics = self.tcx.generics_of(pick.item.def_id);
+        AstConv::check_generic_arg_count_for_call(
             self.tcx,
             self.span,
-            &method_generics,
-            &segment.args.clone().unwrap_or_else(|| P(hir::GenericArgs {
-                args: HirVec::new(), bindings: HirVec::new(), parenthesized: false,
-            })),
-            false, // `is_declaration`
+            &generics,
+            &seg,
             true, // `is_method_call`
-            method_generics.parent.is_none() && method_generics.has_self,
-            segment.infer_types || suppress_mismatch,
-            GenericArgMismatchErrorCode {
-                lifetimes: ("E0090", "E0088"),
-                types: ("E0089", "E0087"),
-            },
         );
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
-        assert_eq!(method_generics.parent_count, parent_substs.len());
+        assert_eq!(generics.parent_count, parent_substs.len());
 
         AstConv::create_substs_for_generic_args(
             self.tcx,
@@ -348,7 +336,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // Provide the generic args, and whether types should be inferred.
             |_| {
                 // The last argument of the returned tuple here is unimportant.
-                if let Some(ref data) = segment.args {
+                if let Some(ref data) = seg.args {
                     (Some(data), false)
                 } else {
                     (None, false)

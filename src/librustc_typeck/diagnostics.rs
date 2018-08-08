@@ -1041,32 +1041,34 @@ enum NightsWatch {}
 "##,
 
 E0087: r##"
-Too many type parameters were supplied for a function. For example:
+Too many type arguments were supplied for a function. For example:
 
 ```compile_fail,E0087
 fn foo<T>() {}
 
 fn main() {
-    foo::<f64, bool>(); // error, expected 1 parameter, found 2 parameters
+    foo::<f64, bool>(); // error: wrong number of type arguments:
+                        //        expected 1, found 2
 }
 ```
 
-The number of supplied parameters must exactly match the number of defined type
+The number of supplied arguments must exactly match the number of defined type
 parameters.
 "##,
 
 E0088: r##"
-You gave too many lifetime parameters. Erroneous code example:
+You gave too many lifetime arguments. Erroneous code example:
 
 ```compile_fail,E0088
 fn f() {}
 
 fn main() {
-    f::<'static>() // error: too many lifetime parameters provided
+    f::<'static>() // error: wrong number of lifetime arguments:
+                   //        expected 0, found 1
 }
 ```
 
-Please check you give the right number of lifetime parameters. Example:
+Please check you give the right number of lifetime arguments. Example:
 
 ```
 fn f() {}
@@ -1101,17 +1103,17 @@ fn main() {
 "##,
 
 E0089: r##"
-Not enough type parameters were supplied for a function. For example:
+Too few type arguments were supplied for a function. For example:
 
 ```compile_fail,E0089
 fn foo<T, U>() {}
 
 fn main() {
-    foo::<f64>(); // error, expected 2 parameters, found 1 parameter
+    foo::<f64>(); // error: wrong number of type arguments: expected 2, found 1
 }
 ```
 
-Note that if a function takes multiple type parameters but you want the compiler
+Note that if a function takes multiple type arguments but you want the compiler
 to infer some of them, you can use type placeholders:
 
 ```compile_fail,E0089
@@ -1119,24 +1121,26 @@ fn foo<T, U>(x: T) {}
 
 fn main() {
     let x: bool = true;
-    foo::<f64>(x);    // error, expected 2 parameters, found 1 parameter
+    foo::<f64>(x);    // error: wrong number of type arguments:
+                      //        expected 2, found 1
     foo::<_, f64>(x); // same as `foo::<bool, f64>(x)`
 }
 ```
 "##,
 
 E0090: r##"
-You gave too few lifetime parameters. Example:
+You gave too few lifetime arguments. Example:
 
 ```compile_fail,E0090
 fn foo<'a: 'b, 'b: 'a>() {}
 
 fn main() {
-    foo::<'static>(); // error, expected 2 lifetime parameters
+    foo::<'static>(); // error: wrong number of lifetime arguments:
+                      //        expected 2, found 1
 }
 ```
 
-Please check you give the right number of lifetime parameters. Example:
+Please check you give the right number of lifetime arguments. Example:
 
 ```
 fn foo<'a: 'b, 'b: 'a>() {}
