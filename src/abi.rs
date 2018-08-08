@@ -356,7 +356,6 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                         &[dst, src, CValue::ByVal(byte_amount, usize_layout)],
                         nil_ty,
                     );
-                    unimplemented!("copy");
                 }
                 "discriminant_value" => {
                     assert_eq!(args.len(), 1);

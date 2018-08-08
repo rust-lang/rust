@@ -1,0 +1,80 @@
+target x86_64
+
+; copy_nonoverlapping
+function u0:0(i64, i64, i64) fast {
+    ss0 = explicit_slot 8
+    ss1 = explicit_slot 8
+    ss2 = explicit_slot 8
+ebb0(v0: i64, v1: i64, v2: i64): ; fn(src, dst, count)
+    v99 = iconst.i64 1
+    jump ebb1(v0, v1, v2)
+
+ebb1(v10: i64, v11: i64, v12: i64):
+    ; if no more bytes to copy, return
+    brz v12, ebb2
+
+    ; copy one byte
+    v20 = uload8.i32 v10
+    istore8.i32 v20, v11
+
+    ; increment src and dst and decrement remaining count
+    v30 = iadd_imm v10, 1
+    v31 = iadd_imm v11, 1
+    v32 = isub v12, v99
+
+    ; loop
+    jump ebb1(v30, v31, v32)
+
+ebb2:
+    return
+}
+
+; copy
+function u0:0(i64, i64, i64) fast {
+    ss0 = explicit_slot 8
+    ss1 = explicit_slot 8
+    ss2 = explicit_slot 8
+ebb0(v0: i64, v1: i64, v2: i64): ; fn(src, dst, count):
+    v98 = iconst.i64 8
+    v99 = iconst.i64 1
+    jump ebb1(v0, v1, v2)
+
+; copy eight bytes
+ebb1(v10: i64, v11: i64, v12: i64):
+    ; if less than eight bytes to copy, goto ebb2
+    v90 = icmp ult v12, v98
+    brz v90, ebb2(v10, v11, v12)
+
+    ; copy one byte
+    v80 = load.i64 v10
+    store.i64 v80, v11
+
+    ; increment src and dst and decrement remaining count
+    v20 = iadd_imm v0, 1
+    v21 = iadd_imm v1, 1
+    v22 = isub v2, v98
+
+    ; loop
+    jump ebb1(v20, v21, v22)
+
+; copy one byte
+ebb2(v30: i64, v31: i64, v32: i64):
+    ; if no more bytes to copy, return
+    brz v32, ebb3
+
+    ; copy one byte
+    v81 = uload8.i32 v30
+    istore8.i32 v81, v31
+
+    ; increment src and dst and decrement remaining count
+    v40 = iadd_imm v30, 1
+    v41 = iadd_imm v31, 1
+    v42 = isub v32, v99
+
+    ; loop
+    jump ebb2(v40, v41, v42)
+
+; done
+ebb3:
+    return
+}

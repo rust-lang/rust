@@ -45,8 +45,8 @@ pub fn cton_type_from_ty<'a, 'tcx: 'a>(
         },
         TypeVariants::TyChar => types::I32,
         TypeVariants::TyFloat(size) => match size {
-            FloatTy::F32 => types::I32,
-            FloatTy::F64 => types::I64,
+            FloatTy::F32 => types::F32,
+            FloatTy::F64 => types::F64,
         },
         TypeVariants::TyFnPtr(_) => types::I64,
         TypeVariants::TyRawPtr(TypeAndMut { ty, mutbl: _ }) | TypeVariants::TyRef(_, ty, _) => {
