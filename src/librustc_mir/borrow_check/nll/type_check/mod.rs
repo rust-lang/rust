@@ -18,6 +18,7 @@ use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::values::{RegionValueElements, LivenessValues};
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
+use borrow_check::nll::type_check::liveness::liveness_map::NllLivenessMap;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::LocalWithRegion;
 use borrow_check::nll::ToRegionVid;
@@ -74,7 +75,7 @@ macro_rules! span_mirbug_and_err {
 mod constraint_conversion;
 pub mod free_region_relations;
 mod input_output;
-mod liveness;
+crate mod liveness;
 mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference
@@ -115,16 +116,12 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
-    liveness: &LivenessResults<LocalWithRegion>,
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
     errors_buffer: &mut Vec<Diagnostic>,
-) -> (
-    MirTypeckRegionConstraints<'tcx>,
-    Rc<UniversalRegionRelations<'tcx>>,
-) {
+) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
         liveness_constraints: LivenessValues::new(elements),
@@ -147,7 +144,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         all_facts,
     );
 
-    {
+    let (liveness, liveness_map) = {
         let mut borrowck_context = BorrowCheckContext {
             universal_regions,
             location_table,
@@ -166,7 +163,6 @@ pub(crate) fn type_check<'gcx, 'tcx>(
             Some(&mut borrowck_context),
             Some(errors_buffer),
             |cx| {
-                liveness::generate(cx, mir, liveness, flow_inits, move_data);
                 cx.equate_inputs_and_outputs(
                     mir,
                     mir_def_id,
@@ -174,14 +170,20 @@ pub(crate) fn type_check<'gcx, 'tcx>(
                     &universal_region_relations,
                     &normalized_inputs_and_output,
                 );
+                liveness::generate(cx, mir, flow_inits, move_data)
             },
-        );
-    }
+        )
+    };
 
-    (constraints, universal_region_relations)
+    MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        liveness,
+        liveness_map,
+    }
 }
 
-fn type_check_internal<'a, 'gcx, 'tcx, F>(
+fn type_check_internal<'a, 'gcx, 'tcx, R>(
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'gcx>,
@@ -190,10 +192,8 @@ fn type_check_internal<'a, 'gcx, 'tcx, F>(
     implicit_region_bound: Option<ty::Region<'tcx>>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
     errors_buffer: Option<&mut Vec<Diagnostic>>,
-    mut extra: F,
-) where
-    F: FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>),
-{
+    mut extra: impl FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>) -> R,
+) -> R where {
     let mut checker = TypeChecker::new(
         infcx,
         mir,
@@ -214,7 +214,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, F>(
         checker.typeck_mir(mir, errors_buffer);
     }
 
-    extra(&mut checker);
+    extra(&mut checker)
 }
 
 fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
@@ -653,6 +653,13 @@ struct BorrowCheckContext<'a, 'tcx: 'a> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+}
+
+crate struct MirTypeckResults<'tcx> {
+    crate constraints: MirTypeckRegionConstraints<'tcx>,
+    crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    crate liveness: LivenessResults<LocalWithRegion>,
+    crate liveness_map: NllLivenessMap,
 }
 
 /// A collection of region constraints that must be satisfied for the

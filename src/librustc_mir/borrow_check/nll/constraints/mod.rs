@@ -36,12 +36,20 @@ impl ConstraintSet {
         self.constraints.push(constraint);
     }
 
-    /// Constructs a graph from the constraint set; the graph makes it
-    /// easy to find the constraints affecting a particular region
-    /// (you should not mutate the set once this graph is
-    /// constructed).
-    crate fn graph(&self, num_region_vars: usize) -> graph::ConstraintGraph {
-        graph::ConstraintGraph::new(self, num_region_vars)
+    /// Constructs a "normal" graph from the constraint set; the graph makes it
+    /// easy to find the constraints affecting a particular region.
+    ///
+    /// NB: This graph contains a "frozen" view of the current
+    /// constraints.  any new constraints added to the `ConstraintSet`
+    /// after the graph is built will not be present in the graph.
+    crate fn graph(&self, num_region_vars: usize) -> graph::NormalConstraintGraph {
+        graph::ConstraintGraph::new(graph::Normal, self, num_region_vars)
+    }
+
+    /// Like `graph`, but constraints a reverse graph where `R1: R2`
+    /// represents an edge `R2 -> R1`.
+    crate fn reverse_graph(&self, num_region_vars: usize) -> graph::ReverseConstraintGraph {
+        graph::ConstraintGraph::new(graph::Reverse, self, num_region_vars)
     }
 
     /// Compute cycles (SCCs) in the graph of regions. In particular,
@@ -49,9 +57,9 @@ impl ConstraintSet {
     /// them into an SCC, and find the relationships between SCCs.
     crate fn compute_sccs(
         &self,
-        constraint_graph: &graph::ConstraintGraph,
+        constraint_graph: &graph::NormalConstraintGraph,
     ) -> Sccs<RegionVid, ConstraintSccIndex> {
-        let region_graph = &graph::RegionGraph::new(self, constraint_graph);
+        let region_graph = &constraint_graph.region_graph(self);
         Sccs::new(region_graph)
     }
 }
