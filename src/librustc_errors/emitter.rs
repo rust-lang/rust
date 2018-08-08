@@ -1295,7 +1295,7 @@ impl EmitterWriter {
                 }
 
                 // if we elided some lines, add an ellipsis
-                if let Some(_) = lines.next() {
+                if lines.next().is_some() {
                     buffer.puts(row_num, max_line_num_len - 1, "...", Style::LineNumber);
                 } else if !show_underline {
                     draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);

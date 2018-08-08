@@ -51,7 +51,7 @@ use std::{mem, ptr};
 use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
-use syntax::symbol::{Symbol, LocalInternedString, InternedString};
+use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
@@ -823,6 +823,12 @@ pub struct FloatVarValue(pub ast::FloatTy);
 impl ty::EarlyBoundRegion {
     pub fn to_bound_region(&self) -> ty::BoundRegion {
         ty::BoundRegion::BrNamed(self.def_id, self.name)
+    }
+
+    /// Does this early bound region have a name? Early bound regions normally
+    /// always have names except when using anonymous lifetimes (`'_`).
+    pub fn has_name(&self) -> bool {
+        self.name != keywords::UnderscoreLifetime.name().as_interned_str()
     }
 }
 

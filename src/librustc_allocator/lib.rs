@@ -12,6 +12,7 @@
 
 #[macro_use] extern crate log;
 extern crate rustc;
+extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_target;
 extern crate syntax;

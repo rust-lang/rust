@@ -27,7 +27,7 @@ struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     data: MoveData<'tcx>,
-    errors: Vec<MoveError<'tcx>>,
+    errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
 }
 
 impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
@@ -186,7 +186,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
-    fn finalize(self) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
+    fn finalize(
+        self
+    ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
         debug!("{}", {
             debug!("moves for {:?}:", self.mir.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -207,9 +209,10 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 }
 
-pub(super) fn gather_moves<'a, 'gcx, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                                           -> Result<MoveData<'tcx>,
-                                                     (MoveData<'tcx>, Vec<MoveError<'tcx>>)> {
+pub(super) fn gather_moves<'a, 'gcx, 'tcx>(
+    mir: &Mir<'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>
+) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
     let mut builder = MoveDataBuilder::new(mir, tcx);
 
     builder.gather_args();
@@ -407,7 +410,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let path = match self.move_path_for(place) {
             Ok(path) | Err(MoveError::UnionMove { path }) => path,
             Err(error @ MoveError::IllegalMove { .. }) => {
-                self.builder.errors.push(error);
+                self.builder.errors.push((place.clone(), error));
                 return;
             }
         };
