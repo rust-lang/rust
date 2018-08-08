@@ -290,7 +290,9 @@ pub fn codegen_call<'a, 'tcx: 'a>(
     let fn_ty = func.layout().ty;
     let sig = ty_fn_sig(fx.tcx, fn_ty);
 
-    let return_place = destination.as_ref().map(|(place, _)| trans_place(fx, place));
+    let return_place = destination
+        .as_ref()
+        .map(|(place, _)| trans_place(fx, place));
 
     // Unpack arguments tuple for closures
     let args = if sig.abi == Abi::RustCall {
@@ -331,7 +333,10 @@ pub fn codegen_call<'a, 'tcx: 'a>(
             let ret = match return_place {
                 Some(ret) => ret,
                 None => {
-                    println!("codegen_call(fx, {:?}, {:?}, {:?})", func, args, destination);
+                    println!(
+                        "codegen_call(fx, {:?}, {:?}, {:?})",
+                        func, args, destination
+                    );
                     // Insert non returning intrinsics here
                     match intrinsic {
                         "abort" => {

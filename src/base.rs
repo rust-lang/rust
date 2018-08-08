@@ -231,11 +231,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(
     fx.comments.clone()
 }
 
-fn trans_stmt<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx>,
-    cur_ebb: Ebb,
-    stmt: &Statement<'tcx>,
-) {
+fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, cur_ebb: Ebb, stmt: &Statement<'tcx>) {
     fx.tcx.sess.warn(&format!("stmt {:?}", stmt));
 
     let inst = fx.bcx.func.layout.last_inst(cur_ebb).unwrap();
@@ -825,11 +821,8 @@ pub fn trans_place<'a, 'tcx: 'a>(
                     if layout.is_unsized() {
                         unimpl!("Unsized places are not yet implemented");
                     }
-                    CPlace::Addr(
-                        base.to_cvalue(fx).load_value(fx),
-                        layout,
-                    )
-                },
+                    CPlace::Addr(base.to_cvalue(fx).load_value(fx), layout)
+                }
                 ProjectionElem::Field(field, _ty) => base.place_field(fx, field),
                 ProjectionElem::Index(local) => {
                     let index = fx.get_local_place(local).to_cvalue(fx).load_value(fx);
