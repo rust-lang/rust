@@ -357,7 +357,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             TypeVariants::TyInt(_) => {
                                 let zero = fx.bcx.ins().iconst(types::I64, 0);
                                 fx.bcx.ins().isub(zero, val)
-                            },
+                            }
                             TypeVariants::TyFloat(_) => fx.bcx.ins().fneg(val),
                             _ => unimplemented!("un op Neg for {:?}", ty),
                         },
@@ -422,11 +422,15 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 Rvalue::Len(lval) => return Err(format!("rval len {:?}", lval)),
                 Rvalue::NullaryOp(NullOp::Box, ty) => unimplemented!("rval box {:?}", ty),
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
-                    assert!(lval.layout().ty.is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()));
+                    assert!(
+                        lval.layout()
+                            .ty
+                            .is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all())
+                    );
                     let ty_size = fx.layout_of(ty).size.bytes();
                     let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size as i64);
                     lval.write_cvalue(fx, val);
-                },
+                }
                 Rvalue::Aggregate(_, _) => bug!("shouldn't exist at trans {:?}", rval),
             }
         }
@@ -602,7 +606,11 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
     signed: bool,
 ) -> CValue<'tcx> {
     if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
-        assert_eq!(lhs.layout().ty, rhs.layout().ty, "int binop requires lhs and rhs of same type");
+        assert_eq!(
+            lhs.layout().ty,
+            rhs.layout().ty,
+            "int binop requires lhs and rhs of same type"
+        );
     }
     binop_match! {
         fx, bin_op, signed, lhs, rhs, out_ty, "int/uint";
@@ -644,11 +652,18 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     signed: bool,
 ) -> CValue<'tcx> {
     if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
-        assert_eq!(lhs.layout().ty, rhs.layout().ty, "checked int binop requires lhs and rhs of same type");
+        assert_eq!(
+            lhs.layout().ty,
+            rhs.layout().ty,
+            "checked int binop requires lhs and rhs of same type"
+        );
     }
     let res_ty = match out_ty.sty {
         TypeVariants::TyTuple(tys) => tys[0],
-        _ => bug!("Checked int binop requires tuple as output, but got {:?}", out_ty),
+        _ => bug!(
+            "Checked int binop requires tuple as output, but got {:?}",
+            out_ty
+        ),
     };
 
     let res = binop_match! {
@@ -679,9 +694,13 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     let has_overflow = CValue::const_val(fx, fx.tcx.types.bool, 0);
 
     let out_place = CPlace::temp(fx, out_ty);
-    out_place.place_field(fx, mir::Field::new(0)).write_cvalue(fx, res);
+    out_place
+        .place_field(fx, mir::Field::new(0))
+        .write_cvalue(fx, res);
     println!("abc");
-    out_place.place_field(fx, mir::Field::new(1)).write_cvalue(fx, has_overflow);
+    out_place
+        .place_field(fx, mir::Field::new(1))
+        .write_cvalue(fx, has_overflow);
 
     out_place.to_cvalue(fx)
 }
