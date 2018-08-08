@@ -294,7 +294,7 @@ fn resolve_associated_item<'a, 'tcx>(
             })
         }
         traits::VtableBuiltin(..) => {
-            if let Some(_) = tcx.lang_items().clone_trait() {
+            if tcx.lang_items().clone_trait().is_some() {
                 Some(Instance {
                     def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
                     substs: rcvr_substs

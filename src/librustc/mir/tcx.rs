@@ -127,14 +127,14 @@ impl<'tcx> Place<'tcx> {
     /// of a closure type.
     pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
                                                 tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
-        let place = if let Place::Projection(ref proj) = self {
+        let (place, by_ref) = if let Place::Projection(ref proj) = self {
             if let ProjectionElem::Deref = proj.elem {
-                &proj.base
+                (&proj.base, true)
             } else {
-                self
+                (self, false)
             }
         } else {
-            self
+            (self, false)
         };
 
         match place {
@@ -142,14 +142,16 @@ impl<'tcx> Place<'tcx> {
                 ProjectionElem::Field(field, _ty) => {
                     let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
 
-                    if  base_ty.is_closure() || base_ty.is_generator() {
+                    if (base_ty.is_closure() || base_ty.is_generator()) &&
+                        (!by_ref || mir.upvar_decls[field.index()].by_ref)
+                    {
                         Some(field)
                     } else {
                         None
                     }
                 },
                 _ => None,
-            },
+            }
             _ => None,
         }
     }

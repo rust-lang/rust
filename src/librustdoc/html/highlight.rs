@@ -44,7 +44,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>,
     write_header(class, &mut out).unwrap();
 
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm, None), sess.codemap());
-    if let Err(_) = classifier.write_source(&mut out) {
+    if classifier.write_source(&mut out).is_err() {
         return format!("<pre>{}</pre>", src);
     }
 

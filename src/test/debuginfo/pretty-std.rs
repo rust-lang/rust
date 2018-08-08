@@ -10,7 +10,6 @@
 
 // ignore-windows failing on win32 bot
 // ignore-freebsd: gdb package too new
-// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
 // min-gdb-version 7.7
@@ -40,14 +39,15 @@
 // gdbr-check:$6 = core::option::Option::None
 
 // gdb-command: print os_string
-// gdb-check:$7 = "IAMA OS string 😃"
+// gdb-check:$7 = "IAMA OS string"
 
-// gdb-command: print some_string
-// gdb-check:$8 = Some = {"IAMA optional string!"}
+// Disabled due to https://github.com/rust-lang/rust/issues/53153
+// g d b-command: print some_string
+// g d b-check:$8 = Some = {"IAMA optional string!"}
 
-// gdb-command: set print length 5
-// gdb-command: print some_string
-// gdb-check:$8 = Some = {"IAMA "...}
+// g d b-command: set print length 5
+// g d b-command: print some_string
+// g d b-check:$8 = Some = {"IAMA "...}
 
 
 // === LLDB TESTS ==================================================================================
@@ -92,7 +92,7 @@ fn main() {
     let string = "IAMA string!".to_string();
 
     // OsString
-    let os_string = OsString::from("IAMA OS string \u{1F603}");
+    let os_string = OsString::from("IAMA OS string");
 
     // Option
     let some = Some(8i16);

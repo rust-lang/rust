@@ -13,7 +13,6 @@ use rustc::session::Session;
 use generated_code;
 
 use std::cell::Cell;
-use std::env;
 
 use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, Token};
@@ -36,11 +35,10 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn make_path_string(path: &FileName) -> String {
+    pub fn make_path_string(&self, path: &FileName) -> String {
         match *path {
             FileName::Real(ref path) if !path.is_absolute() =>
-                env::current_dir()
-                    .unwrap()
+                self.sess.working_dir.0
                     .join(&path)
                     .display()
                     .to_string(),
