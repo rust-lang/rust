@@ -181,7 +181,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
         for lhs in lhses { // try each arm's matchers
             let lhs_tt = match *lhs {
                 quoted::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
-                _ => cx.span_bug(sp, "malformed macro lhs")
+                _ => continue,
             };
             match TokenTree::parse(cx, lhs_tt, arg.clone()) {
                 Success(_) => {
@@ -191,7 +191,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                         err.span_suggestion_short(
                             comma_span,
                             "missing comma here",
-                            ",".to_string(),
+                            ", ".to_string(),
                         );
                     }
                 }
