@@ -297,6 +297,21 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         CPlace::Addr(field_ptr, field_layout)
     }
 
+    pub fn place_index(self, fx: &mut FunctionCx<'a, 'tcx>, index: Value) -> CPlace<'tcx> {
+        let addr = self.expect_addr();
+        let layout = self.layout();
+        match layout.ty.sty {
+            TypeVariants::TyArray(elem_ty, _) => {
+                let elem_layout = fx.layout_of(elem_ty);
+                let size = fx.bcx.ins().iconst(types::I64, elem_layout.size.bytes() as i64);
+                let offset = fx.bcx.ins().imul(size, index);
+                CPlace::Addr(fx.bcx.ins().iadd(addr, offset), elem_layout)
+            }
+            TypeVariants::TySlice(_elem_ty) => unimplemented!("place_index(TySlice)"),
+            _ => bug!("place_index({:?})", layout.ty),
+        }
+    }
+
     pub fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {
         match self {
             CPlace::Var(var, _) => CPlace::Var(var, layout),

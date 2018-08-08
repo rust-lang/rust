@@ -800,7 +800,8 @@ pub fn trans_place<'a, 'tcx: 'a>(
                 ),
                 ProjectionElem::Field(field, _ty) => base.place_field(fx, field),
                 ProjectionElem::Index(local) => {
-                    unimplemented!("projection index {:?} {:?}", projection.base, local)
+                    let index = fx.get_local_place(local).to_cvalue(fx).load_value(fx);
+                    base.place_index(fx, index)
                 }
                 ProjectionElem::ConstantIndex {
                     offset,

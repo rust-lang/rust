@@ -141,3 +141,17 @@ pub mod intrinsics {
         pub fn uninit<T>() -> T;
     }
 }
+
+#[lang = "index"]
+pub trait Index<Idx: ?Sized> {
+    type Output: ?Sized;
+    fn index(&self, index: Idx) -> &Self::Output;
+}
+
+impl<T> Index<usize> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self[index]
+    }
+}

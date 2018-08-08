@@ -142,3 +142,7 @@ unsafe fn call_uninit() -> u8 {
 /*unsafe fn deref_str_ptr(s: *const str) -> &'static str {
     &*s
 }*/
+
+fn use_array(arr: [u8; 3]) -> u8 {
+    arr[1]
+}
