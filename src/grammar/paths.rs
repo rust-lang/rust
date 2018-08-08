@@ -71,7 +71,16 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
 fn path_generic_args(p: &mut Parser, mode: Mode) {
     match mode {
         Mode::Use => return,
-        Mode::Type => type_args::type_arg_list(p, false),
+        Mode::Type => {
+            // test path_fn_trait_args
+            // type F = Box<Fn(x: i32) -> ()>;
+            if p.at(L_PAREN) {
+                params::param_list(p);
+                fn_ret_type(p);
+            } else {
+                type_args::type_arg_list(p, false)
+            }
+        },
         Mode::Expr => type_args::type_arg_list(p, true),
     }
 }
