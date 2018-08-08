@@ -33,8 +33,8 @@ use parse::{self, ParseSess, PResult};
 use parse::token::{self, Token};
 use ptr::P;
 use symbol::Symbol;
+use ThinVec;
 use tokenstream::{TokenStream, TokenTree, Delimited};
-use util::ThinVec;
 use GLOBALS;
 
 use std::iter;
