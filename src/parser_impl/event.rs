@@ -7,6 +7,7 @@
 //! tree builder: the parser produces a stream of events like
 //! `start node`, `finish node`, and `FileBuilder` converts
 //! this stream to a real tree.
+use std::mem;
 use {
     lexer::Token,
     parser_impl::Sink,
@@ -77,8 +78,11 @@ pub(crate) enum Event {
     },
 }
 
-pub(super) fn process<'a, S: Sink<'a>>(builder: &mut S, tokens: &[Token], events: Vec<Event>) {
-    let mut next_tok_idx = 0;
+
+pub(super) fn process<'a, S: Sink<'a>>(builder: &mut S, tokens: &[Token], mut events: Vec<Event>) {
+    fn tombstone() -> Event {
+        Event::Start { kind: TOMBSTONE, forward_parent: None }
+    }
     let eat_ws = |idx: &mut usize, builder: &mut S| {
         while let Some(token) = tokens.get(*idx) {
             if !token.kind.is_trivia() {
@@ -89,50 +93,42 @@ pub(super) fn process<'a, S: Sink<'a>>(builder: &mut S, tokens: &[Token], events
         }
     };
 
+    let events: &mut [Event] = &mut events;
     let mut depth = 0;
-    let mut holes = Vec::new();
     let mut forward_parents = Vec::new();
-
-    for (i, event) in events.iter().enumerate() {
-        if holes.last() == Some(&i) {
-            holes.pop();
-            continue;
-        }
-
-        match event {
-            &Event::Start {
+    let mut next_tok_idx = 0;
+    for i in 0..events.len() {
+        match mem::replace(&mut events[i], tombstone()) {
+            Event::Start {
                 kind: TOMBSTONE, ..
             } => (),
 
-            &Event::Start { .. } => {
-                forward_parents.clear();
+            Event::Start { kind, forward_parent } => {
+                forward_parents.push(kind);
                 let mut idx = i;
-                loop {
-                    let (kind, fwd) = match events[idx] {
+                let mut fp = forward_parent;
+                while let Some(fwd) = fp {
+                    idx += fwd as usize;
+                    fp = match mem::replace(&mut events[idx], tombstone()) {
                         Event::Start {
                             kind,
                             forward_parent,
-                        } => (kind, forward_parent),
+                        } => {
+                            forward_parents.push(kind);
+                            forward_parent
+                        },
                         _ => unreachable!(),
                     };
-                    forward_parents.push((idx, kind));
-                    if let Some(fwd) = fwd {
-                        idx += fwd as usize;
-                    } else {
-                        break;
-                    }
                 }
-                for &(idx, kind) in forward_parents.iter().into_iter().rev() {
+                for kind in forward_parents.drain(..).rev() {
                     if depth > 0 {
                         eat_ws(&mut next_tok_idx, builder);
                     }
                     depth += 1;
                     builder.start_internal(kind);
-                    holes.push(idx);
                 }
-                holes.pop();
             }
-            &Event::Finish => {
+            Event::Finish => {
                 depth -= 1;
                 if depth == 0 {
                     eat_ws(&mut next_tok_idx, builder);
@@ -140,7 +136,7 @@ pub(super) fn process<'a, S: Sink<'a>>(builder: &mut S, tokens: &[Token], events
 
                 builder.finish_internal();
             }
-            &Event::Token {
+            Event::Token {
                 kind,
                 mut n_raw_tokens,
             } => {
@@ -152,7 +148,7 @@ pub(super) fn process<'a, S: Sink<'a>>(builder: &mut S, tokens: &[Token], events
                 }
                 builder.leaf(kind, len);
             }
-            &Event::Error { ref msg } => builder.error(msg.clone()),
+            Event::Error { msg } => builder.error(msg),
         }
     }
 }
