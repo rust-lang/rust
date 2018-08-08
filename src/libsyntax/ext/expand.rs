@@ -26,12 +26,12 @@ use parse::{DirectoryOwnership, PResult, ParseSess};
 use parse::token::{self, Token};
 use parse::parser::Parser;
 use ptr::P;
+use OneVector;
 use symbol::Symbol;
 use symbol::keywords;
 use syntax_pos::{Span, DUMMY_SP, FileName};
 use syntax_pos::hygiene::ExpnFormat;
 use tokenstream::{TokenStream, TokenTree};
-use util::small_vector::SmallVector;
 use visit::{self, Visitor};
 
 use std::collections::HashMap;
@@ -131,7 +131,7 @@ macro_rules! ast_fragments {
                 self.expand_fragment(AstFragment::$Kind(ast)).$make_ast()
             })*)*
             $($(fn $fold_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
-                self.expand_fragment(AstFragment::$Kind(SmallVector::one(ast_elt))).$make_ast()
+                self.expand_fragment(AstFragment::$Kind(OneVector::one(ast_elt))).$make_ast()
             })*)*
         }
 
@@ -148,15 +148,15 @@ ast_fragments! {
     Expr(P<ast::Expr>) { "expression"; one fn fold_expr; fn visit_expr; fn make_expr; }
     Pat(P<ast::Pat>) { "pattern"; one fn fold_pat; fn visit_pat; fn make_pat; }
     Ty(P<ast::Ty>) { "type"; one fn fold_ty; fn visit_ty; fn make_ty; }
-    Stmts(SmallVector<ast::Stmt>) { "statement"; many fn fold_stmt; fn visit_stmt; fn make_stmts; }
-    Items(SmallVector<P<ast::Item>>) { "item"; many fn fold_item; fn visit_item; fn make_items; }
-    TraitItems(SmallVector<ast::TraitItem>) {
+    Stmts(OneVector<ast::Stmt>) { "statement"; many fn fold_stmt; fn visit_stmt; fn make_stmts; }
+    Items(OneVector<P<ast::Item>>) { "item"; many fn fold_item; fn visit_item; fn make_items; }
+    TraitItems(OneVector<ast::TraitItem>) {
         "trait item"; many fn fold_trait_item; fn visit_trait_item; fn make_trait_items;
     }
-    ImplItems(SmallVector<ast::ImplItem>) {
+    ImplItems(OneVector<ast::ImplItem>) {
         "impl item"; many fn fold_impl_item; fn visit_impl_item; fn make_impl_items;
     }
-    ForeignItems(SmallVector<ast::ForeignItem>) {
+    ForeignItems(OneVector<ast::ForeignItem>) {
         "foreign item"; many fn fold_foreign_item; fn visit_foreign_item; fn make_foreign_items;
     }
 }
@@ -279,7 +279,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let orig_mod_span = krate.module.inner;
 
-        let krate_item = AstFragment::Items(SmallVector::one(P(ast::Item {
+        let krate_item = AstFragment::Items(OneVector::one(P(ast::Item {
             attrs: krate.attrs,
             span: krate.span,
             node: ast::ItemKind::Mod(krate.module),
@@ -989,28 +989,28 @@ impl<'a> Parser<'a> {
                               -> PResult<'a, AstFragment> {
         Ok(match kind {
             AstFragmentKind::Items => {
-                let mut items = SmallVector::new();
+                let mut items = OneVector::new();
                 while let Some(item) = self.parse_item()? {
                     items.push(item);
                 }
                 AstFragment::Items(items)
             }
             AstFragmentKind::TraitItems => {
-                let mut items = SmallVector::new();
+                let mut items = OneVector::new();
                 while self.token != token::Eof {
                     items.push(self.parse_trait_item(&mut false)?);
                 }
                 AstFragment::TraitItems(items)
             }
             AstFragmentKind::ImplItems => {
-                let mut items = SmallVector::new();
+                let mut items = OneVector::new();
                 while self.token != token::Eof {
                     items.push(self.parse_impl_item(&mut false)?);
                 }
                 AstFragment::ImplItems(items)
             }
             AstFragmentKind::ForeignItems => {
-                let mut items = SmallVector::new();
+                let mut items = OneVector::new();
                 while self.token != token::Eof {
                     if let Some(item) = self.parse_foreign_item()? {
                         items.push(item);
@@ -1019,7 +1019,7 @@ impl<'a> Parser<'a> {
                 AstFragment::ForeignItems(items)
             }
             AstFragmentKind::Stmts => {
-                let mut stmts = SmallVector::new();
+                let mut stmts = OneVector::new();
                 while self.token != token::Eof &&
                       // won't make progress on a `}`
                       self.token != token::CloseDelim(token::Brace) {
@@ -1086,12 +1086,12 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     /// Folds the item allowing tests to be expanded because they are still nameable.
     /// This should probably only be called with module items
-    fn fold_nameable(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+    fn fold_nameable(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
         fold::noop_fold_item(item, self)
     }
 
     /// Folds the item but doesn't allow tests to occur within it
-    fn fold_unnameable(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+    fn fold_unnameable(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
         let was_nameable = mem::replace(&mut self.tests_nameable, false);
         let items = fold::noop_fold_item(item, self);
         self.tests_nameable = was_nameable;
@@ -1254,10 +1254,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         })
     }
 
-    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
+    fn fold_stmt(&mut self, stmt: ast::Stmt) -> OneVector<ast::Stmt> {
         let mut stmt = match self.cfg.configure_stmt(stmt) {
             Some(stmt) => stmt,
-            None => return SmallVector::new(),
+            None => return OneVector::new(),
         };
 
         // we'll expand attributes on expressions separately
@@ -1313,7 +1313,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         result
     }
 
-    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+    fn fold_item(&mut self, item: P<ast::Item>) -> OneVector<P<ast::Item>> {
         let item = configure!(self, item);
 
         let (attr, traits, mut item) = self.classify_item(item);
@@ -1422,7 +1422,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         ui
                     });
 
-                    SmallVector::many(
+                    OneVector::many(
                         self.fold_unnameable(item).into_iter()
                             .chain(self.fold_unnameable(use_item)))
                 } else {
@@ -1433,7 +1433,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         }
     }
 
-    fn fold_trait_item(&mut self, item: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+    fn fold_trait_item(&mut self, item: ast::TraitItem) -> OneVector<ast::TraitItem> {
         let item = configure!(self, item);
 
         let (attr, traits, item) = self.classify_item(item);
@@ -1453,7 +1453,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         }
     }
 
-    fn fold_impl_item(&mut self, item: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+    fn fold_impl_item(&mut self, item: ast::ImplItem) -> OneVector<ast::ImplItem> {
         let item = configure!(self, item);
 
         let (attr, traits, item) = self.classify_item(item);
@@ -1490,7 +1490,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_foreign_item(&mut self,
-                         foreign_item: ast::ForeignItem) -> SmallVector<ast::ForeignItem> {
+                         foreign_item: ast::ForeignItem) -> OneVector<ast::ForeignItem> {
         let (attr, traits, foreign_item) = self.classify_item(foreign_item);
 
         if attr.is_some() || !traits.is_empty() {

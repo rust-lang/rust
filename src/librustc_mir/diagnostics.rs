@@ -2164,6 +2164,29 @@ unsafe { b.resume() };
 ```
 "##,
 
+E0712: r##"
+This error occurs because a borrow of a thread-local variable was made inside a
+function which outlived the lifetime of the function.
+
+Example of erroneous code:
+
+```compile_fail,E0712
+#![feature(nll)]
+#![feature(thread_local)]
+
+#[thread_local]
+static FOO: u8 = 3;
+
+fn main() {
+    let a = &FOO; // error: thread-local variable borrowed past end of function
+
+    std::thread::spawn(move || {
+        println!("{}", a);
+    });
+}
+```
+"##,
+
 }
 
 register_diagnostics! {

@@ -645,6 +645,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
+    /// Invoked when we have some type-test (e.g., `T: 'X`) that we cannot
+    /// prove to be satisfied. If this is a closure, we will attempt to
+    /// "promote" this type-test into our `ClosureRegionRequirements` and
+    /// hence pass it up the creator. To do this, we have to phrase the
+    /// type-test in terms of external free regions, as local free
+    /// regions are not nameable by the closure's creator.
+    ///
+    /// Promotion works as follows: we first check that the type `T`
+    /// contains only regions that the creator knows about. If this is
+    /// true, then -- as a consequence -- we know that all regions in
+    /// the type `T` are free regions that outlive the closure body. If
+    /// false, then promotion fails.
+    ///
+    /// Once we've promoted T, we have to "promote" `'X` to some region
+    /// that is "external" to the closure. Generally speaking, a region
+    /// may be the union of some points in the closure body as well as
+    /// various free lifetimes. We can ignore the points in the closure
+    /// body: if the type T can be expressed in terms of external regions,
+    /// we know it outlives the points in the closure body. That
+    /// just leaves the free regions.
+    ///
+    /// The idea then is to lower the `T: 'X` constraint into multiple
+    /// bounds -- e.g., if `'X` is the union of two free lifetimes,
+    /// `'1` and `'2`, then we would create `T: '1` and `T: '2`.
     fn try_promote_type_test<'gcx>(
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
@@ -661,28 +685,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             test: _,
         } = type_test;
 
+
         let generic_ty = generic_kind.to_ty(tcx);
         let subject = match self.try_promote_type_test_subject(infcx, generic_ty) {
             Some(s) => s,
             None => return false,
         };
 
-        // Find some bounding subject-region R+ that is a super-region
-        // of the existing subject-region R. This should be a non-local, universal
-        // region, which ensures it can be encoded in a `ClosureOutlivesRequirement`.
-        let lower_bound_plus = self.non_local_universal_upper_bound(*lower_bound);
-        assert!(self.universal_regions.is_universal_region(lower_bound_plus));
-        assert!(
-            !self
-                .universal_regions
-                .is_local_free_region(lower_bound_plus)
-        );
+        // For each region outlived by lower_bound find a non-local,
+        // universal region (it may be the same region) and add it to
+        // `ClosureOutlivesRequirement`.
+        let r_scc = self.constraint_sccs.scc(*lower_bound);
+        for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            let non_local_ub = self.universal_region_relations.non_local_upper_bound(ur);
 
-        propagated_outlives_requirements.push(ClosureOutlivesRequirement {
-            subject,
-            outlived_free_region: lower_bound_plus,
-            blame_span: locations.span(mir),
-        });
+            assert!(self.universal_regions.is_universal_region(non_local_ub));
+            assert!(
+                !self
+                .universal_regions
+                .is_local_free_region(non_local_ub)
+            );
+
+            propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+                subject,
+                outlived_free_region: non_local_ub,
+                blame_span: locations.span(mir),
+            });
+        }
         true
     }
 
