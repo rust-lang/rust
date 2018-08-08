@@ -453,7 +453,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 diag.span_label(span, format!(
                     "{} was supposed to return data with lifetime `{}` but it is returning \
                     data with lifetime `{}`",
-                    mir_def_name, fr_name, outlived_fr_name,
+                    mir_def_name, outlived_fr_name, fr_name
                 ));
             },
             _ => {
