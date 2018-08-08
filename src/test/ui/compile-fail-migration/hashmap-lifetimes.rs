@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 fn main() {
     let mut my_stuff = std::collections::HashMap::new();
     my_stuff.insert(0, 42);

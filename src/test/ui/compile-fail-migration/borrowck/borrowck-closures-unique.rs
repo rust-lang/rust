@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Tests that a closure which requires mutable access to the referent
 // of an `&mut` requires a "unique" borrow -- that is, the variable to
 // be borrowed (here, `x`) will not be borrowed *mutably*, but

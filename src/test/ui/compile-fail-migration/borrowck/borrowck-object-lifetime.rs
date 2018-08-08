@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Test that borrows that occur due to calls to object methods
 // properly "claim" the object path.
 

@@ -12,6 +12,8 @@
 // access to the variable, whether that mutable access be used
 // for direct assignment or for taking mutable ref. Issue #6801.
 
+// ignore-compare-mode-nll
+
 #![feature(box_syntax)]
 
 fn to_fn_mut<F: FnMut()>(f: F) -> F { f }

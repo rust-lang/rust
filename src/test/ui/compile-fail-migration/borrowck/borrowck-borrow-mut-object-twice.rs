@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Check that `&mut` objects cannot be borrowed twice, just like
 // other `&mut` pointers.
 

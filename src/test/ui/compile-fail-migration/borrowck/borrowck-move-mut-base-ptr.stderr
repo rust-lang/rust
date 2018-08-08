@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `t0` because it is borrowed
-  --> $DIR/borrowck-move-mut-base-ptr.rs:18:9
+  --> $DIR/borrowck-move-mut-base-ptr.rs:20:9
    |
 LL |     let p: &isize = &*t0; // Freezes `*t0`
    |                      --- borrow of `*t0` occurs here

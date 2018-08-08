@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Test that we are imposing the requirement that every associated
 // type of a bound that appears in the where clause on a struct must
 // outlive the location in which the type appears, even when the

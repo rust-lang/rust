@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Test various ways to construct a pointer with a longer lifetime
 // than the thing it points at and ensure that they result in
 // errors. See also regions-free-region-ordering-callee.rs

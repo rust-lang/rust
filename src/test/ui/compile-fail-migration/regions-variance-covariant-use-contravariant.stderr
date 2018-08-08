@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/regions-variance-covariant-use-contravariant.rs:33:32
+  --> $DIR/regions-variance-covariant-use-contravariant.rs:35:32
    |
 LL | fn use_<'short,'long>(c: Covariant<'long>,
    |                          ----------------

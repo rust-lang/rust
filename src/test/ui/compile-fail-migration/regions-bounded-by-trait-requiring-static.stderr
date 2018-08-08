@@ -1,5 +1,5 @@
 error[E0477]: the type `&'a isize` does not fulfill the required lifetime
-  --> $DIR/regions-bounded-by-trait-requiring-static.rs:32:5
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:34:5
    |
 LL |     assert_send::<&'a isize>(); //~ ERROR does not fulfill the required lifetime
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     assert_send::<&'a isize>(); //~ ERROR does not fulfill the required lif
    = note: type must satisfy the static lifetime
 
 error[E0477]: the type `&'a str` does not fulfill the required lifetime
-  --> $DIR/regions-bounded-by-trait-requiring-static.rs:36:5
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:38:5
    |
 LL |     assert_send::<&'a str>(); //~ ERROR does not fulfill the required lifetime
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     assert_send::<&'a str>(); //~ ERROR does not fulfill the required lifet
    = note: type must satisfy the static lifetime
 
 error[E0477]: the type `&'a [isize]` does not fulfill the required lifetime
-  --> $DIR/regions-bounded-by-trait-requiring-static.rs:40:5
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:42:5
    |
 LL |     assert_send::<&'a [isize]>(); //~ ERROR does not fulfill the required lifetime
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     assert_send::<&'a [isize]>(); //~ ERROR does not fulfill the required l
    = note: type must satisfy the static lifetime
 
 error[E0477]: the type `std::boxed::Box<&'a isize>` does not fulfill the required lifetime
-  --> $DIR/regions-bounded-by-trait-requiring-static.rs:54:5
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:56:5
    |
 LL |     assert_send::<Box<&'a isize>>(); //~ ERROR does not fulfill the required lifetime
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     assert_send::<Box<&'a isize>>(); //~ ERROR does not fulfill the require
    = note: type must satisfy the static lifetime
 
 error[E0477]: the type `*const &'a isize` does not fulfill the required lifetime
-  --> $DIR/regions-bounded-by-trait-requiring-static.rs:65:5
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:67:5
    |
 LL |     assert_send::<*const &'a isize>(); //~ ERROR does not fulfill the required lifetime
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |     assert_send::<*const &'a isize>(); //~ ERROR does not fulfill the requi
    = note: type must satisfy the static lifetime
 
 error[E0477]: the type `*mut &'a isize` does not fulfill the required lifetime
-  --> $DIR/regions-bounded-by-trait-requiring-static.rs:69:5
+  --> $DIR/regions-bounded-by-trait-requiring-static.rs:71:5
    |
 LL |     assert_send::<*mut &'a isize>(); //~ ERROR does not fulfill the required lifetime
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

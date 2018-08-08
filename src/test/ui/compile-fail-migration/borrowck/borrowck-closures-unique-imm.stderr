@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `this.x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-unique-imm.rs:21:14
+  --> $DIR/borrowck-closures-unique-imm.rs:23:14
    |
 LL |         let p = &this.x;
    |                  ------ immutable borrow occurs here

@@ -1,5 +1,5 @@
 error[E0503]: cannot use `u.c` because it was mutably borrowed
-  --> $DIR/borrowck-union-borrow-nested.rs:33:17
+  --> $DIR/borrowck-union-borrow-nested.rs:35:17
    |
 LL |             let ra = &mut u.s.a;
    |                           ----- borrow of `u.s.a` occurs here

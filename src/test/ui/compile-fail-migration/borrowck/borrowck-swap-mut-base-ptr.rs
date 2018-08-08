@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Test that attempt to swap `&mut` pointer while pointee is borrowed
 // yields an error.
 //

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Note: the borrowck analysis is currently flow-insensitive.
 // Therefore, some of these errors are marked as spurious and could be
 // corrected by a simple change to the analysis.  The others are

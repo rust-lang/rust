@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/regions-infer-covariance-due-to-decl.rs:32:32
+  --> $DIR/regions-infer-covariance-due-to-decl.rs:34:32
    |
 LL | fn use_<'short,'long>(c: Covariant<'long>,
    |                          ----------------

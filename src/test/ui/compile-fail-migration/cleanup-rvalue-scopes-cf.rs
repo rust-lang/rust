@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Test that the borrow checker prevents pointers to temporaries
 // with statement lifetimes from escaping.
 

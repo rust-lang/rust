@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-object-lifetime.rs:26:14
+  --> $DIR/borrowck-object-lifetime.rs:28:14
    |
 LL |     let _y = x.borrowed();
    |              - immutable borrow occurs here
@@ -9,7 +9,7 @@ LL | }
    | - immutable borrow ends here
 
 error[E0502]: cannot borrow `x` as mutable because `*x` is also borrowed as immutable
-  --> $DIR/borrowck-object-lifetime.rs:31:19
+  --> $DIR/borrowck-object-lifetime.rs:33:19
    |
 LL |     let _y = x.borrowed();
    |              - immutable borrow occurs here

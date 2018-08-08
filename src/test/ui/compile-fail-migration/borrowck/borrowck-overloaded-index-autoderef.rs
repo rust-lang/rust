@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Test that we still see borrowck errors of various kinds when using
 // indexing and autoderef in combination.
 

@@ -1,37 +1,37 @@
 error[E0308]: mismatched types
-  --> $DIR/variance-contravariant-self-trait-match.rs:23:5
+  --> $DIR/variance-contravariant-self-trait-match.rs:25:5
    |
 LL |     impls_get::<&'min G>(); //~ ERROR mismatched types
    |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Get`
               found type `Get`
-note: the lifetime 'min as defined on the function body at 20:21...
-  --> $DIR/variance-contravariant-self-trait-match.rs:20:21
+note: the lifetime 'min as defined on the function body at 22:21...
+  --> $DIR/variance-contravariant-self-trait-match.rs:22:21
    |
 LL | fn get_min_from_max<'min, 'max, G>()
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 20:27
-  --> $DIR/variance-contravariant-self-trait-match.rs:20:27
+note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 22:27
+  --> $DIR/variance-contravariant-self-trait-match.rs:22:27
    |
 LL | fn get_min_from_max<'min, 'max, G>()
    |                           ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/variance-contravariant-self-trait-match.rs:32:5
+  --> $DIR/variance-contravariant-self-trait-match.rs:34:5
    |
 LL |     impls_get::<&'max G>(); //~ ERROR mismatched types
    |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected type `Get`
               found type `Get`
-note: the lifetime 'min as defined on the function body at 26:21...
-  --> $DIR/variance-contravariant-self-trait-match.rs:26:21
+note: the lifetime 'min as defined on the function body at 28:21...
+  --> $DIR/variance-contravariant-self-trait-match.rs:28:21
    |
 LL | fn get_max_from_min<'min, 'max, G>()
    |                     ^^^^
-note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 26:27
-  --> $DIR/variance-contravariant-self-trait-match.rs:26:27
+note: ...does not necessarily outlive the lifetime 'max as defined on the function body at 28:27
+  --> $DIR/variance-contravariant-self-trait-match.rs:28:27
    |
 LL | fn get_max_from_min<'min, 'max, G>()
    |                           ^^^^

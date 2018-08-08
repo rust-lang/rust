@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Test which of the builtin types are considered sendable. The tests
 // in this file all test region bound and lifetime violations that are
 // detected during type check.

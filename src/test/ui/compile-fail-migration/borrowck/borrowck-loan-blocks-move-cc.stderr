@@ -1,5 +1,5 @@
 error[E0504]: cannot move `v` into closure because it is borrowed
-  --> $DIR/borrowck-loan-blocks-move-cc.rs:23:27
+  --> $DIR/borrowck-loan-blocks-move-cc.rs:25:27
    |
 LL |     let _w = &v;
    |               - borrow of `v` occurs here
@@ -8,7 +8,7 @@ LL |         println!("v={}", *v);
    |                           ^ move into closure occurs here
 
 error[E0504]: cannot move `v` into closure because it is borrowed
-  --> $DIR/borrowck-loan-blocks-move-cc.rs:32:27
+  --> $DIR/borrowck-loan-blocks-move-cc.rs:34:27
    |
 LL |     let _w = &v;
    |               - borrow of `v` occurs here

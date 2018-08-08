@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-compare-mode-nll
+
 // Test that an unboxed closure that captures a free variable by
 // reference cannot escape the region of that variable.
 fn main() {

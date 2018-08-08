@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/method-self-arg-2.rs:23:15
+  --> $DIR/method-self-arg-2.rs:25:15
    |
 LL |     let y = &mut x;
    |                  - mutable borrow occurs here
@@ -10,7 +10,7 @@ LL | }
    | - mutable borrow ends here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/method-self-arg-2.rs:27:19
+  --> $DIR/method-self-arg-2.rs:29:19
    |
 LL |     let y = &mut x;
    |                  - first mutable borrow occurs here
