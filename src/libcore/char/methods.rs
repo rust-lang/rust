@@ -453,6 +453,8 @@ impl char {
     /// In both of these examples, 'ß' takes two bytes to encode.
     ///
     /// ```
+    /// #![feature(try_unicode_encode_char)]
+    ///
     /// let mut b = [0; 2];
     ///
     /// let result = 'ß'.try_encode_utf8(&mut b).unwrap();
@@ -465,6 +467,8 @@ impl char {
     /// A buffer that's too small:
     ///
     /// ```
+    /// #![feature(try_unicode_encode_char)]
+    ///
     /// let mut b = [0; 1];
     ///
     /// assert_eq!(None, 'ß'.try_encode_utf8(&mut b));
@@ -549,6 +553,8 @@ impl char {
     /// In both of these examples, '𝕊' takes two `u16`s to encode.
     ///
     /// ```
+    /// #![feature(try_unicode_encode_char)]
+    ///
     /// let mut b = [0; 2];
     ///
     /// let result = '𝕊'.try_encode_utf16(&mut b).unwrap();
@@ -559,6 +565,8 @@ impl char {
     /// A buffer that's too small:
     ///
     /// ```
+    /// #![feature(try_unicode_encode_char)]
+    ///
     /// let mut b = [0; 1];
     ///
     /// assert_eq!(None, '𝕊'.try_encode_utf16(&mut b));
