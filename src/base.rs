@@ -621,7 +621,7 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
     }
 }
 
-fn trans_checked_int_binop<'a, 'tcx: 'a>(
+pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx>,
     bin_op: BinOp,
     lhs: CValue<'tcx>,
@@ -661,6 +661,7 @@ fn trans_checked_int_binop<'a, 'tcx: 'a>(
         Offset (_) bug;
     };
 
+    // TODO: check for overflow
     let has_overflow = CValue::const_val(fx, fx.tcx.types.bool, 0);
 
     let out_place = CPlace::temp(fx, out_ty);

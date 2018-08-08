@@ -411,6 +411,66 @@ pub fn codegen_call<'a, 'tcx: 'a>(
                     };
                     ret.write_cvalue(fx, res);
                 }
+                _ if intrinsic.ends_with("_with_overflow") => {
+                    assert_eq!(args.len(), 2);
+                    assert_eq!(args[0].layout().ty, args[1].layout().ty);
+                    let bin_op = match intrinsic {
+                        "add_with_overflow" => BinOp::Add,
+                        "sub_with_overflow" => BinOp::Sub,
+                        "mul_with_overflow" => BinOp::Mul,
+                        _ => unimplemented!("intrinsic {}", intrinsic),
+                    };
+                    let res = match args[0].layout().ty.sty {
+                        TypeVariants::TyUint(_) => crate::base::trans_checked_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            false,
+                        ),
+                        TypeVariants::TyInt(_) => crate::base::trans_checked_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            true,
+                        ),
+                        _ => panic!(),
+                    };
+                    ret.write_cvalue(fx, res);
+                }
+                _ if intrinsic.starts_with("overflowing_") => {
+                    assert_eq!(args.len(), 2);
+                    assert_eq!(args[0].layout().ty, args[1].layout().ty);
+                    let bin_op = match intrinsic {
+                        "overflowing_add" => BinOp::Add,
+                        "overflowing_sub" => BinOp::Sub,
+                        "overflowing_mul" => BinOp::Mul,
+                        _ => unimplemented!("intrinsic {}", intrinsic),
+                    };
+                    let res = match args[0].layout().ty.sty {
+                        TypeVariants::TyUint(_) => crate::base::trans_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            false,
+                        ),
+                        TypeVariants::TyInt(_) => crate::base::trans_int_binop(
+                            fx,
+                            bin_op,
+                            args[0],
+                            args[1],
+                            ret.layout().ty,
+                            true,
+                        ),
+                        _ => panic!(),
+                    };
+                    ret.write_cvalue(fx, res);
+                }
                 "offset" => {
                     assert_eq!(args.len(), 2);
                     let base = args[0].load_value(fx);
