@@ -1,9 +1,17 @@
 -include ../../run-make-fulldeps/tools.mk
 
 # How to run this
-# $ ./x.py test --target thumbv7m-none-eabi src/test/run-make
+# $ ./x.py clean
+# $ ./x.py test --target thumbv6m-none-eabi,thumbv7m-none-eabi src/test/run-make
 
-ifeq ($(TARGET),thumbv7m-none-eabi)
+# Supported targets:
+# - thumbv6m-none-eabi (Bare Cortex-M0, M0+, M1)
+# - thumbv7em-none-eabi (Bare Cortex-M4, M7)
+# - thumbv7em-none-eabihf (Bare Cortex-M4F, M7F, FPU, hardfloat)
+# - thumbv7m-none-eabi (Bare Cortex-M3)
+
+# See https://stackoverflow.com/questions/7656425/makefile-ifeq-logical-or
+ifneq (,$(filter $(TARGET),thumbv6m-none-eabi thumbv7em-none-eabi thumbv7em-none-eabihf thumbv7m-none-eabi))
 
 # We need to be outside of 'src' dir in order to run cargo
 WORK_DIR := $(RUST_TEST_TMPDIR)/run-make/$(TARGET)
