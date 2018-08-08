@@ -661,28 +661,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             test: _,
         } = type_test;
 
+
         let generic_ty = generic_kind.to_ty(tcx);
         let subject = match self.try_promote_type_test_subject(infcx, generic_ty) {
             Some(s) => s,
             None => return false,
         };
 
-        // Find some bounding subject-region R+ that is a super-region
-        // of the existing subject-region R. This should be a non-local, universal
-        // region, which ensures it can be encoded in a `ClosureOutlivesRequirement`.
-        let lower_bound_plus = self.non_local_universal_upper_bound(*lower_bound);
-        assert!(self.universal_regions.is_universal_region(lower_bound_plus));
-        assert!(
-            !self
-                .universal_regions
-                .is_local_free_region(lower_bound_plus)
-        );
+        // For each region outlived by lower_bound find a non-local,
+        // universal region (it may be the same region) and add it to
+        // `ClosureOutlivesRequirement`.
+        let r_scc = self.constraint_sccs.scc(*lower_bound);
+        for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            let non_local_ub = self.universal_region_relations.non_local_upper_bound(ur);
 
-        propagated_outlives_requirements.push(ClosureOutlivesRequirement {
-            subject,
-            outlived_free_region: lower_bound_plus,
-            blame_span: locations.span(mir),
-        });
+            assert!(self.universal_regions.is_universal_region(non_local_ub));
+            assert!(
+                !self
+                .universal_regions
+                .is_local_free_region(non_local_ub)
+            );
+
+            propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+                subject,
+                outlived_free_region: non_local_ub,
+                blame_span: locations.span(mir),
+            });
+        }
         true
     }
 
